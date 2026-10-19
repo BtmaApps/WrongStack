@@ -356,4 +356,14 @@ describe('wstack models add/remove/list', () => {
     expect(output(messages)).toContain('Removed custom model "doomed".');
     expect(readConfigFile()['models']).toEqual({});
   });
+
+  it('uses configured default provider when flags precede or omit positional provider (F135)', async () => {
+    const { renderer, messages } = makeRenderer();
+    const deps = makeDeps(baseConfig({ provider: 'anthropic' }), configPath, renderer);
+    const code = await modelsCmd(['--search', 'haiku'], deps as never);
+    expect(code).toBe(0);
+    const text = output(messages);
+    expect(text).toContain('claude-haiku-4.5');
+    expect(text).not.toContain('claude-opus-4');
+  });
 });

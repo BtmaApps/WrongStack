@@ -8,6 +8,7 @@ import {
   modelsList,
   modelsRemove,
   modelsReset,
+  positionals,
   subcommandFlags,
 } from './providers-models-custom.js';
 import {
@@ -107,7 +108,7 @@ export const modelsCmd: SubcommandHandler = async (args, deps) => {
 
   // Use first positional arg as provider if given, else fall back to configured default.
   // Flags (--search, --page) filter/paginate the list — they don't change the provider.
-  const providerId = sub ?? deps.config.provider ?? '';
+  const providerId = positionals(args)[0] ?? deps.config.provider ?? '';
   if (!providerId) {
     deps.renderer.writeError(
       'Usage: wstack models <provider> [--search <term>] [--page N] [--per-page N]',
