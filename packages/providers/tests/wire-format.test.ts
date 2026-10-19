@@ -398,4 +398,41 @@ describe('defineWireFormat', () => {
     const raw = { ...miniConfig };
     expect(defineWireFormat(raw)).toBe(raw);
   });
+
+  it('recomputes toolsToOpenAI and messagesToOpenAI when Tool[] or tool_use.input is mutated in-place (F168)', async () => {
+    const { messagesToOpenAI, toolsToOpenAI } = await import('../src/tool-format/to-openai.js');
+    const tools = [
+      {
+        name: 'read',
+        description: 'v1',
+        inputSchema: { type: 'object', properties: {} },
+        permission: 'auto' as const,
+        mutating: false,
+        execute: async () => '',
+      },
+    ];
+    expect(toolsToOpenAI(tools)).toHaveLength(1);
+    tools[0]!.description = 'v2';
+    tools.push({
+      name: 'write',
+      description: 'write file',
+      inputSchema: { type: 'object', properties: {} },
+      permission: 'confirm' as const,
+      mutating: true,
+      execute: async () => '',
+    });
+    const updatedTools = toolsToOpenAI(tools);
+    expect(updatedTools).toHaveLength(2);
+    expect(updatedTools.find((t) => t.function.name === 'read')?.function.description).toBe('v2');
+
+    const input: Record<string, unknown> = { secret: 'raw' };
+    const msg = {
+      role: 'assistant' as const,
+      content: [{ type: 'tool_use' as const, id: 'call_1', name: 'read', input }],
+    };
+    messagesToOpenAI(undefined, [msg]);
+    input['secret'] = '[REDACTED]';
+    const reserialized = messagesToOpenAI(undefined, [msg]);
+    expect(reserialized[0]?.tool_calls?.[0]?.function.arguments).toBe('{"secret":"[REDACTED]"}');
+  });
 });

@@ -9,7 +9,11 @@ import type {
   ToolUseBlock,
 } from '@wrongstack/core/types';
 import { documentAsText } from '@wrongstack/core/types';
-import { compactToolDefinitionForWire } from '@wrongstack/core/utils';
+import {
+  compactToolDefinitionForWire,
+  SCHEMA_DESCRIPTION_MAX_CHARS,
+  TOOL_DESCRIPTION_MAX_CHARS,
+} from '@wrongstack/core/utils';
 import type { ReasoningEchoField } from '../reasoning-echo-support.js';
 
 export interface OpenAIToolSchema {
@@ -22,15 +26,10 @@ export interface OpenAIToolSchema {
 }
 
 /**
- * WeakMap cache keyed by the Tool[] array reference. The tool registry
- * returns the same array reference within a session, so after the first
- * call the serialized schemas are served from cache — no re-mapping or
- * object allocation on subsequent LLM calls. When tools are added or
- * removed the registry creates a new array, the old entry is GC'd by
- * the WeakMap, and the next call recomputes.
+ * WeakMap cache keyed by the Tool[] array reference and a content fingerprint so
+ * in-place tool array or schema mutations invalidate the cached wire declarations.
  */
-const _cache = new WeakMap<Tool[], OpenAIToolSchema[]>();
-const _stringifiedToolInputs = new WeakMap<Record<string, unknown>, string>();
+const _cache = new WeakMap<Tool[], { fingerprint: string; result: OpenAIToolSchema[] }>();
 
 /** OpenAI rejects `tool_calls[].id` / `tool_call_id` longer than this. */
 const MAX_TOOL_CALL_ID_LENGTH = 40;
@@ -48,20 +47,18 @@ function wireToolCallId(id: string): string {
   return `call_${createHash('sha256').update(id).digest('hex').slice(0, 32)}`;
 }
 
-function stringifyToolInputOnce(input: Record<string, unknown>): string {
-  const hit = _stringifiedToolInputs.get(input);
-  if (hit) return hit;
-  const json = JSON.stringify(input);
-  _stringifiedToolInputs.set(input, json);
-  return json;
-}
-
 export function toolsToOpenAI(tools: Tool[]): OpenAIToolSchema[] {
+  const fingerprint = JSON.stringify(
+    tools.map((tool) => [tool.name, tool.description, tool.inputSchema]),
+  );
   const hit = _cache.get(tools);
-  if (hit) return hit;
+  if (hit?.fingerprint === fingerprint) return hit.result;
   const sorted = tools.length > 1 ? [...tools].sort((a, b) => a.name.localeCompare(b.name)) : tools;
   const result = sorted.map((t) => {
-    const compact = compactToolDefinitionForWire(t);
+    const compact = compactToolDefinitionForWire(t, {
+      descriptionMaxChars: TOOL_DESCRIPTION_MAX_CHARS,
+      schemaDescriptionMaxChars: SCHEMA_DESCRIPTION_MAX_CHARS,
+    });
     return {
       type: 'function' as const,
       function: {
@@ -71,7 +68,7 @@ export function toolsToOpenAI(tools: Tool[]): OpenAIToolSchema[] {
       },
     };
   });
-  _cache.set(tools, result);
+  _cache.set(tools, { fingerprint, result });
   return result;
 }
 
@@ -206,7 +203,7 @@ export function messagesToOpenAI(
       const toolCalls: OpenAIToolCall[] = toolUses.map((u) => ({
         id: wireToolCallId(u.id),
         type: 'function',
-        function: { name: u.name, arguments: stringifyToolInputOnce(u.input) },
+        function: { name: u.name, arguments: JSON.stringify(u.input ?? {}) },
       }));
 
       const message: OpenAIMessage = { role: 'assistant' };
