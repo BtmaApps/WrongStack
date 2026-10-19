@@ -238,4 +238,20 @@ describe('enrichStubSummaries', () => {
     // Order is preserved: results are written back by index, not by completion.
     expect(enriched.map((s) => s.id)).toEqual(ids);
   });
+
+  it('recovers lastUserMessage when the only user_input is on line 1 followed by other events (F131)', async () => {
+    const id = '2026-08-25/sess_single_turn_F131';
+    await writeJsonl(id, [
+      writeUserInput('2026-08-25T10:00:00Z', 'first and only prompt'),
+      JSON.stringify({
+        type: 'assistant_output',
+        ts: '2026-08-25T10:00:05Z',
+        content: 'working on it',
+      }),
+    ]);
+
+    const [enriched] = await enrichStubSummaries([stubSummary(id)], dir);
+    expect(enriched?.title).toBe('first and only prompt');
+    expect(enriched?.lastUserMessage).toBe('first and only prompt');
+  });
 });

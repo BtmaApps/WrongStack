@@ -130,9 +130,9 @@ async function firstUserInput(file: string): Promise<UserInputHit | undefined> {
     const length = Math.min(SLICE_BYTES, size);
     const buffer = Buffer.alloc(length);
     await handle.read(buffer, 0, length, 0);
-    // Drop the final (possibly truncated) line.
+    // Drop the final (possibly truncated) line when slicing a file larger than SLICE_BYTES.
     const text = buffer.toString('utf8');
-    const cutoff = text.lastIndexOf('\n');
+    const cutoff = size > SLICE_BYTES ? text.lastIndexOf('\n') : -1;
     return scanUserInputs(cutoff > 0 ? text.slice(0, cutoff) : text).first;
   } catch {
     return undefined;
@@ -152,8 +152,8 @@ async function lastUserInput(file: string): Promise<UserInputHit | undefined> {
     const buffer = Buffer.alloc(length);
     await handle.read(buffer, 0, length, start);
     const text = buffer.toString('utf8');
-    // Drop the leading (possibly truncated) line.
-    const from = text.indexOf('\n');
+    // Drop the leading (possibly truncated) line when slicing past byte 0.
+    const from = start > 0 ? text.indexOf('\n') : -1;
     return scanUserInputs(from >= 0 ? text.slice(from + 1) : text).last;
   } catch {
     return undefined;
