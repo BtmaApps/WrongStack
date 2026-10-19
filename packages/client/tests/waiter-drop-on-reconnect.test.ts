@@ -107,4 +107,24 @@ describe('WrongStackClient control waiters on socket drop with reconnect', () =>
       await new Promise<void>((r) => server.close(() => r()));
     }
   });
+
+  it('delivers pushed event to awaiting async-iterator waiter before onEvent listener settlement drains waiters (F127)', async () => {
+    const { Run } = await import('../src/run.js');
+    const run = new Run('req-1', 'sess-1');
+    const iterator = run[Symbol.asyncIterator]();
+    const nextPromise = iterator.next();
+
+    run.onEvent(() => {
+      run.fail(new WrongStackError({ kind: 'run', code: 'boom' }));
+    });
+
+    const event = {
+      type: 'provider.text_delta' as const,
+      payload: { sessionId: 'sess-1', text: 'hello' },
+    };
+    run.push(event);
+    void run.result.catch(() => {});
+
+    await expect(nextPromise).resolves.toEqual({ value: event, done: false });
+  });
 });

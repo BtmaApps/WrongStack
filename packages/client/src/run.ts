@@ -146,6 +146,9 @@ export class Run implements AsyncIterable<RunEvent> {
   push(event: RunEvent): void {
     if (this.settled) return;
     if (event.type === 'provider.text_delta') this.streamed += event.payload.text;
+    const waiter = this.waiters.shift();
+    if (waiter) waiter({ value: event, done: false });
+    else this.queue.push(event);
     for (const listener of this.listeners) {
       try {
         listener(event);
@@ -153,9 +156,6 @@ export class Run implements AsyncIterable<RunEvent> {
         // A throwing listener must not stop the stream for the others.
       }
     }
-    const waiter = this.waiters.shift();
-    if (waiter) waiter({ value: event, done: false });
-    else this.queue.push(event);
   }
 
   /** @internal */
