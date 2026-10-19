@@ -727,6 +727,7 @@
       "source": "packages/core/src/design/index.ts",
       "declarations": [
         "export * from '../execution/design-capture.js';",
+        "export * from '../execution/design-deal.js';",
         "export * from '../execution/design-detect.js';",
         "export * from '../execution/design-dna-compare.js';",
         "export * from '../execution/design-dna-extractor.js';",
@@ -741,7 +742,7 @@
         "export * from '../execution/design-turn-gate.js';",
         "export * from '../execution/design-verify-run.js';",
         "export * from '../execution/design-verify.js';",
-        "export { isDesignStack, type DesignStack, type SkippedKitInfo } from '../types/design-kit.js';"
+        "export { type DesignKitLoader, type DesignStack, isDesignStack, type SkippedKitInfo, } from '../types/design-kit.js';"
       ]
     },
     {
@@ -1637,14 +1638,14 @@
       "classification": "product feature",
       "intendedOwner": "feature/plugin owner behind a focused public facade",
       "sourceFiles": 1,
-      "sourceLines": 20
+      "sourceLines": 26
     },
     {
       "directory": "execution",
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime pilot candidate after R2/R3",
-      "sourceFiles": 104,
-      "sourceLines": 25741
+      "sourceFiles": 105,
+      "sourceLines": 25953
     },
     {
       "directory": "extension",

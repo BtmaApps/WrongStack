@@ -123,13 +123,22 @@ CSS/TS/Dart and refuses one with lint errors (broken references, duplicate
 keys or sections); `design_reference extract` writes the measured reference as
 DESIGN.md beside its DNA record. A round trip keeps both themes.
 
+Dealt direction: shown the whole catalogue, models keep choosing the same few
+kits. Once a UI request activates Design Studio without a pinned kit, the
+per-turn block shows three kits drawn by a seeded shuffle instead of the full
+menu (`design deal` returns the same draw; `seed` reproduces a printed one,
+`query` narrows the pool, `redeal` draws again). Kits chosen recently in any
+project (`design-history.json` in the profile directory, last 50 choices; the
+five most recent are left out) are not dealt. Pinning a kit outside the deal
+requires a `reason`, recorded with the choice. The deal is kept for the session,
+so the injected block is identical across turns and the prompt prefix stays
+cacheable. Catalogues of three or fewer kits get the plain menu.
+
 Next, in order of value:
 
 1. `PRODUCT.md` (audience, job, voice) and a DESIGN.md `diff` that flags token
    regressions between two versions.
-2. Dealt direction: a seeded draw of three kits that excludes recent choices;
-   a pick outside the deal needs a recorded reason.
-3. Evaluation harness: fixed briefs, with and without the design layer, two or
+2. Evaluation harness: fixed briefs, with and without the design layer, two or
    more providers, scored only by these measurements plus cross-brief DNA
    distance (convergence), with a ratchet.
 

@@ -72,6 +72,45 @@ describe('designTool', () => {
     }
   });
 
+  it('deals three kits and asks for a reason before pinning one outside the deal', async () => {
+    const projectRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'ws-design-deal-'));
+    const ctx = { cwd: projectRoot, tools: [], projectRoot, meta: {} } as any;
+    try {
+      const dealt = await designTool.execute({ action: 'deal', seed: 'fixed' }, ctx, opts);
+      expect(dealt.output).toContain('seed "fixed"');
+      const ids = [...dealt.output.matchAll(/\*\*([a-z0-9-]+)\*\*/g)].map((m) => m[1] as string);
+      expect(ids).toHaveLength(3);
+      // Reproducible from the printed seed.
+      const again = await designTool.execute(
+        { action: 'deal', seed: 'fixed' },
+        { ...ctx, meta: {} },
+        opts,
+      );
+      expect(again.output).toBe(dealt.output);
+
+      const outside = ['minimal-clarity', 'neo-brutalist', 'ios-native'].find(
+        (k) => !ids.includes(k),
+      );
+      await expect(designTool.execute({ action: 'use', kit: outside }, ctx, opts)).rejects.toThrow(
+        /outside this session's deal[\s\S]*reason/,
+      );
+      expect(await loadActiveKit(projectRoot)).toBeUndefined();
+
+      const withReason = await designTool.execute(
+        { action: 'use', kit: outside, reason: 'the brand already ships this look' },
+        ctx,
+        opts,
+      );
+      expect(withReason.output).toContain(
+        'Chosen outside the deal: the brand already ships this look',
+      );
+      const inDeal = await designTool.execute({ action: 'use', kit: ids[0] }, ctx, opts);
+      expect(inDeal.output).not.toContain('Chosen outside the deal');
+    } finally {
+      await fs.rm(projectRoot, { recursive: true, force: true });
+    }
+  });
+
   it('throws (with the menu in the message) when an unknown kit is requested', async () => {
     const ctx = makeCtx();
     await expect(designTool.execute({ action: 'use', kit: 'nope' }, ctx, opts)).rejects.toThrow(

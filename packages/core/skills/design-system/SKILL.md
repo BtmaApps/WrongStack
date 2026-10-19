@@ -1,7 +1,7 @@
 ---
 name: design-system
 description: "Create and maintain coherent visual tokens, themes and shared component states using the existing project system or WrongStack Design Studio. Use when designing or substantially restyling interfaces, palettes, typography or themes; small UI fixes should extend the existing system without a kit migration."
-version: 2.3.1
+version: 2.4.0
 required-capabilities: [filesystem.read, filesystem.write]
 required-tools: []
 optional-capabilities: [verification.run, web.research]
@@ -44,11 +44,18 @@ not a requirement to replace an established design.
 For a new kit or authorized migration:
 
 ~~~
-design {action:"list"}
+design {action:"deal"}
 design {action:"use", kit:"<actual-id>", stack:"web"}
 design {action:"tune", tune:{radius:"lg", density:"compact", motion:"snappy"}}
 design {action:"materialize"}
 ~~~
+
+The deal is three kits drawn for the session with a printed seed; kits chosen
+recently in any project are left out, so consecutive products do not converge
+on one look. Pick the dealt kit that fits the product and say why. A query
+field narrows the pool by kit wording, redeal:true draws again, and the list
+action shows everything. A kit outside the deal needs a reason field (the
+user's brand, an existing look); the reason is recorded with the choice.
 
 Tune only when needed; use set for explicit brand/semantic overrides.
 Supported stacks are web, react-native, flutter, swiftui and compose.

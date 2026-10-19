@@ -6,25 +6,24 @@ import {
   captureProjectTokens,
   getDesignKitLoader,
   isDesignStack,
+  type KitContrastIssue,
   kitContrastIssues,
   loadActiveKit,
   materializeTokens,
-  parseDesignMd,
-  renderDesignMd,
   recordKitChoice,
   recordOverrides,
   resolveSemanticTune,
   resolveVerifyTokens,
   runDesignVerify,
-  saveCapturedTokens,
-  type KitContrastIssue,
   type SemanticTune,
+  saveCapturedTokens,
   setActiveKit,
   setDesignOverrides,
 } from '@wrongstack/core/design';
 import type { Tool } from '@wrongstack/core/types';
 import { ToolValidationError } from '@wrongstack/core/types';
 import { atomicWrite } from '@wrongstack/core/utils';
+import { checkDealtChoice, dealAction, documentAction } from './design-actions.js';
 
 type Overrides = Record<string, string>;
 
@@ -70,6 +69,7 @@ export interface DesignInput {
     | 'verify'
     | 'capture'
     | 'document'
+    | 'deal'
     | undefined;
   kit?: string | undefined;
   stack?: string | undefined;
@@ -83,6 +83,14 @@ export interface DesignInput {
   force?: boolean | undefined;
   /** action "verify"/"capture": explicit files to scan/read (project-relative). Verify defaults to a UI-file walk; capture to conventional token-source paths. */
   files?: string | string[] | undefined;
+  /** action "use": why a kit outside the session's deal fits (recorded). */
+  reason?: string | undefined;
+  /** action "deal": words that narrow the pool (e.g. "editorial calm"). */
+  query?: string | undefined;
+  /** action "deal": reproduce a printed deal. */
+  seed?: string | undefined;
+  /** action "deal": draw again instead of returning the session's deal. */
+  redeal?: boolean | undefined;
 }
 
 export interface DesignOutput {
@@ -168,9 +176,10 @@ export const designTool: Tool<DesignInput, DesignOutput> = {
     'UI code to commit to one coherent, modern, responsive, dark/light, accessible design. Actions: ' +
     '"list" (menu), "use" (load+pin a kit for a stack), "foundations" (baseline), "set" (override kit ' +
     'colors/tokens), "materialize" (write the tokens to a real theme file — CSS @theme/OKLCH or native), ' +
-    '"verify" (scan UI files for off-palette colors), "document" (export the system as DESIGN.md).',
+    '"verify" (scan UI files for off-palette colors), "document" (export the system as DESIGN.md), ' +
+    '"deal" (three kits drawn for this session, recent choices left out).',
   usageHint:
-    'Flow: `design {action:"use", kit:"minimal-clarity", stack:"web"}` → optionally ' +
+    'Flow: `design {action:"deal"}` → `design {action:"use", kit:"<dealt id>", stack:"web"}` → optionally ' +
     '`design {action:"set", set:{primary:"oklch(62% 0.2 25)"}}` → `design {action:"materialize"}` ' +
     'to write tokens to disk → implement against them → `design {action:"verify"}`.',
   permission: 'confirm',
@@ -195,6 +204,7 @@ export const designTool: Tool<DesignInput, DesignOutput> = {
           'verify',
           'capture',
           'document',
+          'deal',
         ],
         description:
           'list = menu; use = load+pin a kit; foundations = baseline; set = override colors/tokens; ' +
@@ -202,7 +212,8 @@ export const designTool: Tool<DesignInput, DesignOutput> = {
           'file; verify = scan UI for token drift (pinned kit, or the project\u2019s captured tokens); ' +
           'capture = snapshot the project\u2019s existing token source (DESIGN.md, theme CSS/TS/Dart) so ' +
           'verify works without a kit; document = write the active kit or captured tokens as a ' +
-          'DESIGN.md (google design.md format) for other tools. Default: list.',
+          'DESIGN.md (google design.md format) for other tools; deal = draw three kits for this ' +
+          'session, leaving recent choices out (a kit outside the deal needs reason). Default: list.',
       },
       kit: {
         type: 'string',
@@ -243,6 +254,16 @@ export const designTool: Tool<DesignInput, DesignOutput> = {
         description:
           'Materialize: overwrite an existing file (default false — refuses to clobber).',
       },
+      reason: {
+        type: 'string',
+        description: 'Use: why a kit outside this session\u2019s deal fits the product (recorded).',
+      },
+      query: {
+        type: 'string',
+        description: 'Deal: words narrowing the pool, matched against kit name/aesthetic/best-for.',
+      },
+      seed: { type: 'string', description: 'Deal: reproduce a printed deal.' },
+      redeal: { type: 'boolean', description: 'Deal: draw again with a fresh seed.' },
       files: {
         type: 'array',
         items: { type: 'string' },
@@ -268,6 +289,7 @@ export const designTool: Tool<DesignInput, DesignOutput> = {
       'verify',
       'capture',
       'document',
+      'deal',
     ]);
     if (input.action !== undefined && !VALID_ACTIONS.has(input.action)) {
       throw new ToolValidationError({
@@ -327,6 +349,7 @@ export const designTool: Tool<DesignInput, DesignOutput> = {
       const tokens = rawTokens ? applyTokenOverrides(rawTokens, overrides) : rawTokens;
       const contrastWarn = tokens ? contrastWarning(kitContrastIssues(tokens)) : '';
 
+      const dealNote = await checkDealtChoice(ctx, manifest.id, input.reason);
       setActiveKit(ctx, manifest.id, resolvedStack, overrides);
       await recordKitChoice(
         ctx.projectRoot,
@@ -344,7 +367,7 @@ export const designTool: Tool<DesignInput, DesignOutput> = {
         : '';
       const header =
         `# Active design kit: ${manifest.name} (${manifest.id}) — stack: ${resolvedStack}\n` +
-        `${manifest.aesthetic}\n${ovLine}\n` +
+        `${manifest.aesthetic}\n${ovLine}${dealNote}\n` +
         'Implement the UI faithfully to this spec. Keep light/dark, responsive, and WCAG AA.\n';
       const tokenBlock = tokens
         ? `\n## Token snapshot (overrides applied)\n\`\`\`json\n${JSON.stringify(tokens, null, 2)}\n\`\`\`\n` +
@@ -479,52 +502,16 @@ export const designTool: Tool<DesignInput, DesignOutput> = {
     }
 
     if (action === 'document') {
-      const source = await resolveVerifyTokens(ctx.projectRoot);
-      if (!source) {
-        throw new Error(
-          'design: nothing to document (no active kit, no captured tokens). Pin a kit with ' +
-            '`design {action:"use", kit:"<id>"}` or capture the project\u2019s tokens with ' +
-            '`design {action:"capture"}`.',
-        );
-      }
-      const manifest = source.kit ? await loader.find(source.kit) : undefined;
-      const markdown = renderDesignMd({
-        name: manifest?.name ?? path.basename(path.resolve(ctx.projectRoot)),
-        description: manifest
-          ? `Design Studio kit ${manifest.id} with project overrides.`
-          : `Captured from ${source.files?.join(', ') ?? 'the project'}.`,
-        tokens: source.tokens,
-        overview: manifest?.aesthetic,
+      return documentAction(ctx, loader, input, assertProjectRelative);
+    }
+
+    if (action === 'deal') {
+      return dealAction(ctx, loader, {
+        stack,
+        query: input.query,
+        seed: input.seed,
+        redeal: input.redeal === true,
       });
-      const outRel = input.out ?? 'DESIGN.md';
-      await assertProjectRelative([outRel], ctx.projectRoot, 'document path');
-      const abs = path.resolve(ctx.projectRoot, outRel);
-      const exists = await fs
-        .access(abs)
-        .then(() => true)
-        .catch(() => false);
-      if (exists && !input.force) {
-        throw new Error(
-          `design: ${outRel} already exists — nothing was written. Re-run with force:true to overwrite.`,
-        );
-      }
-      await fs.mkdir(path.dirname(abs), { recursive: true });
-      await atomicWrite(abs, markdown);
-      const issues = parseDesignMd(markdown).issues.filter((i) => i.severity !== 'info');
-      return {
-        action,
-        kit: source.kit,
-        source: source.source,
-        path: outRel,
-        output:
-          `Wrote ${outRel} (${source.source === 'kit' ? `kit ${source.kit}` : 'captured tokens'}). ` +
-          'The front matter is normative (colors incl. dark-<role>, typography, rounded, spacing, ' +
-          'components); edit the prose sections with the product\u2019s real direction. ' +
-          '`design {action:"capture"}` reads it back as the token source.' +
-          (issues.length
-            ? `\nLint: ${issues.map((i) => `[${i.rule}] ${i.message}`).join('; ')}`
-            : '\nLint: clean.'),
-      };
     }
 
     if (action === 'capture') {

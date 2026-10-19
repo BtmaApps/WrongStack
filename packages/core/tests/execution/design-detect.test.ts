@@ -298,6 +298,41 @@ describe('request inject middleware', () => {
     expect(out.system?.[0]?.text).toBe('BASE');
   });
 
+  it('injects a stable dealt three instead of the full menu for a larger catalogue', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'design-deal-inject-'));
+    try {
+      const ids = ['k1', 'k2', 'k3', 'k4', 'k5', 'k6'];
+      const loader: DesignKitLoader = {
+        ...fakeLoader,
+        listEntries: async () =>
+          ids.map(
+            (id) =>
+              ({
+                id,
+                name: id,
+                aesthetic: 'x',
+                bestFor: 'y',
+                stacks: ['web'],
+                source: 'bundled',
+              }) as never,
+          ),
+      };
+      const ctx = { projectRoot: root, meta: {} } as unknown as Context;
+      activateDesign(ctx, ['intent:ui'], 'web');
+      const mw = makeDesignStudioRequestMiddleware({ ctx, loader });
+      const first = (await mw.handler(baseReq(), async (r) => r)).system?.[1]?.text ?? '';
+      const dealt = ids.filter((id) => first.includes(`**${id}**`));
+      expect(first).toContain('Dealt for this session');
+      expect(first).not.toContain('minimal-clarity');
+      expect(dealt).toHaveLength(3);
+      // The same deal on the next turn keeps the system prefix cache-stable.
+      const second = (await mw.handler(baseReq(), async (r) => r)).system?.[1]?.text ?? '';
+      expect(second).toBe(first);
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
+  });
+
   it('shrinks to a one-line reminder once a kit is active', async () => {
     const ctx = fakeCtx() as unknown as Context;
     setActiveKit(ctx as unknown as { meta: Record<string, unknown> }, 'neo-brutalist', 'web');

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-19T21:04:20.726Z",
+  "generatedAt": "2026-10-19T21:13:23.398Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 38,
-    "sourceFiles": 5187,
-    "testFiles": 4521,
-    "sourceLines": 1128171,
+    "sourceFiles": 5189,
+    "testFiles": 4522,
+    "sourceLines": 1128511,
     "workspaceEdges": 139,
-    "moduleEdges": 17064,
+    "moduleEdges": 17069,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -248,8 +248,8 @@
     {
       "name": "@wrongstack/core",
       "dir": "packages/core",
-      "sourceFiles": 1158,
-      "testFiles": 996,
+      "sourceFiles": 1159,
+      "testFiles": 997,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -264,7 +264,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 996
+          "testFiles": 997
         }
       ]
     },
@@ -770,7 +770,7 @@
     {
       "name": "@wrongstack/tools",
       "dir": "packages/tools",
-      "sourceFiles": 337,
+      "sourceFiles": 338,
       "testFiles": 332,
       "workspaceDependencies": [
         "@wrongstack/core",
@@ -8529,6 +8529,12 @@
       },
       {
         "file": "packages/core/tests/execution/design-color.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/execution/design-deal.test.ts",
         "projects": [
           "root-node"
         ]

@@ -44,9 +44,9 @@
       "runtimeOrMixed": 1
     },
     "@wrongstack/core/design": {
-      "files": 13,
+      "files": 14,
       "typeOnly": 1,
-      "runtimeOrMixed": 14
+      "runtimeOrMixed": 15
     },
     "@wrongstack/core/execution": {
       "files": 86,
@@ -194,9 +194,9 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1456,
+      "files": 1457,
       "typeOnly": 1283,
-      "runtimeOrMixed": 430
+      "runtimeOrMixed": 431
     },
     "@wrongstack/core/types/limits": {
       "files": 1,
@@ -239,9 +239,9 @@
       "runtimeOrMixed": 20
     },
     "@wrongstack/core/utils": {
-      "files": 829,
+      "files": 830,
       "typeOnly": 71,
-      "runtimeOrMixed": 787
+      "runtimeOrMixed": 788
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -4713,6 +4713,12 @@
     {
       "specifier": "@wrongstack/core/design",
       "file": "packages/cli/tests/design-e2e.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/design",
+      "file": "packages/tools/src/design-actions.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -20522,6 +20528,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/tools/src/design-actions.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/tools/src/design-reference.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 1
@@ -27105,6 +27117,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/tools/src/dead-code/tools.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/tools/src/design-actions.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

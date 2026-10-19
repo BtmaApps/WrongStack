@@ -624,9 +624,9 @@ export const toolDetailsPart3: Record<string, ToolDetail> = {
     params: [
       {
         name: 'action',
-        type: "'list' | 'use' | 'foundations' | 'set' | 'tune' | 'materialize' | 'verify' | 'capture'",
+        type: "'list' | 'use' | 'foundations' | 'set' | 'tune' | 'materialize' | 'verify' | 'capture' | 'document' | 'deal'",
         description:
-          'list = menu; use = load+pin a kit; foundations = baseline; set = override colors/tokens; tune = high-level knobs (radius/density/font/motion); materialize = write tokens to a theme file; verify = scan UI for token drift (pinned kit, or the project’s captured tokens); capture = snapshot the project’s existing token source so verify works without a kit. Default: list.',
+          'list = menu; use = load+pin a kit; foundations = baseline; set = override colors/tokens; tune = high-level knobs (radius/density/font/motion); materialize = write tokens to a theme file; verify = scan UI for token drift (pinned kit, or the project’s captured tokens); capture = snapshot the project’s existing token source (DESIGN.md, theme CSS/TS/Dart) so verify works without a kit; document = write the active kit or captured tokens as a DESIGN.md (google design.md format) for other tools; deal = draw three kits for this session, leaving recent choices out (a kit outside the deal needs reason). Default: list.',
       },
       {
         name: 'kit',
@@ -661,6 +661,26 @@ export const toolDetailsPart3: Record<string, ToolDetail> = {
         type: 'boolean',
         description:
           'Materialize: overwrite an existing file (default false — refuses to clobber).',
+      },
+      {
+        name: 'reason',
+        type: 'string',
+        description: 'Use: why a kit outside this session’s deal fits the product (recorded).',
+      },
+      {
+        name: 'query',
+        type: 'string',
+        description: 'Deal: words narrowing the pool, matched against kit name/aesthetic/best-for.',
+      },
+      {
+        name: 'seed',
+        type: 'string',
+        description: 'Deal: reproduce a printed deal.',
+      },
+      {
+        name: 'redeal',
+        type: 'boolean',
+        description: 'Deal: draw again with a fresh seed.',
       },
       {
         name: 'files',

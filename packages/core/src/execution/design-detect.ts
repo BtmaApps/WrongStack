@@ -34,6 +34,7 @@ import type {
 } from '../types/design-kit.js';
 import { isDesignStack } from '../types/design-kit.js';
 import type { Request } from '../types/provider.js';
+import { ensureDesignDeal, renderDesignDeal } from './design-deal.js';
 import { getDesignKitLoader } from './design-kit-loader.js';
 import {
   applyTokenOverrides,
@@ -433,7 +434,16 @@ export function makeDesignStudioRequestMiddleware(deps: {
           `responsive + WCAG AA. Re-load the full spec with \`design use ${state.activeKit}\` if unsure.` +
           `${ov}`;
       } else {
-        const menu = await loader.menuText().catch(() => '');
+        // Shown the whole catalogue, models converge on the same few kits; a
+        // seeded deal of three (recent choices left out) replaces the menu once
+        // there is more than a deal's worth to choose from.
+        const entries = await loader.listEntries().catch(() => []);
+        const menu =
+          entries.length > 3
+            ? await ensureDesignDeal(ctx, loader, { stack: state.stack })
+                .then(({ deal, entries: dealt }) => renderDesignDeal(deal, dealt))
+                .catch(() => loader.menuText().catch(() => ''))
+            : await loader.menuText().catch(() => '');
         const stackLine = state.stack ? ` (detected stack: ${state.stack})` : '';
         const parts = [
           `## Design Studio — UI work detected${stackLine}`,
@@ -445,7 +455,8 @@ export function makeDesignStudioRequestMiddleware(deps: {
           BASELINE,
           '',
           'First inspect the existing design system and reuse it. For greenfield work or an ' +
-            'authorized system replacement, call `design list`, then `design use <kit-id> --stack <stack>` ' +
+            'authorized system replacement, choose a kit (`design deal` / `design list`), then ' +
+            '`design use <kit-id> --stack <stack>` ' +
             'and materialize its tokens. A user can also pin one with `/design <kit-id>`.',
         ];
         text = parts.join('\n');
