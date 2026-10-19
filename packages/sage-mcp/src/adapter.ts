@@ -141,7 +141,7 @@ export function createSageMcpToolHost(
         // detection reads `ctx.meta['agentRole']`/`ctx.meta['mode']`; MCP
         // callers do not supply a role/mode so we cannot infer one.
         let callArgs: Record<string, unknown> = { ...args };
-        if (name === 'remember' && callArgs['no_auto_audience'] === undefined) {
+        if (name === 'remember') {
           callArgs['no_auto_audience'] = true;
         }
 
@@ -166,6 +166,9 @@ export function createSageMcpToolHost(
             };
           }
           callArgs = coercion.value as Record<string, unknown>;
+          if (name === 'remember') {
+            callArgs['no_auto_audience'] = true;
+          }
         }
 
         // Tool.validate is the canonical safety gate (e.g., the `force: true`

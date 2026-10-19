@@ -225,6 +225,22 @@ describe('createSageMcpServer (read-only default)', () => {
     // caller's explicit audience must therefore be preserved. This is the
     // key invariant documented in docs/safety-contract.md §4.
     expect(persisted?.audience).toEqual(callerAudience);
+
+    // Also verify that passing no_auto_audience: false explicitly is overridden to true (F138).
+    const resExplicitFalse = await call(server, {
+      jsonrpc: '2.0',
+      id: 99,
+      method: 'tools/call',
+      params: {
+        name: 'remember',
+        arguments: {
+          text: 'Sage-MCP explicit false no_auto_audience marker',
+          kind: 'fact',
+          no_auto_audience: false,
+        },
+      },
+    });
+    expect((resExplicitFalse?.result as Record<string, unknown>)?.['isError']).toBeFalsy();
   });
 
   it('rejects a MemoryPort without SAGE capability and coerces string-encoded schema primitives in callTool', async () => {
