@@ -128,12 +128,23 @@ export function ReviewQueue({
   const [bulkError, setBulkError] = useState<string | null>(null);
   /** Cancels for in-flight resolve waits, so unmount clears their timers. */
   const pendingResolvesRef = useRef(new Set<() => void>());
+  /**
+   * Releases for every in-flight list load, so unmount clears their
+   * subscription AND their 15 s timer. Only the effect ever registered the
+   * cleanup that `load()` returns, so a load started by `act()`, `bulkAct()`
+   * or the refresh button outlived the component: its `memory.sage.listCandidates`
+   * subscription kept writing state into an unmounted queue and its timer
+   * kept the closure alive.
+   */
+  const loadReleasesRef = useRef(new Set<() => void>());
   const requestSeqRef = useRef(0);
 
   useEffect(() => {
     const pending = pendingResolvesRef.current;
+    const loads = loadReleasesRef.current;
     return () => {
       for (const cancel of [...pending]) cancel();
+      for (const release of [...loads]) release();
     };
   }, []);
 
@@ -142,9 +153,18 @@ export function ReviewQueue({
     setLoading(true);
     setError(null);
     let timeout: ReturnType<typeof setTimeout> | null = null;
-    const off = client.on('memory.sage.listCandidates', (message) => {
+    let off = () => {};
+    let released = false;
+    /** Releases this load's subscription and timer. */
+    const release = () => {
+      if (released) return;
+      released = true;
       if (timeout !== null) clearTimeout(timeout);
       off();
+      loadReleasesRef.current.delete(release);
+    };
+    off = client.on('memory.sage.listCandidates', (message) => {
+      release();
       // A superseded load just detaches; the newer load owns the state.
       if (generation !== generationRef.current) return;
       if (message.payload.error) {
@@ -165,16 +185,14 @@ export function ReviewQueue({
       setLoading(false);
     });
     timeout = setTimeout(() => {
-      off();
+      release();
       if (generation !== generationRef.current) return;
       setLoading(false);
       setError(t('activity:memoryManager.reviewLoadTimeout'));
     }, 15_000);
+    loadReleasesRef.current.add(release);
     listCandidates({ includeResolved: false }, { echoToChat: false });
-    return () => {
-      if (timeout !== null) clearTimeout(timeout);
-      off();
-    };
+    return release;
   }, [client, listCandidates, t]);
 
   useEffect(() => {
@@ -185,8 +203,15 @@ export function ReviewQueue({
   /**
    * Resolve one candidate and settle on ITS response: the request carries a
    * `requestId` the server echoes, so a reply to another resolve (another
-   * row, another tab) never settles this wait. Servers that predate the echo
-   * send no `requestId`; those replies still match (bulk is sequential).
+   * row, another surface, another tab) never settles this wait.
+   *
+   * The match is EXACT. A reply that carries no `requestId` belongs to a
+   * request that could not carry one - the Memory Manager's file drawer
+   * resolves candidates without a correlation id - and accepting it would
+   * settle this wait with another action's outcome, marking the row failed
+   * (or successful) for a resolve it never performed and then dropping the
+   * row's own reply when it finally arrived.
+   *
    * Resolves to the error message, or `null` on success.
    */
   const resolveOne = useCallback(
@@ -206,7 +231,7 @@ export function ReviewQueue({
         const cancel = () => settle(t('activity:memoryManager.reviewActionTimeout'));
         off = client.on('memory.sage.candidateResolve', (message) => {
           const echoed = message.payload.requestId;
-          if (echoed !== undefined && echoed !== requestId) return;
+          if (echoed !== requestId) return;
           const err = message.payload.error;
           settle(err ? String(err) : null);
         });

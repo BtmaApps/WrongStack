@@ -378,7 +378,11 @@ export function MemoryManager({
                 onAcceptDeletion={(candidateId, memoryId) => {
                   state.sendWithAck(
                     'memory.sage.candidateResolve',
-                    () => state.resolveMemoryCandidate({ candidateId, action: 'accept' }),
+                    // The correlation id lets the server tag the reply, so a
+                    // resolve running elsewhere in this tab (the Review tab)
+                    // cannot settle this wait with its own outcome.
+                    (requestId) =>
+                      state.resolveMemoryCandidate({ candidateId, action: 'accept', requestId }),
                     (payload) => {
                       if (payload.error) {
                         state.setMutationError(payload.error);
@@ -395,7 +399,8 @@ export function MemoryManager({
                 onKeep={(candidateId, memoryId) => {
                   state.sendWithAck(
                     'memory.sage.candidateResolve',
-                    () => state.resolveMemoryCandidate({ candidateId, action: 'reject' }),
+                    (requestId) =>
+                      state.resolveMemoryCandidate({ candidateId, action: 'reject', requestId }),
                     (payload) => {
                       if (payload.error) {
                         state.setMutationError(payload.error);

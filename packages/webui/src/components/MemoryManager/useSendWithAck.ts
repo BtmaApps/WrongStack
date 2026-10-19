@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import type { useWebSocket } from '@/hooks/useWebSocket';
 import type { SageEntry } from '@/types';
 
@@ -13,6 +13,12 @@ interface SendWithAckDeps {
 /**
  * Send a SAGE mutation and settle on its reply: a newer mutation or an
  * unmount supersedes it, and a silent store surfaces as an error after 20 s.
+ *
+ * The request carries a correlation id the server echoes. A reply that
+ * carries a DIFFERENT id belongs to another operation and must not settle
+ * this wait; a reply that carries no id belongs to a request that could not
+ * carry one (`memory.sage.update` spreads its payload into the memory patch,
+ * `memory.sage.recover` has no id field) and is accepted as before.
  */
 export function useSendWithAck({
   client,
@@ -21,15 +27,18 @@ export function useSendWithAck({
   mountedRef,
   setMutationError,
 }: SendWithAckDeps) {
+  const requestSeqRef = useRef(0);
   return useCallback(
     (
       type: 'memory.sage.candidateResolve' | 'memory.sage.recover' | 'memory.sage.update',
-      send: () => void,
+      send: (requestId: string) => void,
       onResponse: (payload: { error?: string | undefined; memory?: SageEntry | undefined }) => void,
     ) => {
       const generation = ++mutationGenerationRef.current;
       mutationCleanupRef.current?.();
       setMutationError(null);
+      requestSeqRef.current += 1;
+      const requestId = `ack_${Date.now()}_${requestSeqRef.current}`;
 
       let off = () => {};
       let timeout: ReturnType<typeof setTimeout> | null = null;
@@ -43,6 +52,9 @@ export function useSendWithAck({
       };
 
       off = client.on(type, (message) => {
+        const echoed = (message.payload as { requestId?: string | undefined }).requestId;
+        // A reply tagged with another operation's id is not ours.
+        if (echoed !== undefined && echoed !== requestId) return;
         if (generation !== mutationGenerationRef.current || !mountedRef.current) {
           cleanup();
           return;
@@ -60,7 +72,7 @@ export function useSendWithAck({
       }, 20_000);
 
       mutationCleanupRef.current = cleanup;
-      send();
+      send(requestId);
     },
     [client, mountedRef, mutationCleanupRef, mutationGenerationRef, setMutationError],
   );
