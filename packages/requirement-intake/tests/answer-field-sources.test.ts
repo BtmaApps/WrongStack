@@ -61,4 +61,48 @@ describe('Requirement intake answer fieldSources canonical mapping', () => {
     expect('project_component' in record.fieldSources).toBe(false);
     expect('description_scope' in record.fieldSources).toBe(false);
   });
+
+  it('ignores undefined patch properties in updateIntake so unchanged fields are not recorded as user-modified (F160)', async () => {
+    const fs = await import('node:fs/promises');
+    const os = await import('node:os');
+    const path = await import('node:path');
+    const { AllowAllIntakeAuthorizer } = await import('../src/authorization.js');
+    const { RequirementIntakeService } = await import('../src/service.js');
+    const { RequirementIntakeStore } = await import('../src/store.js');
+
+    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'intake-f160-'));
+    try {
+      const service = new RequirementIntakeService({
+        store: new RequirementIntakeStore({ baseDir: tmpDir }),
+        authorizer: new AllowAllIntakeAuthorizer(),
+      });
+      const ctx: IntakeContext = {
+        id: 'user-1',
+        type: 'user',
+        projectId: 'proj-1',
+      };
+      const { record: created } = await service.createIntake(
+        {
+          projectId: 'proj-1',
+          originalRequest: 'Add SSO login support for enterprise tenants',
+          requestedBy: 'user-1',
+        },
+        ctx,
+      );
+      const updated = await service.updateIntake(
+        created.id,
+        {
+          title: undefined,
+          priority: undefined,
+        },
+        ctx,
+      );
+
+      expect(updated.version).toBe(created.version);
+      expect(updated.fieldSources.title).toBe('deterministic');
+      expect(updated.fieldSources.priority).toBe('deterministic');
+    } finally {
+      await fs.rm(tmpDir, { recursive: true, force: true });
+    }
+  });
 });

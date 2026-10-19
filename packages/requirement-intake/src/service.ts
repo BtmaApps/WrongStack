@@ -242,7 +242,9 @@ export class RequirementIntakeService {
     this.assertMutable(record, 'updateIntake');
     const validated = this.guardValidation(() => validateUpdateInput(patch));
 
-    const changedKeys = Object.keys(validated);
+    const changedKeys = Object.keys(validated).filter(
+      (key) => validated[key as keyof UpdateIntakeInput] !== undefined,
+    );
     if (changedKeys.length === 0) return record;
 
     if (validated.title !== undefined && validated.title.trim().length === 0) {
