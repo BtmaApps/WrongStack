@@ -64,6 +64,7 @@ export class TrendStore {
       Array<{
         at: number;
         version: string | undefined;
+        versionKey: string;
         vulnerable: boolean;
         name: string;
         ecosystem: string;
@@ -75,6 +76,17 @@ export class TrendStore {
       const at = Date.parse(snapshot.createdAt);
       const active = new Set<string>();
       const vulnerableKeys = new Set<string>();
+      const perSnapshot = new Map<
+        string,
+        {
+          versions: Set<string>;
+          directVersion: string | undefined;
+          lastVersion: string | undefined;
+          vulnerable: boolean;
+          name: string;
+          ecosystem: string;
+        }
+      >();
       for (const dependency of snapshot.dependencies) {
         const packageKey = `${dependency.ecosystem}:${dependency.name}`;
         const key =
@@ -83,16 +95,38 @@ export class TrendStore {
             : packageKey;
         active.add(key);
         const vulnerable = dependency.status === 'vulnerable';
+        const ver = dependency.locked ?? dependency.installed ?? dependency.requested;
+        const entry = perSnapshot.get(key) ?? {
+          versions: new Set<string>(),
+          directVersion: undefined,
+          lastVersion: undefined,
+          vulnerable: false,
+          name: dependency.name,
+          ecosystem: dependency.ecosystem,
+        };
+        if (ver !== undefined) {
+          entry.versions.add(ver);
+          entry.lastVersion = ver;
+          if (dependency.direct) entry.directVersion = ver;
+        }
+        if (vulnerable) {
+          entry.vulnerable = true;
+          vulnerableKeys.add(key);
+        }
+        perSnapshot.set(key, entry);
+      }
+      for (const [key, entry] of perSnapshot) {
+        const sortedVersions = [...entry.versions].sort();
         const history = versionHistory.get(key) ?? [];
         history.push({
           at,
-          version: dependency.locked ?? dependency.installed ?? dependency.requested,
-          vulnerable,
-          name: dependency.name,
-          ecosystem: dependency.ecosystem,
+          version: entry.directVersion ?? sortedVersions.at(-1) ?? entry.lastVersion,
+          versionKey: sortedVersions.join('|'),
+          vulnerable: entry.vulnerable,
+          name: entry.name,
+          ecosystem: entry.ecosystem,
         });
         versionHistory.set(key, history);
-        if (vulnerable) vulnerableKeys.add(key);
       }
       // A healthy sibling cannot resolve a package while another instance is vulnerable.
       for (const key of active) {
@@ -122,7 +156,7 @@ export class TrendStore {
       for (let index = 1; index < history.length; index++) {
         const current = history[index];
         const previous = history[index - 1];
-        if (current && previous && current.version !== previous.version) {
+        if (current && previous && current.versionKey !== previous.versionKey) {
           versionChanges++;
           sameVersionSince = current.at;
         }

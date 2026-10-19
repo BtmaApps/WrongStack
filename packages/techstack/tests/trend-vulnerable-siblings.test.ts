@@ -86,4 +86,17 @@ describe('vulnerability intervals across package instances', () => {
     expect(report.vulnerabilityHalfLifeMs).toBeUndefined();
     expect(report.points).toEqual([]);
   });
+
+  it('does not count intra-snapshot sibling versions as sequential version changes across identical snapshots (F162)', () => {
+    const report = analyze([
+      snapshot(0, [vulnerable, healthy]),
+      snapshot(2, [vulnerable, healthy]),
+    ]);
+    expect(report.dependencies[0]).toMatchObject({
+      key: 'npm:example',
+      versionChanges: 0,
+      lockedVersionAgeMs: 2 * dayMs,
+      upgradeVelocityPerDay: 0,
+    });
+  });
 });
