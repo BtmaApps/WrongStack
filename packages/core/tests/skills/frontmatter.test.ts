@@ -168,4 +168,16 @@ describe('stripFrontmatter (canonical implementation)', () => {
       'body\n---\nmore',
     );
   });
+
+  it('handles empty frontmatter blocks, trims array list items, and validates untrimmed name in validateSkillDocument (F124)', async () => {
+    const { validateSkillDocument } = await import('../../src/skills/frontmatter.js');
+    expect(stripFrontmatter('---\n---\n# Heading\n---\nTail')).toBe('# Heading\n---\nTail');
+    expect(
+      validateSkillDocument('---\nname: " my-skill "\ndescription: valid\n---\nBody').length,
+    ).toBeGreaterThan(0);
+    const fm = parseSkillFrontmatter(
+      '---\nname: my-skill\ndescription: valid\nallowed-tools:\n  - " Read "\n  - "   "\n---\nBody',
+    );
+    expect(fm.allowedTools).toEqual(['Read']);
+  });
 });

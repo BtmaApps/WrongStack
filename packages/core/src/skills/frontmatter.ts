@@ -75,7 +75,7 @@ function frontmatterMatch(raw: string): RegExpMatchArray | null {
   return raw
     .replace(/\r\n?/g, '\n')
     .replace(/^\uFEFF/, '')
-    .match(/^---[ \t]*\n([\s\S]*?)\n---[ \t]*(?:\n|$)/);
+    .match(/^---[ \t]*\n(?:([\s\S]*?)\n)??---[ \t]*(?:\n|$)/);
 }
 
 const LIST_KEYS = {
@@ -100,7 +100,7 @@ export function parseSkillFrontmatter(raw: string): ParsedSkillFrontmatter {
     const value = data[key];
     if (typeof value === 'string') out[target] = value.split(/[\s,]+/).filter(Boolean);
     else if (Array.isArray(value) && value.every((item) => typeof item === 'string'))
-      out[target] = value;
+      out[target] = value.map((item) => item.trim()).filter(Boolean);
   }
   if (data.metadata && typeof data.metadata === 'object' && !Array.isArray(data.metadata)) {
     const entries = Object.entries(data.metadata);
@@ -120,8 +120,7 @@ export function stripFrontmatter(raw: string): string {
 export function validateSkillDocument(raw: string, parentDirName?: string): string[] {
   const { data, errors } = readFrontmatter(raw);
   if (errors.length) return errors;
-  const fm = parseSkillFrontmatter(raw);
-  errors.push(...validateSkillName(fm.name ?? '', parentDirName));
+  errors.push(...validateSkillName(typeof data.name === 'string' ? data.name : '', parentDirName));
   for (const [key, max] of [
     ['description', 1024],
     ['compatibility', 500],
