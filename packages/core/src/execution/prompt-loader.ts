@@ -268,12 +268,14 @@ function isSubsequence(needle: string, hay: string): boolean {
 export function renderPrompt(
   entry: PromptEntry,
   values: Record<string, string> = {},
+  level?: 'simple' | 'detailed' | 'advanced',
 ): { text: string; missing: string[]; invalid: string[] } {
   const declared = new Map((entry.variables ?? []).map((v) => [v.name, v]));
   const missing: string[] = [];
   const invalid: string[] = [];
 
-  const text = entry.content.replace(/\{\{\s*([\w.-]+)\s*\}\}/g, (whole, rawName: string) => {
+  const content = (level && entry.variants?.[level]) || entry.content;
+  const text = content.replace(/\{\{\s*([\w.-]+)\s*\}\}/g, (whole, rawName: string) => {
     const name = rawName.trim();
     if (Object.hasOwn(values, name) && values[name] !== undefined && values[name] !== '') {
       return values[name] as string;
@@ -290,7 +292,7 @@ export function renderPrompt(
       Object.hasOwn(values, v.name) && values[v.name] !== undefined && values[v.name] !== '';
     if (v.required && !supplied && v.default === undefined && !missing.includes(v.name)) {
       // Only report if the placeholder actually exists in content; otherwise ignore.
-      if (new RegExp(`\\{\\{\\s*${escapeRegExp(v.name)}\\s*\\}\\}`).test(entry.content)) {
+      if (new RegExp(`\\{\\{\\s*${escapeRegExp(v.name)}\\s*\\}\\}`).test(content)) {
         missing.push(v.name);
       }
     }

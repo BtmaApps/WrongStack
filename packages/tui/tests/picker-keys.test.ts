@@ -1227,6 +1227,15 @@ describe('usePickerKeys — prompt picker', () => {
     runPickerKey(host, '', key({ rightArrow: true }), false);
     expect(host.dispatch).toHaveBeenCalledWith({ type: 'promptPickerCategory', delta: 1 });
 
+    for (const [input, level] of [
+      ['1', 'simple'],
+      ['2', 'detailed'],
+      ['3', 'advanced'],
+    ] as const) {
+      runPickerKey(host, input, key(), false);
+      expect(host.dispatch).toHaveBeenCalledWith({ type: 'promptPickerLevel', level });
+    }
+
     runPickerKey(host, '', key(), true);
     expect(onPromptPickerEnter).toHaveBeenCalled();
 

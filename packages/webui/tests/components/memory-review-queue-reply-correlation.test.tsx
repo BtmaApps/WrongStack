@@ -125,7 +125,7 @@ describe('MemoryManager · candidate resolve correlation', () => {
         handlers.set(type, listeners);
         return () => listeners.delete(callback);
       },
-    } as unknown as ComponentProps<typeof ReviewQueue>['client'];
+    } as unknown as Parameters<typeof useSendWithAck>[0]['client'];
 
     const outcomes: string[] = [];
 

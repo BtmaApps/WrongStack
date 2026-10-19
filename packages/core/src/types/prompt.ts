@@ -9,7 +9,7 @@
 export type PromptSource = 'builtin' | 'user' | 'project' | 'synced';
 
 /**
- * The fourteen first-party categories shipped with the builtin dataset, plus
+ * The first-party and imported categories shipped with the builtin dataset, plus
  * the `uncategorized` sentinel used when migrating legacy v1 entries. Builtin
  * prompts MUST use one of these (enforced by the dataset schema test); user and
  * project prompts may use any free-form string.
@@ -30,6 +30,22 @@ export const BUILTIN_PROMPT_CATEGORIES = [
   'product',
   'agentic-workflows',
   'meta-prompting',
+  'design',
+  'components',
+  'responsive',
+  'ux',
+  'animation',
+  'accessibility',
+  'content',
+  'features',
+  'forms',
+  'dashboard',
+  'ecommerce',
+  'social',
+  'layouts',
+  'quick-actions',
+  'ui-templates',
+  'fluidflow-workflows',
   'uncategorized',
 ] as const;
 
@@ -54,6 +70,22 @@ export const PROMPT_CATEGORY_LABELS: Record<BuiltinPromptCategory, string> = {
   product: 'Product',
   'agentic-workflows': 'Agentic Workflows',
   'meta-prompting': 'Meta-Prompting',
+  design: 'Design & Style',
+  components: 'UI Components',
+  responsive: 'Responsive',
+  ux: 'UX Improvements',
+  animation: 'Animation',
+  accessibility: 'Accessibility',
+  content: 'UI Content',
+  features: 'UI Features',
+  forms: 'Forms & Inputs',
+  dashboard: 'Dashboard',
+  ecommerce: 'E-Commerce',
+  social: 'Social & Profile',
+  layouts: 'Page Layouts',
+  'quick-actions': 'Quick Actions',
+  'ui-templates': 'UI Templates',
+  'fluidflow-workflows': 'FluidFlow Workflows',
   uncategorized: 'Uncategorized',
 };
 
@@ -102,6 +134,8 @@ export interface PromptEntry {
   /** One-line summary shown in lists/pickers. */
   description: string;
   content: string;
+  /** Original detail levels; content remains the backward-compatible default. */
+  variants?: { simple: string; detailed: string; advanced: string } | undefined;
   category: PromptCategory;
   /** Secondary facets (free-form). */
   tags: string[];

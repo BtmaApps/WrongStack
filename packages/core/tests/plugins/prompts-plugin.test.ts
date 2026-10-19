@@ -292,6 +292,25 @@ describe('/prompt, /prompt-gen, and /bughunt', () => {
     expect(out.runText).toBeUndefined();
   });
 
+  it('/prompt insert selects a detail level and rejects invalid levels', async () => {
+    const { search, loader } = await withLoaderCommands();
+    const entry = (await loader.find('deploy-helper'))!;
+    await loader.save({
+      ...entry,
+      variants: {
+        simple: 'Ship {{service}}',
+        detailed: entry.content,
+        advanced: 'Verify and ship {{service}}',
+      },
+    });
+    expect(
+      (await runCmd(search, 'insert deploy-helper service=api --level=advanced', ctx())).runText,
+    ).toBe('Verify and ship api');
+    const invalid = await runCmd(search, 'insert deploy-helper service=api --level=unknown', ctx());
+    expect(invalid.message).toContain('Invalid detail level');
+    expect(invalid.runText).toBeUndefined();
+  });
+
   it('/prompt insert renders and returns runText when vars supplied', async () => {
     const { search } = await withLoaderCommands();
     const out = await runCmd(search, 'insert deploy-helper service=api', ctx());

@@ -1,9 +1,8 @@
 import { createRequire } from 'node:module';
 import * as path from 'node:path';
-import { wrongstackPackageJsonPath } from '@wrongstack/core/utils';
 import { DefaultPromptLoader } from '@wrongstack/core/execution';
 import { PromptUsageStore } from '@wrongstack/core/storage';
-import { resolveWstackPaths } from '@wrongstack/core/utils';
+import { resolveWstackPaths, wrongstackPackageJsonPath } from '@wrongstack/core/utils';
 import { useCallback, useRef } from 'react';
 import type { Action } from '../app-reducer.js';
 import type { PromptPickEntry } from '../components/prompt-picker.js';
@@ -15,6 +14,7 @@ interface PromptLibraryEntry {
   category: string;
   source: string;
   content: string;
+  variants?: PromptPickEntry['variants'];
   favorite: boolean;
 }
 
@@ -35,6 +35,7 @@ export function buildPromptPickerPayload(
     category: e.category,
     source: e.source,
     content: e.content,
+    ...(e.variants ? { variants: e.variants } : {}),
     favorite: e.favorite,
   }));
   const hasFavorites = entries.some((e) => e.favorite);

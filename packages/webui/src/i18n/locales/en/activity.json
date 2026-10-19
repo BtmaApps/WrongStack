@@ -1929,6 +1929,10 @@
     "providerCacheBreakdown": "Provider cache breakdown"
   },
   "promptLib": {
+    "detailLevel": "Detail level",
+    "simple": "Simple",
+    "detailed": "Detailed",
+    "advanced": "Advanced",
     "heading": "Prompt library",
     "searchPlaceholder": "Search prompts…",
     "newPrompt": "＋ New prompt",

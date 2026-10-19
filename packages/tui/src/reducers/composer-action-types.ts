@@ -70,6 +70,7 @@ export const composerActionTypes = [
   'promptPickerClose',
   'promptPickerMove',
   'promptPickerCategory',
+  'promptPickerLevel',
   'resumePickerOpen',
   'resumePickerClose',
   'resumePickerMove',

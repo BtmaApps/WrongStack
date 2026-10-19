@@ -1924,6 +1924,10 @@
     "providerCacheBreakdown": "Sağlayıcı önbellek dökümü"
   },
   "promptLib": {
+    "detailLevel": "Detay seviyesi",
+    "simple": "Kısa",
+    "detailed": "Detaylı",
+    "advanced": "İleri",
     "heading": "Prompt kitaplığı",
     "searchPlaceholder": "Promptları ara…",
     "newPrompt": "＋ Yeni prompt",

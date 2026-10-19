@@ -152,6 +152,7 @@ export function AppViewPickers({
             selected={state.promptPicker.selected}
             category={state.promptPicker.categories[state.promptPicker.catIndex] ?? 'all'}
             total={state.promptPicker.all.length}
+            level={state.promptPicker.level}
             columns={mainColumnWidth}
             maxRows={pickerMaxRows}
           />

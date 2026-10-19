@@ -64,6 +64,7 @@ export type AppActionServices =
   | { type: 'promptPickerClose' }
   | { type: 'promptPickerMove'; delta: number }
   | { type: 'promptPickerCategory'; delta: number }
+  | { type: 'promptPickerLevel'; level: 'simple' | 'detailed' | 'advanced' }
   | {
       type: 'toolResultViewSet';
       entryIds: readonly number[];

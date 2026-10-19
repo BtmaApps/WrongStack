@@ -6,6 +6,8 @@
 // Frame delivery hits BOTH consumption paths: the core app injects onMessage
 // via constructor options (use-simple-socket), while panels subscribe
 // imperatively via onMessage(fn).
+import designPrompt from '../../core/data/prompts/prompts/design/fluidflow-design-d2-glassmorphism-style.json';
+
 const listeners = new Set();
 
 export class SimpleSocket {
@@ -42,6 +44,10 @@ export class SimpleSocket {
   send(type, payload) {
     window.__sent.push({ type, payload });
     queueMicrotask(() => {
+      if (type === 'prompts.list')
+        this.#emit(type, { enabled: true, prompts: [designPrompt], requestId: payload.requestId });
+      if (type === 'prompts.content')
+        this.#emit(type, { ...designPrompt, found: true, requestId: payload.requestId });
       if (type === 'providers.list') {
         this.#emit('provider.catalog', {
           providers: [

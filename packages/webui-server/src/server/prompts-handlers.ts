@@ -165,6 +165,7 @@ export async function handlePromptsContent(
         found: true,
         title: entry.title,
         content: entry.content,
+        ...(entry.variants ? { variants: entry.variants } : {}),
         variables: entry.variables ?? [],
         category: entry.category,
         source: entry.source,

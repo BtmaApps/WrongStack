@@ -1862,6 +1862,10 @@
     "providerCacheBreakdown": "Ripartizione della cache del provider"
   },
   "promptLib": {
+    "detailLevel": "Detail level",
+    "simple": "Simple",
+    "detailed": "Detailed",
+    "advanced": "Advanced",
     "heading": "Libreria dei prompt",
     "searchPlaceholder": "Cerca prompt…",
     "newPrompt": "＋ Nuovo prompt",

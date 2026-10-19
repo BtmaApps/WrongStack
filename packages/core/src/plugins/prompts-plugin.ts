@@ -208,8 +208,17 @@ function buildPromptSearchCommand(
         if (!slug) return { message: 'Usage: /prompt insert <slug> [var=value …]' };
         const entry = await loader.find(slug);
         if (!entry) return { message: `No prompt with slug/id "${slug}". Try /prompt ${slug}` };
-        const values = parseKeyValues(kvs);
-        const { text, missing, invalid } = renderPrompt(entry, values);
+        const levelArg = kvs.find((kv) => kv.startsWith('--level='))?.slice('--level='.length);
+        if (
+          levelArg !== undefined &&
+          levelArg !== 'simple' &&
+          levelArg !== 'detailed' &&
+          levelArg !== 'advanced'
+        ) {
+          return { message: 'Invalid detail level. Use --level=simple|detailed|advanced.' };
+        }
+        const values = parseKeyValues(kvs.filter((kv) => !kv.startsWith('--level=')));
+        const { text, missing, invalid } = renderPrompt(entry, values, levelArg || undefined);
         if (invalid.length > 0) {
           const hint = (entry.variables ?? [])
             .filter((v) => invalid.includes(v.name))

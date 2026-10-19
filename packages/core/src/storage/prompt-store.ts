@@ -54,6 +54,7 @@ export function migratePromptEntry(raw: unknown): PromptEntry | null {
     title,
     description: typeof r['description'] === 'string' ? r['description'] : '',
     content,
+    variants: normalizeVariants(r['variants'], content),
     category:
       typeof r['category'] === 'string' && r['category'].length > 0
         ? r['category']
@@ -74,6 +75,23 @@ export function migratePromptEntry(raw: unknown): PromptEntry | null {
 
 function isPromptSource(v: unknown): v is PromptEntry['source'] {
   return v === 'builtin' || v === 'user' || v === 'project' || v === 'synced';
+}
+
+function normalizeVariants(raw: unknown, content: string): PromptEntry['variants'] {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const v = raw as Record<string, unknown>;
+  if (
+    typeof v['simple'] !== 'string' ||
+    !v['simple'].trim() ||
+    typeof v['detailed'] !== 'string' ||
+    !v['detailed'].trim() ||
+    typeof v['advanced'] !== 'string' ||
+    !v['advanced'].trim()
+  )
+    return undefined;
+  // Existing edit/extend commands write content. Keep that default authoritative
+  // so choosing Detailed after editing a favorite never restores its old text.
+  return { simple: v['simple'], detailed: content, advanced: v['advanced'] };
 }
 
 function normalizeVariables(v: unknown): PromptVariable[] | undefined {

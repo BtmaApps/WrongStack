@@ -56,6 +56,7 @@ export function ResourceHub({
   const [creating, setCreating] = useState(false);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
+  const [promptLevel, setPromptLevel] = useState('detailed');
   const owner = useRef(0);
   const load = useCallback(
     async (kind: ResourceTab) => {
@@ -87,6 +88,7 @@ export function ResourceHub({
     setSelected(id);
     setDetail(null);
     setValues({});
+    setPromptLevel('detailed');
     if (tab !== 'prompts' && tab !== 'skills') return;
     const epoch = ++owner.current;
     const p = await request(
@@ -334,6 +336,20 @@ export function ResourceHub({
                         </button>
                         {detail && (
                           <>
+                            {detail.variants && (
+                              <label className="provider-form">
+                                Detail level
+                                <select
+                                  aria-label="Prompt detail level"
+                                  value={promptLevel}
+                                  onChange={(event) => setPromptLevel(event.target.value)}
+                                >
+                                  <option value="simple">Simple</option>
+                                  <option value="detailed">Detailed</option>
+                                  <option value="advanced">Advanced</option>
+                                </select>
+                              </label>
+                            )}
                             <div className="provider-form">
                               {variables.map((variable) => (
                                 <label
@@ -377,14 +393,16 @@ export function ResourceHub({
                               ))}
                             </div>
                             <MarkdownContent
-                              text={fillPrompt(resourceDetails(tab, detail), values)}
+                              text={fillPrompt(resourceDetails(tab, detail, promptLevel), values)}
                             />
                             <button
                               type="button"
                               className="primary-button"
                               disabled={!canUse}
                               onClick={() => {
-                                prepareDraft(fillPrompt(resourceDetails(tab, detail), values));
+                                prepareDraft(
+                                  fillPrompt(resourceDetails(tab, detail, promptLevel), values),
+                                );
                                 controller.send('prompts.used', { slug: selected });
                                 onClose();
                               }}

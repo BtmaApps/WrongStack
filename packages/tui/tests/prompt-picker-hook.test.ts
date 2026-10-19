@@ -2,6 +2,29 @@ import { describe, expect, it } from 'vitest';
 import { buildPromptPickerPayload } from '../src/hooks/use-prompt-picker.js';
 
 describe('buildPromptPickerPayload', () => {
+  it('keeps all original prompt variants available to the picker', () => {
+    const variants = {
+      simple: 'Short style',
+      detailed: 'Detailed style',
+      advanced: 'Advanced style',
+    };
+    const payload = buildPromptPickerPayload(
+      [
+        {
+          slug: 'style',
+          title: 'Style',
+          description: '',
+          category: 'design',
+          source: 'builtin',
+          content: variants.detailed,
+          favorite: false,
+          variants,
+        },
+      ],
+      [],
+    );
+    expect(payload.all[0]?.variants).toEqual(variants);
+  });
   it('maps prompt entries and builds recent/favorites/category sections', () => {
     const payload = buildPromptPickerPayload(
       [

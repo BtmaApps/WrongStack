@@ -184,7 +184,19 @@ try {
     await filePicker.waitFor({ state: 'detached' });
     await composer.fill('');
 
-    // 5. No horizontal overflow at this viewport.
+    // 5. Original design prompt levels insert into the draft on desktop and mobile.
+    await page.getByRole('button', { name: 'Open workspace menu', exact: true }).click();
+    await page.getByRole('button', { name: 'Prompt library', exact: true }).click();
+    const library = page.getByRole('dialog', { name: 'Prompt library', exact: true });
+    await library.getByRole('button', { name: /Glassmorphism Style/ }).click();
+    await library.getByRole('combobox', { name: 'Prompt detail level' }).selectOption('advanced');
+    const originalText = await library.locator('.prompt-library-preview').textContent();
+    await library.getByRole('button', { name: 'Use prompt in draft', exact: true }).click();
+    assert.equal(await composer.inputValue(), originalText);
+    assert.ok(originalText.includes('glass'));
+    await composer.fill('');
+
+    // 6. No horizontal overflow at this viewport.
     assert.equal(
       await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth),
       false,

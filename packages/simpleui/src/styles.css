@@ -5808,6 +5808,7 @@ input:focus-visible,
   width: min(360px, calc(100vw - 100px));
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
   border: 1px solid var(--line-strong);
   background: var(--surface);
   box-shadow: 0 22px 70px var(--shadow);
@@ -5850,6 +5851,7 @@ input:focus-visible,
   border-bottom: 1px solid var(--line);
 }
 .prompt-library-add input,
+.prompt-library-add select,
 .prompt-library-add textarea {
   border: 1px solid var(--line-strong);
   padding: 4px 6px;
@@ -5881,6 +5883,36 @@ input:focus-visible,
   flex: 1;
   overflow-y: auto;
   padding: 4px;
+}
+
+.prompt-library-shared {
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+.prompt-library-shared h3 {
+  margin: 12px 14px 4px;
+  font-size: 12px;
+}
+
+.prompt-library-catalog {
+  display: grid;
+  gap: 4px;
+  max-height: 240px;
+  overflow-y: auto;
+  padding: 4px 14px;
+}
+
+.prompt-library-catalog [aria-pressed="true"] {
+  outline: 1px solid var(--accent);
+}
+
+.prompt-library-preview {
+  max-height: 260px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 12px;
 }
 .prompt-library-empty {
   padding: 16px;

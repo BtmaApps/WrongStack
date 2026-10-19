@@ -236,7 +236,8 @@ export function useAppPickerKeys({
       const entry = filtered[state.promptPicker.selected];
       dispatch({ type: 'promptPickerClose' });
       if (entry) {
-        dispatch({ type: 'setBuffer', buffer: entry.content, cursor: entry.content.length });
+        const content = entry.variants?.[state.promptPicker.level ?? 'detailed'] ?? entry.content;
+        dispatch({ type: 'setBuffer', buffer: content, cursor: content.length });
         // Usage stats only rank the picker; a failed write must not interrupt insertion.
         void promptUsageRef.current?.record(entry.slug).catch(() => {});
       }

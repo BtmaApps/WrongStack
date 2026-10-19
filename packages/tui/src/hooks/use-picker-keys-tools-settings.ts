@@ -128,6 +128,13 @@ export function tryToolsSettingsPickerKeys(
   // ── Prompt picker ──────────────────────────────────────────
   if (state.promptPicker.open) {
     if (key.ctrl || key.meta) return true;
+    if (input === '1' || input === '2' || input === '3') {
+      dispatch({
+        type: 'promptPickerLevel',
+        level: input === '1' ? 'simple' : input === '2' ? 'detailed' : 'advanced',
+      });
+      return true;
+    }
     if (key.escape) {
       dispatch({ type: 'promptPickerClose' });
       return true;

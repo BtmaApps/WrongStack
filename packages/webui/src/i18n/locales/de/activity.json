@@ -1862,6 +1862,10 @@
     "providerCacheBreakdown": "Provider-Cache-Aufschlüsselung"
   },
   "promptLib": {
+    "detailLevel": "Detail level",
+    "simple": "Simple",
+    "detailed": "Detailed",
+    "advanced": "Advanced",
     "heading": "Prompt-Bibliothek",
     "searchPlaceholder": "Prompts suchen…",
     "newPrompt": "＋ Neues Prompt",

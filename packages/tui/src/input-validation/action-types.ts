@@ -209,6 +209,7 @@ export const ALLOWED_ACTION_TYPES = defineActionTypes([
   'projectPickerMove',
   'projectPickerOpen',
   'promptPickerCategory',
+  'promptPickerLevel',
   'promptPickerClose',
   'promptPickerMove',
   'promptPickerOpen',

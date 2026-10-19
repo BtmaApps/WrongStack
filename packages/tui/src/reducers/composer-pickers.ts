@@ -476,6 +476,8 @@ export function reduceComposerPickers(state: State, action: ComposerAction): Sta
         ...state,
         promptPicker: { ...state.promptPicker, open: false },
       };
+    case 'promptPickerLevel':
+      return { ...state, promptPicker: { ...state.promptPicker, level: action.level } };
     case 'promptPickerMove': {
       const filt = filterPromptPicker(
         state.promptPicker.all,

@@ -1,7 +1,7 @@
 import type { ComponentProps } from 'react';
+import { ArtifactPreview } from './artifact-preview.js';
 import { AuthPanel } from './auth-panel.js';
 import { AutomationPanel } from './automation-panel.js';
-import { ArtifactPreview } from './artifact-preview.js';
 import { BrainPanel } from './brain-panel.js';
 import { CommandPalette } from './command-palette.js';
 import { ContextBreakdownModal } from './context-breakdown-modal.js';
@@ -126,7 +126,7 @@ export function SessionModals(props: SessionModalsProps) {
       <MemoryDrawer socketRef={socketRef} />
       <AuthPanel socketRef={socketRef} />
       <FileExplorer socketRef={socketRef} sessionId={sessionId} />
-      <PromptLibrary onRecall={onRecallPrompt} />
+      <PromptLibrary onRecall={onRecallPrompt} socketRef={socketRef} />
       <BrainPanel socketRef={socketRef} />
       <VectorMemoryPanel />
       <SessionHealthPanel

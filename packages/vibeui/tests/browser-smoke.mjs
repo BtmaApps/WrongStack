@@ -9,6 +9,9 @@ import { createHttpServer } from '../../webui-server/src/server/http-server.ts';
 // Serve the real exported Next application through the production HTTP/CSP path.
 // The loopback fixture implements the real protocol without making paid model calls.
 const distDir = fileURLToPath(new URL('../dist', import.meta.url));
+const uiVersion = JSON.parse(
+  await readFile(new URL('../package.json', import.meta.url), 'utf8'),
+).version;
 const output = fileURLToPath(new URL('../../../.temp_files/vibeui/', import.meta.url));
 await mkdir(output, { recursive: true });
 const server = createHttpServer({ host: '127.0.0.1', distDir, apiToken: 'vibeui-smoke-token' });
@@ -63,7 +66,17 @@ let preferences = {
   refinerProvider: '',
   refinerModel: '',
 };
+const designPrompt = JSON.parse(
+  await readFile(
+    new URL(
+      '../../core/data/prompts/prompts/design/fluidflow-design-d2-glassmorphism-style.json',
+      import.meta.url,
+    ),
+    'utf8',
+  ),
+);
 let promptLibrary = [
+  designPrompt,
   {
     slug: 'review-target',
     title: 'Review a target',
@@ -917,7 +930,7 @@ try {
   await page.waitForFunction(
     () => document.querySelector('select[aria-label="YOLO mode"]')?.value === 'off',
   );
-  await settings.getByText('VibeUI v1.1.7 · WrongStack v1.1.7', { exact: true }).waitFor();
+  await settings.getByText(`VibeUI v${uiVersion} · WrongStack v1.1.7`, { exact: true }).waitFor();
   await page.screenshot({
     path: join(output, 'runtime-settings.png'),
     fullPage: true,
@@ -1805,6 +1818,7 @@ try {
   await page.setViewportSize({ width: 1512, height: 982 });
   await page.getByRole('button', { name: 'Reference in message', exact: true }).click();
   await page.getByRole('button', { name: 'Remove src/app.tsx', exact: true }).click();
+  await message.fill('');
   const chatCountBeforeResources = received.filter((m) => m.type === 'user_message').length;
   await page
     .locator('.workspace-navigation')
@@ -1828,9 +1842,30 @@ try {
     animations: 'disabled',
   });
   await hub.getByRole('button', { name: 'Use prompt in draft', exact: true }).click();
-  await page.waitForFunction(
-    () => document.querySelector('textarea[aria-label="Message"]')?.value === 'Review src/app.tsx',
-  );
+  await expect(message).toHaveValue('Review src/app.tsx');
+  for (const width of [1512, 390]) {
+    for (const level of ['simple', 'detailed', 'advanced']) {
+      await page.setViewportSize({ width: 1512, height: 982 });
+      await message.fill('');
+      await page
+        .locator('.workspace-navigation')
+        .getByRole('button', { name: 'Library', exact: true })
+        .click();
+      await hub.getByRole('button', { name: /Glassmorphism Style/ }).click();
+      await hub.getByRole('combobox', { name: 'Prompt detail level' }).waitFor();
+      await page.setViewportSize({ width, height: 720 });
+      await hub.getByRole('combobox', { name: 'Prompt detail level' }).selectOption(level);
+      if (level === 'advanced')
+        await page.screenshot({
+          path: join(output, `fluidflow-design-${width}.png`),
+          fullPage: true,
+          animations: 'disabled',
+        });
+      await hub.getByRole('button', { name: 'Use prompt in draft', exact: true }).click();
+      await expect(message).toHaveValue(designPrompt.variants[level]);
+    }
+  }
+  await page.setViewportSize({ width: 1512, height: 982 });
   await message.fill('');
   await page
     .locator('.workspace-navigation')

@@ -180,6 +180,7 @@ export type PanelState = {
   /** Prompt library picker — opened by a bare `/prompt`. Browse + category filter + insert. */
   promptPicker: {
     open: boolean;
+    level?: 'simple' | 'detailed' | 'advanced';
     all: PromptPickEntry[];
     /** ['all', '🕘 recent'?, '★ favorites'?, ...distinct categories]. */
     categories: string[];

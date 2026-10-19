@@ -45,8 +45,8 @@ export function promptSlug(title: string) {
       .slice(0, 64) || 'prompt'
   );
 }
-export function resourceDetails(tab: string, payload: Record<string, unknown>) {
+export function resourceDetails(tab: string, payload: Record<string, unknown>, level = 'detailed') {
   if (tab === 'skills') return text(payload.body);
-  if (tab === 'prompts') return text(payload.content);
+  if (tab === 'prompts') return text(record(payload.variants)[level]) || text(payload.content);
   return text(record(payload).description);
 }

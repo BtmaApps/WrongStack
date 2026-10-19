@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { i18n, useAppTranslation } from '@/i18n';
 import { registerOpenModal } from '@/lib/open-modal-registry';
+import { safeId } from '@/lib/utils';
 import { useUIStore } from '@/stores';
 import type { CategoryCount, PromptDraft, PromptMeta } from './prompt-library-model.js';
 import { emptyDraft, render, SOURCE_GLYPH } from './prompt-library-model.js';
@@ -36,6 +37,8 @@ export function PromptLibraryModal() {
   const [recentSlugs, setRecentSlugs] = useState<string[]>([]);
   const [selected, setSelected] = useState<PromptMeta | null>(null);
   const [content, setContent] = useState('');
+  const [variants, setVariants] = useState<Record<string, string> | undefined>();
+  const [level, setLevel] = useState('detailed');
   const [varValues, setVarValues] = useState<Record<string, string>>({});
   const searchRef = useRef<HTMLInputElement>(null);
 
@@ -63,15 +66,31 @@ export function PromptLibraryModal() {
   useEffect(() => {
     if (!selected || !client) return;
     setContent('');
+    setVariants(undefined);
+    setLevel('detailed');
     setVarValues(
       Object.fromEntries((selected.variables ?? []).map((v) => [v.name, v.default ?? ''])),
     );
+    const requestId = safeId();
     const onContent = (msg: unknown) => {
-      const p = (msg as { payload: { slug: string; content: string; found: boolean } }).payload;
-      if (p.slug === selected.slug && p.found) setContent(p.content);
+      const p = (
+        msg as {
+          payload: {
+            slug: string;
+            content: string;
+            found: boolean;
+            variants?: Record<string, string>;
+            requestId?: string;
+          };
+        }
+      ).payload;
+      if (p.requestId === requestId && p.slug === selected.slug && p.found) {
+        setContent(p.content);
+        setVariants(p.variants);
+      }
     };
     client.on('prompts.content', onContent as (m: unknown) => void);
-    client.send({ type: 'prompts.content', payload: { slug: selected.slug } });
+    client.send({ type: 'prompts.content', payload: { slug: selected.slug, requestId } });
     return () => client.off('prompts.content', onContent as (m: unknown) => void);
   }, [selected, client]);
 
@@ -128,11 +147,12 @@ export function PromptLibraryModal() {
     [selected, varValues],
   );
 
+  const selectedContent = variants?.[level] ?? content;
   const doInsert = useCallback(() => {
     if (!selected || !content) return;
     client?.send({ type: 'prompts.used', payload: { slug: selected.slug } });
-    requestPromptInsert(render(content, varValues));
-  }, [selected, content, varValues, requestPromptInsert, client]);
+    requestPromptInsert(render(selectedContent, varValues));
+  }, [selected, content, selectedContent, varValues, requestPromptInsert, client]);
 
   const toggleFavorite = useCallback(
     (p: PromptMeta) => {
@@ -554,8 +574,25 @@ export function PromptLibraryModal() {
                   </button>
                 </div>
                 <div className="min-h-0 min-w-0 flex-1 overflow-auto overscroll-contain p-3">
+                  {variants && (
+                    <label className="mb-3 flex items-center gap-2 text-xs">
+                      {t('activity:promptLib.detailLevel')}
+                      <select
+                        aria-label={t('activity:promptLib.detailLevel')}
+                        value={level}
+                        onChange={(event) => setLevel(event.target.value)}
+                        className="rounded border border-border bg-background px-2 py-1"
+                      >
+                        {(['simple', 'detailed', 'advanced'] as const).map((value) => (
+                          <option key={value} value={value}>
+                            {t(`activity:promptLib.${value}`)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
                   <pre className="whitespace-pre-wrap break-words text-xs text-foreground">
-                    {content || '…'}
+                    {selectedContent || '…'}
                   </pre>
                   {(selected.variables ?? []).length > 0 && (
                     <div className="mt-3 space-y-2">

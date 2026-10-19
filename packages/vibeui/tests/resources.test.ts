@@ -6,6 +6,7 @@ import {
   fillPrompt,
   promptSlug,
   promptVariables,
+  resourceDetails,
   resourceMatches,
 } from '../src/lib/resource-model';
 import { initialState } from '../src/lib/session';
@@ -13,6 +14,24 @@ import { acceptsPanelReply, usePanelRequests } from '../src/lib/use-panel-reques
 import type { SessionController } from '../src/lib/use-session';
 
 describe('shared resource workflows', () => {
+  it('previews and inserts the selected original prompt detail level with a legacy fallback', () => {
+    const payload = {
+      content: 'Detailed {{target}}',
+      variants: {
+        simple: 'Simple {{target}}',
+        detailed: 'Detailed {{target}}',
+        advanced: 'Advanced {{target}}',
+      },
+    };
+    expect(resourceDetails('prompts', payload)).toBe('Detailed {{target}}');
+    expect(fillPrompt(resourceDetails('prompts', payload, 'advanced'), { target: 'design' })).toBe(
+      'Advanced design',
+    );
+    expect(resourceDetails('prompts', { content: 'Legacy' }, 'simple')).toBe('Legacy');
+    expect(
+      resourceDetails('prompts', { content: 'Legacy', variants: { advanced: 42 } }, 'advanced'),
+    ).toBe('Legacy');
+  });
   it('fills named prompt variables literally while retaining unknown placeholders', () => {
     expect(
       fillPrompt('Review {{ target }} and {{missing}}; {{target}}', {

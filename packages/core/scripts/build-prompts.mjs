@@ -19,7 +19,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const DATASET_VERSION = 1;
+const DATASET_VERSION = 2;
 const DATASET_DATE = '2026-01-01T00:00:00.000Z';
 
 // Keep in sync with BUILTIN_PROMPT_CATEGORIES in src/types/prompt.ts
@@ -40,6 +40,22 @@ const CATEGORIES = [
   'product',
   'agentic-workflows',
   'meta-prompting',
+  'design',
+  'components',
+  'responsive',
+  'ux',
+  'animation',
+  'accessibility',
+  'content',
+  'features',
+  'forms',
+  'dashboard',
+  'ecommerce',
+  'social',
+  'layouts',
+  'quick-actions',
+  'ui-templates',
+  'fluidflow-workflows',
 ];
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -139,6 +155,16 @@ function main() {
         updatedAt: DATASET_DATE,
       };
       const variables = normalizeVariables(obj.variables, slug);
+      if (obj.variants !== undefined) {
+        if (
+          !obj.variants ||
+          ['simple', 'detailed', 'advanced'].some(
+            (level) => typeof obj.variants[level] !== 'string' || !obj.variants[level].trim(),
+          )
+        )
+          fail(`${slug}: variants require non-empty simple, detailed and advanced text`);
+        entry.variants = obj.variants;
+      }
       if (variables) entry.variables = variables;
       if (typeof obj.author === 'string') entry.author = obj.author;
       if (typeof obj.version === 'string') entry.version = obj.version;

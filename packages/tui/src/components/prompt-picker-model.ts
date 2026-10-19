@@ -8,6 +8,7 @@ export interface PromptPickEntry {
   category: string;
   source: string;
   content: string;
+  variants?: { simple: string; detailed: string; advanced: string } | undefined;
   favorite: boolean;
 }
 

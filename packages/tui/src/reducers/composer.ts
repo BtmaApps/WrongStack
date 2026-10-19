@@ -292,6 +292,7 @@ export function reduceComposer(state: State, action: ComposerAction): State {
     case 'promptPickerClose':
     case 'promptPickerMove':
     case 'promptPickerCategory':
+    case 'promptPickerLevel':
       return reduceComposerPickers(state, action);
 
     case 'resumePickerOpen':

@@ -37,6 +37,7 @@ function entry(slug: string, over: Partial<PromptEntry> = {}): PromptEntry {
     title: over.title ?? slug,
     description: over.description ?? '',
     content: over.content ?? `body ${slug}`,
+    variants: over.variants,
     category: over.category ?? 'coding',
     tags: over.tags ?? [],
     source: over.source ?? 'builtin',
@@ -108,6 +109,7 @@ describe('handlePromptsList', () => {
     expect(p['enabled']).toBe(true);
     expect((p['prompts'] as unknown[]).length).toBe(1);
     expect((p['prompts'] as Record<string, unknown>[])[0]).not.toHaveProperty('content');
+    expect((p['prompts'] as Record<string, unknown>[])[0]).not.toHaveProperty('variants');
     expect((p['categories'] as unknown[]).length).toBe(1);
   });
 });
@@ -123,6 +125,21 @@ describe('handlePromptsSearch', () => {
 });
 
 describe('handlePromptsContent', () => {
+  it('returns the original detail variants when a prompt has them', async () => {
+    const { ws, messages } = openWs();
+    const variants = {
+      simple: 'Simple design',
+      detailed: 'Detailed design',
+      advanced: 'Advanced design',
+    };
+    await handlePromptsContent(
+      ws,
+      { promptLoader: fakeLoader([entry('design', { variants })]) },
+      { payload: { slug: 'design' } },
+    );
+    expect(payloadOf(messages, 'prompts.content')).toMatchObject({ found: true, variants });
+  });
+
   it('returns full content + variables for a slug', async () => {
     const { ws, messages } = openWs();
     const loader = fakeLoader([

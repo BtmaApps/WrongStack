@@ -62,6 +62,7 @@ interface PromptPickerProps {
   selected: number;
   category: string;
   total: number;
+  level?: 'simple' | 'detailed' | 'advanced' | undefined;
   columns?: number | undefined;
   maxRows?: number | undefined;
 }
@@ -77,6 +78,7 @@ export function PromptPicker({
   selected,
   category,
   total,
+  level = 'detailed',
   columns = 0,
   maxRows,
 }: PromptPickerProps): React.ReactElement {
@@ -107,8 +109,8 @@ export function PromptPicker({
       </Text>
       <Text dimColor wrap="truncate-end">
         {(columns > 0 && columns < 100) || split
-          ? 'Esc · ↑↓ · ←→ · Enter · f ★ · e'
-          : '↑/↓ navigate · ←/→ category · Enter insert · f favorite · e edit · Esc cancel'}
+          ? `1/2/3 ${level} · ↑↓ · ←→ · Enter · Esc`
+          : `↑/↓ navigate · ←/→ category · Enter insert · f favorite · e edit · 1/2/3 ${level} · Esc cancel`}
       </Text>
       {entries.length === 0 ? (
         <Text dimColor>No prompts in this category.</Text>
@@ -145,7 +147,11 @@ export function PromptPicker({
     detailColumns,
     descLines,
   );
-  const previewWrapped = wrapRefinementPreview(focused.content, detailColumns, previewLines);
+  const previewWrapped = wrapRefinementPreview(
+    focused.variants?.[level] ?? focused.content,
+    detailColumns,
+    previewLines,
+  );
   return (
     <Box flexDirection="row">
       {list}

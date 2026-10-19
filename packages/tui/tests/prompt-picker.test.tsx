@@ -2,9 +2,9 @@ import { render } from 'ink-testing-library';
 import React from 'react';
 import { describe, expect, it } from 'vitest';
 import {
-  PromptPicker,
-  type PromptPickEntry,
   filterPromptPicker,
+  type PromptPickEntry,
+  PromptPicker,
 } from '../src/components/prompt-picker.js';
 
 const entries: PromptPickEntry[] = [
@@ -38,6 +38,31 @@ const entries: PromptPickEntry[] = [
 ];
 
 describe('filterPromptPicker', () => {
+  it('previews the selected detail level in the terminal picker', () => {
+    const view = render(
+      <PromptPicker
+        entries={[
+          {
+            ...entries[0]!,
+            variants: {
+              simple: 'Short design',
+              detailed: 'Detailed design',
+              advanced: 'Advanced design with edge cases',
+            },
+          },
+        ]}
+        selected={0}
+        category="design"
+        total={1}
+        columns={120}
+        maxRows={20}
+        level="advanced"
+      />,
+    );
+    expect(view.lastFrame()).toContain('Advanced design with edge cases');
+    expect(view.lastFrame()).not.toContain('Detailed design');
+    view.unmount();
+  });
   it('returns all when category is "all"', () => {
     expect(filterPromptPicker(entries, ['all'], 0)).toEqual(entries);
   });
