@@ -146,4 +146,29 @@ describe('useSessionTranscript session switch', () => {
     await flush();
     expect(texts()).toBe('A-one|A-two');
   });
+
+  it('populates meta.total and preserves repeated same-timestamp seed deltas when viewing a subagent (F153)', async () => {
+    fetchJson.mockResolvedValueOnce({
+      subagentId: 'sub-1',
+      total: 2,
+      source: 'stream',
+      entries: [entry('0', 'assistant'), entry('0', 'assistant')],
+    });
+    let latestMeta: { total: number; source?: string } = { total: 0 };
+    function SubProbe(): ReactElement {
+      const transcript = useSessionTranscript('A', 'sub-1');
+      latestMeta = transcript.meta;
+      return <div data-testid="texts">{transcript.entries.map((e) => e.text).join('|')}</div>;
+    }
+    container = document.createElement('div');
+    document.body.append(container);
+    const created = createRoot(container);
+    root = created;
+    await act(async () => {
+      created.render(<SubProbe />);
+    });
+    await flush();
+    expect(texts()).toBe('00');
+    expect(latestMeta).toEqual({ total: 2, source: 'stream' });
+  });
 });
