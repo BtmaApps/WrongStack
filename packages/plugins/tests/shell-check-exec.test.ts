@@ -344,4 +344,40 @@ describe('shellcheck tool — directory scan mode (merged from shellcheck_scan)'
     );
     expect(cp.execFileSync).not.toHaveBeenCalled();
   });
+
+  it('honors configured extension severity and ignoredCodes', async () => {
+    cp.execFileSync.mockReturnValue(
+      JSON.stringify([
+        issue({ file: 'a.sh', level: 'error', code: 'SC2086' }),
+        issue({ file: 'a.sh', level: 'error', code: 'SC2034' }),
+      ]),
+    );
+    const tools: Record<string, Tool> = {};
+    const api = {
+      tools: {
+        register: (t: Tool) => {
+          tools[t.name] = t;
+        },
+      },
+      config: {
+        extensions: {
+          'shell-check': {
+            severity: 'error',
+            ignoredCodes: ['SC2086'],
+          },
+        },
+      },
+      log: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+      metrics: { counter: vi.fn(), histogram: vi.fn(), gauge: vi.fn() },
+      pipelines: { response: { use: vi.fn(), get: vi.fn() } },
+    };
+    shellCheckPlugin.setup(api as never);
+    const res = await tools.shellcheck!.execute({ files: ['a.sh'] });
+    expect(cp.execFileSync).toHaveBeenCalledWith(
+      'shellcheck',
+      expect.arrayContaining(['-S', 'error']),
+      expect.anything(),
+    );
+    expect((res.issues as Array<{ code: string }>).map((i) => i.code)).toEqual(['SC2034']);
+  });
 });

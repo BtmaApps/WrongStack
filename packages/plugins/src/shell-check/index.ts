@@ -268,6 +268,25 @@ const plugin: Plugin = {
     state.totalIssues = 0;
     state.lastRun = null;
 
+    const rawCfg = (api.config?.extensions?.['shell-check'] ?? {}) as Record<string, unknown>;
+    const validSeverities = new Set(['error', 'warning', 'info', 'style']);
+    const cfgSev =
+      typeof rawCfg['severity'] === 'string' && validSeverities.has(rawCfg['severity'])
+        ? (rawCfg['severity'] as ShellCheckIssue['level'])
+        : typeof rawCfg['severityThreshold'] === 'string' &&
+            validSeverities.has(rawCfg['severityThreshold'])
+          ? (rawCfg['severityThreshold'] as ShellCheckIssue['level'])
+          : 'warning';
+    const normalizeCode = (c: unknown): string => String(c).trim().toUpperCase().replace(/^SC/, '');
+    const ignoredCodes = new Set(
+      Array.isArray(rawCfg['ignoredCodes'])
+        ? rawCfg['ignoredCodes']
+            .filter((x): x is string | number => typeof x === 'string' || typeof x === 'number')
+            .map(normalizeCode)
+            .filter(Boolean)
+        : [],
+    );
+
     // --- shellcheck tool (merged: specific files OR recursive directory scan) ---
     api.tools.register({
       name: 'shellcheck',
@@ -353,7 +372,7 @@ const plugin: Plugin = {
         const directory =
           typeof rawDirectory === 'string' && rawDirectory.length > 0 ? rawDirectory : '.';
         const pattern = inp.pattern ?? '';
-        const severity = inp.severity ?? 'warning';
+        const severity = inp.severity ?? cfgSev;
         state.invocationCount += 1;
 
         // Sandbox: confine any user-supplied path to the project root
@@ -404,7 +423,11 @@ const plugin: Plugin = {
           };
         }
 
-        const issues = await runShellCheck(checkFiles, severity);
+        const rawIssues = await runShellCheck(checkFiles, severity);
+        const issues =
+          ignoredCodes.size > 0
+            ? rawIssues.filter((issue) => !ignoredCodes.has(normalizeCode(issue.code)))
+            : rawIssues;
 
         const byFile: Record<string, ShellCheckIssue[]> = {};
         for (const issue of issues) {
