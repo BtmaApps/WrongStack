@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-19T21:16:36.195Z",
+  "generatedAt": "2026-10-19T21:17:44.447Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 38,
     "sourceFiles": 5190,
-    "testFiles": 4522,
-    "sourceLines": 1128787,
+    "testFiles": 4523,
+    "sourceLines": 1128810,
     "workspaceEdges": 139,
     "moduleEdges": 17073,
     "nonCommandSlashImports": 0,
@@ -249,7 +249,7 @@
       "name": "@wrongstack/core",
       "dir": "packages/core",
       "sourceFiles": 1160,
-      "testFiles": 997,
+      "testFiles": 998,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -264,7 +264,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 997
+          "testFiles": 998
         }
       ]
     },
@@ -8571,6 +8571,12 @@
       },
       {
         "file": "packages/core/tests/execution/design-materialize.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/execution/design-md-diff.test.ts",
         "projects": [
           "root-node"
         ]

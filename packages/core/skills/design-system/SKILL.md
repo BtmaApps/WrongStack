@@ -77,6 +77,15 @@ a file with lint errors (broken references, duplicate keys) is refused with the
 reason. Rewrite the generated prose with the product's real direction; the
 tokens stay normative.
 
+Before changing a committed DESIGN.md, keep the old version and run
+`design {action:"diff", files:["<before>", "DESIGN.md"]}` (one file compares
+it with the active kit). FAIL means a text pair lost WCAG AA in a theme or a
+component reference stopped resolving; fix it or state the reason in the change.
+
+PRODUCT.md at the project root (audience, primary job, voice, words to avoid)
+is injected with the design brief on UI turns. Write it once for a new product;
+tokens cannot carry who the interface is for.
+
 ## Workflow
 
 1. Establish the existing source or selected kit and explain its fit briefly.

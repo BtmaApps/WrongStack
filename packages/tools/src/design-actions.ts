@@ -3,12 +3,14 @@ import * as path from 'node:path';
 import {
   type DesignKitLoader,
   type DesignStack,
+  diffDesignMd,
   ensureDesignDeal,
   getDesignDeal,
   parseDesignMd,
   recordDesignChoice,
   renderDesignDeal,
   renderDesignMd,
+  renderDesignMdDiff,
   resolveVerifyTokens,
 } from '@wrongstack/core/design';
 import { ToolValidationError } from '@wrongstack/core/types';
@@ -130,5 +132,75 @@ export async function documentAction(
       (issues.length
         ? `\nLint: ${issues.map((i) => `[${i.rule}] ${i.message}`).join('; ')}`
         : '\nLint: clean.'),
+  };
+}
+
+async function readDesignMdDoc(projectRoot: string, rel: string) {
+  let text: string;
+  try {
+    text = await fs.readFile(path.resolve(projectRoot, rel), 'utf8');
+  } catch {
+    throw new ToolValidationError({ message: `design: cannot read ${rel}`, field: 'files' });
+  }
+  const parsed = parseDesignMd(text);
+  if (!parsed.doc) {
+    throw new Error(
+      `design: ${rel} is not a readable DESIGN.md: ${parsed.issues.map((i) => i.message).join('; ')}`,
+    );
+  }
+  return parsed;
+}
+
+/**
+ * `diff`: token regressions between two DESIGN.md versions (files:[before,
+ * after]), or between a DESIGN.md and the active system (files:[path]).
+ */
+export async function diffAction(
+  ctx: ActionCtx,
+  loader: DesignKitLoader,
+  files: string[] | undefined,
+  assertProjectRelative: (files: string[], projectRoot: string, label: string) => Promise<void>,
+): Promise<ActionResult> {
+  const list = files?.length ? files : ['DESIGN.md'];
+  if (list.length > 2) {
+    throw new ToolValidationError({
+      message:
+        'design: diff takes files:[before, after] or files:[DESIGN.md] (against the active system).',
+      field: 'files',
+    });
+  }
+  await assertProjectRelative(list, ctx.projectRoot, 'diff file');
+  const before = await readDesignMdDoc(ctx.projectRoot, list[0] as string);
+  let after: ReturnType<typeof parseDesignMd>;
+  let label: string;
+  if (list.length === 2) {
+    after = await readDesignMdDoc(ctx.projectRoot, list[1] as string);
+    label = `${list[0]} → ${list[1]}`;
+  } else {
+    const source = await resolveVerifyTokens(ctx.projectRoot);
+    if (!source) {
+      throw new Error(
+        'design: no active system to compare with. Pass files:[before, after], or pin a kit first.',
+      );
+    }
+    const manifest = source.kit ? await loader.find(source.kit) : undefined;
+    after = parseDesignMd(
+      renderDesignMd({ name: manifest?.name ?? 'active system', tokens: source.tokens }),
+    );
+    label = `${list[0]} → active ${source.source === 'kit' ? `kit ${source.kit}` : 'captured tokens'}`;
+  }
+  if (!before.doc || !after.doc) throw new Error('design: nothing to compare.');
+  const changes = diffDesignMd(before.doc, after.doc);
+  const lintErrors = after.issues.filter((i) => i.severity === 'error');
+  return {
+    action: 'diff',
+    output:
+      renderDesignMdDiff(changes, label) +
+      (lintErrors.length
+        ? `\nLint errors in the newer version: ${lintErrors.map((i) => `[${i.rule}] ${i.message}`).join('; ')}`
+        : '') +
+      (changes.some((c) => c.severity === 'FAIL')
+        ? '\nFAIL is a regression (AA contrast lost, a reference broken): fix it or state why in the change.'
+        : ''),
   };
 }

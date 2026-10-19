@@ -134,11 +134,18 @@ requires a `reason`, recorded with the choice. The deal is kept for the session,
 so the injected block is identical across turns and the prompt prefix stays
 cacheable. Catalogues of three or fewer kits get the plain menu.
 
-Next, in order of value:
+DESIGN.md diff and PRODUCT.md: `design diff` compares two DESIGN.md versions
+(or one with the active kit) on parsed tokens, not text. FAIL marks a
+text/background pair (`fg`/`bg`, `text`/`background`, every `on-X`/`X`, and
+component text on background) that met AA 4.5:1 and no longer does in either
+theme, or a component reference that stopped resolving; WARN marks removed
+tokens/components and font-family changes; color edits report their OKLab ΔE
+and say so when imperceptible (≤ 0.02). `PRODUCT.md` at the project root is
+injected (3000-character excerpt) ahead of `.design/brief.md` on UI turns.
 
-1. `PRODUCT.md` (audience, job, voice) and a DESIGN.md `diff` that flags token
-   regressions between two versions.
-2. Evaluation harness: fixed briefs, with and without the design layer, two or
+Next:
+
+1. Evaluation harness: fixed briefs, with and without the design layer, two or
    more providers, scored only by these measurements plus cross-brief DNA
    distance (convergence), with a ratchet.
 

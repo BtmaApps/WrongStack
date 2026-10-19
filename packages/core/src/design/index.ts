@@ -12,6 +12,7 @@ export * from '../execution/design-inspect-extractor.js';
 export * from '../execution/design-kit-loader.js';
 export * from '../execution/design-materialize.js';
 export * from '../execution/design-md.js';
+export * from '../execution/design-md-diff.js';
 export * from '../execution/design-project-store.js';
 export * from '../execution/design-tune.js';
 export * from '../execution/design-turn-gate.js';

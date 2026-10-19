@@ -111,6 +111,42 @@ describe('designTool', () => {
     }
   });
 
+  it('diffs two DESIGN.md versions and flags a contrast regression', async () => {
+    const projectRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'ws-design-diff-'));
+    const ctx = { cwd: projectRoot, tools: [], projectRoot, meta: {} } as any;
+    try {
+      await designTool.execute({ action: 'use', kit: 'minimal-clarity' }, ctx, opts);
+      await designTool.execute({ action: 'document', out: 'docs/before.md' }, ctx, opts);
+      const text = await fs.readFile(path.join(projectRoot, 'docs/before.md'), 'utf8');
+      // Same system against itself: nothing to report.
+      const same = await designTool.execute(
+        { action: 'diff', files: ['docs/before.md'] },
+        ctx,
+        opts,
+      );
+      expect(same.output).toContain('no token changes');
+      // Wash the foreground out: the fg/bg pair loses AA.
+      const fg = /\n {2}fg: "?([^"\n]+)"?/.exec(text)?.[1];
+      expect(fg).toBeTruthy();
+      await fs.writeFile(
+        path.join(projectRoot, 'docs/after.md'),
+        text.replace(/\n {2}fg: "?[^"\n]+"?/, '\n  fg: "#d4d4d4"'),
+      );
+      const res = await designTool.execute(
+        { action: 'diff', files: ['docs/before.md', 'docs/after.md'] },
+        ctx,
+        opts,
+      );
+      expect(res.output).toMatch(/FAIL colors\.fg on bg: contrast/);
+      expect(res.output).toContain('fix it or state why');
+      await expect(
+        designTool.execute({ action: 'diff', files: ['../outside.md'] }, ctx, opts),
+      ).rejects.toThrow(/escape the project root/);
+    } finally {
+      await fs.rm(projectRoot, { recursive: true, force: true });
+    }
+  });
+
   it('throws (with the menu in the message) when an unknown kit is requested', async () => {
     const ctx = makeCtx();
     await expect(designTool.execute({ action: 'use', kit: 'nope' }, ctx, opts)).rejects.toThrow(

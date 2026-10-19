@@ -398,4 +398,31 @@ describe('request inject middleware', () => {
       await fs.rm(root, { recursive: true, force: true });
     }
   });
+
+  it('carries PRODUCT.md ahead of the design brief, each bounded', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'design-product-'));
+    try {
+      await fs.mkdir(path.join(root, '.design'));
+      await fs.writeFile(
+        path.join(root, 'PRODUCT.md'),
+        `Audience: night-shift nurses\n${'p'.repeat(9000)}PEND`,
+      );
+      await fs.writeFile(path.join(root, '.design', 'brief.md'), 'Direction: calm clinical');
+      const ctx = { projectRoot: root, meta: {} } as unknown as Context;
+      setActiveKit(ctx, 'minimal-clarity', 'web');
+      const mw = makeDesignStudioRequestMiddleware({ ctx, loader: fakeLoader });
+      const injected = (await mw.handler(baseReq(), async (r) => r)).system?.[1]?.text ?? '';
+      expect(injected).toContain('## Product context (PRODUCT.md)');
+      expect(injected).not.toContain('PEND');
+      expect(injected.indexOf('night-shift nurses')).toBeLessThan(
+        injected.indexOf('calm clinical'),
+      );
+      await fs.rm(path.join(root, 'PRODUCT.md'));
+      const without = (await mw.handler(baseReq(), async (r) => r)).system?.[1]?.text ?? '';
+      expect(without).not.toContain('Product context');
+      expect(without).toContain('calm clinical');
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
+  });
 });

@@ -624,9 +624,9 @@ export const toolDetailsPart3: Record<string, ToolDetail> = {
     params: [
       {
         name: 'action',
-        type: "'list' | 'use' | 'foundations' | 'set' | 'tune' | 'materialize' | 'verify' | 'capture' | 'document' | 'deal'",
+        type: "'list' | 'use' | 'foundations' | 'set' | 'tune' | 'materialize' | 'verify' | 'capture' | 'document' | 'deal' | 'diff'",
         description:
-          'list = menu; use = load+pin a kit; foundations = baseline; set = override colors/tokens; tune = high-level knobs (radius/density/font/motion); materialize = write tokens to a theme file; verify = scan UI for token drift (pinned kit, or the project’s captured tokens); capture = snapshot the project’s existing token source (DESIGN.md, theme CSS/TS/Dart) so verify works without a kit; document = write the active kit or captured tokens as a DESIGN.md (google design.md format) for other tools; deal = draw three kits for this session, leaving recent choices out (a kit outside the deal needs reason). Default: list.',
+          'list = menu; use = load+pin a kit; foundations = baseline; set = override colors/tokens; tune = high-level knobs (radius/density/font/motion); materialize = write tokens to a theme file; verify = scan UI for token drift (pinned kit, or the project’s captured tokens); capture = snapshot the project’s existing token source (DESIGN.md, theme CSS/TS/Dart) so verify works without a kit; document = write the active kit or captured tokens as a DESIGN.md (google design.md format) for other tools; deal = draw three kits for this session, leaving recent choices out (a kit outside the deal needs reason); diff = token regressions between two DESIGN.md files (files:[before, after]) or a DESIGN.md and the active system. Default: list.',
       },
       {
         name: 'kit',

@@ -150,7 +150,8 @@ export function parseDesignMd(text: string): ParsedDesignMd {
 
 const REF_RE = /^\{([a-z]+)\.([\w-]+)\}$/;
 
-function resolveRef(doc: DesignMdDoc, value: string): string | undefined {
+/** A `{group.token}` reference resolved against the doc; plain values pass through. */
+export function resolveDesignMdRef(doc: DesignMdDoc, value: string): string | undefined {
   const m = REF_RE.exec(value.trim());
   if (!m) return value;
   const group = record((doc as unknown as Record<string, unknown>)[m[1] ?? '']);
@@ -186,7 +187,7 @@ export function lintDesignMd(doc: DesignMdDoc): DesignMdIssue[] {
   }
   for (const [name, props] of Object.entries(doc.components)) {
     for (const [prop, value] of Object.entries(props)) {
-      if (REF_RE.test(value.trim()) && resolveRef(doc, value) === undefined) {
+      if (REF_RE.test(value.trim()) && resolveDesignMdRef(doc, value) === undefined) {
         issues.push({
           rule: 'broken-ref',
           severity: 'error',
@@ -194,8 +195,8 @@ export function lintDesignMd(doc: DesignMdDoc): DesignMdIssue[] {
         });
       }
     }
-    const fg = props.textColor ? resolveRef(doc, props.textColor) : undefined;
-    const bg = props.backgroundColor ? resolveRef(doc, props.backgroundColor) : undefined;
+    const fg = props.textColor ? resolveDesignMdRef(doc, props.textColor) : undefined;
+    const bg = props.backgroundColor ? resolveDesignMdRef(doc, props.backgroundColor) : undefined;
     const fgHex = fg ? colorToHex(fg) : null;
     const bgHex = bg ? colorToHex(bg) : null;
     const ratio = fgHex && bgHex ? contrastRatio(fgHex, bgHex) : null;

@@ -373,21 +373,26 @@ const CRAFT_GUIDANCE = [
     'and recheck. Report observed evidence and unverified states; a source scan cannot certify visual quality.',
 ].join('\n');
 
-/** Fresh on every turn so revised decisions survive kit switches and compaction. */
-async function readDesignBrief(projectRoot: string): Promise<string> {
+/** First `limit` characters of a project file as a titled block; '' when absent. */
+async function readExcerpt(
+  projectRoot: string,
+  rel: string,
+  title: string,
+  limit: number,
+): Promise<string> {
   try {
     const fs = await import('node:fs/promises');
     const path = await import('node:path');
-    const file = await fs.open(path.join(projectRoot, '.design', 'brief.md'), 'r');
+    const file = await fs.open(path.join(projectRoot, rel), 'r');
     try {
-      // Bound both IO and prompt size; a full brief remains available via read.
-      const buffer = Buffer.alloc(6001);
+      // Bound both IO and prompt size; the full file remains available via read.
+      const buffer = Buffer.alloc(limit + 1);
       const { bytesRead } = await file.read(buffer, 0, buffer.length, 0);
-      const excerpt = buffer.subarray(0, Math.min(bytesRead, 6000)).toString('utf8').trim();
+      const excerpt = buffer.subarray(0, Math.min(bytesRead, limit)).toString('utf8').trim();
       return excerpt
-        ? `\n\n## Project design brief (.design/brief.md)\n${excerpt}` +
-            (bytesRead > 6000
-              ? '\n[Brief truncated; read `.design/brief.md` before changing its decisions.]'
+        ? `\n\n## ${title} (${rel})\n${excerpt}` +
+            (bytesRead > limit
+              ? `\n[Excerpt truncated; read \`${rel}\` before changing its decisions.]`
               : '')
         : '';
     } finally {
@@ -396,6 +401,18 @@ async function readDesignBrief(projectRoot: string): Promise<string> {
   } catch {
     return '';
   }
+}
+
+/**
+ * Fresh on every turn so revised decisions survive kit switches and compaction.
+ * PRODUCT.md (audience, job, voice — the product half that tokens cannot
+ * carry) comes before the design brief, which records the visual decisions.
+ */
+async function readDesignBrief(projectRoot: string): Promise<string> {
+  return (
+    (await readExcerpt(projectRoot, 'PRODUCT.md', 'Product context', 3000)) +
+    (await readExcerpt(projectRoot, '.design/brief.md', 'Project design brief', 6000))
+  );
 }
 
 /**

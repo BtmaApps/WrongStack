@@ -23,7 +23,7 @@ import {
 import type { Tool } from '@wrongstack/core/types';
 import { ToolValidationError } from '@wrongstack/core/types';
 import { atomicWrite } from '@wrongstack/core/utils';
-import { checkDealtChoice, dealAction, documentAction } from './design-actions.js';
+import { checkDealtChoice, dealAction, diffAction, documentAction } from './design-actions.js';
 
 type Overrides = Record<string, string>;
 
@@ -70,6 +70,7 @@ export interface DesignInput {
     | 'capture'
     | 'document'
     | 'deal'
+    | 'diff'
     | undefined;
   kit?: string | undefined;
   stack?: string | undefined;
@@ -205,6 +206,7 @@ export const designTool: Tool<DesignInput, DesignOutput> = {
           'capture',
           'document',
           'deal',
+          'diff',
         ],
         description:
           'list = menu; use = load+pin a kit; foundations = baseline; set = override colors/tokens; ' +
@@ -213,7 +215,8 @@ export const designTool: Tool<DesignInput, DesignOutput> = {
           'capture = snapshot the project\u2019s existing token source (DESIGN.md, theme CSS/TS/Dart) so ' +
           'verify works without a kit; document = write the active kit or captured tokens as a ' +
           'DESIGN.md (google design.md format) for other tools; deal = draw three kits for this ' +
-          'session, leaving recent choices out (a kit outside the deal needs reason). Default: list.',
+          'session, leaving recent choices out (a kit outside the deal needs reason); diff = token regressions between two DESIGN.md ' +
+          'files (files:[before, after]) or a DESIGN.md and the active system. Default: list.',
       },
       kit: {
         type: 'string',
@@ -290,6 +293,7 @@ export const designTool: Tool<DesignInput, DesignOutput> = {
       'capture',
       'document',
       'deal',
+      'diff',
     ]);
     if (input.action !== undefined && !VALID_ACTIONS.has(input.action)) {
       throw new ToolValidationError({
@@ -512,6 +516,15 @@ export const designTool: Tool<DesignInput, DesignOutput> = {
         seed: input.seed,
         redeal: input.redeal === true,
       });
+    }
+
+    if (action === 'diff') {
+      const list = input.files
+        ? (Array.isArray(input.files) ? input.files : String(input.files).split(','))
+            .map((f) => String(f).trim())
+            .filter(Boolean)
+        : undefined;
+      return diffAction(ctx, loader, list, assertProjectRelative);
     }
 
     if (action === 'capture') {
