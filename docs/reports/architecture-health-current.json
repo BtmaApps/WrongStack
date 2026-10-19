@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-19T14:36:47.428Z",
+  "generatedAt": "2026-10-19T14:45:01.710Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 38,
     "sourceFiles": 5176,
-    "testFiles": 4506,
-    "sourceLines": 1124154,
+    "testFiles": 4507,
+    "sourceLines": 1124161,
     "workspaceEdges": 139,
     "moduleEdges": 17034,
     "nonCommandSlashImports": 0,
@@ -870,7 +870,7 @@
       "name": "@wrongstack/webui",
       "dir": "packages/webui",
       "sourceFiles": 759,
-      "testFiles": 496,
+      "testFiles": 497,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -893,7 +893,7 @@
         {
           "path": "packages/webui/tsconfig.test.json",
           "error": null,
-          "testFiles": 496
+          "testFiles": 497
         }
       ]
     },
@@ -27975,6 +27975,12 @@
       },
       {
         "file": "packages/webui/tests/stores/session-scoped-diagnostics.test.ts",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
+        "file": "packages/webui/tests/stores/session-scoped-store-cap.test.ts",
         "projects": [
           "webui-jsdom"
         ]

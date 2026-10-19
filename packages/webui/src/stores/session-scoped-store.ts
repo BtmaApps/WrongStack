@@ -72,10 +72,17 @@ export function createSessionScopedStore<S>(
     const id = key(sessionId);
     const existing = instances.get(id);
     if (existing) return existing;
-    // Insertion order is age; the unbound pre-session instance is never the
-    // victim because a fresh tab adopts it before it can go stale.
+    // Insertion order is age, and the oldest instance is the one that goes
+    // when the cap is reached. Two instances must never be that victim:
+    //
+    //   - the conversation IN FRONT (`activeLaneId()`): the panel the
+    //     operator is looking at would silently lose everything it is
+    //     showing, and the next read would hand it a fresh, EMPTY instance;
+    //   - the unbound pre-session instance, which holds what was recorded
+    //     before a conversation was bound.
+    const protectedIds = new Set([id, activeLaneId(), DEFAULT_LANE_ID]);
     while (instances.size >= max) {
-      const oldest = [...instances.keys()].find((candidate) => candidate !== id);
+      const oldest = [...instances.keys()].find((candidate) => !protectedIds.has(candidate));
       if (oldest === undefined) break;
       instances.delete(oldest);
     }
