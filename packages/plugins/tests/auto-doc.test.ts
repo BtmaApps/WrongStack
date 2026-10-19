@@ -200,4 +200,27 @@ describe('runAutoDoc doc generation', () => {
       await fs.rm(outsideDir, { recursive: true, force: true });
     }
   });
+
+  it('overwrites existing docstring when force is true instead of stacking duplicates', async () => {
+    const filePath = path.join(tmpDir, 'force-overwrite.ts');
+    await fs.writeFile(
+      filePath,
+      [
+        '/**',
+        ' * Old docstring that should be replaced.',
+        ' */',
+        'export function compute(x: number): number {',
+        '  return x * 2;',
+        '}',
+        '',
+      ].join('\n'),
+    );
+
+    const result = await runAutoDocTool({ files: [filePath], force: true, dry_run: false });
+    expect(result.ok).toBe(true);
+
+    const updated = await fs.readFile(filePath, 'utf-8');
+    expect((updated.match(/\/\*\*/g) ?? []).length).toBe(1);
+    expect(updated).not.toContain('Old docstring that should be replaced.');
+  });
 });

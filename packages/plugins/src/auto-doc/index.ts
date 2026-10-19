@@ -285,7 +285,30 @@ function injectDocComment(content: string, entity: ParsedEntity, doc: string): s
   const docLines = doc
     .split('\n')
     .map((line, i) => (i === 0 ? `${indent}${line.trim()}` : `${indent} ${line.trim()}`));
-  lines.splice(idx, 0, ...docLines);
+
+  let insertStart = idx;
+  let deleteCount = 0;
+  if (idx >= 1) {
+    const prevLine = lines[idx - 1]?.trim() ?? '';
+    if (/^\/\*\*.*?\*\/$/.test(prevLine)) {
+      insertStart = idx - 1;
+      deleteCount = 1;
+    } else if (/^\*\/$/.test(prevLine)) {
+      let scan = idx - 2;
+      while (scan >= 0) {
+        const trimmed = lines[scan]?.trim() ?? '';
+        if (trimmed.startsWith('/**')) {
+          insertStart = scan;
+          deleteCount = idx - scan;
+          break;
+        }
+        if (!trimmed.startsWith('*')) break;
+        scan -= 1;
+      }
+    }
+  }
+
+  lines.splice(insertStart, deleteCount, ...docLines);
   return lines.join('\n');
 }
 
