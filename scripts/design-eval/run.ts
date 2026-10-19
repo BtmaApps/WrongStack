@@ -90,6 +90,18 @@ async function generate(args: string[], out: string): Promise<void> {
   const runsFile = flag(args, 'runs');
   if (!runsFile) usage(2);
   const runs = JSON.parse(fs.readFileSync(runsFile, 'utf8')) as Run[];
+  // A job inside a repository works in that repository's context (its agent
+  // instructions, conventions, history), which is not the clean brief the
+  // evaluation measures.
+  for (let dir = out; ; dir = path.dirname(dir)) {
+    if (fs.existsSync(path.join(dir, '.git'))) {
+      console.error(
+        `--out ${out} is inside the repository ${dir}; use a directory outside any repository.`,
+      );
+      process.exit(2);
+    }
+    if (path.dirname(dir) === dir) break;
+  }
   const { instructions, briefs } = loadBriefs();
   const only = flag(args, 'only')?.split(',');
   for (const run of runs) {
@@ -316,7 +328,7 @@ function ratchet(args: string[], out: string): void {
 
 const [command, ...rest] = process.argv.slice(2);
 if (!command || command === '--help' || command === '-h') usage(command ? 0 : 2);
-const out = path.resolve(flag(rest, 'out') ?? path.join(REPO, '.temp_files', 'design-eval'));
+const out = path.resolve(flag(rest, 'out') ?? path.join(os.tmpdir(), 'wrongstack-design-eval'));
 if (command === 'generate') await generate(rest, out);
 else if (command === 'score') await score(out);
 else if (command === 'ratchet') ratchet(rest, out);
