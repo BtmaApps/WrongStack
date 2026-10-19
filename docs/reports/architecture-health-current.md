@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-19T06:47:43.954Z
+**Generated:** 2026-10-19T09:15:43.682Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -8,11 +8,11 @@
 | Measure | Value |
 |---|---:|
 | Workspace packages | 38 |
-| Production source files | 5164 |
-| Production source lines | 1121233 |
-| Test files | 4485 |
+| Production source files | 5165 |
+| Production source lines | 1121846 |
+| Test files | 4489 |
 | Workspace dependency edges | 139 |
-| Relative module edges | 17000 |
+| Relative module edges | 17004 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 5 |
@@ -34,7 +34,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/codebase-index-mcp | 6 | 5 | @wrongstack/core, @wrongstack/mcp, @wrongstack/tools |
 | @wrongstack/core | 1147 | 990 | @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/desktop | 48 | 35 | @wrongstack/core, @wrongstack/webui, @wrongstack/webui-protocol, @wrongstack/webui-server |
-| @wrongstack/governance | 45 | 33 | @wrongstack/persistence |
+| @wrongstack/governance | 45 | 35 | @wrongstack/persistence |
 | @wrongstack/kanban | 109 | 84 | @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/kanban-mcp | 6 | 5 | @wrongstack/core, @wrongstack/kanban, @wrongstack/mcp, @wrongstack/primitives, @wrongstack/tools |
 | @wrongstack/mailbox-mcp | 7 | 8 | @wrongstack/core, @wrongstack/mcp |
@@ -52,7 +52,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/sage-mcp | 7 | 6 | @wrongstack/core, @wrongstack/mcp, @wrongstack/sage |
 | @wrongstack/sdd | 45 | 42 | @wrongstack/core, @wrongstack/kanban, @wrongstack/primitives, @wrongstack/requirement-intake |
 | @wrongstack/security-scanner | 21 | 34 | @wrongstack/core |
-| @wrongstack/simpleui | 127 | 94 | @wrongstack/kanban, @wrongstack/tools, @wrongstack/webui-protocol, @wrongstack/webui-server |
+| @wrongstack/simpleui | 128 | 96 | @wrongstack/kanban, @wrongstack/tools, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/techstack | 55 | 63 | @wrongstack/core, @wrongstack/persistence, @wrongstack/tools |
 | @wrongstack/telegram | 28 | 43 | @wrongstack/core, @wrongstack/primitives |
 | @wrongstack/tools | 336 | 331 | @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |

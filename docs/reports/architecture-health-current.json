@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-19T06:47:43.954Z",
+  "generatedAt": "2026-10-19T09:15:43.682Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 38,
-    "sourceFiles": 5164,
-    "testFiles": 4485,
-    "sourceLines": 1121233,
+    "sourceFiles": 5165,
+    "testFiles": 4489,
+    "sourceLines": 1121846,
     "workspaceEdges": 139,
-    "moduleEdges": 17000,
+    "moduleEdges": 17004,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -296,7 +296,7 @@
       "name": "@wrongstack/governance",
       "dir": "packages/governance",
       "sourceFiles": 45,
-      "testFiles": 33,
+      "testFiles": 35,
       "workspaceDependencies": [
         "@wrongstack/persistence"
       ],
@@ -309,7 +309,7 @@
         {
           "path": "packages/governance/tsconfig.test.json",
           "error": null,
-          "testFiles": 33
+          "testFiles": 35
         }
       ]
     },
@@ -696,8 +696,8 @@
     {
       "name": "@wrongstack/simpleui",
       "dir": "packages/simpleui",
-      "sourceFiles": 127,
-      "testFiles": 94,
+      "sourceFiles": 128,
+      "testFiles": 96,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/tools",
@@ -718,7 +718,7 @@
         {
           "path": "packages/simpleui/tsconfig.test.json",
           "error": null,
-          "testFiles": 94
+          "testFiles": 96
         }
       ]
     },
@@ -12044,6 +12044,12 @@
         ]
       },
       {
+        "file": "packages/governance/tests/protocol-decode-validation-ceiling.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/governance/tests/protocol-decoder.test.ts",
         "projects": [
           "root-node"
@@ -12075,6 +12081,12 @@
       },
       {
         "file": "packages/governance/tests/transition-engine.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/governance/tests/verification-check-binding-boundaries.test.ts",
         "projects": [
           "root-node"
         ]
@@ -16916,6 +16928,12 @@
         ]
       },
       {
+        "file": "packages/simpleui/tests/chat-next-step-countdown.test.tsx",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/simpleui/tests/chat-next-steps-gate.test.tsx",
         "projects": [
           "root-node"
@@ -17301,6 +17319,12 @@
       },
       {
         "file": "packages/simpleui/tests/use-model-catalog.test.tsx",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/simpleui/tests/use-next-step-auto-submit.test.tsx",
         "projects": [
           "root-node"
         ]
