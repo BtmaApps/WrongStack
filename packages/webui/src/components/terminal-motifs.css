@@ -1,0 +1,67 @@
+/**
+ * Terminal motifs — component-level, per the .design/brief.md 2026-10-20
+ * amendment (developer/terminal direction).
+ *
+ * Three state-serving motifs, applied ONLY on terminal/code/empty surfaces —
+ * never as global decoration:
+ *   1. `.ws-term-cursor`        blinking block cursor (decorative, aria-hidden)
+ *   2. `.ws-term-ascii`         ASCII-art empty-state frame (decorative)
+ *   3. `.ws-term-grid` + the    subtle grid/matrix backdrop for code blocks
+ *      `.markdown-content pre`  and terminal-flavored empty states
+ *
+ * Semantic tokens only (`--surface-*`, currentColor via component classes).
+ * Blink animation runs under `prefers-reduced-motion: no-preference` and is
+ * additionally killed by the global reduced-motion block in index.css.
+ */
+
+/* ── Grid/matrix backdrop ────────────────────────────────────────────
+ * Hairline grid drawn from the surface ramp; reads as graph paper behind
+ * code, invisible against dense output. Background-color stays whatever
+ * the surface already paints. */
+.ws-term-grid,
+.markdown-content pre {
+  background-image:
+    linear-gradient(hsl(var(--surface-3) / 0.35) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(var(--surface-3) / 0.35) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+/* ── Blinking cursor ─────────────────────────────────────────────────
+ * Inline-block caret sized to the surrounding mono text via em units.
+ * Inherits color from `currentColor` so it rides the token the parent
+ * component chose (e.g. text-primary on a prompt line). */
+.ws-term-cursor {
+  display: inline-block;
+  width: 0.55em;
+  height: 1em;
+  margin-left: 0.2em;
+  vertical-align: -0.15em;
+  background: currentColor;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .ws-term-cursor {
+    animation: ws-term-blink 1.1s step-end infinite;
+  }
+}
+
+@keyframes ws-term-blink {
+  0%,
+  60% {
+    opacity: 1;
+  }
+  61%,
+  100% {
+    opacity: 0;
+  }
+}
+
+/* ── ASCII empty-state frame ─────────────────────────────────────────
+ * Box-drawing art rendered in the mono font at a small decorative size.
+ * Text inside is generic (not translated) and always aria-hidden; the
+ * real, accessible title/description render beside it in EmptyState. */
+.ws-term-ascii {
+  font-family: var(--font-mono);
+  white-space: pre;
+  user-select: none;
+}

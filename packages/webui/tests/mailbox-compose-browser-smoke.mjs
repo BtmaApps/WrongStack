@@ -63,6 +63,7 @@ import { MailboxPanel } from '/src/components/MailboxPanel.tsx';
 import { ensureSessionLane, setActiveSessionLane } from '/src/stores/session-lanes.ts';
 import { useMailboxStore } from '/src/stores/mailbox-store.ts';
 import { useConfigStore, useFleetStore, useGitChangesStore, useGoalRunStore, useGoalStateStore, useKanbanStore, useUIStore, useWorktreeStore, useChatStore } from '/src/stores/index.ts';
+import { applyPalette } from '/src/lib/palettes.ts';
 import { useLocalPrefs } from '/src/stores/local-prefs.ts';
 import { getWSClient } from '/src/lib/ws-client.ts';
 import { AgentsPanel } from '/src/components/SidePanel/AgentsPanel.tsx';
@@ -116,6 +117,16 @@ window.__ackMailboxSent = (requestId) => {
 window.__setTheme = (theme) => {
   useConfigStore.getState().setTheme(theme);
   document.documentElement.classList.toggle('dark', theme === 'dark');
+};
+
+// Real palette mechanism (config store + data-palette on <html>) so a palette
+// combo audits the app's own token swap rather than a hand-set attribute.
+window.__setPalette = (palette) => {
+  useConfigStore.getState().setPalette(palette);
+  // The store setter only writes zustand state; ThemeProvider's local-state
+  // effect is what mirrors data-palette onto <html> in the real app. Apply
+  // it directly so the audit measures the actual token swap.
+  applyPalette(document.documentElement, palette);
 };
 
 // Seed the roster (online + offline mix) and expose a live message seeder
@@ -670,7 +681,8 @@ async function auditFocusRing(page) {
   return { failures, stops: seen.size };
 }
 
-async function runCombo(browser, url, theme, width, height) {
+async function runCombo(browser, url, theme, width, height, palette = 'signal') {
+  const label = palette === 'signal' ? theme : `${theme}+${palette}`;
   // Pin the browser locale: accessible-name assertions expect English.
   const context = await browser.newContext({ locale: 'en-US', viewport: { width, height } });
   const page = await context.newPage();
@@ -690,6 +702,7 @@ async function runCombo(browser, url, theme, width, height) {
     await page.goto(url);
     await page.waitForFunction(() => window.__mailboxSmokeReady === true);
     await page.evaluate((t) => window.__setTheme(t), theme);
+    await page.evaluate((p) => window.__setPalette(p), palette);
 
     // ── Compose open ──
     await page.getByRole('button', { name: /compose message/i }).click();
@@ -701,14 +714,14 @@ async function runCombo(browser, url, theme, width, height) {
     const cacheLines = await page.getByText(/hit/i).count();
     if (cacheLines < 2) throw new Error('cache-hit readouts missing (standalone + ChatHeader)');
     const contrastOpen = await auditContrast(page);
-    screenshots.push(await shot(page, `compose-open-${theme}-${width}`));
+    screenshots.push(await shot(page, `compose-open-${label}-${width}`));
 
     // ── Guard states: audience=leaders, then assign-with-'*' ──
     await page.getByLabel('Audience').selectOption('leaders');
     await page.getByText(/only leader agents/i).waitFor();
     await assertDialogGeometry(page, width, height);
     const contrastLeaders = await auditContrast(page);
-    screenshots.push(await shot(page, `hint-leaders-${theme}-${width}`));
+    screenshots.push(await shot(page, `hint-leaders-${label}-${width}`));
     await page.getByLabel('Audience').selectOption('all');
 
     await page.getByRole('button', { name: 'Broadcast', exact: true }).click();
@@ -719,7 +732,7 @@ async function runCombo(browser, url, theme, width, height) {
     }
     await assertDialogGeometry(page, width, height);
     const contrastAssign = await auditContrast(page);
-    screenshots.push(await shot(page, `hint-assign-${theme}-${width}`));
+    screenshots.push(await shot(page, `hint-assign-${label}-${width}`));
     // Reset to the defaults the roster-pick leg below expects.
     await page.getByLabel('Type').selectOption('note');
     await page.getByRole('button', { name: 'leader', exact: true }).click();
@@ -792,13 +805,13 @@ async function runCombo(browser, url, theme, width, height) {
       );
     }
     const contrastReply = await auditContrast(page);
-    screenshots.push(await shot(page, `reply-prefill-${theme}-${width}`));
+    screenshots.push(await shot(page, `reply-prefill-${label}-${width}`));
 
     // ── Worktrees tab: live row + orphans-clean button ──
     await page.evaluate(() => window.__setChangesTab('worktrees'));
     await page.getByText(/clean orphans/i).waitFor();
     const contrastWorktrees = await auditContrast(page);
-    screenshots.push(await shot(page, `worktrees-${theme}-${width}`));
+    screenshots.push(await shot(page, `worktrees-${label}-${width}`));
 
     // ── Inspector sheet (calm chrome): agent tab chips + badges ──
     await page.evaluate(() => window.__openInspectorAgents());
@@ -818,7 +831,7 @@ async function runCombo(browser, url, theme, width, height) {
       await page.waitForTimeout(150);
     }
     const contrastInspectorB = await auditContrast(page);
-    screenshots.push(await shot(page, `inspector-${theme}-${width}`));
+    screenshots.push(await shot(page, `inspector-${label}-${width}`));
 
     // ── Dock active chip (full chrome; closes the sheet as a side effect) ──
     await page.evaluate(() => {
@@ -832,7 +845,7 @@ async function runCombo(browser, url, theme, width, height) {
     await page.getByRole('dialog').waitFor();
     await page.waitForTimeout(300);
     const contrastDock = await auditContrast(page);
-    screenshots.push(await shot(page, `dock-active-${theme}-${width}`));
+    screenshots.push(await shot(page, `dock-active-${label}-${width}`));
 
     // Active variants of the kept taxonomy pairs: goal-state (destructive)
     // and fleet (success). The goal chip itself is idle-only by design.
@@ -849,7 +862,7 @@ async function runCombo(browser, url, theme, width, height) {
     await taskSheet.waitFor();
     await taskSheet.getByText('Audit the contrast sweep').first().waitFor();
     const contrastTask = await auditContrast(page);
-    screenshots.push(await shot(page, `task-inspector-${theme}-${width}`));
+    screenshots.push(await shot(page, `task-inspector-${label}-${width}`));
 
     // ── Notification dropdown: unread badge + item rows (menu root) ──
     // Close BOTH layers first: the inspector sheet (topmost) and the
@@ -866,8 +879,16 @@ async function runCombo(browser, url, theme, width, height) {
     await page.getByRole('menu').first().waitFor();
     await page.waitForTimeout(150);
     const contrastNotif = await auditContrast(page);
-    screenshots.push(await shot(page, `notifications-${theme}-${width}`));
+    screenshots.push(await shot(page, `notifications-${label}-${width}`));
     await page.keyboard.press('Escape');
+    // Radix parks focus on the (now-closed) menu content div; the focus sweep
+    // must start from a clean document or it audits a transient container
+    // that is never a Tab stop in real use.
+    await page.evaluate(() => {
+      const el = document.activeElement;
+      if (el && el !== document.body) el.blur();
+    });
+    await page.waitForTimeout(200);
 
     // Focus indicator: every control reached by Tab must show the single
     // --ring affordance. Runs after the dropdown is dismissed so the sweep
@@ -889,7 +910,8 @@ async function runCombo(browser, url, theme, width, height) {
       ],
     };
     return {
-      theme,
+      theme: label,
+      palette,
       viewport: `${width}x${height}`,
       checks: 'passed',
       screenshots,
@@ -898,9 +920,10 @@ async function runCombo(browser, url, theme, width, height) {
       pageErrors,
     };
   } catch (error) {
-    await shot(page, `FAILURE-${theme}-${width}`).catch(() => undefined);
+    await shot(page, `FAILURE-${label}-${width}`).catch(() => undefined);
     return {
-      theme,
+      theme: label,
+      palette,
       viewport: `${width}x${height}`,
       checks: 'failed',
       error: String(error),
@@ -917,12 +940,17 @@ const { server, url } = await start();
 const browser = await chromium.launch({ headless: true });
 try {
   const results = [];
-  for (const theme of ['light', 'dark']) {
+  for (const [theme, palette] of [
+    ['light', 'signal'],
+    ['dark', 'signal'],
+    ['light', 'terminal'],
+    ['dark', 'terminal'],
+  ]) {
     for (const [width, height] of [
       [390, 844],
       [1366, 768],
     ]) {
-      results.push(await runCombo(browser, url, theme, width, height));
+      results.push(await runCombo(browser, url, theme, width, height, palette));
     }
   }
   const failed = results.filter((r) => r.checks === 'failed');

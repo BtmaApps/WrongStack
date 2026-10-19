@@ -103,7 +103,8 @@
     "paletteSlateViolet": "Slate & Violet",
     "paletteCoralMint": "Coral & Mint",
     "paletteArcticEmber": "Arctic & Ember",
-    "paletteMossRust": "Moss & Rust"
+    "paletteMossRust": "Moss & Rust",
+    "paletteTerminal": "Terminal"
   },
   "model": {
     "heading": "Model",

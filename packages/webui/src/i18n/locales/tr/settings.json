@@ -420,7 +420,8 @@
     "paletteSlateViolet": "Lacivert & Menekşe",
     "paletteCoralMint": "Mercan & Nane",
     "paletteArcticEmber": "Kuzey & Ateş",
-    "paletteMossRust": "Çim & Pas"
+    "paletteMossRust": "Çim & Pas",
+    "paletteTerminal": "Terminal"
   },
   "agent": {
     "autonomyHeading": "Otonomi ve Davranış",

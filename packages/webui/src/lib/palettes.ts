@@ -24,7 +24,8 @@ export type PaletteId =
   | 'slate-violet'
   | 'coral-mint'
   | 'arctic-ember'
-  | 'moss-rust';
+  | 'moss-rust'
+  | 'terminal';
 
 export interface PaletteDefinition {
   id: PaletteId;
@@ -113,6 +114,12 @@ export const PALETTES: readonly PaletteDefinition[] = [
     labelKey: 'settings:general.paletteMossRust',
     swatch: 'hsl(100 45% 38%)',
     swatchSecondary: 'hsl(18 70% 48%)',
+  },
+  {
+    id: 'terminal',
+    labelKey: 'settings:general.paletteTerminal',
+    swatch: 'hsl(150 70% 45%)',
+    swatchSecondary: 'hsl(40 90% 52%)',
   },
 ] as const satisfies readonly PaletteDefinition[];
 

@@ -420,7 +420,8 @@
     "paletteSlateViolet": "Pizarra y violeta",
     "paletteCoralMint": "Coral y menta",
     "paletteArcticEmber": "Ártico y brasa",
-    "paletteMossRust": "Musgo y óxido"
+    "paletteMossRust": "Musgo y óxido",
+    "paletteTerminal": "Terminal"
   },
   "agent": {
     "autonomyHeading": "Autonomía y Comportamiento",
