@@ -112,9 +112,14 @@ describe('/settings reset', () => {
     // Other sections are untouched.
     expect(cfg.tools.maxIterations).toBe(7);
     expect(cfg.autonomy.autoProceedDelayMs).toBe(99_999);
-    // In-memory store received the same patch.
+    // In-memory store received the same merged patch preserving extension keys (F134).
     expect(store.update).toHaveBeenCalledWith(
-      expect.objectContaining({ context: expect.any(Object) }),
+      expect.objectContaining({
+        context: expect.objectContaining({
+          softThreshold: 0.75,
+          myCustom: 'keep-me',
+        }),
+      }),
     );
   });
 
