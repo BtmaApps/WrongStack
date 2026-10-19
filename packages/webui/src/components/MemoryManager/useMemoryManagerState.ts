@@ -91,6 +91,16 @@ export function useMemoryManagerState(sharedSearch?: SharedMemorySearch) {
   );
   const showDeleted = libraryView === 'deleted';
   const showReview = libraryView === 'review';
+  /**
+   * The status the loaded rows are actually filtered by.
+   *
+   * The Deleted tab pins the *server-side* filter to `deleted` (see
+   * `loadPage`), so the client-side filter has to agree with it. Applying the
+   * separate status dropdown on top of the pinned filter hid every deleted
+   * record whenever a leftover status filter (e.g. "stale") was active, while
+   * the tab label still advertised the deleted count.
+   */
+  const effectiveStatusFilter: 'all' | SageStatus = showDeleted ? 'deleted' : statusFilter;
   const [pageCursor, setPageCursor] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -271,9 +281,19 @@ export function useMemoryManagerState(sharedSearch?: SharedMemorySearch) {
     loadPage(null, !statsLoadedRef.current);
   }, [loadPage]);
 
+  /**
+   * Teardown that must run ONLY on unmount.
+   *
+   * It used to share an effect with the filter-driven reload, whose dependency
+   * (`reloadForFilters`) changes on every status/kind/search change. The
+   * cleanup therefore ran on each of those changes too, and it both bumped
+   * `mutationGenerationRef` and tore down `mutationCleanupRef` — so a SAGE
+   * mutation that was already in flight was silently discarded: its reply was
+   * never handled, `setBusyAction(null)` never ran, and the editor stayed
+   * disabled forever even though the server had already saved the memory.
+   */
   useEffect(() => {
     mountedRef.current = true;
-    reloadForFilters();
     return () => {
       mountedRef.current = false;
       listGenerationRef.current += 1;
@@ -283,6 +303,14 @@ export function useMemoryManagerState(sharedSearch?: SharedMemorySearch) {
       searchBreakdownCleanupRef.current?.();
       resolveController.current?.abort();
     };
+  }, []);
+
+  /**
+   * Filter/search-driven reload. Kept separate from the unmount teardown so a
+   * list reload never supersedes an in-flight mutation.
+   */
+  useEffect(() => {
+    reloadForFilters();
   }, [reloadForFilters]);
 
   // Trigger the per-channel search breakdown when the user types a
@@ -579,12 +607,12 @@ export function useMemoryManagerState(sharedSearch?: SharedMemorySearch) {
     () =>
       filterMemories(memories, {
         searchQuery,
-        statusFilter,
+        statusFilter: effectiveStatusFilter,
         kindFilter,
         tagFilter,
         audienceOnly,
       }),
-    [audienceOnly, kindFilter, memories, searchQuery, statusFilter, tagFilter],
+    [audienceOnly, effectiveStatusFilter, kindFilter, memories, searchQuery, tagFilter],
   );
 
   const allTags = useMemo(() => collectMemoryTags(memories), [memories]);

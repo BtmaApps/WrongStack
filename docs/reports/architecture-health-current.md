@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-19T12:51:30.619Z
+**Generated:** 2026-10-19T14:18:29.302Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,8 +9,8 @@
 |---|---:|
 | Workspace packages | 38 |
 | Production source files | 5176 |
-| Production source lines | 1124071 |
-| Test files | 4501 |
+| Production source lines | 1124099 |
+| Test files | 4503 |
 | Workspace dependency edges | 139 |
 | Relative module edges | 17034 |
 | Non-command slash imports | 0 |
@@ -59,7 +59,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/tui | 496 | 427 | @wrongstack/core, @wrongstack/kanban, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/tools |
 | @wrongstack/vector-memory | 18 | 28 | @wrongstack/core, @wrongstack/persistence, @wrongstack/sage |
 | @wrongstack/vibeui | 53 | 14 | @wrongstack/webui-protocol |
-| @wrongstack/webui | 759 | 491 | @wrongstack/core, @wrongstack/kanban, @wrongstack/plugins, @wrongstack/providers, @wrongstack/tools, @wrongstack/webui-protocol |
+| @wrongstack/webui | 759 | 493 | @wrongstack/core, @wrongstack/kanban, @wrongstack/plugins, @wrongstack/providers, @wrongstack/tools, @wrongstack/webui-protocol |
 | @wrongstack/webui-hq | 127 | 55 | @wrongstack/core, @wrongstack/tools, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/webui-protocol | 25 | 13 | @wrongstack/core |
 | @wrongstack/webui-server | 301 | 297 | @wrongstack/core, @wrongstack/kanban, @wrongstack/mcp, @wrongstack/primitives, @wrongstack/providers, @wrongstack/requirement-intake, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/techstack, @wrongstack/tools, @wrongstack/vector-memory, @wrongstack/webui-protocol, @wrongstack/wrongtrace |
@@ -88,6 +88,7 @@ None.
 | 911 | `packages/vibeui/src/lib/session.ts` |
 | 734 | `apps/desktop/src/main/main.ts` |
 | 733 | `packages/vibeui/src/components/provider-manager.tsx` |
+| 720 | `packages/webui/src/components/MemoryManager/useMemoryManagerState.ts` |
 | 715 | `packages/plugins/src/audit/index.ts` |
 | 708 | `packages/vibeui/src/lib/use-session.ts` |
 | 707 | `packages/acp/src/client/acp-session.ts` |
@@ -111,7 +112,6 @@ None.
 | 693 | `packages/simpleui/src/automation-workspace.tsx` |
 | 692 | `packages/tools/src/codebase-index/project-server.ts` |
 | 692 | `packages/webui/src/components/MailboxPanel.tsx` |
-| 692 | `packages/webui/src/components/MemoryManager/useMemoryManagerState.ts` |
 | 691 | `packages/core/src/core/agent-response.ts` |
 | 691 | `packages/governance/src/event-store.ts` |
 | 691 | `packages/sage/src/types.ts` |

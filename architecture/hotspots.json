@@ -30,6 +30,10 @@
       "lines": 708,
       "relativeImports": 6
     },
+    "packages/webui/src/components/MemoryManager/useMemoryManagerState.ts": {
+      "lines": 720,
+      "relativeImports": 9
+    },
     "apps/desktop/src/main/main.ts": {
       "lines": 734,
       "relativeImports": 20

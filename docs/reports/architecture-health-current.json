@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-19T12:51:30.619Z",
+  "generatedAt": "2026-10-19T14:18:29.302Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 38,
     "sourceFiles": 5176,
-    "testFiles": 4501,
-    "sourceLines": 1124071,
+    "testFiles": 4503,
+    "sourceLines": 1124099,
     "workspaceEdges": 139,
     "moduleEdges": 17034,
     "nonCommandSlashImports": 0,
@@ -870,7 +870,7 @@
       "name": "@wrongstack/webui",
       "dir": "packages/webui",
       "sourceFiles": 759,
-      "testFiles": 491,
+      "testFiles": 493,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -893,7 +893,7 @@
         {
           "path": "packages/webui/tsconfig.test.json",
           "error": null,
-          "testFiles": 491
+          "testFiles": 493
         }
       ]
     },
@@ -25868,7 +25868,19 @@
         ]
       },
       {
+        "file": "packages/webui/tests/components/memory-manager-deleted-tab-status-filter.test.tsx",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
         "file": "packages/webui/tests/components/memory-manager-edit.test.tsx",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
+        "file": "packages/webui/tests/components/memory-manager-mutation-survives-filter-change.test.tsx",
         "projects": [
           "webui-jsdom"
         ]
@@ -28370,6 +28382,11 @@
       "relativeImports": 6
     },
     {
+      "file": "packages/webui/src/components/MemoryManager/useMemoryManagerState.ts",
+      "lines": 720,
+      "relativeImports": 9
+    },
+    {
       "file": "apps/desktop/src/main/main.ts",
       "lines": 734,
       "relativeImports": 20
@@ -28395,6 +28412,11 @@
       "file": "packages/vibeui/src/components/provider-manager.tsx",
       "lines": 733,
       "relativeImports": 6
+    },
+    {
+      "file": "packages/webui/src/components/MemoryManager/useMemoryManagerState.ts",
+      "lines": 720,
+      "relativeImports": 9
     },
     {
       "file": "packages/plugins/src/audit/index.ts",
@@ -28510,11 +28532,6 @@
       "file": "packages/webui/src/components/MailboxPanel.tsx",
       "lines": 692,
       "relativeImports": 2
-    },
-    {
-      "file": "packages/webui/src/components/MemoryManager/useMemoryManagerState.ts",
-      "lines": 692,
-      "relativeImports": 9
     },
     {
       "file": "packages/core/src/core/agent-response.ts",
