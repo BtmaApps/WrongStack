@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-19T21:24:37.815Z",
+  "generatedAt": "2026-10-19T22:11:11.467Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 38,
-    "sourceFiles": 5190,
-    "testFiles": 4523,
-    "sourceLines": 1128815,
+    "sourceFiles": 5191,
+    "testFiles": 4525,
+    "sourceLines": 1129099,
     "workspaceEdges": 139,
-    "moduleEdges": 17073,
+    "moduleEdges": 17075,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -770,8 +770,8 @@
     {
       "name": "@wrongstack/tools",
       "dir": "packages/tools",
-      "sourceFiles": 338,
-      "testFiles": 332,
+      "sourceFiles": 339,
+      "testFiles": 333,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -787,7 +787,7 @@
         {
           "path": "packages/tools/tsconfig.test.json",
           "error": null,
-          "testFiles": 332
+          "testFiles": 333
         }
       ]
     },
@@ -870,7 +870,7 @@
       "name": "@wrongstack/webui",
       "dir": "packages/webui",
       "sourceFiles": 759,
-      "testFiles": 498,
+      "testFiles": 499,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -893,7 +893,7 @@
         {
           "path": "packages/webui/tsconfig.test.json",
           "error": null,
-          "testFiles": 498
+          "testFiles": 499
         }
       ]
     },
@@ -18476,6 +18476,12 @@
         ]
       },
       {
+        "file": "packages/tools/tests/browser-policy-transient.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/tools/tests/browser-policy.test.ts",
         "projects": [
           "root-node"
@@ -25658,6 +25664,12 @@
         ]
       },
       {
+        "file": "packages/webui/tests/components/empty-state-terminal-motif.test.tsx",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
         "file": "packages/webui/tests/components/error-boundary-panel.test.tsx",
         "projects": [
           "webui-jsdom"
@@ -28411,6 +28423,11 @@
       "from": "packages/webui/src/components/SettingsPanel/ProviderSavedProfiles.tsx",
       "specifier": "../../../../providers/dist/provider-definitions.js",
       "syntax": "dynamic-import"
+    },
+    {
+      "from": "packages/webui/src/components/ui/empty-state.tsx",
+      "specifier": "../terminal-motifs.css",
+      "syntax": "import"
     },
     {
       "from": "packages/webui/src/i18n/index.ts",

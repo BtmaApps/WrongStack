@@ -103,7 +103,17 @@ frontend writes and `design_reference` inspect results per run, and holds a
 turn whose UI changed after the last inspect or whose last inspect still has
 FAILs. It acts only when the inspect tool is available to that agent and a
 served URL is known (an earlier inspect, or `.design/gate.json`
-`{"url": …}`); otherwise it stays silent. `{"mode": "off"}` disables it.
+`{"url": …}`), or the run wrote a static `.html` page; otherwise it stays
+silent. `{"mode": "off"}` disables it.
+
+Static pages need no dev server: `design_reference` takes `file` (a
+project-relative `.html`) instead of `url`, serves the project root on an
+ephemeral 127.0.0.1 port for that one call, allows exactly that origin through
+the browser guard while it runs (never written to the browser policy), and
+closes both. The first evaluation pilot showed why: a model that wrote
+`index.html` had nothing to inspect, so the rendered gate never ran, and it
+named a dealt kit in prose without pinning it. The deal text now says that
+naming a kit pins nothing.
 
 Source rule catalogue: every `verify` finding has a stable id and a severity
 (30 ids; FAIL only for definite accessibility defects such as an unlabeled

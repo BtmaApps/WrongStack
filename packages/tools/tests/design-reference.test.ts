@@ -174,6 +174,38 @@ describe('design_reference extract / compare / inspect', () => {
     ).rejects.toThrow(/"surface" is "page"/);
   });
 
+  it('validates a project file before serving it', async () => {
+    const ctx = makeCtx();
+    await fs.writeFile(path.join(root, 'page.html'), '<h1>x</h1>');
+    await fs.writeFile(path.join(root, 'notes.txt'), 'x');
+    const outside = await fs.mkdtemp(path.join(os.tmpdir(), 'ws-design-ref-out-'));
+    await fs.writeFile(path.join(outside, 'other.html'), '<h1>x</h1>');
+    try {
+      await expect(
+        designTool.execute(
+          { action: 'inspect', file: 'page.html', url: 'https://example.com' },
+          ctx,
+          opts,
+        ),
+      ).rejects.toThrow(/url or file, not both/);
+      await expect(
+        designTool.execute({ action: 'inspect', file: 'notes.txt' }, ctx, opts),
+      ).rejects.toThrow(/\.html file inside the project root/);
+      await expect(
+        designTool.execute({ action: 'inspect', file: 'missing.html' }, ctx, opts),
+      ).rejects.toThrow(/does not exist/);
+      await expect(
+        designTool.execute(
+          { action: 'inspect', file: path.join(outside, 'other.html') },
+          ctx,
+          opts,
+        ),
+      ).rejects.toThrow(/inside the project root/);
+    } finally {
+      await fs.rm(outside, { recursive: true, force: true });
+    }
+  });
+
   it('rejects an unknown action', async () => {
     await expect(
       designTool.execute({ action: 'verify' as never }, makeCtx(), opts),

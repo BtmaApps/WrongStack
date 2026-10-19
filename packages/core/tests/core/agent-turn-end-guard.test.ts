@@ -233,6 +233,24 @@ describe('design turn gate', () => {
     expect(noTool.calls).toBe(2);
   });
 
+  it('holds a static page with no URL known and points the inspect at the file', async () => {
+    const provider = new MockProvider([
+      call('w1', 'write', { path: 'site/index.html', content: '<h1>x</h1>' }),
+      text('Page written.'),
+      call('i1', 'design_reference', { action: 'inspect', file: 'site/index.html' }),
+      text('Inspected the page.'),
+    ]);
+    const { agent } = await gated(provider, [write, inspectTool([])]);
+    const result = await agent.run('build the page');
+    expect(result.finalText).toBe('Inspected the page.');
+    expect(provider.calls).toBe(4);
+    // The sent payload is JSON, so the steer's quotes arrive escaped.
+    expect(sent(provider, 2)).toContain(
+      'design_reference {action:\\"inspect\\", file:\\"site/index.html\\"}',
+    );
+    expect(sent(provider, 2)).toContain('no dev server is needed');
+  });
+
   it('can be switched off per project', async () => {
     const provider = new MockProvider([
       call('w1', 'write', { path: 'src/App.tsx' }),

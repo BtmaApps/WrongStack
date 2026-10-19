@@ -8,16 +8,16 @@ import {
   type DesignDna,
   type DesignDnaRaw,
   type DesignInspectRaw,
-  type InspectRuntimeEvidence,
-  type InspectSurface,
-  inspectDesign,
-  renderInspectMarkdown,
   designProjectDir,
   dnaToTokenOverrides,
   ensureDesignDir,
+  type InspectRuntimeEvidence,
+  type InspectSurface,
+  inspectDesign,
   renderDesignDnaMarkdown,
   renderDesignMd,
   renderDnaComparisonMarkdown,
+  renderInspectMarkdown,
   summarizeDesignDna,
 } from '@wrongstack/core/design';
 import { ToolCapabilities } from '@wrongstack/core/security';
@@ -25,6 +25,7 @@ import type { Tool } from '@wrongstack/core/types';
 import { ToolValidationError } from '@wrongstack/core/types';
 import { atomicWrite } from '@wrongstack/core/utils';
 import { managerFor, owner } from './browser/tools.js';
+import { withServedProjectFile } from './design-reference-serve.js';
 
 /**
  * `design_reference` — measure a rendered page instead of describing it:
@@ -65,6 +66,24 @@ function referenceSlug(url: string): string {
       .replace(/^-+|-+$/g, '')
       .slice(0, 64) || 'reference'
   );
+}
+
+/** `site/landing.html` → `site-landing`: the slug for a served project file. */
+function fileSlug(file: string): string {
+  return (
+    file
+      .toLowerCase()
+      .replace(/\.html?$/, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 64) || 'page'
+  );
+}
+
+/** A served project file: its slug and the name reports show instead of the loopback URL. */
+interface PageLabel {
+  slug: string;
+  name: string;
 }
 
 function assertHttpUrl(url: string | undefined): string {
@@ -185,10 +204,13 @@ async function extractReference(
   ctx: Context,
   input: { url?: string | undefined; name?: string | undefined; viewports?: unknown },
   signal: AbortSignal,
+  page?: PageLabel,
 ): Promise<{ slug: string; dna: DesignDna; output: string; path: string }> {
   const url = assertHttpUrl(input.url);
   const viewports = normalizeViewports(input.viewports);
-  const slug = input.name ? assertSlug(input.name.trim(), 'name') : referenceSlug(url);
+  const slug = input.name
+    ? assertSlug(input.name.trim(), 'name')
+    : (page?.slug ?? referenceSlug(url));
   const dir = path.join(referencesDir(ctx.projectRoot), slug);
   const { raws, screenshots } = await measure<DesignDnaRaw>(ctx, url, viewports, dir, signal);
   const dna = summarizeDesignDna(raws);
@@ -255,6 +277,7 @@ async function compareReference(
     viewports?: unknown;
   },
   signal: AbortSignal,
+  page?: PageLabel,
 ): Promise<{ output: string; overall: number; path: string }> {
   const refSlug = input.reference?.trim();
   if (!refSlug) {
@@ -279,7 +302,7 @@ async function compareReference(
     const { raws } = await measure<DesignDnaRaw>(ctx, url, viewports, dir, signal);
     impl = summarizeDesignDna(raws);
     await writeJson(path.join(dir, 'dna.json'), impl);
-    implLabel = url;
+    implLabel = page?.name ?? url;
   }
   const cmp = compareDesignDna(ref, impl);
   const markdown = renderDnaComparisonMarkdown(cmp, refSlug, implLabel);
@@ -297,6 +320,7 @@ async function inspectPage(
   ctx: Context,
   input: { url?: string | undefined; viewports?: unknown; surface?: string | undefined },
   signal: AbortSignal,
+  page?: PageLabel,
 ): Promise<{ output: string; fails: number; warns: number; path: string }> {
   const url = assertHttpUrl(input.url);
   const viewports = normalizeViewports(input.viewports);
@@ -308,7 +332,11 @@ async function inspectPage(
     });
   }
   const surface: InspectSurface = input.surface ?? 'page';
-  const dir = path.join(designProjectDir(ctx.projectRoot), 'inspect', referenceSlug(url));
+  const dir = path.join(
+    designProjectDir(ctx.projectRoot),
+    'inspect',
+    page?.slug ?? referenceSlug(url),
+  );
   const { raws, runtime, screenshots } = await measure<DesignInspectRaw>(
     ctx,
     url,
@@ -343,6 +371,8 @@ export interface DesignReferenceInput {
   action: 'extract' | 'compare' | 'inspect';
   /** extract: the page to measure; compare/inspect: the implementation to measure. */
   url?: string | undefined;
+  /** Instead of url: a project .html file, served on loopback for this call. */
+  file?: string | undefined;
   /** extract: reference name (slug) to save under; defaults from the URL. */
   name?: string | undefined;
   /** Viewport widths, default [1440, 768, 390]. */
@@ -380,7 +410,8 @@ export const designReferenceTool: Tool<DesignReferenceInput, DesignReferenceOutp
   usageHint:
     '`design_reference {action:"extract", url:"https://example.com"}` → build → ' +
     '`design_reference {action:"compare", reference:"example-com", url:"http://localhost:5173/"}`; ' +
-    '`design_reference {action:"inspect", url:"http://localhost:5173/", surface:"app"}` before calling UI work done.',
+    '`design_reference {action:"inspect", url:"http://localhost:5173/", surface:"app"}` before calling UI work done; ' +
+    'a static page needs no server: `design_reference {action:"inspect", file:"index.html"}`.',
   permission: 'confirm',
   // A trust rule should name the site being opened, not the action.
   subjectKey: 'url',
@@ -404,6 +435,12 @@ export const designReferenceTool: Tool<DesignReferenceInput, DesignReferenceOutp
         type: 'string',
         description:
           'Absolute http(s) URL. A localhost dev server needs /browser allow <origin> first.',
+      },
+      file: {
+        type: 'string',
+        description:
+          'Instead of url: a project-relative .html file (e.g. "index.html"). The tool serves the ' +
+          'project on 127.0.0.1 for this call only — no dev server needed for static pages.',
       },
       name: {
         type: 'string',
@@ -431,37 +468,61 @@ export const designReferenceTool: Tool<DesignReferenceInput, DesignReferenceOutp
   async execute(input, ctx, opts): Promise<DesignReferenceOutput> {
     const signal = opts?.signal ?? ctx?.signal ?? new AbortController().signal;
     signal.throwIfAborted();
-    if (input.action === 'extract') {
-      const result = await extractReference(ctx, input, signal);
-      return {
-        action: input.action,
-        path: result.path,
-        reference: result.slug,
-        output: result.output,
-      };
+    if (input.file !== undefined) {
+      if (input.url !== undefined) {
+        throw new ToolValidationError({
+          message: 'design_reference: pass url or file, not both.',
+          field: 'file',
+        });
+      }
+      const file = String(input.file).trim();
+      return withServedProjectFile(ctx.projectRoot, file, (url) =>
+        runAction({ ...input, file: undefined, url }, ctx, signal, {
+          slug: fileSlug(file),
+          name: file,
+        }),
+      );
     }
-    if (input.action === 'compare') {
-      const result = await compareReference(ctx, input, signal);
-      return {
-        action: input.action,
-        path: result.path,
-        score: result.overall,
-        output: result.output,
-      };
-    }
-    if (input.action === 'inspect') {
-      const result = await inspectPage(ctx, input, signal);
-      return {
-        action: input.action,
-        path: result.path,
-        fails: result.fails,
-        warns: result.warns,
-        output: result.output,
-      };
-    }
-    throw new ToolValidationError({
-      message: `design_reference: unknown action "${String(input.action)}". Allowed actions: extract, compare, inspect.`,
-      field: 'action',
-    });
+    return runAction(input, ctx, signal);
   },
 };
+
+async function runAction(
+  input: DesignReferenceInput,
+  ctx: Context,
+  signal: AbortSignal,
+  page?: PageLabel,
+): Promise<DesignReferenceOutput> {
+  if (input.action === 'extract') {
+    const result = await extractReference(ctx, input, signal, page);
+    return {
+      action: input.action,
+      path: result.path,
+      reference: result.slug,
+      output: result.output,
+    };
+  }
+  if (input.action === 'compare') {
+    const result = await compareReference(ctx, input, signal, page);
+    return {
+      action: input.action,
+      path: result.path,
+      score: result.overall,
+      output: result.output,
+    };
+  }
+  if (input.action === 'inspect') {
+    const result = await inspectPage(ctx, input, signal, page);
+    return {
+      action: input.action,
+      path: result.path,
+      fails: result.fails,
+      warns: result.warns,
+      output: result.output,
+    };
+  }
+  throw new ToolValidationError({
+    message: `design_reference: unknown action "${String(input.action)}". Allowed actions: extract, compare, inspect.`,
+    field: 'action',
+  });
+}

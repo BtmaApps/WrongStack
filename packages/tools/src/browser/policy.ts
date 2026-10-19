@@ -11,6 +11,12 @@ import { parsePrivateOriginAllowlist } from './security.js';
  * in-memory copy that never re-read the file kept refusing it.
  */
 const liveOrigins = new Map<string, { origins: string[]; stamp: string }>();
+/**
+ * Origins allowed only while one tool call runs (a loopback server the tool
+ * itself started). Kept apart from the stored set so a policy refresh during
+ * the call cannot drop them and nothing is ever written to the policy file.
+ */
+const transientOrigins = new Map<string, Map<string, number>>();
 function policyPath(root: string): string {
   return join(resolveWstackPaths({ projectRoot: resolve(root) }).projectDir, 'browser-policy.json');
 }
@@ -41,13 +47,14 @@ function readStoredOrigins(path: string): string[] {
   return parsePrivateOriginAllowlist(stored.join(','));
 }
 
-function replaceOrigins(target: string[], stored: readonly string[]): void {
+function replaceOrigins(target: string[], stored: readonly string[], key: string): void {
   target.splice(
     0,
     target.length,
     ...new Set([
       ...parsePrivateOriginAllowlist(process.env['WRONGSTACK_BROWSER_PRIVATE_ORIGINS']),
       ...stored,
+      ...[...(transientOrigins.get(key)?.keys() ?? [])],
     ]),
   );
 }
@@ -63,7 +70,7 @@ export function browserPrivateOrigins(root: string): string[] {
     live = { origins: [], stamp };
     liveOrigins.set(key, live);
   }
-  replaceOrigins(live.origins, stored);
+  replaceOrigins(live.origins, stored, key);
   live.stamp = stamp;
   return live.origins;
 }
@@ -91,8 +98,49 @@ export async function setBrowserPrivateOrigin(
     saved = [...origins];
     config.privateOrigins = saved;
   });
-  replaceOrigins(current, saved);
+  replaceOrigins(current, saved, resolve(root));
   const live = liveOrigins.get(resolve(root));
   if (live) live.stamp = policyStamp(policyPath(root));
   return [...current];
+}
+
+/**
+ * Allow one exact origin for the duration of `fn` — for a loopback server the
+ * calling tool started and stops itself. Never persisted; removed on return.
+ */
+export async function withTransientPrivateOrigin<T>(
+  root: string,
+  origin: string,
+  fn: () => Promise<T>,
+): Promise<T> {
+  const key = resolve(root);
+  const counts = transientOrigins.get(key) ?? new Map<string, number>();
+  transientOrigins.set(key, counts);
+  counts.set(origin, (counts.get(origin) ?? 0) + 1);
+  const live = browserPrivateOrigins(key);
+  const added = !live.includes(origin);
+  if (added) live.push(origin);
+  try {
+    return await fn();
+  } finally {
+    const remaining = (counts.get(origin) ?? 0) - 1;
+    if (remaining > 0) {
+      counts.set(origin, remaining);
+    } else {
+      counts.delete(origin);
+      if (counts.size === 0) transientOrigins.delete(key);
+      // Re-derive the live array so persistently allowed origins (policy file,
+      // env var) and any other in-flight transient origins survive this cleanup.
+      try {
+        replaceOrigins(live, readStoredOrigins(policyPath(key)), key);
+      } catch {
+        // If the policy file became unreadable mid-cleanup, fall back to a
+        // targeted splice of exactly what this call added.
+        if (added) {
+          const index = live.indexOf(origin);
+          if (index >= 0) live.splice(index, 1);
+        }
+      }
+    }
+  }
 }

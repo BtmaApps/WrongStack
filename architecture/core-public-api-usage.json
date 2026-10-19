@@ -194,9 +194,9 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1457,
+      "files": 1458,
       "typeOnly": 1283,
-      "runtimeOrMixed": 431
+      "runtimeOrMixed": 432
     },
     "@wrongstack/core/types/limits": {
       "files": 1,
@@ -20529,6 +20529,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/tools/src/design-actions.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/tools/src/design-reference-serve.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

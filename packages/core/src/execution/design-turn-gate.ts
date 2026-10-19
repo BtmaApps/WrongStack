@@ -11,20 +11,22 @@
  *   - the last inspect still reported FAILs.
  *
  * It only acts when it can act honestly: the inspect tool must be available
- * to this agent, and a served URL must be known — from `.design/gate.json`
- * or from an inspect the model already ran this session. Without a URL it
- * stays silent rather than demanding a check nobody can run. The agent loop
- * caps how often a run can be held, so an unfixable FAIL cannot trap a turn.
+ * to this agent, and there must be something to inspect — a served URL from
+ * `.design/gate.json` or an earlier inspect, or else a static `.html` page
+ * the run wrote, which the inspect tool serves itself (`file`). Without any
+ * target it stays silent rather than demanding a check nobody can run. The
+ * agent loop caps how often a run can be held, so an unfixable FAIL cannot
+ * trap a turn.
  *
  * `.design/gate.json` (local, self-ignored): `{ "mode": "on" | "off", "url": "http://localhost:5173/" }`.
  */
 
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
+import type { ToolCallPipelinePayload } from '../core/agent-types.js';
+import type { Context } from '../core/context.js';
 import type { AgentExtension } from '../extension/extension-points.js';
 import type { Middleware } from '../kernel/pipeline.js';
-import type { Context } from '../core/context.js';
-import type { ToolCallPipelinePayload } from '../core/agent-types.js';
 import { detectFrontendFile } from './design-detect.js';
 import { designProjectDir } from './design-project-store.js';
 
@@ -38,8 +40,16 @@ export interface DesignGateState {
   /** Event counter; a write after the last inspect has a higher number. */
   seq: number;
   lastWriteSeq: number;
-  /** Survives runs: the URL the model inspected stays known for the session. */
-  lastInspect?: { url: string; fails: number; warns: number; seq: number } | undefined;
+  /** Survives runs: the page the model inspected (url or project file) stays known. */
+  lastInspect?:
+    | {
+        url?: string | undefined;
+        file?: string | undefined;
+        fails: number;
+        warns: number;
+        seq: number;
+      }
+    | undefined;
 }
 
 export interface DesignGateConfig {
@@ -80,9 +90,11 @@ function makeDesignGateToolCallMiddleware(): Middleware<ToolCallPipelinePayload>
           if (!state.writes.includes(p)) state.writes.push(p);
         } else if (name === DESIGN_INSPECT_TOOL && input.action === 'inspect') {
           const counts = parseInspectCounts(String(out.result?.content ?? ''));
-          if (!counts || typeof input.url !== 'string') return out;
+          const url = typeof input.url === 'string' ? input.url : undefined;
+          const file = typeof input.file === 'string' ? input.file : undefined;
+          if (!counts || (!url && !file)) return out;
           const state = stateOf(out.ctx);
-          state.lastInspect = { url: input.url, ...counts, seq: ++state.seq };
+          state.lastInspect = { url, file, ...counts, seq: ++state.seq };
         }
       } catch {
         // Recording is best-effort; a failure must never break the tool call.
@@ -117,20 +129,39 @@ function designGateSteer(
   state: DesignGateState | undefined,
   config: DesignGateConfig,
   inspectAvailable: boolean,
+  projectRoot: string,
 ): string | undefined {
   if (config.mode === 'off' || !inspectAvailable || !state || state.writes.length === 0) {
     return undefined;
   }
-  const url = config.url ?? state.lastInspect?.url;
-  if (!url) return undefined;
+  // A served URL wins; else the page inspected before; else a static page this
+  // run wrote, which the inspect tool can serve from the project itself.
+  const writtenPage = state.writes.find((p) => /\.html?$/i.test(p));
+  const pageFile = writtenPage
+    ? path.isAbsolute(writtenPage)
+      ? path.relative(projectRoot, writtenPage).replace(/\\/g, '/')
+      : writtenPage
+    : undefined;
+  const target = config.url
+    ? { key: 'url', value: config.url }
+    : state.lastInspect?.url
+      ? { key: 'url', value: state.lastInspect.url }
+      : (state.lastInspect?.file ?? pageFile)
+        ? { key: 'file', value: (state.lastInspect?.file ?? pageFile) as string }
+        : undefined;
+  if (!target || target.value.startsWith('..')) return undefined;
+  const url = target.value;
   const files = state.writes.slice(0, 6).join(', ') + (state.writes.length > 6 ? ', …' : '');
-  const call = `${DESIGN_INSPECT_TOOL} {action:"inspect", url:"${url}"}`;
+  const call = `${DESIGN_INSPECT_TOOL} {action:"inspect", ${target.key}:"${url}"}`;
   const stale = !state.lastInspect || state.lastInspect.seq < state.lastWriteSeq;
   if (stale) {
     return (
       `[design-gate] You changed UI file(s) (${files}) after the last rendered inspection. ` +
-      `Run \`${call}\` and fix every FAIL before finishing. If that page is not being served ` +
-      'right now, say so in your answer and list the checks that remain unverified.'
+      `Run \`${call}\` and fix every FAIL before finishing.` +
+      (target.key === 'url'
+        ? ' If that page is not being served right now, say so in your answer and list the ' +
+          'checks that remain unverified.'
+        : ' The tool serves the file itself; no dev server is needed.')
     );
   }
   if ((state.lastInspect?.fails ?? 0) > 0) {
@@ -162,7 +193,7 @@ function createDesignTurnGateExtension(deps: {
       const state = ctx.meta[STATE_KEY] as DesignGateState | undefined;
       if (!state || state.writes.length === 0) return undefined;
       const config = await readDesignGateConfig(ctx.projectRoot);
-      return designGateSteer(state, config, deps.hasTool(DESIGN_INSPECT_TOOL));
+      return designGateSteer(state, config, deps.hasTool(DESIGN_INSPECT_TOOL), ctx.projectRoot);
     },
   };
 }

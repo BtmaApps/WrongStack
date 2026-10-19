@@ -194,7 +194,9 @@ export function renderDesignDeal(deal: DesignDeal, picked: readonly DesignKitEnt
   return [
     `Dealt for this session (seed "${deal.seed}"${deal.excluded.length ? `; recently used and left out: ${deal.excluded.join(', ')}` : ''}):`,
     ...picked.map((e) => `- **${e.id}** — ${e.name}: ${e.aesthetic} Best for: ${e.bestFor}`),
-    'Choose the one that fits the product and say why. `design {action:"list"}` shows every kit; ' +
-      'choosing one outside this deal needs `reason`, which is recorded.',
+    'Choose the one that fits the product, say why, and pin it before writing UI: ' +
+      '`design {action:"use", kit:"<id>"}` — naming a kit in prose pins nothing, and until one is ' +
+      'pinned your UI writes are not checked against its tokens. `design {action:"list"}` shows ' +
+      'every kit; choosing one outside this deal needs `reason`, which is recorded.',
   ].join('\n');
 }
