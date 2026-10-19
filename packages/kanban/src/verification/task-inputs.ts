@@ -25,6 +25,18 @@ export function taskInputFingerprint(task: KanbanTask): string {
         task.dependsOn ?? [],
         (task.expectedFileChanges ?? []).map((file) => [file.path, file.operation]),
         (task.successCriteria ?? []).map(checkInputFingerprint),
+        ...(task.goalMetrics?.length
+          ? [
+              task.goalMetrics.map((metric) => [
+                metric.id,
+                metric.name,
+                metric.target ?? null,
+                metric.current ?? null,
+                metric.direction ?? 'at_least',
+                metric.unit ?? null,
+              ]),
+            ]
+          : []),
       ]),
     )
     .digest('hex');

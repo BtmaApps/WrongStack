@@ -475,4 +475,68 @@ describe('verification integrity', () => {
     );
     expect((await getBoard(root, boardId))?.tasks[0]?.assignment?.leaseId).toBe('successor-lease');
   });
+
+  it('invalidates taskInputFingerprint and validateDefinitionOfDone when goalMetrics change after verification (F166)', async () => {
+    const { taskInputFingerprint } = await import('../../src/verification/task-inputs.js');
+    const baseTask: KanbanTask = {
+      id: 't-metric',
+      title: 'Metric task',
+      description: 'Meet p99 target',
+      status: 'review',
+      columnId: 'review',
+      priority: 'medium',
+      createdAt: '2026-10-19T00:00:00.000Z',
+      updatedAt: '2026-10-19T00:00:00.000Z',
+      order: 0,
+      successCriteria: [
+        {
+          id: 'c1',
+          type: 'metric',
+          description: 'p99 <= 100ms',
+          status: 'passed',
+        },
+      ],
+      goalMetrics: [
+        {
+          id: 'm1',
+          name: 'p99',
+          target: 100,
+          current: 80,
+          direction: 'at_most',
+          status: 'met',
+          updatedAt: '2026-10-19T00:00:00.000Z',
+        },
+      ],
+    };
+    const report = buildVerificationReport({
+      taskId: baseTask.id,
+      taskTitle: baseTask.title,
+      inputFingerprint: taskInputFingerprint(baseTask),
+      checks: [
+        {
+          checkId: 'c1',
+          description: 'p99 <= 100ms',
+          type: 'metric',
+          status: 'passed',
+          evidence: {},
+        },
+      ],
+    });
+    const mutatedTask: KanbanTask = {
+      ...baseTask,
+      goalMetrics: [
+        {
+          id: 'm1',
+          name: 'p99',
+          target: 100,
+          current: 250,
+          direction: 'at_most',
+          status: 'pending',
+          updatedAt: '2026-10-19T00:01:00.000Z',
+        },
+      ],
+    };
+    expect(taskInputFingerprint(mutatedTask)).not.toBe(taskInputFingerprint(baseTask));
+    expect(validateDefinitionOfDone(mutatedTask, report).length).toBeGreaterThan(0);
+  });
 });
