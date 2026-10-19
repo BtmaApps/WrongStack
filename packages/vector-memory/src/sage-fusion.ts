@@ -173,6 +173,7 @@ export async function fuseWithVectorMemory(
     vectorIndexBySageId.set(sageId, vectorRanked.length);
     vectorRanked.push({ memory, vectorScore });
   }
+  vectorRanked.sort((a, b) => b.vectorScore - a.vectorScore);
 
   // RRF over both channels. RRF (k + rank) is order-agnostic of score
   // scale — lexical ranks and vector scores live on different scales,

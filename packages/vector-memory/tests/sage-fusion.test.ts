@@ -238,6 +238,56 @@ describe('fuseWithVectorMemory', () => {
     expect(overWeight.find((r) => r.memory.id === 'a')!.finalScore).toBeCloseTo(0, 5);
     expect(overWeight.find((r) => r.memory.id === 'b')!.finalScore).toBeCloseTo(1 / 61, 5);
   });
+
+  it('re-sorts vectorRanked by max vectorScore descending after chunk deduplication (F144)', async () => {
+    const a = fakeSage('a', 'memory a');
+    const b = fakeSage('b', 'memory b');
+    const vectorHits: VectorSearchHit[] = [
+      {
+        entry: {
+          id: 'vb',
+          text: 'b chunk',
+          vector: new Float32Array([1]),
+          createdAt: 1,
+          updatedAt: 1,
+          metadata: { sageId: 'b' },
+        },
+        score: 0.5,
+      },
+      {
+        entry: {
+          id: 'va-low',
+          text: 'a low chunk',
+          vector: new Float32Array([1]),
+          createdAt: 1,
+          updatedAt: 1,
+          metadata: { sageId: 'a' },
+        },
+        score: 0.4,
+      },
+      {
+        entry: {
+          id: 'va-high',
+          text: 'a high chunk',
+          vector: new Float32Array([1]),
+          createdAt: 1,
+          updatedAt: 1,
+          metadata: { sageId: 'a' },
+        },
+        score: 0.99,
+      },
+    ];
+
+    const fused = await fuseWithVectorMemory('q', [a, b], {
+      vectorHits,
+      vectorWeight: 1,
+      rrfK: 60,
+    });
+    const hitA = fused.find((r) => r.memory.id === 'a')!;
+    const hitB = fused.find((r) => r.memory.id === 'b')!;
+    expect(hitA.vectorScore).toBeCloseTo(0.99, 5);
+    expect(hitA.finalScore).toBeGreaterThan(hitB.finalScore);
+  });
 });
 
 describe('asVectorRecallProvider', () => {
