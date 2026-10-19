@@ -47,4 +47,37 @@ describe('filterPatchExcludingPaths — non-git unified diffs', () => {
     expect(filtered).toContain('deleted.py');
     expect(filtered).not.toContain('modified.py');
   });
+
+  it('does not leak hunk lines starting with ---- or ++++ in dropped unified diff sections and passes both paths to shouldDrop (F140)', async () => {
+    const { filterPatchExcludingPaths, filterPatchSections } = await import(
+      '../src/suites/swebench-patch.js'
+    );
+    const diff = [
+      '--- a/tests/test_sql.py',
+      '+++ b/tests/test_sql.py',
+      '@@ -1,3 +1,3 @@',
+      ' def test_comment():',
+      '---- sql comment inside hunk',
+      '+-- updated comment',
+      '+assert True',
+      '--- a/src/app.py',
+      '+++ b/src/app.py',
+      '@@ -1 +1 @@',
+      '-x = 1',
+      '+x = 2',
+      '',
+    ].join('\n');
+
+    const filtered = filterPatchExcludingPaths(diff, new Set(['tests/test_sql.py']));
+    expect(filtered).not.toContain('sql comment');
+    expect(filtered).not.toContain('assert True');
+    expect(filtered).toContain('src/app.py');
+
+    const pairs: Array<[string, string]> = [];
+    filterPatchSections('--- a/old.py\n+++ b/new.py\n@@ -1 +1 @@\n-a\n+b\n', (a, b) => {
+      pairs.push([a, b]);
+      return false;
+    });
+    expect(pairs).toEqual([['old.py', 'new.py']]);
+  });
 });

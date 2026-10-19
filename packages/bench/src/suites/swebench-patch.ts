@@ -144,52 +144,31 @@ export function filterPatchSections(
   // only once the whole section's skip state is known (at the first content
   // line, the next section start, or EOF). This keeps a dropped section from
   // leaking a lone `---`/`+++` header.
-  let pending: string[] = [];
-  let pendingSkipping = false;
-  // Flush a buffered diff -u section. Returns true when a section was finalized
-  // (so the caller can then lock `skipping` from `pendingSkipping` exactly once).
-  const flushPending = (): boolean => {
-    if (pending.length === 0) return false;
-    if (!pendingSkipping) out.push(...pending);
-    pending = [];
-    return true;
-  };
-  for (const line of lines) {
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i] as string;
     const header = /^diff --git a\/(.+?) b\/(.+)$/.exec(line);
     if (header) {
-      flushPending();
       gitFormat = true;
       skipping = shouldDrop(header[1] as string, header[2] as string);
     } else if (!gitFormat) {
       const minus = /^--- (?:a\/)?(.+)$/.exec(line);
-      const plus = /^\+\+\+ (?:b\/)?(.+)$/.exec(line);
-      if (minus) {
-        flushPending();
-        if (minus[1] !== '/dev/null') {
-          pendingSkipping = shouldDrop(stripTimestamp(minus[1] as string), '');
-        } else {
-          pendingSkipping = false;
+      const nextLine = i + 1 < lines.length ? (lines[i + 1] as string) : undefined;
+      const plus = nextLine !== undefined ? /^\+\+\+ (?:b\/)?(.+)$/.exec(nextLine) : null;
+      if (minus && plus) {
+        const rawA = minus[1] as string;
+        const rawB = plus[1] as string;
+        const aPath = rawA === '/dev/null' ? '' : stripTimestamp(rawA);
+        const bPath = rawB === '/dev/null' ? '' : stripTimestamp(rawB);
+        skipping = shouldDrop(aPath, bPath);
+        if (!skipping) {
+          out.push(line, nextLine as string);
         }
-        pending.push(line);
+        i++;
         continue;
-      }
-      if (plus) {
-        if (plus[1] !== '/dev/null') {
-          pendingSkipping = pendingSkipping || shouldDrop(stripTimestamp(plus[1] as string), '');
-        }
-        pending.push(line);
-        continue;
-      }
-      // Non-header content line: finalize the pending section's headers, then
-      // lock skipping for every remaining content line of this section.
-      if (flushPending()) {
-        skipping = pendingSkipping;
-        pendingSkipping = false;
       }
     }
     if (!skipping) out.push(line);
   }
-  flushPending();
   if (out.length === 0) return '';
   return trailingNewline ? `${out.join('\n')}\n` : out.join('\n');
 }
