@@ -223,4 +223,20 @@ describe('renderPrompt', () => {
     const empty = renderPrompt(e, { flavor: '' });
     expect(empty.invalid).toEqual([]);
   });
+
+  it('treats empty string as unsupplied for defaults/required and deduplicates repeated missing placeholders (F149)', () => {
+    const e = entry('empty-and-dup', {
+      content: 'Deploy {{target}} and verify {{target}} using {{flavor}}.',
+      variables: [
+        { name: 'target', required: true },
+        { name: 'flavor', default: 'standard', enum: ['standard', 'fast'] },
+      ],
+    });
+    const rEmpty = renderPrompt(e, { target: '', flavor: '' });
+    expect(rEmpty.text).toBe('Deploy {{target}} and verify {{target}} using standard.');
+    expect(rEmpty.missing).toEqual(['target']);
+
+    const rDup = renderPrompt(e, {});
+    expect(rDup.missing).toEqual(['target']);
+  });
 });

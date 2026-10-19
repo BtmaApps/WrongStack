@@ -275,18 +275,20 @@ export function renderPrompt(
 
   const text = entry.content.replace(/\{\{\s*([\w.-]+)\s*\}\}/g, (whole, rawName: string) => {
     const name = rawName.trim();
-    if (Object.hasOwn(values, name) && values[name] !== undefined) {
+    if (Object.hasOwn(values, name) && values[name] !== undefined && values[name] !== '') {
       return values[name] as string;
     }
     const decl = declared.get(name);
     if (decl?.default !== undefined) return decl.default;
-    if (decl?.required) missing.push(name);
+    if (decl?.required && !missing.includes(name)) missing.push(name);
     return whole; // leave the placeholder untouched
   });
 
   // Surface declared-but-never-referenced required vars too.
   for (const v of entry.variables ?? []) {
-    if (v.required && !(v.name in values) && v.default === undefined && !missing.includes(v.name)) {
+    const supplied =
+      Object.hasOwn(values, v.name) && values[v.name] !== undefined && values[v.name] !== '';
+    if (v.required && !supplied && v.default === undefined && !missing.includes(v.name)) {
       // Only report if the placeholder actually exists in content; otherwise ignore.
       if (new RegExp(`\\{\\{\\s*${escapeRegExp(v.name)}\\s*\\}\\}`).test(entry.content)) {
         missing.push(v.name);
