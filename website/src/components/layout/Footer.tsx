@@ -54,7 +54,7 @@ const columns = [
 export function Footer() {
   return (
     <footer className="border-t border-line bg-ink text-white">
-      <div className="site-container py-14 lg:py-20">
+      <div className="site-container pt-14 pb-[25px] lg:pt-20">
         <div className="grid gap-12 sm:grid-cols-2 lg:grid-cols-[1.45fr_1fr_1fr_1fr]">
           <div>
             <Link href="/" className="inline-flex items-center gap-3">
@@ -175,13 +175,6 @@ export function Footer() {
           </div>
         </section>
         <OxogStudio />
-        <div className="flex flex-col gap-3 pt-8 text-xs leading-6 text-zinc-400 sm:flex-row sm:items-center sm:justify-between">
-          <p>
-            © {new Date().getFullYear()} {studio.name}. WrongStack is open source under the MIT
-            license.
-          </p>
-          <p>Made in Estonia, shipped worldwide.</p>
-        </div>
       </div>
     </footer>
   );

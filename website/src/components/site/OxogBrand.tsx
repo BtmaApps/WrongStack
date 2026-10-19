@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 
-/** Canonical OxogNet signature, shared with the NineDeploy studio footer. */
+/** Canonical Oxog signature, with the Mammoth studio's repeating stroke animation. */
 export function OxogMark({
   animated = false,
   className,
@@ -14,20 +14,25 @@ export function OxogMark({
 
   useEffect(() => {
     if (!animated) return;
-    if (!ref.current || !('IntersectionObserver' in window)) {
-      setSeen(true);
-      return;
-    }
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (!entry?.isIntersecting) return;
-        setSeen(true);
-        observer.disconnect();
-      },
-      { threshold: 0.2 },
-    );
-    observer.observe(ref.current);
-    return () => observer.disconnect();
+    let inView = !('IntersectionObserver' in window);
+    const sync = () => setSeen(inView && !document.hidden);
+    const observer =
+      'IntersectionObserver' in window
+        ? new IntersectionObserver(
+            ([entry]) => {
+              inView = entry?.isIntersecting ?? false;
+              sync();
+            },
+            { threshold: 0.2 },
+          )
+        : null;
+    if (ref.current) observer?.observe(ref.current);
+    document.addEventListener('visibilitychange', sync);
+    sync();
+    return () => {
+      observer?.disconnect();
+      document.removeEventListener('visibilitychange', sync);
+    };
   }, [animated]);
 
   return (
