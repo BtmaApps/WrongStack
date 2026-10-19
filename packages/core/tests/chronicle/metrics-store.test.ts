@@ -532,4 +532,42 @@ describe.skipIf(!isChronicleMetricsAvailable())('ChronicleMetricsStore', { retry
       store.close();
     }
   });
+
+  it('sums family counts and failuresByFamily across multi-day defaultSummary windows (F146)', async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), 'chronicle-metrics-multiday-'));
+    dirs.push(dir);
+    const journal = new ChronicleJournal({ filePath: path.join(dir, '2026-07-24.events.jsonl') });
+    await journal.append(
+      input({
+        eventType: 'tool.executed',
+        occurredAt: '2026-07-24T10:00:00.000Z',
+        outcome: 'success',
+      }),
+    );
+    await journal.append(
+      input({
+        eventType: 'tool.failed',
+        occurredAt: '2026-07-25T10:00:00.000Z',
+        outcome: 'failure',
+      }),
+    );
+    await journal.append(
+      input({
+        eventType: 'tool.executed',
+        occurredAt: '2026-07-26T10:00:00.000Z',
+        outcome: 'success',
+      }),
+    );
+    await journal.flush();
+
+    const store = ChronicleMetricsStore.open(dir);
+    try {
+      await store.refresh();
+      const summary = store.defaultSummary({ from: '2026-07-24', to: '2026-07-26' });
+      expect(summary.families.tool).toBe(3);
+      expect(summary.failuresByFamily.tool).toBe(1);
+    } finally {
+      store.close();
+    }
+  });
 });

@@ -22,13 +22,13 @@ import {
   clampLimit,
   EMPTY_FAMILIES,
   ensureMetricsSchema,
-  pruneMetricsRowDetail,
   isChronicleMetricsAvailable,
   loadDatabaseSync,
   normalizePathKey,
+  pruneMetricsRowDetail,
 } from './metrics-schema.js';
-import { ensureIncrementalVacuum } from './sqlite-journal-schema.js';
 import type { ChronicleSignalFamily, ChronicleSummary } from './query.js';
+import { ensureIncrementalVacuum } from './sqlite-journal-schema.js';
 
 export type {
   ChronicleFileLineageRow,
@@ -444,8 +444,8 @@ export class ChronicleMetricsStore {
     const failuresByFamily = { ...EMPTY_FAMILIES };
     for (const row of familyRows) {
       const family = row.family as ChronicleSignalFamily;
-      families[family] = Number(row.count);
-      failuresByFamily[family] = Number(row.failure_count);
+      families[family] = (families[family] ?? 0) + Number(row.count);
+      failuresByFamily[family] = (failuresByFamily[family] ?? 0) + Number(row.failure_count);
     }
 
     const agentRange = dayFilter('day');
