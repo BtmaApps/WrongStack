@@ -224,16 +224,20 @@ function extractExports(source: string): Set<string> {
     exports.add(match[1]!);
   }
 
-  // export { a, b as c }
-  const namedRegex = /export\s*\{([^}]*)\}/g;
+  // export { a, b as c } and export type { a, b as c }
+  const namedRegex = /export\s*(?:type\s+)?\{([^}]*)\}/g;
   for (const match of source.matchAll(namedRegex)) {
     const clauses = match[1]!
       .split(',')
       .map((s) => s.trim())
       .filter(Boolean);
     for (const clause of clauses) {
-      const parts = clause.split(/\s+as\s+/);
-      const exportedName = parts.length > 1 ? parts[parts.length - 1]!.trim() : parts[0]!.trim();
+      const normalized = clause.replace(/^type\s+/, '').trim();
+      const parts = normalized.split(/\s+as\s+/);
+      const exportedName =
+        parts.length > 1
+          ? parts[parts.length - 1]!.trim().replace(/^type\s+/, '')
+          : parts[0]!.trim();
       if (exportedName) exports.add(exportedName);
     }
   }

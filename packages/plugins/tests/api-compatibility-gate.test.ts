@@ -369,6 +369,27 @@ describe('api-compatibility-gate plugin', () => {
     });
     expect(res2?.additionalContext).toContain('keepMe');
   });
+
+  it('detects removed export type { ... } and export { type ... } specifiers', async () => {
+    mockGitVersion(
+      'type Foo = string;\ntype Bar = number;\ntype Baz = boolean;\nexport type { Foo, Bar };\nexport { type Baz };\n',
+    );
+    vi.mocked(readFile).mockResolvedValue(
+      'type Foo = string;\ntype Bar = number;\ntype Baz = boolean;\nexport type { Bar };\n',
+    );
+
+    const api = makeApi();
+    plugin.setup(api as never);
+    const hook = getHook(api);
+    const result = await hook({
+      toolName: 'write',
+      toolInput: { path: 'src/index.ts' },
+      toolResult: { content: '', isError: false },
+    });
+    expect(result?.additionalContext).toContain('Foo');
+    expect(result?.additionalContext).toContain('Baz');
+    expect(result?.additionalContext).not.toContain('type Baz');
+  });
 });
 
 function normalizePath(p: string): string {
