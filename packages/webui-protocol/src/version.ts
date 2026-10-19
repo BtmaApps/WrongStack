@@ -55,11 +55,22 @@ export function protocolAdvertisement(): {
 export function negotiateProtocol(peer: ProtocolAdvertisement): ProtocolNegotiation {
   const peerVersion = peer.protocolVersion;
   const legacyPeer = peerVersion === undefined;
+  const compatible =
+    legacyPeer ||
+    (typeof peerVersion === 'number' &&
+      Number.isInteger(peerVersion) &&
+      peerVersion >= SURFACE_PROTOCOL_MIN_VERSION);
+  if (!compatible) {
+    return {
+      compatible: false,
+      legacyPeer: false,
+      version: SURFACE_PROTOCOL_VERSION,
+      capabilities: [],
+    };
+  }
   const version = legacyPeer
     ? SURFACE_PROTOCOL_VERSION
     : Math.min(peerVersion, SURFACE_PROTOCOL_VERSION);
-  const compatible =
-    legacyPeer || (Number.isInteger(peerVersion) && peerVersion >= SURFACE_PROTOCOL_MIN_VERSION);
   const advertised = new Set(peer.protocolCapabilities ?? []);
   return {
     compatible,

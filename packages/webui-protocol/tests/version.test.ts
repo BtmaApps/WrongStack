@@ -65,15 +65,42 @@ describe('negotiateProtocol', () => {
     expect(result.version).toBe(SURFACE_PROTOCOL_VERSION);
   });
 
-  it('rejects versions below the minimum', () => {
-    const result = negotiateProtocol({ protocolVersion: SURFACE_PROTOCOL_MIN_VERSION - 1 });
-    expect(result.compatible).toBe(false);
-    expect(result.legacyPeer).toBe(false);
+  it('rejects versions below the minimum and clears capabilities (F139)', () => {
+    const result = negotiateProtocol({
+      protocolVersion: SURFACE_PROTOCOL_MIN_VERSION - 1,
+      protocolCapabilities: ['chronicle.query'],
+    });
+    expect(result).toEqual({
+      compatible: false,
+      legacyPeer: false,
+      version: SURFACE_PROTOCOL_VERSION,
+      capabilities: [],
+    });
   });
 
-  it('rejects non-integer versions', () => {
-    expect(negotiateProtocol({ protocolVersion: 1.5 }).compatible).toBe(false);
-    expect(negotiateProtocol({ protocolVersion: Number.NaN }).compatible).toBe(false);
+  it('rejects non-integer versions with clean version and empty capabilities (F139)', () => {
+    expect(
+      negotiateProtocol({
+        protocolVersion: 1.5,
+        protocolCapabilities: ['chronicle.query'],
+      }),
+    ).toEqual({
+      compatible: false,
+      legacyPeer: false,
+      version: SURFACE_PROTOCOL_VERSION,
+      capabilities: [],
+    });
+    expect(
+      negotiateProtocol({
+        protocolVersion: Number.NaN,
+        protocolCapabilities: ['chronicle.query'],
+      }),
+    ).toEqual({
+      compatible: false,
+      legacyPeer: false,
+      version: SURFACE_PROTOCOL_VERSION,
+      capabilities: [],
+    });
   });
 
   it('keeps only known capabilities from the peer advertisement', () => {
