@@ -371,4 +371,32 @@ describe('schema-evolution-guard plugin', () => {
     const api = makeApi();
     expect(() => plugin.teardown!(api as never)).not.toThrow();
   });
+
+  it('parses quoted and hyphenated OpenAPI required block list items (F151)', () => {
+    const api = makeApi();
+    plugin.setup(api as never);
+    const hook = getHook(api);
+    const result = hook({
+      toolName: 'write',
+      toolInput: {
+        path: 'openapi.yaml',
+        content: [
+          'openapi: 3.1.0',
+          'components:',
+          '  schemas:',
+          '    User:',
+          '      type: object',
+          '      required:',
+          '        - "email"',
+          '        - tenant_id',
+          '        - user-id',
+        ].join('\n'),
+      },
+      toolResult: { content: '', isError: false },
+    });
+    const ctx = result?.additionalContext ?? '';
+    expect(ctx).toContain('line 7: email');
+    expect(ctx).toContain('line 8: tenant_id');
+    expect(ctx).toContain('line 9: user-id');
+  });
 });

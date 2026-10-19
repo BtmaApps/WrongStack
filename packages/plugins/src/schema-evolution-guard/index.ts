@@ -242,11 +242,10 @@ function findIssues(content: string, kind: FileKind, maxFindings: number): strin
         }
 
         if (inOpenApiRequiredList) {
-          const listMatch = line.match(/^\s*-\s*(\w+)/);
-          if (listMatch) {
-            findings.push(
-              `required field added to OpenAPI schema at line ${lineNumber}: ${listMatch[1]}`,
-            );
+          const listMatch = line.match(/^\s*-\s*(?:"([^"]+)"|'([^']+)'|([^\s#]+))/);
+          const item = listMatch?.[1] ?? listMatch?.[2] ?? listMatch?.[3];
+          if (item) {
+            findings.push(`required field added to OpenAPI schema at line ${lineNumber}: ${item}`);
             continue;
           }
           if (line.trim() !== '' && !/^\s*#/.test(line)) {
