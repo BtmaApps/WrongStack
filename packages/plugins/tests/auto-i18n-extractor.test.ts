@@ -251,4 +251,17 @@ const d = "./image.png";`);
     expect(health.ok).toBe(true);
     expect(health.counters['stringsFound']).toBe(1);
   });
+
+  it('ignores template literals inside excluded JSX attributes (F152)', async () => {
+    mockFile(
+      'export const Card = () => <div className={`flex items`} data-testid={`User Card`} />;',
+    );
+    const api = makeApi();
+    plugin.setup(api as never);
+    const extract = getTool(api, 'i18n_extract') as (args: {
+      path: string;
+    }) => Promise<{ stringsFound: number }>;
+    const res = await extract({ path: 'src/Card.tsx' });
+    expect(res.stringsFound).toBe(0);
+  });
 });

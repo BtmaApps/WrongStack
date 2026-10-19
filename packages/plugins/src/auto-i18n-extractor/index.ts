@@ -179,9 +179,9 @@ function looksLikeUserText(value: string, minLength: number): boolean {
 function isExcludedContext(line: string, quoteIndex: number, excludeAttributes: string[]): boolean {
   const before = line.slice(0, quoteIndex);
   for (const attr of excludeAttributes) {
-    // Match attr=, attr={, attr={" or attr={' immediately before the string.
+    // Match attr=, attr={, attr={", attr={' or attr={` immediately before the string.
     const re = new RegExp(
-      `\\b${attr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*=\\s*(?:\\{\\s*)?["']?$`,
+      `\\b${attr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*=\\s*(?:\\{\\s*)?["'\`]?$`,
     );
     if (re.test(before)) return true;
   }
