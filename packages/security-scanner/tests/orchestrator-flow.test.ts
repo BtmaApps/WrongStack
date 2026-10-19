@@ -153,6 +153,28 @@ describe('SecurityScannerOrchestrator.run — full flow', () => {
     expect(update).not.toHaveBeenCalled();
   });
 
+  it('writes valid JSON or HTML to disk when reportOptions.format is json or html while keeping synthesizedReport (F161)', async () => {
+    const complete = vi
+      .fn<Provider['complete']>()
+      .mockResolvedValueOnce(textResponse(SKILL_JSON))
+      .mockResolvedValueOnce(textResponse(FINDINGS_JSON))
+      .mockResolvedValueOnce(textResponse('# Synthesized Markdown'));
+    const orch = new SecurityScannerOrchestrator();
+    stubGitignore(orch);
+
+    const res = await orch.run(fakeProvider(complete), {
+      projectRoot,
+      reportOptions: { outputDir, format: 'json' },
+      skipGitignore: true,
+    });
+    expect(res.reportPath.endsWith('.json')).toBe(true);
+    expect(res.synthesizedReport).toBe('# Synthesized Markdown');
+    const diskJson = JSON.parse(await fs.readFile(res.reportPath, 'utf-8')) as {
+      summary?: { total?: number };
+    };
+    expect(diskJson.summary?.total).toBe(4);
+  });
+
   it('accepts a Context-shaped argument carrying provider + model', async () => {
     const complete = vi.fn<Provider['complete']>().mockResolvedValue(textResponse(`${SKILL_JSON}`));
     const orch = new SecurityScannerOrchestrator();

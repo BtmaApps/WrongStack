@@ -1,4 +1,4 @@
-import { join } from 'node:path';
+import { isAbsolute, join } from 'node:path';
 import type { Context } from '@wrongstack/core/agent';
 import type { Provider, Request } from '@wrongstack/core/types';
 import { ConfigError } from '@wrongstack/core/types';
@@ -8,7 +8,7 @@ import { BatchScanner } from './batch-scanner.js';
 import { defaultTechStackDetector } from './detector.js';
 import { defaultGitignoreUpdater, GitignoreUpdater } from './gitignore-updater.js';
 import { retryProviderComplete } from './llm-client.js';
-import type { ReportOptions } from './report-generator.js';
+import { ReportGenerator, type ReportOptions, resolveReportFormat } from './report-generator.js';
 import { ReportWriter } from './report-writer.js';
 import { getTargetFilesForStack } from './scan-targets.js';
 import type { ScanResult } from './scanner.js';
@@ -182,11 +182,18 @@ export class SecurityScannerOrchestrator {
         scanResult,
         abortController,
       );
-      const reportPath = await this.reportWriter.writeReport(
-        synthesizedReport,
-        projectRoot,
-        reportOptions,
-      );
+      const reportFormat = resolveReportFormat(reportOptions?.format);
+      const configuredOutputDir = reportOptions?.outputDir || 'security-reports';
+      const resolvedOutputDir = isAbsolute(configuredOutputDir)
+        ? configuredOutputDir
+        : join(projectRoot, configuredOutputDir);
+      const reportPath =
+        reportFormat === 'json' || reportFormat === 'html'
+          ? await new ReportGenerator({
+              ...reportOptions,
+              outputDir: resolvedOutputDir,
+            }).generate(scanResult)
+          : await this.reportWriter.writeReport(synthesizedReport, projectRoot, reportOptions);
 
       let gitignoreResult: GitignoreUpdateResult | undefined;
       if (!skipGitignore) {
