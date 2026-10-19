@@ -16,6 +16,7 @@ import {
   dnaToTokenOverrides,
   ensureDesignDir,
   renderDesignDnaMarkdown,
+  renderDesignMd,
   renderDnaComparisonMarkdown,
   summarizeDesignDna,
 } from '@wrongstack/core/design';
@@ -196,10 +197,27 @@ async function extractReference(
   const markdown = renderDesignDnaMarkdown(dna);
   await atomicWrite(path.join(dir, 'dna.md'), markdown);
   const overrides = dnaToTokenOverrides(dna);
+  // The measured system in the interchange format, for tools that read DESIGN.md.
+  const light: Record<string, string> = {};
+  const dark: Record<string, string> = {};
+  for (const [key, value] of Object.entries(overrides)) {
+    if (key.startsWith('light.')) light[key.slice(6)] = value;
+    else if (key.startsWith('dark.')) dark[key.slice(5)] = value;
+    else light[key] = dark[key] = value;
+  }
+  await atomicWrite(
+    path.join(dir, 'DESIGN.md'),
+    renderDesignMd({
+      name: dna.source.title || slug,
+      description: `Measured from ${dna.source.url} on ${dna.source.capturedAt.slice(0, 10)}; reference only — not a licence to copy the brand.`,
+      tokens: dna.theme === 'dark' ? { light: dark, dark } : { light, dark: { ...light, ...dark } },
+      overview: `Measured reference. Signals: ${dna.signals.join(', ') || 'none'}.`,
+    }),
+  );
   const output = [
     markdown.trimEnd(),
     '',
-    `Saved: ${rel(ctx.projectRoot, dir)}/{dna.md,dna.json,raw.json} · screenshots ${screenshots
+    `Saved: ${rel(ctx.projectRoot, dir)}/{dna.md,dna.json,raw.json,DESIGN.md} · screenshots ${screenshots
       .map((s) => rel(ctx.projectRoot, s.file))
       .join(
         ', ',

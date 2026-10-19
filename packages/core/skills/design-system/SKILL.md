@@ -58,6 +58,18 @@ Materialize after final tuning, inspect its actual token exports, and import
 the output through the real app entry/theme provider. A force overwrite requires
 checking the owned target and preserving existing project customization.
 
+### DESIGN.md (interchange)
+
+`DESIGN.md` (google design.md format, alpha) carries the system between tools:
+YAML tokens (colors with `dark-<role>` for the dark theme, typography, rounded,
+spacing, components) plus prose sections. `design {action:"document"}` writes
+it from the pinned kit with overrides, or from captured tokens, and lints it.
+`design {action:"capture"}` reads a project's `DESIGN.md` first — before
+inferred CSS/TS/Dart — so verify works for a project that never pinned a kit;
+a file with lint errors (broken references, duplicate keys) is refused with the
+reason. Rewrite the generated prose with the product's real direction; the
+tokens stay normative.
+
 ## Workflow
 
 1. Establish the existing source or selected kit and explain its fit briefly.

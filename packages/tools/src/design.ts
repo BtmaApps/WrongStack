@@ -9,6 +9,8 @@ import {
   kitContrastIssues,
   loadActiveKit,
   materializeTokens,
+  parseDesignMd,
+  renderDesignMd,
   recordKitChoice,
   recordOverrides,
   resolveSemanticTune,
@@ -67,6 +69,7 @@ export interface DesignInput {
     | 'materialize'
     | 'verify'
     | 'capture'
+    | 'document'
     | undefined;
   kit?: string | undefined;
   stack?: string | undefined;
@@ -165,7 +168,7 @@ export const designTool: Tool<DesignInput, DesignOutput> = {
     'UI code to commit to one coherent, modern, responsive, dark/light, accessible design. Actions: ' +
     '"list" (menu), "use" (load+pin a kit for a stack), "foundations" (baseline), "set" (override kit ' +
     'colors/tokens), "materialize" (write the tokens to a real theme file — CSS @theme/OKLCH or native), ' +
-    '"verify" (scan UI files for off-palette colors).',
+    '"verify" (scan UI files for off-palette colors), "document" (export the system as DESIGN.md).',
   usageHint:
     'Flow: `design {action:"use", kit:"minimal-clarity", stack:"web"}` → optionally ' +
     '`design {action:"set", set:{primary:"oklch(62% 0.2 25)"}}` → `design {action:"materialize"}` ' +
@@ -182,13 +185,24 @@ export const designTool: Tool<DesignInput, DesignOutput> = {
     properties: {
       action: {
         type: 'string',
-        enum: ['list', 'use', 'foundations', 'set', 'tune', 'materialize', 'verify', 'capture'],
+        enum: [
+          'list',
+          'use',
+          'foundations',
+          'set',
+          'tune',
+          'materialize',
+          'verify',
+          'capture',
+          'document',
+        ],
         description:
           'list = menu; use = load+pin a kit; foundations = baseline; set = override colors/tokens; ' +
           'tune = high-level knobs (radius/density/font/motion); materialize = write tokens to a theme ' +
           'file; verify = scan UI for token drift (pinned kit, or the project\u2019s captured tokens); ' +
-          'capture = snapshot the project\u2019s existing token source so verify works without a kit. ' +
-          'Default: list.',
+          'capture = snapshot the project\u2019s existing token source (DESIGN.md, theme CSS/TS/Dart) so ' +
+          'verify works without a kit; document = write the active kit or captured tokens as a ' +
+          'DESIGN.md (google design.md format) for other tools. Default: list.',
       },
       kit: {
         type: 'string',
@@ -253,6 +267,7 @@ export const designTool: Tool<DesignInput, DesignOutput> = {
       'materialize',
       'verify',
       'capture',
+      'document',
     ]);
     if (input.action !== undefined && !VALID_ACTIONS.has(input.action)) {
       throw new ToolValidationError({
@@ -460,6 +475,55 @@ export const designTool: Tool<DesignInput, DesignOutput> = {
           `Wrote ${result.format} to ${result.path}. Import these tokens in your UI so the kit ` +
           `palette is the source of truth. ${exists ? '(overwrote existing file)' : ''}` +
           contrastWarn,
+      };
+    }
+
+    if (action === 'document') {
+      const source = await resolveVerifyTokens(ctx.projectRoot);
+      if (!source) {
+        throw new Error(
+          'design: nothing to document (no active kit, no captured tokens). Pin a kit with ' +
+            '`design {action:"use", kit:"<id>"}` or capture the project\u2019s tokens with ' +
+            '`design {action:"capture"}`.',
+        );
+      }
+      const manifest = source.kit ? await loader.find(source.kit) : undefined;
+      const markdown = renderDesignMd({
+        name: manifest?.name ?? path.basename(path.resolve(ctx.projectRoot)),
+        description: manifest
+          ? `Design Studio kit ${manifest.id} with project overrides.`
+          : `Captured from ${source.files?.join(', ') ?? 'the project'}.`,
+        tokens: source.tokens,
+        overview: manifest?.aesthetic,
+      });
+      const outRel = input.out ?? 'DESIGN.md';
+      await assertProjectRelative([outRel], ctx.projectRoot, 'document path');
+      const abs = path.resolve(ctx.projectRoot, outRel);
+      const exists = await fs
+        .access(abs)
+        .then(() => true)
+        .catch(() => false);
+      if (exists && !input.force) {
+        throw new Error(
+          `design: ${outRel} already exists — nothing was written. Re-run with force:true to overwrite.`,
+        );
+      }
+      await fs.mkdir(path.dirname(abs), { recursive: true });
+      await atomicWrite(abs, markdown);
+      const issues = parseDesignMd(markdown).issues.filter((i) => i.severity !== 'info');
+      return {
+        action,
+        kit: source.kit,
+        source: source.source,
+        path: outRel,
+        output:
+          `Wrote ${outRel} (${source.source === 'kit' ? `kit ${source.kit}` : 'captured tokens'}). ` +
+          'The front matter is normative (colors incl. dark-<role>, typography, rounded, spacing, ' +
+          'components); edit the prose sections with the product\u2019s real direction. ' +
+          '`design {action:"capture"}` reads it back as the token source.' +
+          (issues.length
+            ? `\nLint: ${issues.map((i) => `[${i.rule}] ${i.message}`).join('; ')}`
+            : '\nLint: clean.'),
       };
     }
 

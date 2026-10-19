@@ -391,4 +391,41 @@ describe('designTool', () => {
       await fs.rm(bare, { recursive: true, force: true });
     }
   });
+
+  it('documents the pinned kit as DESIGN.md, which a kit-less project can capture and verify against', async () => {
+    const src = await fs.mkdtemp(path.join(os.tmpdir(), 'ws-design-doc-'));
+    const other = await fs.mkdtemp(path.join(os.tmpdir(), 'ws-design-doc2-'));
+    try {
+      const ctx = { cwd: src, tools: [], projectRoot: src, meta: {} } as any;
+      await designTool.execute({ action: 'use', kit: 'minimal-clarity', stack: 'web' }, ctx, opts);
+      const doc = await designTool.execute({ action: 'document' }, ctx, opts);
+      expect(doc.path).toBe('DESIGN.md');
+      expect(doc.output).toContain('Lint: clean.');
+      const md = await fs.readFile(path.join(src, 'DESIGN.md'), 'utf8');
+      expect(md).toMatch(/^---\nversion: alpha\nname: /);
+      await expect(designTool.execute({ action: 'document' }, ctx, opts)).rejects.toThrow(
+        /already exists/,
+      );
+      await expect(
+        designTool.execute({ action: 'document', out: '../escape.md' }, ctx, opts),
+      ).rejects.toThrow(/escape the project root/);
+
+      // A different project with no kit adopts the file as its token source.
+      await fs.writeFile(path.join(other, 'DESIGN.md'), md);
+      const octx = { cwd: other, tools: [], projectRoot: other, meta: {} } as any;
+      const cap = await designTool.execute({ action: 'capture' }, octx, opts);
+      expect(cap.output).toContain('from DESIGN.md');
+      await fs.mkdir(path.join(other, 'src'));
+      await fs.writeFile(
+        path.join(other, 'src', 'App.tsx'),
+        'export const A = () => <div className="bg-blue-500" />;\n',
+      );
+      const verify = await designTool.execute({ action: 'verify' }, octx, opts);
+      expect(verify.source).toBe('captured');
+      expect(verify.output).toContain('[color.generic-utility]');
+    } finally {
+      await fs.rm(src, { recursive: true, force: true });
+      await fs.rm(other, { recursive: true, force: true });
+    }
+  });
 });

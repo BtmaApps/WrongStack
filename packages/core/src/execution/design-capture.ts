@@ -19,6 +19,7 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import type { DesignKitTokens } from '../types/design-kit.js';
 import { colorToHex } from './design-color.js';
+import { designMdToTokens, parseDesignMd } from './design-md.js';
 
 export interface CaptureResult {
   /** Inferred stack from what was actually found. */
@@ -332,13 +333,32 @@ export async function captureProjectTokens(
         )
       ).filter((x): x is { rel: string; text: string } => x !== null)
     : [
+        // A DESIGN.md is the project's declared system — it wins over inference.
+        ...(await firstExisting(projectRoot, ['DESIGN.md', 'docs/DESIGN.md'])),
         ...(await firstExisting(projectRoot, CSS_CANDIDATES)),
         ...(await firstExisting(projectRoot, TS_CANDIDATES)),
         ...(await firstExisting(projectRoot, DART_CANDIDATES)),
       ];
 
   for (const { rel, text } of targets) {
-    if (/\.css$/i.test(rel)) {
+    if (/(^|[\\/])DESIGN\.md$/i.test(rel)) {
+      const parsed = parseDesignMd(text);
+      const errors = parsed.issues.filter((i) => i.severity === 'error');
+      if (!parsed.doc || errors.length > 0) {
+        skipped.push(rel);
+        notes.push(
+          `${rel}: not used — ${errors.map((e) => `[${e.rule}] ${e.message}`).join('; ')}`,
+        );
+        continue;
+      }
+      const fromMd = designMdToTokens(parsed.doc);
+      Object.assign(light, fromMd.light);
+      Object.assign(dark, fromMd.dark);
+      for (const w of parsed.issues.filter((i) => i.severity === 'warning')) {
+        notes.push(`${rel}: [${w.rule}] ${w.message}`);
+      }
+      used.push(rel);
+    } else if (/\.css$/i.test(rel)) {
       const parsed = parseCssTokens(text);
       if (Object.keys(parsed.light).length === 0 && Object.keys(parsed.dark).length === 0) {
         skipped.push(rel);
@@ -382,7 +402,7 @@ export async function captureProjectTokens(
       notes.push(...parsed.notes);
       used.push(rel);
     } else {
-      notes.push(`${rel}: unsupported capture format (expected .css/.ts/.dart)`);
+      notes.push(`${rel}: unsupported capture format (expected DESIGN.md/.css/.ts/.dart)`);
     }
   }
 

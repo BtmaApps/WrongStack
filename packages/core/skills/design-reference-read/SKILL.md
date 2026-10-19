@@ -51,7 +51,7 @@ design_reference {action:"extract", url:"https://example.com", viewports:[1440, 
   policy as browser_open, scrolls the page, samples the visible color area,
   measures computed type/spacing/radius/shadow/motion, finds the section
   rhythm, takes a first-screen screenshot per width, and writes
-  `.design/references/<slug>/{dna.md, dna.json, raw.json, <width>.png}`
+  `.design/references/<slug>/{dna.md, dna.json, raw.json, DESIGN.md, <width>.png}`
   (`.design/` is self-ignored by git).
 - Add a third width (`768`) when tablet behavior matters. Measure each page
   type separately (home, pricing, docs, app screen); one URL is one page.

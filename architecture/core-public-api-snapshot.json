@@ -735,6 +735,7 @@
         "export * from '../execution/design-inspect.js';",
         "export * from '../execution/design-kit-loader.js';",
         "export * from '../execution/design-materialize.js';",
+        "export * from '../execution/design-md.js';",
         "export * from '../execution/design-project-store.js';",
         "export * from '../execution/design-tune.js';",
         "export * from '../execution/design-turn-gate.js';",
@@ -1636,14 +1637,14 @@
       "classification": "product feature",
       "intendedOwner": "feature/plugin owner behind a focused public facade",
       "sourceFiles": 1,
-      "sourceLines": 19
+      "sourceLines": 20
     },
     {
       "directory": "execution",
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime pilot candidate after R2/R3",
-      "sourceFiles": 103,
-      "sourceLines": 25351
+      "sourceFiles": 104,
+      "sourceLines": 25741
     },
     {
       "directory": "extension",

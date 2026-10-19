@@ -115,10 +115,18 @@ were rejected. An A/B run against the previous engine lost none of its 2055
 findings and kept the palette score identical. Exceptions are waived in the
 file with `design-ignore: <id>` (`-next-line`, `-file`; `*` for all).
 
+DESIGN.md interchange (google-labs-code/design.md, alpha, checked 2026-10-19):
+`design document` writes the pinned kit with its overrides, or the captured
+tokens, as a spec-ordered DESIGN.md (dark values as `dark-<role>` colors) and
+lints it; `design capture` reads a project's DESIGN.md before inferring from
+CSS/TS/Dart and refuses one with lint errors (broken references, duplicate
+keys or sections); `design_reference extract` writes the measured reference as
+DESIGN.md beside its DNA record. A round trip keeps both themes.
+
 Next, in order of value:
 
-1. `DESIGN.md` / `PRODUCT.md` interchange (Stitch-compatible) with lint and diff,
-   so adherence works for projects without a kit.
+1. `PRODUCT.md` (audience, job, voice) and a DESIGN.md `diff` that flags token
+   regressions between two versions.
 2. Dealt direction: a seeded draw of three kits that excludes recent choices;
    a pick outside the deal needs a recorded reason.
 3. Evaluation harness: fixed briefs, with and without the design layer, two or
