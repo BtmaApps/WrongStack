@@ -252,4 +252,15 @@ describe('renderMarkdownTables', () => {
     const out = renderMarkdownTables(input, 80);
     expect(out).toContain('A|B|C');
   });
+
+  it('does not split cells on unescaped pipes inside balanced inline backtick code spans', () => {
+    const input = [
+      '| Option | Type | Default |',
+      '| --- | --- | --- |',
+      '| mode | `"fast" | "safe"` | `"safe"` |',
+    ].join('\n');
+    const out = renderMarkdownTables(input, 80);
+    expect(out).toContain('"fast" | "safe"');
+    expect(out).not.toContain('`"fast"');
+  });
 });

@@ -66,10 +66,12 @@ export function detectTable(lines: string[], start: number): number {
 
 function parseCells(line: string): string[] {
   // Strip the outer pipes, then split on remaining pipes. Pipes inside a
-  // cell would need escaping with `\|`; we honour that minimally.
+  // cell would need escaping with `\|` or enclosing in a balanced inline
+  // backtick code span (`...`); we honour both.
   const inner = line.trim().replace(/^\||\|$/g, '');
   const parts: string[] = [];
   let buf = '';
+  let codeTickLen = 0;
   for (let i = 0; i < inner.length; i++) {
     const ch = inner[i];
     if (ch === '\\' && inner[i + 1] === '|') {
@@ -77,7 +79,34 @@ function parseCells(line: string): string[] {
       i++;
       continue;
     }
-    if (ch === '|') {
+    if (ch === '`') {
+      let run = 1;
+      while (inner[i + run] === '`') run++;
+      if (codeTickLen === 0) {
+        let closeIdx = i + run;
+        let hasClosing = false;
+        while (closeIdx < inner.length) {
+          if (inner[closeIdx] === '`') {
+            let cRun = 1;
+            while (inner[closeIdx + cRun] === '`') cRun++;
+            if (cRun === run) {
+              hasClosing = true;
+              break;
+            }
+            closeIdx += cRun;
+          } else {
+            closeIdx++;
+          }
+        }
+        if (hasClosing) codeTickLen = run;
+      } else if (run === codeTickLen) {
+        codeTickLen = 0;
+      }
+      buf += inner.slice(i, i + run);
+      i += run - 1;
+      continue;
+    }
+    if (ch === '|' && codeTickLen === 0) {
       parts.push(buf);
       buf = '';
       continue;
