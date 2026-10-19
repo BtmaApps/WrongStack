@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-19T14:28:14.875Z",
+  "generatedAt": "2026-10-19T14:36:47.428Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 38,
     "sourceFiles": 5176,
-    "testFiles": 4505,
-    "sourceLines": 1124141,
+    "testFiles": 4506,
+    "sourceLines": 1124154,
     "workspaceEdges": 139,
     "moduleEdges": 17034,
     "nonCommandSlashImports": 0,
@@ -870,7 +870,7 @@
       "name": "@wrongstack/webui",
       "dir": "packages/webui",
       "sourceFiles": 759,
-      "testFiles": 495,
+      "testFiles": 496,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -893,7 +893,7 @@
         {
           "path": "packages/webui/tsconfig.test.json",
           "error": null,
-          "testFiles": 495
+          "testFiles": 496
         }
       ]
     },
@@ -25845,6 +25845,12 @@
       },
       {
         "file": "packages/webui/tests/components/memory-detail-usefulness.test.tsx",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
+        "file": "packages/webui/tests/components/memory-drawer-action-inflight.test.tsx",
         "projects": [
           "webui-jsdom"
         ]

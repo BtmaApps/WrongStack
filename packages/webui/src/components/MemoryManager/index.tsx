@@ -47,7 +47,7 @@ export function MemoryManager({
 
   /** Restore a soft-deleted memory through the `memory.sage.recover` op. */
   const recoverMemory = (memoryId: string, reason: string) => {
-    state.sendWithAck(
+    return state.sendWithAck(
       'memory.sage.recover',
       () => state.recoverSage({ id: memoryId, reason }),
       (payload) => {
@@ -375,7 +375,9 @@ export function MemoryManager({
                 open={state.drawerActive}
                 onClose={() => state.setDrawerOpen(false)}
                 onShowMemory={(id) => state.setSelectedId(id)}
-                onAcceptDeletion={(candidateId, memoryId) => {
+                onAcceptDeletion={(candidateId, memoryId) =>
+                  // The promise is returned so the drawer can keep the
+                  // action pending until the store acknowledged it.
                   state.sendWithAck(
                     'memory.sage.candidateResolve',
                     // The correlation id lets the server tag the reply, so a
@@ -394,9 +396,9 @@ export function MemoryManager({
                       );
                       state.loadMemories();
                     },
-                  );
-                }}
-                onKeep={(candidateId, memoryId) => {
+                  )
+                }
+                onKeep={(candidateId, memoryId) =>
                   state.sendWithAck(
                     'memory.sage.candidateResolve',
                     (requestId) =>
@@ -412,8 +414,8 @@ export function MemoryManager({
                       );
                       state.loadMemories();
                     },
-                  );
-                }}
+                  )
+                }
                 onUpdate={(memoryId) => {
                   state.openEdit(memoryId);
                 }}
