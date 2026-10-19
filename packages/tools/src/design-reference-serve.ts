@@ -11,9 +11,17 @@ import { withTransientPrivateOrigin } from './browser/policy.js';
  * origin for the browser guard while it runs, then close both.
  *
  * Static pages are the common case this exists for — a model that wrote
- * `index.html` had no URL to inspect, so the rendered gate never ran. Only
- * GET/HEAD of files inside the (realpath'd) project root are answered; the
- * server is never reachable off-host and is not reused across calls.
+ * `index.html` had no URL to inspect, so the rendered gate never ran.
+ *
+ * The page under inspection runs its own scripts and the browser may reach
+ * the internet, so whatever this server answers, the page could send out.
+ * It therefore answers only GET/HEAD for an exact `127.0.0.1:<port>` Host,
+ * only files inside the (realpath'd) project root, never a path with a dot
+ * segment (`.env`, `.git/`, `.wrongstack/`, `.design/`), and only the asset
+ * types a page renders with — no JSON, no plain text, no unknown types. It is
+ * never reachable off-host and is not reused across calls. No secret path
+ * token: the page itself would know it, and it would break root-absolute
+ * asset URLs (`/assets/app.css`) that built sites use.
  */
 
 const TYPES: Record<string, string> = {
@@ -22,7 +30,6 @@ const TYPES: Record<string, string> = {
   '.css': 'text/css; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
   '.mjs': 'text/javascript; charset=utf-8',
-  '.json': 'application/json; charset=utf-8',
   '.svg': 'image/svg+xml',
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
@@ -36,6 +43,11 @@ const TYPES: Record<string, string> = {
   '.ttf': 'font/ttf',
   '.otf': 'font/otf',
 };
+
+/** `.env`, `.git/config`, `a/.secret/b` — any segment starting with a dot. */
+function hasDotSegment(p: string): boolean {
+  return p.split(/[\\/]/).some((seg) => seg.startsWith('.') && seg !== '.');
+}
 
 function inside(root: string, candidate: string): boolean {
   const rel = path.relative(root, candidate);
@@ -55,7 +67,7 @@ export async function resolvePageFile(projectRoot: string, file: string): Promis
       field: 'file',
     });
   }
-  if (!inside(root, real) || !/\.html?$/i.test(real)) {
+  if (!inside(root, real) || !/\.html?$/i.test(real) || hasDotSegment(path.relative(root, real))) {
     throw new ToolValidationError({
       message: `design_reference: "file" must be an .html file inside the project root (got "${file}").`,
       field: 'file',
@@ -72,6 +84,7 @@ export async function withServedProjectFile<T>(
 ): Promise<T> {
   const urlPath = await resolvePageFile(projectRoot, file);
   const root = await fs.realpath(projectRoot);
+  let host = '';
   const server = http.createServer((req, res) => {
     void (async () => {
       if (req.method !== 'GET' && req.method !== 'HEAD') {
@@ -79,16 +92,18 @@ export async function withServedProjectFile<T>(
         return;
       }
       try {
+        if (req.headers.host !== host) throw new Error('host');
         const pathname = decodeURIComponent(new URL(req.url ?? '/', 'http://x').pathname);
+        if (hasDotSegment(pathname)) throw new Error('dot segment');
         let target = path.resolve(root, `.${pathname}`);
         if ((await fs.stat(target)).isDirectory()) target = path.join(target, 'index.html');
         const real = await fs.realpath(target);
-        if (!inside(root, real)) throw new Error('outside');
+        const type = TYPES[path.extname(real).toLowerCase()];
+        if (!type || !inside(root, real) || hasDotSegment(path.relative(root, real))) {
+          throw new Error('not served');
+        }
         const body = await fs.readFile(real);
-        res.writeHead(200, {
-          'content-type': TYPES[path.extname(real).toLowerCase()] ?? 'application/octet-stream',
-          'cache-control': 'no-store',
-        });
+        res.writeHead(200, { 'content-type': type, 'cache-control': 'no-store' });
         res.end(req.method === 'HEAD' ? undefined : body);
       } catch {
         res.writeHead(404).end();
@@ -99,7 +114,8 @@ export async function withServedProjectFile<T>(
     server.once('error', reject);
     server.listen(0, '127.0.0.1', () => resolve());
   });
-  const origin = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  host = `127.0.0.1:${(server.address() as AddressInfo).port}`;
+  const origin = `http://${host}`;
   try {
     return await withTransientPrivateOrigin(projectRoot, origin, () => fn(`${origin}${urlPath}`));
   } finally {
