@@ -2,8 +2,8 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { SqliteSageStore } from '../src/sqlite-store.js';
 import { InvalidSearchCursorError } from '../src/service-contract.js';
+import { SqliteSageStore } from '../src/sqlite-store.js';
 
 let tempDir: string;
 let activeStores: SqliteSageStore[] = [];
@@ -401,5 +401,35 @@ describe('executeUnifiedSearch — declared-field contract (2026-08-02)', () => 
     expect(strongScore).toBeDefined();
     expect(weakScore).toBeDefined();
     expect(strongScore!).toBeGreaterThan(weakScore!);
+  });
+
+  it('normalizes query.anchor path, symbol, command, and role identically to write-time normalization (F118)', async () => {
+    const store = trackStore(new SqliteSageStore({ projectRoot: tempDir }));
+    await store.initialize();
+    const memory = await store.rememberSage({
+      text: 'anchor normalization probe memory',
+      kind: 'file_note',
+      importance: 0.7,
+      anchors: [
+        {
+          type: 'file',
+          path: 'src/foo.ts',
+          symbol: 'myFn',
+          command: 'bun run test',
+          role: 'reference',
+        },
+      ],
+    });
+
+    const result = await store.unifiedSearchService({
+      anchor: {
+        type: 'file',
+        path: './src/foo.ts',
+        symbol: ' myFn ',
+        command: 'bun   run   test',
+        role: ' Reference ',
+      },
+    });
+    expect(result.hits.map((h) => h.id)).toContain(memory.id);
   });
 });

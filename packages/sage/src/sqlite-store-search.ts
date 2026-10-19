@@ -32,7 +32,7 @@
  * FTS5 + the existing memories join.
  */
 import type { SQLInputValue } from 'node:sqlite';
-import { normalizeSlashes } from './paths.js';
+import { normalizeProjectPath, normalizeSlashes } from './paths.js';
 import type {
   SearchHit,
   SearchMatchReason,
@@ -135,7 +135,7 @@ export function executeUnifiedSearch(
     jsFilters.push((memory) => audienceSelectorMatches(query.audience!, memory.audience));
   }
   if (query.anchor) {
-    jsFilters.push((memory) => anchorMatches(query.anchor!, memory.anchors));
+    jsFilters.push((memory) => anchorMatches(query.anchor!, memory.anchors, host.projectRoot));
   }
   const sqlLimit =
     jsFilters.length > 0 ? Math.min(limit * JS_FILTER_OVERFETCH, MAX_LIMIT * 5) : limit;
@@ -472,20 +472,37 @@ function audienceSelectorMatches(
 }
 
 /** True when a memory carries an anchor matching the caller's `anchor` filter. */
-function anchorMatches(wanted: MemoryAnchor, anchors: MemoryAnchor[]): boolean {
-  const wantedPath = wanted.path ? normalizeSlashes(wanted.path).toLowerCase() : undefined;
+function anchorMatches(
+  wanted: MemoryAnchor,
+  anchors: MemoryAnchor[],
+  projectRoot: string,
+): boolean {
+  let wantedPath: string | undefined;
+  if (wanted.path) {
+    try {
+      wantedPath = normalizeProjectPath(projectRoot, wanted.path).toLowerCase();
+    } catch {
+      return false;
+    }
+  }
+  const wantedSymbol = wanted.symbol !== undefined ? wanted.symbol.trim() : undefined;
+  const wantedCommand =
+    wanted.command !== undefined ? wanted.command.trim().replace(/\s+/g, ' ') : undefined;
+  const wantedRole = wanted.role !== undefined ? wanted.role.trim().toLowerCase() : undefined;
   return anchors.some((anchor) => {
     if (anchor.type !== wanted.type) return false;
     if (wantedPath !== undefined) {
       const havePath = anchor.path ? normalizeSlashes(anchor.path).toLowerCase() : undefined;
       if (havePath !== wantedPath) return false;
     }
-    if (wanted.symbol !== undefined && anchor.symbol !== wanted.symbol) return false;
-    if (wanted.command !== undefined && anchor.command !== wanted.command) return false;
+    if (wantedSymbol !== undefined && (anchor.symbol?.trim() ?? '') !== wantedSymbol) return false;
     if (
-      wanted.role !== undefined &&
-      (anchor.role ?? '').toLowerCase() !== wanted.role.toLowerCase()
+      wantedCommand !== undefined &&
+      (anchor.command?.trim().replace(/\s+/g, ' ') ?? '') !== wantedCommand
     ) {
+      return false;
+    }
+    if (wantedRole !== undefined && (anchor.role?.trim().toLowerCase() ?? '') !== wantedRole) {
       return false;
     }
     return true;
