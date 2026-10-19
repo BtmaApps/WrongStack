@@ -112,7 +112,7 @@ export async function readPluginTrustStore(
       path: storePath,
     });
   }
-  if (parsed === null || typeof parsed !== 'object') {
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
     throw new FsError({
       message: `Plugin trust store "${storePath}" has an unexpected shape (expected { pinned: {...} }) — fix or delete the file`,
       code: ERROR_CODES.FS_READ_FAILED,
@@ -156,7 +156,8 @@ export function verifyPluginTrust(
   integrity: string,
   store: PluginTrustStore,
 ): PluginTrustVerification {
-  const pinned = store.pinned[name];
+  const key = normalizeTrustKey(name);
+  const pinned = Object.hasOwn(store.pinned, key) ? store.pinned[key] : undefined;
   if (!pinned) return { status: 'unpinned', integrity };
   if (pinned.integrity === integrity) return { status: 'trusted', integrity };
   return {
@@ -175,11 +176,12 @@ export async function pinPluginTrust(
   integrity: string,
   spec?: string,
 ): Promise<PluginTrustStore> {
+  const key = normalizeTrustKey(name);
   // Locked read-modify-write: two pins at once (two sessions booting with new
   // plugins) both read the old store and the later write dropped the other pin.
   return withFileLock(storePath, async () => {
     const store = await readPluginTrustStore(storePath);
-    store.pinned[name] = { entry, integrity, pinnedAt: new Date().toISOString(), spec };
+    store.pinned[key] = { entry, integrity, pinnedAt: new Date().toISOString(), spec };
     await writePluginTrustStore(storePath, store);
     return store;
   });
@@ -187,10 +189,11 @@ export async function pinPluginTrust(
 
 /** Remove the pin for `name` (if present) and persist the store. */
 export async function unpinPluginTrust(storePath: string, name: string): Promise<PluginTrustStore> {
+  const key = normalizeTrustKey(name);
   return withFileLock(storePath, async () => {
     const store = await readPluginTrustStore(storePath);
-    if (store.pinned[name] !== undefined) {
-      delete store.pinned[name];
+    if (Object.hasOwn(store.pinned, key) && store.pinned[key] !== undefined) {
+      delete store.pinned[key];
       await writePluginTrustStore(storePath, store);
     }
     return store;

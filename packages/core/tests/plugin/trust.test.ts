@@ -157,4 +157,27 @@ describe('defaultPluginTrustPath', () => {
     expect(sep.endsWith('plugin-trust.json')).toBe(true);
     expect(sep.startsWith('/home/u/.wrongstack')).toBe(true);
   });
+
+  it('rejects top-level JSON arrays and normalizes/guards plugin keys with Object.hasOwn (F122)', async () => {
+    const dir = await tempDir();
+    const path = join(dir, 'trust.json');
+    await writeFile(path, '[]', 'utf8');
+    await expect(readPluginTrustStore(path)).rejects.toThrow(/unexpected shape/);
+
+    const validPath = join(dir, 'valid-trust.json');
+    await pinPluginTrust(
+      validPath,
+      'C:\\plugins\\my-plugin.js',
+      'C:\\plugins\\my-plugin.js',
+      'sha-1',
+    );
+    const store = await readPluginTrustStore(validPath);
+    expect(store.pinned['C:/plugins/my-plugin.js']).toBeDefined();
+    expect(verifyPluginTrust('C:\\plugins\\my-plugin.js', 'sha-1', store).status).toBe('trusted');
+    expect(verifyPluginTrust('toString', 'sha-1', store).status).toBe('unpinned');
+
+    await unpinPluginTrust(validPath, 'C:\\plugins\\my-plugin.js');
+    const afterUnpin = await readPluginTrustStore(validPath);
+    expect(afterUnpin.pinned['C:/plugins/my-plugin.js']).toBeUndefined();
+  });
 });
