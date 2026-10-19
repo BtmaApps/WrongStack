@@ -66,8 +66,9 @@ const BUDGETED_REFUSAL_CODES: ReadonlySet<string> = new Set([
 export function isBudgetedRefusal(
   issues: readonly { code?: string | undefined }[] | undefined,
 ): boolean {
-  return (issues ?? []).some(
-    (issue) => issue.code !== undefined && BUDGETED_REFUSAL_CODES.has(issue.code),
+  return (
+    Boolean(issues?.length) &&
+    issues!.every((issue) => issue.code !== undefined && BUDGETED_REFUSAL_CODES.has(issue.code))
   );
 }
 

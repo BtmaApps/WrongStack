@@ -282,6 +282,12 @@ describe('isBudgetedRefusal', () => {
     expect(isBudgetedRefusal([{ code: 'review-evidence-missing' }])).toBe(false);
     expect(isBudgetedRefusal([{ code: 'wip-limit-exceeded' }])).toBe(false);
     expect(isBudgetedRefusal([{ code: 'task-detail-missing' }])).toBe(false);
+    expect(
+      isBudgetedRefusal([
+        { code: 'task-detail-missing' },
+        { code: 'acceptance-criteria-incomplete' },
+      ]),
+    ).toBe(false);
     expect(isBudgetedRefusal([])).toBe(false);
     expect(isBudgetedRefusal(undefined)).toBe(false);
   });
