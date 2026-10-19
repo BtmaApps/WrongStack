@@ -415,4 +415,44 @@ describe('groupQuotaSnapshots', () => {
     const empty = { ...snap('c', 0), windows: [] };
     expect(groupQuotaSnapshots([empty, { ...empty, providerId: 'd' }])).toHaveLength(2);
   });
+
+  it('guards non-finite quota values and rounds sub-minute countdowns at 59.5s to 1m (F123)', () => {
+    resetProviderQuota();
+    const T0 = 1_700_000_000_000;
+    recordProviderQuota(
+      'openai',
+      [{ meterId: 'default', windows: [{ id: 'w1', usedPercent: 20 }] }],
+      T0,
+    );
+    recordProviderQuota(
+      'openai',
+      [{ meterId: 'default', windows: [{ id: 'w1', usedPercent: 40 }] }],
+      T0 + 20 * 60_000,
+    );
+    expect(
+      quotaExhaustionInMs(
+        'openai',
+        'default',
+        { id: 'w1', usedPercent: Number.NaN },
+        T0 + 20 * 60_000,
+      ),
+    ).toBeUndefined();
+    expect(formatQuotaResetIn(Number.NaN)).toBeUndefined();
+    expect(formatQuotaResetIn(59_600)).toBe('1m');
+    const worst = worstProviderQuotaWindow([
+      {
+        providerId: 'nan-reset',
+        meterId: 'm',
+        capturedAt: 1,
+        windows: [{ id: 'w1', usedPercent: 80, resetsAt: Number.NaN }],
+      },
+      {
+        providerId: 'finite-reset',
+        meterId: 'm',
+        capturedAt: 1,
+        windows: [{ id: 'w2', usedPercent: 80, resetsAt: 2000 }],
+      },
+    ]);
+    expect(worst?.snapshot.providerId).toBe('finite-reset');
+  });
 });

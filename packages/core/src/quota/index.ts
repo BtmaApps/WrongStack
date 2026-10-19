@@ -292,7 +292,7 @@ export function quotaExhaustionInMs(
   window: ProviderQuotaWindow,
   now: number = Date.now(),
 ): number | undefined {
-  if (window.usedPercent >= 100) return undefined;
+  if (!Number.isFinite(window.usedPercent) || window.usedPercent >= 100) return undefined;
   const samples = (_pace.get(paceKey(providerId, meterId, window.id)) ?? []).filter(
     (s) => now - s.at <= PACE_LOOKBACK_MS,
   );
@@ -358,8 +358,14 @@ export function worstProviderQuotaWindow(
         continue;
       }
       if (window.usedPercent === best.window.usedPercent) {
-        const a = window.resetsAt;
-        const b = best.window.resetsAt;
+        const a =
+          window.resetsAt !== undefined && Number.isFinite(window.resetsAt)
+            ? window.resetsAt
+            : undefined;
+        const b =
+          best.window.resetsAt !== undefined && Number.isFinite(best.window.resetsAt)
+            ? best.window.resetsAt
+            : undefined;
         if (a !== undefined && (b === undefined || a < b)) best = { snapshot, window };
       }
     }
@@ -459,16 +465,19 @@ export function quotaResetInMs(
   window: ProviderQuotaWindow | undefined,
   now: number = Date.now(),
 ): number | undefined {
-  if (window?.resetsAt === undefined) return undefined;
+  if (window?.resetsAt === undefined || !Number.isFinite(window.resetsAt)) return undefined;
   const ms = window.resetsAt * 1000 - now;
   return ms > 0 ? ms : undefined;
 }
 
 /** Compact `4h 12m` / `38m` / `45s` rendering of a reset countdown. */
 export function formatQuotaResetIn(ms: number | undefined): string | undefined {
-  if (ms === undefined || ms <= 0) return undefined;
+  if (ms === undefined || !Number.isFinite(ms) || ms <= 0) return undefined;
   const totalMinutes = Math.floor(ms / 60_000);
-  if (totalMinutes < 1) return `${Math.max(1, Math.round(ms / 1000))}s`;
+  if (totalMinutes < 1) {
+    const secs = Math.max(1, Math.round(ms / 1000));
+    return secs >= 60 ? '1m' : `${secs}s`;
+  }
   const days = Math.floor(totalMinutes / 1440);
   const hours = Math.floor((totalMinutes % 1440) / 60);
   const minutes = totalMinutes % 60;
