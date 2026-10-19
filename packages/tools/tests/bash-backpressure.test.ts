@@ -1,5 +1,5 @@
 import * as os from 'node:os';
-import { describe, expect, it, beforeAll, afterAll } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { bashTool } from '../src/bash.js';
 import { mkSandbox, newSignal } from './fixtures.js';
 
@@ -28,16 +28,21 @@ const isWin = os.platform() === 'win32';
  * shells expand without nested-Quote pain.
  */
 describe('bash backpressure — MAX_QUEUE_CHUNKS upper bound (P1 #3)', () => {
+  // Per-test (not per-file) pin: a beforeAll that leaks WRONGSTACK_SHELL on a
+  // crashed worker would contaminate every later file in the same fork with
+  // a pinned shell. beforeEach/afterEach restores the ambient value around
+  // each test, so the suite is independent of shared worker state
+  // (test-isolation round 2026-10-20).
   let originalShell: string | undefined;
 
-  beforeAll(() => {
+  beforeEach(() => {
     originalShell = process.env['WRONGSTACK_SHELL'];
     if (isWin) {
       process.env['WRONGSTACK_SHELL'] = 'powershell';
     }
   });
 
-  afterAll(() => {
+  afterEach(() => {
     if (originalShell !== undefined) {
       process.env['WRONGSTACK_SHELL'] = originalShell;
     } else {

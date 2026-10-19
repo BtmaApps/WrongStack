@@ -198,12 +198,16 @@ function createDesignTurnGateExtension(deps: {
   };
 }
 
-/** Install the recorder middleware and the turn-end extension on one agent. */
+/**
+ * Install the recorder middleware and the turn-end extension on one agent.
+ * The recorder only observes results, so it is appended: prepending it would
+ * push it ahead of a host-owned tool boundary installed earlier.
+ */
 export function installDesignTurnGate(deps: {
-  pipelines: { toolCall: { prepend(mw: Middleware<ToolCallPipelinePayload>): unknown } };
+  pipelines: { toolCall: { use(mw: Middleware<ToolCallPipelinePayload>): unknown } };
   extensions: { register(ext: AgentExtension): unknown };
   hasTool: (name: string) => boolean;
 }): void {
-  deps.pipelines.toolCall.prepend(makeDesignGateToolCallMiddleware());
+  deps.pipelines.toolCall.use(makeDesignGateToolCallMiddleware());
   deps.extensions.register(createDesignTurnGateExtension({ hasTool: deps.hasTool }));
 }

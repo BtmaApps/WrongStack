@@ -5,6 +5,7 @@ import type { Tool } from '@wrongstack/core/types';
 import { resolveWstackPaths } from '@wrongstack/core/utils';
 import { BrowserSessionManager, browserInstallationDiagnostics } from './manager.js';
 import { browserPrivateOrigins } from './policy.js';
+import { promptForPrivateOrigin } from './private-origin-prompt.js';
 import type { BrowserFrame, BrowserLiveDetails, BrowserLiveSummary } from './types.js';
 
 const managers = new Map<string, BrowserSessionManager>();
@@ -192,6 +193,7 @@ export const browserOpenTool: Tool<BrowserOpenInput> = {
       input.width || input.height
         ? { width: input.width ?? 1440, height: input.height ?? 900 }
         : undefined;
+    await promptForPrivateOrigin(ctx, input.url, signalFor(ctx, opts));
     return json(
       await managerFor(ctx).open(
         owner(ctx),
@@ -246,6 +248,7 @@ export const browserNavigateTool: Tool<BrowserNavigateInput> = {
     required: ['sessionId', 'url'],
   },
   async execute(input, ctx, opts) {
+    await promptForPrivateOrigin(ctx, input.url, signalFor(ctx, opts));
     return json(
       await managerFor(ctx).navigate(input.sessionId, owner(ctx), input.url, signalFor(ctx, opts)),
     );

@@ -8,9 +8,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
  * module load (the older POSIX suites are skipped on Windows runners).
  */
 
-const { PROTECTED_PID, heartbeatAt } = vi.hoisted(() => ({
+const { PROTECTED_PID, heartbeatAt, entryName } = vi.hoisted(() => ({
   PROTECTED_PID: 424_242,
   heartbeatAt: { value: undefined as number | undefined },
+  entryName: { value: 'wrongstack-daemon' as string },
 }));
 
 vi.mock('../src/process-registry-persistent.js', () => ({
@@ -24,7 +25,7 @@ vi.mock('../src/process-registry-persistent.js', () => ({
           [
             {
               pid: PROTECTED_PID,
-              name: 'wrongstack-daemon',
+              name: entryName.value,
               protected: true,
               lastHeartbeat: heartbeatAt.value ?? Date.now(),
             },
@@ -252,12 +253,20 @@ describe('bash-kill-guard — verb spelled with path/.exe, cmd /c, launchers, ex
     // S29-M6: isKillRelatedCommand detects `/proc/<pid>/kill` and `/proc/<pid>/fd` on POSIX
     expect(detect.isKillRelatedCommand('/proc/1234/kill')).toBe(true);
 
-    // S29-M3: entries with lastHeartbeat older than 30_000ms (e.g. 50_000ms ago) are excluded as stale
+    // S29-M3: entries with lastHeartbeat older than 30_000ms (e.g. 50_000ms ago) are excluded as stale.
+    // The probe name must NOT be the runner's runtime image (`node`/`bun`) or the
+    // hardcoded `wrongstack` name — both block unconditionally by design, which
+    // would mask the staleness rule being tested here (found 2026-10-20: this
+    // case failed on hosts where vitest forks run under node.exe).
+    entryName.value = 'staleness-daemon';
     heartbeatAt.value = Date.now() - 50_000;
     try {
-      expect((await linuxGuard.checkAndBlockKillCommand('pkill node')).blocked).toBe(false);
+      expect((await linuxGuard.checkAndBlockKillCommand('pkill staleness-daemon')).blocked).toBe(
+        false,
+      );
     } finally {
       heartbeatAt.value = undefined;
+      entryName.value = 'wrongstack-daemon';
     }
   });
 });

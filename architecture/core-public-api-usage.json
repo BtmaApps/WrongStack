@@ -4,8 +4,8 @@
   "rootImportFiles": 0,
   "bySpecifier": {
     "@wrongstack/core/agent": {
-      "files": 400,
-      "typeOnly": 310,
+      "files": 402,
+      "typeOnly": 312,
       "runtimeOrMixed": 110
     },
     "@wrongstack/core/agent-catalog": {
@@ -194,8 +194,8 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1458,
-      "typeOnly": 1283,
+      "files": 1459,
+      "typeOnly": 1284,
       "runtimeOrMixed": 432
     },
     "@wrongstack/core/types/limits": {
@@ -239,9 +239,9 @@
       "runtimeOrMixed": 20
     },
     "@wrongstack/core/utils": {
-      "files": 830,
+      "files": 832,
       "typeOnly": 71,
-      "runtimeOrMixed": 788
+      "runtimeOrMixed": 790
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -1490,6 +1490,12 @@
     },
     {
       "specifier": "@wrongstack/core/agent",
+      "file": "packages/tools/src/browser/private-origin-prompt.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
       "file": "packages/tools/src/browser/tools.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -1671,6 +1677,12 @@
     {
       "specifier": "@wrongstack/core/agent",
       "file": "packages/tools/tests/bash-timeout-hermetic.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/tools/tests/browser-private-origin-prompt.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -20912,6 +20924,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/tools/tests/browser-private-origin-prompt.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/tools/tests/builtin-executor-smoke.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -26924,6 +26942,12 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
+      "file": "packages/tools/src/browser/private-origin-prompt.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
       "file": "packages/tools/src/browser/security.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -27357,6 +27381,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/tools/tests/browser-loopback-allowance.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/tools/tests/browser-manager-origin-refresh.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

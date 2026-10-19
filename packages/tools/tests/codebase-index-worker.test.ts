@@ -27,6 +27,23 @@ const distServer = path.join(distDir, 'codebase-index', 'project-server.js');
 const coreDist = fileURLToPath(new URL('../../core/dist/index.js', import.meta.url));
 const distReady =
   fsSync.existsSync(distEntry) && fsSync.existsSync(distServer) && fsSync.existsSync(coreDist);
+
+// Dist-freshness snapshot at COLLECTION time (2026-10-20): peers may rebuild
+// the workspace dist while this suite runs; a copy racing a rebuild can
+// capture a mixed-generation bundle (entry point referencing chunks that were
+// replaced mid-copy), which failed the suite with "codebase-index server
+// connection closed" / vanished-chunk import errors. `snapshotDistStable`
+// stamp-verifies the copy with bounded retries; persistent churn leaves
+// undefined and describe.skipIf skips the suite instead of failing it.
+const snapshotArtifactDirectory: string | undefined = distReady
+  ? await snapshotDistStable()
+  : undefined;
+if (distReady && snapshotArtifactDirectory === undefined) {
+  console.warn('codebase-index-worker: dist kept churning (peer rebuild?) — skipping suite');
+}
+if (snapshotArtifactDirectory !== undefined) {
+  distEntry = path.join(snapshotArtifactDirectory, 'dist', 'codebase-index', 'index.js');
+}
 const execFileAsync = promisify(execFile);
 
 // Bun currently returns EBUSY immediately even with fs.rm's maxRetries.
@@ -52,6 +69,49 @@ async function settleIndexRead<T>(read: () => Promise<T>): Promise<T | undefined
     if ((error as { name?: string }).name === 'IndexRefreshInProgressError') return undefined;
     throw error;
   }
+}
+
+/**
+ * Dist-freshness precheck (2026-10-20): peers may rebuild the workspace
+ * dist (tools or core) WHILE this suite runs. A copy started during a rebuild
+ * can capture a mixed-generation dist (entry point referencing chunks that
+ * mid-copy), which failed the suite with "codebase-index server connection
+ * closed" / vanished-chunk import errors. Snapshot with bounded retries:
+ * stamp the source before and after the copy — a changed stamp means a
+ * rebuild raced the copy, so discard and retry; a copy that throws (files
+ * vanishing mid-copy) retries too. Returns the artifact directory whose
+ * `dist/` subdirectory is a stable snapshot, or undefined when dist kept
+ * churning through every attempt (caller skips).
+ */
+async function snapshotDistStable(attempts = 4): Promise<string | undefined> {
+  const reports = fileURLToPath(new URL('../node_modules/.cache/', import.meta.url));
+  await fs.mkdir(reports, { recursive: true });
+  const stamp = (): string => {
+    try {
+      const entry = fsSync.statSync(distDir);
+      const server = fsSync.statSync(distServer);
+      // core/dist is part of the stamp too: the worker resolves
+      // @wrongstack/core from ITS dist at runtime, so a core rebuild racing
+      // the copy is just as mixed-generation as a tools rebuild.
+      const core = fsSync.statSync(coreDist);
+      return `${entry.mtimeMs}:${entry.size}:${server.mtimeMs}:${server.size}:${core.mtimeMs}:${core.size}`;
+    } catch {
+      return 'missing';
+    }
+  };
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    const before = stamp();
+    const directory = await fs.mkdtemp(path.join(reports, 'index-worker-artifact-'));
+    try {
+      await fs.cp(distDir, path.join(directory, 'dist'), { recursive: true });
+      if (stamp() === before) return directory;
+    } catch {
+      // A rebuild raced the copy (files vanished/replaced mid-copy).
+    }
+    await fs.rm(directory, { recursive: true, force: true }).catch(() => undefined);
+    if (attempt < attempts) await new Promise((resolve) => setTimeout(resolve, 250 * attempt));
+  }
+  return undefined;
 }
 
 function processExists(pid: number): boolean {
@@ -183,156 +243,154 @@ interface DistIndexApi {
   ): Promise<{ stopped: boolean; pid?: number }>;
 }
 
-describe.skipIf(!distReady)('index host (project-server mode, built dist)', () => {
-  let api: DistIndexApi | undefined;
-  let activeProject: { projectRoot: string; indexDir: string } | undefined;
-  let artifactDirectory: string | undefined;
+describe.skipIf(!distReady || snapshotArtifactDirectory === undefined)(
+  'index host (project-server mode, built dist)',
+  () => {
+    let api: DistIndexApi | undefined;
+    let activeProject: { projectRoot: string; indexDir: string } | undefined;
+    let artifactDirectory: string | undefined;
 
-  beforeAll(async () => {
-    // Test one built artifact throughout both cases, even if another terminal
-    // rebuilds the workspace's dist. This is a fixture, not a checkout.
-    const reports = fileURLToPath(new URL('../node_modules/.cache/', import.meta.url));
-    await fs.mkdir(reports, { recursive: true });
-    artifactDirectory = await fs.mkdtemp(path.join(reports, 'index-worker-artifact-'));
-    const snapshot = path.join(artifactDirectory, 'dist');
-    await fs.cp(distDir, snapshot, { recursive: true });
-    distEntry = path.join(snapshot, 'codebase-index', 'index.js');
-  });
-
-  afterAll(async () => {
-    if (api && activeProject) {
-      await api.shutdownCodebaseIndexServer(
-        activeProject.projectRoot,
-        activeProject.indexDir,
-        'test-teardown',
-      );
-    }
-    await api?.shutdownCodebaseIndexHost();
-    if (artifactDirectory) await removeFixture(artifactDirectory);
-  });
-
-  it('indexes, searches, graphs, and shuts down through one project server', async () => {
-    api = (await import(
-      /* @vite-ignore */ `file://${distEntry.replace(/\\/g, '/')}`
-    )) as never as DistIndexApi;
-
-    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'wstack-worker-'));
-    const indexDir = path.join(tmpDir, '.codebase-index');
-    const observedServerStates: string[] = [];
-    const observedActivityStates: boolean[] = [];
-    const offState = api.onIndexStateChange((state) => {
-      observedServerStates.push(state.server.status);
-      if (state.server.activity) observedActivityStates.push(state.server.activity.indexing);
+    beforeAll(() => {
+      // The dist snapshot was taken stamp-verified at collection time (see
+      // snapshotArtifactDirectory): mixed-generation copies from a racing peer
+      // rebuild retried and persistent churn skipped the suite entirely.
+      artifactDirectory = snapshotArtifactDirectory;
     });
-    activeProject = { projectRoot: tmpDir, indexDir };
-    try {
-      await fs.writeFile(
-        path.join(tmpDir, 'service.ts'),
-        'export class PaymentService { processRefund(): void {} }',
-      );
 
-      const result = await api.runStartupIndex({
-        projectRoot: tmpDir,
-        indexDir,
-        timeoutMs: 60_000,
-      });
-      expect(result.errors).toHaveLength(0);
-      expect(result.filesIndexed).toBeGreaterThanOrEqual(1);
-      expect(result.symbolsIndexed).toBeGreaterThanOrEqual(1);
-
-      // camelCase-split FTS match ("refund" → processRefund), ranked + snippeted.
-      const found = await api.searchCodebaseIndex({
-        projectRoot: tmpDir,
-        indexDir,
-        query: 'refund',
-        limit: 10,
-      });
-      expect(found.results.some((r) => r.name === 'processRefund')).toBe(true);
-      expect(found.results[0]?.score).toBeGreaterThan(0);
-
-      const stats = await api.codebaseIndexStats({ projectRoot: tmpDir, indexDir });
-      expect(stats.totalSymbols).toBeGreaterThanOrEqual(1);
-
-      const graph = await api.packageGraphService({ projectRoot: tmpDir, indexDir });
-      expect(Array.isArray(graph.nodes)).toBe(true);
-      expect(Array.isArray(graph.edges)).toBe(true);
-      const fileGraph = await api.fileGraphService({
-        projectRoot: tmpDir,
-        indexDir,
-        packageFilter: '(root)',
-      });
-      expect(Array.isArray(fileGraph.nodes)).toBe(true);
-      expect(Array.isArray(fileGraph.edges)).toBe(true);
-      const symbolGraph = await api.symbolGraphService({
-        projectRoot: tmpDir,
-        indexDir,
-        fileFilter:
-          found.results.find((item) => item.name === 'processRefund')?.file ?? 'service.ts',
-      });
-      expect(symbolGraph.nodes.length).toBeGreaterThanOrEqual(1);
-      expect(Array.isArray(symbolGraph.edges)).toBe(true);
-
-      // Exercise the exact Tool objects registered for model tool-calling,
-      // not only their lower-level service functions.
-      const toolContext = {
-        projectRoot: tmpDir,
-        cwd: tmpDir,
-        meta: { codebaseIndexDir: indexDir },
-      };
-      const toolOptions = { signal: new AbortController().signal };
-      const toolSearch = await api.codebaseSearchTool.execute(
-        { query: 'refund', limit: 10 },
-        toolContext,
-        toolOptions,
-      );
-      expect(toolSearch.results.some((item) => item.name === 'processRefund')).toBe(true);
-      const toolStats = await api.codebaseStatsTool.execute({}, toolContext, toolOptions);
-      expect(toolStats.statsAvailable).toBe(true);
-      expect(toolStats.totalSymbols).toBeGreaterThanOrEqual(1);
-      const toolIndex = await api.codebaseIndexTool.execute({}, toolContext, toolOptions);
-      expect(toolIndex.errors).toHaveLength(0);
-
-      await api.ensureCodebaseIndexServer({
-        projectRoot: tmpDir,
-        indexDir,
-        watchExternal: true,
-        debounceMs: 20,
-      });
-      const health = await api.checkCodebaseIndexServerHealth(tmpDir, indexDir);
-      expect(health).toMatchObject({
-        status: 'healthy',
-        missedHeartbeats: 0,
-        server: {
-          clients: expect.any(Number),
-          queuedWrites: expect.any(Number),
-          watchingExternal: true,
-        },
-      });
-      expect(health.server?.uptimeMs).toBeGreaterThanOrEqual(0);
-      expect(health.server?.memory.rss).toBeGreaterThan(0);
-      expect(health.server?.memory.heapUsed).toBeGreaterThan(0);
-      await fs.writeFile(
-        path.join(tmpDir, 'watched.ts'),
-        'export function watchedSentinel(): number { return 1; }',
-      );
-      let watchedFound = false;
-      for (let i = 0; i < 100 && !watchedFound; i++) {
-        await new Promise((resolve) => setTimeout(resolve, 25));
-        const watched = await settleIndexRead(() =>
-          api!.searchCodebaseIndex({
-            projectRoot: tmpDir,
-            indexDir,
-            query: 'watched sentinel',
-            limit: 10,
-          }),
+    afterAll(async () => {
+      if (api && activeProject) {
+        await api.shutdownCodebaseIndexServer(
+          activeProject.projectRoot,
+          activeProject.indexDir,
+          'test-teardown',
         );
-        watchedFound =
-          watched?.results.some((result) => result.name === 'watchedSentinel') ?? false;
       }
-      expect(watchedFound).toBe(true);
+      await api?.shutdownCodebaseIndexHost();
+      if (artifactDirectory) await removeFixture(artifactDirectory);
+    });
 
-      // A query-only client must not disable another client's watcher.
-      const observerScript = `
+    it('indexes, searches, graphs, and shuts down through one project server', async () => {
+      api = (await import(
+        /* @vite-ignore */ `file://${distEntry.replace(/\\/g, '/')}`
+      )) as never as DistIndexApi;
+
+      const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'wstack-worker-'));
+      const indexDir = path.join(tmpDir, '.codebase-index');
+      const observedServerStates: string[] = [];
+      const observedActivityStates: boolean[] = [];
+      const offState = api.onIndexStateChange((state) => {
+        observedServerStates.push(state.server.status);
+        if (state.server.activity) observedActivityStates.push(state.server.activity.indexing);
+      });
+      activeProject = { projectRoot: tmpDir, indexDir };
+      try {
+        await fs.writeFile(
+          path.join(tmpDir, 'service.ts'),
+          'export class PaymentService { processRefund(): void {} }',
+        );
+
+        const result = await api.runStartupIndex({
+          projectRoot: tmpDir,
+          indexDir,
+          timeoutMs: 60_000,
+        });
+        expect(result.errors).toHaveLength(0);
+        expect(result.filesIndexed).toBeGreaterThanOrEqual(1);
+        expect(result.symbolsIndexed).toBeGreaterThanOrEqual(1);
+
+        // camelCase-split FTS match ("refund" → processRefund), ranked + snippeted.
+        const found = await api.searchCodebaseIndex({
+          projectRoot: tmpDir,
+          indexDir,
+          query: 'refund',
+          limit: 10,
+        });
+        expect(found.results.some((r) => r.name === 'processRefund')).toBe(true);
+        expect(found.results[0]?.score).toBeGreaterThan(0);
+
+        const stats = await api.codebaseIndexStats({ projectRoot: tmpDir, indexDir });
+        expect(stats.totalSymbols).toBeGreaterThanOrEqual(1);
+
+        const graph = await api.packageGraphService({ projectRoot: tmpDir, indexDir });
+        expect(Array.isArray(graph.nodes)).toBe(true);
+        expect(Array.isArray(graph.edges)).toBe(true);
+        const fileGraph = await api.fileGraphService({
+          projectRoot: tmpDir,
+          indexDir,
+          packageFilter: '(root)',
+        });
+        expect(Array.isArray(fileGraph.nodes)).toBe(true);
+        expect(Array.isArray(fileGraph.edges)).toBe(true);
+        const symbolGraph = await api.symbolGraphService({
+          projectRoot: tmpDir,
+          indexDir,
+          fileFilter:
+            found.results.find((item) => item.name === 'processRefund')?.file ?? 'service.ts',
+        });
+        expect(symbolGraph.nodes.length).toBeGreaterThanOrEqual(1);
+        expect(Array.isArray(symbolGraph.edges)).toBe(true);
+
+        // Exercise the exact Tool objects registered for model tool-calling,
+        // not only their lower-level service functions.
+        const toolContext = {
+          projectRoot: tmpDir,
+          cwd: tmpDir,
+          meta: { codebaseIndexDir: indexDir },
+        };
+        const toolOptions = { signal: new AbortController().signal };
+        const toolSearch = await api.codebaseSearchTool.execute(
+          { query: 'refund', limit: 10 },
+          toolContext,
+          toolOptions,
+        );
+        expect(toolSearch.results.some((item) => item.name === 'processRefund')).toBe(true);
+        const toolStats = await api.codebaseStatsTool.execute({}, toolContext, toolOptions);
+        expect(toolStats.statsAvailable).toBe(true);
+        expect(toolStats.totalSymbols).toBeGreaterThanOrEqual(1);
+        const toolIndex = await api.codebaseIndexTool.execute({}, toolContext, toolOptions);
+        expect(toolIndex.errors).toHaveLength(0);
+
+        await api.ensureCodebaseIndexServer({
+          projectRoot: tmpDir,
+          indexDir,
+          watchExternal: true,
+          debounceMs: 20,
+        });
+        const health = await api.checkCodebaseIndexServerHealth(tmpDir, indexDir);
+        expect(health).toMatchObject({
+          status: 'healthy',
+          missedHeartbeats: 0,
+          server: {
+            clients: expect.any(Number),
+            queuedWrites: expect.any(Number),
+            watchingExternal: true,
+          },
+        });
+        expect(health.server?.uptimeMs).toBeGreaterThanOrEqual(0);
+        expect(health.server?.memory.rss).toBeGreaterThan(0);
+        expect(health.server?.memory.heapUsed).toBeGreaterThan(0);
+        await fs.writeFile(
+          path.join(tmpDir, 'watched.ts'),
+          'export function watchedSentinel(): number { return 1; }',
+        );
+        let watchedFound = false;
+        for (let i = 0; i < 100 && !watchedFound; i++) {
+          await new Promise((resolve) => setTimeout(resolve, 25));
+          const watched = await settleIndexRead(() =>
+            api!.searchCodebaseIndex({
+              projectRoot: tmpDir,
+              indexDir,
+              query: 'watched sentinel',
+              limit: 10,
+            }),
+          );
+          watchedFound =
+            watched?.results.some((result) => result.name === 'watchedSentinel') ?? false;
+        }
+        expect(watchedFound).toBe(true);
+
+        // A query-only client must not disable another client's watcher.
+        const observerScript = `
         const api = await import(${JSON.stringify(pathToFileURL(distEntry).href)});
         await api.ensureCodebaseIndexServer(${JSON.stringify({
           projectRoot: tmpDir,
@@ -347,30 +405,30 @@ describe.skipIf(!distReady)('index host (project-server mode, built dist)', () =
         await api.shutdownCodebaseIndexHost();
         process.stdout.write(JSON.stringify(health));
       `;
-      const observer = await execFileAsync(
-        process.execPath,
-        ['--input-type=module', '--eval', observerScript],
-        { timeout: 30_000, windowsHide: true },
-      );
-      expect(
-        JSON.parse(observer.stdout) as { server: { watchingExternal: boolean } },
-      ).toMatchObject({
-        server: { watchingExternal: true },
-      });
+        const observer = await execFileAsync(
+          process.execPath,
+          ['--input-type=module', '--eval', observerScript],
+          { timeout: 30_000, windowsHide: true },
+        );
+        expect(
+          JSON.parse(observer.stdout) as { server: { watchingExternal: boolean } },
+        ).toMatchObject({
+          server: { watchingExternal: true },
+        });
 
-      // Releasing the last owner must close the watcher and its pending queues.
-      await api.ensureCodebaseIndexServer({
-        projectRoot: tmpDir,
-        indexDir,
-        watchExternal: false,
-        debounceMs: 20,
-      });
-      await expect(api.checkCodebaseIndexServerHealth(tmpDir, indexDir)).resolves.toMatchObject({
-        server: { watchingExternal: false, watchingClients: 0 },
-      });
+        // Releasing the last owner must close the watcher and its pending queues.
+        await api.ensureCodebaseIndexServer({
+          projectRoot: tmpDir,
+          indexDir,
+          watchExternal: false,
+          debounceMs: 20,
+        });
+        await expect(api.checkCodebaseIndexServerHealth(tmpDir, indexDir)).resolves.toMatchObject({
+          server: { watchingExternal: false, watchingClients: 0 },
+        });
 
-      // Ownership also disappears when the owning client process disconnects.
-      const ownerScript = `
+        // Ownership also disappears when the owning client process disconnects.
+        const ownerScript = `
         const api = await import(${JSON.stringify(pathToFileURL(distEntry).href)});
         await api.ensureCodebaseIndexServer(${JSON.stringify({
           projectRoot: tmpDir,
@@ -385,41 +443,43 @@ describe.skipIf(!distReady)('index host (project-server mode, built dist)', () =
         await api.shutdownCodebaseIndexHost();
         process.stdout.write(JSON.stringify(health));
       `;
-      const owner = await execFileAsync(
-        process.execPath,
-        ['--input-type=module', '--eval', ownerScript],
-        { timeout: 30_000, windowsHide: true },
-      );
-      expect(JSON.parse(owner.stdout) as { server: { watchingExternal: boolean } }).toMatchObject({
-        server: { watchingExternal: true },
-      });
-      let watcherReleased = false;
-      for (let i = 0; i < 50 && !watcherReleased; i++) {
-        const watcherHealth = await api.checkCodebaseIndexServerHealth(tmpDir, indexDir);
-        watcherReleased =
-          watcherHealth.server?.watchingExternal === false &&
-          watcherHealth.server.watchingClients === 0;
-        if (!watcherReleased) await new Promise((resolve) => setTimeout(resolve, 20));
-      }
-      expect(watcherReleased).toBe(true);
+        const owner = await execFileAsync(
+          process.execPath,
+          ['--input-type=module', '--eval', ownerScript],
+          { timeout: 30_000, windowsHide: true },
+        );
+        expect(JSON.parse(owner.stdout) as { server: { watchingExternal: boolean } }).toMatchObject(
+          {
+            server: { watchingExternal: true },
+          },
+        );
+        let watcherReleased = false;
+        for (let i = 0; i < 50 && !watcherReleased; i++) {
+          const watcherHealth = await api.checkCodebaseIndexServerHealth(tmpDir, indexDir);
+          watcherReleased =
+            watcherHealth.server?.watchingExternal === false &&
+            watcherHealth.server.watchingClients === 0;
+          if (!watcherReleased) await new Promise((resolve) => setTimeout(resolve, 20));
+        }
+        expect(watcherReleased).toBe(true);
 
-      const metadata = JSON.parse(
-        await fs.readFile(path.join(indexDir, 'server.json'), 'utf8'),
-      ) as { pid: number; projectRoot: string; indexDir: string };
-      expect(metadata.pid).toBeGreaterThan(0);
-      expect(path.resolve(metadata.projectRoot)).toBe(path.resolve(tmpDir));
-      expect(path.resolve(metadata.indexDir)).toBe(path.resolve(indexDir));
-      expect(api.getIndexState().server).toMatchObject({
-        status: 'connected',
-        connected: true,
-        pid: metadata.pid,
-      });
-      expect(observedServerStates).toContain('connecting');
-      expect(observedServerStates).toContain('connected');
+        const metadata = JSON.parse(
+          await fs.readFile(path.join(indexDir, 'server.json'), 'utf8'),
+        ) as { pid: number; projectRoot: string; indexDir: string };
+        expect(metadata.pid).toBeGreaterThan(0);
+        expect(path.resolve(metadata.projectRoot)).toBe(path.resolve(tmpDir));
+        expect(path.resolve(metadata.indexDir)).toBe(path.resolve(indexDir));
+        expect(api.getIndexState().server).toMatchObject({
+          status: 'connected',
+          connected: true,
+          pid: metadata.pid,
+        });
+        expect(observedServerStates).toContain('connecting');
+        expect(observedServerStates).toContain('connected');
 
-      // A second OS process must connect to the existing project server rather
-      // than creating another parser/SQLite owner.
-      const childScript = `
+        // A second OS process must connect to the existing project server rather
+        // than creating another parser/SQLite owner.
+        const childScript = `
         const api = await import(${JSON.stringify(pathToFileURL(distEntry).href)});
         const result = await api.runStartupIndex(${JSON.stringify({
           projectRoot: tmpDir,
@@ -429,215 +489,216 @@ describe.skipIf(!distReady)('index host (project-server mode, built dist)', () =
         await api.shutdownCodebaseIndexHost();
         process.stdout.write(JSON.stringify(result));
       `;
-      const child = await execFileAsync(
-        process.execPath,
-        ['--input-type=module', '--eval', childScript],
-        { timeout: 30_000, windowsHide: true },
-      );
-      expect(JSON.parse(child.stdout) as { symbolsIndexed: number }).toMatchObject({
-        symbolsIndexed: expect.any(Number),
-      });
-      for (
-        let i = 0;
-        i < 50 &&
-        !(observedActivityStates.includes(true) && observedActivityStates.at(-1) === false);
-        i++
-      ) {
-        await new Promise((resolve) => setTimeout(resolve, 10));
-      }
-      expect(observedActivityStates).toContain(true);
-      expect(observedActivityStates.at(-1)).toBe(false);
-      const afterChild = JSON.parse(
-        await fs.readFile(path.join(indexDir, 'server.json'), 'utf8'),
-      ) as { pid: number };
-      expect(afterChild.pid).toBe(metadata.pid);
-
-      // Disconnecting this host must not kill the shared project server.
-      await api.shutdownCodebaseIndexHost();
-      expect(fsSync.existsSync(path.join(indexDir, 'server.json'))).toBe(true);
-      expect(api.getIndexState().server).toMatchObject({
-        status: 'offline',
-        connected: false,
-      });
-      expect(observedServerStates).toContain('offline');
-
-      // The next operation reconnects this host to the same detached server.
-      await api.codebaseIndexStats({ projectRoot: tmpDir, indexDir });
-      expect(api.getIndexState().server).toMatchObject({
-        status: 'connected',
-        connected: true,
-        pid: metadata.pid,
-      });
-
-      const stopped = await api.shutdownCodebaseIndexServer(tmpDir, indexDir, 'integration-test');
-      expect(stopped).toMatchObject({ stopped: true, pid: metadata.pid });
-      expect(api.getIndexState().server).toMatchObject({
-        status: 'offline',
-        connected: false,
-      });
-      for (let i = 0; i < 50 && fsSync.existsSync(path.join(indexDir, 'server.json')); i++) {
-        await new Promise((resolve) => setTimeout(resolve, 20));
-      }
-      expect(fsSync.existsSync(path.join(indexDir, 'server.json'))).toBe(false);
-      for (let i = 0; i < 50 && processExists(metadata.pid); i++) {
-        await new Promise((resolve) => setTimeout(resolve, 20));
-      }
-      expect(processExists(metadata.pid)).toBe(false);
-
-      // The next operation after a stopped server elects a fresh process and
-      // reuses the persisted index without manual recovery.
-      const restartedStats = await api.codebaseIndexStats({ projectRoot: tmpDir, indexDir });
-      expect(restartedStats.totalSymbols).toBeGreaterThanOrEqual(1);
-      const restartedMetadata = JSON.parse(
-        await fs.readFile(path.join(indexDir, 'server.json'), 'utf8'),
-      ) as { pid: number };
-      expect(restartedMetadata.pid).not.toBe(metadata.pid);
-      expect(processExists(restartedMetadata.pid)).toBe(true);
-      const restartedStop = await api.shutdownCodebaseIndexServer(
-        tmpDir,
-        indexDir,
-        'integration-restart-test',
-      );
-      expect(restartedStop).toMatchObject({ stopped: true, pid: restartedMetadata.pid });
-      for (let i = 0; i < 50 && processExists(restartedMetadata.pid); i++) {
-        await new Promise((resolve) => setTimeout(resolve, 20));
-      }
-      expect(processExists(restartedMetadata.pid)).toBe(false);
-      activeProject = undefined;
-    } finally {
-      offState();
-      await api.shutdownCodebaseIndexHost();
-      if (activeProject) {
-        await api.shutdownCodebaseIndexServer(tmpDir, indexDir, 'integration-finally');
-        activeProject = undefined;
-      }
-      // Windows releases the server process's SQLite handles (`index.db`,
-      // `-wal`, `-shm`) asynchronously after it exits, so a bare rm races the
-      // OS and throws EBUSY roughly half the time even though every assertion
-      // above already proved the process is gone. Node's rm retries on
-      // EBUSY/EPERM/ENOTEMPTY when `maxRetries` is set.
-      await removeFixture(tmpDir);
-    }
-  }, 90_000);
-
-  it('serves stale cached answers over real IPC while a refresh publishes', async () => {
-    const staleApi = (await import(
-      /* @vite-ignore */ `file://${distEntry.replace(/\\/g, '/')}`
-    )) as DistIndexApi;
-    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'wstack-stale-'));
-    const indexDir = path.join(tmpDir, '.codebase-index');
-    const primeQuery = { projectRoot: tmpDir, indexDir, query: 'alphaMethod', limit: 5 };
-    const uncachedQuery = { projectRoot: tmpDir, indexDir, query: 'zetaNeverPrimed', limit: 5 };
-    const search = (args: typeof primeQuery) =>
-      settleIndexRead(() => staleApi.searchCodebaseIndex(args));
-
-    try {
-      await fs.writeFile(
-        path.join(tmpDir, 'alpha.ts'),
-        'export class AlphaService { alphaMethod(): void {} }',
-      );
-      // A filler corpus large enough that a force rebuild holds the refresh
-      // window open for many polling iterations.
-      await Promise.all(
-        Array.from({ length: 260 }, (_, i) =>
-          fs.writeFile(path.join(tmpDir, `filler-${i}.ts`), `export const filler${i} = ${i};\n`),
-        ),
-      );
-
-      const first = await staleApi.runStartupIndex({
-        projectRoot: tmpDir,
-        indexDir,
-        timeoutMs: 120_000,
-      });
-      expect(first.errors).toHaveLength(0);
-
-      // Prime the query cache at the current generation (fresh, not stale).
-      const primed = await search(primeQuery);
-      expect(primed?.stale).toBeUndefined();
-      expect(primed?.results.some((r) => r.name === 'alphaMethod')).toBe(true);
-
-      // Force rebuild = whole-index scope: caches clear on completion. During
-      // the window the primed query must be served flagged `stale`, and a
-      // never-primed query must be refused (IndexRefreshInProgressError →
-      // settleIndexRead yields undefined).
-      let rebuildDone = false;
-      let sawStaleHit = false;
-      let sawUncachedRefusal = false;
-      const rebuild = staleApi
-        .runStartupIndex({ projectRoot: tmpDir, indexDir, force: true, timeoutMs: 120_000 })
-        .finally(() => {
-          rebuildDone = true;
+        const child = await execFileAsync(
+          process.execPath,
+          ['--input-type=module', '--eval', childScript],
+          { timeout: 30_000, windowsHide: true },
+        );
+        expect(JSON.parse(child.stdout) as { symbolsIndexed: number }).toMatchObject({
+          symbolsIndexed: expect.any(Number),
         });
-      while (!rebuildDone) {
-        if (staleApi.getIndexState().server.activity?.indexing) {
-          const hit = await search(primeQuery);
-          if (hit?.stale === true && hit.results.some((r) => r.name === 'alphaMethod')) {
-            sawStaleHit = true;
-          }
-          if ((await search(uncachedQuery)) === undefined) sawUncachedRefusal = true;
+        for (
+          let i = 0;
+          i < 50 &&
+          !(observedActivityStates.includes(true) && observedActivityStates.at(-1) === false);
+          i++
+        ) {
+          await new Promise((resolve) => setTimeout(resolve, 10));
         }
-        await new Promise((resolve) => setTimeout(resolve, 10));
+        expect(observedActivityStates).toContain(true);
+        expect(observedActivityStates.at(-1)).toBe(false);
+        const afterChild = JSON.parse(
+          await fs.readFile(path.join(indexDir, 'server.json'), 'utf8'),
+        ) as { pid: number };
+        expect(afterChild.pid).toBe(metadata.pid);
+
+        // Disconnecting this host must not kill the shared project server.
+        await api.shutdownCodebaseIndexHost();
+        expect(fsSync.existsSync(path.join(indexDir, 'server.json'))).toBe(true);
+        expect(api.getIndexState().server).toMatchObject({
+          status: 'offline',
+          connected: false,
+        });
+        expect(observedServerStates).toContain('offline');
+
+        // The next operation reconnects this host to the same detached server.
+        await api.codebaseIndexStats({ projectRoot: tmpDir, indexDir });
+        expect(api.getIndexState().server).toMatchObject({
+          status: 'connected',
+          connected: true,
+          pid: metadata.pid,
+        });
+
+        const stopped = await api.shutdownCodebaseIndexServer(tmpDir, indexDir, 'integration-test');
+        expect(stopped).toMatchObject({ stopped: true, pid: metadata.pid });
+        expect(api.getIndexState().server).toMatchObject({
+          status: 'offline',
+          connected: false,
+        });
+        for (let i = 0; i < 50 && fsSync.existsSync(path.join(indexDir, 'server.json')); i++) {
+          await new Promise((resolve) => setTimeout(resolve, 20));
+        }
+        expect(fsSync.existsSync(path.join(indexDir, 'server.json'))).toBe(false);
+        for (let i = 0; i < 50 && processExists(metadata.pid); i++) {
+          await new Promise((resolve) => setTimeout(resolve, 20));
+        }
+        expect(processExists(metadata.pid)).toBe(false);
+
+        // The next operation after a stopped server elects a fresh process and
+        // reuses the persisted index without manual recovery.
+        const restartedStats = await api.codebaseIndexStats({ projectRoot: tmpDir, indexDir });
+        expect(restartedStats.totalSymbols).toBeGreaterThanOrEqual(1);
+        const restartedMetadata = JSON.parse(
+          await fs.readFile(path.join(indexDir, 'server.json'), 'utf8'),
+        ) as { pid: number };
+        expect(restartedMetadata.pid).not.toBe(metadata.pid);
+        expect(processExists(restartedMetadata.pid)).toBe(true);
+        const restartedStop = await api.shutdownCodebaseIndexServer(
+          tmpDir,
+          indexDir,
+          'integration-restart-test',
+        );
+        expect(restartedStop).toMatchObject({ stopped: true, pid: restartedMetadata.pid });
+        for (let i = 0; i < 50 && processExists(restartedMetadata.pid); i++) {
+          await new Promise((resolve) => setTimeout(resolve, 20));
+        }
+        expect(processExists(restartedMetadata.pid)).toBe(false);
+        activeProject = undefined;
+      } finally {
+        offState();
+        await api.shutdownCodebaseIndexHost();
+        if (activeProject) {
+          await api.shutdownCodebaseIndexServer(tmpDir, indexDir, 'integration-finally');
+          activeProject = undefined;
+        }
+        // Windows releases the server process's SQLite handles (`index.db`,
+        // `-wal`, `-shm`) asynchronously after it exits, so a bare rm races the
+        // OS and throws EBUSY roughly half the time even though every assertion
+        // above already proved the process is gone. Node's rm retries on
+        // EBUSY/EPERM/ENOTEMPTY when `maxRetries` is set.
+        await removeFixture(tmpDir);
       }
-      await rebuild;
-      expect(sawStaleHit).toBe(true);
-      expect(sawUncachedRefusal).toBe(true);
+    }, 90_000);
 
-      // Completion of the forced run cleared the caches: the next read is
-      // fresh (recomputed), never stale-flagged.
-      const fresh = await search(primeQuery);
-      expect(fresh?.stale).toBeUndefined();
-      expect(fresh?.results.some((r) => r.name === 'alphaMethod')).toBe(true);
+    it('serves stale cached answers over real IPC while a refresh publishes', async () => {
+      const staleApi = (await import(
+        /* @vite-ignore */ `file://${distEntry.replace(/\\/g, '/')}`
+      )) as DistIndexApi;
+      const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'wstack-stale-'));
+      const indexDir = path.join(tmpDir, '.codebase-index');
+      const primeQuery = { projectRoot: tmpDir, indexDir, query: 'alphaMethod', limit: 5 };
+      const uncachedQuery = { projectRoot: tmpDir, indexDir, query: 'zetaNeverPrimed', limit: 5 };
+      const search = (args: typeof primeQuery) =>
+        settleIndexRead(() => staleApi.searchCodebaseIndex(args));
 
-      // Targeted (watcher) runs preserve the caches: prime again at
-      // generation G, run a targeted reindex (generation G+1, caches kept),
-      // then prove the primed entry survives as the stale answer inside the
-      // NEXT force rebuild's window.
-      await staleApi.ensureCodebaseIndexServer({
-        projectRoot: tmpDir,
-        indexDir,
-        watchExternal: true,
-        debounceMs: 20,
-      });
-      await fs.writeFile(
-        path.join(tmpDir, 'targeted.ts'),
-        'export function targetedSentinel(): void {}\n',
-      );
-      const targetedFound = await until(async () => {
-        const hit = await search({
+      try {
+        await fs.writeFile(
+          path.join(tmpDir, 'alpha.ts'),
+          'export class AlphaService { alphaMethod(): void {} }',
+        );
+        // A filler corpus large enough that a force rebuild holds the refresh
+        // window open for many polling iterations.
+        await Promise.all(
+          Array.from({ length: 260 }, (_, i) =>
+            fs.writeFile(path.join(tmpDir, `filler-${i}.ts`), `export const filler${i} = ${i};\n`),
+          ),
+        );
+
+        const first = await staleApi.runStartupIndex({
           projectRoot: tmpDir,
           indexDir,
-          query: 'targeted sentinel',
-          limit: 5,
+          timeoutMs: 120_000,
         });
-        return hit?.results.some((r) => r.name === 'targetedSentinel') ?? false;
-      });
-      expect(targetedFound).toBe(true);
+        expect(first.errors).toHaveLength(0);
 
-      let secondDone = false;
-      let preservedStaleHit = false;
-      const second = staleApi
-        .runStartupIndex({ projectRoot: tmpDir, indexDir, force: true, timeoutMs: 120_000 })
-        .finally(() => {
-          secondDone = true;
-        });
-      while (!secondDone) {
-        if (staleApi.getIndexState().server.activity?.indexing) {
-          if ((await search(primeQuery))?.stale === true) preservedStaleHit = true;
+        // Prime the query cache at the current generation (fresh, not stale).
+        const primed = await search(primeQuery);
+        expect(primed?.stale).toBeUndefined();
+        expect(primed?.results.some((r) => r.name === 'alphaMethod')).toBe(true);
+
+        // Force rebuild = whole-index scope: caches clear on completion. During
+        // the window the primed query must be served flagged `stale`, and a
+        // never-primed query must be refused (IndexRefreshInProgressError →
+        // settleIndexRead yields undefined).
+        let rebuildDone = false;
+        let sawStaleHit = false;
+        let sawUncachedRefusal = false;
+        const rebuild = staleApi
+          .runStartupIndex({ projectRoot: tmpDir, indexDir, force: true, timeoutMs: 120_000 })
+          .finally(() => {
+            rebuildDone = true;
+          });
+        while (!rebuildDone) {
+          if (staleApi.getIndexState().server.activity?.indexing) {
+            const hit = await search(primeQuery);
+            if (hit?.stale === true && hit.results.some((r) => r.name === 'alphaMethod')) {
+              sawStaleHit = true;
+            }
+            if ((await search(uncachedQuery)) === undefined) sawUncachedRefusal = true;
+          }
+          await new Promise((resolve) => setTimeout(resolve, 10));
         }
-        await new Promise((resolve) => setTimeout(resolve, 10));
+        await rebuild;
+        expect(sawStaleHit).toBe(true);
+        expect(sawUncachedRefusal).toBe(true);
+
+        // Completion of the forced run cleared the caches: the next read is
+        // fresh (recomputed), never stale-flagged.
+        const fresh = await search(primeQuery);
+        expect(fresh?.stale).toBeUndefined();
+        expect(fresh?.results.some((r) => r.name === 'alphaMethod')).toBe(true);
+
+        // Targeted (watcher) runs preserve the caches: prime again at
+        // generation G, run a targeted reindex (generation G+1, caches kept),
+        // then prove the primed entry survives as the stale answer inside the
+        // NEXT force rebuild's window.
+        await staleApi.ensureCodebaseIndexServer({
+          projectRoot: tmpDir,
+          indexDir,
+          watchExternal: true,
+          debounceMs: 20,
+        });
+        await fs.writeFile(
+          path.join(tmpDir, 'targeted.ts'),
+          'export function targetedSentinel(): void {}\n',
+        );
+        const targetedFound = await until(async () => {
+          const hit = await search({
+            projectRoot: tmpDir,
+            indexDir,
+            query: 'targeted sentinel',
+            limit: 5,
+          });
+          return hit?.results.some((r) => r.name === 'targetedSentinel') ?? false;
+        });
+        expect(targetedFound).toBe(true);
+
+        let secondDone = false;
+        let preservedStaleHit = false;
+        const second = staleApi
+          .runStartupIndex({ projectRoot: tmpDir, indexDir, force: true, timeoutMs: 120_000 })
+          .finally(() => {
+            secondDone = true;
+          });
+        while (!secondDone) {
+          if (staleApi.getIndexState().server.activity?.indexing) {
+            if ((await search(primeQuery))?.stale === true) preservedStaleHit = true;
+          }
+          await new Promise((resolve) => setTimeout(resolve, 10));
+        }
+        await second;
+        expect(preservedStaleHit).toBe(true);
+      } finally {
+        const stopped = await staleApi
+          .shutdownCodebaseIndexServer(tmpDir, indexDir, 'stale-test-teardown')
+          .catch(() => {});
+        await staleApi.shutdownCodebaseIndexHost();
+        if (stopped?.pid !== undefined) {
+          const pid = stopped.pid;
+          expect(await until(() => !processExists(pid))).toBe(true);
+        }
+        await removeFixture(tmpDir);
       }
-      await second;
-      expect(preservedStaleHit).toBe(true);
-    } finally {
-      const stopped = await staleApi
-        .shutdownCodebaseIndexServer(tmpDir, indexDir, 'stale-test-teardown')
-        .catch(() => {});
-      await staleApi.shutdownCodebaseIndexHost();
-      if (stopped?.pid !== undefined) {
-        const pid = stopped.pid;
-        expect(await until(() => !processExists(pid))).toBe(true);
-      }
-      await removeFixture(tmpDir);
-    }
-  }, 120_000);
-});
+    }, 120_000);
+  },
+);

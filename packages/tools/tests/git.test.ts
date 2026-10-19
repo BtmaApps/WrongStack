@@ -674,6 +674,17 @@ describe('gitTool — checkout must not destroy uncommitted work', () => {
   beforeEach(async () => {
     repo = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), 'git-checkout-')));
     run('init', '-q');
+    // Test isolation (2026-10-20): pin git to a per-repo global config and
+    // disable the system config. Under full-suite load, forks inherit whatever
+    // the operator/peers left in ~/.gitconfig or the system config (hooks,
+    // fsmonitor, credential helpers) and this suite failed with bare
+    // "Command failed: git config/add/commit" — the isolated config removes
+    // that shared state. Applies to BOTH the run() helper and gitTool's
+    // spawned git (children inherit process.env).
+    const isolatedGlobalConfig = path.join(repo, 'isolated.gitconfig');
+    await fs.writeFile(isolatedGlobalConfig, '');
+    process.env['GIT_CONFIG_GLOBAL'] = isolatedGlobalConfig;
+    process.env['GIT_CONFIG_NOSYSTEM'] = '1';
     run('config', 'user.email', 't@t');
     run('config', 'user.name', 't');
     await fs.mkdir(path.join(repo, 'docs'));
@@ -683,6 +694,8 @@ describe('gitTool — checkout must not destroy uncommitted work', () => {
   });
 
   afterEach(async () => {
+    delete process.env['GIT_CONFIG_GLOBAL'];
+    delete process.env['GIT_CONFIG_NOSYSTEM'];
     await fs.rm(repo, { recursive: true, force: true }).catch(() => {});
   });
 
