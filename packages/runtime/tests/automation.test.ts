@@ -382,4 +382,19 @@ describe('automation control API', () => {
     expect(res.agentStatus).toBe('completed');
     expect(res.sessionId).toBe('sess-trail');
   });
+
+  it('rejects delivery ID reuse when payloadHash is omitted and scopes payloadHash deduplication by subjectKey (F170)', async () => {
+    const { store, spec } = await fixture();
+    const job = await store.add(spec);
+    const hash = 'a'.repeat(64);
+    const r1 = await store.enqueue(job.id, 'github', 'd1', 'org/repo#1', 'ctx', 1000, hash);
+
+    await expect(
+      store.enqueue(job.id, 'github', 'd1', 'org/repo#1', 'ctx', 1001, undefined),
+    ).rejects.toThrow('Delivery ID reused for another payload');
+
+    const r2 = await store.enqueue(job.id, 'github', 'd2', 'org/repo#2', 'ctx', 1002, hash);
+    expect(r2.id).not.toBe(r1.id);
+    expect(r2.subjectKey).toBe('org/repo#2');
+  });
 });

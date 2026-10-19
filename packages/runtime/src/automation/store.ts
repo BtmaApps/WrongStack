@@ -199,7 +199,7 @@ export class AutomationStore {
         existing.subjectKey !== subjectKey ||
         existing.context !== context ||
         existing.trigger !== trigger ||
-        (payloadHash !== undefined && existing.payloadHash !== payloadHash)
+        existing.payloadHash !== payloadHash
       )
         throw new Error('Delivery ID reused for another payload');
       return existing;
@@ -208,6 +208,7 @@ export class AutomationStore {
       const duplicate = state.runs.find(
         (run) =>
           run.jobId === job.id &&
+          run.subjectKey === subjectKey &&
           run.payloadHash === payloadHash &&
           run.trigger === trigger &&
           run.context === context,
