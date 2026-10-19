@@ -28,6 +28,57 @@ function toolPayload(
 }
 
 describe('SAGE host wiring', () => {
+  function wire(surface: Partial<SageSurface>, hygieneConfig: Record<string, unknown> = {}) {
+    const memory = {
+      hygiene: vi.fn(async () => ({})),
+      getCapability(capability: { id: string }) {
+        if (capability.id === RETRIEVAL_CAPABILITY_ID) return {};
+        if (capability.id === SURFACE_CAPABILITY_ID) return surface;
+        return undefined;
+      },
+    } as never;
+    return setupSage({
+      config: {
+        features: { memory: true },
+        Sage: { enabled: true, inject: { toolResults: false }, hygiene: hygieneConfig },
+      } as never,
+      pipelines: { toolCall: { use: vi.fn() }, request: { use: vi.fn() } } as never,
+      memoryStore: memory,
+      logger: { debug: vi.fn() } as never,
+      events: {} as never,
+    });
+  }
+
+  it('hands the hygiene schedule to the store owner at boot', async () => {
+    // Teardown hygiene alone is a fire-and-forget call from an exiting
+    // process; the daemon must own the cadence or expired memories pile up.
+    const maintenance = vi.fn(async () => ({
+      owner: 'daemon' as const,
+      scheduled: true,
+      intervalMs: 1,
+      running: false,
+    }));
+    wire({ maintenance }, { retentionDays: 45 });
+    expect(maintenance).toHaveBeenCalledWith(
+      'schedule',
+      expect.objectContaining({ retentionDays: 45 }),
+    );
+  });
+
+  it('does not schedule maintenance when session hygiene is switched off', () => {
+    const maintenance = vi.fn();
+    wire({ maintenance } as never, { autoAfterSession: false });
+    expect(maintenance).not.toHaveBeenCalled();
+  });
+
+  it('survives a daemon that predates the maintenance op', async () => {
+    const maintenance = vi.fn(async () => {
+      throw new Error('unknown SAGE operation');
+    });
+    expect(() => wire({ maintenance })).not.toThrow();
+    await Promise.resolve();
+  });
+
   it('forwards hygiene config and installs the shared middleware stack', async () => {
     _resetAutoHygieneThrottleForTesting();
     const flushPendingCounters = vi.fn(async () => {});

@@ -76,6 +76,10 @@
       "types": "./dist/utils/residency-labels.d.ts",
       "import": "./dist/utils/residency-labels.js"
     },
+    "./utils/sage-kinds": {
+      "types": "./dist/utils/sage-kinds.d.ts",
+      "import": "./dist/utils/sage-kinds.js"
+    },
     "./utils/next-steps": {
       "types": "./dist/utils/next-steps.d.ts",
       "import": "./dist/utils/next-steps.js"

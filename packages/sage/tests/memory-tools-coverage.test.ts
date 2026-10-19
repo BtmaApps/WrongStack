@@ -90,23 +90,36 @@ describe('memory tool completion coverage', () => {
     });
   });
 
-  it('auto-scopes by mode, combines role and mode, and honors explicit opt-out', async () => {
+  it('auto-scopes by role only, never by the inherited runtime mode, and honors opt-out', async () => {
     const memory = service();
     const tool = createSageTools(memory).find((t) => t.name === 'remember')!;
-    await tool.execute({ text: 'mode scoped' }, { meta: { mode: 'review' } } as never, options);
+    // The runtime mode alone must not scope: a leader in `default` mode
+    // would otherwise hide its project facts from path injection and push
+    // them into every default-mode subagent's system prompt.
+    await tool.execute({ text: 'mode only' }, { meta: { mode: 'default' } } as never, options);
     expect(memory.rememberSage).toHaveBeenLastCalledWith(
-      expect.objectContaining({ audience: { modes: ['review'] } }),
+      expect.objectContaining({ audience: undefined }),
     );
 
     await tool.execute(
-      { text: 'both scoped' },
+      { text: 'role scoped' },
       { meta: { agentRole: 'reviewer', mode: 'review' } } as never,
       options,
     );
     expect(memory.rememberSage).toHaveBeenLastCalledWith(
       expect.objectContaining({
-        audience: { roles: ['reviewer'], modes: ['review'] },
+        audience: { roles: ['reviewer'] },
       }),
+    );
+
+    // An explicit mode audience is still honored.
+    await tool.execute(
+      { text: 'explicit mode', audience: { modes: ['teach'] } } as never,
+      { meta: { agentRole: 'reviewer', mode: 'review' } } as never,
+      options,
+    );
+    expect(memory.rememberSage).toHaveBeenLastCalledWith(
+      expect.objectContaining({ audience: { modes: ['teach'] } }),
     );
 
     await tool.execute(

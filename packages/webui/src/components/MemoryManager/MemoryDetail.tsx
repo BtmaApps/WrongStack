@@ -13,6 +13,7 @@ import {
   Network,
   Pencil,
   RefreshCw,
+  RotateCcw,
   ShieldCheck,
   Tag,
   TerminalSquare,
@@ -46,6 +47,11 @@ interface MemoryDetailProps {
   onOpenMemory: (id: string) => void;
   onEdit: (id: string) => void;
   onDelete: () => void;
+  /**
+   * Restore a soft-deleted record. The Deleted tab lists recoverable memories,
+   * so its detail panel must offer the way back, not just a disabled Delete.
+   */
+  onRecover?: (id: string) => void;
   onTagSelect: (tag: string) => void;
   onNotice: (message: string) => void;
 }
@@ -61,6 +67,7 @@ export function MemoryDetail({
   onOpenMemory,
   onEdit,
   onDelete,
+  onRecover,
   onTagSelect,
   onNotice,
 }: MemoryDetailProps) {
@@ -123,14 +130,20 @@ export function MemoryDetail({
           >
             <Pencil className="size-3.5" /> {t('common:action.edit')}
           </Button>
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={onDelete}
-            disabled={memory.status === 'deleted'}
-          >
-            <Trash2 className="size-3.5" /> {t('common:action.delete')}
-          </Button>
+          {memory.status === 'deleted' && onRecover ? (
+            <Button variant="outline" size="sm" onClick={() => onRecover(memory.id)}>
+              <RotateCcw className="size-3.5" /> {t('activity:memoryManager.actionRecover')}
+            </Button>
+          ) : (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={onDelete}
+              disabled={memory.status === 'deleted'}
+            >
+              <Trash2 className="size-3.5" /> {t('common:action.delete')}
+            </Button>
+          )}
         </div>
       </div>
 

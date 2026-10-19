@@ -7,6 +7,7 @@ export * from './types/goal-kanban-worktree.js';
 export * from './types/protocol-core.js';
 export * from './types/runtime.js';
 export * from './types/sage.js';
+export * from './types/sage-doctor.js';
 export * from './types/server-message.js';
 export * from './types/skills-design.js';
 export * from './types/system.js';

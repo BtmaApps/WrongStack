@@ -63,37 +63,50 @@ export function cleanReferencingMemories(
   ctx: SqliteReferenceCleanupContext,
   targetId: string,
 ): void {
+  cleanReferencingMemoriesBatch(ctx, [targetId]);
+}
+
+/**
+ * {@link cleanReferencingMemories} for many targets in ONE table scan.
+ *
+ * The per-target form runs a `json_each` scan over every memory; hygiene's
+ * session GC called it once per expired memory, which was 8.5s of a 14s pass
+ * on a 16k-row store (225 targets x ~38ms) — all of it inside one mutation
+ * that blocks every daemon client. Only rows that reference anything are
+ * decoded here, and each is rewritten at most once.
+ */
+export function cleanReferencingMemoriesBatch(
+  ctx: SqliteReferenceCleanupContext,
+  targetIds: Iterable<string>,
+): void {
+  const targets = new Set(targetIds);
+  if (targets.size === 0) return;
   const refs = ctx
     .stmt(
       `SELECT id, data FROM memories
-       WHERE id != ?
-         AND status != 'deleted'
+       WHERE status != 'deleted'
          AND CASE WHEN json_valid(data) THEN (
-           json_extract(data, '$.supersededBy') = ?
-           OR EXISTS (
-             SELECT 1 FROM json_each(COALESCE(json_extract(data, '$.supersedes'), '[]'))
-             WHERE value = ?
-           )
-           OR EXISTS (
-             SELECT 1 FROM json_each(COALESCE(json_extract(data, '$.contradicts'), '[]'))
-             WHERE value = ?
-           )
+           json_extract(data, '$.supersededBy') IS NOT NULL
+           OR COALESCE(json_array_length(json_extract(data, '$.supersedes')), 0) > 0
+           OR COALESCE(json_array_length(json_extract(data, '$.contradicts')), 0) > 0
          ) ELSE 0 END`,
     )
-    .all(targetId, targetId, targetId, targetId) as Array<{ id: string; data: string }>;
+    .all() as Array<{ id: string; data: string }>;
 
   for (const ref of refs) {
+    if (targets.has(ref.id)) continue;
     const other = sqliteRowToMemory(ref);
     const patch: Partial<Sage> = {};
-    if (other.supersedes?.includes(targetId)) {
-      patch.supersedes = other.supersedes.filter((value) => value !== targetId);
+    if (other.supersedes?.some((value) => targets.has(value))) {
+      patch.supersedes = other.supersedes.filter((value) => !targets.has(value));
     }
-    if (other.contradicts?.includes(targetId)) {
-      patch.contradicts = other.contradicts.filter((value) => value !== targetId);
+    if (other.contradicts?.some((value) => targets.has(value))) {
+      patch.contradicts = other.contradicts.filter((value) => !targets.has(value));
     }
-    if (other.supersededBy === targetId) {
+    if (other.supersededBy !== undefined && targets.has(other.supersededBy)) {
       patch.supersededBy = undefined;
     }
+    if (Object.keys(patch).length === 0) continue;
     ctx.upsertMemory({
       ...other,
       ...patch,

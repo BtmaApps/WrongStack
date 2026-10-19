@@ -8,11 +8,14 @@ export function MemoryManagerStatsBar({
   memories,
   filteredCount,
   allTagsCount,
+  precision,
 }: {
   stats: SageStats | null;
   memories: SageEntry[];
   filteredCount: number;
   allTagsCount: number;
+  /** uses / injections from the last SAGE Doctor report; null until known. */
+  precision?: number | null | undefined;
 }) {
   const { t } = useAppTranslation();
 
@@ -40,11 +43,17 @@ export function MemoryManagerStatsBar({
           value={
             stats?.byStatus.active ?? memories.filter((memory) => memory.status === 'active').length
           }
-          hint="retrievable"
+          hint={
+            typeof precision === 'number'
+              ? t('activity:memoryManager.healthPrecisionHint', {
+                  percent: Math.round(precision * 100),
+                })
+              : 'retrievable'
+          }
           tone="success"
         />
         <MetricCard
-          label={t('activity:memoryManager.tabNeedsReview')}
+          label={t('activity:memoryManager.statStaleContradicted')}
           value={(stats?.byStatus.stale ?? 0) + (stats?.byStatus.contradicted ?? 0)}
           hint={t('activity:memoryManager.staleConflicts')}
           tone="warning"
@@ -63,7 +72,7 @@ export function MemoryManagerStatsBar({
         <div className="flex shrink-0 items-center gap-2 border-b border-border/70 bg-primary/5 px-4 py-1.5">
           <BrainCircuit className="size-3.5 text-primary" />
           <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[11px] font-medium text-foreground">
-            {scopedCount} audience-scoped memory{scopedCount !== 1 ? 'ies' : ''}
+            {scopedCount} audience-scoped {scopedCount === 1 ? 'memory' : 'memories'}
           </span>
           {roles.size > 0 && (
             <span className="text-[10px] text-muted-foreground">

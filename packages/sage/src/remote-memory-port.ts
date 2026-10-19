@@ -170,6 +170,9 @@ export class ProjectSageMemoryPort implements MemoryPort {
       this.call('findMemoriesForFile', { filePath, options }),
     readAudit: (limit) => this.call('readAudit', { limit }),
     importLegacy: (files) => this.call('importLegacyFiles', { files }, { timeoutMs: 2 * 60_000 }),
+    maintenance: (action, options) => this.call('maintenance', { action, options }),
+    // A doctor run may include a full hygiene pass plus a quick_check.
+    doctor: (options) => this.call('doctor', { options }, { timeoutMs: 5 * 60_000 }),
   };
 
   private readonly serviceCapability: SageServiceLike = {

@@ -7,6 +7,7 @@ import type { SlashCommandContext } from './command-context.js';
 import { parseSubcommand, unknownSubcommand } from './helpers.js';
 import { runAudienceMemory } from './memory-audience.js';
 import { runCompact } from './memory-compact.js';
+import { runMemoryDoctor } from './memory-doctor.js';
 import { parseForFileFlags, parseMemoryFlags } from './memory-flags.js';
 import {
   formatAudit,
@@ -35,7 +36,7 @@ export function buildMemoryCommand(opts: SlashCommandContext): SlashCommand {
     name: 'memory',
     category: 'Inspect',
     description:
-      'Inspect or edit persistent memory: /memory [show|search|race|file|path|for-file|graph|gather|remember|update|delete|forget|hygiene|verify|candidates|triage|audit|import-legacy|clear|compact|compact-log|stats|audience|diagnostics|purge-domain-terms]',
+      'Inspect or edit persistent memory: /memory [show|search|race|file|path|for-file|graph|gather|remember|update|delete|recover|forget|doctor|hygiene|verify|candidates|triage|audit|import-legacy|clear|compact|compact-log|stats|audience|diagnostics|purge-domain-terms]',
     async run(args) {
       const store = opts.memoryStore;
       if (!store) return { message: 'No memory store configured.' };
@@ -159,6 +160,27 @@ export function buildMemoryCommand(opts: SlashCommandContext): SlashCommand {
             return { message: `Deleted \`${id}\`.` };
           } catch (err) {
             return { message: `Could not delete: ${toErrorMessage(err)}` };
+          }
+        }
+        case 'recover': {
+          if (!Sage?.recoverSage) return requiresSage('recover');
+          const id = rest[0];
+          if (!id) return { message: 'Usage: /memory recover <memory-id> [reason...]' };
+          const reason = rest.slice(1).join(' ').trim() || undefined;
+          try {
+            const existing = await Sage.getSage(id);
+            if (!existing) return { message: `No memory with id \`${id}\`.` };
+            if (existing.status === 'active') return { message: `\`${id}\` is already active.` };
+            const memory = await Sage.recoverSage(id, reason);
+            // A superseded id resolves to the head of its chain, not itself.
+            return {
+              message:
+                memory.id === id
+                  ? `Recovered \`${id}\` [${memory.kind}|${memory.status}] ${memory.text}`
+                  : `\`${id}\` was superseded; the active head is \`${memory.id}\`.`,
+            };
+          } catch (err) {
+            return { message: `Could not recover: ${toErrorMessage(err)}` };
           }
         }
         case 'forget':
@@ -317,6 +339,8 @@ export function buildMemoryCommand(opts: SlashCommandContext): SlashCommand {
           if (!Sage?.verify) return requiresSage('verify');
           return { message: formatVerification(await Sage.verify(restJoined || undefined)) };
         }
+        case 'doctor':
+          return runMemoryDoctor(opts, Sage, rest);
         case 'hygiene': {
           if (!Sage) return requiresSage('hygiene');
           return { message: formatHygiene(await Sage.hygiene()) };
@@ -623,7 +647,9 @@ export function buildMemoryCommand(opts: SlashCommandContext): SlashCommand {
                 'remember',
                 'update',
                 'delete',
+                'recover',
                 'forget',
+                'doctor',
                 'hygiene',
                 'verify',
                 'candidates',

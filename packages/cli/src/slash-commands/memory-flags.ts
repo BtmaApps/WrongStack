@@ -1,19 +1,8 @@
+import { SAGE_MEMORY_KINDS } from '@wrongstack/core/utils/sage-kinds';
 import type { MemoryAnchor, SageKind, SageScope, SageStatus } from '@wrongstack/sage';
 
-const MEMORY_KINDS: SageKind[] = [
-  'fact',
-  'decision',
-  'convention',
-  'preference',
-  'warning',
-  'anti_pattern',
-  'workflow',
-  'bug_root_cause',
-  'file_note',
-  'symbol_note',
-  'command_note',
-  'summary',
-];
+/** Canonical SAGE kind vocabulary — one list shared with the TUI and WebUI. */
+const MEMORY_KINDS: readonly string[] = SAGE_MEMORY_KINDS;
 
 const MEMORY_SCOPES: SageScope[] = ['project', 'user', 'session', 'file', 'symbol'];
 
@@ -92,7 +81,7 @@ export function parseMemoryFlags(tokens: string[]): ParsedMemoryFlags {
     if (skip) i++;
     switch (name) {
       case 'kind':
-        if (value && (MEMORY_KINDS as string[]).includes(value)) out.kind = value as SageKind;
+        if (value && MEMORY_KINDS.includes(value)) out.kind = value as SageKind;
         else errors.push(`--kind must be one of: ${MEMORY_KINDS.join(', ')}.`);
         break;
       case 'scope':

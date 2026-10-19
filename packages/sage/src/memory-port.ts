@@ -135,6 +135,15 @@ export class SqliteMemoryPort extends SqliteSageStore implements MemoryPort {
     findMemoriesForFile: (filePath, options) => super.findMemoriesForFile(filePath, options),
     readAudit: (limit) => super.readAudit(limit),
     importLegacy: (files) => this.importLegacyFiles(files),
+    // In-process stores have no daemon to own a schedule; the host's
+    // teardown hygiene remains their maintenance path.
+    maintenance: async () => ({
+      owner: 'inline',
+      scheduled: false,
+      intervalMs: 0,
+      running: false,
+    }),
+    doctor: (options) => super.doctor(options),
   };
   private readonly serviceCapability: SageServiceLike = {
     unifiedSearchService: (query, options) => super.unifiedSearchService(query, options),

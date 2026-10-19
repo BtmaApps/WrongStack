@@ -323,7 +323,7 @@ Newline-delimited JSON frames:
 
 Legacy-compatible: `readAll`, `read`, `remember`, `forget`, `consolidate`, `clear`, `list`, `search`, `findRelated`, `scoreRelevant`
 
-SAGE: `stats`, `listSage`, `listSagePage`, `getSage`, `rememberSage`, `updateSage`, `deleteSage`, `retrieveForPath`, `searchSage`, `unifiedSearch`, `findRelatedSage`, `recordInjection` / `recordUse`, `retrieveForAudience`, `graphFor`, `verify`, `hygiene`, candidate CRUD/resolve, `recoverSage`, `backfillRecoverable`, `findMemoriesForFile`, `readAudit`, `importLegacyFiles`, `consolidateSession`, `ping`
+SAGE: `stats`, `listSage`, `listSagePage`, `getSage`, `rememberSage`, `updateSage`, `deleteSage`, `retrieveForPath`, `searchSage`, `unifiedSearch`, `findRelatedSage`, `recordInjection` / `recordUse`, `retrieveForAudience`, `graphFor`, `verify`, `hygiene`, `maintenance` (`schedule` / `status`), `doctor`, candidate CRUD/resolve, `recoverSage`, `backfillRecoverable`, `findMemoriesForFile`, `readAudit`, `importLegacyFiles`, `consolidateSession`, `ping`
 
 ### 6.5 Lifecycle
 
@@ -377,6 +377,9 @@ Evidence-first, not bag-of-words:
 Additional rules:
 
 - Single coincidental tokens are below the bar
+- Unused penalty: linear up to 0.18, plus a logarithmic tail past 50 unused injections (≈ +0.10 at 500, +0.20 at 5,000, cap +0.25); one recorded use removes it (`unusedInjectionPenalty`)
+- Graph traversal never walks through a hub (degree > `GRAPH_HUB_DEGREE` = 64); a hub start keeps only its 64 strongest edges
+- `remember` auto-audience is **role only** — the inherited runtime mode (`default`/`teach`/`yolo`) never scopes a memory
 - Graph expansion needs a concrete seed and contributes at most one related hit
 - Context pressure: ~82% → at most 1 memory / 600 chars; ~95% → inject nothing
 - Project-root (`.`) anchors are never universal file matches
@@ -462,10 +465,13 @@ Hourly cap (~20). Never auto-deletes.
 2. **Domain term extractor**: conversation / commits → glossary + SAGE entries
 3. **Session-end commit extractor**: commit messages → durable notes
 
-### 8.7 Teardown hygiene
+### 8.7 Daemon-owned maintenance and teardown hygiene
 
-- `autoAfterSession` default `true`
-- Shared throttle: **1 hour** (`AUTO_HYGIENE_INTERVAL_MS`)
+- `autoAfterSession` default `true`; `false` disables both paths below
+- **The daemon owns the cadence** (`project-server-hygiene.ts`): `setupSage` registers the host's hygiene options at boot (`maintenance('schedule', …)`); the daemon runs hygiene every **6 h** (`WRONGSTACK_SAGE_MAINTENANCE_INTERVAL_MS`), first after a 90 s settle (`WRONGSTACK_SAGE_MAINTENANCE_SETTLE_MS`), only when no request is in flight (forced after ~10 min of continuous traffic). The last run, duration, error and report persist in `.wrongstack/memories/hygiene/maintenance.json`, so the cadence survives idle shutdowns.
+  - Why: the teardown request below is fire-and-forget from an exiting process and rarely reached the daemon — on this repository's store 225 expired session digests stayed active for two weeks.
+- After each scheduled pass the daemon **self-heals**: it runs the doctor and applies the structure-only repairs (`graph-hubs`, `dangling-edges`, `audience-runtime-mode`, `fts-rebuild`), logging every repair and remaining warning to `daemon.log`.
+- Teardown still requests an automatic pass; it is served from the persisted report within the **1 hour** throttle (`AUTO_HYGIENE_INTERVAL_MS`)
 - Full option surface: `retentionDays`, `sessionRetentionDays`, `archiveLowConfidenceAfterDays`, `archiveUnusedAfterDays`, `unusedMinInjections`, `purgeDeletedAfterDays`, `verifyDepth`
 - Manual `/memory hygiene` bypasses the throttle
 
@@ -522,6 +528,26 @@ rememberSage
 
 CLI: `/memory triage` defaults to **dry-run**; `--apply` applies updates / merges / files proposals.<br>
 Proposal filing is shared: `fileTriageProposals` (dedupe pending `targetMemoryId`).
+
+---
+
+### SAGE doctor
+
+`SqliteSageStore.doctor({ fix?, hygieneOptions? })` (`sqlite-store-doctor.ts`), over IPC as op `doctor`, on the surface capability as `doctor()`. Surfaces: `wstack sage doctor [--fix[=<ids>]] [--json]`, `/memory doctor [--fix]`, WebUI Memory → Health. Output text is shared (`doctor-format.ts`).
+
+| Check | Repair (`--fix=`) |
+|---|---|
+| `sqlite-integrity` (`PRAGMA quick_check`) | — |
+| `fts-integrity` (structure check + document count vs rows) | `fts-rebuild` |
+| `maintenance` (never ran / failed / > 4 intervals old; daemon only) | `hygiene` |
+| `expired-active` (active past `expiresAt`) | `hygiene` |
+| `graph-hubs` (node with > 64 `same_topic`/`related_to` edges) | `graph-hubs` — removes those soft edges |
+| `dangling-edges` (memory endpoint missing or deleted) | `dangling-edges` |
+| `audience-runtime-mode` (`modes` contains `default`) | `audience-runtime-mode` — strips the mode, resets the subagent-only injection count |
+| `injected-never-used` (100+ injections, 0 uses) | — (review) |
+| `candidate-backlog`, `wal-size` | — |
+
+Metrics: active/total, edges, pending review, injections, uses, **precision** (uses ÷ injections), never-used, unanchored, never-verified, DB/WAL bytes. No repair hard-deletes a memory.
 
 ---
 

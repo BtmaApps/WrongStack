@@ -70,7 +70,7 @@ interface RememberToolInput {
   tags?: string[] | undefined;
   anchors?: MemoryAnchor[] | undefined;
   audience?: MemoryAudienceSelector | undefined;
-  /** When true, disables auto-scoping from agent role/mode. */
+  /** When true, disables auto-scoping from agent role. */
   no_auto_audience?: boolean | undefined;
   importance?: number | undefined;
   confidence?: number | undefined;
@@ -168,7 +168,7 @@ function memoryRememberTool(memory: SageServiceLike): Tool<RememberToolInput, Sa
         no_auto_audience: {
           type: 'boolean',
           description:
-            'Set to true to prevent auto-scoping from your agent role/mode. Creates a general project memory even when called from a subagent.',
+            'Set to true to prevent auto-scoping from your agent role. Creates a general project memory even when called from a subagent.',
         },
         importance: numberSchema(0, 1),
         confidence: numberSchema(0, 1),
@@ -198,14 +198,16 @@ function memoryRememberTool(memory: SageServiceLike): Tool<RememberToolInput, Sa
         typeof ctx?.meta?.['agentRole'] === 'string'
           ? (ctx.meta['agentRole'] as string)
           : undefined;
-      const detectedMode =
-        typeof ctx?.meta?.['mode'] === 'string' ? (ctx.meta['mode'] as string) : undefined;
+      // Auto-scoping keys on the caller's ROLE only. `ctx.meta.mode` is the
+      // session's runtime mode (default / teach / yolo), which every worker
+      // inherits from its leader: scoping by it turned ordinary project facts
+      // into `{ modes: ['default'] }` audience memories, which ordinary path
+      // injection skips and every default-mode subagent spawn receives.
+      // Measured on the live store: three such memories made up 1,299 of
+      // 2,020 injections in one day. A mode audience must be explicit.
       const autoAudience =
-        !input.audience && !input.no_auto_audience && (detectedRole || detectedMode)
-          ? {
-              ...(detectedRole ? { roles: [detectedRole] } : {}),
-              ...(detectedMode ? { modes: [detectedMode] } : {}),
-            }
+        !input.audience && !input.no_auto_audience && detectedRole
+          ? { roles: [detectedRole] }
           : input.audience;
       const saved = await memory.rememberSage({
         text: input.text,

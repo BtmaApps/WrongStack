@@ -484,7 +484,12 @@ export function createEmbeddedMessageRouter(
         }),
       },
     },
-    memory: { getMemoryStore: () => opts.memoryStore, send, sendResult },
+    memory: {
+      getMemoryStore: () => opts.memoryStore,
+      getConfig: () => deps.agentConfigCtx.getConfig?.() ?? deps.prefsCtx.configStore?.get(),
+      send,
+      sendResult,
+    },
     content: {
       getProjectRoot: projectRoot,
       getSkillsContext: () => deps.skillsCtx,

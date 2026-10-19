@@ -37,6 +37,13 @@ const USAGE = [
   `  wstack sage disconnect <${SAGE_CONNECT_TARGETS.join('|')}|all> [--dry-run]`,
   '  wstack sage mcp [--origin <name>]',
   '  wstack sage sync [--restart-service]',
+  '  wstack sage doctor [--fix[=<ids>]] [--json]',
+  '',
+  'doctor: health report of the project SAGE store (expired memories,',
+  'graph hubs, dangling edges, runtime-mode audiences, FTS, maintenance,',
+  'injection precision). --fix applies the suggested repairs; none hard-deletes',
+  'a memory. Fix ids: hygiene, graph-hubs, dangling-edges, audience-runtime-mode,',
+  'fts-rebuild.',
   '',
   "Connects this project's SAGE memory to another coding agent over MCP. The",
   'server attaches to the SAGE daemon while wstack is open in this project; it',
@@ -150,14 +157,32 @@ function targetsFrom(word: string | undefined): SageConnectTarget[] | null {
 }
 
 export const sageCmd: SubcommandHandler = async (rawArgs, deps) => {
-  const args = restoreFlags(rawArgs, deps, ['origin', 'command', 'dry-run', 'restart-service']);
-  const words = positionals(args, ['origin', 'command']);
+  const args = restoreFlags(rawArgs, deps, [
+    'origin',
+    'command',
+    'dry-run',
+    'restart-service',
+    'fix',
+    'json',
+  ]);
+  const words = positionals(args, ['origin', 'command', 'fix']);
   const sub = words[0];
   const out = (line: string) => deps.renderer.write(`${line}\n`);
 
   if (sub === 'sync') {
     const { runSageHqSyncCommand } = await import('./sage-sync.js');
     return runSageHqSyncCommand(deps, args.includes('--restart-service'));
+  }
+
+  if (sub === 'doctor') {
+    const { runSageDoctorCommand } = await import('./sage-doctor.js');
+    const fixValue = optionValue(args, 'fix');
+    const wantsFix = args.some((arg) => arg === '--fix' || arg.startsWith('--fix='));
+    return runSageDoctorCommand(
+      deps,
+      wantsFix ? (fixValue ?? true) : undefined,
+      args.includes('--json'),
+    );
   }
 
   if (sub === 'mcp') {

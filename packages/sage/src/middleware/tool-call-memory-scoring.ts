@@ -105,8 +105,7 @@ export function computeInjectionProof(memory: Sage, relationStrength: number): I
   const useBoost = uses > 0 ? Math.min(0.14, 0.05 + uses * 0.02) : 0;
   const anchorBoost = memory.anchors.length > 0 ? 0.04 : -0.05;
   const injections = memory.injectionCount ?? 0;
-  const unusedPenalty =
-    injections >= 3 && uses === 0 ? Math.min(0.18, 0.05 + injections * 0.012) : 0;
+  const unusedPenalty = unusedInjectionPenalty(injections, uses);
 
   const terms: InjectionScoreTerm[] = [
     { label: `metadata ${metadataScore.toFixed(2)}×0.48`, value: metadataScore * 0.48 },
@@ -128,6 +127,23 @@ export function computeInjectionProof(memory: Sage, relationStrength: number): I
   let raw = 0;
   for (const term of terms) raw += term.value;
   return { score: Math.max(0, Math.min(1, raw)), metadataScore, relationStrength, terms };
+}
+
+/**
+ * Penalty for a memory that keeps being injected and is never referenced.
+ *
+ * The linear part saturates at 0.18 after ~11 injections. On its own that let
+ * a well-anchored memory score ~0.78 forever: the live store had memories
+ * injected 10,000+ times with zero recorded uses still clearing the gate. The
+ * logarithmic tail keeps growing past 50 injections (≈+0.10 at 500, +0.20 at
+ * 5,000, capped at +0.25), so sustained non-use eventually drops a memory
+ * below the score floor while a single recorded use removes the penalty.
+ */
+function unusedInjectionPenalty(injections: number, uses: number): number {
+  if (injections < 3 || uses > 0) return 0;
+  const linear = Math.min(0.18, 0.05 + injections * 0.012);
+  const tail = injections > 50 ? Math.min(0.25, 0.1 * Math.log10(injections / 50)) : 0;
+  return linear + tail;
 }
 
 export function contextualInjectionScore(memory: Sage, relationStrength: number): number {

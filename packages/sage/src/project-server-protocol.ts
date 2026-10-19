@@ -6,6 +6,11 @@ import type {
   MemoryScope,
   ScoredEntry,
 } from '@wrongstack/core/types';
+import type {
+  SageDoctorOptions,
+  SageDoctorReport,
+  SageMaintenanceStatus,
+} from './memory-doctor-types.js';
 import type { VectorAugmentHit } from './retrieval/vector-augment.js';
 import type { SearchOptions, SearchQuery, SearchResult } from './service-contract.js';
 import type {
@@ -271,6 +276,20 @@ export interface SageServerOperations {
     args: { input: SessionConsolidationInput };
     result: SessionConsolidationResult;
   };
+  /**
+   * Daemon-owned maintenance: `schedule` registers the host's hygiene options
+   * and arms the periodic pass; `status` only reports. Older daemons answer
+   * with an unknown-operation error, which hosts treat as "not supported".
+   */
+  maintenance: {
+    args: { action: 'schedule' | 'status'; options?: SageHygieneOptions | undefined };
+    result: SageMaintenanceStatus;
+  };
+  /** Health report plus optional named repairs (see sqlite-store-doctor.ts). */
+  doctor: {
+    args: { options?: SageDoctorOptions | undefined };
+    result: SageDoctorReport;
+  };
 }
 
 export type SageServerOperationName = keyof SageServerOperations;
@@ -364,6 +383,8 @@ export const SAGE_DISPATCH_FIELD_SPECS = {
   readAudit: [],
   importLegacyFiles: [['files', 'string[]']],
   consolidateSession: [['input', 'object']],
+  maintenance: [['action', 'string']],
+  doctor: [],
 } as const satisfies Record<SageServerOperationName, readonly SageFieldSpec[]>;
 
 function sageFieldMatchesKind(value: unknown, kind: SageFieldKind): boolean {

@@ -547,6 +547,18 @@
       ]
     },
     {
+      "subpath": "./utils/sage-kinds",
+      "target": {
+        "types": "./dist/utils/sage-kinds.d.ts",
+        "import": "./dist/utils/sage-kinds.js"
+      },
+      "source": "packages/core/src/utils/sage-kinds.ts",
+      "declarations": [
+        "export const SAGE_MEMORY_KINDS",
+        "export type SageMemoryKind"
+      ]
+    },
+    {
       "subpath": "./utils/next-steps",
       "target": {
         "types": "./dist/utils/next-steps.d.ts",
@@ -1812,8 +1824,8 @@
       "directory": "utils",
       "classification": "kernel primitive",
       "intendedOwner": "split dependency-free primitives from concrete helpers",
-      "sourceFiles": 91,
-      "sourceLines": 15379
+      "sourceFiles": 92,
+      "sourceLines": 15417
     },
     {
       "directory": "vcs",

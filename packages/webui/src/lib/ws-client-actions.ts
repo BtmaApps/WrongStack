@@ -17,6 +17,7 @@ export interface WsClientActionMethods {
       query?: string;
       limit?: number;
       cursor?: string;
+      includeStats?: boolean;
     },
     options?: WSSendOptions,
   ): void;
@@ -68,6 +69,11 @@ export interface WsClientActionMethods {
   ): void;
   backfillRecoverable(
     opts: Extract<WSClientMessage, { type: 'memory.sage.backfillRecoverable' }>['payload'],
+    options?: WSSendOptions,
+  ): void;
+  /** SAGE Doctor health report, optionally after named `fix` repairs. */
+  sageDoctor(
+    opts?: Extract<WSClientMessage, { type: 'memory.sage.doctor' }>['payload'],
     options?: WSSendOptions,
   ): void;
   listMcpServers(): void;
@@ -176,6 +182,7 @@ const actionMethods = {
       query?: string;
       limit?: number;
       cursor?: string;
+      includeStats?: boolean;
     },
     options?: WSSendOptions,
   ) {
@@ -285,6 +292,14 @@ const actionMethods = {
     options?: WSSendOptions,
   ) {
     this.send({ type: 'memory.sage.backfillRecoverable', payload: opts }, options);
+  },
+
+  sageDoctor(
+    this: WsClientActionHost,
+    opts?: Extract<WSClientMessage, { type: 'memory.sage.doctor' }>['payload'],
+    options?: WSSendOptions,
+  ) {
+    this.send({ type: 'memory.sage.doctor', payload: { ...opts } }, options);
   },
 
   listMcpServers(this: WsClientActionHost) {

@@ -9,6 +9,19 @@ export function normalizeText(text: string): string {
 }
 
 /**
+ * Hygiene's near-duplicate pass compares every pair in a bucket and each
+ * comparison re-tokenized both texts (NFKC + a unicode regex split) several
+ * times: ~3s of a 14s pass on a 7k-memory store. Callers get a copy, so the
+ * cached arrays are never mutated. Only memory-sized texts are cached — the
+ * middlewares also tokenize whole tool outputs, which must not be retained
+ * by a long-lived daemon. Cleared wholesale when full: a bounded memo, not an
+ * LRU, is enough for one pass over the corpus.
+ */
+const TOKEN_CACHE = new Map<string, readonly string[]>();
+const TOKEN_CACHE_MAX = 8_192;
+const TOKEN_CACHE_MAX_TEXT = 4_096;
+
+/**
  * Canonical tokenizer for retrieval scoring across BOTH the stores and the
  * injection middlewares — do not fork it. Invariants:
  * - NFKC + lowercase: strings differing only in unicode form/case tokenize alike.
@@ -20,7 +33,14 @@ export function normalizeText(text: string): string {
  * - Output is deduplicated; scoring operates on sets.
  */
 export function tokenize(text: string): string[] {
-  return [
+  const cacheable = text.length <= TOKEN_CACHE_MAX_TEXT;
+  // Key on the canonical form so inputs differing only in unicode form,
+  // case, or whitespace share one entry — they tokenize identically by
+  // the NFKC + lowercase invariant above.
+  const key = cacheable ? normalizeTextKey(text) : text;
+  const cached = cacheable ? TOKEN_CACHE.get(key) : undefined;
+  if (cached) return [...cached];
+  const tokens = [
     ...new Set(
       text
         .normalize('NFKC')
@@ -29,6 +49,10 @@ export function tokenize(text: string): string[] {
         .filter((term) => term.length >= 3),
     ),
   ];
+  if (!cacheable) return tokens;
+  if (TOKEN_CACHE.size >= TOKEN_CACHE_MAX) TOKEN_CACHE.clear();
+  TOKEN_CACHE.set(key, tokens);
+  return [...tokens];
 }
 
 /** Canonical text key for memory deduplication and comparison. */

@@ -189,6 +189,20 @@ export function setupSage(deps: SageHostWiringDeps): () => Promise<void> {
       }),
     );
   }
+  // The store owner runs hygiene on its own cadence. Teardown hygiene alone
+  // was a fire-and-forget call from an exiting process and rarely arrived:
+  // expired session memories stayed active for weeks. Registering at boot
+  // hands the schedule to the daemon, which outlives this host. An older
+  // daemon without the op just leaves teardown as the only path.
+  if (cfg?.hygiene?.autoAfterSession !== false && surface?.maintenance) {
+    void surface
+      .maintenance('schedule', sageHygieneOptionsFromConfig(cfg?.hygiene))
+      .catch((error: unknown) =>
+        deps.logger.debug(
+          `sage maintenance schedule skipped: ${error instanceof Error ? error.message : String(error)}`,
+        ),
+      );
+  }
   // Domain-term auto-extract is always-on when a SAGE port is present.
   if (deps.memoryStore) {
     deps.pipelines.request.use(

@@ -52,8 +52,11 @@ export async function handleSageListCandidates(
 
 /**
  * Resolve a pending hygiene review candidate (PR #1).
- * Request:  { type: 'memory.sage.candidateResolve', payload: { candidateId, action: 'accept'|'reject', reason? } }
- * Response: { type: 'memory.sage.candidateResolve', payload: { candidate, resolvedAction } }
+ * Request:  { type: 'memory.sage.candidateResolve', payload: { candidateId, action: 'accept'|'reject', reason?, requestId? } }
+ * Response: { type: 'memory.sage.candidateResolve', payload: { candidate, resolvedAction, requestId? } }
+ *
+ * Every response (success and error) echoes the request's `requestId`, so a
+ * client with several resolves in flight settles each wait on its own reply.
  *
  * The store handles audit + status mutation; the handler just relays the
  * payload. If the candidate id is unknown, the store returns null and we
@@ -68,7 +71,7 @@ export async function handleSageCandidateResolve(
   if (!Sage) {
     send(ws, {
       type: 'memory.sage.candidateResolve',
-      payload: { error: requiresSage('memory.sage.candidateResolve') },
+      payload: withRequestId(msg, { error: requiresSage('memory.sage.candidateResolve') }),
     });
     return;
   }
@@ -84,14 +87,14 @@ export async function handleSageCandidateResolve(
   if (!candidateId) {
     send(ws, {
       type: 'memory.sage.candidateResolve',
-      payload: { error: 'candidateId is required' },
+      payload: withRequestId(msg, { error: 'candidateId is required' }),
     });
     return;
   }
   if (action !== 'accept' && action !== 'reject') {
     send(ws, {
       type: 'memory.sage.candidateResolve',
-      payload: { error: 'action must be "accept" or "reject"' },
+      payload: withRequestId(msg, { error: 'action must be "accept" or "reject"' }),
     });
     return;
   }
@@ -127,22 +130,22 @@ export async function handleSageCandidateResolve(
     if (!candidate) {
       send(ws, {
         type: 'memory.sage.candidateResolve',
-        payload: { error: `Candidate "${candidateId}" not found` },
+        payload: withRequestId(msg, { error: `Candidate "${candidateId}" not found` }),
       });
       return;
     }
     send(ws, {
       type: 'memory.sage.candidateResolve',
-      payload: {
+      payload: withRequestId(msg, {
         candidate,
         resolvedAction: action,
         ...(applied !== undefined ? { applied } : {}),
-      },
+      }),
     });
   } catch (err) {
     send(ws, {
       type: 'memory.sage.candidateResolve',
-      payload: { error: errMessage(err) },
+      payload: withRequestId(msg, { error: errMessage(err) }),
     });
   }
 }

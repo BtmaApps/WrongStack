@@ -1,20 +1,12 @@
+import { SAGE_MEMORY_KINDS } from '@wrongstack/core/utils/sage-kinds';
 import { cn } from '@/lib/utils';
 import type { SageAnchor, SageEntry, SageScope, SageStatus } from '@/types';
 
-export const MEMORY_KINDS = [
-  'fact',
-  'decision',
-  'convention',
-  'preference',
-  'warning',
-  'anti_pattern',
-  'workflow',
-  'bug_root_cause',
-  'file_note',
-  'symbol_note',
-  'command_note',
-  'summary',
-] as const;
+/**
+ * Canonical SAGE kind vocabulary (shared with the CLI/TUI and pinned to the
+ * engine by `packages/sage/tests/sage-kinds-parity.test.ts`).
+ */
+export const MEMORY_KINDS = SAGE_MEMORY_KINDS;
 
 export const MEMORY_STATUSES: SageStatus[] = [
   'active',
@@ -59,6 +51,14 @@ export const KIND_LABELS: Record<string, string> = {
   symbol_note: 'Symbol note',
   command_note: 'Command note',
   summary: 'Summary',
+  memory_review: 'Memory review',
+  tool_outcome: 'Tool outcome',
+  error_pattern: 'Error pattern',
+  session_digest: 'Session digest',
+  role_operational: 'Role guidance',
+  task_outcome: 'Task outcome',
+  security_signal: 'Security signal',
+  fleet_convention: 'Fleet convention',
 };
 
 export function formatAudienceText(audience: NonNullable<SageEntry['audience']>): string {

@@ -9,7 +9,7 @@ import {
 } from './sqlite-hygiene-anchors.js';
 import { verifyHygieneMemories } from './sqlite-hygiene-verification.js';
 import { readSqliteSageRow } from './sqlite-store-codec.js';
-import { cleanReferencingMemories, memoryNodeId } from './sqlite-store-graph-helpers.js';
+import { cleanReferencingMemoriesBatch, memoryNodeId } from './sqlite-store-graph-helpers.js';
 import {
   isNearDuplicateMemory,
   isPossiblyContradictory,
@@ -502,6 +502,7 @@ export async function runSqliteSageHygiene(
 
   if (sessionGcTargets.length > 0) {
     await ctx.runMutation(() => {
+      const tombstoned: string[] = [];
       for (const m of sessionGcTargets) {
         // Re-read inside the mutation — the same in-mutation re-read
         // convention as the purge, verification and reactivation passes.
@@ -538,7 +539,7 @@ export async function runSqliteSageHygiene(
           contextPolicy: 'never',
         };
         ctx.upsertMemory(tombstone);
-        cleanReferencingMemories(ctx, m.id);
+        tombstoned.push(m.id);
         ctx.cascadeDeleteEdges(memoryNodeId(m.id));
         ctx.audit('memory.session_gc', {
           memoryId: m.id,
@@ -551,6 +552,7 @@ export async function runSqliteSageHygiene(
         });
         deleted++;
       }
+      cleanReferencingMemoriesBatch(ctx, tombstoned);
     });
   }
 

@@ -48,6 +48,11 @@ export default defineConfig({
         replacement: path.resolve(__dirname, '../core/src/utils/residency-labels.ts'),
       },
       {
+        // SAGE memory-kind vocabulary — dependency-free.
+        find: /^@wrongstack\/core\/utils\/sage-kinds$/,
+        replacement: path.resolve(__dirname, '../core/src/utils/sage-kinds.ts'),
+      },
+      {
         find: /^@wrongstack\/core\/execution\/prompt-enhancer$/,
         replacement: path.resolve(__dirname, '../core/src/execution/prompt-enhancer.ts'),
       },

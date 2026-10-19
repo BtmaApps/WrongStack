@@ -141,12 +141,14 @@ export async function handleSageList(
  * `memory.sage.list` for the MemoryManager: it returns a bounded page plus a
  * cursor so the WebUI never loads thousands of soft-deleted records at once.
  *
- * Request:  { type: 'memory.sage.listPage', payload: { statuses?, kind?, query?, limit?, cursor? } }
- * Response: { type: 'memory.sage.listPage', payload: { memories, nextCursor, total, statusCounts } }
+ * Request:  { type: 'memory.sage.listPage', payload: { statuses?, kind?, query?, limit?, cursor?, includeStats? } }
+ * Response: { type: 'memory.sage.listPage', payload: { memories, nextCursor, total, statusCounts, stats? } }
  *
  * `statuses` defaults (backend-side) to every status EXCEPT `deleted`. Pass
  * `statuses: ['deleted']` for the WebUI "Deleted" tab. Falls back gracefully to
  * a full `listSage()` for stores that predate `listSagePage`.
+ * `includeStats: false` skips the filter-independent `Sage.stats()` aggregate
+ * (the WebUI sends it on search/filter reloads).
  */
 export async function handleSageListPage(
   ws: WebSocket,
@@ -174,12 +176,16 @@ export async function handleSageListPage(
       limit: typeof payload['limit'] === 'number' ? (payload['limit'] as number) : undefined,
       cursor: typeof payload['cursor'] === 'string' ? (payload['cursor'] as string) : undefined,
     };
+    const includeStats = payload['includeStats'] !== false;
 
     if (typeof Sage.listSagePage === 'function') {
-      const [page, stats] = await Promise.all([Sage.listSagePage(options as never), Sage.stats()]);
+      const [page, stats] = await Promise.all([
+        Sage.listSagePage(options as never),
+        includeStats ? Sage.stats() : undefined,
+      ]);
       send(ws, {
         type: 'memory.sage.listPage',
-        payload: withRequestId(payload, { ...page, stats }),
+        payload: withRequestId(payload, stats ? { ...page, stats } : { ...page }),
       });
       return;
     }
@@ -207,7 +213,7 @@ export async function handleSageListPage(
         nextCursor: null,
         total: filtered.length,
         statusCounts,
-        stats: await Sage.stats(),
+        ...(includeStats ? { stats: await Sage.stats() } : {}),
       }),
     });
   } catch (err) {

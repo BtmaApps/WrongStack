@@ -1,5 +1,6 @@
-import type { MemoryPort } from '@wrongstack/core/types';
+import type { Config, MemoryPort } from '@wrongstack/core/types';
 import type { WebSocket } from 'ws';
+import { handleSageDoctor } from './memory-doctor-handler.js';
 import {
   handleMemoryList,
   handleSageBackfillRecoverable,
@@ -20,6 +21,8 @@ import type { WSClientMessage, WSServerMessage } from './types.js';
 
 export interface MemoryRouteContext {
   getMemoryStore: () => MemoryPort | undefined;
+  /** Live config, when the host has it — feeds the doctor `hygiene` repair. */
+  getConfig?: (() => Config | undefined) | undefined;
   send: (ws: WebSocket, message: WSServerMessage) => void;
   sendResult: (ws: WebSocket, success: boolean, message: string) => void;
 }
@@ -90,6 +93,9 @@ export async function handleMemoryRoute(
       return true;
     case 'memory.sage.forFile':
       await handleSageForFile(ws, message, store);
+      return true;
+    case 'memory.sage.doctor':
+      await handleSageDoctor(ws, message, store, ctx.getConfig);
       return true;
     case 'memory.sage.searchBreakdown':
       await handleSageSearchBreakdown(ws, message, store);

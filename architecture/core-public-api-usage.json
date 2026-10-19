@@ -194,8 +194,8 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1454,
-      "typeOnly": 1281,
+      "files": 1455,
+      "typeOnly": 1282,
       "runtimeOrMixed": 429
     },
     "@wrongstack/core/types/limits": {
@@ -239,9 +239,9 @@
       "runtimeOrMixed": 20
     },
     "@wrongstack/core/utils": {
-      "files": 825,
+      "files": 828,
       "typeOnly": 71,
-      "runtimeOrMixed": 784
+      "runtimeOrMixed": 787
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -272,6 +272,11 @@
       "files": 4,
       "typeOnly": 4,
       "runtimeOrMixed": 1
+    },
+    "@wrongstack/core/utils/sage-kinds": {
+      "files": 6,
+      "typeOnly": 0,
+      "runtimeOrMixed": 6
     },
     "@wrongstack/core/utils/sage-output-block": {
       "files": 3,
@@ -22143,6 +22148,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/webui-server/src/server/memory-doctor-handler.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/webui-server/src/server/memory-handlers.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -24651,6 +24662,12 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/src/slash-commands/memory-doctor.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/src/slash-commands/memory-gather.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -25198,6 +25215,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/src/subcommands/handlers/rewind.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/src/subcommands/handlers/sage-doctor.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -26464,6 +26487,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/sage/src/project-server-endpoint.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/sage/src/project-server-hygiene.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -28668,6 +28697,42 @@
       "file": "packages/webui/tests/components/context-dashboard-residency.test.tsx",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/utils/sage-kinds",
+      "file": "packages/cli/src/slash-commands/memory-flags.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils/sage-kinds",
+      "file": "packages/sage/tests/sage-kinds-parity.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils/sage-kinds",
+      "file": "packages/tui/src/memory-slash-types.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils/sage-kinds",
+      "file": "packages/tui/src/memory-slash-write.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils/sage-kinds",
+      "file": "packages/tui/tests/memory-split-modules.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils/sage-kinds",
+      "file": "packages/webui/src/components/MemoryManager/shared.tsx",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/utils/sage-output-block",

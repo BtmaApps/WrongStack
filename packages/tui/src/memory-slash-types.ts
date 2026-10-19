@@ -1,4 +1,5 @@
 import type { MemoryPriority, MemoryScope, MemoryType } from '@wrongstack/core/types';
+import { SAGE_MEMORY_KINDS } from '@wrongstack/core/utils/sage-kinds';
 
 export const DEFAULT_MEMORY_LIMIT = 50;
 export const MAX_MEMORY_LIMIT = 500;
@@ -80,20 +81,8 @@ export const MEMORY_WRITE_SUBS = new Set([
   'rm',
 ]);
 
-export const MEMORY_KIND_VALUES = [
-  'fact',
-  'decision',
-  'convention',
-  'preference',
-  'warning',
-  'anti_pattern',
-  'workflow',
-  'bug_root_cause',
-  'file_note',
-  'symbol_note',
-  'command_note',
-  'summary',
-];
+/** Canonical SAGE kind vocabulary — one list shared with the CLI and WebUI. */
+export const MEMORY_KIND_VALUES: readonly string[] = SAGE_MEMORY_KINDS;
 
 export const MEMORY_SCOPE_VALUES = ['project', 'user', 'session', 'file', 'symbol'];
 

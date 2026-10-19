@@ -170,6 +170,7 @@ export interface WSMemorySageList {
 export interface WSMemorySageListPage {
   type: 'memory.sage.listPage';
   payload: {
+    requestId?: string | undefined;
     memories?: SageEntry[] | undefined;
     nextCursor?: string | null | undefined;
     total?: number | undefined;
@@ -353,6 +354,8 @@ export interface WSMemorySageCandidateResolve {
     candidate?: MemoryCandidateEntry | undefined;
     /** The user-facing action that was applied: accept | reject. */
     resolvedAction?: 'accept' | 'reject' | undefined;
+    /** Echo of the request's `requestId`, when the request carried one. */
+    requestId?: string | undefined;
     error?: string | undefined;
   };
 }

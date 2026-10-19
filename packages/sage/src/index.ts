@@ -1,5 +1,10 @@
 export { verifyMemoryAnchors } from './anchors/verify.js';
 export {
+  formatSageDoctorReport,
+  parseDoctorFixArg,
+  suggestedDoctorFixes,
+} from './doctor-format.js';
+export {
   DEFAULT_GLOSSARY_ENTRY_CHARS,
   DEFAULT_MAX_GLOSSARY_ENTRIES,
   DOMAIN_TERM_LOOKUP_TAG,
@@ -29,6 +34,7 @@ export {
   sageHygieneOptionsFromConfig,
   setupSage,
 } from './host-wiring.js';
+export * from './memory-doctor-types.js';
 export {
   createProjectSageMemoryPort,
   createSqliteMemoryPort,

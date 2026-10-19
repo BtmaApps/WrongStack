@@ -197,6 +197,45 @@ describe('memory-handlers', () => {
       expect(sent.payload.stats).toBeDefined();
     });
 
+    // Sage.stats() is a store-wide aggregate that search/filter reloads do not
+    // change; the WebUI opts out with includeStats:false on every keystroke.
+    it('skips the store-wide stats when includeStats is false', async () => {
+      const ws = mockWs();
+      const sage = makeSage({
+        listSagePage: vi.fn(async () => ({
+          memories: [],
+          nextCursor: null,
+          total: 0,
+          statusCounts: { active: 1 },
+        })),
+      });
+      mockGetSageSurface.mockReturnValue(sage);
+      await handleSageListPage(ws, msg({ query: 'x', includeStats: false }), {} as any);
+      const sent = JSON.parse(ws.send.mock.calls[0][0]);
+      expect(sage.stats).not.toHaveBeenCalled();
+      expect(sent.payload.stats).toBeUndefined();
+      expect(sent.payload.statusCounts).toEqual({ active: 1 });
+    });
+
+    it('skips stats on the emulated path when includeStats is false', async () => {
+      const ws = mockWs();
+      const sage = makeSage();
+      mockGetSageSurface.mockReturnValue(sage);
+      await handleSageListPage(ws, msg({ includeStats: false }), {} as any);
+      const sent = JSON.parse(ws.send.mock.calls[0][0]);
+      expect(sage.stats).not.toHaveBeenCalled();
+      expect(sent.payload.stats).toBeUndefined();
+      expect(sent.payload.memories.length).toBeGreaterThan(0);
+    });
+
+    it('forwards statuses to listSagePage', async () => {
+      const ws = mockWs();
+      const listSagePage = vi.fn(async () => ({ memories: [], nextCursor: null, total: 0 }));
+      mockGetSageSurface.mockReturnValue(makeSage({ listSagePage }));
+      await handleSageListPage(ws, msg({ statuses: ['stale'] }), {} as any);
+      expect(listSagePage).toHaveBeenCalledWith(expect.objectContaining({ statuses: ['stale'] }));
+    });
+
     it('emulates pagination when listSagePage is absent', async () => {
       const ws = mockWs();
       const sage = makeSage();
@@ -530,6 +569,40 @@ describe('memory-handlers', () => {
       );
       const sent = JSON.parse(ws.send.mock.calls[0][0]);
       expect(sent.payload.error).toContain('not found');
+    });
+
+    // The review queue runs several resolves; each wait must settle on its own
+    // reply, so success AND failure frames echo the request's requestId.
+    it('echoes requestId on success and failure responses', async () => {
+      const ws = mockWs();
+      mockGetSageSurface.mockReturnValue(
+        makeSage({ acceptCandidate: vi.fn(async () => ({ id: 'c1', status: 'active' })) }),
+      );
+      await handleSageCandidateResolve(
+        ws,
+        msg({ candidateId: 'c1', action: 'accept', requestId: 'req-ok' }),
+        {} as any,
+      );
+      await handleSageCandidateResolve(
+        ws,
+        msg({ candidateId: 'c1', action: 'bad', requestId: 'req-bad' }),
+        {} as any,
+      );
+      mockGetSageSurface.mockReturnValue(makeSage({ acceptCandidate: vi.fn(async () => null) }));
+      await handleSageCandidateResolve(
+        ws,
+        msg({ candidateId: 'gone', action: 'accept', requestId: 'req-gone' }),
+        {} as any,
+      );
+      const frames = ws.send.mock.calls.map((call: [string]) => JSON.parse(call[0]));
+      expect(frames.map((f: any) => f.payload.requestId)).toEqual([
+        'req-ok',
+        'req-bad',
+        'req-gone',
+      ]);
+      expect(frames[0].payload.resolvedAction).toBe('accept');
+      expect(frames[1].payload.error).toContain('action');
+      expect(frames[2].payload.error).toContain('not found');
     });
   });
 

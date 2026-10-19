@@ -250,6 +250,7 @@ export function useWebSocket() {
         query?: string;
         limit?: number;
         cursor?: string;
+        includeStats?: boolean;
       },
       options?: WSSendOptions,
     ) => client.listSageMemoriesPage(params, options),
@@ -302,6 +303,11 @@ export function useWebSocket() {
   const resolveMemoryCandidate = useCallback(
     (opts: Parameters<typeof client.resolveMemoryCandidate>[0], options?: WSSendOptions) =>
       client.resolveMemoryCandidate(opts, options),
+    [client],
+  );
+  const sageDoctor = useCallback(
+    (opts?: Parameters<typeof client.sageDoctor>[0], options?: WSSendOptions) =>
+      client.sageDoctor(opts, options),
     [client],
   );
   const backfillRecoverable = useCallback(
@@ -433,6 +439,7 @@ export function useWebSocket() {
     findMemoriesForFile,
     recoverSage,
     resolveMemoryCandidate,
+    sageDoctor,
     backfillRecoverable,
     listSkills,
     getDiag,

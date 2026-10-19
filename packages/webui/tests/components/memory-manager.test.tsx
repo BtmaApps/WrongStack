@@ -28,6 +28,12 @@ const websocket = {
     sends.push({ type: 'memory.sage.update', payload: { id, ...(patch as object) } }),
   deleteSage: (id: string, reason?: string) =>
     sends.push({ type: 'memory.sage.delete', payload: { id, reason } }),
+  recoverSage: (payload: unknown) => sends.push({ type: 'memory.sage.recover', payload }),
+  listMemoryCandidates: (payload: unknown) =>
+    sends.push({ type: 'memory.sage.listCandidates', payload }),
+  resolveMemoryCandidate: (payload: unknown) =>
+    sends.push({ type: 'memory.sage.candidateResolve', payload }),
+  sageDoctor: (payload: unknown) => sends.push({ type: 'memory.sage.doctor', payload }),
 };
 
 // Stub `agent-roster.list` (used by MemoryEditor on mount) so the editor
@@ -281,5 +287,127 @@ describe('MemoryManager', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
     const dialog = screen.getByRole('dialog');
     expect(within(dialog).getByText(offPageMemory.text)).toBeTruthy();
+  });
+
+  it('offers Recover for a deleted record and sends the recover op', async () => {
+    await loadManager();
+    fireEvent.click(screen.getByRole('tab', { name: /Deleted/ }));
+    await waitFor(() =>
+      expect(sends.at(-1)).toEqual({
+        type: 'memory.sage.listPage',
+        payload: expect.objectContaining({ statuses: ['deleted'], includeStats: false }),
+      }),
+    );
+    const deleted: SageEntry = { ...secondMemory, id: 'mem_deleted', status: 'deleted' };
+    emit('memory.sage.listPage', {
+      memories: [deleted],
+      nextCursor: null,
+      statusCounts: { active: 2, deleted: 1 },
+    });
+    fireEvent.click(await screen.findByText(deleted.text));
+    // Delete stays disabled for a deleted record; Recover is the way back.
+    expect(screen.queryByRole('button', { name: 'Delete' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Recover' }));
+    expect(sends).toContainEqual({
+      type: 'memory.sage.recover',
+      payload: { id: deleted.id, reason: 'recovered via Memory Manager detail' },
+    });
+    sends.length = 0;
+    emit('memory.sage.recover', { recovered: true, memory: { ...deleted, status: 'active' } });
+    // A mutation reloads WITH the store-wide stats.
+    await waitFor(() =>
+      expect(sends).toContainEqual({
+        type: 'memory.sage.listPage',
+        payload: expect.not.objectContaining({ includeStats: false }),
+      }),
+    );
+  });
+
+  it('debounces search-driven reloads and skips stats on them', async () => {
+    await loadManager();
+    sends.length = 0;
+    const box = screen.getByRole('textbox', { name: 'Search memories' });
+    fireEvent.change(box, { target: { value: 's' } });
+    fireEvent.change(box, { target: { value: 'si' } });
+    fireEvent.change(box, { target: { value: 'sin' } });
+    expect(sends.filter((entry) => entry.type === 'memory.sage.listPage')).toHaveLength(0);
+    await waitFor(() =>
+      expect(sends.filter((entry) => entry.type === 'memory.sage.listPage')).toHaveLength(1),
+    );
+    expect(sends.find((entry) => entry.type === 'memory.sage.listPage')?.payload).toEqual(
+      expect.objectContaining({ query: 'sin', includeStats: false }),
+    );
+  });
+
+  it('sends the status filter to the server so it spans every page', async () => {
+    await loadManager();
+    sends.length = 0;
+    fireEvent.change(screen.getByLabelText('Filter by status'), { target: { value: 'stale' } });
+    await waitFor(() =>
+      expect(sends).toContainEqual({
+        type: 'memory.sage.listPage',
+        payload: expect.objectContaining({ statuses: ['stale'], includeStats: false }),
+      }),
+    );
+  });
+
+  it('opens a review target that is not on the loaded page by id', async () => {
+    const offPage: SageEntry = {
+      ...memory,
+      id: 'mem_review_target',
+      text: 'Off-page review target.',
+    };
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(JSON.stringify({ memory: offPage }), { status: 200 }));
+    await loadManager();
+    fireEvent.click(screen.getByRole('tab', { name: 'Review' }));
+    emit('memory.sage.listCandidates', {
+      candidates: [
+        {
+          id: 'cand_1',
+          kind: 'memory_review',
+          status: 'pending',
+          suggestedAction: 'investigate',
+          targetMemoryId: offPage.id,
+          text: 'Check this one',
+          createdAt: '2026-07-16T08:00:00.000Z',
+          tags: [],
+        },
+      ],
+    });
+    fireEvent.click(await screen.findByRole('button', { name: 'Open' }));
+    await screen.findByText(offPage.text);
+    expect(fetchSpy).toHaveBeenCalledWith(`/api/memory/resolve/${offPage.id}`, expect.anything());
+  });
+
+  it('lazily loads the Health tab and feeds precision into the stats bar', async () => {
+    await loadManager();
+    expect(sends.some((entry) => entry.type === 'memory.sage.doctor')).toBe(false);
+    fireEvent.click(screen.getByRole('tab', { name: 'Health' }));
+    const request = sends.find((entry) => entry.type === 'memory.sage.doctor');
+    expect(request).toBeDefined();
+    emit('memory.sage.doctor', {
+      requestId: (request?.payload as { requestId: string }).requestId,
+      report: {
+        generatedAt: '2026-10-19T00:00:00.000Z',
+        metrics: {
+          total: 2,
+          active: 2,
+          byStatus: { active: 2 },
+          edges: 1,
+          pendingCandidates: 0,
+          injections: 10,
+          uses: 4,
+          precision: 0.4,
+          injectedNeverUsed: 0,
+          unanchoredActive: 0,
+          neverVerifiedActive: 0,
+        },
+        checks: [{ id: 'fts', title: 'FTS index in sync', severity: 'ok', summary: 'ok' }],
+      },
+    });
+    expect(await screen.findByText('FTS index in sync')).toBeTruthy();
+    expect(screen.getByText('40% injection precision')).toBeTruthy();
   });
 });

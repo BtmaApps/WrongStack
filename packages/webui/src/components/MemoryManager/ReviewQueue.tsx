@@ -17,7 +17,13 @@ interface ReviewQueueProps {
     options?: { echoToChat?: boolean },
   ) => void;
   resolveCandidate: (
-    opts: { candidateId: string; action: 'accept' | 'reject'; reason?: string },
+    opts: {
+      candidateId: string;
+      action: 'accept' | 'reject';
+      reason?: string;
+      /** Echoed by the server so concurrent resolves settle the right wait. */
+      requestId?: string;
+    },
     options?: { echoToChat?: boolean },
   ) => void;
   onOpenMemory?: (id: string) => void;
@@ -113,14 +119,34 @@ export function ReviewQueue({
   const [bulkBusy, setBulkBusy] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const generationRef = useRef(0);
+  /**
+   * Per-candidate failure from the last accept/keep attempt. A failed resolve
+   * leaves the candidate pending, so the reloaded row must say why instead of
+   * looking as if the click silently did nothing.
+   */
+  const [failures, setFailures] = useState<Record<string, string>>({});
+  const [bulkError, setBulkError] = useState<string | null>(null);
+  /** Cancels for in-flight resolve waits, so unmount clears their timers. */
+  const pendingResolvesRef = useRef(new Set<() => void>());
+  const requestSeqRef = useRef(0);
+
+  useEffect(() => {
+    const pending = pendingResolvesRef.current;
+    return () => {
+      for (const cancel of [...pending]) cancel();
+    };
+  }, []);
 
   const load = useCallback(() => {
     const generation = ++generationRef.current;
     setLoading(true);
     setError(null);
+    let timeout: ReturnType<typeof setTimeout> | null = null;
     const off = client.on('memory.sage.listCandidates', (message) => {
-      if (generation !== generationRef.current) return;
+      if (timeout !== null) clearTimeout(timeout);
       off();
+      // A superseded load just detaches; the newer load owns the state.
+      if (generation !== generationRef.current) return;
       if (message.payload.error) {
         setError(String(message.payload.error));
         setCandidates([]);
@@ -138,15 +164,15 @@ export function ReviewQueue({
       }
       setLoading(false);
     });
-    const timeout = setTimeout(() => {
-      if (generation !== generationRef.current) return;
+    timeout = setTimeout(() => {
       off();
+      if (generation !== generationRef.current) return;
       setLoading(false);
       setError(t('activity:memoryManager.reviewLoadTimeout'));
     }, 15_000);
     listCandidates({ includeResolved: false }, { echoToChat: false });
     return () => {
-      clearTimeout(timeout);
+      if (timeout !== null) clearTimeout(timeout);
       off();
     };
   }, [client, listCandidates, t]);
@@ -156,39 +182,71 @@ export function ReviewQueue({
     return load();
   }, [active, load]);
 
+  /**
+   * Resolve one candidate and settle on ITS response: the request carries a
+   * `requestId` the server echoes, so a reply to another resolve (another
+   * row, another tab) never settles this wait. Servers that predate the echo
+   * send no `requestId`; those replies still match (bulk is sequential).
+   * Resolves to the error message, or `null` on success.
+   */
   const resolveOne = useCallback(
     (candidateId: string, action: 'accept' | 'reject') =>
-      new Promise<boolean>((resolve) => {
-        const off = client.on('memory.sage.candidateResolve', (message) => {
-          // Match loosely: any resolve response unblocks this wait; bulk is sequential.
+      new Promise<string | null>((resolve) => {
+        requestSeqRef.current += 1;
+        const requestId = `review_${Date.now()}_${requestSeqRef.current}`;
+        let timer: ReturnType<typeof setTimeout> | null = null;
+        let off = () => {};
+        const settle = (error: string | null) => {
+          if (timer !== null) clearTimeout(timer);
+          timer = null;
           off();
+          pendingResolvesRef.current.delete(cancel);
+          resolve(error);
+        };
+        const cancel = () => settle(t('activity:memoryManager.reviewActionTimeout'));
+        off = client.on('memory.sage.candidateResolve', (message) => {
+          const echoed = message.payload.requestId;
+          if (echoed !== undefined && echoed !== requestId) return;
           const err = message.payload.error;
-          resolve(!err);
+          settle(err ? String(err) : null);
         });
+        pendingResolvesRef.current.add(cancel);
+        timer = setTimeout(cancel, 15_000);
         resolveCandidate(
           {
             candidateId,
             action,
+            requestId,
             reason: action === 'reject' ? 'Rejected via Memory Review tab' : undefined,
           },
           { echoToChat: false },
         );
-        setTimeout(() => {
-          off();
-          resolve(false);
-        }, 15_000);
       }),
-    [client, resolveCandidate],
+    [client, resolveCandidate, t],
   );
+
+  const recordOutcome = useCallback((candidateId: string, error: string | null) => {
+    setFailures((prev) => {
+      if (error === null) {
+        if (!(candidateId in prev)) return prev;
+        const next = { ...prev };
+        delete next[candidateId];
+        return next;
+      }
+      return { ...prev, [candidateId]: error };
+    });
+  }, []);
 
   const act = useCallback(
     async (candidateId: string, action: 'accept' | 'reject') => {
       setBusyId(candidateId);
-      await resolveOne(candidateId, action);
+      setBulkError(null);
+      const error = await resolveOne(candidateId, action);
+      recordOutcome(candidateId, error);
       setBusyId(null);
       load();
     },
-    [load, resolveOne],
+    [load, recordOutcome, resolveOne],
   );
 
   const bulkAct = useCallback(
@@ -200,14 +258,27 @@ export function ReviewQueue({
       );
       if (ids.length === 0) return;
       setBulkBusy(true);
+      setBulkError(null);
+      const failed: string[] = [];
       for (const id of ids) {
-        await resolveOne(id, action);
+        const error = await resolveOne(id, action);
+        recordOutcome(id, error);
+        if (error !== null) failed.push(id);
       }
       setBulkBusy(false);
-      setSelected(new Set());
+      // Keep failed rows selected so a retry targets exactly what did not apply.
+      setSelected(new Set(failed));
+      if (failed.length > 0) {
+        setBulkError(
+          t('activity:memoryManager.reviewBulkFailed', {
+            failed: failed.length,
+            total: ids.length,
+          }),
+        );
+      }
       load();
     },
-    [load, resolveOne, selected, candidates],
+    [load, recordOutcome, resolveOne, selected, candidates, t],
   );
 
   const toggle = (id: string) => {
@@ -316,12 +387,21 @@ export function ReviewQueue({
           </Button>
         </div>
       </div>
+      {bulkError ? (
+        <div
+          role="alert"
+          className="flex shrink-0 items-center gap-2 border-b border-border/60 px-3 py-1.5 text-[11px] text-destructive"
+        >
+          <AlertTriangle className="size-3.5" /> {bulkError}
+        </div>
+      ) : null}
       <ul className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
         {candidates.map((c) => {
           const target = c.targetMemoryId ?? c.memoryId;
           const reason = c.reviewReason ?? c.reason ?? '';
           const busy = busyId === c.id || bulkBusy;
           const isSelected = selected.has(c.id);
+          const failure = failures[c.id];
           return (
             <li
               key={c.id}
@@ -368,6 +448,16 @@ export function ReviewQueue({
                     >
                       {target.slice(0, 16)}…
                     </button>
+                  ) : null}
+                  {failure ? (
+                    <p
+                      role="alert"
+                      data-testid="candidate-failure"
+                      className="mt-1.5 flex items-center gap-1.5 text-[11px] text-destructive"
+                    >
+                      <AlertTriangle className="size-3" />
+                      {t('activity:memoryManager.reviewActionFailed', { error: failure })}
+                    </p>
                   ) : null}
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     {canAccept(c) ? (

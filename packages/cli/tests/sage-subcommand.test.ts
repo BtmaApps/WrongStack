@@ -38,6 +38,25 @@ describe('wstack sage', () => {
     fs.rmSync(root, { recursive: true, force: true });
   });
 
+  it('doctor prints the health report of the project store', async () => {
+    const { deps, lines, errors } = makeDeps(root);
+    expect(await sageCmd(['doctor'], deps)).toBe(0);
+    expect(errors).toEqual([]);
+    const output = lines.join('');
+    expect(output).toContain('SAGE doctor');
+    expect(output).toContain('Injection quality:');
+  });
+
+  it('doctor --json emits the structured report and --fix ids are validated', async () => {
+    const json = makeDeps(root);
+    expect(await sageCmd(['doctor', '--json'], json.deps)).toBe(0);
+    expect(JSON.parse(json.lines.join(''))).toMatchObject({ checks: expect.any(Array) });
+
+    const bad = makeDeps(root, { fix: 'nope' });
+    expect(await sageCmd(['doctor'], bad.deps)).toBe(1);
+    expect(bad.errors.join('')).toContain('Unknown doctor fix: nope');
+  });
+
   it('--dry-run previews without touching the disk', async () => {
     const { deps, lines } = makeDeps(root);
     expect(await sageCmd(['connect', 'claude-code', '--dry-run'], deps)).toBe(0);

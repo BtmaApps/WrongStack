@@ -12,8 +12,10 @@
  * On first open, if a legacy `memories.jsonl` exists and the SQLite db is empty,
  * the store migrates records automatically (one-time cost).
  */
+import * as path from 'node:path';
 import type { HqSageRecord } from '@wrongstack/core/hq';
 import type { MemoryEntry, MemoryScope, MemoryStore } from '@wrongstack/core/types';
+import type { SageDoctorOptions, SageDoctorReport } from './memory-doctor-types.js';
 import type { VectorAugmentHit } from './retrieval/vector-augment.js';
 import type { SearchOptions, SearchQuery, SearchResult } from './service-contract.js';
 import {
@@ -29,6 +31,7 @@ import {
 import { readSqliteAudit } from './sqlite-store-audit.js';
 import { getCompatSage, listCompatSage } from './sqlite-store-compat.js';
 import { SqliteSageStoreCore } from './sqlite-store-core.js';
+import { runSqliteSageDoctor } from './sqlite-store-doctor.js';
 import {
   findRelatedSqliteSage,
   type SqliteFindRelatedOptions,
@@ -337,6 +340,23 @@ export class SqliteSageStore extends SqliteSageStoreCore implements MemoryStore 
 
   async hygiene(opts?: SageHygieneOptions): Promise<SageHygieneReport> {
     return hygieneFromHost(this.sqliteStoreGraphWriteHost(), opts);
+  }
+
+  /** Health report plus the named, idempotent repairs (see sqlite-store-doctor.ts). */
+  async doctor(options?: SageDoctorOptions): Promise<SageDoctorReport> {
+    await this.initialize();
+    return runSqliteSageDoctor(
+      {
+        stmt: (sql) => this.stmt(sql),
+        dbPath: path.join(this.paths.rootDir, 'sage.db'),
+        nowIso: () => this.nowIso(),
+        runMutation: (work) => this.runMutation(work),
+        upsertMemory: (memory) => this.upsertMemory(memory),
+        audit: (event, data) => this.audit(event, data),
+        hygiene: () => this.hygiene(options?.hygieneOptions),
+      },
+      options,
+    );
   }
 
   // ─── Legacy compat ──────────────────────────────────────────────────

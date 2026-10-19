@@ -12,6 +12,8 @@ export interface SageDispatchHost {
   serverStatus: () => Promise<SageProjectServerInfo>;
   runHygiene: (args: SageServerOperations['hygiene']['args']) => Promise<unknown>;
   importLegacyFiles: (files: string[]) => Promise<unknown>;
+  maintenance: (args: SageServerOperations['maintenance']['args']) => unknown;
+  doctor: (args: SageServerOperations['doctor']['args']) => Promise<unknown>;
 }
 export async function dispatch(
   host: SageDispatchHost,
@@ -232,5 +234,9 @@ export async function dispatch(
       const args = rawArgs as SageServerOperations['consolidateSession']['args'];
       return store.consolidateSession(args.input);
     }
+    case 'maintenance':
+      return host.maintenance(rawArgs as SageServerOperations['maintenance']['args']);
+    case 'doctor':
+      return host.doctor((rawArgs ?? {}) as SageServerOperations['doctor']['args']);
   }
 }

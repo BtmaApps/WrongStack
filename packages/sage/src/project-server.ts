@@ -22,7 +22,7 @@ import {
   sageProjectServerEndpoint,
   sageProjectServerMetadataPath,
 } from './project-server-endpoint.js';
-import { createHygieneRunner } from './project-server-hygiene.js';
+import { createHygieneRunner, maintenanceDoctorCheck } from './project-server-hygiene.js';
 import { importLegacyFilesIntoStore } from './project-server-legacy-import.js';
 import {
   armProjectServerSignalGuard,
@@ -128,7 +128,49 @@ const store = new SqliteMemoryPort({
   events,
   operationContext: () => requestContext.getStore(),
 }) as CompleteSageStore;
-const hygiene = createHygieneRunner(store);
+const hygiene = createHygieneRunner(store, {
+  statePath: path.join(storageRoot, 'hygiene', 'maintenance.json'),
+  // Maintenance holds the single daemon thread for seconds on a large store;
+  // it waits for a moment with no request in flight.
+  isBusy: () => pendingRequests > 0,
+  log: logDaemon,
+  afterMaintenance: () => selfHealAfterMaintenance(),
+});
+
+function logDaemon(message: string): void {
+  process.stderr.write(`${new Date().toISOString()} ${message}
+`);
+}
+
+/**
+ * Graph and index repairs that are safe to apply unattended: they never touch
+ * a memory's text, status or existence, only derived structure. Applying them
+ * after every maintenance pass is what keeps hub noise, dangling edges and
+ * runtime-mode audiences from accumulating again between doctor runs.
+ */
+const SELF_HEAL_FIXES = new Set([
+  'graph-hubs',
+  'dangling-edges',
+  'audience-runtime-mode',
+  'fts-rebuild',
+]);
+
+async function selfHealAfterMaintenance(): Promise<void> {
+  const report = await store.doctor();
+  const fix = report.checks
+    .filter((check) => check.severity !== 'ok' && check.fix && SELF_HEAL_FIXES.has(check.fix))
+    .map((check) => check.fix!)
+    .filter((value, index, all) => all.indexOf(value) === index);
+  const healed = fix.length > 0 ? await store.doctor({ fix }) : report;
+  for (const applied of healed.fixesApplied ?? []) {
+    logDaemon(`sage doctor: self-healed ${applied.fix}: ${applied.detail}`);
+  }
+  for (const check of healed.checks) {
+    if (check.severity === 'warn' || check.severity === 'error') {
+      logDaemon(`sage doctor: ${check.severity} ${check.id}: ${check.summary}`);
+    }
+  }
+}
 const clients = new Set<ClientState>();
 let pendingRequests = 0;
 let idleTimer: ReturnType<typeof setTimeout> | undefined;
@@ -221,11 +263,47 @@ async function dispatch(
       serverStatus,
       runHygiene: (args) => hygiene.run(args),
       importLegacyFiles: (files) => importLegacyFilesIntoStore(projectRoot, store, files),
+      maintenance: (args) =>
+        args.action === 'schedule' ? hygiene.schedule(args.options) : hygiene.status(),
+      doctor: (args) => runDaemonDoctor(args.options),
     },
     op,
     rawArgs,
     signal,
   );
+}
+
+/**
+ * The store measures itself; the daemon adds what only it knows (the
+ * maintenance scheduler) and routes the `hygiene` repair through the runner so
+ * a doctor-triggered pass is recorded like a scheduled one.
+ */
+async function runDaemonDoctor(
+  options: SageServerOperations['doctor']['args']['options'],
+): Promise<SageServerOperations['doctor']['result']> {
+  const fixes = options?.fix ?? [];
+  const applied: NonNullable<SageServerOperations['doctor']['result']['fixesApplied']> = [];
+  if (fixes.includes('hygiene')) {
+    const report = await hygiene.runNow(options?.hygieneOptions);
+    applied.push({
+      fix: 'hygiene',
+      changed: report.deleted + report.staled + report.superseded + report.reviewCandidatesCreated,
+      detail: `hygiene: ${report.deleted} expired removed, ${report.staled} staled, ${report.superseded} superseded, ${report.reviewCandidatesCreated} review candidates`,
+    });
+  }
+  const report = await store.doctor({
+    ...options,
+    fix: fixes.filter((fix) => fix !== 'hygiene'),
+  });
+  const maintenance = hygiene.status();
+  return {
+    ...report,
+    maintenance,
+    checks: [maintenanceDoctorCheck(maintenance, Date.now()), ...report.checks],
+    ...(applied.length > 0 || report.fixesApplied
+      ? { fixesApplied: [...applied, ...(report.fixesApplied ?? [])] }
+      : {}),
+  };
 }
 
 function checkAuthToken(state: ClientState, message: SageProjectServerClientMessage): boolean {
@@ -332,6 +410,7 @@ async function stop(_reason: string): Promise<void> {
   stopping = true;
   metadataGuard.disable();
   if (idleTimer) clearTimeout(idleTimer);
+  hygiene.dispose();
   if (silentClientSweep) clearInterval(silentClientSweep);
   silentClientSweep = undefined;
   idleTimer = undefined;

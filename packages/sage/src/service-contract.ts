@@ -1,5 +1,10 @@
 import type { MemoryStore } from '@wrongstack/core/types';
 import type {
+  SageDoctorOptions,
+  SageDoctorReport,
+  SageMaintenanceStatus,
+} from './memory-doctor-types.js';
+import type {
   CandidateDecision,
   CreateCandidateInput,
   FindMemoriesForFileOptions,
@@ -248,6 +253,17 @@ export interface SageSurface {
   ): Promise<FindMemoriesForFileResponse>;
   readAudit?(limit?: number): Promise<import('./types.js').SageAuditRecord[]>;
   importLegacy?(files: string[]): Promise<LegacyImportResult>;
+  /**
+   * Daemon-owned maintenance. `schedule` registers the host's hygiene options
+   * so the store owner runs hygiene itself on a cadence; `status` reports.
+   * Inline stores report `owner: 'inline'` and never schedule.
+   */
+  maintenance?(
+    action: 'schedule' | 'status',
+    options?: SageHygieneOptions,
+  ): Promise<SageMaintenanceStatus>;
+  /** Health report plus optional named repairs. */
+  doctor?(options?: SageDoctorOptions): Promise<SageDoctorReport>;
   compactLog?(): Promise<{ beforeRecords: number; afterRecords: number; uniqueIds: number }>;
   getLogStats?(): Promise<{
     rawRecords: number;

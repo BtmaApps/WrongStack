@@ -518,7 +518,12 @@ export function createMessageDispatcher(
         }),
       },
     },
-    memory: { getMemoryStore: () => deps.memoryStore, send, sendResult },
+    memory: {
+      getMemoryStore: () => deps.memoryStore,
+      getConfig: state.getConfig,
+      send,
+      sendResult,
+    },
     content: {
       getProjectRoot: state.getProjectRoot,
       getSkillsContext: makeSkillsContext,

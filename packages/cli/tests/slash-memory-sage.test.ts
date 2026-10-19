@@ -53,6 +53,33 @@ function commandWithLlm(store: SqliteMemoryPort, opsJson: unknown) {
   } as never);
 }
 
+describe('/memory doctor', () => {
+  it('reports a defect, names its repair, and fixes it with --fix', async () => {
+    const store = newPort({ projectRoot: root });
+    await store.rememberSage({
+      text: 'Runtime-mode audience memory that ordinary path injection never reaches.',
+      kind: 'fact',
+      audience: { modes: ['default'] },
+    });
+    const cmd = command(store);
+
+    const report = await cmd.run('doctor', {} as never);
+    expect(report?.message).toContain('SAGE doctor');
+    expect(report?.message).toContain('fix: --fix=audience-runtime-mode');
+
+    const fixed = await cmd.run('doctor --fix', {} as never);
+    expect(fixed?.message).toContain('Repairs applied:');
+    expect(fixed?.message).toContain('audience-runtime-mode: lifted runtime mode');
+    expect(fixed?.message).not.toContain('fix: --fix=audience-runtime-mode');
+  });
+
+  it('rejects an unknown repair id', async () => {
+    const cmd = command(newPort({ projectRoot: root }));
+    const result = await cmd.run('doctor --fix=delete-everything', {} as never);
+    expect(result?.message).toContain('Unknown doctor fix: delete-everything');
+  });
+});
+
 describe('/memory SAGE commands', () => {
   it('searches, traverses graph, verifies, runs hygiene, and reports stats', async () => {
     await fs.writeFile(path.join(root, 'source.ts'), 'export const stableSymbol = true;\n');
@@ -112,6 +139,30 @@ describe('/memory SAGE commands', () => {
     expect(deleted?.message).toContain('Deleted');
     const afterDelete = await store.getSage(created.id);
     expect(afterDelete?.status).toBe('deleted');
+  });
+
+  it('recovers a deleted memory by id and treats an active id as a no-op', async () => {
+    const store = newPort({ projectRoot: root });
+    const cmd = command(store);
+    const memory = await store.rememberSage({ text: 'Recover me later.', kind: 'fact' });
+    await cmd.run(`delete ${memory.id}`);
+    expect((await store.getSage(memory.id))?.status).toBe('deleted');
+
+    const recovered = await cmd.run(`recover ${memory.id} deleted by mistake`);
+    expect(recovered?.message).toContain(`Recovered \`${memory.id}\``);
+    expect((await store.getSage(memory.id))?.status).toBe('active');
+
+    expect((await cmd.run(`recover ${memory.id}`))?.message).toContain('already active');
+    expect((await cmd.run('recover'))?.message).toContain('Usage: /memory recover');
+    expect((await cmd.run('recover mem_missing'))?.message).toContain('No memory with id');
+  });
+
+  // The 2026-08-08 kinds were missing from the CLI's hand-copied list, so the
+  // engine accepted them while `/memory remember --kind` refused them.
+  it('accepts every engine kind, including the newer SAGE-only kinds', async () => {
+    const store = newPort({ projectRoot: root });
+    const out = await command(store).run('remember Command exited 0 --kind tool_outcome');
+    expect(out?.message).toContain('[tool_outcome]');
   });
 
   it('rejects an invalid --kind with a helpful message', async () => {

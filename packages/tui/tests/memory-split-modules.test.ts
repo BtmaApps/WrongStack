@@ -1,4 +1,5 @@
 import type { MemoryPort } from '@wrongstack/core/types';
+import { SAGE_MEMORY_KINDS } from '@wrongstack/core/utils/sage-kinds';
 import { SAGE_SURFACE_CAPABILITY } from '@wrongstack/sage';
 import { describe, expect, it, vi } from 'vitest';
 import { handleGatherSubcommand, handleGraphSubcommand } from '../src/memory-slash-gather.js';
@@ -18,6 +19,7 @@ import {
   MEMORY_STATUS_VALUES,
   MEMORY_WRITE_SUBS,
 } from '../src/memory-slash-types.js';
+import { MEMORY_KIND_VALUES as WRITE_MEMORY_KIND_VALUES } from '../src/memory-slash-write.js';
 
 function sagePort(surface: Record<string, unknown> | undefined): MemoryPort {
   const port = {
@@ -61,6 +63,15 @@ describe('split memory slash modules', () => {
     expect(MEMORY_KIND_VALUES).toContain('decision');
     expect(MEMORY_SCOPE_VALUES).toEqual(['project', 'user', 'session', 'file', 'symbol']);
     expect(MEMORY_STATUS_VALUES).toContain('active');
+  });
+
+  // Both TUI kind vocabularies are the canonical core list (pinned to the
+  // engine by packages/sage/tests/sage-kinds-parity.test.ts); a hand copy had
+  // drifted to 12 of the engine's 20 kinds.
+  it('uses the canonical SAGE kind list for --kind validation', () => {
+    expect(MEMORY_KIND_VALUES).toEqual(SAGE_MEMORY_KINDS);
+    expect(WRITE_MEMORY_KIND_VALUES).toEqual(SAGE_MEMORY_KINDS);
+    expect(parseMemoryFlags(['x', '--kind', 'tool_outcome']).kind).toBe('tool_outcome');
   });
 
   it('parses and renders representative memory values', () => {

@@ -9,6 +9,7 @@ import { collectMemoryTags, filterMemories, selectRelatedMemories } from './sele
 import type { MemoryDraft } from './shared';
 import { draftFromMemory, emptyDraft } from './shared';
 import type { SharedMemorySearch } from './sharedSearch.js';
+import { useDebouncedListQuery } from './useDebouncedListQuery.js';
 import { useMemoryMutations } from './useMemoryMutations.js';
 import { useSendWithAck } from './useSendWithAck.js';
 
@@ -27,6 +28,7 @@ export function useMemoryManagerState(sharedSearch?: SharedMemorySearch) {
     recoverSage,
     resolveMemoryCandidate,
     searchSageBreakdown,
+    sageDoctor,
   } = useWebSocket();
   const wsConnected = useConfigStore((state) => state.wsConnected);
 
@@ -77,13 +79,16 @@ export function useMemoryManagerState(sharedSearch?: SharedMemorySearch) {
   const setStatusFilter = sharedSearch?.setStatusFilter ?? setLocalStatus;
   const kindFilter = sharedSearch?.kindFilter ?? localKind;
   const setKindFilter = sharedSearch?.setKindFilter ?? setLocalKind;
+  const listQuery = useDebouncedListQuery(searchQuery);
   const [resolvedMemory, setResolvedMemory] = useState<SageEntry | null>(null);
   const [resolveError, setResolveError] = useState<string | null>(null);
   const resolveController = useRef<AbortController | null>(null);
   const resolvedMemoryRef = useRef<SageEntry | null>(null);
   const [audienceOnly, setAudienceOnly] = useState(false);
   const [tagFilter, setTagFilter] = useState<string | null>(null);
-  const [libraryView, setLibraryView] = useState<'active' | 'deleted' | 'review'>('active');
+  const [libraryView, setLibraryView] = useState<'active' | 'deleted' | 'review' | 'health'>(
+    'active',
+  );
   const showDeleted = libraryView === 'deleted';
   const showReview = libraryView === 'review';
   const [pageCursor, setPageCursor] = useState<string | null>(null);
@@ -94,6 +99,8 @@ export function useMemoryManagerState(sharedSearch?: SharedMemorySearch) {
   const [currentFilePath, setCurrentFilePath] = useState<string | null>(null);
 
   const hasLoadedRef = useRef(false);
+  /** Store-wide stats only change on mutation: filter reloads skip them once loaded. */
+  const statsLoadedRef = useRef(false);
   const searchBreakdownHitsRef = useRef<import('@/types/sage').WSSearchBreakdownHit[]>([]);
   const searchBreakdownGenerationRef = useRef(0);
   const searchBreakdownCleanupRef = useRef<(() => void) | null>(null);
@@ -142,7 +149,7 @@ export function useMemoryManagerState(sharedSearch?: SharedMemorySearch) {
   );
 
   const loadPage = useCallback(
-    (cursor: string | null) => {
+    (cursor: string | null, includeStats: boolean) => {
       const isAppend = cursor !== null;
       const generation = ++listGenerationRef.current;
       listCleanupRef.current?.();
@@ -182,14 +189,12 @@ export function useMemoryManagerState(sharedSearch?: SharedMemorySearch) {
           setStatusCounts(counts);
           const total = Object.values(counts).reduce((sum, n) => sum + n, 0);
           if (message.payload.stats) {
+            statsLoadedRef.current = true;
             setStats(message.payload.stats);
           } else {
-            setStats((prev) => ({
-              total,
-              byStatus: counts,
-              byKind: prev?.byKind ?? {},
-              edges: prev?.edges ?? 0,
-            }));
+            // A stats-less page (filter/search reload) leaves the store-wide
+            // figures untouched; only synthesize them when none exist yet.
+            setStats((prev) => prev ?? { total, byStatus: counts, byKind: {}, edges: 0 });
           }
           hasLoadedRef.current = true;
           if (!isAppend) {
@@ -225,34 +230,50 @@ export function useMemoryManagerState(sharedSearch?: SharedMemorySearch) {
       }, 20_000);
 
       listCleanupRef.current = cleanup;
+      // The status filter is applied by the server so it spans every page,
+      // not just the rows already loaded. The Deleted tab pins `deleted`.
+      const statuses = showDeleted
+        ? ['deleted']
+        : statusFilter !== 'all'
+          ? [statusFilter]
+          : undefined;
       listSageMemoriesPage(
         {
           limit: PAGE_SIZE,
-          ...(showDeleted ? { statuses: ['deleted'] } : {}),
+          ...(statuses ? { statuses } : {}),
           ...(cursor ? { cursor } : {}),
-          ...(searchQuery.trim() ? { query: searchQuery.trim() } : {}),
+          ...(listQuery ? { query: listQuery } : {}),
           ...(kindFilter !== 'all' ? { kind: kindFilter } : {}),
+          ...(includeStats ? {} : { includeStats: false }),
         },
         { echoToChat: false },
       );
     },
-    [client, kindFilter, listSageMemoriesPage, searchQuery, showDeleted],
+    [client, kindFilter, listSageMemoriesPage, listQuery, showDeleted, statusFilter],
   );
 
+  /** Full reload: initial load, explicit refresh, reconnect and post-mutation. */
   const loadMemories = useCallback(() => {
     setPageCursor(null);
     setHasMore(false);
-    loadPage(null);
+    loadPage(null, true);
   }, [loadPage]);
 
   const loadMore = useCallback(() => {
     if (loadingMore || !pageCursor) return;
-    loadPage(pageCursor);
+    loadPage(pageCursor, false);
   }, [loadPage, loadingMore, pageCursor]);
+
+  /** Filter/search-driven reload: stats are only fetched until first received. */
+  const reloadForFilters = useCallback(() => {
+    setPageCursor(null);
+    setHasMore(false);
+    loadPage(null, !statsLoadedRef.current);
+  }, [loadPage]);
 
   useEffect(() => {
     mountedRef.current = true;
-    loadMemories();
+    reloadForFilters();
     return () => {
       mountedRef.current = false;
       listGenerationRef.current += 1;
@@ -262,7 +283,7 @@ export function useMemoryManagerState(sharedSearch?: SharedMemorySearch) {
       searchBreakdownCleanupRef.current?.();
       resolveController.current?.abort();
     };
-  }, [loadMemories]);
+  }, [reloadForFilters]);
 
   // Trigger the per-channel search breakdown when the user types a
   // query. The hook races the response against a generation counter
@@ -665,5 +686,6 @@ export function useMemoryManagerState(sharedSearch?: SharedMemorySearch) {
     updateSage,
     recoverSage,
     listMemoryCandidates,
+    sageDoctor,
   };
 }

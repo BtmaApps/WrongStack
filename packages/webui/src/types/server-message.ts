@@ -124,6 +124,7 @@ import type {
   WSMemorySageSearchBreakdown,
   WSMemorySageUpdate,
 } from './sage.js';
+import type { WSMemorySageDoctor } from './sage-doctor.js';
 import type { WSChimeraServerMessage } from './server-message-chimera.js';
 import type { WSFilesGitServerMessage } from './server-message-files.js';
 import type { WSFleetServerMessage } from './server-message-fleet.js';
@@ -273,6 +274,7 @@ export type WSServerMessage =
   | WSMemorySageDelete
   | WSMemorySageRecover
   | WSMemorySageCandidateResolve
+  | WSMemorySageDoctor
   | WSMemorySageBackfillRecoverable
   | WSMemorySageForFile
   | WSSkillsList

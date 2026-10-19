@@ -78,7 +78,7 @@ describe('advisory memory reviews', () => {
     );
     await waitFor(() => expect(resolveCandidate).toHaveBeenCalledTimes(1));
     expect(resolveCandidate).toHaveBeenCalledWith(
-      { candidateId: 'c2', action: 'accept' },
+      expect.objectContaining({ candidateId: 'c2', action: 'accept' }),
       { echoToChat: false },
     );
   });

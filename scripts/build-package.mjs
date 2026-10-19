@@ -79,6 +79,8 @@ const coreEntries = entryMap([
   'src/utils/sage-output-block.ts',
   // Residency display vocabulary — shared with the WebUI context dashboard.
   'src/utils/residency-labels.ts',
+  // SAGE memory-kind vocabulary — shared with the WebUI kind pickers/filters.
+  'src/utils/sage-kinds.ts',
   // Private/loopback/metadata address literals. Its own entry so the
   // redirect guard in `providers` can import the check without pulling the
   // `utils` barrel into a security-critical fetch path.

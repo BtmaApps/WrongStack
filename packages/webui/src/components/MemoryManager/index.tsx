@@ -1,5 +1,5 @@
 import { AlertTriangle, ArrowLeft, Check, RefreshCw } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useScrollPosition } from '@/hooks/useScrollPosition';
 import { useAppTranslation } from '@/i18n';
@@ -18,6 +18,7 @@ import { MemoryManagerStatsBar } from './MemoryManagerStatsBar';
 import { MemorySearchBreakdown } from './MemorySearchBreakdown';
 import { RankedSearchResults } from './RankedSearchResults';
 import { ReviewQueue } from './ReviewQueue';
+import { SageHealthPanel } from './SageHealthPanel';
 import type { SharedMemorySearch } from './sharedSearch.js';
 import { useMemoryManagerState } from './useMemoryManagerState';
 
@@ -36,10 +37,29 @@ export function MemoryManager({
   const setCurrentView = useUIStore((state) => state.setCurrentView);
   const memoryListRef = useScrollPosition<HTMLDivElement>('memory');
   const state = useMemoryManagerState(sharedSearch);
+  /** Injection precision from the last doctor report, for the stats bar. */
+  const [precision, setPrecision] = useState<number | null>(null);
+  const showHealth = state.libraryView === 'health';
   useEffect(() => {
     if (!linkedId) return;
     void state.openSearchMemory(linkedId).finally(() => onLinkedIdHandled?.());
   }, [linkedId, state.openSearchMemory, onLinkedIdHandled]);
+
+  /** Restore a soft-deleted memory through the `memory.sage.recover` op. */
+  const recoverMemory = (memoryId: string, reason: string) => {
+    state.sendWithAck(
+      'memory.sage.recover',
+      () => state.recoverSage({ id: memoryId, reason }),
+      (payload) => {
+        if (payload.error) {
+          state.setMutationError(payload.error);
+          return;
+        }
+        state.setNotice(`Recovered ${memoryId.slice(0, 12)}…`);
+        state.loadMemories();
+      },
+    );
+  };
 
   if (state.initialLoading && state.memories.length === 0) {
     return (
@@ -101,6 +121,7 @@ export function MemoryManager({
         memories={state.memories}
         filteredCount={state.filteredMemories.length}
         allTagsCount={state.allTags.length}
+        precision={precision}
       />
 
       {(state.notice || state.loadError || state.mutationError || state.resolveError) && (
@@ -193,15 +214,43 @@ export function MemoryManager({
                 ? ` (${state.statusCounts['deleted']})`
                 : ''}
             </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              role="tab"
+              aria-selected={showHealth}
+              onClick={() => state.setLibraryView('health')}
+              className={cn(
+                'h-7 rounded-b-none border-b-2 px-3 text-[11px]',
+                showHealth
+                  ? 'border-primary text-foreground'
+                  : 'border-transparent text-muted-foreground',
+              )}
+            >
+              {t('activity:memoryManager.tabHealth')}
+            </Button>
           </div>
 
-          {state.showReview ? (
+          {showHealth ? (
+            <SageHealthPanel
+              active={showHealth}
+              client={state.client}
+              sageDoctor={state.sageDoctor}
+              onOpenMemory={(id) => void state.openSearchMemory(id)}
+              onReport={(report) =>
+                setPrecision(report.metrics.injections > 0 ? report.metrics.precision : null)
+              }
+            />
+          ) : state.showReview ? (
             <ReviewQueue
               active={state.showReview}
               client={state.client}
               listCandidates={state.listMemoryCandidates}
               resolveCandidate={state.resolveMemoryCandidate}
-              onOpenMemory={state.openMemory}
+              // A candidate's target is usually not on the loaded library page,
+              // so resolve it by id instead of looking it up in that page.
+              onOpenMemory={(id) => void state.openSearchMemory(id)}
               resolveMemory={state.resolveMemory}
             />
           ) : (
@@ -379,20 +428,7 @@ export function MemoryManager({
                     },
                   );
                 }}
-                onRecover={(memoryId) => {
-                  state.sendWithAck(
-                    'memory.sage.recover',
-                    () => state.recoverSage({ id: memoryId, reason: 'recovered via file drawer' }),
-                    (payload) => {
-                      if (payload.error) {
-                        state.setMutationError(payload.error);
-                        return;
-                      }
-                      state.setNotice(`Recovered ${memoryId.slice(0, 12)}…`);
-                      state.loadMemories();
-                    },
-                  );
-                }}
+                onRecover={(memoryId) => recoverMemory(memoryId, 'recovered via file drawer')}
               />
             ) : (
               <>
@@ -418,6 +454,9 @@ export function MemoryManager({
                   onOpenMemory={state.openMemory}
                   onEdit={state.openEdit}
                   onDelete={() => state.openDeleteDialog(state.selectedMemory!.id)}
+                  onRecover={(memoryId) =>
+                    recoverMemory(memoryId, 'recovered via Memory Manager detail')
+                  }
                   onTagSelect={(tag) => {
                     state.setTagFilter(tag);
                     state.setSelectedId(null);

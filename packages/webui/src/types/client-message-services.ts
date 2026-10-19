@@ -1,6 +1,7 @@
 import type { SessionScopedPayload } from './protocol-core.js';
 import type { ContextEditorMessage, ContextEditorRemoval } from './runtime.js';
 import type { SageAnchor, SageScope, SageStatus, WSMemorySageForFileRequest } from './sage.js';
+import type { SageDoctorFixId } from './sage-doctor.js';
 export type ClientMessageServices =
   | { type: 'session.resume'; payload: { id: string } & SessionScopedPayload }
   | { type: 'session.inspect'; payload: { id: string } }
@@ -104,6 +105,11 @@ export type ClientMessageServices =
         query?: string | undefined;
         limit?: number | undefined;
         cursor?: string | undefined;
+        /**
+         * Compute store-wide `stats` for this page. Default true; filter and
+         * search reloads send false because the stats did not change.
+         */
+        includeStats?: boolean | undefined;
       };
     }
   | {
@@ -148,7 +154,20 @@ export type ClientMessageServices =
         candidateId: string;
         action: 'accept' | 'reject';
         reason?: string | undefined;
+        /** Correlation id the server echoes on the response. */
+        requestId?: string | undefined;
       };
+    }
+  | {
+      type: 'memory.sage.doctor';
+      payload?:
+        | {
+            /** Named repairs (SAGE_DOCTOR_FIX_IDS) to apply before measuring. */
+            fix?: SageDoctorFixId[] | undefined;
+            /** Correlation id the server echoes on the response. */
+            requestId?: string | undefined;
+          }
+        | undefined;
     }
   | {
       type: 'memory.sage.backfillRecoverable';
