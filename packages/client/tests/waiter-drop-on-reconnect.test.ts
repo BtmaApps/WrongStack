@@ -127,4 +127,41 @@ describe('WrongStackClient control waiters on socket drop with reconnect', () =>
 
     await expect(nextPromise).resolves.toEqual({ value: event, done: false });
   });
+
+  it('extracts query-string token and handles uppercase WS:/WSS: protocols in handshakeFailure (F157)', async () => {
+    const server = http.createServer((req, res) => {
+      if (req.url?.startsWith('/ws-auth')) {
+        if (req.headers['x-ws-token'] === 'valid-tok') {
+          res.writeHead(204).end();
+          return;
+        }
+        res.writeHead(401).end();
+        return;
+      }
+      res.writeHead(503).end();
+    });
+    server.on('upgrade', (_req, socket) => {
+      socket.write('HTTP/1.1 503 Service Unavailable\r\n\r\n');
+      socket.destroy();
+    });
+
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const port = (server.address() as AddressInfo).port;
+
+    try {
+      await expect(
+        WrongStackClient.connect({
+          url: `WS://127.0.0.1:${port}/ws?token=valid-tok`,
+          timeoutMs: 1_500,
+          reconnect: false,
+        }),
+      ).rejects.toMatchObject({
+        kind: 'connection',
+        code: 'handshake_failed',
+        retryable: true,
+      });
+    } finally {
+      await new Promise<void>((r) => server.close(() => r()));
+    }
+  });
 });

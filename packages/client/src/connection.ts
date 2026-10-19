@@ -152,17 +152,20 @@ async function handshakeFailure(
   token: string | undefined,
   timeoutMs: number,
 ): Promise<WrongStackError> {
-  const probe = new URL('/ws-auth', url.replace(/^ws(s?):/, 'http$1:'));
+  const parsed = new URL(url);
+  const effectiveToken = token || parsed.searchParams.get('token') || undefined;
+  parsed.protocol = parsed.protocol.replace(/^ws/i, 'http');
+  const probe = new URL('/ws-auth', parsed);
   try {
     const response = await fetch(probe, {
-      ...(token ? { headers: { 'X-WS-Token': token } } : {}),
+      ...(effectiveToken ? { headers: { 'X-WS-Token': effectiveToken } } : {}),
       signal: AbortSignal.timeout(timeoutMs),
     });
     if (response.status === 401) {
       return new WrongStackError({
         kind: 'auth',
         code: '401',
-        detail: token
+        detail: effectiveToken
           ? 'The server refused the access token.'
           : 'The server needs an access token.',
       });
