@@ -60,7 +60,7 @@ export function detectWorkspaceMisalignments(
     // misreported the workspace in the summary.
     const versionSetByWs = new Map<string, Set<string>>();
     for (const dep of deps) {
-      const version = dep.locked ?? dep.requested ?? 'unknown';
+      const version = dep.locked ?? dep.installed ?? dep.requested ?? 'unknown';
       const set = versionSetByWs.get(dep.workspaceId) ?? new Set<string>();
       set.add(version);
       versionSetByWs.set(dep.workspaceId, set);
@@ -80,7 +80,7 @@ export function detectWorkspaceMisalignments(
     const versionSummary = summaryParts.join(', ');
 
     for (const dep of deps) {
-      const currentVer = dep.locked ?? dep.requested ?? 'unknown';
+      const currentVer = dep.locked ?? dep.installed ?? dep.requested ?? 'unknown';
       const root = workspaceRootById.get(dep.workspaceId) ?? dep.workspaceId;
 
       findings.push({

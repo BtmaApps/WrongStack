@@ -219,4 +219,39 @@ describe('Cross-Workspace Version Misalignment Detector', () => {
     const multiFindings = detectWorkspaceMisalignments(multiWithinWs, workspaces);
     expect(multiFindings[0]?.rationale).toContain('apps/web (6.3.1, 7.5.4)');
   });
+
+  it('detects misalignment across installed versions when locked is absent', () => {
+    const deps: DependencyObservation[] = [
+      {
+        id: 'dep-inst-1',
+        workspaceId: 'ws-app',
+        ecosystem: 'npm',
+        name: 'zod',
+        sourceType: 'registry',
+        direct: true,
+        scope: 'runtime',
+        requested: '^3.0.0',
+        installed: '3.22.4',
+        status: 'current',
+        evidence: [],
+      },
+      {
+        id: 'dep-inst-2',
+        workspaceId: 'ws-core',
+        ecosystem: 'npm',
+        name: 'zod',
+        sourceType: 'registry',
+        direct: true,
+        scope: 'runtime',
+        requested: '^3.0.0',
+        installed: '3.20.2',
+        status: 'current',
+        evidence: [],
+      },
+    ];
+    const findings = detectWorkspaceMisalignments(deps, workspaces);
+    expect(findings).toHaveLength(2);
+    expect(findings[0]?.rationale).toContain('3.22.4');
+    expect(findings[0]?.rationale).toContain('3.20.2');
+  });
 });
