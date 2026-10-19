@@ -86,12 +86,12 @@ export class DocumentTracker {
     const operation = this.beginDocumentOperation(absPath);
     try {
       const text = await this.readTrackable(absPath, 'changed file');
-      if (
-        text === null ||
-        generation !== this.generation ||
-        !this.isCurrentDocumentOperation(absPath, operation)
-      )
+      if (generation !== this.generation || !this.isCurrentDocumentOperation(absPath, operation))
         return;
+      if (text === null) {
+        this.evict(absPath);
+        return;
+      }
       const doc = this.docs.get(absPath);
       if (!doc) {
         await this.open(absPath, text);
@@ -128,18 +128,19 @@ export class DocumentTracker {
     if (!languageId) return false;
     const operation = this.beginDocumentOperation(absPath);
     try {
-      let text: string;
-      if (knownText !== undefined) {
-        // A caller-supplied body still counts against the per-document cap.
-        if (Buffer.byteLength(knownText, 'utf8') > MAX_DOCUMENT_BYTES) return false;
-        text = knownText;
-      } else {
-        const read = await this.readTrackable(absPath, 'file');
-        if (read === null) return false;
-        text = read;
-      }
+      const read =
+        knownText !== undefined
+          ? Buffer.byteLength(knownText, 'utf8') <= MAX_DOCUMENT_BYTES
+            ? knownText
+            : null
+          : await this.readTrackable(absPath, 'file');
       if (generation !== this.generation || !this.isCurrentDocumentOperation(absPath, operation))
         return false;
+      if (read === null) {
+        this.evict(absPath);
+        return false;
+      }
+      const text = read;
       let doc = this.docs.get(absPath);
       /* v8 ignore next -- both create and existing paths are covered; branch accounting is source-map noisy. */
       if (!doc) {

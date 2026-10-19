@@ -91,4 +91,35 @@ describe('document tracker byte and lifetime limits', () => {
       expect(await tracker.open('new.ts', 'fresh')).toBe(true);
     });
   }
+
+  it('evicts already-tracked documents and notifies clients when fileWritten or open encounters an oversized or deleted file (F159)', async () => {
+    const notifyDidClose = vi.fn();
+    const fakeServer = {
+      name: 'ts',
+      state: 'ready' as const,
+      config: { languages: ['typescript'] },
+      notifyDidOpen: vi.fn(),
+      notifyDidChange: vi.fn(),
+      notifyDidClose,
+    };
+    const tracker = new DocumentTracker(
+      () => ({ list: () => [fakeServer as never] }),
+      { debug: vi.fn() } as unknown as Logger,
+      process.cwd(),
+    );
+
+    expect(await tracker.open('tracked.ts', 'const x = 1;')).toBe(true);
+    expect(tracker.get('tracked.ts')?.text).toBe('const x = 1;');
+
+    files.stat.mockResolvedValueOnce({ isFile: () => true, size: 2 * 1024 * 1024 + 10 });
+    await tracker.fileWritten('tracked.ts');
+    expect(tracker.get('tracked.ts')).toBeNull();
+    expect(notifyDidClose).toHaveBeenCalledTimes(1);
+
+    expect(await tracker.open('deleted.ts', 'const y = 2;')).toBe(true);
+    files.stat.mockRejectedValueOnce(Object.assign(new Error('ENOENT'), { code: 'ENOENT' }));
+    expect(await tracker.open('deleted.ts')).toBe(false);
+    expect(tracker.get('deleted.ts')).toBeNull();
+    expect(notifyDidClose).toHaveBeenCalledTimes(2);
+  });
 });
