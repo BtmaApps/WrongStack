@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-19T09:33:56.644Z",
+  "generatedAt": "2026-10-19T10:58:14.076Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 38,
-    "sourceFiles": 5165,
-    "testFiles": 4490,
-    "sourceLines": 1121846,
+    "sourceFiles": 5176,
+    "testFiles": 4501,
+    "sourceLines": 1124066,
     "workspaceEdges": 139,
-    "moduleEdges": 17004,
+    "moduleEdges": 17034,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -151,7 +151,7 @@
     {
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
-      "sourceFiles": 668,
+      "sourceFiles": 670,
       "testFiles": 654,
       "workspaceDependencies": [
         "@wrongstack/acp",
@@ -248,7 +248,7 @@
     {
       "name": "@wrongstack/core",
       "dir": "packages/core",
-      "sourceFiles": 1147,
+      "sourceFiles": 1148,
       "testFiles": 990,
       "workspaceDependencies": [
         "@wrongstack/kanban",
@@ -296,7 +296,7 @@
       "name": "@wrongstack/governance",
       "dir": "packages/governance",
       "sourceFiles": 45,
-      "testFiles": 36,
+      "testFiles": 37,
       "workspaceDependencies": [
         "@wrongstack/persistence"
       ],
@@ -309,7 +309,7 @@
         {
           "path": "packages/governance/tsconfig.test.json",
           "error": null,
-          "testFiles": 36
+          "testFiles": 37
         }
       ]
     },
@@ -605,8 +605,8 @@
     {
       "name": "@wrongstack/sage",
       "dir": "packages/sage",
-      "sourceFiles": 148,
-      "testFiles": 141,
+      "sourceFiles": 151,
+      "testFiles": 147,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/persistence",
@@ -621,7 +621,7 @@
         {
           "path": "packages/sage/tsconfig.test.json",
           "error": null,
-          "testFiles": 141
+          "testFiles": 147
         }
       ]
     },
@@ -869,8 +869,8 @@
     {
       "name": "@wrongstack/webui",
       "dir": "packages/webui",
-      "sourceFiles": 755,
-      "testFiles": 488,
+      "sourceFiles": 759,
+      "testFiles": 491,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -893,7 +893,7 @@
         {
           "path": "packages/webui/tsconfig.test.json",
           "error": null,
-          "testFiles": 488
+          "testFiles": 491
         }
       ]
     },
@@ -945,8 +945,8 @@
     {
       "name": "@wrongstack/webui-server",
       "dir": "packages/webui-server",
-      "sourceFiles": 300,
-      "testFiles": 296,
+      "sourceFiles": 301,
+      "testFiles": 297,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -972,7 +972,7 @@
         {
           "path": "packages/webui-server/tsconfig.test.json",
           "error": null,
-          "testFiles": 296
+          "testFiles": 297
         }
       ]
     },
@@ -12134,6 +12134,12 @@
         ]
       },
       {
+        "file": "packages/governance/tests/verification-ledger-store-sqlite-full.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/governance/tests/verification-planner.test.ts",
         "projects": [
           "root-node"
@@ -15620,6 +15626,12 @@
         ]
       },
       {
+        "file": "packages/sage/tests/doctor-maintenance-ipc.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/sage/tests/domain-term-extractor-commits.test.ts",
         "projects": [
           "root-node"
@@ -15968,6 +15980,12 @@
         ]
       },
       {
+        "file": "packages/sage/tests/project-server-maintenance.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/sage/tests/project-server-slow-op.test.ts",
         "projects": [
           "root-node"
@@ -16088,7 +16106,25 @@
         ]
       },
       {
+        "file": "packages/sage/tests/sage-doctor.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/sage/tests/sage-graph-hub-damping.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/sage/tests/sage-heading-contract.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/sage/tests/sage-kinds-parity.test.ts",
         "projects": [
           "root-node"
         ]
@@ -16383,6 +16419,12 @@
       },
       {
         "file": "packages/sage/tests/unified-search-suggest-session-scope.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/sage/tests/unused-injection-penalty.test.ts",
         "projects": [
           "root-node"
         ]
@@ -24020,6 +24062,12 @@
         ]
       },
       {
+        "file": "packages/webui-server/tests/memory-doctor-handler.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/webui-server/tests/memory-for-file-wire-integration.test.ts",
         "projects": [
           "root-node"
@@ -25790,6 +25838,12 @@
         ]
       },
       {
+        "file": "packages/webui/tests/components/memory-detail-recover.test.tsx",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
         "file": "packages/webui/tests/components/memory-detail-usefulness.test.tsx",
         "projects": [
           "webui-jsdom"
@@ -25827,6 +25881,12 @@
       },
       {
         "file": "packages/webui/tests/components/memory-review-advisory.test.tsx",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
+        "file": "packages/webui/tests/components/memory-review-queue-failures.test.tsx",
         "projects": [
           "webui-jsdom"
         ]
@@ -26145,6 +26205,12 @@
       },
       {
         "file": "packages/webui/tests/components/restore-tabs-modal.test.tsx",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
+        "file": "packages/webui/tests/components/sage-health-panel.test.tsx",
         "projects": [
           "webui-jsdom"
         ]
@@ -28376,6 +28442,11 @@
       "relativeImports": 12
     },
     {
+      "file": "packages/webui-server/src/server/memory-handlers.ts",
+      "lines": 699,
+      "relativeImports": 4
+    },
+    {
       "file": "packages/core/src/coordination/subagent-budget.ts",
       "lines": 698,
       "relativeImports": 6
@@ -28431,11 +28502,6 @@
       "relativeImports": 1
     },
     {
-      "file": "packages/webui-server/src/server/memory-handlers.ts",
-      "lines": 693,
-      "relativeImports": 4
-    },
-    {
       "file": "packages/tools/src/codebase-index/project-server.ts",
       "lines": 692,
       "relativeImports": 13
@@ -28444,6 +28510,11 @@
       "file": "packages/webui/src/components/MailboxPanel.tsx",
       "lines": 692,
       "relativeImports": 2
+    },
+    {
+      "file": "packages/webui/src/components/MemoryManager/useMemoryManagerState.ts",
+      "lines": 692,
+      "relativeImports": 9
     },
     {
       "file": "packages/core/src/core/agent-response.ts",
@@ -28554,11 +28625,6 @@
       "file": "packages/tools/src/browser/tools.ts",
       "lines": 685,
       "relativeImports": 3
-    },
-    {
-      "file": "packages/webui-server/src/server/provider-routes.ts",
-      "lines": 685,
-      "relativeImports": 2
     }
   ],
   "testOnlyExports": [
