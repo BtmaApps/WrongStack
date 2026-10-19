@@ -59,7 +59,7 @@ export function makeTelegramApproveTool(opts: {
    * configured. Resolved on every call for live config updates.
    */
   getAllowGroupApprovals?(): boolean;
-  maxMessageLength: number;
+  maxMessageLength: number | (() => number);
   log: Logger;
 }): Tool<TelegramApproveInput, TelegramApproveOutput> {
   return {
@@ -118,13 +118,18 @@ export function makeTelegramApproveTool(opts: {
 
       // Scrub every user-controlled outbound field before truncation so raw
       // credentials never reach Telegram, even inside an approval prompt.
+      const maxMessageLength =
+        typeof opts.maxMessageLength === 'function'
+          ? opts.maxMessageLength()
+          : opts.maxMessageLength;
       const prompt = scrubTelegramOutboundText(input.prompt);
       const details = input.details
         ? truncateForTelegram(scrubTelegramOutboundText(input.details), 800)
         : undefined;
       const heading = `⚠️ ${prompt}`;
       const detailsLine = details ? `\n\n${details}` : '';
-      const text = `${heading}${detailsLine}\n\n_Reply by tapping a button. Auto-denies in ${Math.round(timeoutMs / 1000)}s._`;
+      const rawText = `${heading}${detailsLine}\n\n_Reply by tapping a button. Auto-denies in ${Math.round(timeoutMs / 1000)}s._`;
+      const text = truncateForTelegram(rawText, maxMessageLength);
 
       opts.log.info(`telegram_approve → chat_id=${chatId} (${prompt.length} prompt chars)`);
 

@@ -35,4 +35,29 @@ describe('telegram_approve with a context that has no session', () => {
       expect.objectContaining({ sessionId: 'unknown-session' }),
     );
   });
+
+  it('truncates the assembled approval message to maxMessageLength', async () => {
+    const sendMessageWithKeyboard = vi.fn(async () => ({ ok: true, result: { message_id: 8 } }));
+    const bot = {
+      awaitApproval: vi.fn(async () => ({ approved: true, fromUser: 'owner', fromUserId: 42 })),
+      sendMessageWithKeyboard,
+      bindApprovalPrompt: vi.fn(() => true),
+      cancelApproval: vi.fn(),
+    };
+    const tool = makeTelegramApproveTool({
+      bot: bot as never,
+      getDefaultChatId: () => '42',
+      maxMessageLength: () => 200,
+      log: { info: () => {}, debug: () => {}, warn: () => {}, error: () => {} } as never,
+    });
+
+    await tool.execute(
+      { prompt: 'Deploy release?', details: 'x'.repeat(500), timeout_ms: 60_000 },
+      {} as never,
+      { signal: new AbortController().signal },
+    );
+
+    const sentText = (sendMessageWithKeyboard.mock.calls[0] as unknown[])?.[1] as string;
+    expect(sentText.length).toBeLessThanOrEqual(200);
+  });
 });
