@@ -84,6 +84,31 @@ describe('run.result structured nextsteps fallback with a deferred updater', () 
     handler({ type: 'run.result', payload: { status: 'done' } } as never);
     expect(commit()).toHaveLength(rows);
   });
+
+  it('clears completedToolNextSteps when a turn ends with error so stale steps do not leak to the next turn', () => {
+    const { handler, seed, commit } = deferredSession();
+    handler({
+      type: 'tool.started',
+      payload: { id: 'n_err', name: 'nextsteps', input: { steps: [{ text: 'Stale error step' }] } },
+    } as never);
+    handler({
+      type: 'tool.executed',
+      payload: { id: 'n_err', name: 'nextsteps', ok: true },
+    } as never);
+    handler({ type: 'error', payload: { message: 'Connection dropped' } } as never);
+    commit();
+
+    seed([{ id: 'u2', role: 'user', text: 'Next turn' }]);
+    handler({
+      type: 'provider.response',
+      payload: { content: 'Fresh reply', stopReason: 'end_turn', iteration: 1 },
+    } as never);
+    handler({ type: 'run.result', payload: { status: 'done' } } as never);
+    const finalRows = commit();
+    expect(finalRows.some((r) => r.nextSteps?.some((s) => s.text === 'Stale error step'))).toBe(
+      false,
+    );
+  });
 });
 
 describe('run.result structured nextsteps fallback is scoped to the current turn', () => {

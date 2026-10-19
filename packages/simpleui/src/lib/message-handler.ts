@@ -358,7 +358,11 @@ export function createMessageHandler(deps: MessageHandlerDeps): ServerMessageHan
         // The normal path carries the tool's steps in the final response as a
         // <nextsteps> block. If that response was absent, retain the exact
         // structured suggestions instead of silently losing the tool result.
-        if (completedToolNextSteps.length > 0) {
+        if (
+          completedToolNextSteps.length > 0 &&
+          payload['status'] !== 'failed' &&
+          payload['status'] !== 'aborted'
+        ) {
           // The updater below runs when React renders, after this handler has
           // reset the shared variable: capture the steps by value.
           const pendingSteps = completedToolNextSteps;
@@ -396,8 +400,9 @@ export function createMessageHandler(deps: MessageHandlerDeps): ServerMessageHan
                   },
                 ]);
           });
-          completedToolNextSteps = [];
         }
+        nextStepsByToolId.clear();
+        completedToolNextSteps = [];
         // The run is over: any tool still marked running lost its executed
         // frame (abort, dropped connection) and must not linger forever.
         closeStaleToolCalls(setToolCalls);
@@ -416,6 +421,10 @@ export function createMessageHandler(deps: MessageHandlerDeps): ServerMessageHan
         break;
       }
       case 'error': {
+        if (payload['phase'] !== 'rate_limit') {
+          nextStepsByToolId.clear();
+          completedToolNextSteps = [];
+        }
         handleRunErrorMessage(message, deps, drainQueue);
         break;
       }
