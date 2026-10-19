@@ -197,7 +197,10 @@ export function attachTodosCheckpoint(
   const enqueueWrite = (todos: readonly TodoItem[]) => {
     queuedWrite = todos;
     if (writeInFlight) return writeInFlight;
-    const drain = (async () => {
+    // The drain loop clears `writeInFlight` by identity from its own `finally`,
+    // so the promise has to be nameable inside the async body it is made from.
+    let drain: Promise<void> | undefined;
+    drain = (async () => {
       try {
         while (queuedWrite) {
           const latest = queuedWrite;

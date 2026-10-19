@@ -82,10 +82,7 @@ export async function executeSettingsReset(
   // CONFIG_BEHAVIOR_DEFAULTS (tools.nextsteps, tools.wrongProxy, ...) keep
   // their persisted values.
   await persistConfigSetting(persistDeps, (cfg) => {
-    const liveRoot = (opts.configStore.get?.() ?? opts.configStore.current ?? {}) as Record<
-      string,
-      unknown
-    >;
+    const liveRoot = opts.configStore.get() as unknown as Record<string, unknown>;
     for (const [key, value] of Object.entries(patch)) {
       if (value !== null && typeof value === 'object') {
         const liveCurrent = (liveRoot[key] as Record<string, unknown> | null | undefined) ?? {};
