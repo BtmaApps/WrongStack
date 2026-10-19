@@ -262,4 +262,11 @@ describe('subagent observability', () => {
     expect(populated.agents[0]?.entries).toHaveLength(100);
     expect(new Set(populated.agents[0]?.entries.map((entry) => entry.id)).size).toBe(100);
   });
+
+  it('strips a trailing unclosed streaming <nextsteps> block even after a fenced <nextsteps> example', async () => {
+    const { assistantProjection } = await import('../src/lib/assistant-projection.js');
+    const example = 'Example:\n```xml\n<nextsteps>\n1. Example only\n</nextsteps>\n```';
+    const result = assistantProjection(`${example}\n<nextsteps>\n1. Partial streaming step`);
+    expect(result).toEqual({ text: example, steps: [] });
+  });
 });
