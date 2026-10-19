@@ -58,9 +58,8 @@ export async function verifySqliteSage(
             id: memory.id,
             observedAnchors: memory.anchors,
             observedStatus: memory.status,
-            status: 'active',
+            ...(memory.staleReason !== 'manual' ? { status: 'active', freshness: 1 } : {}),
             lastVerifiedAt: result.checkedAt,
-            freshness: 1,
           });
           break;
         case 'active':
@@ -105,7 +104,9 @@ export async function verifySqliteSage(
         const nextStatus =
           update.status === 'stale' && current.status === 'active'
             ? 'stale'
-            : update.status === 'active' && current.status === 'stale'
+            : update.status === 'active' &&
+                current.status === 'stale' &&
+                current.staleReason !== 'manual'
               ? 'active'
               : current.status;
         const verified = applySemanticChange(

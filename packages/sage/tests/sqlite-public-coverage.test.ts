@@ -338,4 +338,18 @@ describe('SQLite public API completion coverage', () => {
     queue.mutationChain = Promise.reject(new Error('failed mutation'));
     await expect(store.drainMutations()).resolves.toBeUndefined();
   });
+
+  it('does not revive manually retired memories when verify confirms anchors exist (F169)', async () => {
+    const store = createStore();
+    await fs.writeFile(path.join(directory, 'manual-stale.ts'), 'export const x = 1;\n', 'utf8');
+    const created = await store.rememberSage({
+      text: 'Manually retired fact',
+      anchors: [{ type: 'file', path: 'manual-stale.ts' }],
+    });
+    await store.updateSage(created.id, { status: 'stale' });
+    await store.verify(created.id);
+    const afterVerify = await store.getSage(created.id);
+    expect(afterVerify?.status).toBe('stale');
+    expect(afterVerify?.staleReason).toBe('manual');
+  });
 });
