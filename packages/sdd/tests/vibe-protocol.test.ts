@@ -163,12 +163,22 @@ describe('VIBE Three-Stage Verification Protocol — SDD Engine', () => {
   });
 
   describe('isIdentifierLikeExclusion', () => {
-    it('accurately identifies exclusions', async () => {
+    it('accurately identifies exclusions and matches unquoted tokens in auditVibeExecution (F167)', async () => {
       const { isIdentifierLikeExclusion } = await import('../src/vibe-protocol.js');
       expect(isIdentifierLikeExclusion('a')).toBe(false);
       expect(isIdentifierLikeExclusion('"custom-dep"')).toBe(true);
       expect(isIdentifierLikeExclusion('my-pkg')).toBe(true);
       expect(isIdentifierLikeExclusion('Some phrase with spaces')).toBe(false);
+      expect(isIdentifierLikeExclusion('"Some phrase with spaces"')).toBe(false);
+
+      const spec = synthesizeVibeSpec(chaoticPrompt);
+      spec.scopeBoundaries.excluded.push('"axios"');
+      const audit = auditVibeExecution({
+        spec,
+        coderOutput: "import axios from 'axios';\nexport const x = 1;",
+      });
+      expect(audit.verdict).toBe('REJECT');
+      expect(audit.checks.some((c) => c.id === 'scope-bleed')).toBe(true);
     });
   });
 });

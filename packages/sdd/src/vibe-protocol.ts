@@ -65,11 +65,21 @@ export interface VibeVerificationReport {
  * Policy sentences are not code artifacts. Only identifier-like exclusions
  * (packages, files, symbols) are safe to substring-match in coder output.
  */
-export function isIdentifierLikeExclusion(excluded: string): boolean {
+function normalizeExcludedIdentifier(excluded: string): string | null {
   const trimmed = excluded.trim();
-  if (trimmed.length < 2) return false;
-  if (/^['"`].+['"`]$/.test(trimmed)) return true;
-  return !/\s/.test(trimmed);
+  if (trimmed.length < 2) return null;
+  const first = trimmed[0];
+  const last = trimmed[trimmed.length - 1];
+  const unquoted =
+    (first === '"' || first === "'" || first === '`') && first === last
+      ? trimmed.slice(1, -1).trim()
+      : trimmed;
+  if (unquoted.length < 2 || /\s/.test(unquoted)) return null;
+  return unquoted;
+}
+
+export function isIdentifierLikeExclusion(excluded: string): boolean {
+  return normalizeExcludedIdentifier(excluded) !== null;
 }
 
 /**
@@ -204,8 +214,9 @@ export function auditVibeExecution(input: {
   // echoing them would otherwise false-positive as scope bleed.
   let scopeClean = true;
   for (const excluded of spec.scopeBoundaries.excluded) {
-    if (!isIdentifierLikeExclusion(excluded)) continue;
-    if (coderOutput.toLowerCase().includes(excluded.toLowerCase())) {
+    const token = normalizeExcludedIdentifier(excluded);
+    if (!token) continue;
+    if (coderOutput.toLowerCase().includes(token.toLowerCase())) {
       scopeClean = false;
       checks.push({
         id: 'scope-bleed',
