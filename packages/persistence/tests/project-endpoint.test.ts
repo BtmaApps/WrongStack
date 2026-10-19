@@ -292,6 +292,21 @@ describe('bindProjectEndpoint — G1 ownership/mode enforcement', () => {
       await fs.rm(tmpDir, { recursive: true, force: true });
     }
   });
+
+  it('rejects an empty endpoint on win32 before calling server.listen (F142)', async () => {
+    _projectEndpointOps.platform = 'win32';
+    const fakeServer = new EventEmitter() as any;
+    fakeServer.listen = vi.fn(() => {
+      setTimeout(() => fakeServer.emit('listening'), 2);
+    });
+    const res = await bindProjectEndpoint({
+      server: fakeServer,
+      endpoint: '',
+      service: 'test',
+    });
+    expect(res.outcome).toBe('failed');
+    expect(fakeServer.listen).not.toHaveBeenCalled();
+  });
 });
 
 describe('isProjectEndpointLive', () => {

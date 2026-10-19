@@ -201,11 +201,11 @@ function probeProjectEndpoint(
  * that skipped the liveness probe.
  */
 async function ensureProjectEndpointDirectory(endpoint: string, service: string): Promise<void> {
-  if (_projectEndpointOps.platform === 'win32') return;
-  // Fail loudly and early on an over-long `sun_path`. Left to `bind()`, it
-  // surfaces as EINVAL/ENAMETOOLONG inside a detached child whose stderr is
-  // discarded, which reaches the operator as a bare connect timeout.
+  // Fail loudly and early on an empty endpoint or over-long `sun_path`. Left to
+  // `bind()`, an empty endpoint on Windows/Unix coerces to TCP port 0, and an
+  // over-long Unix socket path surfaces as EINVAL/ENAMETOOLONG.
   assertUnixSocketPathWithinLimit(endpoint, service, _projectEndpointOps.platform);
+  if (_projectEndpointOps.platform === 'win32') return;
   const dir = path.dirname(endpoint);
   await fsOp('mkdir')(dir, {
     recursive: true,
