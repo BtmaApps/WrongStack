@@ -187,10 +187,10 @@ export class LeaderDeliveryHub {
     const drop = this.seen.size - SEEN_CAP;
     let i = 0;
     for (const id of this.seen) {
-      if (i++ >= drop) break;
       // Never forget an id still pending — it would become re-enqueueable.
       if (this.isPending(id)) continue;
       this.seen.delete(id);
+      if (++i >= drop) break;
     }
   }
 

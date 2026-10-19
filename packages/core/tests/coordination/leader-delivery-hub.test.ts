@@ -106,4 +106,21 @@ describe('LeaderDeliveryHub', () => {
     expect(text).toContain('Full result: roll_up(["task-a"])');
     expect(text.split(DELEGATION_RESULT_MARKER)).toHaveLength(2);
   });
+
+  it('evicts completed IDs from seen up to SEEN_CAP even when pending IDs sit at the front (F147)', () => {
+    const hub = new LeaderDeliveryHub();
+    for (let i = 0; i < 5; i++) {
+      hub.enqueue(delivery(`pending-${i}`, { sessionId: 'sess-pending' }));
+    }
+    const seen = (hub as unknown as { seen: Set<string> }).seen;
+    for (let i = 0; seen.size < 10_000; i++) {
+      seen.add(delegationDeliveryId(`old-done-${i}`));
+    }
+    for (let i = 0; i < 3; i++) {
+      hub.enqueue(delivery(`new-done-${i}`, { sessionId: 'sess-active' }));
+      hub.take('sess-active');
+    }
+    expect(seen.size).toBe(10_000);
+    expect(hub.pending('sess-pending')).toBe(5);
+  });
 });
