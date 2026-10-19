@@ -21,9 +21,14 @@ export function localArtifactPath(href: string, origin: string, basePath = ''): 
   } catch {
     return null;
   }
-  if (!/\.[a-z\d]{1,12}$/i.test(path)) return null;
+  if (/[:\x00-\x1f\x7f]/.test(path) || !/\.[a-z\d]{1,12}$/i.test(path)) return null;
   const workspaceRelative = path.startsWith('/') || path.startsWith('.temp_files/') || !basePath;
-  const parts: string[] = workspaceRelative ? [] : basePath.split('/').slice(0, -1);
+  const parts: string[] = workspaceRelative
+    ? []
+    : basePath
+        .split('/')
+        .slice(0, -1)
+        .filter((p) => p && p !== '.');
   for (const part of path.replaceAll('\\', '/').split('/')) {
     if (!part || part === '.') continue;
     if (part === '..') {

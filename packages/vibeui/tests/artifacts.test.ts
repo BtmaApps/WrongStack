@@ -72,4 +72,12 @@ it('resolves local report links without fabricated HTTP paths or escaping the wo
   expect(localArtifactPath('https://example.com/report.md', 'http://127.0.0.1:3477')).toBeNull();
   expect(localArtifactPath('../../escape.md', 'http://127.0.0.1:3477')).toBeNull();
   expect(localArtifactPath('#heading', 'http://127.0.0.1:3477')).toBeNull();
+  expect(localArtifactPath('/C:/secret.txt', 'http://127.0.0.1:3477')).toBeNull();
+  expect(
+    localArtifactPath('http://127.0.0.1:3477/C:/secret.txt', 'http://127.0.0.1:3477'),
+  ).toBeNull();
+  expect(localArtifactPath('C%3A/secret.txt', 'http://127.0.0.1:3477')).toBeNull();
+  expect(
+    localArtifactPath('../../secret.md', 'http://127.0.0.1:3477', '/docs/guide.md'),
+  ).toBeNull();
 });
