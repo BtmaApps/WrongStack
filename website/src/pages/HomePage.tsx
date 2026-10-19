@@ -314,7 +314,7 @@ export function HomePage() {
                 In {version}: contributor scripts, tests, CI and the SQLite adapters run on the
                 pinned Bun toolchain. A resident Skill Companion watches active work and recommends
                 missed skills, sealed subagents keep host-owned helpers inside one job, and
-                document, media and workflow playbooks grow the bundled skill catalog to 114 skills.
+                document, media and workflow playbooks grow the bundled skill catalog to 116 skills.
               </p>
             </div>
             <a
