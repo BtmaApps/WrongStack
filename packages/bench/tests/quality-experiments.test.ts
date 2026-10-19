@@ -197,4 +197,20 @@ describe('evidence-based bench experiments', () => {
       false,
     );
   });
+  it('does not count files first read after compaction as rereadsAfterCompaction and preserves finalText across tool-only llm_response (F155)', () => {
+    const events = [
+      { type: 'compaction', fullRequestTokensBefore: 1000, fullRequestTokensAfter: 300 },
+      { type: 'tool_use', id: 'r1', name: 'read', input: { path: 'src/new-file.ts' } },
+      { type: 'tool_use', id: 'r2', name: 'read', input: { path: 'src/new-file.ts' } },
+      { type: 'llm_response', content: [{ type: 'text', text: 'validation boundary' }] },
+      { type: 'llm_response', content: [{ type: 'tool_use', id: 'r3', name: 'read' }] },
+    ];
+    const review = reviewTranscript(events, 'a'.repeat(64), {
+      requiredFinalMarkers: ['validation boundary'],
+    });
+    expect(review.observations.rereadsAfterCompaction).toBe(0);
+    expect(
+      review.findings.some((finding) => finding.category === 'missing-final-requirement'),
+    ).toBe(false);
+  });
 });

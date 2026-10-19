@@ -52,7 +52,7 @@ export function reviewTranscript(
   let toolOutcomesObserved = 0;
   const repetitions = new Map<string, number[]>();
   const reads = new Map<string, number>();
-  const compactedAgents = new Set<string>();
+  const lastCompactionIndex = new Map<string, number>();
   let edits = 0;
   let testCommandsObserved = 0;
   let compactions = 0;
@@ -92,8 +92,13 @@ export function reviewTranscript(
             ? input['file_path']
             : undefined;
       if (['read', 'read_file'].includes(name) && file) {
-        if (compactedAgents.has(agent) && reads.has(`${agent}:${file}`)) rereadsAfterCompaction++;
-        reads.set(`${agent}:${file}`, index);
+        const readKey = `${agent}:${file}`;
+        const firstRead = reads.get(readKey);
+        const compactedAt = lastCompactionIndex.get(agent);
+        if (firstRead !== undefined && compactedAt !== undefined && firstRead < compactedAt) {
+          rereadsAfterCompaction++;
+        }
+        if (firstRead === undefined) reads.set(readKey, index);
       }
       if (
         ['edit', 'write', 'patch', 'apply_patch', 'replace', 'multi_edit', 'multiedit'].includes(
@@ -135,7 +140,7 @@ export function reviewTranscript(
       }
     } else if (type === 'compaction' || type === 'compaction.fired') {
       compactions++;
-      compactedAgents.add(agent);
+      lastCompactionIndex.set(agent, index);
       const report =
         event['report'] && typeof event['report'] === 'object'
           ? (event['report'] as Record<string, unknown>)
@@ -158,9 +163,10 @@ export function reviewTranscript(
       (type === 'assistant_message' || type === 'assistant' || type === 'llm_response')
     ) {
       const text = event['text'] ?? event['content'];
-      if (typeof text === 'string') finalText = text;
-      else if (Array.isArray(text))
-        finalText = text
+      if (typeof text === 'string') {
+        if (text.length > 0) finalText = text;
+      } else if (Array.isArray(text)) {
+        const joined = text
           .flatMap((block) =>
             block &&
             typeof block === 'object' &&
@@ -170,6 +176,8 @@ export function reviewTranscript(
               : [],
           )
           .join('\n');
+        if (joined.length > 0) finalText = joined;
+      }
     }
   });
   for (const indexes of repetitions.values())
