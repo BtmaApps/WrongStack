@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it } from 'vitest';
 import {
   calculatePlanVersionFingerprint,
   type GovernanceDecisionContext,
