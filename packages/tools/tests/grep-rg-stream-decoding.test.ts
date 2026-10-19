@@ -1,7 +1,7 @@
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { __resetRgDetectionForTests, __setRgAvailableForTests, grepTool } from '../src/grep.js';
-import { type Sandbox, mkSandbox, newSignal } from './fixtures.js';
+import { mkSandbox, newSignal, type Sandbox } from './fixtures.js';
 
 /**
  * Regression test for the rg-path stream decoding in `runRgStream`.
@@ -171,5 +171,30 @@ describe('grep rg path — stream chunk decoding', () => {
     expect(out.used).toBe('rg');
     expect(out.matches).toEqual(['d.txt:7']);
     expect(out.count).toBe(7);
+  });
+
+  it('native fallback counts all matching lines in a file when limit=1 and does not set truncated on exact limit (F120)', async () => {
+    __setRgAvailableForTests(false);
+    const fs = await import('node:fs/promises');
+    await fs.writeFile(path.join(sb.dir, 'only.txt'), 'hit 1\nhit 2\nhit 3\n');
+
+    const countOut = await grepTool.execute(
+      { pattern: 'hit', output_mode: 'count', limit: 1 },
+      sb.ctx,
+      { signal: newSignal() },
+    );
+    expect(countOut.used).toBe('native');
+    expect(countOut.matches).toEqual(['only.txt:3']);
+    expect(countOut.count).toBe(3);
+    expect(countOut.truncated).toBe(false);
+
+    const contentOut = await grepTool.execute(
+      { pattern: 'hit', output_mode: 'content', limit: 3 },
+      sb.ctx,
+      { signal: newSignal() },
+    );
+    expect(contentOut.used).toBe('native');
+    expect(contentOut.matches).toHaveLength(3);
+    expect(contentOut.truncated).toBe(false);
   });
 });

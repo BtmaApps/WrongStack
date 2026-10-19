@@ -51,7 +51,6 @@ export async function runNative(
   // project whose artifacts aren't in DEFAULT_IGNORE isn't scanned in full.
   const isGitIgnored = await loadGitignoreMatcher(base);
   const matches: string[] = [];
-  const countOnlyFirstHit = mode === 'count' && limit === 1;
   const maxBytes = NATIVE_MAX_FILE_BYTES;
   let total = 0;
   let stopped = false;
@@ -115,19 +114,32 @@ export async function runNative(
             if (re.global || re.sticky) re.lastIndex = 0;
             if (!re.test(ln)) continue;
 
-            fileHits++;
-            total++;
-
             if (mode === 'content') {
-              if (matches.length < limit) matches.push(`${relativize(full)}:${lineNumber}:${ln}`);
+              if (matches.length < limit) {
+                fileHits++;
+                total++;
+                matches.push(`${relativize(full)}:${lineNumber}:${ln}`);
+              } else {
+                stopped = true;
+                break;
+              }
             } else if (mode === 'files_with_matches') {
-              if (fileHits === 1 && matches.length < limit) matches.push(relativize(full));
+              if (matches.length < limit) {
+                fileHits++;
+                total++;
+                matches.push(relativize(full));
+              } else {
+                stopped = true;
+              }
               break;
-            }
-
-            if (countOnlyFirstHit || (mode === 'content' && matches.length >= limit)) {
-              stopped = true;
-              break;
+            } else {
+              if (matches.length >= limit) {
+                countTruncated = true;
+                stopped = true;
+                break;
+              }
+              fileHits++;
+              total++;
             }
           }
 
@@ -144,29 +156,42 @@ export async function runNative(
           const ln = leftover.length > 4096 ? capSubject(leftover) : leftover;
           if (re.global || re.sticky) re.lastIndex = 0;
           if (re.test(ln)) {
-            fileHits++;
-            total++;
             if (mode === 'content') {
-              if (matches.length < limit) matches.push(`${relativize(full)}:${lineNumber}:${ln}`);
+              if (matches.length < limit) {
+                fileHits++;
+                total++;
+                matches.push(`${relativize(full)}:${lineNumber}:${ln}`);
+              } else {
+                stopped = true;
+              }
             } else if (mode === 'files_with_matches') {
-              if (matches.length < limit) matches.push(relativize(full));
-            }
-          }
-        }
-
-        if (fileHits > 0) {
-          if (mode === 'count') {
-            if (matches.length < limit) {
-              matches.push(`${relativize(full)}:${fileHits}`);
+              if (matches.length < limit) {
+                fileHits++;
+                total++;
+                matches.push(relativize(full));
+              } else {
+                stopped = true;
+              }
             } else {
-              countTruncated = true;
+              if (matches.length >= limit) {
+                countTruncated = true;
+                stopped = true;
+              } else {
+                fileHits++;
+                total++;
+              }
             }
           }
-          if (mode === 'files_with_matches' && matches.length >= limit) stopped = true;
         }
 
-        if (mode === 'content' && matches.length >= limit) stopped = true;
-        if (mode === 'count' && matches.length >= limit && countOnlyFirstHit) stopped = true;
+        if (fileHits > 0 && mode === 'count') {
+          if (matches.length < limit) {
+            matches.push(`${relativize(full)}:${fileHits}`);
+          } else {
+            countTruncated = true;
+            stopped = true;
+          }
+        }
       } finally {
         await file.close();
       }
