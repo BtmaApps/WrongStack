@@ -193,4 +193,32 @@ describe('tool call ids on the Chat Completions wire', () => {
     const start = events.find((e) => e.type === 'tool_use_start') as { id: string };
     expect(start.id.length).toBeLessThanOrEqual(40);
   });
+
+  it('Gemini resolves functionResponse.name from prior tool_use when tool_result omits name (F117)', () => {
+    const body = googleWireFormat.buildBody(
+      {
+        model: 'gemini-2.5-pro',
+        maxTokens: 1024,
+        messages: [
+          { role: 'user', content: 'List files' },
+          {
+            role: 'assistant',
+            content: [
+              { type: 'tool_use', id: 'call_abc123', name: 'list_dir', input: { path: '.' } },
+            ],
+          },
+          {
+            role: 'user',
+            content: [{ type: 'tool_result', tool_use_id: 'call_abc123', content: '["a.ts"]' }],
+          },
+        ],
+      },
+      { capabilities: googleWireFormat.capabilities, providerId: 'google' },
+    );
+    const contents = body['contents'] as Array<{
+      role: string;
+      parts: Array<{ functionResponse?: { name: string } }>;
+    }>;
+    expect(contents[2]?.parts[0]?.functionResponse?.name).toBe('list_dir');
+  });
 });

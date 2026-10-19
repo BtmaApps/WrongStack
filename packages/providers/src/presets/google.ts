@@ -474,6 +474,7 @@ function sanitizeSchemaForGemini(node: unknown): Record<string, unknown> | undef
 
 function messagesToGemini(messages: Message[]): GeminiContent[] {
   const out: GeminiContent[] = [];
+  const toolNameById = new Map<string, string>();
   for (const m of messages) {
     // System-role messages carried INSIDE the conversation (compaction
     // digests, the evidence floor) must not be dropped — Gemini has no system
@@ -487,6 +488,7 @@ function messagesToGemini(messages: Message[]): GeminiContent[] {
       for (const b of blocks) {
         if (b.type === 'text' && b.text) parts.push({ text: b.text });
         else if (b.type === 'tool_use') {
+          if (b.id && b.name) toolNameById.set(b.id, b.name);
           const part: GeminiPart = {
             functionCall: { name: b.name, args: b.input },
           };
@@ -506,7 +508,7 @@ function messagesToGemini(messages: Message[]): GeminiContent[] {
       if (b.type === 'text' && b.text) textParts.push({ text: b.text });
       else if (b.type === 'tool_result') {
         const responseText = typeof b.content === 'string' ? b.content : JSON.stringify(b.content);
-        const fnName = b.name ?? b.tool_use_id;
+        const fnName = b.name ?? toolNameById.get(b.tool_use_id) ?? b.tool_use_id;
         functionParts.push({
           functionResponse: {
             name: fnName,
