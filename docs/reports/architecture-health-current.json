@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-19T14:45:01.710Z",
+  "generatedAt": "2026-10-19T14:51:15.586Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 38,
     "sourceFiles": 5176,
-    "testFiles": 4507,
-    "sourceLines": 1124161,
+    "testFiles": 4508,
+    "sourceLines": 1124206,
     "workspaceEdges": 139,
     "moduleEdges": 17034,
     "nonCommandSlashImports": 0,
@@ -606,7 +606,7 @@
       "name": "@wrongstack/sage",
       "dir": "packages/sage",
       "sourceFiles": 151,
-      "testFiles": 147,
+      "testFiles": 148,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/persistence",
@@ -621,7 +621,7 @@
         {
           "path": "packages/sage/tsconfig.test.json",
           "error": null,
-          "testFiles": 147
+          "testFiles": 148
         }
       ]
     },
@@ -15777,6 +15777,12 @@
       },
       {
         "file": "packages/sage/tests/list-page-status-resolution.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/sage/tests/maintenance-state-unreadable.test.ts",
         "projects": [
           "root-node"
         ]

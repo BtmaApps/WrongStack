@@ -222,13 +222,46 @@ function maintenanceIntervalFromEnv(): number {
     : MAINTENANCE_INTERVAL_MS;
 }
 
+/**
+ * A recorded pass can never be in the future; tolerate a small clock skew
+ * between the daemon and whoever reads its state.
+ */
+const MAINTENANCE_CLOCK_SKEW_MS = 60 * 60_000;
+
+/**
+ * The recorded pass time, or `undefined` when the state cannot be trusted:
+ * not a timestamp string, unreadable, or implausibly in the future.
+ *
+ * `Date.parse` is generous - `"17500"` parses as the year 17500, and a
+ * number parses too - so "it parsed" is not enough to believe the stamp.
+ */
+function trustedLastRunMs(value: unknown, nowMs: number): number | undefined {
+  if (typeof value !== 'string' || value.length === 0) return undefined;
+  const parsed = Date.parse(value);
+  if (!Number.isFinite(parsed)) return undefined;
+  if (parsed > nowMs + MAINTENANCE_CLOCK_SKEW_MS) return undefined;
+  return parsed;
+}
+
 function readState(statePath: string | undefined): PersistedMaintenance {
   if (!statePath) return {};
   try {
     const parsed = JSON.parse(fs.readFileSync(statePath, 'utf8').replace(/^﻿/, '')) as unknown;
-    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
-      ? (parsed as PersistedMaintenance)
-      : {};
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+    const state = parsed as PersistedMaintenance;
+    // A `lastRunAt` the runtime cannot read is not evidence of a pass. The
+    // catch below only covers invalid JSON, so a file that parses but carries
+    // a garbage timestamp would otherwise reach the health check verbatim and
+    // be reported as a healthy pass. Drop it: the status then says "never
+    // ran", which is what it means.
+    if (
+      state.lastRunAt !== undefined &&
+      trustedLastRunMs(state.lastRunAt, Date.now()) === undefined
+    ) {
+      const { lastRunAt: _unreadable, ...rest } = state;
+      return rest;
+    }
+    return state;
   } catch {
     // Missing or corrupt state only means "never ran": the next pass is due.
     return {};
@@ -280,7 +313,19 @@ export function maintenanceDoctorCheck(
         : 'No host has scheduled maintenance and it has never run on this store',
     };
   }
-  const ageMs = nowMs - Date.parse(status.lastRunAt);
+  const lastRunMs = trustedLastRunMs(status.lastRunAt, nowMs);
+  if (lastRunMs === undefined) {
+    // A timestamp the runtime cannot read is NOT evidence of a healthy pass.
+    // `ageMs` would be NaN, every age comparison would be false, and the
+    // check would fall through to "ok" - hiding exactly the silent failure
+    // this check exists to catch.
+    return {
+      ...base,
+      severity: 'warn',
+      summary: `Maintenance state is unreadable (lastRunAt: ${status.lastRunAt}) — treat the pass as never run`,
+    };
+  }
+  const ageMs = nowMs - lastRunMs;
   if (ageMs > status.intervalMs * MAINTENANCE_OVERDUE_FACTOR) {
     return {
       ...base,
