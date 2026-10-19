@@ -116,7 +116,7 @@ export function applyTokenOverrides<
   return { ...tokens, light, dark };
 }
 
-async function ensureDesignDir(projectRoot: string): Promise<string> {
+export async function ensureDesignDir(projectRoot: string): Promise<string> {
   const dir = designProjectDir(projectRoot);
   await fs.mkdir(dir, { recursive: true });
   // Self-ignore: a `.gitignore` of `*` makes the whole directory untracked in

@@ -14,7 +14,12 @@ function signalFor(ctx: Context, opts?: { signal?: AbortSignal }): AbortSignal {
   return opts?.signal ?? ctx.signal ?? new AbortController().signal;
 }
 
-function managerFor(ctx: Context): BrowserSessionManager {
+/**
+ * The project's browser manager. Exported for in-package tools (design
+ * reference extraction) that must run under the same network guard, private
+ * origin policy and run-abort cleanup as the browser_* tools.
+ */
+export function managerFor(ctx: Context): BrowserSessionManager {
   const root = path.resolve(ctx.projectRoot ?? ctx.cwd ?? process.cwd());
   // Called on every tool call, not only at manager creation: it re-reads the
   // policy file when another process changed it, in place in the live array
@@ -78,7 +83,7 @@ export const liveBrowser = {
   },
 };
 
-function owner(ctx: Context): string {
+export function owner(ctx: Context): string {
   return ctx.agentId || 'leader';
 }
 

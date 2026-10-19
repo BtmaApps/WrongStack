@@ -232,8 +232,10 @@ WrongStack ships with 99 bundled skills:
 | `design-assets` | Prepare icons, SVGs, images, fonts and illustrations for product use with correct rights, formats and rendering |
 | `design-craft` | Product-specific composition, typography, content and rendered critique |
 | `design-critique` | Scored, evidenced audit of an existing UI across structure, type, color, surface, states, and copy |
+| `design-patterns` | Catalog of UI patterns by stable id with anatomy, measurable ranges, failure modes and acceptance checks |
+| `design-reference-read` | Measure a reference site or screenshot into design DNA (`design {action:"extract"}`), name its patterns, borrow without copying |
 | `design-system` | Build consistent interfaces from shared visual tokens and component rules |
-| `design-to-code` | Implement supplied Figma designs, screenshots or design specifications as working interfaces |
+| `design-to-code` | Implement a supplied design or reference and prove the match with per-axis fidelity scores (`design {action:"compare"}`) |
 | `docker-deploy` | Docker containerization, multi-stage builds, image scanning |
 | `dotnet-backend` | Build and upgrade ASP.NET Core services with typed contracts, dependency lifetimes and verified persistence |
 | `evidence-audit` | Proof-driven audit rounds: reproduce, apply a scope-only fix, verify, and promote high-risk regressions |

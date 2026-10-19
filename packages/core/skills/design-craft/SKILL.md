@@ -2,7 +2,7 @@
 name: design-craft
 description: |
   Design or substantially improve user-facing interfaces with a product-specific visual direction, content hierarchy, and rendered critique. Use for new screens, landing pages, redesigns, typography/layout work, or UI that feels generic or AI-generated. For small fixes, preserve the existing design without starting a new brief.
-version: 2.1.1
+version: 2.2.0
 required-capabilities: [filesystem.read, filesystem.write]
 required-tools: [design, skill]
 optional-capabilities: [web.research, browser.interact, verification.run]
@@ -118,7 +118,13 @@ stylistic recipes. A pattern alone is not proof of low quality.
 4. Run the `design` tool with `{action:"verify"}` when a kit is pinned. Review findings against
    the brief and token source. Fix drift; retain justified design choices. Zero
    findings and a 100% palette score do not establish quality or accessibility.
-5. Use the `design-critique` skill to identify the highest-impact visible problems. Fix
+5. When the surface is served (a localhost dev server needs `/browser allow <origin>`),
+   run `design {action:"inspect", url, surface:"page"|"app"}`. It measures the
+   rendered page at 1440/768/390 and returns FAIL/WARN findings with ids. Contract:
+   fix every FAIL; fix each WARN or defend it in one sentence in `.design/review.md`;
+   re-run; stop after 3 rounds and report what remains. Do not edit around the
+   meter (hiding content, shrinking the page) to make a finding disappear.
+6. Use the `design-critique` skill to identify the highest-impact visible problems. Fix
    them within the authorized scope, then inspect the affected screens again.
    Stop when acceptance checks are met, not after arbitrary cosmetic churn.
 

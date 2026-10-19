@@ -54,6 +54,61 @@ and short viewports when relevant, keyboard navigation, content extremes and
 reachable empty/loading/error states. Use `.design/review.md` for the workflow's
 evidence record. A source-only review must identify what remains unverified.
 
+## Measured layer (2026-10-19)
+
+Principle: prose proposes, code disposes. Anything a browser can measure is
+measured by a fixed script with fixed thresholds, so every model receives the
+same verdict; skills keep only what cannot be measured (direction, content,
+copy voice) and cite rule ids instead of restating rules.
+
+| Layer | Mechanism | Enforced by |
+| --- | --- | --- |
+| Source | `design verify`: token drift + generated-UI patterns, on every UI write | `design-verify.ts`, write middleware |
+| Reference | `design extract`: in-page script measures visible color area (point sampling with layer compositing), type scale/ratio, spacing unit, radii, elevation, motion, section rhythm, buttons, declared tokens at 1440/768/390 → `.design/references/<slug>/` | `design-dna-extractor.ts`, `design-dna.ts` |
+| Fidelity | `design compare`: per-axis score with tolerances (OKLab ΔE ≤ 0.02, ±0.5px body, ±4% container…); overall = lowest axis | `design-dna-compare.ts` |
+| Rendered quality | `design inspect`: reference-free FAIL/WARN gate — overflow, edge text, WCAG contrast against the background actually behind the text, WCAG 2.2 target size with the spacing exception, type counts, heading order, broken/unsized media, stuck-hidden text, blank bands, console errors | `design-inspect-extractor.ts`, `design-inspect.ts` |
+| Structure | 62 patterns by stable id with anatomy, ranges and DNA signals | `design-patterns` skill |
+| Process | read reference → choose pattern ids → build → verify → inspect (0 FAIL, ≤ 3 rounds) → compare when matching | `design-reference-read`, `design-craft`, `design-to-code`, `design-critique` |
+
+Extraction runs under the browser tools' network guard and private-origin
+allowlist; `--restricted` locks it off through `lockNetworkOff()` while the
+offline token actions keep working. Reference screenshots stay in the
+self-ignored `.design/` directory.
+
+Calibration evidence: both scripts were run in Chromium against fixtures with
+planted defects (every defect caught) and against four production sites. The
+first inspect run over those sites produced false-positive classes that were
+then removed one by one: screen-reader-only text, `aria-hidden` mock UI,
+off-canvas carousel items, WCAG 2.5.8 spacing-exception targets,
+scroll-triggered reveals, footer legal text, gradient-clipped text and text
+over sibling media. DNA inference was corrected the same way: fg/primary on
+dark sites, footer text dominating body size, and a half-height inverted band
+flipping the theme.
+
+Compared with the public design skills surveyed on 2026-10-19 (Anthropic
+frontend-design, impeccable, taste-skill, ui-ux-pro-max, Vercel interface
+guidelines, OneRedOak design-review, Stitch DESIGN.md, dembrandt): only
+WrongStack scores an implementation against a measured reference per axis, and
+checks adherence against a resolved kit. impeccable leads on catalog breadth and
+edit-loop enforcement; taste-skill on dealt directions. None publishes an
+evaluation.
+
+Next, in order of value:
+
+1. Edit-loop and turn-end enforcement: the source scan already runs on every
+   write; add an `inspect` gate at turn end when a dev URL is known (config
+   `off|warn|block`, 3-round cap).
+2. Grow the source catalog to ~35 rule ids with severities, inline waivers and
+   JSON/exit codes; split `design-verify.ts` (at the 700-line limit) into rule
+   modules first; keep rules kit-aware.
+3. `DESIGN.md` / `PRODUCT.md` interchange (Stitch-compatible) with lint and diff,
+   so adherence works for projects without a kit.
+4. Dealt direction: a seeded draw of three kits that excludes recent choices;
+   a pick outside the deal needs a recorded reason.
+5. Evaluation harness: fixed briefs, with and without the design layer, two or
+   more providers, scored only by these measurements plus cross-brief DNA
+   distance (convergence), with a ratchet.
+
 ## Limits and follow-up evaluation
 
 Validation for this change: 164 tests passed across 16 design, CLI, tool,

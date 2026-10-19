@@ -81,3 +81,5 @@
 {"text": "Define a prime number in one sentence.", "gold": null}
 {"text": "Suggest a polite reply to this dinner invitation.", "gold": null}
 {"text": "Explain how to fold a paper airplane.", "gold": null}
+{"text": "Use https://linear.app as the reference site and measure its spacing and type scale before we restyle our landing page.", "gold": "design-reference-read"}
+{"text": "Choose the layout pattern for a pricing page with three plans and a feature comparison.", "gold": "design-patterns"}

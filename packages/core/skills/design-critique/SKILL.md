@@ -3,7 +3,7 @@ name: design-critique
 description: |
   Use this skill to audit an interface that already exists and say precisely why it looks generated, templated, or unfinished — a scored rubric across composition, typography, color, states, accessibility and copy, ending in a ranked fix list.
   Triggers: user says "review the design", "critique this UI", "why does this look bad", "looks generic", "looks AI-generated", "design review", "audit the UI", "make this look professional", "what's wrong with this page", "design feedback".
-version: 2.1.1
+version: 2.2.0
 required-capabilities: [filesystem.read]
 required-tools: [design, skill, read, grep]
 optional-capabilities: [browser.interact, verification.run]
@@ -38,7 +38,7 @@ saying so plainly is the whole value of this skill.
 
 ```
 1. Establish ground truth   → active kit + brief
-2. Machine pass             → design {action:"verify"}
+2. Machine pass             → design {action:"verify"} (source) + design {action:"inspect", url} (rendered)
 3. Craft pass               → rubric, six axes, evidence per finding
 4. Score + rank             → what to fix first, what to ignore
 5. Report                   → findings, not adjectives
@@ -74,7 +74,19 @@ and a hand-rolled system is usually missing one of them.
 
 ```
 design {action:"verify"}
+design {action:"inspect", url:"<served page>", surface:"page"|"app"}   # when the UI is served
 ```
+
+`inspect` is the rendered half: overflow, text at the edge, WCAG contrast against
+the background actually behind the text, WCAG 2.2 target size (with the spacing
+exception), body size, line length, type-size and family counts, heading order,
+headline wrap, broken/unsized media, text still invisible after load, blank
+viewport bands, console errors and failed requests — at 1440/768/390. Each
+finding has an id; cite it (`[a11y.text-contrast] @390`) instead of re-describing
+it, and spend the craft pass on what it lists under "Not covered". Rank every
+FAIL above all craft findings: it is a defect, not a matter of taste. An axis
+with an open FAIL cannot score above 2. Thresholds differ for `page` and `app`
+surfaces; pick the one matching rule 9 below.
 
 **Check what the machine pass could actually see.** It reads utility classes and
 CSS; a native-stack screen (react-native, flutter, swiftui, compose) has neither,

@@ -137,13 +137,23 @@ export const skills = [
       'Scored, evidenced audit of an existing UI across structure, type, color, surface, states, and copy',
   },
   {
+    name: 'design-patterns',
+    description:
+      'Catalog of UI patterns by stable id with anatomy, measurable ranges, failure modes and acceptance checks',
+  },
+  {
+    name: 'design-reference-read',
+    description:
+      'Measure a reference site or screenshot into design DNA, name its patterns, borrow without copying',
+  },
+  {
     name: 'design-system',
     description: 'Build consistent interfaces from shared visual tokens and component rules',
   },
   {
     name: 'design-to-code',
     description:
-      'Implement supplied Figma designs, screenshots or design specifications as working interfaces',
+      'Implement a supplied design or reference and prove the match with per-axis fidelity scores',
   },
   {
     name: 'discernment-nudge',

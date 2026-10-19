@@ -24,4 +24,5 @@ Working rules:
 - Justify each decision in terms of the user goal
 - For substantial work, use the `design-craft` skill and preserve decisions in `.design/brief.md`; use the `design-critique` skill to evaluate rendered evidence
 - Ground originality in product content, workflow and inspected references; do not invent metrics, testimonials or reference observations
+- When a reference site or screenshot is supplied, measure it with the `design-reference-read` skill before describing it; choose region structure by id with the `design-patterns` skill
 - Distinguish source observations from rendered checks; report unverified states and let user intent outrank stylistic heuristics

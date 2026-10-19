@@ -4,8 +4,8 @@
   "rootImportFiles": 0,
   "bySpecifier": {
     "@wrongstack/core/agent": {
-      "files": 399,
-      "typeOnly": 309,
+      "files": 400,
+      "typeOnly": 310,
       "runtimeOrMixed": 110
     },
     "@wrongstack/core/agent-catalog": {
@@ -44,9 +44,9 @@
       "runtimeOrMixed": 1
     },
     "@wrongstack/core/design": {
-      "files": 10,
+      "files": 12,
       "typeOnly": 1,
-      "runtimeOrMixed": 11
+      "runtimeOrMixed": 13
     },
     "@wrongstack/core/execution": {
       "files": 86,
@@ -154,9 +154,9 @@
       "runtimeOrMixed": 11
     },
     "@wrongstack/core/security": {
-      "files": 209,
+      "files": 212,
       "typeOnly": 30,
-      "runtimeOrMixed": 181
+      "runtimeOrMixed": 184
     },
     "@wrongstack/core/session-catalog": {
       "files": 13,
@@ -194,9 +194,9 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1455,
+      "files": 1456,
       "typeOnly": 1282,
-      "runtimeOrMixed": 429
+      "runtimeOrMixed": 430
     },
     "@wrongstack/core/types/limits": {
       "files": 1,
@@ -239,9 +239,9 @@
       "runtimeOrMixed": 20
     },
     "@wrongstack/core/utils": {
-      "files": 828,
+      "files": 829,
       "typeOnly": 71,
-      "runtimeOrMixed": 787
+      "runtimeOrMixed": 788
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -1497,6 +1497,12 @@
     {
       "specifier": "@wrongstack/core/agent",
       "file": "packages/tools/src/codebase-index/indexer.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/tools/src/design-reference.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -4706,8 +4712,20 @@
     },
     {
       "specifier": "@wrongstack/core/design",
+      "file": "packages/tools/src/design-reference.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/design",
       "file": "packages/tools/src/design.ts",
       "typeOnly": 1,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/design",
+      "file": "packages/tools/tests/design-reference.test.ts",
+      "typeOnly": 0,
       "runtimeOrMixed": 1
     },
     {
@@ -12020,6 +12038,12 @@
     },
     {
       "specifier": "@wrongstack/core/security",
+      "file": "packages/cli/tests/restricted-mode.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
       "file": "packages/cli/tests/slash-permissions.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -12278,6 +12302,12 @@
     },
     {
       "specifier": "@wrongstack/core/security",
+      "file": "packages/tools/src/design-reference.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
       "file": "packages/tools/src/kanban-task-inputs.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -12285,6 +12315,12 @@
     {
       "specifier": "@wrongstack/core/security",
       "file": "packages/tools/src/present-artifact.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/tools/tests/design-reference.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -20480,6 +20516,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/tools/src/design-reference.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/tools/src/design.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 1
@@ -27057,6 +27099,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/tools/src/dead-code/tools.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/tools/src/design-reference.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

@@ -728,6 +728,11 @@
       "declarations": [
         "export * from '../execution/design-capture.js';",
         "export * from '../execution/design-detect.js';",
+        "export * from '../execution/design-dna-compare.js';",
+        "export * from '../execution/design-dna-extractor.js';",
+        "export * from '../execution/design-dna.js';",
+        "export * from '../execution/design-inspect-extractor.js';",
+        "export * from '../execution/design-inspect.js';",
         "export * from '../execution/design-kit-loader.js';",
         "export * from '../execution/design-materialize.js';",
         "export * from '../execution/design-project-store.js';",
@@ -1082,7 +1087,7 @@
         "export { describeSessionPermissionOverride, readSessionPermissionOverrides, restoreSessionPermissionOverrides, setSessionPermissionOverrides, } from './session-permission-overrides.js';",
         "export { describeWriteTargets, shellCommandLinesFromInput } from './permission-helpers.js';",
         "export { evaluateToolKanbanBoundary, type ToolKanbanBoundaryEvaluation, } from './kanban-boundary.js';",
-        "export { isProjectRootLocked, isYoloLockedOff, lockToProjectRoot, lockYoloOff, } from './process-lockdown.js';",
+        "export { isNetworkLockedOff, isProjectRootLocked, isYoloLockedOff, lockNetworkOff, lockToProjectRoot, lockYoloOff, } from './process-lockdown.js';",
         "export { noOpVault } from '../types/secret-vault.js';",
         "export { restrictDirPermissions, restrictFilePermissions, SECRET_DIR_MODE, SECRET_FILE_MODE, } from './file-permissions.js';",
         "export { setSessionLeaderMetaResolver, subagentYoloPlus } from './session-yolo.js';",
@@ -1629,14 +1634,14 @@
       "classification": "product feature",
       "intendedOwner": "feature/plugin owner behind a focused public facade",
       "sourceFiles": 1,
-      "sourceLines": 12
+      "sourceLines": 17
     },
     {
       "directory": "execution",
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime pilot candidate after R2/R3",
-      "sourceFiles": 94,
-      "sourceLines": 22905
+      "sourceFiles": 100,
+      "sourceLines": 24819
     },
     {
       "directory": "extension",
@@ -1762,7 +1767,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime security subsystem",
       "sourceFiles": 39,
-      "sourceLines": 10972
+      "sourceLines": 10990
     },
     {
       "directory": "session-catalog",
@@ -1776,7 +1781,7 @@
       "classification": "product feature",
       "intendedOwner": "skills implementation package or Runtime",
       "sourceFiles": 26,
-      "sourceLines": 5284
+      "sourceLines": 5299
     },
     {
       "directory": "statusline",

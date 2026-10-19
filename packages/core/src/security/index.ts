@@ -78,8 +78,10 @@ export {
 } from './permission-policy-schema.js';
 export { compilePermissionRules, matchedPermissionRule } from './permission-rules.js';
 export {
+  isNetworkLockedOff,
   isProjectRootLocked,
   isYoloLockedOff,
+  lockNetworkOff,
   lockToProjectRoot,
   lockYoloOff,
 } from './process-lockdown.js';

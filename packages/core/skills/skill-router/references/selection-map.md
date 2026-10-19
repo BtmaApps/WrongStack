@@ -44,6 +44,8 @@ restricted even when their ids are documented here.
 | Critique an existing interface with visual evidence | `design-critique` |
 | Define shared colors, typography and component tokens | `design-system` |
 | Implement a supplied design or Figma reference | `design-to-code` |
+| Measure or learn from a reference site or screenshot | `design-reference-read` |
+| Choose or identify a layout, section, navigation or state pattern | `design-patterns` |
 | Design user journeys, feedback and recovery | `interaction-design` |
 | Create consistent icons and exportable visual assets | `design-assets` |
 | Fix keyboard, focus and assistive technology behavior | `accessibility` |

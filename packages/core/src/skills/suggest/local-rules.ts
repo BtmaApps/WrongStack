@@ -241,8 +241,23 @@ export const LOCAL_SKILL_RULES: readonly LocalSkillRule[] = [
   {
     name: 'design-to-code',
     domain: 'design',
-    match: /\b(?:figma|design to code|tasarimi koda|screenshot[^\n]{0,120}(?:implement|uygula))\b/i,
+    match:
+      /\b(?:figma|design to code|tasarimi koda|screenshot[^\n]{0,120}(?:implement|uygula)|pixel.perfect|birebir (?:ayni|uygula))\b/i,
     priority: 110,
+  },
+  {
+    name: 'design-reference-read',
+    domain: 'design',
+    match:
+      /\b(?:reference (?:site|website|url)|referans (?:site|al)\w*|inspired by|design dna|extract (?:the )?design|look(?:s)? like (?:https?:|www\.|[a-z0-9-]+\.(?:com|io|app|dev))|sitesinin tasarim\w*|tasarimini (?:analiz|incele|cikar)\w*|ilham al\w*)\b/i,
+    priority: 110,
+  },
+  {
+    name: 'design-patterns',
+    domain: 'design',
+    match:
+      /\b(?:which (?:layout|pattern)|layout pattern|ui pattern|design pattern|bento grid|pricing (?:page|table)|empty state|command palette|tasarim desen\w*|hangi (?:layout|duzen|desen))\b/i,
+    priority: 85,
   },
   {
     name: 'interaction-design',

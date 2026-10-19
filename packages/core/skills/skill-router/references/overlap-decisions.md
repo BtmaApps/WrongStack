@@ -7,6 +7,8 @@ technology; a fashionable replacement is not automatically a task requirement.
 |---|---|---|
 | Create/restyle an interface | design-craft | design-critique evaluates an existing result; design-system defines shared tokens |
 | Implement a provided Figma/reference | design-to-code | Preserve supplied design constraints; add accessibility for interaction checks |
+| "Make it like / inspired by <site>" | design-reference-read | Measure first; design-to-code only when a literal match is requested, design-craft when borrowing |
+| Which layout/section/state structure fits | design-patterns | Structure only; visual direction stays with design-craft |
 | User gets stuck in a form/journey | interaction-design | Handle state, recovery and focus; visual decoration alone does not repair a flow |
 | Animate a live web page | motion-design | A live animation is not an encoded video; threejs-3d owns a real 3D scene |
 | React-based product/demo video | media-production | Use Remotion for React compositions and FFmpeg for assembly/encoding |
