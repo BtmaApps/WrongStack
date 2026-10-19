@@ -173,6 +173,8 @@ export function createAgentLoopHandler(
         : null;
     let pendingLoopSteer: string | null = null;
     let todoReconcileSteers = 0;
+    // Extension guards (beforeTurnEnd) may hold a turn; bounded per run.
+    let turnEndSteers = 0;
 
     function queueLoopSteer(text: string): void {
       pendingLoopSteer = pendingLoopSteer ? `${pendingLoopSteer}\n${text}` : text;
@@ -543,6 +545,14 @@ export function createAgentLoopHandler(
                   ? '\nEach <kanban board/task> binding must be resent verbatim as `kanbanBoardId`/`kanbanTaskId`; a row without it is not applied to its card.'
                   : ''),
             );
+            await a.extensions.runAfterIteration(a.ctx, i);
+            continue;
+          }
+          const turnEndSteer =
+            turnEndSteers < 3 ? await a.extensions.runBeforeTurnEnd(a.ctx, i) : undefined;
+          if (turnEndSteer) {
+            turnEndSteers++;
+            queueLoopSteer(turnEndSteer);
             await a.extensions.runAfterIteration(a.ctx, i);
             continue;
           }

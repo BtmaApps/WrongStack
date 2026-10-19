@@ -96,19 +96,25 @@ checks adherence against a resolved kit. impeccable leads on catalog breadth and
 edit-loop enforcement; taste-skill on dealt directions. None publishes an
 evaluation.
 
+Turn-end enforcement: the agent loop exposes a generic `beforeTurnEnd`
+extension hook — a guard may return a steer instead of letting the model end
+the turn, at most three times per run. The design turn gate uses it: it records
+frontend writes and `design_reference` inspect results per run, and holds a
+turn whose UI changed after the last inspect or whose last inspect still has
+FAILs. It acts only when the inspect tool is available to that agent and a
+served URL is known (an earlier inspect, or `.design/gate.json`
+`{"url": …}`); otherwise it stays silent. `{"mode": "off"}` disables it.
+
 Next, in order of value:
 
-1. Edit-loop and turn-end enforcement: the source scan already runs on every
-   write; add an `inspect` gate at turn end when a dev URL is known (config
-   `off|warn|block`, 3-round cap).
-2. Grow the source catalog to ~35 rule ids with severities, inline waivers and
+1. Grow the source catalog to ~35 rule ids with severities, inline waivers and
    JSON/exit codes; split `design-verify.ts` (at the 700-line limit) into rule
    modules first; keep rules kit-aware.
-3. `DESIGN.md` / `PRODUCT.md` interchange (Stitch-compatible) with lint and diff,
+2. `DESIGN.md` / `PRODUCT.md` interchange (Stitch-compatible) with lint and diff,
    so adherence works for projects without a kit.
-4. Dealt direction: a seeded draw of three kits that excludes recent choices;
+3. Dealt direction: a seeded draw of three kits that excludes recent choices;
    a pick outside the deal needs a recorded reason.
-5. Evaluation harness: fixed briefs, with and without the design layer, two or
+4. Evaluation harness: fixed briefs, with and without the design layer, two or
    more providers, scored only by these measurements plus cross-brief DNA
    distance (convergence), with a ratchet.
 

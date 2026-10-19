@@ -124,6 +124,10 @@ stylistic recipes. A pattern alone is not proof of low quality.
    fix every FAIL; fix each WARN or defend it in one sentence in `.design/review.md`;
    re-run; stop after 3 rounds and report what remains. Do not edit around the
    meter (hiding content, shrinking the page) to make a finding disappear.
+   Once the URL is known (from your first inspect, or `.design/gate.json`
+   `{"url": "http://localhost:5173/"}`), the harness holds a turn that changed
+   UI files after the last inspect or still has FAILs, and asks for the inspect.
+   `{"mode": "off"}` in the same file disables that for the project.
 6. Use the `design-critique` skill to identify the highest-impact visible problems. Fix
    them within the authorized scope, then inspect the affected screens again.
    Stop when acceptance checks are met, not after arbitrary cosmetic churn.

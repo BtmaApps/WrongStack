@@ -5,6 +5,7 @@ export type {
   AfterRunHook,
   BeforeIterationHook,
   AfterIterationHook,
+  BeforeTurnEndHook,
   OnErrorHook,
   ProviderRunnerWrapper,
   ProviderRunnerFn,

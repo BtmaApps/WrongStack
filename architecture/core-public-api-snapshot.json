@@ -94,7 +94,7 @@
         "export { readBundledInstructionText, renderInstructionTemplate, } from './utils/instruction-file.js';",
         "export { runProviderWithRetry } from './core/provider-runner.js';",
         "export { safeParse, safeStringify, sanitizeJsonString, stripCodeFences, } from './utils/safe-json.js';",
-        "export { type AfterIterationHook, type AfterRunHook, type AfterToolExecutionHook, type AgentExtension, type BeforeIterationHook, type BeforeRunHook, type BeforeToolExecutionHook, ExtensionRegistry, type OnErrorHook, type ProviderRunnerWrapper, } from './extension/index.js';",
+        "export { type AfterIterationHook, type AfterRunHook, type AfterToolExecutionHook, type AgentExtension, type BeforeIterationHook, type BeforeRunHook, type BeforeToolExecutionHook, type BeforeTurnEndHook, ExtensionRegistry, type OnErrorHook, type ProviderRunnerWrapper, } from './extension/index.js';",
         "export { type AllocateOpts, assertSafePath, type MergeOpts, type MergeResult, type WorktreeHandle, WorktreeManager, type WorktreeManagerOptions, type WorktreeRunResult, type WorktreeStatus, } from './worktree/index.js';",
         "export { type Checkpoint, CheckpointManager, type CheckpointManagerOptions, createGoalRunnerFromTaskGraph, type GoalOptions, GoalPlanner, type GoalPlannerOptions, type GoalPlanResult, GoalRunner, type GoalRunnerOptions, PHASE_EVENT_NAMES, type PhaseEventMap, type PhaseEventName, type PhaseExecutionContext, type PhaseFilter, type PhaseGraph, PhaseGraphBuilder, type PhaseGraphBuilderOptions, type PhaseNode, PhaseOrchestrator, type PhaseOrchestratorOptions, type PhaseProgress, type PhaseSort, type PhaseStatus, PhaseStore, type PhaseStoreOptions, type PhaseTemplate, } from './goal/index.js';",
         "export { type ContinuationInput, type ContinuationSource, detectContinueIntent, type ResolvedContinuation, resolveContinuation, } from './core/continue-intent.js';",
@@ -737,6 +737,7 @@
         "export * from '../execution/design-materialize.js';",
         "export * from '../execution/design-project-store.js';",
         "export * from '../execution/design-tune.js';",
+        "export * from '../execution/design-turn-gate.js';",
         "export * from '../execution/design-verify.js';",
         "export { isDesignStack, type DesignStack, type SkippedKitInfo } from '../types/design-kit.js';"
       ]
@@ -834,7 +835,7 @@
       },
       "source": "packages/core/src/extension/index.ts",
       "declarations": [
-        "export type { AgentExtension, BeforeRunHook, AfterRunHook, BeforeIterationHook, AfterIterationHook, OnErrorHook, ProviderRunnerWrapper, ProviderRunnerFn, BeforeToolExecutionHook, AfterToolExecutionHook, } from './extension-points.js';",
+        "export type { AgentExtension, BeforeRunHook, AfterRunHook, BeforeIterationHook, AfterIterationHook, BeforeTurnEndHook, OnErrorHook, ProviderRunnerWrapper, ProviderRunnerFn, BeforeToolExecutionHook, AfterToolExecutionHook, } from './extension-points.js';",
         "export { ExtensionRegistry } from './registry.js';"
       ]
     },
@@ -1627,28 +1628,28 @@
       "classification": "agent-domain contract",
       "intendedOwner": "Core",
       "sourceFiles": 81,
-      "sourceLines": 16594
+      "sourceLines": 16604
     },
     {
       "directory": "design",
       "classification": "product feature",
       "intendedOwner": "feature/plugin owner behind a focused public facade",
       "sourceFiles": 1,
-      "sourceLines": 17
+      "sourceLines": 18
     },
     {
       "directory": "execution",
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime pilot candidate after R2/R3",
-      "sourceFiles": 100,
-      "sourceLines": 24819
+      "sourceFiles": 101,
+      "sourceLines": 25000
     },
     {
       "directory": "extension",
       "classification": "agent-domain contract",
       "intendedOwner": "Core plugin/extension contract",
       "sourceFiles": 3,
-      "sourceLines": 503
+      "sourceLines": 537
     },
     {
       "directory": "goal",
@@ -1725,7 +1726,7 @@
       "classification": "product feature",
       "intendedOwner": "@wrongstack/plugins",
       "sourceFiles": 30,
-      "sourceLines": 9727
+      "sourceLines": 9736
     },
     {
       "directory": "prompts",
@@ -1795,7 +1796,7 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "repositories over dependency-free persistence",
       "sourceFiles": 118,
-      "sourceLines": 26191
+      "sourceLines": 26207
     },
     {
       "directory": "tasking",
@@ -1816,7 +1817,7 @@
       "classification": "agent-domain contract",
       "intendedOwner": "Core type-only subpaths",
       "sourceFiles": 86,
-      "sourceLines": 16676
+      "sourceLines": 16710
     },
     {
       "directory": "typesafe",

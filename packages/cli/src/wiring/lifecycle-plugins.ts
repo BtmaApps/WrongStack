@@ -66,6 +66,7 @@ import {
 } from '../hooks-wiring.js';
 import { makeConfirmAwaiter } from '../permission-prompt.js';
 import { installVibeProtocol } from '../vibe-protocol-wiring.js';
+import { installDesignTurnGate } from '@wrongstack/core/design';
 import { installDesignStudio } from './design-studio.js';
 import type { HqPublisherRef } from './hq-telemetry.js';
 import { registerMcpObservability } from './metrics.js';
@@ -457,6 +458,13 @@ export async function setupLifecycleAndPlugins(
 
   // Same late-registration rule for plugin SessionStart/Stop policy hooks.
   agent.extensions.register(createLifecycleHooksExtension(hookRunner));
+
+  // Design Studio — hold a turn whose UI changes were not inspected rendered.
+  installDesignTurnGate({
+    pipelines,
+    extensions: agent.extensions,
+    hasTool: (name) => agent.tools.get(name) !== undefined,
+  });
 
   // An ACP agent as the leader (`--provider acp`) puts its tool calls on this
   // agent's event bus and asks through this agent's policy and prompt.

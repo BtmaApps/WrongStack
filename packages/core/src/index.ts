@@ -141,6 +141,7 @@ export {
   type BeforeIterationHook,
   type BeforeRunHook,
   type BeforeToolExecutionHook,
+  type BeforeTurnEndHook,
   ExtensionRegistry,
   type OnErrorHook,
   type ProviderRunnerWrapper,

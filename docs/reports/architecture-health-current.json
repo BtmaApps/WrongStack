@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-19T20:27:10.377Z",
+  "generatedAt": "2026-10-19T20:42:43.434Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 38,
-    "sourceFiles": 5183,
-    "testFiles": 4515,
-    "sourceLines": 1126717,
+    "sourceFiles": 5184,
+    "testFiles": 4519,
+    "sourceLines": 1127335,
     "workspaceEdges": 139,
-    "moduleEdges": 17045,
+    "moduleEdges": 17054,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -248,8 +248,8 @@
     {
       "name": "@wrongstack/core",
       "dir": "packages/core",
-      "sourceFiles": 1154,
-      "testFiles": 992,
+      "sourceFiles": 1155,
+      "testFiles": 994,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -264,7 +264,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 992
+          "testFiles": 994
         }
       ]
     },
@@ -697,7 +697,7 @@
       "name": "@wrongstack/simpleui",
       "dir": "packages/simpleui",
       "sourceFiles": 128,
-      "testFiles": 97,
+      "testFiles": 98,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/tools",
@@ -718,7 +718,7 @@
         {
           "path": "packages/simpleui/tsconfig.test.json",
           "error": null,
-          "testFiles": 97
+          "testFiles": 98
         }
       ]
     },
@@ -870,7 +870,7 @@
       "name": "@wrongstack/webui",
       "dir": "packages/webui",
       "sourceFiles": 759,
-      "testFiles": 497,
+      "testFiles": 498,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -893,7 +893,7 @@
         {
           "path": "packages/webui/tsconfig.test.json",
           "error": null,
-          "testFiles": 497
+          "testFiles": 498
         }
       ]
     },
@@ -7826,6 +7826,12 @@
         ]
       },
       {
+        "file": "packages/core/tests/core/agent-turn-end-guard.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/core/tests/core/agent.test.ts",
         "projects": [
           "root-node"
@@ -8295,6 +8301,12 @@
       },
       {
         "file": "packages/core/tests/data/builtin-prompts.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/data/fluidflow-prompts.test.ts",
         "projects": [
           "root-node"
         ]
@@ -17193,6 +17205,12 @@
       },
       {
         "file": "packages/simpleui/tests/prefs-model.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/simpleui/tests/prompt-library.test.tsx",
         "projects": [
           "root-node"
         ]
@@ -26139,6 +26157,12 @@
       },
       {
         "file": "packages/webui/tests/components/prompt-journal-view.test.tsx",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
+        "file": "packages/webui/tests/components/prompt-library-levels.test.tsx",
         "projects": [
           "webui-jsdom"
         ]

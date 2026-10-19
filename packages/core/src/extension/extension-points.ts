@@ -45,6 +45,18 @@ export type BeforeIterationHook = (ctx: Context, iterationIndex: number) => void
 export type AfterIterationHook = (ctx: Context, iterationIndex: number) => void | Promise<void>;
 
 /**
+ * Called when the model answers without tool calls, i.e. tries to end the
+ * turn. Return a steering message to keep the loop going instead: it is
+ * queued as a steer and the model gets another iteration. Return nothing to
+ * let the turn end. The loop caps how often a run can be held this way, so a
+ * guard that never clears cannot trap the turn.
+ */
+export type BeforeTurnEndHook = (
+  ctx: Context,
+  iterationIndex: number,
+) => string | undefined | Promise<string | undefined>;
+
+/**
  * Called when the agent encounters an error during the provider call
  * or tool execution phase. The hook can return a modified context
  * or signal that recovery should be attempted.
@@ -144,6 +156,7 @@ export interface AgentExtension {
   afterRun?: AfterRunHook | undefined;
   beforeIteration?: BeforeIterationHook | undefined;
   afterIteration?: AfterIterationHook | undefined;
+  beforeTurnEnd?: BeforeTurnEndHook | undefined;
   onError?: OnErrorHook | undefined;
   wrapProviderRunner?: ProviderRunnerWrapper | undefined;
   beforeToolExecution?: BeforeToolExecutionHook | undefined;

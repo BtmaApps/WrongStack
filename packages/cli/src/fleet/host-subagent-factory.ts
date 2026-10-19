@@ -23,7 +23,7 @@ import {
   type MailboxAgentStatus,
   resolveSubagentModelTarget,
 } from '@wrongstack/core/coordination';
-import { installDesignStudioMiddleware } from '@wrongstack/core/design';
+import { installDesignStudioMiddleware, installDesignTurnGate } from '@wrongstack/core/design';
 import {
   createModelRuntimeMiddleware,
   installSubagentAutoCompaction,
@@ -468,6 +468,14 @@ export function createHostSubagentFactory(
       config.tools.maxIterations > 0
         ? { maxIterations: config.tools.maxIterations }
         : {}),
+    });
+
+    // A subagent without network capability has no design_reference, so the
+    // gate stays off for it rather than demanding a check it cannot run.
+    installDesignTurnGate({
+      pipelines,
+      extensions: agent.extensions,
+      hasTool: (name) => agent.tools.get(name) !== undefined,
     });
 
     agent.extensions.register(

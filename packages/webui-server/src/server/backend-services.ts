@@ -26,7 +26,7 @@ import {
   collabInjectMiddleware,
   collabPauseMiddleware,
 } from '@wrongstack/core/coordination';
-import { installDesignStudioMiddleware } from '@wrongstack/core/design';
+import { installDesignStudioMiddleware, installDesignTurnGate } from '@wrongstack/core/design';
 import type { AutoCompactionMiddleware } from '@wrongstack/core/execution';
 import {
   AutoCompactionMiddleware as AutoCompactionMiddlewareCtor,
@@ -384,6 +384,12 @@ export async function createAgentServices(input: AgentServicesInput): Promise<Ag
     confirmAwaiter: undefined,
     toolExecutor,
     tracer: input.tracer,
+  });
+  // Design Studio — hold a turn whose UI changes were not inspected rendered.
+  installDesignTurnGate({
+    pipelines,
+    extensions: agent.extensions,
+    hasTool: (name) => agent.tools.get(name) !== undefined,
   });
   if (config.features.memory && config.features.memoryConsolidation !== false) {
     const consSage = getSageService(memoryStore) as ConsolidatorSage | undefined;

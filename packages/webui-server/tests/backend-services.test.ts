@@ -120,7 +120,10 @@ vi.mock('@wrongstack/core/execution', () => ({
   ToolExecutor: class {},
 }));
 
-vi.mock('@wrongstack/core/design', () => ({ installDesignStudioMiddleware: vi.fn() }));
+vi.mock('@wrongstack/core/design', () => ({
+  installDesignStudioMiddleware: vi.fn(),
+  installDesignTurnGate: vi.fn(),
+}));
 
 vi.mock('@wrongstack/core/storage', () => ({
   SessionMemoryConsolidator: class {},

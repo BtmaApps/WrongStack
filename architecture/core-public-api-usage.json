@@ -44,9 +44,9 @@
       "runtimeOrMixed": 1
     },
     "@wrongstack/core/design": {
-      "files": 12,
+      "files": 13,
       "typeOnly": 1,
-      "runtimeOrMixed": 13
+      "runtimeOrMixed": 14
     },
     "@wrongstack/core/execution": {
       "files": 86,
@@ -4701,6 +4701,12 @@
     {
       "specifier": "@wrongstack/core/design",
       "file": "packages/cli/src/wiring/design-studio.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/design",
+      "file": "packages/cli/src/wiring/lifecycle-plugins.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

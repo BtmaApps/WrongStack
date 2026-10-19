@@ -19,6 +19,7 @@ import type {
   BeforeIterationHook,
   BeforeRunHook,
   BeforeToolExecutionHook,
+  BeforeTurnEndHook,
   OnErrorHook,
   ProviderRunnerFn,
 } from './extension-points.js';
@@ -234,6 +235,25 @@ export class ExtensionRegistry {
         this.log?.error(`Extension "${ext.name}" afterIteration hook failed`, err);
       }
     }
+  }
+
+  /**
+   * Ask beforeTurnEnd hooks, in order, whether the turn may end. The first
+   * non-empty steering message wins and holds the turn; a failing hook is
+   * logged and treated as "may end", never as a reason to hold.
+   */
+  async runBeforeTurnEnd(...args: Parameters<BeforeTurnEndHook>): Promise<string | undefined> {
+    const snapshot = [...this.extensions];
+    for (const ext of snapshot) {
+      if (!ext.beforeTurnEnd) continue;
+      try {
+        const steer = await ext.beforeTurnEnd(...args);
+        if (steer?.trim()) return steer;
+      } catch (err) {
+        this.log?.error(`Extension "${ext.name}" beforeTurnEnd hook failed`, err);
+      }
+    }
+    return undefined;
   }
 
   /**
