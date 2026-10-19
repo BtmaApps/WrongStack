@@ -64,3 +64,51 @@ it('counts every file when both are readable', async () => {
     await fs.rm(root, { recursive: true, force: true });
   }
 });
+
+it('derives defaultFile and scannedFiles only from readable files when earlier file fails to read', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'batch-scanner-readable-only-'));
+  await fs.writeFile(path.join(root, 'blocked.ts'), 'const blocked = 1;');
+  await fs.writeFile(path.join(root, 'z-readable.ts'), 'const readable = 1;');
+  const complete = vi.fn(async () => ({
+    content: [
+      {
+        type: 'text',
+        text: JSON.stringify([
+          {
+            file: '',
+            severity: 'high',
+            category: 'secrets',
+            title: 'Fallback file finding',
+            description: 'd',
+            remediation: 'r',
+          },
+          {
+            file: 'blocked.ts',
+            severity: 'high',
+            category: 'secrets',
+            title: 'Unreadable file finding',
+            description: 'd',
+            remediation: 'r',
+          },
+        ]),
+      },
+    ],
+  }));
+  try {
+    const result = await new BatchScanner().runBatchScan({
+      provider: { complete } as never,
+      model: undefined,
+      projectRoot: root,
+      skill: { patterns: [], metadata: { targetFiles: ['*.ts'] } } as never,
+      techStack: {} as never,
+      depth: 'quick',
+      llmBatchSize: 10,
+      fileConcurrency: 10,
+      abortController: new AbortController(),
+    });
+    expect(result.findings).toHaveLength(1);
+    expect(result.findings[0]?.file).toBe('z-readable.ts');
+  } finally {
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});

@@ -169,6 +169,7 @@ export class BatchScanner {
     scanStats?: { readCount: number; errors: string[] } | undefined;
   }): Promise<Finding[]> {
     const fileContents: string[] = [];
+    const readableFiles: string[] = [];
     for (let index = 0; index < opts.files.length; index += opts.fileConcurrency) {
       const readBatch = opts.files.slice(index, index + opts.fileConcurrency);
       const readResults = await Promise.allSettled(
@@ -181,6 +182,7 @@ export class BatchScanner {
       for (const [offset, result] of readResults.entries()) {
         if (result.status === 'fulfilled') {
           fileContents.push(result.value);
+          readableFiles.push(readBatch[offset]!);
           if (opts.scanStats) opts.scanStats.readCount++;
         } else if (opts.scanStats) {
           const file = path.relative(opts.projectRoot, readBatch[offset]!).replace(/\\/g, '/');
@@ -246,9 +248,9 @@ export class BatchScanner {
         }>;
 
         // Non-empty: a batch whose files all failed to read returned above.
-        const defaultFile = path.relative(opts.projectRoot, opts.files[0]!).replace(/\\/g, '/');
+        const defaultFile = path.relative(opts.projectRoot, readableFiles[0]!).replace(/\\/g, '/');
         const scannedFiles = new Set(
-          opts.files.map((file) =>
+          readableFiles.map((file) =>
             path.relative(opts.projectRoot, path.resolve(file)).replace(/\\/g, '/'),
           ),
         );
