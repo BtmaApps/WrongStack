@@ -704,7 +704,12 @@
     {
       "file": "packages/tools/tests/codebase-index-worker.test.ts",
       "kind": "skipIf",
-      "fingerprint": "73f47856be4c7a02"
+      "fingerprint": "6aefac025a6aa8ec"
+    },
+    {
+      "file": "packages/tools/tests/codebase-index-worker.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "a2cc64c19da47cef"
     },
     {
       "file": "packages/tools/tests/exec-kill-guard.test.ts",

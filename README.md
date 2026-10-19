@@ -55,7 +55,27 @@ suite. Memory, tools, providers, permissions, and the multi-agent runtime are al
 first-party and work together, on your machine, with no upstream agent to phone
 home to.
 
-### What's new in 1.1.7
+### What's new in 1.1.10
+
+- **A measured design layer:** `design_reference` extracts, compares and
+  inspects rendered pages with a fixed script and fixed thresholds (a static
+  `.html` is served on a loopback port for the check), and a turn that changed
+  UI is held until it is inspected and its FAILs are fixed.
+- **DESIGN.md interchange:** Design Studio reads, lints and writes DESIGN.md,
+  `design diff` catches contrast regressions, PRODUCT.md feeds the design
+  brief, findings carry rule ids with `design-ignore` waivers, and each
+  session is dealt three kits instead of the whole catalogue.
+- **Prompt detail levels:** simple / detailed / advanced variants with
+  `/prompt insert <slug> --level=…` and a selector in every UI, plus 588
+  FluidFlow prompts.
+- **Browser and WebUI:** the browser asks before opening a loopback or
+  private IP origin; the WebUI gains a Terminal palette.
+
+1.1.9 added the SAGE doctor, daemon-owned memory maintenance and AST security
+profiles for twelve more languages; 1.1.8 was a hardening release across the
+daemon, MCP, security gates, VibeUI and Desktop.
+
+Highlights from **1.1.7**:
 
 - **VibeUI, a seventh interface:** [`wstack vibeui`](packages/vibeui/README.md)
   (`--vibeui`, port 3476) opens a focused coding workspace between SimpleUI and
@@ -71,7 +91,7 @@ home to.
   one corrupt SAGE row no longer breaks unrelated memory operations, and MCP
   transports, the token store and the OAuth callback are hardened.
 
-Highlights from **1.1.6**, the previous release:
+Highlights from **1.1.6**:
 
 - **WrongForge leads with its tools:** a session started on the `wrongforge`
   provider sends its turns to WrongForge with the session's tools, and the
@@ -412,7 +432,7 @@ Full walk-through: [`docs/architecture.md`](docs/architecture.md).
 
 ## Status
 
-- **v1.1.7** — current repository version; semver from 1.0.0 onward
+- **v1.1.10** — current repository version; semver from 1.0.0 onward
 - Full release verification: `bun run release:check` before publishing
 - Coverage thresholds (root Vitest): ≥76% lines / ≥75% functions / ≥66% branches / ≥75% statements
 - Packages and apps use TypeScript strict + `noUncheckedIndexedAccess`

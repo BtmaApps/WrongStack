@@ -1,4 +1,4 @@
-// Changelog — 1.x era (1.1.9 → 1.0.0).
+// Changelog — 1.x era (1.1.10 → 1.0.0).
 // Historical entries mirror CHANGELOG.md release notes. The 1.0.37 entry was
 // written from committed runtime/source evidence (git history and packages), not
 // the root CHANGELOG, which had not been extended when it landed. 1.1.0 absorbs
@@ -11,10 +11,24 @@ import type { ChangelogEntry } from './changelog-types';
 
 export const changelog1x: ChangelogEntry[] = [
   {
+    version: '1.1.10',
+    date: '2026-10-20',
+    tagline: 'A measured design layer, DESIGN.md interchange and prompt detail levels',
+    latest: true,
+    highlights: [
+      'design_reference measures a reference site or a rendered page with a fixed in-page script and fixed thresholds, so every model receives the same numbers; a static project .html is served on an ephemeral loopback port for inspection',
+      'Design Studio reads, lints and writes DESIGN.md, design diff flags contrast regressions between versions, and PRODUCT.md is injected ahead of the design brief on UI turns',
+      'A turn that changed UI after the last rendered inspection, or whose inspection still reports FAILs, is held with a steer to inspect, at most three times',
+      'Every design finding carries a stable rule id and a severity, and design-ignore comments waive one on a line, the next line or the file',
+      'Each session is dealt three design kits instead of the whole catalogue, so models stop converging on the same few',
+      'Prompts carry simple, detailed and advanced variants with a level selector in every UI, and the FluidFlow dataset adds 588 categorized prompts',
+      'The browser asks before opening a loopback or private IP origin and saves the answer, the WebUI gains a Terminal palette, and SAGE, WebUI memory and TechStack correctness fixes land',
+    ],
+  },
+  {
     version: '1.1.9',
     date: '2026-10-19',
     tagline: 'SAGE doctor, daemon-owned maintenance and broader AST security profiles',
-    latest: true,
     highlights: [
       'SAGE doctor is available through wstack sage doctor, /memory doctor and the WebUI health panel, with explicit idempotent repairs that never hard-delete memories',
       'The project daemon owns idle memory hygiene, graph traversal dampens oversized hubs, and repeatedly unused memory injections receive a stronger ranking penalty',

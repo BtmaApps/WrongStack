@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.10] — 2026-10-20
+
+A measured design layer: rendered pages are checked with fixed scripts and
+thresholds, DESIGN.md becomes the design-system interchange, and a turn that
+changed UI is held until it is inspected. Prompts gain detail levels.
+
+### Added
+
+- **Measured design references.** The new `design_reference` tool extracts a reference site's color area, type scale, spacing, radii, elevation and motion at three widths, compares an implementation against it with explicit tolerances, and inspects a rendered page, including a static project `.html` served on an ephemeral loopback port. It declares `net.outbound`, so every policy that denies the network also hides it.
+- **DESIGN.md interchange.** Design Studio reads, lints and writes DESIGN.md (YAML tokens plus ordered prose, with dark values kept as `dark-<role>` colors); `design diff` flags contrast regressions and broken component references between two versions; PRODUCT.md (audience, job, voice) is injected ahead of the design brief on UI turns.
+- **Design turn gate.** When a run changed frontend files after the last rendered inspection, or that inspection still reports FAILs, the turn is held (at most three times) with a steer to run the inspection. It stays off when the agent cannot call `design_reference` or no page is known; `.design/gate.json` `{"mode":"off"}` disables it per project.
+- **Design rule ids and waivers.** Every source finding carries a stable rule id (30 rules, eleven new) and a severity; `design-ignore: <id>` waives it on a line, the next line or the file.
+- **Design evaluation harness.** `scripts/design-eval` scores fixed briefs with and without Design Studio using the agent's own inspect and DNA scripts and ratchets against a recorded baseline.
+- **Prompt detail levels.** Prompts carry simple, detailed and advanced variants; `/prompt insert <slug> --level=…` and a level selector in the TUI, WebUI, SimpleUI and VibeUI pick one. The FluidFlow dataset adds 588 categorized prompts across 16 new categories.
+- **Browser private origins.** `browser_open` and `browser_navigate` ask through the host's input form before opening a loopback or literal private IP origin and save the answer as `/browser allow` does; public names resolving to private addresses keep the plain refusal.
+- **WebUI Terminal palette.** A green/amber `terminal` palette and terminal motifs for empty states.
+
+### Changed
+
+- **Design kits.** Each session is dealt three kits (recent choices across projects left out) instead of the whole catalogue; pinning a kit outside the deal needs a recorded reason.
+
+### Fixed
+
+- **Tool boundary order.** The design turn gate recorder no longer runs ahead of the host-owned governance boundary on the CLI leader and Fleet subagents.
+- **Design.** An inspected page is served only its own assets, the evaluation runs jobs outside any repository, and `design-ignore` waivers accept only real rule ids.
+- **WebUI.** The conversation in front is never evicted from a session-scoped store, the memory file drawer stays pending until the store answers, and the memory review queue no longer leaks subscriptions or settles on foreign replies.
+- **SAGE.** The doctor report and repairs tolerate corrupt rows, the hub check and hub damping count the same degree, and an unreadable state is never reported as a healthy maintenance pass.
+- **Other.** TechStack never reports an npm alias as a missing package, SimpleUI tolerates a missing `matchMedia`, VibeUI folds a legacy close tag after an in-block fenced example, and the Python parser probe treats a synchronous spawn throw as "python unavailable".
+
 ## [1.1.9] — 2026-10-19
 
 SAGE health diagnostics and daemon-owned maintenance, broader AST security rules,
