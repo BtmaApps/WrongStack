@@ -3,7 +3,7 @@ import { ulid } from '@wrongstack/core/utils';
 
 import { boundedLimit } from './shared/pagination.js';
 import { type SqliteGraphEdgeRow, sqliteRowToGraphEdge } from './sqlite-store-graph-helpers.js';
-import type { MemoryGraphEdge } from './types.js';
+import type { MemoryGraphEdge, MemoryGraphRelation } from './types.js';
 
 interface SqliteGraphTraverseContext {
   stmt: (sql: string) => ReturnType<DatabaseSync['prepare']>;
@@ -21,6 +21,24 @@ interface SqliteGraphTraverseContext {
  * call scale with hub size (331 daemon slow-op reports over 1s in 3 days).
  */
 export const GRAPH_HUB_DEGREE = 64;
+
+/**
+ * Relations that carry no structure of their own: only these make a node a
+ * hub, and only these are pruned at one.
+ *
+ * The doctor counts a hub the SAME way (`HUB_NODES_SQL` in
+ * `sqlite-store-doctor.ts`) - the report and the expansion have to describe
+ * the same set of nodes, or the health report is blind to half of the
+ * damping. A node whose degree comes from STRUCTURAL edges (`about_file`,
+ * `about_symbol`, …) carries real evidence, and dropping it silently loses
+ * the memories behind it.
+ */
+export const SOFT_RELATIONS: readonly MemoryGraphRelation[] = ['same_topic', 'related_to'];
+
+/** True when the relation is one of the structure-free relations. */
+export function isSoftRelation(relation: MemoryGraphRelation): boolean {
+  return SOFT_RELATIONS.includes(relation);
+}
 
 export function traverseSqliteGraph(
   ctx: SqliteGraphTraverseContext,
@@ -95,7 +113,11 @@ function capHubRows(
   }
   const kept: SqliteGraphEdgeRow[] = [];
   for (const [owner, bucket] of byOwner) {
-    if (bucket.length <= GRAPH_HUB_DEGREE) {
+    // A hub is a node flooded by STRUCTURE-FREE edges - the same count the
+    // doctor reports. Counting every incident row here would damp nodes
+    // whose degree is structural evidence, and drop that evidence silently.
+    const softCount = bucket.reduce((sum, row) => sum + (isSoftRelation(row.relation) ? 1 : 0), 0);
+    if (softCount <= GRAPH_HUB_DEGREE) {
       kept.push(...bucket);
     } else if (startSet.has(owner)) {
       kept.push(...[...bucket].sort((a, b) => b.weight - a.weight).slice(0, GRAPH_HUB_DEGREE));

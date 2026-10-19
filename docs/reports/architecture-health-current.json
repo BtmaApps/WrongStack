@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-19T14:51:15.586Z",
+  "generatedAt": "2026-10-19T14:59:31.404Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 38,
     "sourceFiles": 5176,
-    "testFiles": 4508,
-    "sourceLines": 1124206,
+    "testFiles": 4509,
+    "sourceLines": 1124233,
     "workspaceEdges": 139,
     "moduleEdges": 17034,
     "nonCommandSlashImports": 0,
@@ -606,7 +606,7 @@
       "name": "@wrongstack/sage",
       "dir": "packages/sage",
       "sourceFiles": 151,
-      "testFiles": 148,
+      "testFiles": 149,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/persistence",
@@ -621,7 +621,7 @@
         {
           "path": "packages/sage/tsconfig.test.json",
           "error": null,
-          "testFiles": 148
+          "testFiles": 149
         }
       ]
     },
@@ -16119,6 +16119,12 @@
       },
       {
         "file": "packages/sage/tests/sage-graph-hub-damping.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/sage/tests/sage-graph-hub-doctor-agreement.test.ts",
         "projects": [
           "root-node"
         ]

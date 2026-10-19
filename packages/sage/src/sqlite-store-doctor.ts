@@ -24,11 +24,16 @@ import type {
 } from './memory-doctor-types.js';
 import type { SageHygieneReport } from './memory-hygiene-types.js';
 import { readSqliteSageRow } from './sqlite-store-codec.js';
-import { GRAPH_HUB_DEGREE } from './sqlite-store-graph-traverse.js';
+import { GRAPH_HUB_DEGREE, SOFT_RELATIONS } from './sqlite-store-graph-traverse.js';
 import type { Sage } from './types.js';
 
-/** Relations that carry no structure of their own; only these are pruned at hubs. */
-const SOFT_RELATIONS = ['same_topic', 'related_to'] as const;
+/**
+ * Relations that carry no structure of their own; only these are pruned at hubs.
+ *
+ * Imported from the traversal module so the DOCTOR and the DAMPING can never
+ * drift apart again: the check has to report the same nodes the traversal
+ * expands around, and the repair has to prune the same relations.
+ */
 /** Injection count from which a never-used memory is reported. */
 const NEVER_USED_REPORT_MIN_INJECTIONS = 20;
 const PENDING_CANDIDATE_WARN = 200;
