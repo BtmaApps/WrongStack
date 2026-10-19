@@ -193,12 +193,14 @@ export async function connectStdio(host: ClientStdioHost): Promise<void> {
         toErrorMessage(err),
     );
   }
-  const version = host.toolCatalogVersion;
+  const revision = host.toolCatalogRevision;
   const tools = (await listAllTools((params) => host.request('tools/list', params))) ?? [];
-  if (version !== host.toolCatalogVersion || host.state !== 'connecting') return;
-  host._tools = tools;
-  // Cache tools so reconnect can re-register without re-discovering
-  host._toolsCache = host._tools;
+  if (host.state !== 'connecting' || host.child !== child) return;
+  if (revision === host.toolCatalogRevision) {
+    host._tools = tools;
+    // Cache tools so reconnect can re-register without re-discovering
+    host._toolsCache = host._tools;
+  }
   host.state = 'connected';
 }
 

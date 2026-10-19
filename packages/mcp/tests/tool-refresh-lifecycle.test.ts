@@ -134,6 +134,7 @@ describe('tool refresh lifecycle across transports', () => {
     });
     try {
       await client.connect();
+      expect(client.getState()).toBe('connected');
       expect(client.listTools().map((tool) => tool.name)).toEqual(['new']);
     } finally {
       await client.close();
