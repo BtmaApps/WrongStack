@@ -313,6 +313,22 @@ describe('GitHub intake', () => {
       ),
     ).rejects.toThrow('repository');
   });
+
+  it('matches filters.branch against check_run and check_suite head_branch payloads (F119)', async () => {
+    const { evaluateGitHubFilters } = await import('../src/automation/github-filters.js');
+    expect(
+      evaluateGitHubFilters(
+        { branch: 'main', conclusion: 'failure' },
+        { check_run: { conclusion: 'failure', head_branch: 'main' } },
+      ),
+    ).toEqual({ matches: true, reasons: [] });
+    expect(
+      evaluateGitHubFilters(
+        { branch: 'main', conclusion: 'failure' },
+        { check_run: { conclusion: 'failure', check_suite: { head_branch: 'main' } } },
+      ),
+    ).toEqual({ matches: true, reasons: [] });
+  });
 });
 
 describe('automation control API', () => {

@@ -62,6 +62,8 @@ export function evaluateGitHubFilters(
   if (filters.branch) {
     const branch =
       record(issue['base'])['ref'] ??
+      check['head_branch'] ??
+      record(check['check_suite'])['head_branch'] ??
       (typeof data['ref'] === 'string' ? data['ref'].replace(/^refs\/heads\//, '') : undefined);
     if (branch !== filters.branch) reasons.push('branch');
   }
