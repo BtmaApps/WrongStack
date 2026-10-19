@@ -168,6 +168,7 @@ All remaining scripts are **Wired** — see the tables below.
 | `memory-profile.mjs` | Manual | Launches the CLI with heap profiling/snapshots enabled. | `profile:memory` |
 | `analyze-memory-log.mjs` | Manual | Summarises `~/.wrongstack/logs/heap.jsonl` (per PID, tail, `--json`). | `analyze:memory` |
 | `brain-workload-report.mjs` | Manual | Replays real brain call sites through an unreachable-model tier chain to count provider calls attempted per tier. | `brain:workload` |
+| `design-eval/run.ts` | Manual | Design-layer evaluation: fixed briefs generated per model with and without Design Studio, scored by rendered inspect + DNA diversity, with a ratchet. Paid model runs; see `docs/design-quality-workflow.md`. | by hand |
 
 ## Maintenance, one-shots & dev tools
 

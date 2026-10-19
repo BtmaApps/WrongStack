@@ -515,7 +515,9 @@ export function installDesignStudioMiddleware(deps: {
   /** When false, nothing is installed (tool + /design stay manual). */
   enabled?: boolean | undefined;
 }): void {
-  if (deps.enabled === false) return;
+  // WRONGSTACK_DESIGN_STUDIO=off runs a host without the layer — the "bare"
+  // arm of the design evaluation, or a user who wants only the manual tool.
+  if (deps.enabled === false || process.env['WRONGSTACK_DESIGN_STUDIO'] === 'off') return;
   const loader = getDesignKitLoader(deps.ctx.projectRoot);
   deps.pipelines.userInput.prepend(makeDesignDetectUserInputMiddleware());
   deps.pipelines.toolCall.prepend(makeDesignDetectToolCallMiddleware());

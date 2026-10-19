@@ -9,6 +9,7 @@ import {
   detectFrontendFile,
   detectFrontendIntent,
   getDesignState,
+  installDesignStudioMiddleware,
   makeDesignDetectToolCallMiddleware,
   makeDesignDetectUserInputMiddleware,
   makeDesignStudioRequestMiddleware,
@@ -423,6 +424,34 @@ describe('request inject middleware', () => {
       expect(without).toContain('calm clinical');
     } finally {
       await fs.rm(root, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('installDesignStudioMiddleware', () => {
+  const pipelines = () => {
+    const added: string[] = [];
+    const slot = (name: string) => ({ prepend: () => added.push(name) });
+    return {
+      added,
+      p: { userInput: slot('userInput'), toolCall: slot('toolCall'), request: slot('request') },
+    };
+  };
+
+  it('installs the layer by default and nothing under WRONGSTACK_DESIGN_STUDIO=off', () => {
+    const ctx = { projectRoot: os.tmpdir(), meta: {} } as unknown as Context;
+    const on = pipelines();
+    installDesignStudioMiddleware({ pipelines: on.p as never, ctx });
+    expect(on.added).toEqual(['userInput', 'toolCall', 'toolCall', 'request']);
+    const prev = process.env['WRONGSTACK_DESIGN_STUDIO'];
+    process.env['WRONGSTACK_DESIGN_STUDIO'] = 'off';
+    try {
+      const off = pipelines();
+      installDesignStudioMiddleware({ pipelines: off.p as never, ctx });
+      expect(off.added).toEqual([]);
+    } finally {
+      if (prev === undefined) delete process.env['WRONGSTACK_DESIGN_STUDIO'];
+      else process.env['WRONGSTACK_DESIGN_STUDIO'] = prev;
     }
   });
 });
