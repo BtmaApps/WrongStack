@@ -67,6 +67,7 @@ export function createStreamCoalescer(deps: StreamCoalescerDeps): StreamCoalesce
       name: string;
       eventType: string;
       text: string;
+      data?: Record<string, unknown> | undefined;
       timer: ReturnType<typeof setTimeout> | null;
     }
   >();
@@ -152,7 +153,11 @@ export function createStreamCoalescer(deps: StreamCoalescerDeps): StreamCoalesce
         ...(buffered.agentName !== undefined ? { agentName: buffered.agentName } : {}),
         name: buffered.name,
         id: buffered.id,
-        event: { type: buffered.eventType, text: buffered.text },
+        event: {
+          type: buffered.eventType,
+          text: buffered.text,
+          ...(buffered.data !== undefined ? { data: buffered.data } : {}),
+        },
       }),
     });
   };
@@ -198,12 +203,18 @@ export function createStreamCoalescer(deps: StreamCoalescerDeps): StreamCoalesce
       name: payload.name,
       eventType,
       text: '',
+      data: undefined,
       timer: null,
     };
     buffered.sessionId = payload.sessionId;
     buffered.name = payload.name;
     buffered.agentName = payload.agentName;
-    buffered.text += buffered.text ? `\n${text}` : text;
+    if (payload.event.data !== undefined) {
+      buffered.data = buffered.data
+        ? { ...buffered.data, ...payload.event.data }
+        : { ...payload.event.data };
+    }
+    buffered.text += buffered.text ? (buffered.text.endsWith('\n') ? text : `\n${text}`) : text;
     toolProgressBuffers.set(payload.id, buffered);
 
     if (buffered.text.length >= STREAM_COALESCE_MAX_CHARS) {

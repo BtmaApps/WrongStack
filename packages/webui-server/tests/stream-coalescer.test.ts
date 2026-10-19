@@ -83,4 +83,44 @@ describe('createStreamCoalescer', () => {
       },
     });
   });
+
+  it('preserves event.data and avoids duplicate newlines when coalescing livePreview tool progress (F165)', () => {
+    vi.useFakeTimers();
+    const { broadcast, coalescer } = harness();
+    coalescer.queueToolProgress({
+      sessionId: 's1',
+      id: 'tool-write',
+      name: 'write',
+      event: {
+        type: 'progress',
+        text: 'line 1\n',
+        data: { livePreview: true, filePath: 'src/a.ts' },
+      },
+    });
+    coalescer.queueToolProgress({
+      sessionId: 's1',
+      id: 'tool-write',
+      name: 'write',
+      event: {
+        type: 'progress',
+        text: 'line 2\n',
+        data: { livePreview: true, filePath: 'src/a.ts' },
+      },
+    });
+    coalescer.flushAllStreamBuffers();
+
+    expect(broadcast).toHaveBeenCalledWith({
+      type: 'tool.progress',
+      payload: {
+        sessionId: 's1',
+        id: 'tool-write',
+        name: 'write',
+        event: {
+          type: 'progress',
+          text: 'line 1\nline 2\n',
+          data: { livePreview: true, filePath: 'src/a.ts' },
+        },
+      },
+    });
+  });
 });
