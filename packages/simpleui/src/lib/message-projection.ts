@@ -10,9 +10,6 @@ export interface AssistantMessageProjection {
   nextSteps: ParsedNextStep[];
 }
 
-const NEXT_STEPS_OPEN_RE = /<next_?steps\b[^>]*>/i;
-const NEXT_STEPS_CLOSE_RE = /<\/next_?steps>/i;
-
 /**
  * Normalize persisted/legacy spellings before handing content to WrongStack's
  * canonical browser-safe parser. This keeps parsing rules in one package while
@@ -20,8 +17,12 @@ const NEXT_STEPS_CLOSE_RE = /<\/next_?steps>/i;
  */
 function normalizeNextStepsTags(text: string): string {
   return text
-    .replace(/<next_?steps\b[^>]*>\s*/gi, '<nextsteps>\n')
-    .replace(/\s*<\/next_?steps>/gi, '\n</nextsteps>');
+    .replace(/<next_?steps\b[^>]*>\s*/gi, (match, offset: number) =>
+      indexInsideCodeFence(text, offset) ? match : '<nextsteps>\n',
+    )
+    .replace(/\s*<\/next_?steps>/gi, (match, offset: number) =>
+      indexInsideCodeFence(text, offset) ? match : '\n</nextsteps>',
+    );
 }
 
 export function projectAssistantMessage(text: string): AssistantMessageProjection {
@@ -32,18 +33,30 @@ export function projectAssistantMessage(text: string): AssistantMessageProjectio
     return { text: stripNextStepsBlock(parsed.stripped), nextSteps: parsed.steps };
   }
 
-  const openingTag = NEXT_STEPS_OPEN_RE.exec(text);
+  const openRe = /<next_?steps\b[^>]*>/gi;
+  let openingTag: RegExpExecArray | null = null;
+  for (let m = openRe.exec(text); m !== null; m = openRe.exec(text)) {
+    if (!indexInsideCodeFence(text, m.index)) {
+      openingTag = m;
+      break;
+    }
+  }
   if (!openingTag) return { text, nextSteps: [] };
-
-  // A tag inside a fenced code block is example documentation — during
-  // streaming it must neither truncate the message nor count as metadata.
-  if (indexInsideCodeFence(text, openingTag.index)) return { text, nextSteps: [] };
 
   // During streaming, hide machine-readable metadata from the moment its
   // opening tag arrives. A balanced but malformed block is stripped too:
   // suggestions are optional UI metadata, never user-facing answer prose.
-  const visibleText = NEXT_STEPS_CLOSE_RE.test(text)
-    ? stripNextStepsBlock(text)
+  const closeRe = /<\/next_?steps>/gi;
+  closeRe.lastIndex = openingTag.index + openingTag[0].length;
+  let hasUnfencedClose = false;
+  for (let c = closeRe.exec(text); c !== null; c = closeRe.exec(text)) {
+    if (!indexInsideCodeFence(text, c.index)) {
+      hasUnfencedClose = true;
+      break;
+    }
+  }
+  const visibleText = hasUnfencedClose
+    ? stripNextStepsBlock(normalized)
     : text.slice(0, openingTag.index).trimEnd();
   return { text: visibleText, nextSteps: [] };
 }

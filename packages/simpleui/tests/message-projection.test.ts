@@ -62,4 +62,24 @@ describe('projectAssistantMessage — fenced examples', () => {
     expect(projection.nextSteps).toEqual([]);
     expect(projection.text).toBe(text);
   });
+
+  it('truncates a streaming block after a fenced example and strips malformed legacy blocks (F154)', () => {
+    const streamingAfterFence = projectAssistantMessage(
+      'Example:\n```xml\n<nextsteps>\n1. Demo\n</nextsteps>\n```\n\nDone.\n\n<nextsteps>\n1. Half streamed',
+    );
+    expect(streamingAfterFence.text).toBe(
+      'Example:\n```xml\n<nextsteps>\n1. Demo\n</nextsteps>\n```\n\nDone.',
+    );
+
+    const malformedLegacy = projectAssistantMessage(
+      'Summary\n\n<next_steps>\nnot a valid numbered step\n</next_steps>',
+    );
+    expect(malformedLegacy.text).toBe('Summary');
+
+    const fencedLegacyWithReal = projectAssistantMessage(
+      'Doc:\n```xml\n<next_steps>\n1. Keep underscore\n</next_steps>\n```\n\n<nextsteps>\n1. Real step\n</nextsteps>',
+    );
+    expect(fencedLegacyWithReal.text).toContain('<next_steps>');
+    expect(fencedLegacyWithReal.nextSteps.map((s) => s.text)).toEqual(['Real step']);
+  });
 });
