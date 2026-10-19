@@ -153,6 +153,31 @@ describe('applyLiveBatch', () => {
     expect(s.entries[0]?.text).toBe('analyzing requirements...');
     expect(s.entries[1]?.text).toBe('analyzing requirements...');
   });
+
+  it('indexes failed tool entries from applyFetch in openTools so overlapping live error result merges', () => {
+    let s = applyFetch(createTranscriptState(), [
+      e({
+        role: 'error',
+        isError: true,
+        tool: 'bash',
+        toolInput: '{"cmd":"false"}',
+        toolUseId: 'tu_err_1',
+        text: 'exit code 1',
+      }),
+    ]);
+    s = applyLiveBatch(s, 1, [
+      e({
+        role: 'tool',
+        tool: 'bash',
+        toolInput: '{"cmd":"false"}',
+        toolUseId: 'tu_err_1',
+        text: '',
+      }),
+      e({ role: 'error', isError: true, tool: 'bash', toolUseId: 'tu_err_1', text: 'exit code 1' }),
+    ]);
+    expect(s.entries).toHaveLength(1);
+    expect(s.entries[0]?.role).toBe('error');
+  });
 });
 
 describe('entryKey', () => {

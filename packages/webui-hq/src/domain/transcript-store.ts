@@ -99,7 +99,11 @@ function foldEntry(next: TranscriptState, src: HqTranscriptEntry, recordSeen: bo
   const key = entryKey(e);
   if (next.seen.has(key)) return;
   if (recordSeen || !isStreamedText(e)) next.seen.add(key);
-  if (e.role === 'tool' && e.toolUseId !== undefined && e.toolInput !== undefined) {
+  if (
+    (e.role === 'tool' || e.role === 'error') &&
+    e.toolUseId !== undefined &&
+    e.toolInput !== undefined
+  ) {
     next.openTools.set(e.toolUseId, next.entries.length);
   }
   next.entries.push(e);
