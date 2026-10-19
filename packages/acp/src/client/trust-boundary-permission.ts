@@ -84,6 +84,7 @@ export function toTrustBoundaryRequest(
   const rawSessionId = request.toolCall.rawInput?.sessionId;
   const sessionId =
     options.actor?.sessionId ??
+    options.scope?.sessionId ??
     (typeof rawSessionId === 'string' && rawSessionId.length > 0 ? rawSessionId : undefined);
   return {
     version: 1,

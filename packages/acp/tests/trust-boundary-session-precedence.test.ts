@@ -33,4 +33,23 @@ describe('ACP TrustBoundary session precedence', () => {
     expect(map('agent-session', undefined)).toEqual(['agent-session', 'agent-session']);
     expect(map(undefined, undefined)).toEqual([undefined, undefined]);
   });
+
+  it('prefers host scope.sessionId over untrusted rawInput.sessionId when actor.sessionId is omitted (F126)', () => {
+    const request = {
+      toolCall: {
+        toolCallId: 'call-1',
+        title: 'Write file',
+        kind: 'edit',
+        rawInput: { path: '/p/x.ts', sessionId: 'spoofed-agent-session' },
+      },
+      options: [],
+      signal: new AbortController().signal,
+    };
+    const out = toTrustBoundaryRequest(request as never, {
+      actor: { kind: 'agent' },
+      scope: { sessionId: 'host-scope-session' },
+    });
+    expect(out.actor.sessionId).toBe('host-scope-session');
+    expect(out.scope.sessionId).toBe('host-scope-session');
+  });
 });
