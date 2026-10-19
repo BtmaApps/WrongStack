@@ -603,6 +603,8 @@ describe('verification execution lease store', () => {
         db: (store as unknown as { db: unknown }).db as never,
         verifyWorkspaceSnapshotPrecondition: () => null,
         verifyCandidatePrecondition: () => null,
+        readLatestWorkspaceSnapshotRow: () => undefined,
+        workspaceSnapshotFromRow: () => workspaceSnapshot(),
       },
       staleRun,
       {

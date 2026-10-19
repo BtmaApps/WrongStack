@@ -457,9 +457,11 @@ describe('ToolExecutor — PostToolUse when the tool never runs', () => {
 describe('shellHooksEqual', () => {
   it('ignores keys with undefined values when comparing hook maps', async () => {
     const { shellHooksEqual } = await import('../../src/hooks/shell-hooks-equal.js');
+    // @ts-expect-error Exercise an untyped caller that explicitly supplies undefined.
+    const hooksWithUndefined: Parameters<typeof shellHooksEqual>[0] = { PreToolUse: undefined };
     expect(
-      shellHooksEqual({ PreToolUse: undefined }, { PostToolUse: [{ command: 'echo hijacked' }] }),
+      shellHooksEqual(hooksWithUndefined, { PostToolUse: [{ command: 'echo hijacked' }] }),
     ).toBe(false);
-    expect(shellHooksEqual({ PreToolUse: undefined }, {})).toBe(true);
+    expect(shellHooksEqual(hooksWithUndefined, {})).toBe(true);
   });
 });

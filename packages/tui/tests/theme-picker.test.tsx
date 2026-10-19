@@ -332,11 +332,11 @@ describe('ThemePicker', () => {
     const { reduceComposerPickers } = await import('../src/reducers/composer-pickers.js');
     let state = {
       themePicker: { open: true, selected: 0, filter: '', filtering: false },
-    } as never;
-    state = reduceComposerPickers(state, { type: 'themePickerFilterMode', on: true } as never);
-    state = reduceComposerPickers(state, { type: 'themePickerFilter', text: 'tokyo' } as never);
-    state = reduceComposerPickers(state, { type: 'themePickerFilterMode', on: false } as never);
-    const picker = (state as { themePicker: { selected: number; filter: string } }).themePicker;
+    } as Parameters<typeof reduceComposerPickers>[0];
+    state = reduceComposerPickers(state, { type: 'themePickerFilterMode', on: true });
+    state = reduceComposerPickers(state, { type: 'themePickerFilter', text: 'tokyo' });
+    state = reduceComposerPickers(state, { type: 'themePickerFilterMode', on: false });
+    const picker = state.themePicker;
     expect(picker.filter).toBe('');
     expect(THEME_OPTIONS[picker.selected]?.id).toBe('tokyo-night');
   });

@@ -24,9 +24,10 @@ export function buildAutomationResult(
 ): AutomationResult {
   let payload: Record<string, unknown> = {};
   for (const line of output.split('\n').reverse()) {
-    if (!line.trim().startsWith('{')) continue;
+    const recordLine = line.trim();
+    if (!recordLine.startsWith('{')) continue;
     try {
-      const parsed: unknown = JSON.parse(line);
+      const parsed: unknown = JSON.parse(recordLine);
       if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) continue;
       const record = parsed as Record<string, unknown>;
       if (
@@ -37,7 +38,11 @@ export function buildAutomationResult(
         payload = record;
         break;
       }
-    } catch {}
+    } catch {
+      // Incomplete objects and malformed quoted JSON may be the final result.
+      // Complete braced diagnostics such as {stderr message} are ordinary logs.
+      if (!recordLine.endsWith('}') || /^\{\s*"/.test(recordLine)) break;
+    }
   }
   const usage =
     payload['usage'] && typeof payload['usage'] === 'object'

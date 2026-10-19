@@ -1,4 +1,4 @@
-// Changelog — 1.x era (1.1.8 → 1.0.0).
+// Changelog — 1.x era (1.1.9 → 1.0.0).
 // Historical entries mirror CHANGELOG.md release notes. The 1.0.37 entry was
 // written from committed runtime/source evidence (git history and packages), not
 // the root CHANGELOG, which had not been extended when it landed. 1.1.0 absorbs
@@ -11,10 +11,24 @@ import type { ChangelogEntry } from './changelog-types';
 
 export const changelog1x: ChangelogEntry[] = [
   {
+    version: '1.1.9',
+    date: '2026-10-19',
+    tagline: 'SAGE doctor, daemon-owned maintenance and broader AST security profiles',
+    latest: true,
+    highlights: [
+      'SAGE doctor is available through wstack sage doctor, /memory doctor and the WebUI health panel, with explicit idempotent repairs that never hard-delete memories',
+      'The project daemon owns idle memory hygiene, graph traversal dampens oversized hubs, and repeatedly unused memory injections receive a stronger ranking penalty',
+      'security-ast-scan gains rule profiles for Python, Go, Rust, Java, Kotlin, Scala, C#, PHP, Ruby, Swift, C/C++ and shell',
+      'Browser interfaces can automatically submit the next-step suggestion under Auto + YOLO',
+      'ACP warm load and resume validate working directories, provider serialization refreshes after in-place tool changes, and session prompt variants use the target session’s capabilities',
+      'Governance verification binds to the canonical plan fingerprint, Kanban metric edits invalidate stale verification reports, and LSP language ownership transfers to a remaining matching server',
+      'Corrupt final automation output cannot resurrect an older successful result, while ordinary diagnostic logs still preserve a valid summary',
+    ],
+  },
+  {
     version: '1.1.8',
     date: '2026-10-18',
     tagline: 'A hardening release: audit fixes across the daemon, MCP, security gates and VibeUI',
-    latest: true,
     highlights: [
       'The YOLO payload scan closes secret-scrub, shell-cluster, kill-guard and rm bypasses, and the license and dependency-vulnerability gates now inspect exec args and cwd',
       'Governance rejects plan paths that resolve to the root and normalizes task-contract path scopes, and the regex guard handles character-class brace escapes under the unicode flag',

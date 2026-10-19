@@ -43,11 +43,18 @@ describe('automation result evidence', () => {
       '\n{"level":"info"}\n';
     expect(buildAutomationResult(output, '', 0).usage.costUsd).toBe(0);
   });
-  it('does not resurrect an earlier result behind corrupt final output', () => {
-    expect(
-      buildAutomationResult('{"status":"done","finalText":"old"}\n{truncated', null, 0).finalText,
-    ).toBeNull();
-  });
+  it.each(['{truncated', '{"status":"done","finalText":}'])(
+    'does not resurrect an earlier result behind corrupt final output: %s',
+    (corruptOutput) => {
+      const result = buildAutomationResult(
+        `{"status":"done","finalText":"old"}\n${corruptOutput}`,
+        null,
+        0,
+      );
+      expect(result.finalText).toBeNull();
+      expect(result.agentStatus).toBeNull();
+    },
+  );
   it('bounds final output and changed-file metadata', () => {
     const result = buildAutomationResult(
       JSON.stringify({

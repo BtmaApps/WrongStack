@@ -26,13 +26,13 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { EventBus } from '../../src/kernel/events.js';
+import { NotifierImpl } from '../../src/notifications/notifier-impl.js';
 import type {
   NotificationChannel,
   NotificationMessage,
   NotificationResult,
 } from '../../src/notifications/types.js';
-import { NotifierImpl } from '../../src/notifications/notifier-impl.js';
-import { EventBus } from '../../src/kernel/events.js';
 
 // ---------------------------------------------------------------------------
 // Mock channel factory
@@ -332,7 +332,7 @@ describe('Notification pipeline integration', () => {
     notifier.registerChannel(failingTg); // replaces the healthy one (last-write-wins)
 
     const handler = vi.fn(() => {
-      void notifier.notify(['telegram', 'webhook'], {
+      return notifier.notify(['telegram', 'webhook'], {
         title: 'Test',
         body: 'Webhook should still receive this',
         level: 'info',
@@ -349,6 +349,7 @@ describe('Notification pipeline integration', () => {
     await vi.waitFor(() => {
       expect(handler).toHaveBeenCalledTimes(1);
     });
+    await handler.mock.results[0]!.value;
 
     // Webhook should still succeed despite telegram failure
     expect(webhook.delivered).toHaveLength(1);

@@ -511,6 +511,7 @@ describe('verification integrity', () => {
     const report = buildVerificationReport({
       taskId: baseTask.id,
       taskTitle: baseTask.title,
+      boardId: 'b1',
       inputFingerprint: taskInputFingerprint(baseTask),
       checks: [
         {

@@ -46,7 +46,7 @@ function makeParams() {
       tools: [],
       container: { safeResolve: vi.fn(() => undefined) },
     },
-    tools: { list: vi.fn(() => []) },
+    tools: { list: vi.fn(() => []), listForProvider: vi.fn(() => []) },
   };
   return {
     opts: {
@@ -149,14 +149,14 @@ describe('CLI WebUI route contexts — session-aware seams', () => {
         tools: [],
         container: { safeResolve: vi.fn(() => undefined) },
       },
-      tools: { list: vi.fn(() => []) },
+      tools: { list: vi.fn(() => []), listForProvider: vi.fn(() => []) },
     };
     params.getSessionAgent = vi.fn((id?: string) =>
       id === 'sess-tab' ? otherAgent : params.opts.agent,
     );
 
     const contexts = createWebuiRouteContexts(params as never);
-    await contexts.prefsCtx.systemPrompt.applyVariant('lite' as never, 'sess-tab').catch(() => {});
+    await contexts.prefsCtx.systemPrompt?.applyVariant?.('lite', 'sess-tab');
 
     expect(targetCapsReads).toBeGreaterThan(0);
     expect(leaderCapsReads).toBe(0);

@@ -507,7 +507,7 @@ describe('createKanbanMcpServer', () => {
   });
 
   it('ignores non-board IPC events and trims boardId in kanban_watch', async () => {
-    let subscriber: ((event: { event: string; data?: unknown }) => void) | undefined;
+    let subscriber: ((event: KanbanServerEvent) => void) | undefined;
     const host = createKanbanMcpServer('C:/project', {
       dependencies: {
         executeKanban: vi.fn(),
@@ -531,8 +531,8 @@ describe('createKanbanMcpServer', () => {
       }),
     );
     await new Promise((r) => setTimeout(r, 10));
-    subscriber?.({ event: 'workflow.state.updated', data: { boardId: 'board-1' } });
-    subscriber?.({ event: 'board.updated', data: { boardId: 'board-1' } });
+    subscriber?.({ type: 'event', event: 'workflow.state.updated', data: { boardId: 'board-1' } });
+    subscriber?.({ type: 'event', event: 'board.updated', data: { boardId: 'board-1' } });
     const raw = await pending;
     expect(raw).toContain('board.updated');
     expect(raw).not.toContain('workflow.state.updated');

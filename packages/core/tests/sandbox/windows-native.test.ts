@@ -182,9 +182,8 @@ describe('choke point selects the windows-native backend (plan 28 T5/T5.1)', () 
 
     const helper = createWindowsNativeSandboxBackend({
       platform: 'win32',
-      helperRunner: async (route) => ({
+      helperRunner: async ({ command: _command, ...route }) => ({
         ...route,
-        command: undefined,
         argv: [
           'powershell.exe',
           '-File',

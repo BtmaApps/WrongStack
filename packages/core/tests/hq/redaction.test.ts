@@ -381,7 +381,7 @@ describe('HQ redaction covers built-in tool input fields', () => {
         completed: true,
         timestamp: '2026-06-22T15:00:00.000Z',
       },
-      { mailboxId: 'mb-1', redactionPolicy: { rawContent: true }, previewLength: 200 },
+      { redactionPolicy: { rawContent: true }, previewLength: 200 },
     );
     expect(summary.subject).not.toContain('sk_live_');
     expect(summary.bodyPreview).not.toContain('sk_live_');

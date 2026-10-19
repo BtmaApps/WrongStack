@@ -255,7 +255,7 @@ describe('session cwd validation (WS-015)', () => {
       } as never as AgentServerTransport,
       defaultCwd: workDir,
       runTurn: async (input) => {
-        observedCwd = input.cwd;
+        observedCwd = input.cwd ?? '';
         return { stopReason: 'end_turn' };
       },
     });

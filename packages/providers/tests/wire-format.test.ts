@@ -1,4 +1,4 @@
-import type { Request, StreamEvent } from '@wrongstack/core/types';
+import type { Request, StreamEvent, Tool } from '@wrongstack/core/types';
 import { ProviderError } from '@wrongstack/core/types';
 import { describe, expect, it, vi } from 'vitest';
 import {
@@ -401,7 +401,7 @@ describe('defineWireFormat', () => {
 
   it('recomputes toolsToOpenAI and messagesToOpenAI when Tool[] or tool_use.input is mutated in-place (F168)', async () => {
     const { messagesToOpenAI, toolsToOpenAI } = await import('../src/tool-format/to-openai.js');
-    const tools = [
+    const tools: Tool[] = [
       {
         name: 'read',
         description: 'v1',

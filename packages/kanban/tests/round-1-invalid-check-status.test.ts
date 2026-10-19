@@ -89,7 +89,7 @@ describe('updateCheckOnTask runtime validation', () => {
   it('recomputes atomicityAssessment when adding and removing checks on a task', async () => {
     const board = await createBoard(tmpDir, {
       title: 'Atomicity recompute',
-      atomicity: { mode: 'enforce' },
+      atomicity: { mode: 'enforce', decomposition: 'propose' },
     });
     const created = await addTask(
       tmpDir,
@@ -98,7 +98,9 @@ describe('updateCheckOnTask runtime validation', () => {
         title: 'Implement auth flow',
         description: 'step 1; step 2; step 3; step 4; step 5',
         estimatedHours: 6,
-        expectedFileChanges: ['a.ts', 'b.ts', 'c.ts', 'd.ts', 'e.ts', 'f.ts', 'g.ts', 'h.ts'],
+        expectedFileChanges: ['a.ts', 'b.ts', 'c.ts', 'd.ts', 'e.ts', 'f.ts', 'g.ts', 'h.ts'].map(
+          (path) => ({ path, operation: 'modify' as const }),
+        ),
       },
       { sessionId: 'test-session' },
     );
@@ -109,7 +111,7 @@ describe('updateCheckOnTask runtime validation', () => {
       tmpDir,
       board.id,
       taskId,
-      { description: 'bun run test', type: 'test', command: 'bun run test' },
+      { description: 'bun run test', type: 'test' },
       { sessionId: 'test-session' },
     );
     const taskAfterAdd = afterAdd?.tasks.find((t) => t.id === taskId);

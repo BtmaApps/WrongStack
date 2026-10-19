@@ -76,13 +76,16 @@ describe('MCP array answer presence and bounds', () => {
   it('elicitViaUserInput omits unselected optional multi-enum fields even when minItems is positive (F128)', async () => {
     const { elicitViaUserInput } = await import('../src/elicitation-form.js');
     const responder = new ServerRequestResponder((req) =>
-      elicitViaUserInput(req, {
-        requestUserInput: async () => ({
-          requestId: 'req-1',
-          status: 'submitted',
-          answers: [{ questionId: 'f0', selectedOptionIds: [] }],
-        }),
-      }),
+      elicitViaUserInput(
+        { ...req, server: 'test-server' },
+        {
+          requestUserInput: async () => ({
+            requestId: 'req-1',
+            status: 'submitted',
+            answers: [{ questionId: 'f0', selectedOptionIds: [], usedRecommendation: false }],
+          }),
+        },
+      ),
     );
     const response = await responder.answer({
       id: 1,

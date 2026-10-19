@@ -318,7 +318,7 @@ describe('formatGuardReport', () => {
 
   it('ignores non-finite measurements across unbaselined, machine-drift, and applyRatchet paths (F121)', () => {
     const baseline: PerfBaselineFile = {
-      version: 1,
+      schemaVersion: 1,
       thresholdPct: 10,
       entries: [
         {
@@ -327,6 +327,7 @@ describe('formatGuardReport', () => {
           metric: 'wall-ms',
           value: null,
           source: 'test',
+          recordedAt: '2026-08-01T00:00:00.000Z',
         },
         {
           id: 'remote-probe',
@@ -335,6 +336,7 @@ describe('formatGuardReport', () => {
           value: 100,
           source: 'test',
           machine: 'machine-a',
+          recordedAt: '2026-08-01T00:00:00.000Z',
         },
       ],
     };

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { TaskDAG, type DAGEdgeEvent } from '../../src/coordination/task-dag.js';
+import { type DAGEdgeEvent, TaskDAG } from '../../src/coordination/task-dag.js';
 
 describe('TaskDAG', () => {
   describe('addNode', () => {
@@ -276,8 +276,8 @@ describe('TaskDAG', () => {
 
       expect(dag.getNode('task1')).toBeUndefined();
       expect(dag.getNode('task2')).toBeDefined();
-      // task2's deps still references task1, but task1 no longer exists
-      expect(dag.getNode('task2')!.deps).toContain('task1');
+      expect(dag.getNode('task2')!.deps).toEqual([]);
+      expect(dag.getNode('task2')!.status).toBe('ready');
     });
 
     it('removing unknown node is a no-op', () => {

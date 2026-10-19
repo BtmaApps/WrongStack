@@ -29,7 +29,7 @@ import {
 
 const temporaryDirectories: string[] = [];
 const stores: SqliteGovernanceEventStore[] = [];
-const planFingerprint = 'a'.repeat(64);
+const planFingerprint = calculatePlanVersionFingerprint(planVersion());
 const workspaceManifestHash = 'b'.repeat(64);
 const evidenceTrace = {
   sessionId: 'session-1',
@@ -510,7 +510,7 @@ describe('verification issuance coordinator', () => {
     ).resolves.toMatchObject({
       issued: false,
       phase: 'lease',
-      code: 'canonical_candidate_mismatch',
+      code: 'canonical_state_mismatch',
     });
   });
 

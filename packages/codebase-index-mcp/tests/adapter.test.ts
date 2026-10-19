@@ -401,7 +401,7 @@ describe('createCodebaseIndexMcpServer', () => {
       writable: true,
       dependencies: { executeTool },
     });
-    const searchTool = host.listTools().find((t) => t.name === 'codebase_search');
+    const searchTool = (await host.listTools()).find((t) => t.name === 'codebase_search');
     expect(searchTool?.inputSchema).toMatchObject({ additionalProperties: false });
 
     await expect(

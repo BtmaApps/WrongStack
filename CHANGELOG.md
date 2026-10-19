@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.9] — 2026-10-19
+
+SAGE health diagnostics and daemon-owned maintenance, broader AST security rules,
+automatic next-step submission, and correctness fixes across the agent runtime.
+
+### Added
+
+- **SAGE doctor.** `wstack sage doctor`, `/memory doctor` and the WebUI SAGE health panel report storage integrity, expired memories, graph hubs, dangling edges, audiences and review backlog. Explicit repairs are idempotent and never hard-delete memories.
+- **AST security profiles.** `security-ast-scan` adds rule profiles for Python, Go, Rust, Java, Kotlin, Scala, C#, PHP, Ruby, Swift, C/C++ and shell.
+- **Automatic next steps.** Browser interfaces can submit the next-step suggestion automatically under Auto + YOLO.
+
+### Changed
+
+- **SAGE maintenance.** The project daemon runs idle hygiene every six hours, graph traversal dampens oversized hubs, and memories repeatedly injected without use receive a stronger ranking penalty.
+
+### Fixed
+
+- **Automation.** Corrupt final JSON cannot resurrect an earlier successful result; ordinary braced diagnostic logs still preserve the valid result. Delivery deduplication checks payload hashes symmetrically and scopes them by subject.
+- **Session and provider correctness.** ACP validates working directories on warm load/resume, client event waiters receive events before listener settlement, system-prompt variants use the target session's capabilities, and provider serialization refreshes after in-place tool or tool-input changes.
+- **Verification and LSP.** Governance binds issued runs to the canonical plan fingerprint, Kanban metric changes invalidate stale verification reports, and language-server removal transfers language ownership to a remaining matching server.
+- **Release validation.** Repair stale test fixtures, await notification delivery before checking counters, and cover unrelated servers during LSP language reassignment.
+
 ## [1.1.8] — 2026-10-18
 
 A hardening release: a broad round of audit fixes across the daemon, MCP, SAGE,

@@ -421,12 +421,24 @@ describe('groupQuotaSnapshots', () => {
     const T0 = 1_700_000_000_000;
     recordProviderQuota(
       'openai',
-      [{ meterId: 'default', windows: [{ id: 'w1', usedPercent: 20 }] }],
+      [
+        snapshot({
+          providerId: 'openai',
+          windows: [{ id: 'w1', usedPercent: 20 }],
+          capturedAt: T0,
+        }),
+      ],
       T0,
     );
     recordProviderQuota(
       'openai',
-      [{ meterId: 'default', windows: [{ id: 'w1', usedPercent: 40 }] }],
+      [
+        snapshot({
+          providerId: 'openai',
+          windows: [{ id: 'w1', usedPercent: 40 }],
+          capturedAt: T0 + 20 * 60_000,
+        }),
+      ],
       T0 + 20 * 60_000,
     );
     expect(
