@@ -93,11 +93,15 @@ function measureMetrics(ctx: SqliteDoctorContext): SageDoctorMetrics {
     .all() as Array<{ status: string; n: number }>) {
     byStatus[row.status] = row.n;
   }
+  // Corrupt-row convention (see initialize.ts backfill): json_valid(data) must
+  // precede every json_extract predicate/aggregate — AND short-circuits left to
+  // right, and without the guard one malformed row makes the SUM raise
+  // "malformed JSON" and aborts the entire doctor report.
   const usage = ctx
     .stmt(
       `SELECT SUM(COALESCE(json_extract(data, '$.injectionCount'), 0)) AS injections,
               SUM(COALESCE(json_extract(data, '$.useCount'), 0)) AS uses
-       FROM memories WHERE status = 'active'`,
+       FROM memories WHERE status = 'active' AND json_valid(data)`,
     )
     .get() as { injections: number | null; uses: number | null };
   const injections = Number(usage.injections ?? 0);
@@ -114,7 +118,7 @@ function measureMetrics(ctx: SqliteDoctorContext): SageDoctorMetrics {
     injectedNeverUsed: count(
       ctx,
       `SELECT COUNT(*) AS n FROM memories
-       WHERE status = 'active' AND (audience IS NULL OR audience = '')
+       WHERE status = 'active' AND json_valid(data) AND (audience IS NULL OR audience = '')
          AND COALESCE(json_extract(data, '$.injectionCount'), 0) >= ?
          AND COALESCE(json_extract(data, '$.useCount'), 0) = 0`,
       NEVER_USED_REPORT_MIN_INJECTIONS,
@@ -122,12 +126,12 @@ function measureMetrics(ctx: SqliteDoctorContext): SageDoctorMetrics {
     unanchoredActive: count(
       ctx,
       `SELECT COUNT(*) AS n FROM memories
-       WHERE status = 'active' AND COALESCE(json_array_length(json_extract(data, '$.anchors')), 0) = 0`,
+       WHERE status = 'active' AND json_valid(data) AND COALESCE(json_array_length(json_extract(data, '$.anchors')), 0) = 0`,
     ),
     neverVerifiedActive: count(
       ctx,
       `SELECT COUNT(*) AS n FROM memories
-       WHERE status = 'active' AND json_extract(data, '$.lastVerifiedAt') IS NULL
+       WHERE status = 'active' AND json_valid(data) AND json_extract(data, '$.lastVerifiedAt') IS NULL
          AND COALESCE(json_array_length(json_extract(data, '$.anchors')), 0) > 0`,
     ),
     dbBytes: fileBytes(ctx.dbPath),
@@ -197,7 +201,7 @@ function runChecks(ctx: SqliteDoctorContext): SageDoctorCheck[] {
   const expired = count(
     ctx,
     `SELECT COUNT(*) AS n FROM memories
-     WHERE status = 'active' AND json_extract(data, '$.expiresAt') IS NOT NULL
+     WHERE status = 'active' AND json_valid(data) AND json_extract(data, '$.expiresAt') IS NOT NULL
        AND json_extract(data, '$.expiresAt') <= ?`,
     now,
   );
@@ -212,7 +216,7 @@ function runChecks(ctx: SqliteDoctorContext): SageDoctorCheck[] {
         fix: 'hygiene',
         samples: samples(
           ctx,
-          `SELECT id AS v FROM memories WHERE status = 'active'
+          `SELECT id AS v FROM memories WHERE status = 'active' AND json_valid(data)
              AND json_extract(data, '$.expiresAt') <= ? LIMIT ${SAMPLE_LIMIT}`,
           now,
         ),
@@ -262,7 +266,7 @@ function runChecks(ctx: SqliteDoctorContext): SageDoctorCheck[] {
   const neverUsed = samples(
     ctx,
     `SELECT id || ' (' || json_extract(data, '$.injectionCount') || 'x)' AS v FROM memories
-     WHERE status = 'active' AND (audience IS NULL OR audience = '')
+     WHERE status = 'active' AND json_valid(data) AND (audience IS NULL OR audience = '')
        AND COALESCE(json_extract(data, '$.injectionCount'), 0) >= 100
        AND COALESCE(json_extract(data, '$.useCount'), 0) = 0
      ORDER BY json_extract(data, '$.injectionCount') DESC LIMIT ${SAMPLE_LIMIT}`,
@@ -270,7 +274,7 @@ function runChecks(ctx: SqliteDoctorContext): SageDoctorCheck[] {
   const heavyNeverUsed = count(
     ctx,
     `SELECT COUNT(*) AS n FROM memories
-     WHERE status = 'active' AND (audience IS NULL OR audience = '')
+     WHERE status = 'active' AND json_valid(data) AND (audience IS NULL OR audience = '')
        AND COALESCE(json_extract(data, '$.injectionCount'), 0) >= 100
        AND COALESCE(json_extract(data, '$.useCount'), 0) = 0`,
   );
@@ -419,8 +423,18 @@ async function applyFix(
       return ctx.runMutation(() => {
         const ids = samples(ctx, RUNTIME_MODE_AUDIENCE_SQL, RUNTIME_DEFAULT_MODE);
         let changed = 0;
+        let skippedCorrupt = 0;
         for (const id of ids) {
-          const current = readSqliteSageRow(ctx.stmt, id);
+          let current: ReturnType<typeof readSqliteSageRow>;
+          try {
+            current = readSqliteSageRow(ctx.stmt, id);
+          } catch {
+            // Corrupt-row convention (sqlite-store-codec): one unreadable
+            // payload must not abort the whole repair pass — skip the bad
+            // sibling, keep lifting the healthy rows, report the skip.
+            skippedCorrupt++;
+            continue;
+          }
           if (!current?.audience) continue;
           const modes = (current.audience.modes ?? []).filter(
             (mode) => mode !== RUNTIME_DEFAULT_MODE,
@@ -446,8 +460,18 @@ async function applyFix(
             .run(id);
           changed++;
         }
-        ctx.audit('memory.doctor_fix', { fix, details: { memories: changed } });
-        return { fix, changed, detail: `lifted runtime mode "default" from ${changed} audiences` };
+        ctx.audit('memory.doctor_fix', {
+          fix,
+          details: { memories: changed, skippedCorrupt },
+        });
+        return {
+          fix,
+          changed,
+          detail:
+            skippedCorrupt > 0
+              ? `lifted runtime mode "default" from ${changed} audiences, skipped ${skippedCorrupt} unreadable`
+              : `lifted runtime mode "default" from ${changed} audiences`,
+        };
       });
     case 'fts-rebuild':
       return ctx.runMutation(() => {

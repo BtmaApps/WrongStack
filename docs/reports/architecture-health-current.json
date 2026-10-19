@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-19T15:18:01.399Z",
+  "generatedAt": "2026-10-19T18:14:57.996Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 38,
     "sourceFiles": 5176,
-    "testFiles": 4511,
-    "sourceLines": 1124285,
+    "testFiles": 4512,
+    "sourceLines": 1124309,
     "workspaceEdges": 139,
     "moduleEdges": 17034,
     "nonCommandSlashImports": 0,
@@ -606,7 +606,7 @@
       "name": "@wrongstack/sage",
       "dir": "packages/sage",
       "sourceFiles": 151,
-      "testFiles": 149,
+      "testFiles": 150,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/persistence",
@@ -621,7 +621,7 @@
         {
           "path": "packages/sage/tsconfig.test.json",
           "error": null,
-          "testFiles": 149
+          "testFiles": 150
         }
       ]
     },
@@ -15627,6 +15627,12 @@
       },
       {
         "file": "packages/sage/tests/doctor-maintenance-ipc.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/sage/tests/doctor-with-corrupt-sibling-row.test.ts",
         "projects": [
           "root-node"
         ]
