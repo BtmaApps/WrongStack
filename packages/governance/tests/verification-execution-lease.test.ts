@@ -443,4 +443,182 @@ describe('verification execution lease store', () => {
     expect(table?.name).toBe('governance_verification_lease_consumptions');
     migrated.close();
   });
+
+  it('rejects issuance when run.planFingerprint does not match precondition.activePlanFingerprint (F141)', async () => {
+    const {
+      calculatePlanVersionFingerprint,
+      PLAN_VERSION_SCHEMA_VERSION,
+      TASK_CONTRACT_SCHEMA_VERSION,
+    } = await import('../src/index.js');
+    const { verifyIssuancePrecondition } = await import(
+      '../src/verification-ledger-preconditions.js'
+    );
+    const store = openStore(databasePath(), {
+      now: () => '2026-08-02T12:05:00.000Z',
+      verificationLeaseSecret: () => 's'.repeat(43),
+    });
+    const contract = {
+      schemaVersion: TASK_CONTRACT_SCHEMA_VERSION,
+      taskId: 'task-1',
+      contractVersion: 1,
+      projectId: 'project-1',
+      sourceRequest: 'Issue a registry-bound verification capability.',
+      policyVersion: 'policy-1',
+      repository: { rootIdentity: 'repository-1', baselinePolicy: 'required' as const },
+      requirements: [{ id: 'req-1', text: 'Preserve behavior.', acceptanceCriteriaIds: ['ac-1'] }],
+      acceptanceCriteria: [
+        { id: 'ac-1', statement: 'Focused tests pass.', evidenceKinds: ['test' as const] },
+      ],
+      autonomy: {
+        tier: 'A2' as const,
+        allowedOperations: [
+          'repository_read' as const,
+          'file_edit' as const,
+          'focused_check' as const,
+        ],
+        humanApprovalRequiredFor: [],
+        allowedPaths: ['packages/governance/**'],
+        deniedPaths: [],
+        budget: {
+          maxChangedFiles: 10,
+          maxChangedLines: 1000,
+          maxNewDependencies: 0,
+          maxRetries: 3,
+          maxReplans: 2,
+          maxSubagents: 2,
+          maxWallClockMs: 900000,
+        },
+        autoAuthorizePlan: true,
+        autoReplanLimit: 2,
+        autoResolveReviewFixes: true,
+      },
+      requiredChecks: [
+        { id: 'check-test', kind: 'test' as const, required: true, requirementIds: ['req-1'] },
+      ],
+      requiredReviewDimensions: ['correctness' as const],
+      rollbackClass: 'git_revert' as const,
+      assumptions: [],
+      sources: {
+        requirements: 'explicit_user' as const,
+        scope: 'project_policy' as const,
+        checks: 'deterministic_inference' as const,
+        autonomy: 'project_policy' as const,
+      },
+    };
+    const plan = {
+      schemaVersion: PLAN_VERSION_SCHEMA_VERSION,
+      planId: 'plan-1',
+      taskId: 'task-1',
+      planVersion: 1,
+      parentPlanVersion: null,
+      contractVersion: 1,
+      createdBy: 'model' as const,
+      createdAt: '2026-08-02T11:01:00.000Z',
+      changeReason: 'Initial bounded verification plan.',
+      steps: [
+        {
+          id: 'implement',
+          title: 'Implement',
+          description: 'Implement the bounded governance change.',
+          operations: ['file_edit' as const],
+          expectedPaths: ['packages/governance/src/verification-issuance-coordinator.ts'],
+          requirementIds: ['req-1'],
+          acceptanceCriteriaIds: ['ac-1'],
+          requiredCheckIds: ['check-test'],
+        },
+      ],
+      edges: [],
+    };
+    const decisionContext = {
+      transitionFacts: {
+        contractApproved: true,
+        planApproved: true,
+        withinAutonomyEnvelope: true,
+        authorization: 'automatic' as const,
+        executionGrantValid: true,
+        snapshotCurrent: true,
+        requiredEvidenceSatisfied: true,
+        blockingFindings: 0,
+        rollbackVerified: true,
+      },
+    };
+    store.execute(
+      {
+        type: 'create_task',
+        commandId: 'c1',
+        taskId: 'task-1',
+        expectedRevision: 0,
+        actor: 'model',
+        issuedAt: '2026-08-02T11:00:00.000Z',
+        projectId: 'project-1',
+        contract,
+      },
+      decisionContext,
+    );
+    store.execute(
+      {
+        type: 'transition_task',
+        commandId: 'c2',
+        taskId: 'task-1',
+        expectedRevision: 1,
+        actor: 'model',
+        issuedAt: '2026-08-02T11:01:00.000Z',
+        to: 'scoped',
+      },
+      decisionContext,
+    );
+    store.execute(
+      {
+        type: 'attach_plan_version',
+        commandId: 'c3',
+        taskId: 'task-1',
+        expectedRevision: 2,
+        actor: 'model',
+        issuedAt: '2026-08-02T11:02:00.000Z',
+        plan,
+      },
+      decisionContext,
+    );
+    for (const [idx, to] of (
+      ['planned', 'authorized', 'executing', 'proposed_complete'] as const
+    ).entries()) {
+      store.execute(
+        {
+          type: 'transition_task',
+          commandId: `c-${to}`,
+          taskId: 'task-1',
+          expectedRevision: idx + 3,
+          actor: 'model',
+          issuedAt: `2026-08-02T11:0${idx + 3}:00.000Z`,
+          to,
+        },
+        decisionContext,
+      );
+    }
+
+    const activePlanFingerprint = calculatePlanVersionFingerprint(plan);
+    const staleRun = { ...run(), contractVersion: 1, planFingerprint: 'f'.repeat(64) };
+    const failure = verifyIssuancePrecondition(
+      {
+        db: (store as unknown as { db: unknown }).db as never,
+        verifyWorkspaceSnapshotPrecondition: () => null,
+        verifyCandidatePrecondition: () => null,
+      },
+      staleRun,
+      {
+        taskRevision: 7,
+        activeContractVersion: 1,
+        activePlanVersion: 1,
+        activePlanFingerprint,
+        workflowState: 'proposed_complete',
+        workspaceManifestHash: staleRun.workspaceManifestHash,
+        workspaceSnapshot: workspaceSnapshot(),
+        candidateObservation: { sequence: 1, observationId: 'observation-1' },
+      },
+    );
+    expect(failure).toMatchObject({
+      issued: false,
+      code: 'canonical_state_mismatch',
+    });
+  });
 });

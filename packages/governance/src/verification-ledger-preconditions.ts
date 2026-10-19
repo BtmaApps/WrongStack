@@ -135,7 +135,8 @@ export function verifyIssuancePrecondition(
     aggregate.activePlanVersion !== precondition.activePlanVersion ||
     calculatePlanVersionFingerprint(activePlan) !== precondition.activePlanFingerprint ||
     aggregate.state !== precondition.workflowState ||
-    run.contractVersion !== aggregate.activeContractVersion
+    run.contractVersion !== aggregate.activeContractVersion ||
+    run.planFingerprint !== precondition.activePlanFingerprint
   ) {
     return {
       issued: false,
