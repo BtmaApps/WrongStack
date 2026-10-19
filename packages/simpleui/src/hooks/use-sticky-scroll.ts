@@ -24,6 +24,24 @@ export interface UseStickyScrollResult {
 }
 
 /**
+ * True when the user asked the OS for reduced motion.
+ *
+ * The matchMedia API can be missing entirely (jsdom, locked-down webviews) -
+ * `use-theme.ts` documents the same environment and degrades to a boot-time
+ * answer "instead of throwing mid-effect". This hook has to degrade the same
+ * way: a bare `matchMedia(...)` call raised a TypeError on the "jump to
+ * latest" click, so the button the operator pressed to get back to the newest
+ * message did nothing but throw, and the scroll never happened.
+ */
+function prefersReducedMotion(): boolean {
+  try {
+    return matchMedia('(prefers-reduced-motion: reduce)').matches;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Manages chat scroll stickiness: auto-scrolls to the bottom on new
  * content when the user hasn't scrolled up, exposes a "jump to latest"
  * affordance when they have, and supports reduced-motion preference.
@@ -61,7 +79,7 @@ export function useStickyScroll(options: UseStickyScrollOptions): UseStickyScrol
     setShowJumpToLatest(false);
     const element = scrollRef.current;
     if (!element) return;
-    const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const reducedMotion = prefersReducedMotion();
     element.scrollTo({ top: element.scrollHeight, behavior: reducedMotion ? 'auto' : 'smooth' });
   }, []);
 
