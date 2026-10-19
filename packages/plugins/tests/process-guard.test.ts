@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { basename } from 'node:path';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import processGuardPlugin from '../src/process-guard/index.js';
 
 interface MockApi {
@@ -43,6 +43,10 @@ describe('process-guard telemetry', () => {
     });
     expect((status.counters as Record<string, unknown>)['blocks']).toBeUndefined();
     expect(api.metrics.counter).toHaveBeenCalledWith('detections');
+
+    processGuardPlugin.teardown!(api as never);
+    const health = await processGuardPlugin.health!();
+    expect(health.message).not.toContain('last detection on');
   });
 });
 

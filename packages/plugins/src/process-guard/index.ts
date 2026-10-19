@@ -267,6 +267,7 @@ const plugin: Plugin = {
     state.invocations = 0;
     state.detections = 0;
     state.warns = 0;
+    state.lastDetection = null;
     api.log.info('[process-guard] teardown complete', { final });
   },
 
