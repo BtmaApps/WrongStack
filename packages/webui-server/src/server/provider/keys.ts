@@ -135,7 +135,7 @@ export function createProviderCrudHandlers(ctx: ProviderServiceContext) {
   async function handleProviderClearModels(ws: WebSocket, providerId: string): Promise<void> {
     try {
       const providers = await ctx.loadConfigProviders();
-      const cfg = providers[providerId];
+      const cfg = Object.hasOwn(providers, providerId) ? providers[providerId] : undefined;
       if (!cfg) {
         ctx.sendOperationResult(ws, false, `Unknown provider "${providerId}"`);
         return;
@@ -157,7 +157,7 @@ export function createProviderCrudHandlers(ctx: ProviderServiceContext) {
   ): Promise<void> {
     try {
       const providers = await ctx.loadConfigProviders();
-      const cfg = providers[providerId];
+      const cfg = Object.hasOwn(providers, providerId) ? providers[providerId] : undefined;
       if (!cfg) {
         ctx.sendOperationResult(ws, false, `Unknown provider "${providerId}"`);
         return;
@@ -190,7 +190,7 @@ export function createProviderCrudHandlers(ctx: ProviderServiceContext) {
   ): Promise<void> {
     try {
       const providers = await ctx.loadConfigProviders();
-      const cfg = providers[payload.id];
+      const cfg = Object.hasOwn(providers, payload.id) ? providers[payload.id] : undefined;
       if (!cfg) {
         ctx.sendOperationResult(ws, false, `Unknown provider "${payload.id}"`);
         return;

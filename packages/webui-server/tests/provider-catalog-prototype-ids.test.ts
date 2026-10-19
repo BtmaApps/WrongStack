@@ -75,4 +75,26 @@ describe('provider.models with an Object.prototype key as the provider id', () =
     await handlers.handleProviderModels(WS, 'anthropic-oauth');
     expect(registryIds).toContain('anthropic');
   });
+
+  it.each(['__proto__', 'constructor', 'toString'])(
+    'rejects "%s" in provider CRUD handlers without mutating Object.prototype',
+    async (providerId) => {
+      const { createProviderCrudHandlers } = await import('../src/server/provider/keys.js');
+      const frames: Array<Record<string, unknown>> = [];
+      const ctx = createProviderServiceContext({
+        providerStore: { load: async () => ({}), save: async () => undefined },
+        broadcast: () => undefined,
+        send: (_ws, message) => frames.push(message as unknown as Record<string, unknown>),
+      });
+      const crud = createProviderCrudHandlers(ctx);
+      await crud.handleProviderClearModels(WS, providerId);
+      await crud.handleProviderUndoClear(WS, providerId, ['m1']);
+      await crud.handleProviderUpdate(WS, { id: providerId, models: ['m1'] });
+
+      expect(({} as { models?: unknown }).models).toBeUndefined();
+      expect(
+        frames.every((f) => (f.payload as { success?: boolean } | undefined)?.success === false),
+      ).toBe(true);
+    },
+  );
 });
