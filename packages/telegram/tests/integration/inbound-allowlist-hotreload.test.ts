@@ -1,7 +1,7 @@
 import { Container, EventBus } from '@wrongstack/core/kernel';
 import type { PluginAPI } from '@wrongstack/core/plugin';
 import type { Logger, SlashCommand, Tool } from '@wrongstack/core/types';
-import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 import { PLUGIN_NAME } from '../../src/config.js';
 import plugin, { teardownState } from '../../src/index.js';
 
@@ -262,5 +262,26 @@ describe('inbound allowlist hot-reload', () => {
     expect(bot.getMessages({ chatId: 100 }).some((m) => m.messageId === 702)).toBe(false);
     expect(bot.getMessages({ chatId: 200 }).some((m) => m.messageId === 703)).toBe(true);
     expect(bot.bufferCount).toBe(2);
+  });
+
+  it('keeps paired inbound allowlist on active runtimeCfg.notifyChatId when restart-required notifyChatId changes alongside a hot key (F163)', async () => {
+    const initial = {
+      ...BASE_TELEGRAM,
+      notifyChatId: '999',
+      inboundMode: 'paired',
+      allowedUsers: ['111'],
+    };
+    const { bot, reload } = await setupBot(initial);
+
+    reload({
+      ...initial,
+      notifyChatId: '888',
+      allowedUsers: ['111', '222'],
+    });
+
+    bot.inbox.processMessage(msg(999, 111, 901, 'active paired chat 999'));
+    bot.inbox.processMessage(msg(888, 111, 902, 'unapplied notifyChatId 888'));
+    expect(bot.getMessages({ chatId: 999 }).some((m) => m.messageId === 901)).toBe(true);
+    expect(bot.getMessages({ chatId: 888 }).some((m) => m.messageId === 902)).toBe(false);
   });
 });

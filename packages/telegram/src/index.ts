@@ -532,7 +532,7 @@ const plugin: Plugin = {
           hotSet.has('allowedUsers') ||
           hotSet.has('allowedChats')
         ) {
-          const sets = inboundAllowlist(nextTg);
+          const sets = inboundAllowlist({ ...nextTg, notifyChatId: runtimeCfg.notifyChatId });
           bot.inbox.updateAllowlist(sets.allowedUsers, sets.allowedChats);
           inboundClosedByInvalidConfig = false;
         }
