@@ -225,6 +225,7 @@ function answerValue(field: ElicitationField, answer: UserInputAnswer | undefine
         .map((id) => field.options[Number(id.slice(1))]?.value)
         .filter((v): v is string => v !== undefined);
       if (field.kind === 'enum') return values[0];
+      if (values.length === 0 && !field.required) return undefined;
       return values;
     }
   }

@@ -72,4 +72,32 @@ describe('MCP array answer presence and bounds', () => {
       error: { code: -32602, message: expect.stringContaining('at most 1 choices') },
     });
   });
+
+  it('elicitViaUserInput omits unselected optional multi-enum fields even when minItems is positive (F128)', async () => {
+    const { elicitViaUserInput } = await import('../src/elicitation-form.js');
+    const responder = new ServerRequestResponder((req) =>
+      elicitViaUserInput(req, {
+        requestUserInput: async () => ({
+          requestId: 'req-1',
+          status: 'submitted',
+          answers: [{ questionId: 'f0', selectedOptionIds: [] }],
+        }),
+      }),
+    );
+    const response = await responder.answer({
+      id: 1,
+      method: 'elicitation/create',
+      params: {
+        message: 'Choose tags',
+        requestedSchema: {
+          type: 'object',
+          properties: {
+            tags: { type: 'array', items: { type: 'string', enum: ['a', 'b'] }, minItems: 1 },
+          },
+          required: [],
+        },
+      },
+    });
+    expect(response).toEqual(accepted({}));
+  });
 });
