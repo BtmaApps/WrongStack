@@ -99,8 +99,7 @@ export class DefaultLogger implements Logger {
     return this.parent ? this.parent._tail : this.tail;
   }
   private set _tail(next: Promise<void>) {
-    if (this.parent) this.parent.tail = next;
-    else this.tail = next;
+    this.root.tail = next;
   }
 
   constructor(opts: DefaultLoggerOptions = {}) {

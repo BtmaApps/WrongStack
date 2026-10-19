@@ -225,4 +225,18 @@ describe('DefaultLogger secret redaction (WS-SEC-07)', () => {
 
     expect(writes.join('')).not.toContain(KEY);
   });
+
+  it('chains grandchild logger file writes onto root.tail so root.flush() awaits them (F148)', async () => {
+    const logFile = path.join(tmp, 'grandchild.log');
+    const root = new DefaultLogger({ level: 'info', file: logFile, stderr: false });
+    const child = root.child({ a: 1 });
+    const grandchild = child.child({ b: 2 });
+
+    grandchild.info('grandchild-entry');
+    expect((grandchild as unknown as { _tail: Promise<void> })._tail).toBe(
+      (root as unknown as { tail: Promise<void> }).tail,
+    );
+    await root.flush();
+    expect(fs.readFileSync(logFile, 'utf8')).toContain('grandchild-entry');
+  });
 });
