@@ -1,9 +1,9 @@
 import * as fsp from 'node:fs/promises';
 import type { TodoItem } from '../core/context.js';
 import type { ConversationState } from '../core/conversation-state.js';
-import type { EventBus } from './event-bus-port.js';
 import { atomicWrite } from '../utils/atomic-write.js';
 import { toErrorMessage } from '../utils/error.js';
+import type { EventBus } from './event-bus-port.js';
 
 /**
  * On-disk checkpoint for `ctx.todos`. Written atomically every time the
@@ -71,7 +71,7 @@ export async function loadTodosCheckpoint(
     return null;
   }
   try {
-    const parsed = JSON.parse(raw) as TodosCheckpointFile;
+    const parsed = JSON.parse(raw.replace(/^\uFEFF/, '')) as TodosCheckpointFile;
     if (parsed?.version !== 1 || !Array.isArray(parsed.todos)) {
       events?.emit('storage.read', {
         sessionId: sessionId ?? '~boot~',
@@ -99,7 +99,7 @@ export async function loadTodosCheckpoint(
         !!t &&
         typeof t.id === 'string' &&
         typeof t.content === 'string' &&
-        typeof t.status === 'string' &&
+        (t.status === 'pending' || t.status === 'in_progress' || t.status === 'completed') &&
         (t.activeForm === undefined || typeof t.activeForm === 'string'),
     );
   } catch {
@@ -198,30 +198,34 @@ export function attachTodosCheckpoint(
     queuedWrite = todos;
     if (writeInFlight) return writeInFlight;
     const drain = (async () => {
-      while (queuedWrite) {
-        const latest = queuedWrite;
-        queuedWrite = null;
-        await saveTodosCheckpoint(filePath, sessionId, latest, events, traceId).catch((err) => {
-          const msg = toErrorMessage(err);
-          (
-            warn ??
-            ((m) =>
-              console.error(
-                JSON.stringify({
-                  level: 'error',
-                  event: 'todos_checkpoint.write_failed',
-                  sessionId,
-                  message: m,
-                  timestamp: new Date().toISOString(),
-                }),
-              ))
-          )(msg);
-        });
+      try {
+        while (queuedWrite) {
+          const latest = queuedWrite;
+          queuedWrite = null;
+          await saveTodosCheckpoint(filePath, sessionId, latest, events, traceId, warn).catch(
+            (err) => {
+              const msg = toErrorMessage(err);
+              (
+                warn ??
+                ((m) =>
+                  console.error(
+                    JSON.stringify({
+                      level: 'error',
+                      event: 'todos_checkpoint.write_failed',
+                      sessionId,
+                      message: m,
+                      timestamp: new Date().toISOString(),
+                    }),
+                  ))
+              )(msg);
+            },
+          );
+        }
+      } finally {
+        if (writeInFlight === drain) writeInFlight = null;
+        if (queuedWrite) void enqueueWrite(queuedWrite);
       }
-    })().finally(() => {
-      if (writeInFlight === drain) writeInFlight = null;
-      if (queuedWrite) enqueueWrite(queuedWrite);
-    });
+    })();
     writeInFlight = drain;
     return drain;
   };

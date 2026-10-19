@@ -407,4 +407,47 @@ describe('todos-checkpoint', () => {
       await fs.rm(dir, { recursive: true, force: true });
     }
   });
+
+  it('strips UTF-8 BOM, filters invalid todo statuses, and forwards warn from attachTodosCheckpoint (F125)', async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'wstack-todos-'));
+    const file = path.join(dir, 'bom.todos.json');
+    try {
+      await fs.writeFile(
+        file,
+        '\uFEFF' +
+          JSON.stringify({
+            version: 1,
+            sessionId: 'sess',
+            updatedAt: new Date().toISOString(),
+            todos: [
+              { id: 't1', content: 'valid', status: 'pending' },
+              { id: 't2', content: 'invalid', status: 'unknown_status' },
+            ],
+          }),
+        'utf8',
+      );
+      const loaded = await loadTodosCheckpoint(file);
+      expect(loaded).toEqual([{ id: 't1', content: 'valid', status: 'pending' }]);
+
+      vi.mocked(fs.open).mockRejectedValueOnce(
+        Object.assign(new Error('ENOSPC disk full'), { code: 'ENOSPC' }),
+      );
+      const ctx = makeContext();
+      const warnings: string[] = [];
+      const detach = attachTodosCheckpoint(
+        ctx.state,
+        path.join(dir, 'fail.todos.json'),
+        'sess',
+        undefined,
+        undefined,
+        (msg) => warnings.push(msg),
+      );
+      ctx.state.replaceTodos([{ id: 't1', content: 'first', status: 'pending' }]);
+      await detach();
+      expect(warnings.some((w) => w.includes('ENOSPC'))).toBe(true);
+    } finally {
+      vi.mocked(fs.open).mockReset();
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
 });
