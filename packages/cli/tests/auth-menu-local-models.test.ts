@@ -412,4 +412,29 @@ describe('runAuthLocal — --model + probe integration', () => {
     await runAuthLocal(deps, { name: 'ollama' });
     expect(capturedWrite(deps)).toContain('--model <model-id>');
   });
+
+  it('emits auth.local.probe_skip audit event when --model first cannot be resolved due to failed probe (F132)', async () => {
+    globalThis.fetch = (async () => {
+      throw new Error('ECONNREFUSED');
+    }) as typeof fetch;
+    const { deps } = await setupDeps({});
+    const events: Array<{ type: string; shape?: string }> = [];
+    const code = await runAuthLocal(deps, {
+      name: 'ollama',
+      models: 'first',
+      audit: {
+        emit: (ev) => {
+          events.push(ev as { type: string; shape?: string });
+        },
+      },
+    });
+    expect(code).toBe(0);
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: 'auth.local.probe_skip',
+        providerId: 'ollama',
+        requestedShape: 'first',
+      }),
+    );
+  });
 });

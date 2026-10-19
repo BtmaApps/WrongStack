@@ -363,6 +363,10 @@ export async function runAuthLocal(
             ...(probe.detail !== undefined ? { detail: probe.detail } : {}),
           }
         : undefined,
+    probeSkip:
+      opts.models !== undefined && opts.models.trim() !== '' && resolvedModels === null
+        ? { shape: opts.models.trim() }
+        : undefined,
   });
   for (const event of events) {
     audit.emit(event);
