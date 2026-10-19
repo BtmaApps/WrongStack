@@ -117,4 +117,48 @@ describe('CLI WebUI route contexts — session-aware seams', () => {
     expect(params.peekSessionAgent).toHaveBeenCalledWith('sess-other');
     expect(params.getSessionAgent).not.toHaveBeenCalled();
   });
+
+  it('reads modelCapabilities from target session agent instead of leader agent in systemPrompt.applyVariant (F133)', async () => {
+    const params = makeParams();
+    let leaderCapsReads = 0;
+    let targetCapsReads = 0;
+
+    Object.defineProperty(params.opts.agent.ctx, 'provider', {
+      get() {
+        leaderCapsReads++;
+        return {
+          id: 'leader-p',
+          capabilities: { maxContext: 32000, tools: false, vision: false, reasoning: false },
+        };
+      },
+    });
+
+    const otherAgent = {
+      ctx: {
+        meta: {},
+        session: { id: 'sess-tab', append: vi.fn(async () => undefined) },
+        get provider() {
+          targetCapsReads++;
+          return {
+            id: 'tab-p',
+            capabilities: { maxContext: 200000, tools: true, vision: true, reasoning: true },
+          };
+        },
+        model: 'tab-m',
+        projectRoot: '/repo',
+        tools: [],
+        container: { safeResolve: vi.fn(() => undefined) },
+      },
+      tools: { list: vi.fn(() => []) },
+    };
+    params.getSessionAgent = vi.fn((id?: string) =>
+      id === 'sess-tab' ? otherAgent : params.opts.agent,
+    );
+
+    const contexts = createWebuiRouteContexts(params as never);
+    await contexts.prefsCtx.systemPrompt.applyVariant('lite' as never, 'sess-tab').catch(() => {});
+
+    expect(targetCapsReads).toBeGreaterThan(0);
+    expect(leaderCapsReads).toBe(0);
+  });
 });
