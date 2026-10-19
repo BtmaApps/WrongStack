@@ -237,4 +237,53 @@ describe('session cwd validation (WS-015)', () => {
     });
     expect(sent.at(-1)?.error?.code).toBe(-32602);
   });
+
+  it('validates and updates cwd on warm session/load and session/resume (F156)', async () => {
+    const workDir2 = path.join(root, 'work2');
+    await mkdir(workDir2, { recursive: true });
+    const sent: Array<{
+      id?: unknown;
+      result?: Record<string, unknown>;
+      error?: { code: number };
+    }> = [];
+    let observedCwd = '';
+    const handler = new ACPProtocolHandler({
+      transport: {
+        send: async (msg: unknown) => {
+          sent.push(msg as never);
+        },
+      } as never as AgentServerTransport,
+      defaultCwd: workDir,
+      runTurn: async (input) => {
+        observedCwd = input.cwd;
+        return { stopReason: 'end_turn' };
+      },
+    });
+    await handler.handleMessage({ id: 1, method: 'initialize', params: { protocolVersion: 1 } });
+    await newSession(handler, { cwd: workDir, mcpServers: [] });
+    const sessionId = sent.find((m) => m.result?.['sessionId'])?.result?.['sessionId'] as string;
+
+    sent.length = 0;
+    await handler.handleMessage({
+      id: 6,
+      method: 'session/load',
+      params: { sessionId, cwd: 'relative/path', mcpServers: [] },
+    });
+    expect(sent.at(-1)?.error?.code).toBe(-32602);
+
+    sent.length = 0;
+    await handler.handleMessage({
+      id: 7,
+      method: 'session/load',
+      params: { sessionId, cwd: workDir2, mcpServers: [] },
+    });
+    expect(sent.at(-1)?.error).toBeUndefined();
+
+    await handler.handleMessage({
+      id: 8,
+      method: 'session/prompt',
+      params: { sessionId, prompt: [{ type: 'text', text: 'hi' }] },
+    });
+    expect(observedCwd).toBe(workDir2);
+  });
 });

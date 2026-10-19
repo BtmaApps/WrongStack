@@ -197,16 +197,37 @@ export async function handleSessionLoadOp(
       await ctx.sendError(id, -32000, 'cannot reload a session while a prompt is running');
       return false;
     }
+    let nextCwd = existing.cwd;
+    if (loadCwd !== undefined) {
+      const resolvedCwd = await resolveSessionCwd(loadCwd);
+      if (resolvedCwd === null) {
+        await ctx.sendError(id, -32602, 'cwd must be an absolute path to an existing directory');
+        return false;
+      }
+      if (ctx.sessions.get(sessionId!) !== existing) {
+        return handleSessionLoadOp(ctx, id, params, replayHistory);
+      }
+      if (existing.prompting) {
+        await ctx.sendError(id, -32000, 'cannot reload a session while a prompt is running');
+        return false;
+      }
+      nextCwd = resolvedCwd;
+    }
     existing.updatedAt = new Date().toISOString();
     const replay = ctx.replayFor?.(sessionId!);
+    const cwdChanged = nextCwd !== existing.cwd;
     // A warm `session/load` carries the client's current server set; honour it
     // so a client that added a server since `session/new` is not stuck with
     // the old list. An explicit empty array clears the client's server set.
+    const mcpChanged =
+      Array.isArray(p.mcpServers) &&
+      JSON.stringify(existing.mcpServers ?? []) !== JSON.stringify(loadMcpServers);
+    if (cwdChanged || mcpChanged) {
+      ctx.disposeFor?.(sessionId!);
+      ctx.seedFor?.(sessionId!, replay ?? []);
+    }
+    existing.cwd = nextCwd;
     if (Array.isArray(p.mcpServers)) {
-      if (JSON.stringify(existing.mcpServers ?? []) !== JSON.stringify(loadMcpServers)) {
-        ctx.disposeFor?.(sessionId!);
-        ctx.seedFor?.(sessionId!, replay ?? []);
-      }
       existing.mcpServers = loadMcpServers;
     }
     if (replayHistory && replay) {
