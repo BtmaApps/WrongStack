@@ -13,6 +13,17 @@
 
 import type { DesignKitTokens } from '../types/design-kit.js';
 import { colorToHex, contrastRatio, isColorToken } from './design-color.js';
+import {
+  type DesignSeverity,
+  FILE_RULES,
+  isWaived,
+  LINE_RULES,
+  parseWaivers,
+  remapsStockElevation,
+  ruleContext,
+  usesHardShadows,
+  usesNoElevation,
+} from './design-verify-rules.js';
 
 /**
  * Which design axis a violation belongs to.
@@ -32,6 +43,10 @@ export interface DesignViolation {
   reason: string;
   /** The design axis this drift belongs to. Defaults to 'color' (legacy). */
   axis?: DesignAxis;
+  /** Stable rule id (see design-verify-rules.ts); waivers name it. */
+  id?: string;
+  /** FAIL = definite accessibility defect; WARN = fix or defend. */
+  severity?: DesignSeverity;
 }
 
 export interface DesignVerifyReport {
@@ -245,80 +260,6 @@ function kebab(name: string): string {
     .toLowerCase();
 }
 
-/** A hard offset shadow: `4px 4px 0 …` — an offset with no blur. */
-const HARD_SHADOW_RE = /^-?\d+px\s+-?\d+px\s+0(\s|$)/;
-
-/**
- * Does this kit express elevation as a hard stamped offset rather than a soft
- * shadow?
- *
- * Border + elevation is only a conflict when the elevation is SOFT — two ways of
- * saying "this floats". When the kit's own ramp is a zero-blur offset
- * (`pixel-8bit`, `grunge-press`, `neo-brutalist`), border + offset IS the kit's
- * signature, and flagging it would make the engine fight the kit it is enforcing.
- * Read from the token values, so no kit id or tag list is needed.
- */
-function usesHardShadows(tokens: DesignKitTokens): boolean {
-  for (const set of [tokens.light, tokens.dark]) {
-    if (!set) continue;
-    // Only the ramp steps feed the `shadow-2…4` utilities. The BASE `shadow`
-    // key is a separate token that names no scale step, and `readTokens()`
-    // merges the foundations scale under every kit — so a base-hard kit
-    // (comic-pop) still resolves `shadow-2/3` to the foundations SOFT
-    // defaults, which is exactly the float the stacked rule exists to catch.
-    // Sanctioning off the base key suppressed that finding.
-    for (const key of ['shadow-2', 'shadow-3', 'shadow-4']) {
-      const value = set[key]?.trim();
-      if (value && HARD_SHADOW_RE.test(value)) return true;
-    }
-  }
-  return false;
-}
-
-/**
- * A kit that expresses no elevation at all — every ramp step is `none`
- * (`flat-design`). Under such a kit `shadow-3` is a valid token name that
- * resolves to nothing, so "two elevation strategies stacked" is the wrong thing
- * to say: there is one border and one no-op. Measured on a probe screen.
- */
-function usesNoElevation(tokens: DesignKitTokens): boolean {
-  for (const set of [tokens.light, tokens.dark]) {
-    if (!set) continue;
-    const steps = ['shadow-2', 'shadow-3', 'shadow-4'].map((k) => set[k]?.trim().toLowerCase());
-    const declared = steps.filter((v) => v !== undefined);
-    if (declared.length > 0 && declared.every((v) => v === 'none')) return true;
-  }
-  return false;
-}
-
-/**
- * A project that redefines the STOCK shadow utilities (`--shadow-sm`… in an
- * `@theme` block — what the capture pipeline records as raw markers) makes
- * `shadow-lg` & co. resolve to the project's own ramp: flagging them as
- * "stock Tailwind elevation" fights the project's own system. Kit bases never
- * define the stock names (kits use `shadow-1…shadow-4`), so the presence of
- * any stock name in the token values marks a remap. Read from token values —
- * no kit id, tag list, or file walk needed.
- */
-function remapsStockElevation(tokens: DesignKitTokens): boolean {
-  const STOCK_SHADOWS = [
-    'shadow-2xs',
-    'shadow-xs',
-    'shadow-sm',
-    'shadow-md',
-    'shadow-lg',
-    'shadow-xl',
-    'shadow-2xl',
-  ];
-  for (const set of [tokens.light, tokens.dark]) {
-    if (!set) continue;
-    for (const name of STOCK_SHADOWS) {
-      if (set[name] !== undefined) return true;
-    }
-  }
-  return false;
-}
-
 function buildPalette(tokens: DesignKitTokens): { hexes: Set<string>; names: string[] } {
   const hexes = new Set<string>();
   const names = new Set<string>();
@@ -352,6 +293,7 @@ export function verifyFiles(
   // A project that remaps the stock shadow-* utilities via @theme: those
   // utilities are token-driven, so "stock Tailwind elevation" is not drift.
   const stockElevationRemapped = remapsStockElevation(tokens);
+  const ruleCtx = ruleContext(tokens);
 
   const violations: DesignViolation[] = [];
   let onPalette = 0;
@@ -364,19 +306,31 @@ export function verifyFiles(
     if (!lines.some((line, i) => !commentLine[i] && SCANNABLE_SIGNAL_RE.test(line))) {
       filesWithNoSignal++;
     }
+    const waivers = parseWaivers(lines);
     const flagAt = (
       lineNo: number,
       snippet: string,
       reason: string,
-      axis: DesignAxis = 'color',
+      axis: DesignAxis,
+      id: string,
+      severity: DesignSeverity = 'WARN',
     ) => {
-      violations.push({ file: path, line: lineNo, snippet: snippet.slice(0, 80), reason, axis });
+      if (isWaived(waivers, id, lineNo)) return;
+      violations.push({
+        file: path,
+        line: lineNo,
+        snippet: snippet.slice(0, 80),
+        reason,
+        axis,
+        id,
+        severity,
+      });
     };
     lines.forEach((lineText, i) => {
       if (commentLine[i]) return; // prose about the code, not the code
       const lineNo = i + 1;
-      const flag = (snippet: string, reason: string, axis: DesignAxis = 'color') =>
-        flagAt(lineNo, snippet, reason, axis);
+      const flag = (snippet: string, reason: string, axis: DesignAxis, id: string) =>
+        flagAt(lineNo, snippet, reason, axis, id);
 
       // Hardcoded hex + function colors → on/off palette.
       for (const re of [HEX_RE, FUNC_COLOR_RE]) {
@@ -388,7 +342,12 @@ export function verifyFiles(
             onPalette++;
           } else if (hex) {
             offPalette++;
-            flag(lit, 'off-palette hardcoded color (not a kit token)');
+            flag(
+              lit,
+              'off-palette hardcoded color (not a kit token)',
+              'color',
+              'color.off-palette',
+            );
           }
           // non-color funcs (e.g. transform) silently ignored — hex null
         }
@@ -398,7 +357,12 @@ export function verifyFiles(
       TW_GENERIC_RE.lastIndex = 0;
       for (const m of lineText.matchAll(TW_GENERIC_RE)) {
         offPalette++;
-        flag(m[0], 'generic Tailwind palette utility — use kit token colors');
+        flag(
+          m[0],
+          'generic Tailwind palette utility — use kit token colors',
+          'color',
+          'color.generic-utility',
+        );
       }
 
       // Pure black / white — the same class of drift, missed by the named scales.
@@ -409,6 +373,8 @@ export function verifyFiles(
           m[0],
           'pure black/white — use the kit surface + foreground tokens (its neutrals ' +
             'carry chroma; absolute values read untuned beside them)',
+          'color',
+          'color.absolute',
         );
       }
 
@@ -422,12 +388,18 @@ export function verifyFiles(
           m[0],
           'arbitrary radius — use a kit radius scale token (rounded-sm…rounded-full)',
           'radius',
+          'radius.arbitrary',
         );
       }
       ARBITRARY_SPACING_RE.lastIndex = 0;
       for (const m of lineText.matchAll(ARBITRARY_SPACING_RE)) {
         if (/\[var\(--[\w-]+\)\]$/.test(m[0])) continue;
-        flag(m[0], 'arbitrary spacing — use a kit spacing scale token (p-1…p-12)', 'spacing');
+        flag(
+          m[0],
+          'arbitrary spacing — use a kit spacing scale token (p-1…p-12)',
+          'spacing',
+          'spacing.arbitrary',
+        );
       }
       RAW_RADIUS_RE.lastIndex = 0;
       for (const m of lineText.matchAll(RAW_RADIUS_RE)) {
@@ -438,6 +410,7 @@ export function verifyFiles(
           `border-radius: ${val}`,
           'hardcoded radius — use var(--radius-*) / a kit radius token',
           'radius',
+          'radius.hardcoded',
         );
       }
 
@@ -448,6 +421,7 @@ export function verifyFiles(
           'gradient-filled text — review readability and hierarchy against the brief; ' +
             'use size/weight/measure when the gradient has no product purpose',
           'composition',
+          'composition.gradient-text',
         );
       }
       TW_ELEVATION_RE.lastIndex = 0;
@@ -457,6 +431,7 @@ export function verifyFiles(
             m[0],
             "stock Tailwind elevation — use the kit's elevation ramp (shadow-1…shadow-4)",
             'composition',
+            'composition.stock-elevation',
           );
         }
       }
@@ -468,6 +443,7 @@ export function verifyFiles(
           'emoji used as UI iconography — use a real icon set (emoji render per-platform ' +
             'and carry no accessible name)',
           'composition',
+          'composition.emoji-icon',
         );
       }
       FILLER_COPY_RE.lastIndex = 0;
@@ -476,6 +452,7 @@ export function verifyFiles(
           m[0],
           'filler / launch-copy boilerplate — write copy that says what the product does',
           'composition',
+          'copy.filler',
         );
       }
       GENERIC_LABEL_RE.lastIndex = 0;
@@ -485,6 +462,7 @@ export function verifyFiles(
           `"${m[1]}" names the mechanism, not the action — label the control with its ` +
             'verb ("Create workspace")',
           'composition',
+          'copy.generic-label',
         );
       }
 
@@ -495,6 +473,7 @@ export function verifyFiles(
           'empty state that says nothing — say what belongs here, why it is empty, and ' +
             'the one action that fills it',
           'composition',
+          'copy.empty-state',
         );
       }
 
@@ -507,6 +486,7 @@ export function verifyFiles(
             cls.slice(0, 60),
             'all-caps at default tracking — caps need opened letter-spacing (tracking-wide)',
             'type',
+            'type.caps-tracking',
           );
         }
         if (!hardShadowKit && KIT_ELEVATION_RE.test(cls)) {
@@ -516,6 +496,7 @@ export function verifyFiles(
               "this kit's elevation ramp is `none` — the shadow utility resolves to nothing; " +
                 'separate surfaces with a fill difference instead',
               'composition',
+              'composition.elevation-none',
             );
           } else if (BORDER_UTILITY_RE.test(cls)) {
             flag(
@@ -523,6 +504,7 @@ export function verifyFiles(
               'border and heavy elevation stacked — pick one elevation strategy; if both, ' +
                 'the shadow should be near-invisible',
               'composition',
+              'composition.border-elevation',
             );
           }
         }
@@ -534,6 +516,7 @@ export function verifyFiles(
           m[0],
           'hardcoded font family — use the kit font tokens (font-sans/display/mono)',
           'type',
+          'type.font-arbitrary',
         );
       }
       FONT_DECL_RE.lastIndex = 0;
@@ -544,7 +527,15 @@ export function verifyFiles(
           `font-family: ${val}`,
           'hardcoded font family — use var(--font-*) / the kit font tokens',
           'type',
+          'type.font-family',
         );
+      }
+
+      // Catalogue additions (design-verify-rules.ts), next code line as context.
+      const next = lines.slice(i + 1).find((l, k) => !commentLine[i + 1 + k] && l.trim()) ?? '';
+      for (const rule of LINE_RULES) {
+        const hit = rule.match(lineText, next, ruleCtx);
+        if (hit) flagAt(lineNo, hit, rule.reason, rule.axis, rule.id, rule.severity);
       }
 
       // Count token-name usages as on-palette signals (var(--primary), bg-primary…).
@@ -564,6 +555,10 @@ export function verifyFiles(
     // every line number derived from an offset below — still matches the file.
     const codeLines = lines.map((l, i) => (commentLine[i] ? '' : l));
     const codeText = codeLines.join('\n');
+    for (const rule of FILE_RULES) {
+      const hit = rule.match(codeLines, ruleCtx);
+      if (hit) flagAt(hit.line, hit.snippet, hit.reason, rule.axis, rule.id, rule.severity);
+    }
     const centered = [...codeText.matchAll(TEXT_CENTER_RE)].length;
     const sections = [...codeText.matchAll(SECTION_TAG_RE)].length;
     if (centered >= CENTERED_SECTION_LIMIT && sections >= 2) {
@@ -574,6 +569,7 @@ export function verifyFiles(
         `${centered} centered blocks across ${sections} sections — review content priorities; ` +
           'vary layout when roles differ, and retain consistent alignment when it helps scanning',
         'composition',
+        'composition.centered-monotony',
       );
     }
     // Line numbers come from the match offset, not from a substring search.
@@ -611,6 +607,7 @@ export function verifyFiles(
         `identical block repeated ${count}× — review whether these items have equal roles. ` +
           'Keep consistent rows/cards for comparable content; vary emphasis only when content priority differs',
         'composition',
+        'composition.repeated-block',
       );
     }
   }
@@ -626,73 +623,4 @@ export function verifyFiles(
     ok: violations.length === 0,
     filesWithNoSignal,
   };
-}
-
-// ── Project-level verify (node IO) ───────────────────────────────────────────
-
-const UI_EXT_RE = /\.(css|scss|sass|less|tsx|jsx|vue|svelte|astro|html?)$/i;
-const SKIP_DIR = new Set([
-  'node_modules',
-  '.git',
-  'dist',
-  'build',
-  '.next',
-  'out',
-  'coverage',
-  '.wrongstack',
-  '.design',
-]);
-
-/** Bounded recursive walk for frontend files under a project root. */
-async function walkUiFiles(root: string, max = 200): Promise<string[]> {
-  const { default: fs } = await import('node:fs/promises');
-  const { default: nodePath } = await import('node:path');
-  const found: string[] = [];
-  async function rec(dir: string, depth: number): Promise<void> {
-    if (found.length >= max || depth > 8) return;
-    let entries: import('node:fs').Dirent[];
-    try {
-      entries = (await fs.readdir(dir, { withFileTypes: true })) as import('node:fs').Dirent[];
-    } catch {
-      return;
-    }
-    for (const e of entries) {
-      if (found.length >= max) return;
-      if (e.isDirectory()) {
-        if (SKIP_DIR.has(e.name) || e.name.startsWith('.')) continue;
-        await rec(nodePath.join(dir, e.name), depth + 1);
-      } else if (UI_EXT_RE.test(e.name)) {
-        found.push(nodePath.join(dir, e.name));
-      }
-    }
-  }
-  await rec(root, 0);
-  return found;
-}
-
-/**
- * Resolve + read UI files (explicit list, or a bounded walk) and verify them
- * against a kit's tokens. Shared by the `design` tool and the WebUI handler so
- * the file-collection rules stay identical.
- */
-export async function runDesignVerify(
-  projectRoot: string,
-  tokens: DesignKitTokens,
-  explicitFiles?: string[] | undefined,
-): Promise<DesignVerifyReport> {
-  const { default: fs } = await import('node:fs/promises');
-  const { default: nodePath } = await import('node:path');
-  const abs =
-    explicitFiles && explicitFiles.length > 0
-      ? explicitFiles.map((f) => (nodePath.isAbsolute(f) ? f : nodePath.join(projectRoot, f)))
-      : await walkUiFiles(projectRoot);
-  const files: { path: string; text: string }[] = [];
-  for (const a of abs) {
-    try {
-      files.push({ path: nodePath.relative(projectRoot, a), text: await fs.readFile(a, 'utf8') });
-    } catch {
-      // unreadable — skip
-    }
-  }
-  return verifyFiles(tokens, files);
 }

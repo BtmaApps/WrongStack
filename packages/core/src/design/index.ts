@@ -14,4 +14,5 @@ export * from '../execution/design-project-store.js';
 export * from '../execution/design-tune.js';
 export * from '../execution/design-turn-gate.js';
 export * from '../execution/design-verify.js';
+export * from '../execution/design-verify-run.js';
 export { isDesignStack, type DesignStack, type SkippedKitInfo } from '../types/design-kit.js';

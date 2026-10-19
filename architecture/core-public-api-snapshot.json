@@ -738,6 +738,7 @@
         "export * from '../execution/design-project-store.js';",
         "export * from '../execution/design-tune.js';",
         "export * from '../execution/design-turn-gate.js';",
+        "export * from '../execution/design-verify-run.js';",
         "export * from '../execution/design-verify.js';",
         "export { isDesignStack, type DesignStack, type SkippedKitInfo } from '../types/design-kit.js';"
       ]
@@ -1635,14 +1636,14 @@
       "classification": "product feature",
       "intendedOwner": "feature/plugin owner behind a focused public facade",
       "sourceFiles": 1,
-      "sourceLines": 18
+      "sourceLines": 19
     },
     {
       "directory": "execution",
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime pilot candidate after R2/R3",
-      "sourceFiles": 101,
-      "sourceLines": 25000
+      "sourceFiles": 103,
+      "sourceLines": 25348
     },
     {
       "directory": "extension",
@@ -1796,7 +1797,7 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "repositories over dependency-free persistence",
       "sourceFiles": 118,
-      "sourceLines": 26207
+      "sourceLines": 26209
     },
     {
       "directory": "tasking",

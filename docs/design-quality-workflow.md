@@ -105,16 +105,23 @@ FAILs. It acts only when the inspect tool is available to that agent and a
 served URL is known (an earlier inspect, or `.design/gate.json`
 `{"url": …}`); otherwise it stays silent. `{"mode": "off"}` disables it.
 
+Source rule catalogue: every `verify` finding has a stable id and a severity
+(30 ids; FAIL only for definite accessibility defects such as an unlabeled
+icon button or disabled zoom). Rules live in `design-verify-rules.ts`; each
+candidate was run over the repository's 824 UI files first, and candidates
+whose hits were mostly legitimate (outline removal inside a focus-within
+wrapper, sub-12px text in dense UI, per-file reduced-motion with a global rule)
+were rejected. An A/B run against the previous engine lost none of its 2055
+findings and kept the palette score identical. Exceptions are waived in the
+file with `design-ignore: <id>` (`-next-line`, `-file`; `*` for all).
+
 Next, in order of value:
 
-1. Grow the source catalog to ~35 rule ids with severities, inline waivers and
-   JSON/exit codes; split `design-verify.ts` (at the 700-line limit) into rule
-   modules first; keep rules kit-aware.
-2. `DESIGN.md` / `PRODUCT.md` interchange (Stitch-compatible) with lint and diff,
+1. `DESIGN.md` / `PRODUCT.md` interchange (Stitch-compatible) with lint and diff,
    so adherence works for projects without a kit.
-3. Dealt direction: a seeded draw of three kits that excludes recent choices;
+2. Dealt direction: a seeded draw of three kits that excludes recent choices;
    a pick outside the deal needs a recorded reason.
-4. Evaluation harness: fixed briefs, with and without the design layer, two or
+3. Evaluation harness: fixed briefs, with and without the design layer, two or
    more providers, scored only by these measurements plus cross-brief DNA
    distance (convergence), with a ratchet.
 

@@ -241,7 +241,7 @@
     "@wrongstack/core/utils": {
       "files": 829,
       "typeOnly": 71,
-      "runtimeOrMixed": 788
+      "runtimeOrMixed": 787
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -27580,7 +27580,7 @@
       "specifier": "@wrongstack/core/utils",
       "file": "packages/tui/src/hooks/use-prompt-picker.ts",
       "typeOnly": 0,
-      "runtimeOrMixed": 2
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/utils",

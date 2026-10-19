@@ -88,6 +88,11 @@ FAIL above all craft findings: it is a defect, not a matter of taste. An axis
 with an open FAIL cannot score above 2. Thresholds differ for `page` and `app`
 surfaces; pick the one matching rule 9 below.
 
+`verify` findings carry ids and severities too (`WARN [motion.transition-all]`,
+`FAIL [a11y.icon-button-unlabeled]`); cite the id. A `design-ignore: <id>`
+comment in the source is a recorded decision: judge whether its reason holds,
+do not re-report the waived pattern as new.
+
 **Check what the machine pass could actually see.** It reads utility classes and
 CSS; a native-stack screen (react-native, flutter, swiftui, compose) has neither,
 so it returns a clean result on a file it never checked. If verify reports files

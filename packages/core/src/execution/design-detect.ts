@@ -325,7 +325,10 @@ export function makeDesignVerifyToolCallMiddleware(): Middleware<ToolCallPipelin
 
         const top = report.violations
           .slice(0, 5)
-          .map((v) => `  L${v.line}: [${v.axis ?? 'color'}] ${v.snippet} — ${v.reason}`)
+          .map(
+            (v) =>
+              `  L${v.line}: ${v.severity ?? 'WARN'} [${v.id ?? v.axis ?? 'color'}] ${v.snippet} — ${v.reason}`,
+          )
           .join('\n');
         const more =
           report.violations.length > 5 ? `\n  …and ${report.violations.length - 5} more` : '';
@@ -335,7 +338,9 @@ export function makeDesignVerifyToolCallMiddleware(): Middleware<ToolCallPipelin
           `\n\n⚠️ Design Studio (${basis}): ${report.violations.length} ` +
           `source finding(s) [${axes}] in ${rel}. Check token drift against the active theme; ` +
           `composition findings are review prompts, not proof of poor design. Keep intentional ` +
-          `patterns justified by the brief and inspect the rendered result:\n${top}${more}`;
+          'patterns justified by the brief and inspect the rendered result. A deliberate ' +
+          'exception can be waived in the file with a `design-ignore: <id>` comment:' +
+          `\n${top}${more}`;
       } catch {
         // best-effort — never break a tool result
       }

@@ -534,7 +534,10 @@ export const designTool: Tool<DesignInput, DesignOutput> = {
       const pct = Math.round(report.score * 100);
       const top = report.violations
         .slice(0, 25)
-        .map((v) => `  ${v.file}:${v.line} — ${v.reason}: ${v.snippet}`)
+        .map(
+          (v) =>
+            `  ${v.file}:${v.line} ${v.severity ?? 'WARN'} [${v.id ?? v.axis ?? 'color'}] ${v.reason}: ${v.snippet}`,
+        )
         .join('\n');
       // Break the count down by axis: "on-palette %" only describes color, and
       // a composition hit means token-clean code that still reads as generated.
@@ -583,6 +586,11 @@ export const designTool: Tool<DesignInput, DesignOutput> = {
               : '')
           : '\nNo source findings in the scanned files; this does not prove complete token adherence.') +
         unchecked +
+        (report.violations.length
+          ? '\nFAIL marks a definite accessibility defect; fix or defend each WARN. Waive a ' +
+            'deliberate exception in the file with a `design-ignore: <id>` comment ' +
+            '(`design-ignore-next-line:` / `design-ignore-file:`).'
+          : '') +
         '\n\nSource heuristic only: the percentage describes detected color signals, not visual quality. ' +
         'No signals can also yield 100%. Layout, accessibility, interaction states and originality ' +
         'require rendered review with `design-critique`.';
