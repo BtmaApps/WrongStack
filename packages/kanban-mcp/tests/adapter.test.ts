@@ -537,4 +537,25 @@ describe('createKanbanMcpServer', () => {
     expect(raw).toContain('board.updated');
     expect(raw).not.toContain('workflow.state.updated');
   });
+
+  it('preserves default limit and includeArchived when args contain explicit undefined keys (F137)', async () => {
+    const executeKanban = vi.fn(async () => ({ ok: true, boards: [] }));
+    const host = createKanbanMcpToolHost('C:/project', {
+      dependencies: { executeKanban },
+    });
+    await host.callTool('kanban_read', {
+      action: 'list_boards',
+      limit: undefined,
+      includeArchived: undefined,
+    });
+    expect(executeKanban).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'list_boards',
+        limit: 20,
+        includeArchived: false,
+      }),
+      expect.anything(),
+      expect.anything(),
+    );
+  });
 });

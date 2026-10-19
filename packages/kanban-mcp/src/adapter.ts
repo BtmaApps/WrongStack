@@ -310,11 +310,11 @@ export const MCP_LIST_DEFAULT_LIMITS = { list_boards: 20, search_tasks: 10 } as 
 function withListDefaults(action: string, args: Record<string, unknown>): Record<string, unknown> {
   if (action !== 'list_boards' && action !== 'search_tasks') return args;
   return {
+    ...args,
     ...(args['limit'] === undefined ? { limit: MCP_LIST_DEFAULT_LIMITS[action] } : {}),
     ...(action === 'list_boards' && args['includeArchived'] === undefined
       ? { includeArchived: false }
       : {}),
-    ...args,
   };
 }
 
