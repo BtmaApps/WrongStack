@@ -232,6 +232,7 @@ export const RUNTIME_CAPABILITY_MANIFEST = [
     pack: 'browser',
     exposure: 'on-demand',
     tools: [
+      'design_reference',
       'browser_open',
       'browser_status',
       'browser_list',

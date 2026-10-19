@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "package": "@wrongstack/core",
-  "packageVersion": "1.1.9",
+  "packageVersion": "1.1.10",
   "policy": "Root is compatibility-only; new imports use owned domain subpaths.",
   "subpaths": [
     {
@@ -1087,7 +1087,7 @@
         "export { describeSessionPermissionOverride, readSessionPermissionOverrides, restoreSessionPermissionOverrides, setSessionPermissionOverrides, } from './session-permission-overrides.js';",
         "export { describeWriteTargets, shellCommandLinesFromInput } from './permission-helpers.js';",
         "export { evaluateToolKanbanBoundary, type ToolKanbanBoundaryEvaluation, } from './kanban-boundary.js';",
-        "export { isNetworkLockedOff, isProjectRootLocked, isYoloLockedOff, lockNetworkOff, lockToProjectRoot, lockYoloOff, } from './process-lockdown.js';",
+        "export { isProjectRootLocked, isYoloLockedOff, lockToProjectRoot, lockYoloOff, } from './process-lockdown.js';",
         "export { noOpVault } from '../types/secret-vault.js';",
         "export { restrictDirPermissions, restrictFilePermissions, SECRET_DIR_MODE, SECRET_FILE_MODE, } from './file-permissions.js';",
         "export { setSessionLeaderMetaResolver, subagentYoloPlus } from './session-yolo.js';",
@@ -1767,7 +1767,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime security subsystem",
       "sourceFiles": 39,
-      "sourceLines": 10990
+      "sourceLines": 10972
     },
     {
       "directory": "session-catalog",
@@ -1816,7 +1816,7 @@
       "classification": "agent-domain contract",
       "intendedOwner": "Core type-only subpaths",
       "sourceFiles": 86,
-      "sourceLines": 16675
+      "sourceLines": 16676
     },
     {
       "directory": "typesafe",

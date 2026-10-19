@@ -1,6 +1,6 @@
 # Signal map — extract signals → design-patterns ids
 
-`design {action:"extract"}` prints a **Signals (inferred)** line. Each signal is
+`design_reference {action:"extract"}` prints a **Signals (inferred)** line. Each signal is
 a measurement rule, not a verdict. This table says which catalog ids it is
 evidence for and what second signal confirms it. Name an id only with two
 observed signals (see design-patterns "Identifying a pattern on a reference").

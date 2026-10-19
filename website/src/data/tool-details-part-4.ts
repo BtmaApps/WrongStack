@@ -484,4 +484,49 @@ export const toolDetailsPart4: Record<string, ToolDetail> = {
       },
     ],
   },
+  design_reference: {
+    longDescription:
+      'Measure rendered web pages in a browser instead of describing screenshots. extract records a reference site’s design DNA (color roles, type scale, spacing unit, radii, motion, section rhythm); compare scores an implementation against it per axis; inspect is a reference-free FAIL/WARN gate for overflow, contrast, target size, type and broken media. Use before claiming a UI matches a reference or is done.',
+    params: [
+      {
+        name: 'action',
+        type: "'extract' | 'compare' | 'inspect'",
+        required: true,
+        description:
+          'extract = measure url as a reference; compare = score url (or another reference via against) against reference; inspect = rendered quality gate for url.',
+      },
+      {
+        name: 'url',
+        type: 'string',
+        description:
+          'Absolute http(s) URL. A localhost dev server needs /browser allow <origin> first.',
+      },
+      {
+        name: 'name',
+        type: 'string',
+        description: 'extract: reference slug to save as (default derived from the URL).',
+      },
+      {
+        name: 'viewports',
+        type: 'integer[]',
+        description: 'Viewport widths, 1–4 (default [1440, 768, 390]).',
+      },
+      {
+        name: 'reference',
+        type: 'string',
+        description: 'compare: slug of the extracted reference.',
+      },
+      {
+        name: 'against',
+        type: 'string',
+        description: 'compare: slug of another extracted reference, instead of measuring url.',
+      },
+      {
+        name: 'surface',
+        type: "'page' | 'app'",
+        description:
+          'inspect: "page" (marketing/content, default) or "app" (dense product screen — smaller body and more type sizes allowed).',
+      },
+    ],
+  },
 };

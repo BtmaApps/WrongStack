@@ -21,6 +21,7 @@ import {
 } from './codebase-index/index.js';
 import { deadCodeFixTool, deadCodeScanTool } from './dead-code/index.js';
 import { designTool } from './design.js';
+import { designReferenceTool } from './design-reference.js';
 import { diffTool } from './diff.js';
 import { e2ePlanTool } from './e2e.js';
 import { editTool } from './edit.js';
@@ -203,6 +204,8 @@ export const BUILTIN_TOOL_DESCRIPTIONS: Readonly<Record<string, string>> = {
   logs: 'Read or tail configured local, container, or process logs with bounded output. Use it to investigate a known runtime failure or service behavior.',
   design:
     'Choose, preview, or materialize a UI design kit (e.g. minimal-clarity, neo-brutalist) for the active stack. Lists available kits, previews tokens, or writes a design-token source file to the project.',
+  design_reference:
+    'Measure rendered web pages in a browser instead of describing screenshots. extract records a reference site’s design DNA (color roles, type scale, spacing unit, radii, motion, section rhythm); compare scores an implementation against it per axis; inspect is a reference-free FAIL/WARN gate for overflow, contrast, target size, type and broken media. Use before claiming a UI matches a reference or is done.',
   tool_search:
     'Search the full tool catalog by name or description, including tools whose schemas were withheld from this request to save tokens. Results include each matching tool input schema; use it before concluding a capability is unavailable, then invoke the local tool with tool_use instead of searching MCP.',
   tool_use:
@@ -329,6 +332,7 @@ export const TIER2_TOOLS: Tool[] = [
   installTool,
   auditTool,
   designTool,
+  designReferenceTool,
 ];
 
 /**
@@ -399,6 +403,7 @@ const rawBuiltinTools: Tool[] = [
   outdatedTool,
   logsTool,
   designTool,
+  designReferenceTool,
   toolSearchTool,
   toolUseTool,
 ];

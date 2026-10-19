@@ -57,7 +57,7 @@ Structure each flow with a pattern id from design-patterns (`forms-and-flows.md`
 | Navigation | Back never repeats a payment or loses a draft; deep links restore state | Use browser back mid-flow |
 | Overlays | Opening a dialog moves focus into it; Escape closes it; focus returns to the trigger | Tab, Escape, Tab |
 
-Run `design {action:"inspect", url, surface:"app"}` on each reachable state you
+Run `design_reference {action:"inspect", url, surface:"app"}` on each reachable state you
 can load by URL; `a11y.target-size` and `a11y.text-contrast` apply to error and
 disabled states too. Record each check as observed / not observed in `.design/review.md`.
 

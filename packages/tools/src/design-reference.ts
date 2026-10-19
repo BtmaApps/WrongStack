@@ -19,14 +19,22 @@ import {
   renderDnaComparisonMarkdown,
   summarizeDesignDna,
 } from '@wrongstack/core/design';
-import { isNetworkLockedOff } from '@wrongstack/core/security';
+import { ToolCapabilities } from '@wrongstack/core/security';
+import type { Tool } from '@wrongstack/core/types';
 import { ToolValidationError } from '@wrongstack/core/types';
 import { atomicWrite } from '@wrongstack/core/utils';
 import { managerFor, owner } from './browser/tools.js';
 
 /**
- * `design {action:"extract"|"compare"}` — measure a rendered page's design DNA
- * and score an implementation against it.
+ * `design_reference` — measure a rendered page instead of describing it:
+ * `extract` a reference's design DNA, `compare` an implementation against it,
+ * `inspect` a page for reference-free rendered defects.
+ *
+ * A separate tool from `design` on purpose: these actions reach the network,
+ * and capability gates (`--restricted`, subagent capability sets, auto-approve)
+ * are decided per tool before any input is known, so only a tool that
+ * declares `net.outbound` is visible to them. `design` keeps its offline token
+ * actions under every policy.
  *
  * Extraction runs through the browser tools' own session manager, so the
  * network guard, private-origin allowlist and run-abort cleanup are the same
@@ -38,10 +46,10 @@ import { managerFor, owner } from './browser/tools.js';
  */
 
 /** Desktop, tablet, phone — tablet is where layouts most often break. */
-export const DEFAULT_DNA_VIEWPORTS = [1440, 768, 390] as const;
+const DEFAULT_DNA_VIEWPORTS = [1440, 768, 390] as const;
 const VIEWPORT_HEIGHT = 900;
 
-export function referencesDir(projectRoot: string): string {
+function referencesDir(projectRoot: string): string {
   return path.join(designProjectDir(projectRoot), 'references');
 }
 
@@ -68,7 +76,8 @@ function assertHttpUrl(url: string | undefined): string {
   }
   if (!value || !parsed || !/^https?:$/.test(parsed.protocol)) {
     throw new ToolValidationError({
-      message: 'design: "url" must be an absolute http(s) URL, e.g. "https://example.com".',
+      message:
+        'design_reference: "url" must be an absolute http(s) URL, e.g. "https://example.com".',
       field: 'url',
     });
   }
@@ -85,7 +94,7 @@ function normalizeViewports(viewports: unknown): number[] {
   ) {
     throw new ToolValidationError({
       message:
-        'design: "viewports" takes 1–4 integer widths between 320 and 3840, e.g. [1440, 390].',
+        'design_reference: "viewports" takes 1–4 integer widths between 320 and 3840, e.g. [1440, 390].',
       field: 'viewports',
     });
   }
@@ -96,7 +105,7 @@ function normalizeViewports(viewports: unknown): number[] {
 function assertSlug(slug: string, field: string): string {
   if (!/^[a-z0-9][a-z0-9-]{0,63}$/.test(slug)) {
     throw new ToolValidationError({
-      message: `design: "${slug}" is not a reference name — use the slug \`design {action:"extract"}\` printed (lowercase letters, digits, dashes).`,
+      message: `design_reference: "${slug}" is not a reference name — use the slug \`design_reference {action:"extract"}\` printed (lowercase letters, digits, dashes).`,
       field,
     });
   }
@@ -122,12 +131,6 @@ async function measure<T extends { v: 1 }>(
   signal: AbortSignal,
   script: string = DESIGN_DNA_EXTRACTOR,
 ): Promise<Measured<T>> {
-  if (isNetworkLockedOff()) {
-    throw new Error(
-      'design: extract/compare/inspect open a browser, and outbound network is locked off in restricted mode. ' +
-        'Measure outside restricted mode, or work from a supplied screenshot.',
-    );
-  }
   const manager = managerFor(ctx);
   const ownerId = owner(ctx);
   const out: Measured<T> = { raws: [], runtime: [], screenshots: [] };
@@ -148,7 +151,8 @@ async function measure<T extends { v: 1 }>(
     );
     try {
       const raw = (await manager.evaluate(session.id, ownerId, script, signal)) as T;
-      if (raw?.v !== 1) throw new Error(`design: the page at ${url} returned no measurement`);
+      if (raw?.v !== 1)
+        throw new Error(`design_reference: the page at ${url} returned no measurement`);
       out.raws.push(raw);
       const evidence = await manager.snapshot(session.id, ownerId, signal);
       out.runtime.push({
@@ -176,7 +180,7 @@ async function writeJson(file: string, value: unknown): Promise<void> {
 const rel = (projectRoot: string, file: string): string =>
   path.relative(projectRoot, file).replace(/\\/g, '/');
 
-export async function extractReference(
+async function extractReference(
   ctx: Context,
   input: { url?: string | undefined; name?: string | undefined; viewports?: unknown },
   signal: AbortSignal,
@@ -216,7 +220,7 @@ async function loadDna(projectRoot: string, slug: string, field: string): Promis
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
       throw new ToolValidationError({
-        message: `design: no extracted reference "${slug}" (expected ${rel(projectRoot, file)}). Run \`design {action:"extract", url:"…"}\` first.`,
+        message: `design_reference: no extracted reference "${slug}" (expected ${rel(projectRoot, file)}). Run \`design_reference {action:"extract", url:"…"}\` first.`,
         field,
       });
     }
@@ -224,7 +228,7 @@ async function loadDna(projectRoot: string, slug: string, field: string): Promis
   }
 }
 
-export async function compareReference(
+async function compareReference(
   ctx: Context,
   input: {
     reference?: string | undefined;
@@ -238,7 +242,7 @@ export async function compareReference(
   if (!refSlug) {
     throw new ToolValidationError({
       message:
-        'design: "compare" needs reference:"<slug from extract>" plus url:"<implementation>" or against:"<other slug>".',
+        'design_reference: "compare" needs reference:"<slug from extract>" plus url:"<implementation>" or against:"<other slug>".',
       field: 'reference',
     });
   }
@@ -267,11 +271,11 @@ export async function compareReference(
 }
 
 /**
- * `design {action:"inspect"}` — reference-free rendered quality gate. FAIL
+ * `inspect` — reference-free rendered quality gate. FAIL
  * marks a defect, WARN a craft problem to fix or defend; the report lists
  * what the measurement cannot see so a clean result is not read as a review.
  */
-export async function inspectPage(
+async function inspectPage(
   ctx: Context,
   input: { url?: string | undefined; viewports?: unknown; surface?: string | undefined },
   signal: AbortSignal,
@@ -280,7 +284,8 @@ export async function inspectPage(
   const viewports = normalizeViewports(input.viewports);
   if (input.surface !== undefined && input.surface !== 'page' && input.surface !== 'app') {
     throw new ToolValidationError({
-      message: 'design: "surface" is "page" (marketing/content) or "app" (dense product screen).',
+      message:
+        'design_reference: "surface" is "page" (marketing/content) or "app" (dense product screen).',
       field: 'surface',
     });
   }
@@ -315,3 +320,130 @@ export async function inspectPage(
     path: rel(ctx.projectRoot, path.join(dir, 'inspect.md')),
   };
 }
+
+export interface DesignReferenceInput {
+  action: 'extract' | 'compare' | 'inspect';
+  /** extract: the page to measure; compare/inspect: the implementation to measure. */
+  url?: string | undefined;
+  /** extract: reference name (slug) to save under; defaults from the URL. */
+  name?: string | undefined;
+  /** Viewport widths, default [1440, 768, 390]. */
+  viewports?: number[] | undefined;
+  /** compare: the extracted reference slug to score against. */
+  reference?: string | undefined;
+  /** compare: another extracted slug instead of measuring `url`. */
+  against?: string | undefined;
+  /** inspect: thresholds for a content "page" (default) or a dense "app" screen. */
+  surface?: InspectSurface | undefined;
+}
+
+export interface DesignReferenceOutput {
+  action: string;
+  output: string;
+  /** The markdown record the action wrote, project-relative. */
+  path: string;
+  /** extract: the reference slug to pass to compare. */
+  reference?: string | undefined;
+  /** compare: overall fidelity 0..1 (the lowest axis). */
+  score?: number | undefined;
+  /** inspect: FAIL and WARN counts. */
+  fails?: number | undefined;
+  warns?: number | undefined;
+}
+
+export const designReferenceTool: Tool<DesignReferenceInput, DesignReferenceOutput> = {
+  name: 'design_reference',
+  category: 'Design',
+  description:
+    'Measure rendered pages in a browser instead of describing them. "extract" records a reference ' +
+    'site’s design DNA (color roles, type scale, spacing unit, radii, motion, section rhythm) under ' +
+    '.design/references; "compare" scores an implementation against it per axis; "inspect" is a ' +
+    'reference-free FAIL/WARN gate (overflow, contrast, target size, type, broken media).',
+  usageHint:
+    '`design_reference {action:"extract", url:"https://example.com"}` → build → ' +
+    '`design_reference {action:"compare", reference:"example-com", url:"http://localhost:5173/"}`; ' +
+    '`design_reference {action:"inspect", url:"http://localhost:5173/", surface:"app"}` before calling UI work done.',
+  permission: 'confirm',
+  // A trust rule should name the site being opened, not the action.
+  subjectKey: 'url',
+  mutating: true,
+  riskTier: 'standard',
+  capabilities: [ToolCapabilities.NET_OUTBOUND, ToolCapabilities.FS_WRITE],
+  // One browser session per viewport; the first use may install Chromium
+  // (three-minute subprocess limit, as browser_open).
+  timeoutMs: 420_000,
+  inputSchema: {
+    type: 'object',
+    properties: {
+      action: {
+        type: 'string',
+        enum: ['extract', 'compare', 'inspect'],
+        description:
+          'extract = measure url as a reference; compare = score url (or another reference via ' +
+          'against) against reference; inspect = rendered quality gate for url.',
+      },
+      url: {
+        type: 'string',
+        description:
+          'Absolute http(s) URL. A localhost dev server needs /browser allow <origin> first.',
+      },
+      name: {
+        type: 'string',
+        description: 'extract: reference slug to save as (default derived from the URL).',
+      },
+      viewports: {
+        type: 'array',
+        items: { type: 'integer', minimum: 320, maximum: 3840 },
+        description: 'Viewport widths, 1–4 (default [1440, 768, 390]).',
+      },
+      reference: { type: 'string', description: 'compare: slug of the extracted reference.' },
+      against: {
+        type: 'string',
+        description: 'compare: slug of another extracted reference, instead of measuring url.',
+      },
+      surface: {
+        type: 'string',
+        enum: ['page', 'app'],
+        description:
+          'inspect: "page" (marketing/content, default) or "app" (dense product screen — smaller body and more type sizes allowed).',
+      },
+    },
+    required: ['action'],
+  },
+  async execute(input, ctx, opts): Promise<DesignReferenceOutput> {
+    const signal = opts?.signal ?? ctx?.signal ?? new AbortController().signal;
+    signal.throwIfAborted();
+    if (input.action === 'extract') {
+      const result = await extractReference(ctx, input, signal);
+      return {
+        action: input.action,
+        path: result.path,
+        reference: result.slug,
+        output: result.output,
+      };
+    }
+    if (input.action === 'compare') {
+      const result = await compareReference(ctx, input, signal);
+      return {
+        action: input.action,
+        path: result.path,
+        score: result.overall,
+        output: result.output,
+      };
+    }
+    if (input.action === 'inspect') {
+      const result = await inspectPage(ctx, input, signal);
+      return {
+        action: input.action,
+        path: result.path,
+        fails: result.fails,
+        warns: result.warns,
+        output: result.output,
+      };
+    }
+    throw new ToolValidationError({
+      message: `design_reference: unknown action "${String(input.action)}". Allowed actions: extract, compare, inspect.`,
+      field: 'action',
+    });
+  },
+};

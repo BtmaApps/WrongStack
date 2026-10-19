@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-19T18:14:57.996Z",
+  "generatedAt": "2026-10-19T20:27:10.377Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 38,
-    "sourceFiles": 5176,
-    "testFiles": 4512,
-    "sourceLines": 1124309,
+    "sourceFiles": 5183,
+    "testFiles": 4515,
+    "sourceLines": 1126717,
     "workspaceEdges": 139,
-    "moduleEdges": 17034,
+    "moduleEdges": 17045,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -248,8 +248,8 @@
     {
       "name": "@wrongstack/core",
       "dir": "packages/core",
-      "sourceFiles": 1148,
-      "testFiles": 990,
+      "sourceFiles": 1154,
+      "testFiles": 992,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -264,7 +264,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 990
+          "testFiles": 992
         }
       ]
     },
@@ -770,8 +770,8 @@
     {
       "name": "@wrongstack/tools",
       "dir": "packages/tools",
-      "sourceFiles": 336,
-      "testFiles": 331,
+      "sourceFiles": 337,
+      "testFiles": 332,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -787,7 +787,7 @@
         {
           "path": "packages/tools/tsconfig.test.json",
           "error": null,
-          "testFiles": 331
+          "testFiles": 332
         }
       ]
     },
@@ -8523,6 +8523,18 @@
       },
       {
         "file": "packages/core/tests/execution/design-detect.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/execution/design-dna.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/execution/design-inspect.test.ts",
         "projects": [
           "root-node"
         ]
@@ -18992,6 +19004,12 @@
         ]
       },
       {
+        "file": "packages/tools/tests/design-reference.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/tools/tests/design.test.ts",
         "projects": [
           "root-node"
@@ -28628,6 +28646,11 @@
       "relativeImports": 20
     },
     {
+      "file": "packages/tools/src/browser/tools.ts",
+      "lines": 690,
+      "relativeImports": 3
+    },
+    {
       "file": "packages/tui/src/reducers/settings-value-cycle.ts",
       "lines": 690,
       "relativeImports": 6
@@ -28691,11 +28714,6 @@
       "file": "packages/core/src/session-catalog/session-registry.ts",
       "lines": 685,
       "relativeImports": 5
-    },
-    {
-      "file": "packages/tools/src/browser/tools.ts",
-      "lines": 685,
-      "relativeImports": 3
     }
   ],
   "testOnlyExports": [

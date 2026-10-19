@@ -64,15 +64,18 @@ copy voice) and cite rule ids instead of restating rules.
 | Layer | Mechanism | Enforced by |
 | --- | --- | --- |
 | Source | `design verify`: token drift + generated-UI patterns, on every UI write | `design-verify.ts`, write middleware |
-| Reference | `design extract`: in-page script measures visible color area (point sampling with layer compositing), type scale/ratio, spacing unit, radii, elevation, motion, section rhythm, buttons, declared tokens at 1440/768/390 → `.design/references/<slug>/` | `design-dna-extractor.ts`, `design-dna.ts` |
-| Fidelity | `design compare`: per-axis score with tolerances (OKLab ΔE ≤ 0.02, ±0.5px body, ±4% container…); overall = lowest axis | `design-dna-compare.ts` |
-| Rendered quality | `design inspect`: reference-free FAIL/WARN gate — overflow, edge text, WCAG contrast against the background actually behind the text, WCAG 2.2 target size with the spacing exception, type counts, heading order, broken/unsized media, stuck-hidden text, blank bands, console errors | `design-inspect-extractor.ts`, `design-inspect.ts` |
+| Reference | `design_reference extract`: in-page script measures visible color area (point sampling with layer compositing), type scale/ratio, spacing unit, radii, elevation, motion, section rhythm, buttons, declared tokens at 1440/768/390 → `.design/references/<slug>/` | `design-dna-extractor.ts`, `design-dna.ts` |
+| Fidelity | `design_reference compare`: per-axis score with tolerances (OKLab ΔE ≤ 0.02, ±0.5px body, ±4% container…); overall = lowest axis | `design-dna-compare.ts` |
+| Rendered quality | `design_reference inspect`: reference-free FAIL/WARN gate — overflow, edge text, WCAG contrast against the background actually behind the text, WCAG 2.2 target size with the spacing exception, type counts, heading order, broken/unsized media, stuck-hidden text, blank bands, console errors | `design-inspect-extractor.ts`, `design-inspect.ts` |
 | Structure | 62 patterns by stable id with anatomy, ranges and DNA signals | `design-patterns` skill |
 | Process | read reference → choose pattern ids → build → verify → inspect (0 FAIL, ≤ 3 rounds) → compare when matching | `design-reference-read`, `design-craft`, `design-to-code`, `design-critique` |
 
+Measurement is its own tool, `design_reference`, declaring `net.outbound`.
+Capability gates are decided per tool before input is known, so `--restricted`,
+subagent capability sets and auto-approve all see the network use, while
+`design` keeps only `fs.write` and its offline token actions stay available.
 Extraction runs under the browser tools' network guard and private-origin
-allowlist; `--restricted` locks it off through `lockNetworkOff()` while the
-offline token actions keep working. Reference screenshots stay in the
+allowlist, trust rules key on the URL, and reference screenshots stay in the
 self-ignored `.design/` directory.
 
 Calibration evidence: both scripts were run in Chromium against fixtures with

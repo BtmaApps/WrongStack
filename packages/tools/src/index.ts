@@ -228,6 +228,11 @@ export {
   designTool,
 } from './design.js';
 export {
+  type DesignReferenceInput,
+  type DesignReferenceOutput,
+  designReferenceTool,
+} from './design-reference.js';
+export {
   type DiffInput,
   type DiffMode,
   type DiffOutput,

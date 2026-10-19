@@ -119,7 +119,7 @@ stylistic recipes. A pattern alone is not proof of low quality.
    the brief and token source. Fix drift; retain justified design choices. Zero
    findings and a 100% palette score do not establish quality or accessibility.
 5. When the surface is served (a localhost dev server needs `/browser allow <origin>`),
-   run `design {action:"inspect", url, surface:"page"|"app"}`. It measures the
+   run `design_reference {action:"inspect", url, surface:"page"|"app"}`. It measures the
    rendered page at 1440/768/390 and returns FAIL/WARN findings with ids. Contract:
    fix every FAIL; fix each WARN or defend it in one sentence in `.design/review.md`;
    re-run; stop after 3 rounds and report what remains. Do not edit around the

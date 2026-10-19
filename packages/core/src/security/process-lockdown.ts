@@ -12,7 +12,6 @@
 
 let projectRootLocked = false;
 let yoloLockedOff = false;
-let networkLockedOff = false;
 
 /** File tools stay inside the project root for the rest of the process. */
 export function lockToProjectRoot(): void {
@@ -32,23 +31,8 @@ export function isYoloLockedOff(): boolean {
   return yoloLockedOff;
 }
 
-/**
- * Outbound network stays off for tools whose capability set cannot say so per
- * action — `--restricted` removes `net.outbound` tools by capability, but the
- * `design` tool only reaches the network in `extract`/`compare`, and dropping
- * the whole tool would also drop its offline token actions.
- */
-export function lockNetworkOff(): void {
-  networkLockedOff = true;
-}
-
-export function isNetworkLockedOff(): boolean {
-  return networkLockedOff;
-}
-
 /** Tests only: the switches are one-way in production. */
 export function __resetProcessLockdownForTests(): void {
   projectRootLocked = false;
   yoloLockedOff = false;
-  networkLockedOff = false;
 }

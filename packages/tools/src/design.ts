@@ -23,7 +23,6 @@ import {
 import type { Tool } from '@wrongstack/core/types';
 import { ToolValidationError } from '@wrongstack/core/types';
 import { atomicWrite } from '@wrongstack/core/utils';
-import { compareReference, extractReference, inspectPage } from './design-reference.js';
 
 type Overrides = Record<string, string>;
 
@@ -68,22 +67,7 @@ export interface DesignInput {
     | 'materialize'
     | 'verify'
     | 'capture'
-    | 'extract'
-    | 'compare'
-    | 'inspect'
     | undefined;
-  /** action "inspect": thresholds for a content "page" (default) or a dense "app" screen. */
-  surface?: 'page' | 'app' | undefined;
-  /** action "extract": the page to measure; "compare": the implementation to measure. */
-  url?: string | undefined;
-  /** action "extract": reference name (slug) to save under; defaults from the URL. */
-  name?: string | undefined;
-  /** action "extract"/"compare": viewport widths, default [1440, 768, 390]. */
-  viewports?: number[] | undefined;
-  /** action "compare": the extracted reference slug to score against. */
-  reference?: string | undefined;
-  /** action "compare": another extracted slug instead of measuring `url`. */
-  against?: string | undefined;
   kit?: string | undefined;
   stack?: string | undefined;
   /** action "set" / "use": token overrides, e.g. { primary: "oklch(...)", "dark.bg": "#111" }. */
@@ -181,10 +165,7 @@ export const designTool: Tool<DesignInput, DesignOutput> = {
     'UI code to commit to one coherent, modern, responsive, dark/light, accessible design. Actions: ' +
     '"list" (menu), "use" (load+pin a kit for a stack), "foundations" (baseline), "set" (override kit ' +
     'colors/tokens), "materialize" (write the tokens to a real theme file — CSS @theme/OKLCH or native), ' +
-    '"verify" (scan UI files for off-palette colors), "extract" (measure a live page’s design DNA — ' +
-    'color roles, type scale, spacing unit, radii, motion, section rhythm — into .design/references), ' +
-    '"compare" (score an implementation URL against an extracted reference, per axis), "inspect" ' +
-    '(reference-free rendered gate at 3 widths: overflow, contrast, target size, type, broken media — FAIL/WARN).',
+    '"verify" (scan UI files for off-palette colors).',
   usageHint:
     'Flow: `design {action:"use", kit:"minimal-clarity", stack:"web"}` → optionally ' +
     '`design {action:"set", set:{primary:"oklch(62% 0.2 25)"}}` → `design {action:"materialize"}` ' +
@@ -194,65 +175,20 @@ export const designTool: Tool<DesignInput, DesignOutput> = {
   // The action performed; `out` is optional so it cannot be the subject.
   subjectKey: 'action',
   mutating: true,
-  // No `net.outbound`: only extract/compare/inspect reach the network, and they honor
-  // the process network lock instead (see design-reference.ts) so restricted
-  // mode keeps the offline token actions.
   capabilities: ['fs.write'],
-  // extract/compare/inspect open one browser session per viewport, and the first use
-  // may install Chromium (three-minute subprocess limit, as browser_open).
-  timeoutMs: 420_000,
+  timeoutMs: 15_000,
   inputSchema: {
     type: 'object',
     properties: {
       action: {
         type: 'string',
-        enum: [
-          'list',
-          'use',
-          'foundations',
-          'set',
-          'tune',
-          'materialize',
-          'verify',
-          'capture',
-          'extract',
-          'compare',
-          'inspect',
-        ],
+        enum: ['list', 'use', 'foundations', 'set', 'tune', 'materialize', 'verify', 'capture'],
         description:
           'list = menu; use = load+pin a kit; foundations = baseline; set = override colors/tokens; ' +
           'tune = high-level knobs (radius/density/font/motion); materialize = write tokens to a theme ' +
           'file; verify = scan UI for token drift (pinned kit, or the project\u2019s captured tokens); ' +
-          'capture = snapshot the project\u2019s existing token source so verify works without a kit; ' +
-          'extract = measure a live URL\u2019s design DNA (needs url); compare = score an implementation ' +
-          'url (or another extracted reference via against) against reference; inspect = rendered ' +
-          'quality gate for url (FAIL/WARN, no reference needed). Default: list.',
-      },
-      url: {
-        type: 'string',
-        description:
-          'extract: page to measure. compare/inspect: implementation to measure (localhost needs /browser allow <origin>).',
-      },
-      surface: {
-        type: 'string',
-        enum: ['page', 'app'],
-        description:
-          'inspect: "page" (marketing/content, default) or "app" (dense product screen — smaller body and more type sizes allowed).',
-      },
-      name: {
-        type: 'string',
-        description: 'extract: reference slug to save as (default derived from the URL).',
-      },
-      viewports: {
-        type: 'array',
-        items: { type: 'integer', minimum: 320, maximum: 3840 },
-        description:
-          'extract/compare/inspect: viewport widths, 1\u20134 (default [1440, 768, 390]).',
-      },
-      reference: { type: 'string', description: 'compare: slug of the extracted reference.' },
-      against: {
-        type: 'string',
-        description: 'compare: slug of another extracted reference, instead of measuring url.',
+          'capture = snapshot the project\u2019s existing token source so verify works without a kit. ' +
+          'Default: list.',
       },
       kit: {
         type: 'string',
@@ -317,9 +253,6 @@ export const designTool: Tool<DesignInput, DesignOutput> = {
       'materialize',
       'verify',
       'capture',
-      'extract',
-      'compare',
-      'inspect',
     ]);
     if (input.action !== undefined && !VALID_ACTIONS.has(input.action)) {
       throw new ToolValidationError({
@@ -338,21 +271,6 @@ export const designTool: Tool<DesignInput, DesignOutput> = {
     const loader = getDesignKitLoader(ctx.projectRoot);
     const action = input.action ?? 'list';
     const stack: DesignStack | undefined = input.stack;
-
-    if (action === 'extract') {
-      const result = await extractReference(ctx, input, signal ?? new AbortController().signal);
-      return { action, path: result.path, source: result.slug, output: result.output };
-    }
-
-    if (action === 'compare') {
-      const result = await compareReference(ctx, input, signal ?? new AbortController().signal);
-      return { action, path: result.path, score: result.overall, output: result.output };
-    }
-
-    if (action === 'inspect') {
-      const result = await inspectPage(ctx, input, signal ?? new AbortController().signal);
-      return { action, path: result.path, violations: result.fails, output: result.output };
-    }
 
     if (action === 'foundations') {
       const text = await loader.foundationsText(stack);

@@ -2,15 +2,16 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { type DesignDnaRaw, summarizeDesignDna } from '@wrongstack/core/design';
-import { lockNetworkOff } from '@wrongstack/core/security';
+import { ToolRegistry } from '@wrongstack/core/registry';
+import { ToolCapabilities } from '@wrongstack/core/security';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { designTool } from '../src/design.js';
+import { designTool as designKitTool } from '../src/design.js';
+import { designReferenceTool as designTool } from '../src/design-reference.js';
 
 // Browser-free contract tests. The measuring path itself (a real Chromium
-// against a local page) is proven outside the unit suite; here extract and
-// compare must validate input before any browser work and compare saved
-// references without one. This file locks the network last — the lock is
-// one-way and process-wide, and vitest isolates it to this file.
+// against a local page) is proven outside the unit suite; here extract,
+// compare and inspect must validate input before any browser work, and
+// compare must score saved references without one.
 
 let root: string;
 beforeAll(async () => {
@@ -85,7 +86,7 @@ async function saveReference(slug: string, dnaRaw: DesignDnaRaw): Promise<void> 
   await fs.writeFile(path.join(dir, 'dna.json'), JSON.stringify(summarizeDesignDna([dnaRaw])));
 }
 
-describe('design extract / compare', () => {
+describe('design_reference extract / compare / inspect', () => {
   it('compares two saved references without a browser and writes the fidelity record', async () => {
     await saveReference('ref-a', raw('#e11d48', '12'));
     await saveReference('ref-b', raw('#2563eb', '4'));
@@ -173,21 +174,35 @@ describe('design extract / compare', () => {
     ).rejects.toThrow(/"surface" is "page"/);
   });
 
-  // Keep last: the lock cannot be undone in this process.
-  it('refuses to measure while restricted mode has locked the network off', async () => {
-    lockNetworkOff();
+  it('rejects an unknown action', async () => {
     await expect(
-      designTool.execute({ action: 'extract', url: 'https://example.com' }, makeCtx(), opts),
-    ).rejects.toThrow(/locked off in restricted mode/);
-    await expect(
-      designTool.execute({ action: 'inspect', url: 'https://example.com' }, makeCtx(), opts),
-    ).rejects.toThrow(/locked off in restricted mode/);
-    // Saved references still compare offline.
-    const res = await designTool.execute(
-      { action: 'compare', reference: 'ref-a', against: 'ref-b' },
-      makeCtx(),
-      opts,
-    );
-    expect(res.score).toBeLessThan(1);
+      designTool.execute({ action: 'verify' as never }, makeCtx(), opts),
+    ).rejects.toThrow(/unknown action "verify"/);
+  });
+});
+
+describe('design_reference capability gates', () => {
+  // Capability gates (--restricted, subagent capability sets, auto-approve)
+  // are decided per tool before input is known. The network must therefore
+  // be declared on the tool itself, and the offline design tool must not be.
+  const registry = new ToolRegistry();
+  registry.register(designTool);
+  registry.register(designKitTool);
+  // The same capability denial `--restricted` applies.
+  registry.setSessionRestriction({ denyCapabilities: [ToolCapabilities.NET_OUTBOUND] });
+
+  it('declares outbound network so a network-denying restriction hides it', () => {
+    expect(designTool.capabilities).toContain(ToolCapabilities.NET_OUTBOUND);
+    expect(registry.isRestricted(designTool.name)).toBe(true);
+  });
+
+  it('leaves the offline design tool available under the same restriction', () => {
+    expect(designKitTool.capabilities).not.toContain(ToolCapabilities.NET_OUTBOUND);
+    expect(registry.isRestricted(designKitTool.name)).toBe(false);
+  });
+
+  it('keys trust rules on the URL being opened, not the action', () => {
+    expect(designTool.permission).toBe('confirm');
+    expect(designTool.subjectKey).toBe('url');
   });
 });

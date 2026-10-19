@@ -596,6 +596,14 @@ export const toolCatalog = [
     mutating: true,
     category: 'Discovery & index',
   },
+  {
+    name: 'design_reference',
+    summary:
+      'Measure rendered web pages in a browser instead of describing screenshots. extract records a reference site’s design DNA (color roles, type scale, spacing unit, radii, motion, section rhythm); compare scores an implementation against it per axis; inspect is a reference-free FAIL/WARN gate for overflow, contrast, target size, type and broken media. Use before claiming a UI matches a reference or is done.',
+    permission: 'confirm',
+    mutating: true,
+    category: 'Generation & design',
+  },
 ] as const;
 
 export const pluginSources = ['Core', 'Suite', 'Bridge'] as const;
@@ -1416,9 +1424,9 @@ export const PLUGIN_COUNT = pluginCatalog.length;
  */
 // generated:tool-tier-counts
 export const TOOL_TIER_COUNTS = {
-  off: 73,
+  off: 74,
   minimal: 29,
   light: 29,
-  medium: 52,
+  medium: 53,
   aggressive: 29,
 } as const;

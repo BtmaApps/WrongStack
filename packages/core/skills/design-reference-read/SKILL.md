@@ -5,7 +5,7 @@ description: |
   Triggers: "make it look like <site>", "use this site as reference", "inspired by", "analyze this site's design", "what makes this design good", "extract the design system from", "match this screenshot", "steal like an artist", "reverse-engineer the styling of", "design tokens from this URL", "how does <site> do its layout".
 version: 1.0.0
 required-capabilities: [filesystem.read, filesystem.write]
-required-tools: [design]
+required-tools: []
 optional-capabilities: [browser.interact, web.research, verification.run]
 trigger: "Measure a reference website or screenshot into a design DNA record (color roles, type scale, spacing unit, radii, motion, section rhythm, components), name its patterns, and carry the lessons into a brief or tokens without copying the brand."
 metadata:
@@ -41,10 +41,10 @@ owns the reference.
 
 ## 2. Measure
 
-With browser capability, run the `design` tool:
+With browser capability:
 
 ```
-design {action:"extract", url:"https://example.com", viewports:[1440, 768, 390]}
+design_reference {action:"extract", url:"https://example.com", viewports:[1440, 768, 390]}
 ```
 
 - It opens one isolated browser session per viewport under the same network
@@ -56,7 +56,8 @@ design {action:"extract", url:"https://example.com", viewports:[1440, 768, 390]}
 - Add a third width (`768`) when tablet behavior matters. Measure each page
   type separately (home, pricing, docs, app screen); one URL is one page.
 - A localhost or private address needs `/browser allow <origin>` first.
-- Restricted mode locks the network off: use the screenshot path below.
+- The tool is hidden wherever outbound network is denied (restricted mode, a
+  subagent without network capability): use the screenshot path below.
 
 Without a browser, or for a supplied image: follow
 `references/screenshot-measurement.md` and write the same record by hand,
@@ -131,7 +132,7 @@ as an opinion.
   Run `design {action:"materialize"}`. Check font licensing before shipping a
   measured family; the overrides carry a generic fallback.
 - Continue with the `design-craft` build loop. When matching, finish with the
-  fidelity loop in `design-to-code` (`design {action:"compare"}`).
+  fidelity loop in `design-to-code` (`design_reference {action:"compare"}`).
 
 ## Acceptance checks
 

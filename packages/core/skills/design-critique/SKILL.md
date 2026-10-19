@@ -38,7 +38,7 @@ saying so plainly is the whole value of this skill.
 
 ```
 1. Establish ground truth   → active kit + brief
-2. Machine pass             → design {action:"verify"} (source) + design {action:"inspect", url} (rendered)
+2. Machine pass             → design {action:"verify"} (source) + design_reference {action:"inspect", url} (rendered)
 3. Craft pass               → rubric, six axes, evidence per finding
 4. Score + rank             → what to fix first, what to ignore
 5. Report                   → findings, not adjectives
@@ -74,7 +74,7 @@ and a hand-rolled system is usually missing one of them.
 
 ```
 design {action:"verify"}
-design {action:"inspect", url:"<served page>", surface:"page"|"app"}   # when the UI is served
+design_reference {action:"inspect", url:"<served page>", surface:"page"|"app"}   # when the UI is served
 ```
 
 `inspect` is the rendered half: overflow, text at the edge, WCAG contrast against

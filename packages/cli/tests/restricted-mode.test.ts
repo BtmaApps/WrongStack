@@ -1,8 +1,6 @@
-import { isNetworkLockedOff } from '@wrongstack/core/security';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parseArgs } from '../src/arg-parser.js';
 import {
-  activateRestrictedMode,
   RESTRICTED_DENY_CAPABILITIES,
   RESTRICTED_ENV,
   validateRestrictedMode,
@@ -54,12 +52,5 @@ describe('--restricted', () => {
         'package.install',
       ]),
     );
-  });
-
-  // Keep last: activation engages one-way, process-wide locks.
-  it('locks the network for tools that reach it from a single action', () => {
-    expect(isNetworkLockedOff()).toBe(false);
-    expect(activateRestrictedMode({ restricted: true }, () => undefined)).toBe(true);
-    expect(isNetworkLockedOff()).toBe(true);
   });
 });

@@ -53,7 +53,7 @@ Use current iOS/Android guidance and the app supported OS/device matrix. Refresh
 | Navigation | A bottom tab bar holds 3–5 destinations; back always works and never loses a draft | design-patterns `bottom-tab-bar`; Android back / iOS swipe |
 | Viewport units (web) | Full-height layouts use dynamic or small viewport units (dvh / svh), not 100vh, where the browser chrome resizes | Check support in web-platform-baseline before relying on it |
 
-Web-rendered mobile surfaces should pass `design {action:"inspect", url,
+Web-rendered mobile surfaces should pass `design_reference {action:"inspect", url,
 viewports:[390, 320], surface:"app"}` with 0 FAIL. Native screens are outside
 `inspect`; use device screenshots and the same table by hand, and say so.
 

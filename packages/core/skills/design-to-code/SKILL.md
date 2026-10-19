@@ -28,7 +28,7 @@ justified adaptation.
 
 | Reference | First step |
 |---|---|
-| Live URL | `design {action:"extract", url, viewports:[1440, 768, 390]}` (see design-reference-read) |
+| Live URL | `design_reference {action:"extract", url, viewports:[1440, 768, 390]}` (see design-reference-read) |
 | Screenshot / mockup image | design-reference-read `references/screenshot-measurement.md`; record the scale anchor |
 | Figma file | Use an available Figma integration to read frame sizes, styles and variables. Without one, ask for an export; never claim to have inspected an inaccessible file |
 | Written spec | Turn each stated value into a token; list unspecified values as assumptions |
@@ -62,7 +62,7 @@ lengths; the section heights in the rhythm line depend on it.
 Serve the implementation (a localhost dev server needs `/browser allow <origin>`) and run:
 
 ```
-design {action:"compare", reference:"<slug>", url:"http://localhost:5173/"}
+design_reference {action:"compare", reference:"<slug>", url:"http://localhost:5173/"}
 ```
 
 It measures the implementation at the reference's viewports and writes

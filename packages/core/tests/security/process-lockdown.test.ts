@@ -6,8 +6,6 @@ import type { Context } from '../../src/core/context.js';
 import { DefaultPermissionPolicy } from '../../src/security/permission-policy.js';
 import {
   __resetProcessLockdownForTests,
-  isNetworkLockedOff,
-  lockNetworkOff,
   lockToProjectRoot,
   lockYoloOff,
 } from '../../src/security/process-lockdown.js';
@@ -52,14 +50,6 @@ describe('process lockdown', () => {
     } finally {
       await fs.rm(root, { recursive: true, force: true });
     }
-  });
-
-  it('lockNetworkOff is one-way until the test reset', () => {
-    expect(isNetworkLockedOff()).toBe(false);
-    lockNetworkOff();
-    expect(isNetworkLockedOff()).toBe(true);
-    __resetProcessLockdownForTests();
-    expect(isNetworkLockedOff()).toBe(false);
   });
 
   it('lockToProjectRoot pins Context.allowOutsideProjectRoot to false', async () => {

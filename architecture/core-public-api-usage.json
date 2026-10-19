@@ -134,9 +134,9 @@
       "runtimeOrMixed": 58
     },
     "@wrongstack/core/registry": {
-      "files": 164,
+      "files": 165,
       "typeOnly": 70,
-      "runtimeOrMixed": 97
+      "runtimeOrMixed": 98
     },
     "@wrongstack/core/replay": {
       "files": 3,
@@ -154,9 +154,9 @@
       "runtimeOrMixed": 11
     },
     "@wrongstack/core/security": {
-      "files": 212,
+      "files": 211,
       "typeOnly": 30,
-      "runtimeOrMixed": 184
+      "runtimeOrMixed": 183
     },
     "@wrongstack/core/session-catalog": {
       "files": 13,
@@ -195,7 +195,7 @@
     },
     "@wrongstack/core/types": {
       "files": 1456,
-      "typeOnly": 1282,
+      "typeOnly": 1283,
       "runtimeOrMixed": 430
     },
     "@wrongstack/core/types/limits": {
@@ -11120,6 +11120,12 @@
     },
     {
       "specifier": "@wrongstack/core/registry",
+      "file": "packages/tools/tests/design-reference.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/registry",
       "file": "packages/tools/tool-tier.d.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -12033,12 +12039,6 @@
     {
       "specifier": "@wrongstack/core/security",
       "file": "packages/cli/tests/providers-models.gaps.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/security",
-      "file": "packages/cli/tests/restricted-mode.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -20517,7 +20517,7 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/tools/src/design-reference.ts",
-      "typeOnly": 0,
+      "typeOnly": 1,
       "runtimeOrMixed": 1
     },
     {

@@ -14,12 +14,7 @@
  * The switches are process-wide and one-way (core `process-lockdown.ts`), and
  * `WRONGSTACK_RESTRICTED=1` carries them into child processes.
  */
-import {
-  lockNetworkOff,
-  lockToProjectRoot,
-  lockYoloOff,
-  ToolCapabilities,
-} from '@wrongstack/core/security';
+import { lockToProjectRoot, lockYoloOff, ToolCapabilities } from '@wrongstack/core/security';
 import type { ToolRestriction } from './tool-restriction-flags.js';
 
 export const RESTRICTED_ENV = 'WRONGSTACK_RESTRICTED';
@@ -91,7 +86,6 @@ export function activateRestrictedMode(
   if (!validateRestrictedMode(flags)) return false;
   lockToProjectRoot();
   lockYoloOff();
-  lockNetworkOff();
   process.env[RESTRICTED_ENV] = '1';
   if (!announced) {
     announced = true;
