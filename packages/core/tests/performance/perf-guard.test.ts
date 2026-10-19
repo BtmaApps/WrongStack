@@ -315,4 +315,45 @@ describe('formatGuardReport', () => {
     expect(report[0]).toMatch(/^FAIL/);
     expect(report.some((line) => line.startsWith('GAIN'))).toBe(true);
   });
+
+  it('ignores non-finite measurements across unbaselined, machine-drift, and applyRatchet paths (F121)', () => {
+    const baseline: PerfBaselineFile = {
+      version: 1,
+      thresholdPct: 10,
+      entries: [
+        {
+          id: 'pending-probe',
+          label: 'Pending Probe',
+          metric: 'wall-ms',
+          value: null,
+          source: 'test',
+        },
+        {
+          id: 'remote-probe',
+          label: 'Remote Probe',
+          metric: 'wall-ms',
+          value: 100,
+          source: 'test',
+          machine: 'machine-a',
+        },
+      ],
+    };
+    const results = evaluateGuard(
+      baseline,
+      {
+        'pending-probe': Number.NaN,
+        'remote-probe': Number.NaN,
+        'new-probe': Number.POSITIVE_INFINITY,
+      },
+      { currentMachine: 'machine-b' },
+    );
+    expect(results.find((r) => r.id === 'pending-probe')?.current).toBeUndefined();
+    expect(results.find((r) => r.id === 'remote-probe')?.current).toBeUndefined();
+    expect(results.find((r) => r.id === 'remote-probe')?.deltaPct).toBe(0);
+    expect(results.some((r) => r.id === 'new-probe')).toBe(false);
+
+    const ratcheted = applyRatchet(baseline, results, { adoptNew: true });
+    expect(ratcheted.recorded).toEqual([]);
+    expect(ratcheted.adopted).toEqual([]);
+  });
 });

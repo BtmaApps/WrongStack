@@ -169,7 +169,9 @@ export function evaluateGuard(
 
   for (const entry of baseline.entries) {
     const thresholdPct = entry.thresholdPct ?? fileThreshold;
-    const measured = current[entry.id];
+    const rawMeasured = current[entry.id];
+    const measured =
+      rawMeasured !== undefined && Number.isFinite(rawMeasured) ? rawMeasured : undefined;
     if (entry.value === null) {
       // Declared but never recorded. There is nothing to compare against, so
       // this is informational in both directions — it must not fail the guard,
@@ -214,7 +216,7 @@ export function evaluateGuard(
       });
       continue;
     }
-    if (measured === undefined || !Number.isFinite(measured)) {
+    if (measured === undefined) {
       results.push({
         id: entry.id,
         label: entry.label,
@@ -254,7 +256,7 @@ export function evaluateGuard(
 
   const baselined = new Set(baseline.entries.map((entry) => entry.id));
   for (const [id, value] of Object.entries(current)) {
-    if (baselined.has(id)) continue;
+    if (baselined.has(id) || !Number.isFinite(value)) continue;
     results.push({
       id,
       label: id,
@@ -307,7 +309,7 @@ export function applyRatchet(
 
   const entries = baseline.entries.map((entry) => {
     const result = byId.get(entry.id);
-    if (!result || result.current === undefined) return entry;
+    if (!result || result.current === undefined || !Number.isFinite(result.current)) return entry;
     // An entry that has never been recorded takes its first number regardless
     // of direction — there is no direction yet. An already-recorded entry moves
     // only when it improved, and never on a machine that is not the one the
@@ -328,7 +330,12 @@ export function applyRatchet(
   if (options.adoptNew) {
     const known = new Set(baseline.entries.map((entry) => entry.id));
     for (const result of results) {
-      if (result.verdict !== 'unbaselined' || result.current === undefined) continue;
+      if (
+        result.verdict !== 'unbaselined' ||
+        result.current === undefined ||
+        !Number.isFinite(result.current)
+      )
+        continue;
       // `unbaselined` also covers declared-but-unrecorded entries, which the
       // map above already filled in. Only genuinely new ids are adopted here.
       if (known.has(result.id)) continue;
