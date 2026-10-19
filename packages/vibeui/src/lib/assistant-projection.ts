@@ -5,13 +5,21 @@ import {
 } from '@wrongstack/webui-protocol';
 
 export function assistantProjection(input: string) {
-  const normalized = input
-    .replace(/<next_?steps\b[^>]*>\s*/gi, (match, offset: number) =>
-      indexInsideCodeFence(input, offset) ? match : '<nextsteps>\n',
-    )
-    .replace(/\s*<\/next_?steps>/gi, (match, offset: number) =>
-      indexInsideCodeFence(input, offset) ? match : '\n</nextsteps>',
-    );
+  let normalized = input.replace(/<next_?steps\b[^>]*>\s*/gi, (match, offset: number) =>
+    indexInsideCodeFence(input, offset) ? match : '<nextsteps>\n',
+  );
+  normalized = normalized.replace(/\s*<\/next_?steps>/gi, (match, offset: number) => {
+    // The string being scanned here is the FIRST pass's output: rewriting a
+    // legacy opening tag changes its length, so offsets in `input` no longer
+    // line up with positions in the scanned string — and the match itself
+    // starts at `\s*`, which reaches back into a fenced example that ends
+    // immediately before the tag (scanFences covers the closing-fence line
+    // and its trailing newline). Ask the fence question about the scanned
+    // string at the close TAG's own offset; a genuinely-unfenced close is
+    // then folded, and parseNextSteps can find the block.
+    const tagOffset = offset + match.indexOf('<');
+    return indexInsideCodeFence(normalized, tagOffset) ? match : '\n</nextsteps>';
+  });
   const parsed = parseNextSteps(normalized);
   if (parsed.steps.length)
     return { text: stripNextStepsBlock(parsed.stripped), steps: parsed.steps };

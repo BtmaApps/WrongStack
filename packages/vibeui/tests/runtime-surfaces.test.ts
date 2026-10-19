@@ -104,6 +104,50 @@ describe('next steps', () => {
     const example = 'Example:\n```xml\n<nextsteps>\n1. Example only\n</nextsteps>\n```';
     expect(assistantProjection(example)).toEqual({ text: example, steps: [] });
   });
+  it('folds a legacy close tag after an in-block fenced example so its suggestions survive', () => {
+    // Regression (round r2-20261019): the close-tag fold skipped a genuinely
+    // unfenced `</next_steps>` because the fence check queried the match
+    // start — the `\s*` reaches back into the fence span that ends right
+    // before the tag — and the block's suggestions were dropped entirely.
+    const reply = [
+      '<nextsteps>',
+      '1. Run the focused suite',
+      '2. Report the result',
+      '```bash',
+      'bun run test',
+      '```',
+      '</next_steps>',
+    ].join('\n');
+    expect(assistantProjection(reply)).toEqual({
+      text: '',
+      steps: [
+        { index: 1, text: 'Run the focused suite' },
+        { index: 2, text: 'Report the result' },
+      ],
+    });
+  });
+  it('folds a legacy close even when rewriting the legacy open shifts the scanned offsets', () => {
+    // Same root cause, second face: rewriting `<next_steps verify>` to the
+    // canonical spelling changes the scanned string's length, so offsets from
+    // the original input no longer line up — the fence question must be asked
+    // of the scanned string at the tag's own offset.
+    const reply = [
+      '<next_steps verify>',
+      '1. Run the focused suite',
+      '2. Report the result',
+      '```bash',
+      'bun run test',
+      '```',
+      '</next_steps>',
+    ].join('\n');
+    expect(assistantProjection(reply)).toEqual({
+      text: '',
+      steps: [
+        { index: 1, text: 'Run the focused suite' },
+        { index: 2, text: 'Report the result' },
+      ],
+    });
+  });
   it('gates suggestions on terminal replies and preserves terminal replay metadata', () => {
     let state = reduceFrame(start(), {
       type: 'provider.response',
