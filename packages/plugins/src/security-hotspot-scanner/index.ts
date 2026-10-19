@@ -128,7 +128,7 @@ function readConfig(raw: unknown): SecurityHotspotConfig {
       : undefined;
   const rawMax = r['maxFindings'] ?? r['max_findings'] ?? r['limit'];
   return {
-    enabled: r['enabled'] === true,
+    enabled: r['enabled'] !== false,
     severity: rawSev === 'block' ? 'block' : DEFAULTS.severity,
     maxFindings:
       typeof rawMax === 'number' && rawMax >= 1 && rawMax <= 100 ? rawMax : DEFAULTS.maxFindings,

@@ -355,4 +355,13 @@ describe('security-hotspot-scanner plugin', () => {
       expect.any(Object),
     );
   });
+
+  it('partial config object preserves default enabled:true unless explicitly set to false', async () => {
+    const api = makeApi({ extensions: { 'security-hotspot-scanner': { severity: 'block' } } });
+    plugin.setup(api as never);
+    const statusTool = getRegisteredTool(api, 'security_hotspot_status');
+    const status = (await statusTool.execute({})) as { enabled: boolean; severity: string };
+    expect(status.enabled).toBe(true);
+    expect(status.severity).toBe('block');
+  });
 });
