@@ -9,9 +9,9 @@
       "runtimeOrMixed": 110
     },
     "@wrongstack/core/agent-catalog": {
-      "files": 21,
+      "files": 22,
       "typeOnly": 2,
-      "runtimeOrMixed": 22
+      "runtimeOrMixed": 23
     },
     "@wrongstack/core/chronicle": {
       "files": 15,
@@ -24,9 +24,9 @@
       "runtimeOrMixed": 12
     },
     "@wrongstack/core/coordination": {
-      "files": 278,
-      "typeOnly": 106,
-      "runtimeOrMixed": 236
+      "files": 281,
+      "typeOnly": 107,
+      "runtimeOrMixed": 239
     },
     "@wrongstack/core/coordination/agent-subagent-runner.js": {
       "files": 2,
@@ -49,9 +49,9 @@
       "runtimeOrMixed": 15
     },
     "@wrongstack/core/execution": {
-      "files": 86,
+      "files": 87,
       "typeOnly": 22,
-      "runtimeOrMixed": 81
+      "runtimeOrMixed": 82
     },
     "@wrongstack/core/execution/refine-decisions": {
       "files": 2,
@@ -84,14 +84,14 @@
       "runtimeOrMixed": 5
     },
     "@wrongstack/core/infrastructure": {
-      "files": 59,
+      "files": 60,
       "typeOnly": 7,
-      "runtimeOrMixed": 56
+      "runtimeOrMixed": 57
     },
     "@wrongstack/core/kernel": {
-      "files": 377,
+      "files": 378,
       "typeOnly": 163,
-      "runtimeOrMixed": 234
+      "runtimeOrMixed": 235
     },
     "@wrongstack/core/kernel/events.js": {
       "files": 6,
@@ -134,9 +134,9 @@
       "runtimeOrMixed": 58
     },
     "@wrongstack/core/registry": {
-      "files": 165,
+      "files": 166,
       "typeOnly": 70,
-      "runtimeOrMixed": 98
+      "runtimeOrMixed": 99
     },
     "@wrongstack/core/replay": {
       "files": 3,
@@ -154,9 +154,9 @@
       "runtimeOrMixed": 11
     },
     "@wrongstack/core/security": {
-      "files": 211,
+      "files": 213,
       "typeOnly": 30,
-      "runtimeOrMixed": 183
+      "runtimeOrMixed": 185
     },
     "@wrongstack/core/session-catalog": {
       "files": 13,
@@ -169,9 +169,9 @@
       "runtimeOrMixed": 6
     },
     "@wrongstack/core/skills": {
-      "files": 31,
+      "files": 33,
       "typeOnly": 3,
-      "runtimeOrMixed": 28
+      "runtimeOrMixed": 30
     },
     "@wrongstack/core/statusline": {
       "files": 27,
@@ -194,8 +194,8 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1459,
-      "typeOnly": 1284,
+      "files": 1463,
+      "typeOnly": 1288,
       "runtimeOrMixed": 432
     },
     "@wrongstack/core/types/limits": {
@@ -2756,6 +2756,12 @@
     },
     {
       "specifier": "@wrongstack/core/agent-catalog",
+      "file": "packages/cli/src/fleet/skill-companion-outcomes.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/agent-catalog",
       "file": "packages/cli/src/slash-commands/agent-improve.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -3159,6 +3165,12 @@
     {
       "specifier": "@wrongstack/core/coordination",
       "file": "packages/cli/src/fleet/budget-source.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/coordination",
+      "file": "packages/cli/src/fleet/explore-companion-policy.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -3743,6 +3755,18 @@
       "file": "packages/cli/tests/fleet-status-broadcast.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/coordination",
+      "file": "packages/cli/tests/fleet/explore-companion-factory.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/coordination",
+      "file": "packages/cli/tests/fleet/explore-companion-policy.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/coordination",
@@ -4977,6 +5001,12 @@
     {
       "specifier": "@wrongstack/core/execution",
       "file": "packages/cli/tests/fleet/adaptive-concurrency-cap.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/execution",
+      "file": "packages/cli/tests/fleet/explore-companion-factory.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -6896,6 +6926,12 @@
     },
     {
       "specifier": "@wrongstack/core/infrastructure",
+      "file": "packages/cli/tests/fleet/explore-companion-factory.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/infrastructure",
       "file": "packages/cli/tests/fleet/memory-companion.live.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -7851,6 +7887,12 @@
     {
       "specifier": "@wrongstack/core/kernel",
       "file": "packages/cli/tests/fleet/adaptive-concurrency-cap.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
+      "file": "packages/cli/tests/fleet/explore-companion-factory.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -10670,6 +10712,12 @@
     },
     {
       "specifier": "@wrongstack/core/registry",
+      "file": "packages/cli/tests/fleet/explore-companion-factory.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/registry",
       "file": "packages/cli/tests/fleet/memory-companion.live.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -11972,6 +12020,12 @@
     },
     {
       "specifier": "@wrongstack/core/security",
+      "file": "packages/cli/tests/fleet/explore-companion-factory.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
       "file": "packages/cli/tests/fleet/host-helpers-capabilities.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -12393,6 +12447,12 @@
     {
       "specifier": "@wrongstack/core/security",
       "file": "packages/webui-server/src/server/collab/mirror.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/webui-server/src/server/collab/replay.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -12860,6 +12920,12 @@
     },
     {
       "specifier": "@wrongstack/core/skills",
+      "file": "packages/cli/src/fleet/skill-companion-signals.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/skills",
       "file": "packages/cli/src/slash-commands/clear.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -12885,6 +12951,12 @@
     {
       "specifier": "@wrongstack/core/skills",
       "file": "packages/cli/src/wiring/session.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/skills",
+      "file": "packages/cli/tests/fleet/skill-companion-signals.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -14888,6 +14960,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/src/fleet/explore-companion-policy.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/cli/src/fleet/host-acp-runner-cache.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -16760,6 +16838,18 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/tests/fleet/explore-companion-factory.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/tests/fleet/explore-companion-policy.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/cli/tests/fleet/host-acp-runner.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -16779,6 +16869,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/cli/tests/fleet/host-context-skill-loadability.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/tests/fleet/host-context-skill-task.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },

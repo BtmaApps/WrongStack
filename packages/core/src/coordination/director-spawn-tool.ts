@@ -4,12 +4,11 @@ import type { SubagentConfig } from '../types/multi-agent.js';
 import type { JSONSchema, Tool } from '../types/tool.js';
 import { snapshotConversationEffort } from '../utils/leader-effort-override.js';
 import type { DispatchLogEntry } from './agents/dispatch-log.js';
-import { type AgentDefinition, getAgentDefinition } from './agents/index.js';
 import type * as Host from './director-host-contracts.js';
 import { instantiateRosterConfig } from './director-input-helpers.js';
 import { LEADER_EFFORT_SCHEMA, readLeaderEffort } from './director-spawn-model.js';
 
-import { dispatchAgent } from './dispatcher.js';
+import { dispatchAgent, rosterDispatchCatalog } from './dispatcher.js';
 
 import { callerSessionId } from './origin-session.js';
 
@@ -24,33 +23,6 @@ export function makeSpawnTool(
   director: Host.DirectorAdmissionPort,
   roster?: Record<string, SubagentConfig>,
 ): Tool {
-  const dispatchCatalog = (): Record<string, AgentDefinition> | undefined => {
-    if (!roster) return undefined;
-    return Object.fromEntries(
-      Object.entries(roster).map(([role, config]) => {
-        const builtIn = getAgentDefinition(role);
-        if (builtIn) return [role, builtIn];
-        return [
-          role,
-          {
-            config,
-            budget: {
-              timeoutMs: config.timeoutMs,
-              maxIterations: config.maxIterations,
-              maxToolCalls: config.maxToolCalls,
-              maxTokens: config.maxTokens,
-              maxCostUsd: config.maxCostUsd,
-            },
-            capability: {
-              phase: 'meta',
-              summary: config.dispatch?.summary ?? config.prompt ?? config.name,
-              keywords: config.dispatch?.keywords ?? [],
-            },
-          } satisfies AgentDefinition,
-        ];
-      }),
-    );
-  };
   const inputSchema: JSONSchema = {
     type: 'object',
     properties: {
@@ -72,7 +44,7 @@ export function makeSpawnTool(
       provider: {
         type: 'string',
         description:
-          'Provider id (e.g. "anthropic", "openai"). Defaults to the leader provider when omitted. The user may have pinned per-session models for spawned workers, in which case that pin wins over this field — the returned `provider`/`model` report what the worker actually runs on.',
+          'Provider id — one of the configured providers listed in the Delegation section; pass it together with `model`. Defaults to the leader provider when omitted. The user may have pinned per-session models for spawned workers, in which case that pin wins over this field — the returned `provider`/`model` report what the worker actually runs on.',
       },
       model: {
         type: 'string',
@@ -125,16 +97,18 @@ export function makeSpawnTool(
       },
       enable_write_tools: {
         type: 'boolean',
-        description: 'Set true to equip the subagent with file write and edit capabilities.',
+        description:
+          'Adds file write/edit to a role whose grant is read-only. Most workers already write, run shell and reach the network; this never narrows them.',
       },
       enable_mcp_tools: {
         type: 'boolean',
-        description: 'Set true to equip the subagent with MCP capabilities.',
+        description:
+          'Asks for MCP capabilities on a role with a narrowed grant. The CLI fleet host withholds MCP from workers, so it has no effect there.',
       },
       enable_network_tools: {
         type: 'boolean',
         description:
-          'Set true to equip the subagent with outbound-network capabilities (read_url_content). Off by default.',
+          'Adds outbound network (read_url_content) to a role whose grant leaves it out. Most workers already have it; this never narrows them.',
       },
     },
     required: [],
@@ -170,18 +144,24 @@ export function makeSpawnTool(
           });
         }
         cfg = instantiateRosterConfig(role, base);
-        routing = { at: new Date().toISOString(), role, source: 'explicit-role' };
+        routing = {
+          at: new Date().toISOString(),
+          role,
+          source: 'explicit-role',
+          tool: 'spawn_subagent',
+        };
       } else if (description && !role) {
         // Smart dispatch: route description to best catalog agent using dispatcher
         const dispatchResult = await dispatchAgent(description, {
           classifier: director.dispatchClassifier,
-          catalog: dispatchCatalog(),
+          catalog: roster ? rosterDispatchCatalog(roster) : undefined,
         });
         const dispatchRole = dispatchResult.role;
         routing = {
           at: new Date().toISOString(),
           role: dispatchRole,
           source: 'description',
+          tool: 'spawn_subagent',
           method: dispatchResult.method,
           confidence: dispatchResult.confidence,
           alternatives: (dispatchResult.alternatives ?? []).map((candidate) => candidate.role),
@@ -211,7 +191,12 @@ export function makeSpawnTool(
         // No role at all: the roster contributed nothing to this spawn. Worth
         // counting on its own — it is the shape a leader produces when it is
         // hand-rolling a worker instead of reaching for a specialist.
-        routing = { at: new Date().toISOString(), role: cfg.name, source: 'name-only' };
+        routing = {
+          at: new Date().toISOString(),
+          role: cfg.name,
+          source: 'name-only',
+          tool: 'spawn_subagent',
+        };
       }
 
       if (typeof i.name === 'string') cfg.name = i.name;
@@ -241,24 +226,19 @@ export function makeSpawnTool(
       if (Array.isArray(i.tools) && i.tools.every((t) => typeof t === 'string')) {
         cfg.tools = i.tools as string[];
       }
-      // WS-SEC-20: the fallback set is `fs.read` only. `net.outbound` used to
-      // ride along here, which handed every ad-hoc subagent an egress channel
-      // its individual tool calls are never confirmed on. It is now opt-in,
-      // matching `define_subagent`.
-      if (i.enable_write_tools === true) {
-        cfg.allowedCapabilities = [
-          ...new Set([...(cfg.allowedCapabilities ?? ['fs.read']), 'fs.write']),
-        ];
-      }
-      if (i.enable_mcp_tools === true) {
-        cfg.allowedCapabilities = [
-          ...new Set([...(cfg.allowedCapabilities ?? ['fs.read']), 'mcp.proxy']),
-        ];
-      }
-      if (i.enable_network_tools === true) {
-        cfg.allowedCapabilities = [
-          ...new Set([...(cfg.allowedCapabilities ?? ['fs.read']), 'net.outbound']),
-        ];
+      // The `enable_*` toggles only reopen what a role's own narrow grant
+      // withholds. A worker without a grant already runs on the host's wide
+      // default (write, shell and network included); seeding a list here used
+      // to replace that default with `fs.read` + the flag, so "enable writes"
+      // silently cost the worker its shell — it could edit but not test.
+      if (cfg.allowedCapabilities) {
+        const extra: string[] = [];
+        if (i.enable_write_tools === true) extra.push(ToolCapabilities.FS_WRITE);
+        if (i.enable_mcp_tools === true) extra.push(ToolCapabilities.MCP_PROXY);
+        if (i.enable_network_tools === true) extra.push(ToolCapabilities.NET_OUTBOUND);
+        if (extra.length > 0) {
+          cfg.allowedCapabilities = [...new Set([...cfg.allowedCapabilities, ...extra])];
+        }
       }
       if (typeof i.maxIterations === 'number') cfg.maxIterations = i.maxIterations;
       if (typeof i.maxToolCalls === 'number') cfg.maxToolCalls = i.maxToolCalls;

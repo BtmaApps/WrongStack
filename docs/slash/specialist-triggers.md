@@ -101,6 +101,6 @@ A rule is `{ role, match: string[], reason, tier? }`. `reason` is put verbatim i
 
 ## Measuring whether it helped
 
-`/fleet routing` reads `.wrongstack/agents/dispatch-log.jsonl`, which records every spawn's routing decision. Triggered spawns appear there as `explicit-role`, so the shape to watch is the count of distinct roles with spawns — that was 20 when this plugin was written, against 75 in the catalog.
+`/fleet routing` reads `.wrongstack/agents/dispatch-log.jsonl`, which records every leader spawn's routing decision — from `delegate` as well as `spawn_subagent` since 2026-10-20 (each entry names its `tool`; earlier entries came from `spawn_subagent` only, so they undercount). Triggered spawns appear there as `explicit-role`, so the shape to watch is the count of distinct roles with spawns — that was 20 when this plugin was written, against 75 in the catalog.
 
 Related: [`/fleet`](fleet.md), [`/auto-review`](auto-review.md), [`/autonomy`](autonomy.md).

@@ -25,7 +25,8 @@ import { ToolCapabilities } from '../../src/security/capabilities.js';
 import { ToolValidationError } from '../../src/types/errors.js';
 
 const dispatchAgentMock = vi.fn();
-vi.mock('../../src/coordination/dispatcher.js', () => ({
+vi.mock('../../src/coordination/dispatcher.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../src/coordination/dispatcher.js')>()),
   dispatchAgent: (...a: unknown[]) => dispatchAgentMock(...a),
 }));
 

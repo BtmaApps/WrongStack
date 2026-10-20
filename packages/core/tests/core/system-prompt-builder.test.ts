@@ -348,6 +348,24 @@ describe('DefaultSystemPromptBuilder', () => {
     expect(blocks.map((block) => block.text).join('\n')).toContain('CUSTOM DELEGATE coder');
   });
 
+  // The delegation section read the roster from `role.enum`, which `delegate`
+  // dropped from its wire schema — so every leader was told "(no roster
+  // configured)" beside a roster of ~80 roles.
+  it('renders the real roster into the delegation guidance', async () => {
+    const { createDelegateTool } = await import('../../src/coordination/delegate-tool.js');
+    const { FLEET_ROSTER } = await import('../../src/coordination/fleet.js');
+    const tool = createDelegateTool({ host: {} as never, roster: FLEET_ROSTER });
+    for (const tokenSavingMode of ['off', 'medium'] as const) {
+      const b = new DefaultSystemPromptBuilder({ todayIso: '2026-10-20', tokenSavingMode });
+      const text = (await b.build({ cwd: tmp, projectRoot: tmp, tools: [tool] }))
+        .map((block) => block.text)
+        .join('\n');
+      expect(text).not.toContain('no roster configured');
+      expect(text).toMatch(/^- review: .*security-reviewer/m);
+      expect(text).toMatch(/omit (both )?`role` and `name`/);
+    }
+  });
+
   it('renders tool usage with usageHint or description fallback', async () => {
     const b = new DefaultSystemPromptBuilder();
     const blocks = await b.build({

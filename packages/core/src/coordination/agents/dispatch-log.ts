@@ -71,6 +71,8 @@ export interface DispatchLogEntry {
   rosterMiss?: boolean | undefined;
   /** Session that spawned, so a burst can be attributed to one run. */
   sessionId?: string | undefined;
+  /** Leader tool that spawned. Absent on entries written before it was recorded. */
+  tool?: 'delegate' | 'spawn_subagent' | undefined;
 }
 
 /**
@@ -123,6 +125,7 @@ export function recordDispatch(entry: DispatchLogEntry, projectRoot?: string): v
       ...(matched ? { matched } : {}),
       ...(entry.rosterMiss ? { rosterMiss: true } : {}),
       ...(entry.sessionId ? { sessionId: entry.sessionId } : {}),
+      ...(entry.tool ? { tool: entry.tool } : {}),
     })}\n`;
     appendFileSync(filePath, line, 'utf8');
     rotateIfLarge(filePath);

@@ -150,7 +150,14 @@ export async function buildToolUsage(
       )?.properties?.role?.enum;
       return Array.isArray(role) ? (role.filter((r) => typeof r === 'string') as string[]) : [];
     })();
-    const roleList = enumValues.length > 0 ? enumValues.join(', ') : '(no roster configured)';
+    // The tool's own menu first: `delegate` keeps its roster out of the wire
+    // schema (an 80-id enum on every request), so a schema-only read rendered
+    // "(no roster configured)" beside a full roster. The enum stays as the
+    // fallback for tools that still declare one.
+    const roleList =
+      delegateTool?.promptVars?.roleList ??
+      (enumValues.length > 0 ? enumValues.join(', ') : '(no roster configured)');
+    const modelMenu = delegateTool?.promptVars?.modelMenu ?? '';
     if (host.tier === 'minimal' || host.tier === 'aggressive') {
       // Skip — don't emit any delegation guidance
     } else if (host.tier === 'light' || host.tier === 'medium') {
@@ -158,11 +165,13 @@ export async function buildToolUsage(
       // the full multi-paragraph guidance.
       const delegation = section('tool.delegation.compact', {
         roleList,
+        modelMenu,
       });
       if (delegation) lines.push(delegation);
     } else {
       const delegation = section('tool.delegation.full', {
         roleList,
+        modelMenu,
       });
       if (delegation) lines.push(delegation);
     }

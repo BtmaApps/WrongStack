@@ -21,6 +21,7 @@ import {
   validateDelegationInput,
 } from './delegation/run-delegation.js';
 import { LEADER_EFFORT_SCHEMA } from './director-spawn-model.js';
+import { rosterRoleMenu } from './dispatcher.js';
 import { callerSessionId } from './origin-session.js';
 import { taskBoundarySchemaProperties } from './task-boundary.js';
 
@@ -92,6 +93,12 @@ export interface CreateDelegateToolOptions {
   externalAgentModels?:
     | Readonly<Record<string, { models: readonly string[]; default?: string | undefined }>>
     | undefined;
+  /**
+   * Worker-model menu for the leader's Delegation guidance (see
+   * `renderLeaderModelMenu`). Read each time the prompt is built, so a config
+   * change reaches the next rebuild.
+   */
+  modelMenu?: (() => string | undefined) | undefined;
 }
 
 function externalAgentsNote(agents: readonly string[] | undefined): string {
@@ -178,18 +185,18 @@ export function createDelegateTool(opts: CreateDelegateToolOptions): Tool {
         type: 'string',
         description:
           rosterIds.length > 0
-            ? 'Roster role id. Common: bug-hunter, security-scanner, refactor-planner, critic, audit-log, executor, shadow-agent, architect.'
+            ? 'Roster role id (listed by phase in the Delegation section). Set it only when you are sure of the id. Omit both `role` and `name` and the task is routed to the best-matching specialist for you.'
             : 'No roster configured — pass `name` instead.',
       },
       name: {
         type: 'string',
         description:
-          'Display name for free-form subagents (no roster role). Required when `role` is omitted.',
+          'Display name for a free-form generalist worker (no roster role, no role skills). Omit it to have the task routed to a specialist.',
       },
       provider: {
         type: 'string',
         description:
-          'Provider id (e.g. "anthropic", "openai"). Defaults to host provider.' +
+          'Provider id — one of the configured providers listed in the Delegation section; pass it together with `model`. Defaults to host provider.' +
           externalAgentsNote(opts.externalAgents),
       },
       model: {
@@ -255,7 +262,7 @@ export function createDelegateTool(opts: CreateDelegateToolOptions): Tool {
     description:
       "Hand a piece of work to a subagent. By default this call does NOT block: it spawns the worker and returns at once with `{status:'running', delegationId, taskId}`. When the worker finishes, its result is delivered to you automatically as a `[DELEGATION RESULT]` block (tagged with the same delegationId) at a later iteration — do not poll, sleep, or call `await_tasks` just to wait for it; keep doing other work. Several `delegate` calls in one turn fan out in parallel. Pass `wait: true` only when your very next step cannot proceed without the verdict (a review, a fact-check, a sign-off) AND the work is short: the call then blocks you until the worker returns and yields the full result inline. Each worker has its own context and LLM calls, an auto-extending budget, and a partial-completion handoff path (maxHandoffs, default 1); workers cannot recursively spawn. For finer control over reusable workers (several tasks on one worker, `await_tasks` with mode:'any'), use `spawn_subagent` + `assign_task` + `await_tasks`.",
     usageHint:
-      'Set `task` to the objective, then make the edges explicit: `scope` (what the work covers) and `outOfScope` (at least one concrete non-goal) are REQUIRED — the call is rejected without them, and the worker treats the rendered boundary block as a hard contract. Pick `role` from roster or pass `name` for free-form, and choose `effort` for the work (and `provider`/`model`/`tier` when the default does not fit). Default is background: the result arrives on its own under the returned `delegationId` (`roll_up([taskId])` fetches the full result afterwards). Use `wait: true` only for short work that gates your next move. Raise `maxHandoffs` (default 1, cap 8) for very large tasks; pass larger `timeoutMs`/`maxIterations`/`maxToolCalls` only when needed.',
+      'Set `task` to the objective, then make the edges explicit: `scope` (what the work covers) and `outOfScope` (at least one concrete non-goal) are REQUIRED — the call is rejected without them, and the worker treats the rendered boundary block as a hard contract. Pick `role` when you are sure of the id, omit `role` and `name` to have the task routed to the best specialist, or pass `name` for a free-form generalist; choose `effort` for the work (and `provider`/`model`/`tier` when the default does not fit). Default is background: the result arrives on its own under the returned `delegationId` (`roll_up([taskId])` fetches the full result afterwards). Use `wait: true` only for short work that gates your next move. Raise `maxHandoffs` (default 1, cap 8) for very large tasks; pass larger `timeoutMs`/`maxIterations`/`maxToolCalls` only when needed.',
     // H-10 (AT-03) part (a): `permission:'confirm'` forces a prompt on every
     // call, in every mode — the spawned worker's wide capabilities no longer
     // ride on a single innocuous-looking approval.
@@ -267,6 +274,18 @@ export function createDelegateTool(opts: CreateDelegateToolOptions): Tool {
     // approving; an "always" answer is stored against that exact name.
     subjectKey: 'name',
     inputSchema,
+    get promptVars() {
+      let modelMenu = '';
+      try {
+        modelMenu = opts.modelMenu?.() ?? '';
+      } catch {
+        // A menu is guidance; a config read failing must not break the prompt.
+      }
+      return {
+        ...(opts.roster && rosterIds.length > 0 ? { roleList: rosterRoleMenu(opts.roster) } : {}),
+        ...(modelMenu ? { modelMenu } : {}),
+      };
+    },
     async execute(input: unknown, _ctx?: unknown, execOpts?: { signal?: AbortSignal }) {
       const sessionId = callerSessionId(_ctx, opts.directorRunId) ?? opts.directorRunId;
       // Executor-provided abort signal (leader interrupt, Esc, timeout). In
@@ -319,7 +338,7 @@ export function createDelegateTool(opts: CreateDelegateToolOptions): Tool {
         tracker.attachDirector(prepared.director);
         const entry = tracker.begin({
           sessionId: sessionId as string,
-          target: validated.target,
+          target: prepared.target,
           task: validated.input.task,
         });
         delegationId = entry.delegationId;
@@ -359,7 +378,7 @@ export function createDelegateTool(opts: CreateDelegateToolOptions): Tool {
           delegationId: ownedId,
           taskId: first.taskId,
           subagentId: first.subagentId,
-          target: validated.target,
+          target: prepared.target,
           note: BACKGROUND_NOTE,
         };
       } catch (err) {

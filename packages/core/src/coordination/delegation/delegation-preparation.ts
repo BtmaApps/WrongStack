@@ -21,8 +21,10 @@ import { randomUUID } from 'node:crypto';
 import type { EventBus } from '../../kernel/events.js';
 import { ToolValidationError } from '../../types/errors.js';
 import type { SubagentConfig } from '../../types/multi-agent.js';
+import type { DispatchLogEntry } from '../agents/dispatch-log.js';
 import type { Director } from '../director.js';
 import { readLeaderEffort } from '../director-spawn-model.js';
+import { dispatchAgent, rosterDispatchCatalog } from '../dispatcher.js';
 import { isExternalAgentProvider } from '../external-agent-provider.js';
 import { applyRosterBudget, FLEET_ROSTER_BUDGETS } from '../fleet.js';
 import {
@@ -135,6 +137,12 @@ export interface PreparedDelegation {
   baseBrief: string;
   launchModePreface: string;
   emitCompleted: (payload: DelegateCompletedPayload) => void;
+  /**
+   * How this delegation chose its role, recorded once the first spawn is
+   * admitted (see `startDelegationAttempt`). Without it `/fleet routing` saw
+   * only `spawn_subagent`, which the leader rarely calls.
+   */
+  routing: DispatchLogEntry;
 }
 
 export const WAIT_LAUNCH_PREFACE = [
@@ -169,7 +177,8 @@ export async function prepareDelegation(
 ): Promise<
   { kind: 'ready'; prepared: PreparedDelegation } | { kind: 'result'; result: DelegateResult }
 > {
-  const { input: i, boundary, target } = validated;
+  const { boundary } = validated;
+  let { input: i, target } = validated;
   let director = await opts.host.ensureDirector();
   if (!director) {
     director = await opts.host.promoteToDirector();
@@ -186,6 +195,36 @@ export async function prepareDelegation(
 
   const defaultTimeoutMs = opts.defaultTimeoutMs;
   const timeoutMs = i.timeoutMs ?? defaultTimeoutMs;
+
+  // Neither a role nor a free-form name: the leader described the work and
+  // left the pick to us. Route the task text the same way `spawn_subagent`
+  // routes `description`, so the leader never has to recall one of ~80 ids.
+  let routing: DispatchLogEntry;
+  if (!i.role && !i.name && opts.roster && Object.keys(opts.roster).length > 0) {
+    const dispatched = await dispatchAgent(i.task, {
+      classifier: director.dispatchClassifier,
+      catalog: rosterDispatchCatalog(opts.roster),
+    });
+    i = { ...i, role: dispatched.role };
+    target = dispatched.role;
+    routing = {
+      at: new Date().toISOString(),
+      role: dispatched.role,
+      source: 'description',
+      tool: 'delegate',
+      method: dispatched.method,
+      confidence: dispatched.confidence,
+      alternatives: dispatched.alternatives.map((candidate) => candidate.role),
+      matched: dispatched.matched,
+    };
+  } else {
+    routing = {
+      at: new Date().toISOString(),
+      role: i.role ?? i.name ?? 'subagent',
+      source: i.role ? 'explicit-role' : 'name-only',
+      tool: 'delegate',
+    };
+  }
 
   let cfg: SubagentConfig;
   if (i.role) {
@@ -218,7 +257,8 @@ export async function prepareDelegation(
   } else {
     if (!i.name) {
       throw new ToolValidationError({
-        message: 'Either `role` (from the roster) or `name` is required.',
+        message:
+          'Either `role` (from the roster) or `name` is required when no roster is configured.',
         field: 'role',
       });
     }
@@ -291,6 +331,7 @@ export async function prepareDelegation(
       baseBrief: composeBoundedTaskDescription(i.task, boundary),
       launchModePreface: launchPrefaceFor(ctx.mode),
       emitCompleted: makeDelegateCompletedEmitter(opts.events),
+      routing,
     },
   };
 }

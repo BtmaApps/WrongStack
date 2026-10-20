@@ -10,6 +10,7 @@ import {
   DelegationTracker,
   EscalationRoutingBrainArbiter,
   ObservableBrainArbiter,
+  renderLeaderModelMenu,
   terminalPolicyDecision,
 } from '@wrongstack/core/coordination';
 import {
@@ -571,6 +572,11 @@ export function setupBrainAndOrchestration(deps: BrainOrchestrationDeps): BrainO
       ...(wrongForge?.models
         ? { externalAgentModels: { [wrongForge.agent]: wrongForge.models } }
         : {}),
+      // Live config: tiers, routes and providers the leader can actually pick.
+      modelMenu: () => {
+        const live = (configStore.get?.() as Config | undefined) ?? config;
+        return renderLeaderModelMenu(live, { provider: live.provider, model: live.model });
+      },
     }),
   );
   toolRegistry.exposeToProvider('delegate');

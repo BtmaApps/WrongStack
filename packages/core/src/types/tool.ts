@@ -146,6 +146,12 @@ export interface Tool<I = unknown, O = unknown> {
         useInstead?: readonly string[] | undefined;
       }
     | undefined;
+  /**
+   * Values the system-prompt builder interpolates into this tool's guidance
+   * section (e.g. `delegate` → `roleList`). Host-side only: never part of the
+   * wire definition, so it costs no schema tokens on every request.
+   */
+  promptVars?: Readonly<Record<string, string>> | undefined;
   /** Optional category for grouping in help lists and system prompts. */
   category?: string | undefined;
   inputSchema: JSONSchema;

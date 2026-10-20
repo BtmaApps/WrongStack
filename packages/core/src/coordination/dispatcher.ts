@@ -18,12 +18,14 @@
  * `executor` generalist rather than failing.
  */
 
+import type { SubagentConfig } from '../types/multi-agent.js';
 import {
   readBundledInstructionText,
   renderInstructionTemplate,
 } from '../utils/instruction-file.js';
 import { safeParse } from '../utils/safe-json.js';
-import { AGENT_CATALOG, type AgentDefinition } from './agents/index.js';
+import { AGENT_CATALOG, type AgentDefinition, getAgentDefinition } from './agents/index.js';
+import type { AgentPhase } from './agents/types.js';
 
 /** Default agent used when nothing else matches — the generalist builder. */
 export const DEFAULT_DISPATCH_ROLE = 'executor';
@@ -268,6 +270,77 @@ export async function dispatchAgent(
     matched: [],
     alternatives: [],
   };
+}
+
+/**
+ * The dispatch catalog for a live roster: built-in roles keep their catalog
+ * definition, project roles are synthesised from their `dispatch` metadata.
+ * Shared by every leader spawn tool so `delegate` and `spawn_subagent` route
+ * the same text to the same role.
+ */
+export function rosterDispatchCatalog(
+  roster: Record<string, SubagentConfig>,
+): Record<string, AgentDefinition> {
+  return Object.fromEntries(
+    Object.entries(roster).map(([role, config]) => {
+      const builtIn = getAgentDefinition(role);
+      if (builtIn) return [role, builtIn];
+      return [
+        role,
+        {
+          config,
+          budget: {
+            timeoutMs: config.timeoutMs,
+            maxIterations: config.maxIterations,
+            maxToolCalls: config.maxToolCalls,
+            maxTokens: config.maxTokens,
+            maxCostUsd: config.maxCostUsd,
+          },
+          capability: {
+            phase: 'meta',
+            summary: config.dispatch?.summary ?? config.prompt ?? config.name,
+            keywords: config.dispatch?.keywords ?? [],
+          },
+        } satisfies AgentDefinition,
+      ];
+    }),
+  );
+}
+
+/** Lifecycle order the role menu is rendered in; `other` holds roles outside the catalog. */
+const MENU_PHASE_ORDER: readonly (AgentPhase | 'other')[] = [
+  'discovery',
+  'planning',
+  'build',
+  'domain',
+  'verify',
+  'review',
+  'delivery',
+  'knowledge',
+  'meta',
+  'other',
+];
+
+/**
+ * The roster as the leader's system prompt lists it: role ids grouped by
+ * lifecycle phase, one line per phase.
+ *
+ * Ids only, on purpose. With summaries the menu is ~8k chars on every leader
+ * request; grouped ids are ~1k, and the leader does not need to recall an id
+ * at all — omitting `role` routes the task through `dispatchAgent`, which
+ * reads the full capability metadata.
+ */
+export function rosterRoleMenu(roster: Record<string, SubagentConfig>): string {
+  const groups = new Map<string, string[]>();
+  for (const role of Object.keys(roster)) {
+    const phase = getAgentDefinition(role)?.capability.phase ?? 'other';
+    const ids = groups.get(phase) ?? [];
+    ids.push(role);
+    groups.set(phase, ids);
+  }
+  return MENU_PHASE_ORDER.filter((phase) => groups.has(phase))
+    .map((phase) => `- ${phase}: ${(groups.get(phase) ?? []).join(', ')}`)
+    .join('\n');
 }
 
 /**

@@ -266,10 +266,10 @@ export {
   type SupervisedSubagent,
   type SupervisorLogEntry,
 } from './fleet-supervisor.js';
-
 export type { ICoordinator } from './icoordinator.js';
 export type { IFleetManager } from './ifleet-manager.js';
 export { LargeAnswerStore } from './large-answer-store.js';
+export { renderLeaderModelMenu } from './leader-model-menu.js';
 export * from './mailbox-exports.js';
 export {
   isValidMatrixKey,
@@ -398,7 +398,6 @@ export {
   lockSessionSubagentPolicyForSession,
   resetSessionSubagentPolicy,
   restoreSessionSubagentPolicy,
-  unlockSessionSubagentPolicyForSession,
   SUBAGENT_COMPANIONS_ALLOWED_META_KEY,
   SUBAGENTS_ALLOWED_META_KEY,
   SUBAGENTS_POLICY_LOCKED_META_KEY,
@@ -408,6 +407,7 @@ export {
   setSessionSubagentsAllowed,
   subagentPolicyMode,
   subagentPolicyModeFrom,
+  unlockSessionSubagentPolicyForSession,
 } from './session-subagent-policy.js';
 // ── Mailbox bridge lock — per-project single-instance contract ─────────
 // The HTTP bridge (`wstack mailbox serve`) writes a per-project lock +

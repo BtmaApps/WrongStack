@@ -265,14 +265,54 @@ describe('createDelegateTool', () => {
     expect(tool.name).toBe('delegate');
   });
 
-  it('rejects when neither role nor name is provided', async () => {
+  it('rejects when neither role nor name is provided and there is no roster', async () => {
     director = buildLiveDirector();
-    const tool = createDelegateTool({ host: buildHost(director), roster: FLEET_ROSTER });
+    const tool = createDelegateTool({ host: buildHost(director) });
     await expect(
       exec(tool, { task: 'x', ...BOUNDARY }, null as never, {
         signal: new AbortController().signal,
       }),
     ).rejects.toThrow(/role.*name/i);
+  });
+
+  // The leader's default spawn tool used to throw here, so a leader that could
+  // not recall one of ~80 role ids had no way to reach a specialist, and the
+  // spawn never reached `/fleet routing` either.
+  it('routes the task to a specialist when neither role nor name is given', async () => {
+    director = buildLiveDirector();
+    const routed: unknown[] = [];
+    (director as unknown as { onSpawnRouted: (e: unknown) => void }).onSpawnRouted = (e) =>
+      routed.push(e);
+    const tool = createDelegateTool({ host: buildHost(director), roster: FLEET_ROSTER });
+    const out = (await exec(
+      tool,
+      {
+        task: 'translate the locale files and fix missing i18n keys for the german locale',
+        ...BOUNDARY,
+      },
+      null as never,
+      { signal: new AbortController().signal },
+    )) as { ok: boolean; subagentId?: string };
+    expect(out.ok).toBe(true);
+    expect(out.subagentId).toMatch(/^i18n-/);
+    expect(routed).toEqual([
+      expect.objectContaining({ role: 'i18n', source: 'description', tool: 'delegate' }),
+    ]);
+  });
+
+  it('records explicit-role and name-only delegations in routing telemetry', async () => {
+    director = buildLiveDirector();
+    const routed: Array<{ role: string; source: string; tool?: string }> = [];
+    (director as unknown as { onSpawnRouted: (e: unknown) => void }).onSpawnRouted = (e) =>
+      routed.push(e as { role: string; source: string; tool?: string });
+    const tool = createDelegateTool({ host: buildHost(director), roster: FLEET_ROSTER });
+    const signal = new AbortController().signal;
+    await exec(tool, { role: 'bug-hunter', task: 'audit', ...BOUNDARY }, null as never, { signal });
+    await exec(tool, { name: 'oneoff', task: 'do it', ...BOUNDARY }, null as never, { signal });
+    expect(routed.map(({ role, source, tool }) => ({ role, source, tool }))).toEqual([
+      { role: 'bug-hunter', source: 'explicit-role', tool: 'delegate' },
+      { role: 'oneoff', source: 'name-only', tool: 'delegate' },
+    ]);
   });
 
   it('rejects when task is missing or empty', async () => {
@@ -488,18 +528,21 @@ describe('createDelegateTool', () => {
     await director.shutdown();
   });
 
-  it('mentions common roster roles in the role description', () => {
+  it('lists the whole roster in its prompt menu, not in the wire schema', () => {
     const tool = createDelegateTool({
       host: buildHost(null),
       roster: FLEET_ROSTER,
     });
     const schema = tool.inputSchema as {
-      properties?: { role?: { description?: string } };
+      properties?: { role?: { description?: string; enum?: unknown } };
     };
-    const desc = schema.properties?.role?.description ?? '';
-    expect(desc).toContain('bug-hunter');
-    expect(desc).toContain('security-scanner');
-    expect(desc).not.toContain(Object.keys(FLEET_ROSTER).join(','));
+    // The schema rides on every request; the roster stays out of it.
+    expect(schema.properties?.role?.enum).toBeUndefined();
+    expect(schema.properties?.role?.description ?? '').not.toContain('bug-hunter');
+    const menu = tool.promptVars?.roleList ?? '';
+    for (const role of Object.keys(FLEET_ROSTER)) expect(menu).toContain(role);
+    expect(menu).toMatch(/^- verify: .*bug-hunter/m);
+    expect(createDelegateTool({ host: buildHost(null) }).promptVars?.roleList).toBeUndefined();
   });
 
   // ─────────────────────────────────────────────────────────────────

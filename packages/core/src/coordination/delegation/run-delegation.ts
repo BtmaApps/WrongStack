@@ -113,6 +113,9 @@ export async function startDelegationAttempt(
   const subagentId = await dir.spawn({ ...attemptConfig, originSessionId: sessionId });
   const plannedTaskId = randomUUID();
   if (handoffCount === 0) {
+    // Recorded only once the spawn is admitted, as `spawn_subagent` does: a
+    // worker refused by a budget cap never ran.
+    dir.onSpawnRouted?.(sessionId ? { ...prepared.routing, sessionId } : prepared.routing);
     prepared.opts.events?.emit('delegate.started', {
       sessionId,
       target,
