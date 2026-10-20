@@ -399,4 +399,26 @@
     --accent-foreground: 18 70% 48%;
     --brand-orange: 18 70% 48%;
   }
+
+  /* Terminal — phosphor green main signal over the shared neutrals, amber
+     secondary. Pairs with the developer/terminal aesthetic (mono type,
+     syntax-status colors). */
+  :root[data-palette="terminal"] {
+    --primary: 150 65% 24%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 150 65% 24%;
+    --running: 150 65% 24%;
+    --accent: 150 45% 88%;
+    --accent-foreground: 150 60% 20%;
+    --brand-orange: 38 92% 40%;
+  }
+  .dark[data-palette="terminal"] {
+    --primary: 150 70% 45%;
+    --primary-foreground: 150 45% 7%;
+    --ring: 150 70% 45%;
+    --running: 150 70% 45%;
+    --accent: 150 30% 16%;
+    --accent-foreground: 150 70% 55%;
+    --brand-orange: 40 90% 52%;
+  }
 }

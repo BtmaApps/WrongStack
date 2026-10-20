@@ -111,7 +111,7 @@ describe('HQ ↔ WebUI design-token parity', () => {
   });
 
   it('mirrors every optional palette', () => {
-    // Eleven named palettes have their own block; the twelfth ("signal") is the
+    // Twelve named palettes have their own block; the thirteenth ("signal") is the
     // default and needs none — it IS the base `:root` / `.dark` token set.
     const palettes = new Set(
       [...hq.keys()]
@@ -131,6 +131,7 @@ describe('HQ ↔ WebUI design-token parity', () => {
       'rose-copper',
       'sage-sand',
       'slate-violet',
+      'terminal',
     ]);
   });
 });

@@ -37,7 +37,8 @@ export type HqPaletteId =
   | 'slate-violet'
   | 'coral-mint'
   | 'arctic-ember'
-  | 'moss-rust';
+  | 'moss-rust'
+  | 'terminal';
 
 export const HQ_PALETTE_IDS: readonly HqPaletteId[] = [
   'signal',
@@ -52,6 +53,7 @@ export const HQ_PALETTE_IDS: readonly HqPaletteId[] = [
   'coral-mint',
   'arctic-ember',
   'moss-rust',
+  'terminal',
 ];
 
 export interface HqLocalPrefs {

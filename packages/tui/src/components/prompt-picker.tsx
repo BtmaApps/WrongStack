@@ -109,7 +109,8 @@ export function PromptPicker({
       </Text>
       <Text dimColor wrap="truncate-end">
         {(columns > 0 && columns < 100) || split
-          ? `1/2/3 ${level} · ↑↓ · ←→ · Enter · Esc`
+          ? // Esc leads: a narrow list column truncates the tail, and the exit hint must survive.
+            `Esc · 1/2/3 ${level} · ↑↓ · ←→ · Enter`
           : `↑/↓ navigate · ←/→ category · Enter insert · f favorite · e edit · 1/2/3 ${level} · Esc cancel`}
       </Text>
       {entries.length === 0 ? (
