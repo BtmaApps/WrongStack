@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.11] — 2026-10-20
+
+Updates move to the standalone release binary, the leader routes work to its
+specialists with the right skills, model and tier, and the Skill Companion
+learns declarative path rules.
+
+### Added
+
+- **Standalone-binary updates.** `wstack update` migrates a legacy package install to the release binary: it installs and verifies the binary from GitHub Releases, then removes the old global packages. The legacy `--pm` / `--allow-scripts` flags are ignored with a warning, and the HQ update service refuses an unattended update of a legacy install.
+- **Declarative skill paths.** Skills can declare frontmatter `paths` globs; editing a matching file makes the Skill Companion recommend the skill without a model call. Candidates are ranked by overlap with the work, and a skill refused repeatedly in a project stops being offered.
+- **Routing to specialists.** `delegate` without `role` or `name` routes the task to the best-matching roster specialist, as `spawn_subagent` does for a description. The leader's Delegation guidance lists the whole roster by phase and a live worker-model menu (default tier, routed roles, tier levels, configured providers), kept out of the wire schema.
+- **Requested skills.** `delegate` and `spawn_subagent` take `skills` (up to four), loaded ahead of the skills a worker's role and task already select.
+- **Routing outcomes.** The dispatch log records every leader spawn from either tool, and each finished task of a routed worker adds its status, its own cost and the model it ran on; `/fleet routing` shows success by how the role was chosen and per-role success and cost.
+
+### Changed
+
+- **A chosen tier picks the model.** A tier the leader, a Kanban or trigger route, or a user lane chose now replaces a role's routing-table model instead of only tightening the budget; a guessed tier and an unconfigured one leave the route in charge, and an explicit provider and model still win.
+- **Skills follow the task.** Roster workers rank their full skill pool by project affinity and by the task text instead of always loading the same three, and a worker without a role receives the skills its task names.
+- **WebUI default palette.** New installs start on Blue/Navy; an explicit Signal pick is kept.
+- **Explore Companion.** The companion runs on a lean self-contained brief with a capped output budget and probes only project source.
+
+### Fixed
+
+- **Fleet.** `work_complete` no longer blocks every spawn for the rest of the session; the fleet reopens when the next leader run starts. `spawn_subagent`'s `enable_*_tools` toggles only widen a role's narrow grant instead of replacing the wide default with read-only access, and pending tasks pinned to a stopped worker are aborted.
+- **Dispatcher.** A keyword repeated in a role's definition is counted once and task words are stemmed, so roles with duplicated keywords stop winning ties they have no claim to.
+- **Goal planning.** An off-format plan is repaired once by the model, JSON extraction prefers a real array over a Markdown checkbox, and a planning failure is reported in chat instead of leaving the acknowledgement hanging; a phase without a name no longer crashes the TUI phase panel.
+- **WebUI.** Opening the WebUI over plain HTTP from a LAN address no longer throws on Start Goal, replayed collab history redacts secrets, and the frame log is invalidated when a single frame exceeds the byte cap.
+- **SAGE.** Project-server frames are capped while assembled, the find-file limit applies globally, memory ids are escaped in retrieval output, near-duplicate detection is race-free, and symlinked import roots are handled.
+- **Transports and tools.** MCP stdio discards an unterminated line on close and flushes split UTF-8 at EOF, mailbox-mcp validates message and event types, the session catalog keeps shared project bindings open, project-scope task and plan paths need a directory separator, and `{n,}` quantifiers are analyzed as unbounded.
+- **Other.** A stopped project kit settles only after its child exits, the test-runner gate's setup/teardown race and cache-key collisions are fixed, lint-gate sweeps orphaned temp dirs, and DESIGN.md tokens stay ahead of inferred CSS.
+
 ## [1.1.10] — 2026-10-20
 
 A measured design layer: rendered pages are checked with fixed scripts and

@@ -1,4 +1,4 @@
-// Changelog — 1.x era (1.1.10 → 1.0.0).
+// Changelog — 1.x era (1.1.11 → 1.0.0).
 // Historical entries mirror CHANGELOG.md release notes. The 1.0.37 entry was
 // written from committed runtime/source evidence (git history and packages), not
 // the root CHANGELOG, which had not been extended when it landed. 1.1.0 absorbs
@@ -11,10 +11,23 @@ import type { ChangelogEntry } from './changelog-types';
 
 export const changelog1x: ChangelogEntry[] = [
   {
+    version: '1.1.11',
+    date: '2026-10-20',
+    tagline: 'Standalone-binary updates, smarter delegation and skills that follow the work',
+    latest: true,
+    highlights: [
+      'wstack update moves a package-manager install to the release binary from GitHub Releases, verifies it and removes the old global packages',
+      'delegate without a role routes the task to the best-matching roster specialist, and the leader sees the whole roster by phase plus a live menu of the models its workers would run on',
+      'A tier the leader or a route chose now picks the worker model instead of only tightening its budget, and delegate and spawn_subagent take skills to load first',
+      'Roster workers rank their full skill pool by the task instead of always loading the same three, and skills can declare paths globs the Skill Companion matches without a model call',
+      'work_complete no longer blocks spawning for the rest of the session, and /fleet routing shows whether routed workers succeeded and what they cost',
+      'Goal planning repairs an off-format plan and reports a failure in chat, the WebUI defaults to the Blue/Navy palette and works over plain HTTP on a LAN, and SAGE, MCP and mailbox fixes land',
+    ],
+  },
+  {
     version: '1.1.10',
     date: '2026-10-20',
     tagline: 'A measured design layer, DESIGN.md interchange and prompt detail levels',
-    latest: true,
     highlights: [
       'design_reference measures a reference site or a rendered page with a fixed in-page script and fixed thresholds, so every model receives the same numbers; a static project .html is served on an ephemeral loopback port for inspection',
       'Design Studio reads, lints and writes DESIGN.md, design diff flags contrast regressions between versions, and PRODUCT.md is injected ahead of the design brief on UI turns',

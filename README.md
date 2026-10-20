@@ -55,25 +55,26 @@ suite. Memory, tools, providers, permissions, and the multi-agent runtime are al
 first-party and work together, on your machine, with no upstream agent to phone
 home to.
 
-### What's new in 1.1.10
+### What's new in 1.1.11
 
-- **A measured design layer:** `design_reference` extracts, compares and
-  inspects rendered pages with a fixed script and fixed thresholds (a static
-  `.html` is served on a loopback port for the check), and a turn that changed
-  UI is held until it is inspected and its FAILs are fixed.
-- **DESIGN.md interchange:** Design Studio reads, lints and writes DESIGN.md,
-  `design diff` catches contrast regressions, PRODUCT.md feeds the design
-  brief, findings carry rule ids with `design-ignore` waivers, and each
-  session is dealt three kits instead of the whole catalogue.
-- **Prompt detail levels:** simple / detailed / advanced variants with
-  `/prompt insert <slug> --level=…` and a selector in every UI, plus 588
-  FluidFlow prompts.
-- **Browser and WebUI:** the browser asks before opening a loopback or
-  private IP origin; the WebUI gains a Terminal palette.
+- **Standalone-binary updates:** `wstack update` moves a package-manager
+  install to the release binary from GitHub Releases and removes the old
+  global packages.
+- **Smarter delegation:** `delegate` routes a task to the right roster
+  specialist on its own, the leader sees the whole roster and a live
+  worker-model menu, a chosen `tier` now picks the worker's model, and
+  `skills` asks for specific skills.
+- **Skills that follow the work:** roster workers rank their full skill pool
+  by the task instead of always loading the same three, and skills can
+  declare `paths` globs the Skill Companion matches without a model call.
+- **Fleet fixes:** `work_complete` no longer blocks spawning for the rest of
+  the session, and `/fleet routing` shows whether routed workers succeeded
+  and what they cost.
 
-1.1.9 added the SAGE doctor, daemon-owned memory maintenance and AST security
-profiles for twelve more languages; 1.1.8 was a hardening release across the
-daemon, MCP, security gates, VibeUI and Desktop.
+1.1.10 added a measured design layer, DESIGN.md interchange and prompt detail
+levels; 1.1.9 added the SAGE doctor, daemon-owned memory maintenance and AST
+security profiles for twelve more languages; 1.1.8 was a hardening release
+across the daemon, MCP, security gates, VibeUI and Desktop.
 
 Highlights from **1.1.7**:
 
@@ -432,7 +433,7 @@ Full walk-through: [`docs/architecture.md`](docs/architecture.md).
 
 ## Status
 
-- **v1.1.10** — current repository version; semver from 1.0.0 onward
+- **v1.1.11** — current repository version; semver from 1.0.0 onward
 - Full release verification: `bun run release:check` before publishing
 - Coverage thresholds (root Vitest): ≥76% lines / ≥75% functions / ≥66% branches / ≥75% statements
 - Packages and apps use TypeScript strict + `noUncheckedIndexedAccess`
