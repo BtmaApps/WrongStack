@@ -336,7 +336,10 @@ export default function App() {
         <main id="main" tabIndex={-1}>
           <Suspense
             fallback={
-              <div className="site-foreground grid min-h-[75vh] place-items-center pt-24">
+              <div
+                role="status"
+                className="site-foreground grid min-h-screen place-items-center pt-24"
+              >
                 <span className="font-mono text-xs font-black uppercase tracking-[0.2em] text-brand">
                   Loading manual…
                 </span>
