@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { DEFAULT_FONT_SETTINGS, type FontSettings, normalizeFontSettings } from '@/lib/fonts';
 import {
+  DEFAULT_PALETTE,
   isPaletteId,
   PALETTE_STORAGE_KEY,
   type PaletteId,
@@ -74,7 +75,7 @@ export const useConfigStore = create<ConfigState>()(
       wsConnected: false,
       wsStatus: { state: 'connecting' },
       theme: 'system',
-      palette: 'signal',
+      palette: DEFAULT_PALETTE,
       fonts: DEFAULT_FONT_SETTINGS,
       autoConnect: true,
       soundOnComplete: false,

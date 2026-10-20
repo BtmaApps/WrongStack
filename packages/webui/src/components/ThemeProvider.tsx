@@ -71,10 +71,13 @@ export function ThemeProvider({
 
   // Mirror the chosen palette onto <html> as `data-palette="…"`. The token
   // values live in index.css (`:root[data-palette=…]` / `.dark[data-palette=…]`
-  // blocks); removing the attribute restores the default "signal" palette.
+  // blocks); removing the attribute restores the base "signal" palette. The
+  // store mirror follows, so a config persisted before the default changed
+  // (#392) does not keep reporting a palette the page is not showing.
   useEffect(() => {
     applyPalette(window.document.documentElement, palette);
-  }, [palette]);
+    setStorePalette(palette);
+  }, [palette, setStorePalette]);
 
   // Typography lives in the config store (persisted); mirror it onto <html> as
   // `--font-*` / size custom properties and fetch the web fonts it uses.

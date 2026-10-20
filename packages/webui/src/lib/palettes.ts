@@ -8,9 +8,10 @@
  * label, and the two swatch colors that preview the palette's two brand
  * signals. `applyPalette` toggles the `data-palette` attribute on `<html>`.
  *
- * To add a palette: add a CSS token block in `index.css`, an entry here (in
- * the same order), and an i18n label key in all 7 locale files. The default
- * "signal" palette needs no CSS block — it is the base token set.
+ * To add a palette: add a CSS token block in `index.css`, an entry here, and
+ * an i18n label key in all 7 locale files. The base "signal" palette needs no
+ * CSS block — it is the token set on the bare `:root` / `.dark` selectors.
+ * The base palette and the default one are different things: see below.
  */
 export type PaletteId =
   | 'signal'
@@ -37,12 +38,27 @@ export interface PaletteDefinition {
   swatchSecondary: string;
 }
 
-export const DEFAULT_PALETTE: PaletteId = 'signal';
+/** The palette `index.css` defines on the bare selectors; applied by removing `data-palette`. */
+export const BASE_PALETTE: PaletteId = 'signal';
+
+/**
+ * What a WebUI shows until its user picks a palette. Blue/Navy since #392: the
+ * red-led base palette read as an error state, most of all in dark mode. A
+ * user who picked Signal keeps it — only an explicit pick is persisted.
+ */
+export const DEFAULT_PALETTE: PaletteId = 'blue-navy';
 
 /** localStorage key for the persisted palette — shared by ThemeProvider and the config store's merge. */
 export const PALETTE_STORAGE_KEY = 'wrongstack-palette';
 
+/** Picker order; the default comes first. */
 export const PALETTES: readonly PaletteDefinition[] = [
+  {
+    id: 'blue-navy',
+    labelKey: 'settings:general.paletteBlueNavy',
+    swatch: 'hsl(213 90% 60%)',
+    swatchSecondary: 'hsl(36 96% 54%)',
+  },
   {
     id: 'signal',
     labelKey: 'settings:general.paletteSignal',
@@ -54,12 +70,6 @@ export const PALETTES: readonly PaletteDefinition[] = [
     labelKey: 'settings:general.paletteEmeraldGold',
     swatch: 'hsl(152 66% 48%)',
     swatchSecondary: 'hsl(42 96% 54%)',
-  },
-  {
-    id: 'blue-navy',
-    labelKey: 'settings:general.paletteBlueNavy',
-    swatch: 'hsl(213 90% 60%)',
-    swatchSecondary: 'hsl(36 96% 54%)',
   },
   {
     id: 'purple-pink',
@@ -128,7 +138,11 @@ export function isPaletteId(value: unknown): value is PaletteId {
 }
 
 export function getPalette(value: unknown): PaletteDefinition {
-  return PALETTES.find((palette) => palette.id === value) ?? PALETTES[0];
+  return (
+    PALETTES.find((palette) => palette.id === value) ??
+    PALETTES.find((palette) => palette.id === DEFAULT_PALETTE) ??
+    PALETTES[0]
+  );
 }
 
 /** Guarded read of a persisted palette id; invalid/missing/blocked storage
@@ -144,9 +158,9 @@ export function readStoredPalette(storageKey: string, fallback: PaletteId): Pale
   }
 }
 
-/** Apply a palette to <html> by setting `data-palette`; removes it for the default. */
+/** Apply a palette to <html> by setting `data-palette`; removes it for the base palette. */
 export function applyPalette(root: HTMLElement, palette: PaletteId): void {
-  if (palette === DEFAULT_PALETTE) {
+  if (palette === BASE_PALETTE) {
     root.removeAttribute('data-palette');
   } else {
     root.setAttribute('data-palette', palette);

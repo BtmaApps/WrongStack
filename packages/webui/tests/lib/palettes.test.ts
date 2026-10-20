@@ -3,7 +3,14 @@ import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
-import { DEFAULT_PALETTE, PALETTES, applyPalette, getPalette, isPaletteId } from '@/lib/palettes';
+import {
+  applyPalette,
+  BASE_PALETTE,
+  DEFAULT_PALETTE,
+  getPalette,
+  isPaletteId,
+  PALETTES,
+} from '@/lib/palettes';
 
 const testDirectory = dirname(fileURLToPath(import.meta.url));
 const paletteCssPath = resolve(testDirectory, '../../src/index.css');
@@ -72,6 +79,13 @@ describe('palettes', () => {
       expect(PALETTES[0].id).toBe(DEFAULT_PALETTE);
     });
 
+    // #392: a red-led default read as an error state; the base token set stays
+    // Signal so a user who picked it keeps it, but new installs start calm.
+    it('defaults to Blue/Navy while Signal stays the base token set', () => {
+      expect(DEFAULT_PALETTE).toBe('blue-navy');
+      expect(BASE_PALETTE).toBe('signal');
+    });
+
     it('exports at least two alternative palettes besides the default', () => {
       const alternatives = PALETTES.filter((palette) => palette.id !== DEFAULT_PALETTE);
       expect(alternatives.length).toBeGreaterThanOrEqual(2);
@@ -82,9 +96,9 @@ describe('palettes', () => {
 
       for (const palette of PALETTES) {
         const lightSelector =
-          palette.id === DEFAULT_PALETTE ? ':root' : `:root[data-palette='${palette.id}']`;
+          palette.id === BASE_PALETTE ? ':root' : `:root[data-palette='${palette.id}']`;
         const darkSelector =
-          palette.id === DEFAULT_PALETTE ? '.dark' : `.dark[data-palette='${palette.id}']`;
+          palette.id === BASE_PALETTE ? '.dark' : `.dark[data-palette='${palette.id}']`;
         const lightBlock = paletteBlock(paletteCss, lightSelector);
         const darkBlock = paletteBlock(paletteCss, darkSelector);
         expect(lightBlock, `${palette.id} light palette block`).not.toBe('');
@@ -129,19 +143,21 @@ describe('palettes', () => {
   });
 
   describe('applyPalette', () => {
-    it('sets data-palette on the root for a non-default palette', () => {
+    it('sets data-palette on the root for every non-base palette, the default included', () => {
       const root = document.documentElement;
-      const alternative = PALETTES.find((palette) => palette.id !== DEFAULT_PALETTE);
-      expect(alternative).toBeDefined();
-      applyPalette(root, alternative!.id);
-      expect(root.getAttribute('data-palette')).toBe(alternative!.id);
+      for (const palette of PALETTES.filter((p) => p.id !== BASE_PALETTE)) {
+        applyPalette(root, palette.id);
+        expect(root.getAttribute('data-palette')).toBe(palette.id);
+      }
+      applyPalette(root, DEFAULT_PALETTE);
+      expect(root.getAttribute('data-palette')).toBe(DEFAULT_PALETTE);
     });
 
-    it('removes data-palette for the default palette', () => {
+    it('removes data-palette for the base palette', () => {
       const root = document.documentElement;
       applyPalette(root, 'blue-navy');
       expect(root.getAttribute('data-palette')).toBe('blue-navy');
-      applyPalette(root, DEFAULT_PALETTE);
+      applyPalette(root, BASE_PALETTE);
       expect(root.hasAttribute('data-palette')).toBe(false);
     });
 

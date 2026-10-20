@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { DEFAULT_FONT_SETTINGS } from '../../src/lib/fonts';
+import { DEFAULT_PALETTE } from '../../src/lib/palettes';
 import { useConfigStore } from '../../src/stores/config-store';
 
 function resetStore() {
@@ -10,7 +11,7 @@ function resetStore() {
     wsConnected: false,
     wsStatus: { state: 'connecting' },
     theme: 'system',
-    palette: 'signal',
+    palette: DEFAULT_PALETTE,
     fonts: DEFAULT_FONT_SETTINGS,
     autoConnect: true,
     soundOnComplete: false,
@@ -193,13 +194,13 @@ describe('palette merge fallback', () => {
   });
 
   it('adopts the ThemeProvider localStorage palette when the persisted config palette is invalid', async () => {
-    localStorage.setItem('wrongstack-palette', 'blue-navy');
+    localStorage.setItem('wrongstack-palette', 'purple-pink');
     localStorage.setItem(
       'wrongstack-config',
       JSON.stringify({ state: { palette: 'bogus-palette' }, version: 0 }),
     );
     await useConfigStore.persist.rehydrate();
-    expect(useConfigStore.getState().palette).toBe('blue-navy');
+    expect(useConfigStore.getState().palette).toBe('purple-pink');
   });
 
   it('falls back to the default when neither source has a valid palette', async () => {
@@ -208,7 +209,7 @@ describe('palette merge fallback', () => {
       JSON.stringify({ state: { palette: 'bogus-palette' }, version: 0 }),
     );
     await useConfigStore.persist.rehydrate();
-    expect(useConfigStore.getState().palette).toBe('signal');
+    expect(useConfigStore.getState().palette).toBe('blue-navy');
   });
 
   it('prefers a valid persisted config palette over the localStorage entry', async () => {
