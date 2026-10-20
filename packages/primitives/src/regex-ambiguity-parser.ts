@@ -291,13 +291,19 @@ export function parseSeq(
       const m = /^(\d+)(,(\d*)?)?$/.exec(c.s.slice(c.i + 1, close));
       if (!m) return null;
       const min = Number.parseInt(m[1]!, 10);
+      // `{n}` → max = min. `{n,}` → the `(\d*)?` group does NOT participate
+      // (`m[3]` is null, not ''), and parseInt(null) is NaN — which slipped
+      // past the validity guard below (NaN comparisons are false) and made
+      // Nfa.build's `i < max` loop run ZERO copies, silently compiling the
+      // repetition to ε and analyzing a language the pattern does not have
+      // (false 'ambiguous' verdicts with invalid witnesses). Any missing or
+      // empty upper bound is unbounded — the same representation the `+`
+      // quantifier above already uses, which the NFA star path models.
       const max =
-        m[2] === undefined
-          ? min
-          : m[3] === ''
-            ? Number.POSITIVE_INFINITY
-            : Number.parseInt(m[3]!, 10);
-      if (max < min || min > MAX_COPIES || max > MAX_COPIES) return null;
+        m[2] === undefined ? min : m[3] ? Number.parseInt(m[3], 10) : Number.POSITIVE_INFINITY;
+      if (max < min || min > MAX_COPIES || (max !== Number.POSITIVE_INFINITY && max > MAX_COPIES)) {
+        return null;
+      }
       c.i = close + 1;
       atom = { k: 'rep', node: atom, min, max };
     }

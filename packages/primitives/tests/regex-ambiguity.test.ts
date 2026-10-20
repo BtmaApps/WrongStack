@@ -67,6 +67,50 @@ describe('detectQuantifiedAmbiguity — out-of-subset escapes (ADR-004 never ove
   });
 });
 
+describe('detectQuantifiedAmbiguity — open-ended {n,} quantifiers model unbounded (bug 20261020-r1)', () => {
+  // Regression (bug-hunt round 2026-10-20): `{n,}` parsed to max = NaN. The
+  // brace body regex `(\d+)(,(\d*)?)?$` leaves m[3] null (a non-participating
+  // group) for body '2,', and the `m[3] === ''` check missed it — parseInt(null)
+  // = NaN passed the validity guard (`NaN > MAX_COPIES` is false) and
+  // Nfa.build's `i < max` loop ran ZERO copies, silently compiling the
+  // repetition to ε. The analyzed language was then not the pattern's: e.g.
+  // '(?:(?:b{2,})|a){2}' analyzed as (?:ε|a){2} and returned 'ambiguous' with
+  // the witness 'a', which the real language does not even match. `{n,}` now
+  // parses to Number.POSITIVE_INFINITY, the same representation `+` uses, and
+  // Nfa.build models it with its star path.
+  it('parses {n,} as unbounded like +, not NaN', () => {
+    // Public surface: a {n,}-driven verdict must be provable by a matchable
+    // witness. Before the fix the witness was 'a' (not in the language).
+    const content = '(?:(?:b{2,})|a){2}';
+    const res = detectQuantifiedAmbiguity(content);
+    expect(res.verdict).toBe('ambiguous');
+    expect(res.witness).toBeDefined();
+    expect(new RegExp(`^(?:${content})+$`).test(res.witness as string)).toBe(true);
+  });
+
+  it('analyzes {n,} content on its real language', () => {
+    // b{2,} = b^≥2: 'bbbbb' splits as b²·b³ and b³·b², so ambiguous is
+    // correct — but it must be ambiguous for the REAL reason. The NaN bug
+    // analyzed ε instead and answered with the ε-insertion witness; the
+    // fixed analysis answers via the Sardinas–Patterson decomposition layer
+    // on the real language (its documented witness is a residual message,
+    // not a matchable string — that format is pinned by the witness-
+    // contract suite for stage-2 verdicts).
+    const res = detectQuantifiedAmbiguity('b{2,}');
+    expect(res.verdict).toBe('ambiguous');
+    expect(res.witness).toBeDefined();
+    expect(res.witness?.startsWith('ε')).toBe(false);
+    expect(res.witness).toContain('Sardinas');
+  });
+
+  it('keeps the finite {n} upper bound (huge bounded counts stay unparsable)', () => {
+    // The MAX_COPIES under-rejection for finite counts above 64 is sound and
+    // must be preserved; only the unbounded form changed representation.
+    expect(detectQuantifiedAmbiguity('b{65}').verdict).toBe('unparsable');
+    expect(detectQuantifiedAmbiguity('b{64}').verdict).not.toBe('unparsable');
+  });
+});
+
 describe('detectQuantifiedAmbiguity — static-layer misses now caught', () => {
   it('catches quantifier-amplified 1-vs-2 char overlap', () => {
     // Round 13 pinned `(\w|ab)+` as allowed ("a 1-char branch can never

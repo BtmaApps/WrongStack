@@ -158,9 +158,15 @@
       "wstackLaunch",
       "wstackToolsCommand"
     ],
+    "packages/cli/src/fleet/host-explore-companion.ts": [
+      "formatExploreNote"
+    ],
     "packages/cli/src/fleet/host-helpers.ts": [
       "DEFAULT_SUBAGENT_HIDDEN_TOOLS",
       "NEVER_SUBAGENT_TOOLS"
+    ],
+    "packages/cli/src/fleet/skill-companion-outcomes.ts": [
+      "skillOutcomesPath"
     ],
     "packages/cli/src/fleet/wrongforge-gateway.ts": [
       "WORKER_WITHHELD_TOOLS"
