@@ -5,8 +5,12 @@ authors should depend on **this package only** — it exposes the plugin
 contract, the `definePlugin` helper, and the same audit-hardened runtime
 helpers the built-in plugins use.
 
-```bash
-npm install @wrongstack/plugin-sdk
+This package is part of the WrongStack monorepo and is not published to npm:
+npm publishing was retired after 1.1.11, and the versions already on npm are
+frozen. Inside the workspace, depend on it directly:
+
+```json
+"@wrongstack/plugin-sdk": "workspace:*"
 ```
 
 ## Minimal plugin

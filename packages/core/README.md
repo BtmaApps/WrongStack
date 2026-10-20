@@ -8,8 +8,12 @@ If you're just using WrongStack from the terminal, install [`wrongstack`](../../
 
 ## Install
 
-```bash
-pnpm add @wrongstack/core
+This package is part of the WrongStack monorepo and is not published to npm:
+npm publishing was retired after 1.1.11, and the versions already on npm are
+frozen. Inside the workspace, depend on it directly:
+
+```json
+"@wrongstack/core": "workspace:*"
 ```
 
 Requires **Node.js ≥ 22.19.0**.

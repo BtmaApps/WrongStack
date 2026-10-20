@@ -31,8 +31,12 @@ matrix and the distinction between wire handling and functional behavior.
 
 ## Installation
 
-```bash
-pnpm add @wrongstack/acp
+This package is part of the WrongStack monorepo and is not published to npm:
+npm publishing was retired after 1.1.11, and the versions already on npm are
+frozen. Inside the workspace, depend on it directly:
+
+```json
+"@wrongstack/acp": "workspace:*"
 ```
 
 ## Quick Start

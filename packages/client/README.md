@@ -9,8 +9,12 @@ Typed client for a running WrongStack WebUI server (`wstack --webui`). It lets y
 
 It works in Node 22+ and in the browser. At runtime it loads only one small module from `@wrongstack/webui-protocol`, and that module imports nothing. The install is heavier: that package, which the types come from, depends on `@wrongstack/core`.
 
-```sh
-npm install @wrongstack/client
+This package is part of the WrongStack monorepo and is not published to npm:
+npm publishing was retired after 1.1.11, and the versions already on npm are
+frozen. Inside the workspace, depend on it directly:
+
+```json
+"@wrongstack/client": "workspace:*"
 ```
 
 ## Conversation

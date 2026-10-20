@@ -30,17 +30,14 @@ Copy the token (looks like `123456789:ABCdef...`).
 wstack plugin install telegram
 ```
 
-`telegram` is the bundled official alias for `@wrongstack/telegram`. In
-WrongStack 0.3.4 and newer, the package is installed with the `wrongstack`
-umbrella package; this command only enables plugin loading in config and does
-not run npm.
+`telegram` is the bundled official alias for `@wrongstack/telegram`, which
+ships with WrongStack; this command only enables plugin loading in config and
+does not install anything.
 
-If you are installing the plugin into a custom host instead of the official
-CLI package, add it like a normal public package:
-
-```bash
-npm install @wrongstack/telegram
-```
+A custom host can use the plugin only from inside the WrongStack monorepo, as
+`"@wrongstack/telegram": "workspace:*"`. It is not published to npm: npm
+publishing was retired after 1.1.11, and the versions already on npm are
+frozen.
 
 ### 3. Pair a private chat securely
 

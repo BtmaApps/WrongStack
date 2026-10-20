@@ -6,8 +6,13 @@ All providers ride a single declarative `WireFormatConfig` adapter — even the 
 
 ## Install
 
-```bash
-pnpm add @wrongstack/providers @wrongstack/core
+This package is part of the WrongStack monorepo and is not published to npm:
+npm publishing was retired after 1.1.11, and the versions already on npm are
+frozen. Inside the workspace, depend on it directly:
+
+```json
+"@wrongstack/providers": "workspace:*",
+"@wrongstack/core": "workspace:*"
 ```
 
 `@wrongstack/core` provides the shared `Provider` interface, message types, capabilities model, and tool format.

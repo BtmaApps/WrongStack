@@ -6,8 +6,13 @@ The TUI is **lazy-loaded** by [`@wrongstack/cli`](../cli) — it only imports Re
 
 ## Install
 
-```bash
-pnpm add @wrongstack/tui @wrongstack/core
+This package is part of the WrongStack monorepo and is not published to npm:
+npm publishing was retired after 1.1.11, and the versions already on npm are
+frozen. Inside the workspace, depend on it directly:
+
+```json
+"@wrongstack/tui": "workspace:*",
+"@wrongstack/core": "workspace:*"
 ```
 
 You'd only depend on this directly if you're embedding WrongStack inside another tool and want the TUI surface. Otherwise install [`wrongstack`](../../README.md).

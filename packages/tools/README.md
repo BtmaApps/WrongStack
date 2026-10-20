@@ -6,8 +6,13 @@ Each tool implements the `Tool` interface from [`@wrongstack/core`](../core), wi
 
 ## Install
 
-```bash
-pnpm add @wrongstack/tools @wrongstack/core
+This package is part of the WrongStack monorepo and is not published to npm:
+npm publishing was retired after 1.1.11, and the versions already on npm are
+frozen. Inside the workspace, depend on it directly:
+
+```json
+"@wrongstack/tools": "workspace:*",
+"@wrongstack/core": "workspace:*"
 ```
 
 ## Catalog
