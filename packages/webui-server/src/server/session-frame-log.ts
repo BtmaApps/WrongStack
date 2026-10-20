@@ -75,7 +75,10 @@ function createSessionFrameLog(): SessionFrameLog {
       );
       const bytes = Buffer.byteLength(data, 'utf8');
       issued.set(sessionId, seq);
-      if (bytes > MAX_BYTES) return data;
+      if (bytes > MAX_BYTES) {
+        logs.delete(sessionId);
+        return data;
+      }
 
       let log = logs.get(sessionId);
       if (log) logs.delete(sessionId);

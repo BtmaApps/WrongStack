@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-20T16:20:14.570Z",
+  "generatedAt": "2026-10-20T16:20:36.827Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,7 +13,7 @@
   "summary": {
     "packages": 38,
     "sourceFiles": 5199,
-    "testFiles": 4544,
+    "testFiles": 4545,
     "sourceLines": 1130873,
     "workspaceEdges": 139,
     "moduleEdges": 17096,
@@ -249,7 +249,7 @@
       "name": "@wrongstack/core",
       "dir": "packages/core",
       "sourceFiles": 1162,
-      "testFiles": 1000,
+      "testFiles": 1001,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -264,7 +264,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 1000
+          "testFiles": 1001
         }
       ]
     },
@@ -7635,6 +7635,12 @@
       },
       {
         "file": "packages/core/tests/coordination/spawn-model-single-resolver.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/coordination/spawn-subagent-capability-toggles.test.ts",
         "projects": [
           "root-node"
         ]

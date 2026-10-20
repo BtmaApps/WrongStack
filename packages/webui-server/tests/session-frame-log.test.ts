@@ -59,6 +59,18 @@ describe('session frame log', () => {
     expect(seqs(log.since('bytes', 3))).toEqual([4, 5, 6]);
   });
 
+  it('invalidates the buffered log when a single frame exceeds MAX_BYTES so since() never skips the gap', () => {
+    const MiB = 1024 * 1024;
+    log.sequence('oversize-gap', frame('oversize-gap', 1));
+    log.sequence('oversize-gap', frame('oversize-gap', 2, 5 * MiB));
+    log.sequence('oversize-gap', frame('oversize-gap', 3));
+
+    // A client at seq 1 missed seq 2 (which was too large to buffer), so since(1) must return null.
+    expect(log.since('oversize-gap', 1)).toBeNull();
+    // A client that already saw seq 2 can still replay seq 3.
+    expect(seqs(log.since('oversize-gap', 2))).toEqual([3]);
+  });
+
   it('drops the least recently written session first', () => {
     log.sequence('lru-old', frame('lru-old', 1));
     log.sequence('lru-kept', frame('lru-kept', 1));
