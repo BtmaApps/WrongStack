@@ -71,18 +71,25 @@ const SHADOW_AGENT: SubagentConfig = cloneWithLazyPrompt(defineAgent('shadow-age
  * to edit; the companion should say who breaks. File tools are fallbacks
  * when the index is cold or the probe needs a cited `file:line`.
  *
- * Deliberately omitted from `TOOLS.read`:
+ * Every schema here is paid on every request of every probe, so the list is
+ * the smallest set that answers "where is it, who uses it, what breaks":
  *   - `search` — web search, not codebase search
  *   - `mailbox` — cross-session mail; same-session talk is `session_note`
  *     (injected by the host, like `submit_result`)
+ *   - `tree`, `codebase-repo-map`, `codebase-stats` — orientation surveys;
+ *     a probe names its subject, and they were the widest outputs it read
  */
 export const EXPLORE_COMPANION_TOOLS: readonly string[] = [
-  ...TOOLS.index,
+  'codebase-search',
+  'codebase-context',
+  'codebase-skeleton',
+  'codebase-read-symbol',
+  'codebase-incoming-calls',
+  'codebase-outgoing-calls',
   'codebase-impact-analysis',
   'read',
   'grep',
   'glob',
-  'tree',
 ];
 
 /**
@@ -119,6 +126,8 @@ export const EXPLORE_COMPANION_AGENT: SubagentConfig = cloneWithLazyPrompt(
       'codebase-ast-replace',
       'codebase-invariant-check',
       'codebase-targeted-test',
+      'tree',
+      'codebase-repo-map',
     ],
     allowedCapabilities: [
       ToolCapabilities.FS_READ,
@@ -273,11 +282,13 @@ export const FLEET_ROSTER_BUDGETS: Record<string, FleetRosterBudget> = {
     maxCostUsd: 0.5,
   },
   'explore-companion': {
+    // One narrow probe per task. The host lean prompt is ~6k tokens, so eight
+    // requests fit well under the token cap without a mid-probe negotiation.
     idleTimeoutMs: DEFAULT_IDLE_TIMEOUT_MS,
-    maxIterations: 3000,
-    maxToolCalls: 8000,
-    maxTokens: 96_000,
-    maxCostUsd: 0.5,
+    maxIterations: 8,
+    maxToolCalls: 16,
+    maxTokens: 80_000,
+    maxCostUsd: 0.15,
   },
   'chaos-monkey': {
     // A mutation pass is many short apply/run/restore cycles — per-mutant

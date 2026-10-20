@@ -57,7 +57,9 @@ const skillSet = (...names: BundledAgentSkill[]): BundledAgentSkill[] => names;
  */
 export const ROLE_SKILL_SETS = {
   explore: skillSet('codebase-navigation', 'research-web', 'node-modern', 'typescript-strict'),
-  'explore-companion': skillSet('codebase-navigation', 'node-modern', 'typescript-strict'),
+  // The host spawns it on a lean prompt that carries the navigation method in
+  // the role brief itself; no skill body or addendum is injected.
+  'explore-companion': skillSet('codebase-navigation'),
   search: skillSet('codebase-navigation', 'bug-hunter', 'typescript-strict', 'research-web'),
   research: skillSet('research-web', 'tech-stack', 'security-scanner', 'api-design'),
   investigator: skillSet(

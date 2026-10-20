@@ -29,13 +29,17 @@ import {
   ExploreCompanion,
   type ExploreCompanionOptions,
   type ExploreProbe,
-  formatSubagentStructuredReport,
   getSharedProjectMailbox,
   mailboxSessionTag,
   postSessionNote,
 } from '@wrongstack/core/coordination';
 import type { EventBus } from '@wrongstack/core/kernel';
-import type { FleetConfig, SubagentConfig, TaskResult } from '@wrongstack/core/types';
+import type {
+  FleetConfig,
+  SubagentConfig,
+  SubagentStructuredReport,
+  TaskResult,
+} from '@wrongstack/core/types';
 
 interface HostExploreCompanionInput {
   director: Director;
@@ -79,8 +83,9 @@ export function createHostExploreCompanion(
   let stopped = false;
   let retiring: Promise<void> = Promise.resolve();
   const probeTimeoutMs = positive(config?.probeTimeoutMs, 120_000);
-  const maxToolCalls = positive(config?.maxToolCallsPerProbe, 32);
-  const maxFindingsChars = positive(config?.maxFindingsChars, 4_000);
+  const maxToolCalls = positive(config?.maxToolCallsPerProbe, 16);
+  // Lands in the leader's context: five cited one-liners and a next read.
+  const maxFindingsChars = positive(config?.maxFindingsChars, 1_800);
 
   const retire = (id: string): void => {
     if (residentId === id) residentId = undefined;
@@ -240,7 +245,7 @@ function forwardExploreFindings(input: {
   const { result, from, sessionId, events, probe, maxChars } = input;
   try {
     const raw = result.report
-      ? formatSubagentStructuredReport(result.report)
+      ? formatExploreNote(result.report)
       : typeof result.result === 'string'
         ? result.result
         : undefined;
@@ -258,6 +263,23 @@ function forwardExploreFindings(input: {
   } catch {
     // Forwarding must never disturb the leader or the resident.
   }
+}
+
+/**
+ * Leader-facing rendering of a probe report. The generic report layout repeats
+ * every cited path under "Files examined" and prints "(none)" placeholders;
+ * here the findings already carry `path:line`, so only the answer is kept.
+ */
+export function formatExploreNote(report: SubagentStructuredReport): string {
+  const lines = [report.summary.trim()];
+  for (const finding of report.findings) {
+    const text = finding.trim();
+    if (text) lines.push(`- ${text}`);
+  }
+  const next = report.suggested_next_steps.find((step) => step.trim());
+  if (next) lines.push(`Next: ${next.trim()}`);
+  lines.push(`(confidence ${report.confidence.toFixed(2)})`);
+  return lines.filter(Boolean).join('\n');
 }
 
 function boundedFindings(text: string, maxChars: number): string {

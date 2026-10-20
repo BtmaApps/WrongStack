@@ -181,6 +181,54 @@ describe('ExploreCompanion trigger mapping', () => {
     expect(h.probes[0]?.hint?.file).toBe('src/a.ts');
   });
 
+  it('write authors the file: no probe, and a later edit of it is not "unread"', async () => {
+    const h = makeHarness();
+    toolExecuted(h.events, { name: 'write', input: { path: 'src/new.ts' } });
+    toolExecuted(h.events, { name: 'edit', input: { path: 'src/new.ts' } });
+    await flush();
+    expect(h.probes).toEqual([]);
+  });
+
+  it('skeleton/read-symbol views count as reads for the unread-edit signal', async () => {
+    const h = makeHarness();
+    toolExecuted(h.events, { name: 'codebase-skeleton', input: { file: 'src/a.ts' } });
+    toolExecuted(h.events, { name: 'codebase-read-symbol', input: { file: 'src/b.ts' } });
+    toolExecuted(h.events, { name: 'edit', input: { path: 'src/a.ts' } });
+    toolExecuted(h.events, { name: 'edit', input: { path: 'src/b.ts' } });
+    await flush();
+    expect(h.probes).toEqual([]);
+  });
+
+  it.each([
+    '.temp_files/proof/run_trace.ts',
+    'packages/core/dist/index.js',
+    'node_modules/x/index.ts',
+  ])('never probes scratch or generated path %s', async (file) => {
+    const h = makeHarness({ projectRoot: process.cwd() });
+    toolExecuted(h.events, { name: 'edit', input: { path: file } });
+    toolExecuted(h.events, { name: 'read', input: { path: `${file}.again.ts` } });
+    await flush();
+    expect(h.probes).toEqual([]);
+  });
+
+  it('never probes a path outside the project root', async () => {
+    const h = makeHarness({ projectRoot: process.cwd() });
+    toolExecuted(h.events, { name: 'edit', input: { path: '../elsewhere/a.ts' } });
+    await flush();
+    expect(h.probes).toEqual([]);
+  });
+
+  it.each(['src/a.test.ts', 'packages/x/tests/a.ts', 'docs/a.md', 'package.json'])(
+    'a first read of non-source %s records the read without a probe',
+    async (file) => {
+      const h = makeHarness();
+      toolExecuted(h.events, { name: 'read', input: { path: file } });
+      toolExecuted(h.events, { name: 'edit', input: { path: file } });
+      await flush();
+      expect(h.probes).toEqual([]);
+    },
+  );
+
   it('edit on an already-read file → no probe', async () => {
     const h = makeHarness();
     toolExecuted(h.events, { name: 'read', input: { path: 'src/a.ts' } });
@@ -568,21 +616,22 @@ describe('explore-companion roster integration', () => {
     const tools = cfg?.tools ?? [];
     expect(tools).toEqual([...EXPLORE_COMPANION_TOOLS]);
     for (const needed of [
-      'codebase-stats',
       'codebase-search',
+      'codebase-context',
       'codebase-skeleton',
-      'codebase-repo-map',
+      'codebase-read-symbol',
       'codebase-incoming-calls',
       'codebase-outgoing-calls',
       'codebase-impact-analysis',
       'read',
       'grep',
       'glob',
-      'tree',
     ]) {
       expect(tools, `tools must include ${needed}`).toContain(needed);
     }
     for (const banned of [
+      'tree',
+      'codebase-repo-map',
       'write',
       'edit',
       'replace',
@@ -618,13 +667,15 @@ describe('explore-companion roster integration', () => {
     expect([...DEFAULT_EXPLORE_SEARCH_TOOLS].sort()).toEqual(['codebase-search', 'grep']);
   });
 
-  it('applyRosterBudget fills the idle window for the role', () => {
+  it('applyRosterBudget sizes the role for one narrow probe', () => {
     const resolved = applyRosterBudget({
       ...FLEET_ROSTER[DEFAULT_EXPLORE_COMPANION_AGENT_ID]!,
       role: DEFAULT_EXPLORE_COMPANION_AGENT_ID,
     });
     expect(resolved.idleTimeoutMs).toBeGreaterThan(0);
-    expect(resolved.maxTokens).toBe(96_000);
+    expect(resolved.maxIterations).toBe(8);
+    expect(resolved.maxToolCalls).toBe(16);
+    expect(resolved.maxTokens).toBe(80_000);
   });
 
   it('prompt file exists and is a real role brief', () => {

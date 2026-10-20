@@ -1,6 +1,6 @@
 # Explore Companion — scoped background discovery
 
-Implementation reviewed: 2026-10-02. This describes the host runtime rather
+Implementation reviewed: 2026-10-20 (lean prompt and trigger filtering). This describes the host runtime rather
 than an aspirational design. Model answer quality still needs live evaluation.
 
 ## Purpose and division of work
@@ -16,25 +16,30 @@ turn every observation into more work.
 | `explore-companion` | Work signals or direct mailbox ask | One question about the leader's current work | `submit_result`, then a same-session note from the host |
 
 The companion is an operational roster role outside `ALL_AGENT_DEFINITIONS`.
-It is not a discovery-dispatch candidate. Its default skills are
-`codebase-navigation`, `node-modern`, and `typescript-strict`. Host skill loading
-filters skill bodies by actual available tools/capabilities. Project identity,
-consolidated guidance, and developed skill addenda use the existing fleet path;
-there is no second exploration memory store.
+It is not a discovery-dispatch candidate. Its catalog skill is
+`codebase-navigation`, but the host-spawned resident loads no skill body: the
+role brief carries the navigation method (see "Lean prompt" below). There is
+no exploration memory store.
 
 ## Complete trigger contract
 
 | Signal | Source and condition | Useful answer |
 | --- | --- | --- |
-| `editUnreadFile` | Successful edit/write/patch/replace on a file absent from the leader's read set; authoritative `writeTargets` supports multi-file patches | Role, exported contract, direct consumers, affected behavior |
+| `editUnreadFile` | Successful edit/patch/replace on a file absent from the leader's read set; authoritative `writeTargets` supports multi-file patches. `write` never fires: it supplies the whole content, so its targets join the read set | Exported contract, direct consumers an edit could break |
 | `searchZeroHits` | Successful `grep` / `codebase-search` with empty JSON output or a supported legacy empty-result rendering | Actual location/spelling or an honest negative result; preserve original path scope |
-| `unfamiliarRead` | First successful `read` of a file in this observer lifetime | Callers/dependencies beyond the content the leader just read |
+| `unfamiliarRead` | First successful `read` of a production source file (not a test, doc, config or fixture) in this observer lifetime | Importers/callers and covering tests — never a retelling of the file |
 | `todoInProgress` | Leader todo becomes `in_progress` in a same-session `session.agents_updated` snapshot | Smallest useful implementation boundary |
 | `errorSymbol` | Same-session error text contains file-like/capitalized symbol tokens; boilerplate errors are excluded, Windows paths preserved, at most two candidates | Definition and direct usage evidence, without claiming an unverified root cause |
 | `mailboxAsk` | Accepted leader-session `ask` / `assign` to this companion, its alias, this session, or `*` | Answer the explicit question |
 
 Successful reads are recorded even with `unfamiliarRead` disabled, preventing
-false unread-edit probes. Relative/absolute paths, dot segments, and slash
+false unread-edit probes; `codebase-skeleton` and `codebase-read-symbol` views
+count as reads too. Paths outside the project root and under scratch or
+generated trees (`.temp_files`, `node_modules`, `dist`, `build`, `coverage`,
+`.git`, `.turbo`, `.next`) never produce a probe. Before this filter, 42% of
+all probes measured on this repository (116 of 277 over 2026-10-18..20) mapped
+a `.temp_files/` proof script the leader had just written, and 12% a test file
+it had just created; one edited a real source file. Relative/absolute paths, dot segments, and slash
 variants share a lexical identity; Windows keys are case-insensitive. Tools
 remain responsible for real-path containment.
 
@@ -99,12 +104,34 @@ Failures do not break the leader, and failed tasks are not published as findings
 
 ## Tools and evidence
 
-The allowlist is index discovery (`codebase-stats`, search, skeleton, repo map,
-incoming/outgoing calls), read-only impact analysis, and `read` / `grep` / `glob`
-/ `tree` fallbacks. Capabilities are `FS_READ`, `COORDINATION_RESULT_SUBMIT`,
-and `SESSION_NOTE`. Mutation, shell, web search, reindexing, code replacement,
-test execution, and nested delegation are absent or explicitly disabled.
-The resident has no mailbox-send tool.
+The allowlist is index discovery (`codebase-search`, `codebase-context`,
+skeleton, read-symbol, incoming/outgoing calls), read-only impact analysis, and
+`read` / `grep` / `glob` fallbacks. Orientation surveys (`tree`,
+`codebase-repo-map`, `codebase-stats`) are excluded: a probe names its subject,
+and every schema is paid on every request. Capabilities are `FS_READ`,
+`COORDINATION_RESULT_SUBMIT`, and `SESSION_NOTE`. Mutation, shell, web search,
+reindexing, code replacement, test execution, and nested delegation are absent
+or explicitly disabled. The resident has no mailbox-send tool.
+
+### Lean prompt
+
+The host-spawned resident (role `explore-companion`, id prefix
+`explore-companion-`) does not receive the general subagent prompt. Its whole
+system prompt is the role brief plus the project root and platform, in one
+cache-marked block (`packages/cli/src/fleet/explore-companion-policy.ts`).
+Omitted: the code-writing subagent baseline, user/project AGENTS.md, tool
+guides, skill bodies and project addenda, SAGE role memory, the consolidated
+role document, and the `## LEARNED` capture brief (so no learning capture or
+consolidation pass is scheduled for it). Project role overrides cannot widen
+its tools or re-add skills; the policy is reapplied after them. Tool output
+per step is capped at 24,000 bytes (`tools.perIterationOutputCapBytes` can only
+lower it), since every byte is re-sent on each later request of the probe.
+`explore-companion-factory.test.ts` builds a real worker through the factory
+and asserts this prompt.
+
+Measured first-request context before the change: 20–28k tokens (median
+27.4k), against a median of five requests per probe — about 143k input tokens
+per probe. The lean prompt plus the ten tool schemas measures ~3.6k tokens.
 
 Assignments carry JSON `{probe, hint?, context?, scope}`. The scope and prompt
 permit following direct callers/imports/tests when needed for the question,
@@ -115,13 +142,15 @@ The prompt requires current `file:line` evidence, separation of fact/inference,
 honest negative searches, and source confirmation of stale index hints.
 Repository text is evidence, not task authority. After two unproductive search
 variants it calls for one targeted fallback and a report of the limit.
-The normal read allowance is 3–6 files rather than a directory walk.
+A typical probe takes 2–4 tool calls and never more than six steps.
 
-Results use `summary`, atomic `findings[]`, `files_examined[]`, `confidence`,
-and at most one `suggested_next_steps[]` item, in the user's language with
-literal identifiers preserved. The host prefers the report to fallback text,
-scrubs task text and notes, labels results with probe source/subject, and
-bounds the leader-facing body with an explicit truncation marker. A resident
+Results use `summary` (one sentence), at most five `findings[]` written as
+`path:line — fact`, `files_examined[]`, `confidence`, and at most one
+`suggested_next_steps[]` item, in English with literal identifiers preserved.
+The host renders only the answer into the leader's note — summary, findings,
+`Next:` and confidence, without the generic "Files examined" list or "(none)"
+placeholders — scrubs task text and notes, labels results with probe
+source/subject, and bounds the body with an explicit truncation marker. A resident
 may use its existing same-session note tool for urgent evidence; the host
 bound applies to the final host-forwarded copy.
 
@@ -140,10 +169,11 @@ and WebUI host. Omitted signals remain enabled for compatibility. Set
 | `signals` | All six enabled | Independent trigger switches |
 | `maxProbeAgeMs` | `120000` | Automatic queue freshness |
 | `probeTimeoutMs` | `120000` | Hard host deadline including spawn/assignment |
-| `maxToolCallsPerProbe` | `32` | Initial runtime tool-call/iteration ceiling, respecting lower roster ceilings |
-| `maxFindingsChars` | `4000` | Host-forwarded body after scrubbing |
+| `maxToolCallsPerProbe` | `16` | Initial runtime tool-call/iteration ceiling, respecting lower roster ceilings |
+| `maxFindingsChars` | `1800` | Host-forwarded body after scrubbing |
 
-Existing roster defaults of 96,000 tokens and $0.50 are preserved. Runtime
+Roster defaults are 8 iterations, 16 tool calls, 80,000 tokens and $0.15 per
+probe. Runtime
 budget policy can negotiate extensions; the host deadline remains independent.
 `spawnBudgetExempt` exempts deliberate-delegation accounting, not provider cost.
 Distinct subjects can still produce many probes in a long session. This adds
@@ -157,8 +187,8 @@ ceilings still apply. Invalid numeric inputs fall back to usable defaults.
       "signals": { "unfamiliarRead": false },
       "maxPending": 4,
       "probeTimeoutMs": 120000,
-      "maxToolCallsPerProbe": 32,
-      "maxFindingsChars": 4000
+      "maxToolCallsPerProbe": 16,
+      "maxFindingsChars": 1800
     }
   }
 }

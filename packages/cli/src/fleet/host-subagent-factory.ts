@@ -44,6 +44,12 @@ import type {
   TextBlock,
   Tool,
 } from '@wrongstack/core/types';
+import {
+  constrainExploreCompanion,
+  EXPLORE_COMPANION_OUTPUT_CAP_BYTES,
+  exploreCompanionSystemPrompt,
+  isExploreCompanion,
+} from './explore-companion-policy.js';
 import { resolveHostSubagentSkillResolution, retrieveHostSubagentMemory } from './host-context.js';
 import { installSubagentEventBridge } from './host-event-bridge.js';
 import {
@@ -98,6 +104,7 @@ export function createHostSubagentFactory(
     const memoryCompanion = isMemoryCompanion(subCfg);
     const skillCompanion = !memoryCompanion && isSkillCompanion(subCfg);
     const companion = memoryCompanion || skillCompanion;
+    const exploreCompanion = !companion && isExploreCompanion(subCfg);
     const mergedCfg: SubagentConfig = projectCfg
       ? applyProjectAgentConfig(subCfg, projectCfg, {
           protectSystemRole: isSystemRole,
@@ -107,7 +114,9 @@ export function createHostSubagentFactory(
       ? constrainMemoryCompanion(mergedCfg)
       : skillCompanion
         ? constrainSkillCompanion(mergedCfg)
-        : mergedCfg;
+        : exploreCompanion
+          ? constrainExploreCompanion(mergedCfg)
+          : mergedCfg;
 
     // Fixed for this worker's lifetime. `originSessionId` is the spawning
     // tool's stamp — the run-pinned session of the agent that asked — and the
@@ -216,39 +225,50 @@ export function createHostSubagentFactory(
     // The skill judge answers one JSON pick over its task payload. The general
     // subagent prompt (project instructions, tool guides, environment) was
     // ~13k tokens it never used, and its sealed token cap is a hard stop.
-    const baseSystem: TextBlock[] = skillCompanion
-      ? []
-      : await host.deps.systemPromptBuilder.build({
-          cwd: subCwd,
-          projectRoot: host.deps.projectRoot,
-          tools: providerTools,
-          catalogTools: subagentTools,
-          model: effModel,
-          provider: effProvider,
-          subagent: true,
-          onlineAgents,
-        });
+    const rawRolePrompt =
+      effectiveCfg.systemPromptOverride ??
+      effectiveCfg.prompt ??
+      (effectiveCfg.role ? host.roster[effectiveCfg.role]?.prompt : undefined);
+    // The explore companion is self-contained: its brief replaces the general
+    // prompt and the code-writing baseline (see explore-companion-policy.ts).
+    const baseSystem: TextBlock[] = exploreCompanion
+      ? exploreCompanionSystemPrompt({ rolePrompt: rawRolePrompt, projectRoot })
+      : skillCompanion
+        ? []
+        : await host.deps.systemPromptBuilder.build({
+            cwd: subCwd,
+            projectRoot: host.deps.projectRoot,
+            tools: providerTools,
+            catalogTools: subagentTools,
+            model: effModel,
+            provider: effProvider,
+            subagent: true,
+            onlineAgents,
+          });
 
-    baseSystem.unshift({
-      type: 'text',
-      text: renderInstructionLayer(DEFAULT_SUBAGENT_BASELINE, {
-        toolNames: new Set(providerTools.map((tool) => tool.name)),
-        tier: 'off',
-        subagent: true,
-        strictToolReferences: true,
-      }),
-    });
+    if (!exploreCompanion) {
+      baseSystem.unshift({
+        type: 'text',
+        text: renderInstructionLayer(DEFAULT_SUBAGENT_BASELINE, {
+          toolNames: new Set(providerTools.map((tool) => tool.name)),
+          tier: 'off',
+          subagent: true,
+          strictToolReferences: true,
+        }),
+      });
+    }
     if (availabilityNotice) baseSystem.push({ type: 'text', text: availabilityNotice });
 
-    const audienceMemory = companion
-      ? undefined
-      : await retrieveHostSubagentMemory(
-          host.deps,
-          host.opts.getLeaderMode,
-          effectiveCfg,
-          task?.context,
-          owningSessionId,
-        );
+    const audienceMemory =
+      companion || exploreCompanion
+        ? undefined
+        : await retrieveHostSubagentMemory(
+            host.deps,
+            host.opts.getLeaderMode,
+            effectiveCfg,
+            task?.context,
+            owningSessionId,
+          );
     if (audienceMemory) baseSystem.push({ type: 'text', text: audienceMemory });
 
     const skillResolution = await resolveHostSubagentSkillResolution(
@@ -256,6 +276,7 @@ export function createHostSubagentFactory(
       host.roster,
       effectiveCfg,
       subagentTools.map((tool) => tool.name),
+      task?.description,
     );
     if (skillResolution.content) {
       for (let index = baseSystem.length - 1; index >= 0; index--) {
@@ -277,22 +298,20 @@ export function createHostSubagentFactory(
       });
     }
 
-    const rawRolePrompt =
-      effectiveCfg.systemPromptOverride ??
-      effectiveCfg.prompt ??
-      (effectiveCfg.role ? host.roster[effectiveCfg.role]?.prompt : undefined);
     const rolePrompt =
       rawRolePrompt && effectiveCfg.role && !companion
         ? buildProjectContextualizedPrompt(rawRolePrompt, effectiveCfg.role, projectRoot, {
             identityOverride: effectiveCfg.projectIdentity?.identityOverride,
           })
         : rawRolePrompt;
-    if (rolePrompt) {
+    if (rolePrompt && !exploreCompanion) {
       baseSystem.push({ type: 'text', text: rolePrompt });
     }
 
     const subagentName = effectiveCfg.id ?? effectiveCfg.name ?? `sub_${randomUUID().slice(0, 8)}`;
-    if (effectiveCfg.role) {
+    // The lean companion is never shown the LEARNED brief, so there is no
+    // capture to attribute — and no consolidation pass to schedule.
+    if (effectiveCfg.role && !exploreCompanion) {
       host.recordLearningRole(subagentName, effectiveCfg.role, skillResolution.selected);
     }
     let subSession: SessionWriter;
@@ -359,10 +378,11 @@ export function createHostSubagentFactory(
       tokenCounter: subTokenCounter,
       cwd: subCwd,
       projectRoot: host.deps.projectRoot,
-      allowOutsideProjectRoot: companion
-        ? false
-        : (config.features?.allowOutsideProjectRoot ??
-          !(config.tools?.restrictToProjectRoot ?? false)),
+      allowOutsideProjectRoot:
+        companion || exploreCompanion
+          ? false
+          : (config.features?.allowOutsideProjectRoot ??
+            !(config.tools?.restrictToProjectRoot ?? false)),
       model: effModel,
       tools: providerTools,
       catalogTools: subagentTools,
@@ -418,7 +438,12 @@ export function createHostSubagentFactory(
       confirmAwaiter: undefined,
       iterationTimeoutMs: config.tools?.iterationTimeoutMs ?? 120_000,
       maxToolTimeoutMs: config.tools?.maxToolTimeoutMs ?? 300_000,
-      perIterationOutputCapBytes: config.tools?.perIterationOutputCapBytes ?? 100_000,
+      perIterationOutputCapBytes: exploreCompanion
+        ? Math.min(
+            config.tools?.perIterationOutputCapBytes ?? EXPLORE_COMPANION_OUTPUT_CAP_BYTES,
+            EXPLORE_COMPANION_OUTPUT_CAP_BYTES,
+          )
+        : (config.tools?.perIterationOutputCapBytes ?? 100_000),
       tracer: host.deps.tracer,
       // Kanban tracks work; it does not gate it. Off unless the operator opts
       // in — and then subagents inherit it, because a worker dispatched by

@@ -10,6 +10,45 @@ export function exploreFileKey(file: string, projectRoot?: string): string {
   return (process.platform === 'win32' ? key.toLowerCase() : key).replaceAll('\\', '/');
 }
 
+/**
+ * Path segments whose files are never worth a probe: scratch proofs, build
+ * output, vendored dependencies, VCS internals. Measured on this repository,
+ * 42% of all automatic probes (116 of 277 over three days) mapped the
+ * "blast radius" of a `.temp_files/` proof script the leader had just written.
+ */
+const EXPLORE_IGNORED_SEGMENTS = new Set([
+  '.temp_files',
+  'node_modules',
+  'dist',
+  'build',
+  'coverage',
+  '.git',
+  '.turbo',
+  '.next',
+]);
+
+/** True when the path is outside the project or under a scratch/generated tree. */
+export function exploreIgnoredPath(file: string, projectRoot?: string): boolean {
+  const key = exploreFileKey(file, projectRoot);
+  if (key === '' || key === '..' || key.startsWith('../') || path.isAbsolute(key)) {
+    return projectRoot !== undefined;
+  }
+  return key.split('/').some((segment) => EXPLORE_IGNORED_SEGMENTS.has(segment));
+}
+
+const SOURCE_EXTENSION = /\.(?:[cm]?[jt]sx?|py|go|rs|java|kt|cs|rb|php|swift|c|cc|cpp|h|hpp)$/i;
+const TEST_FILE = /(?:^|\/)(?:tests?|__tests__|spec)\/|\.(?:test|spec)\.[^/]+$/i;
+
+/**
+ * Production source the leader just opened. A first read of a test, doc,
+ * config or fixture already shows the leader everything a probe would add;
+ * only source modules have callers and dependents worth mapping.
+ */
+export function exploreIsSourceFile(file: string): boolean {
+  const normalized = file.replaceAll('\\', '/');
+  return SOURCE_EXTENSION.test(normalized) && !TEST_FILE.test(normalized);
+}
+
 export function extractedExplorePath(input: unknown): string | undefined {
   if (!input || typeof input !== 'object') return undefined;
   const rec = input as Record<string, unknown>;
