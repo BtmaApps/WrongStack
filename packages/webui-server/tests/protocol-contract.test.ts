@@ -1,4 +1,6 @@
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import {
   CLIENT_MESSAGE_TYPES,
   decodeProtocolFrame,
@@ -191,6 +193,10 @@ describe('protocol registry ↔ route-family dispatcher parity', () => {
 
   it('dispatches every registered client type without "Unknown message type"', async () => {
     const unhandled: string[] = [];
+    // Real handlers run with an empty message, so an empty project root
+    // resolved to the process cwd and design messages rewrote the repo's own
+    // src/styles/design-tokens.css. Every root points at a scratch dir.
+    const root = mkdtempSync(join(tmpdir(), 'protocol-contract-'));
     const ws = { readyState: 1, send: vi.fn(), on: vi.fn() } as unknown as WebSocket;
     const dispatch = createRouteFamilyDispatcher({
       routes: {
@@ -230,14 +236,14 @@ describe('protocol registry ↔ route-family dispatcher parity', () => {
         sendResult: vi.fn(),
       } as never,
       content: {
-        getProjectRoot: () => '',
+        getProjectRoot: () => root,
         getSkillsContext: () => ({ skillLoader: undefined }),
         getPromptsContext: () => ({ promptLoader: undefined }),
-        getDesignContext: () => ({ projectRoot: '', agentMeta: undefined }),
+        getDesignContext: () => ({ projectRoot: root, agentMeta: undefined }),
         onFileWritten: undefined,
       } as never,
       chronicle: {
-        getProjectRoot: () => '',
+        getProjectRoot: () => root,
         send: vi.fn(),
         getChronicleAccess: () => ({
           mode: 'inline',
@@ -259,20 +265,24 @@ describe('protocol registry ↔ route-family dispatcher parity', () => {
         },
         modelsRegistry: undefined,
         getConfig: () => ({ features: {} }),
-        getProjectRoot: () => '',
+        getProjectRoot: () => root,
         getSessionId: () => 'test-session',
         getSessionStartedAt: () => 0,
         getModeId: () => 'default',
         send: vi.fn(),
       } as unknown as IntrospectionRouteContext,
-      getKanbanContext: () => ({ projectRoot: '' }),
+      getKanbanContext: () => ({ projectRoot: root }),
       onUnknown: (_socket, message) => {
         unhandled.push(message.type);
       },
     });
 
-    for (const type of CLIENT_MESSAGE_TYPES) {
-      await dispatch(ws, { type });
+    try {
+      for (const type of CLIENT_MESSAGE_TYPES) {
+        await dispatch(ws, { type });
+      }
+    } finally {
+      rmSync(root, { recursive: true, force: true });
     }
 
     // Every registry entry must reach a handler. The only types the chain

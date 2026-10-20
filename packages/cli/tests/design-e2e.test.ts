@@ -1,13 +1,14 @@
 /**
  * End-to-end Design Studio smoke against the BUILT packages (resolved to dist
  * via the workspace), not source mocks. Exercises the real runtime path:
- * detection → menu injection → tool load → `.design/` persistence → reminder.
+ * detection → dealt-menu injection → tool load → `.design/` persistence → reminder.
  */
 import { existsSync } from 'node:fs';
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import {
+  getDesignDeal,
   getDesignKitLoader,
   getDesignState,
   makeDesignDetectUserInputMiddleware,
@@ -75,33 +76,49 @@ describe('Design Studio — end-to-end (built packages)', () => {
     expect(out.system?.[0]?.text).toBe('BASE');
     const injected = out.system?.[1]?.text as string;
     expect(injected).toMatch(/Design Studio/);
-    expect(injected).toContain('cyberpunk-neon');
     expect(injected).toMatch(/WCAG/);
 
-    // Tool loads the chosen kit for a stack and pins it.
-    const res = await designTool.execute(
-      { action: 'use', kit: 'cyberpunk-neon', stack: 'web' },
-      ctx,
-      { signal: new AbortController().signal },
-    );
-    expect(res.kit).toBe('cyberpunk-neon');
+    // The menu is a seeded deal of three kits kept on the session, not the
+    // whole catalogue: every dealt kit is listed, nothing else from the catalogue.
+    const deal = getDesignDeal(ctx);
+    expect(deal?.kits).toHaveLength(3);
+    expect(injected).toContain(`seed "${deal?.seed}"`);
+    for (const id of deal?.kits ?? []) expect(injected).toContain(`**${id}**`);
+    const entries = await loader.listEntries();
+    const outside = entries.map((e) => e.id).filter((id) => !deal?.kits.includes(id));
+    expect(outside.length).toBeGreaterThan(0);
+    for (const id of outside) expect(injected).not.toContain(`**${id}**`);
+    // A repeat request reuses the same deal (cacheable prompt prefix).
+    const again = await inject.handler(baseReq, async (r) => r);
+    expect(again.system?.[1]?.text).toBe(injected);
+
+    // A kit outside the deal is refused without a recorded reason.
+    const sig = { signal: new AbortController().signal };
+    await expect(
+      designTool.execute({ action: 'use', kit: outside[0] as string, stack: 'web' }, ctx, sig),
+    ).rejects.toThrow(/outside this session's deal/);
+
+    // Tool loads a dealt kit for a stack and pins it.
+    const kit = deal?.kits[0] as string;
+    const res = await designTool.execute({ action: 'use', kit, stack: 'web' }, ctx, sig);
+    expect(res.kit).toBe(kit);
     expect(res.stack).toBe('web');
     expect(res.output).toContain('## Stack: web');
     expect(res.output).not.toContain('## Stack: flutter');
     expect(res.output).toMatch(/oklch/);
-    expect(getDesignState(ctx)?.activeKit).toBe('cyberpunk-neon');
+    expect(getDesignState(ctx)?.activeKit).toBe(kit);
 
     // .design/ persistence (gitignored + self-ignoring).
     expect(existsSync(path.join(root, '.design', 'active.json'))).toBe(true);
     expect(existsSync(path.join(root, '.design', '.gitignore'))).toBe(true);
     const active = JSON.parse(await fs.readFile(path.join(root, '.design', 'active.json'), 'utf8'));
-    expect(active.kit).toBe('cyberpunk-neon');
+    expect(active.kit).toBe(kit);
     const decisions = await fs.readFile(path.join(root, '.design', 'decisions.md'), 'utf8');
-    expect(decisions).toContain('kit=cyberpunk-neon');
+    expect(decisions).toContain(`kit=${kit}`);
 
     // After a pin the injector shrinks to a one-line reminder.
     const out2 = await inject.handler(baseReq, async (r) => r);
-    expect(out2.system?.[1]?.text).toMatch(/Active design kit: cyberpunk-neon/);
+    expect(out2.system?.[1]?.text).toContain(`Active design kit: ${kit}`);
   });
 
   it('set override → materialize writes a real theme file → verify flags drift', async () => {
