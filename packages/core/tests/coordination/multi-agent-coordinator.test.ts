@@ -270,5 +270,30 @@ describe('DefaultMultiAgentCoordinator', () => {
       const coord = makeCoordinator(makeConfig({ timeoutMs: 60_000 }));
       await expect(coord.awaitTasks(['never'], { timeoutMs: 20 })).rejects.toThrow(/timed out/);
     });
+
+    it('aborts pending tasks pinned to a stopped subagent even when other subagents remain alive', async () => {
+      const coord = makeCoordinator(makeConfig({ maxConcurrent: 1 }));
+      let releaseFirst!: () => void;
+      coord.setRunner((async (task: { id: string }) => {
+        if (task.id === 't1') {
+          await new Promise<void>((r) => {
+            releaseFirst = r;
+          });
+        }
+        return { result: `done:${task.id}`, iterations: 1, toolCalls: 0 };
+      }) as never);
+
+      await coord.spawn({ id: 'a1', name: 'A1' });
+      await coord.spawn({ id: 'a2', name: 'A2' });
+      await coord.assign({ id: 't1', subagentId: 'a1' });
+      await coord.assign({ id: 't2', subagentId: 'a1' });
+
+      await coord.stop('a1');
+      releaseFirst();
+
+      const [res] = await coord.awaitTasks(['t2'], { timeoutMs: 500 });
+      expect(res?.status).toBe('stopped');
+      expect(res?.subagentId).toBe('a1');
+    });
   });
 });

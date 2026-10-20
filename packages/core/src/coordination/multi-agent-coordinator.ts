@@ -325,6 +325,20 @@ export class DefaultMultiAgentCoordinator extends EventEmitter implements MultiA
     const subagent = this.subagents.get(subagentId);
     if (!subagent) return;
 
+    const orphaned: TaskSpec[] = [];
+    for (let i = this.pendingTasks.length - 1; i >= 0; i--) {
+      if (this.pendingTasks[i]?.subagentId === subagentId) {
+        orphaned.unshift(this.pendingTasks[i]!);
+        this.pendingTasks.splice(i, 1);
+      }
+    }
+    for (const t of orphaned) {
+      this.emitPendingAborted(
+        t,
+        `Subagent "${subagentId}" was stopped while task "${t.id}" was pending`,
+      );
+    }
+
     markSubagentStopped(subagentId, subagent, this.terminating, this, this.fleetBus);
     this.emitCoordinatorStats();
   }
