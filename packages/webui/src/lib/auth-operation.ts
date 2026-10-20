@@ -1,3 +1,4 @@
+import { safeId } from '@/lib/utils';
 import type { WSClientMessage } from '@/types';
 import type { WrongStackWebSocketClient } from './ws-client';
 
@@ -13,7 +14,7 @@ export function requestAuthOperation(
       resolve(false);
       return;
     }
-    const requestId = crypto.randomUUID();
+    const requestId = safeId();
     let settled = false;
     let off: (() => void) | undefined;
     let timer: ReturnType<typeof setTimeout> | undefined;

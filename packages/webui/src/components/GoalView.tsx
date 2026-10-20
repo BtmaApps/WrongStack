@@ -4,7 +4,7 @@ import { showPanel } from '@/components/activity-bar/nav';
 import { PageMotif } from '@/components/PageMotif';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { i18n, useAppTranslation } from '@/i18n';
-import { cn } from '@/lib/utils';
+import { cn, safeId } from '@/lib/utils';
 import {
   useActiveSessionId,
   useChatStore,
@@ -126,7 +126,7 @@ export function GoalView({ onClose }: { onClose: () => void }): React.ReactEleme
     });
     setPlanningGoal(g);
     setGoal('');
-    const goalId = crypto.randomUUID();
+    const goalId = safeId();
     useGoalCatalogStore.getState().selectGoal(goalId);
     useGoalRunStore.getState().clear();
     client?.send?.({

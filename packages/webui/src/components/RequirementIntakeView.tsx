@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAppTranslation } from '@/i18n';
-import { cn } from '@/lib/utils';
+import { cn, safeId } from '@/lib/utils';
 
 export interface IntakeRecord {
   id: string;
@@ -82,8 +82,7 @@ function relativeTime(timestamp: number): string {
 }
 
 function newSubmissionIdempotencyKey(): string {
-  const uuid = globalThis.crypto?.randomUUID?.();
-  return `webui-${uuid ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`}`;
+  return `webui-${safeId()}`;
 }
 
 export function RequirementIntakeView({

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { safeId } from '@/lib/utils';
 import { getWSClient } from '@/lib/ws-client';
 import type { ChronicleEventView, ChronicleQueryResult } from '@/types';
 
@@ -31,7 +32,7 @@ export function useStoryHistory(sessionId: string | null, live: boolean) {
         });
         return;
       }
-      const id = `session-story:${crypto.randomUUID()}`;
+      const id = `session-story:${safeId()}`;
       const timer = setTimeout(() => {
         if (request.current?.id !== id) return;
         request.current = null;

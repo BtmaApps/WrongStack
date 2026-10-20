@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { extractSageBlock } from '../../src/lib/sage-block';
 import {
-  CALENDAR_DAYS,
   blockingCalendarRules,
+  CALENDAR_DAYS,
   isCalendarRuleActive,
   isCalendarRuleValid,
 } from '../../src/lib/model-calendar';
+import { extractSageBlock } from '../../src/lib/sage-block';
 import { cn, safeId } from '../../src/lib/utils';
 
 /**
@@ -55,15 +55,25 @@ describe('safeId', () => {
     expect(randomUUID).toHaveBeenCalled();
   });
 
-  it('falls back when randomUUID is missing (plain-HTTP context)', () => {
-    vi.stubGlobal('crypto', {});
+  const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+
+  it('builds a v4 UUID from getRandomValues when randomUUID is missing (plain-HTTP context, #415)', () => {
+    const getRandomValues = vi.fn((arr: Uint8Array) => arr.fill(0xff));
+    vi.stubGlobal('crypto', { getRandomValues });
     const id = safeId();
-    expect(id).toMatch(/^[a-z0-9]+-[a-z0-9]+$/);
+    expect(getRandomValues).toHaveBeenCalled();
+    expect(id).toMatch(UUID_V4);
+    expect(id).toBe('ffffffff-ffff-4fff-bfff-ffffffffffff');
+  });
+
+  it('falls back to a v4-shaped id when Web Crypto has neither API', () => {
+    vi.stubGlobal('crypto', {});
+    expect(safeId()).toMatch(UUID_V4);
   });
 
   it('falls back when crypto itself is undefined', () => {
     vi.stubGlobal('crypto', undefined);
-    expect(safeId()).toMatch(/^[a-z0-9]+-[a-z0-9]+$/);
+    expect(safeId()).toMatch(UUID_V4);
   });
 
   it('produces distinct ids on the fallback path', () => {

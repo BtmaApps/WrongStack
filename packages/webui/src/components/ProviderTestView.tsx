@@ -21,7 +21,7 @@ import {
 } from '@/components/QuickModelSwitcher.filter';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { useAppTranslation } from '@/i18n';
-import { cn } from '@/lib/utils';
+import { cn, safeId } from '@/lib/utils';
 import { openMainView, showPanel } from '@/lib/view-navigation';
 import { useConfigStore } from '@/stores';
 import { useLocalPrefs } from '@/stores/local-prefs';
@@ -151,7 +151,7 @@ export function ProviderTestView(): React.ReactElement {
 
   const runTests = () => {
     if (!client || selected.size === 0) return;
-    const nextRequestId = crypto.randomUUID();
+    const nextRequestId = safeId();
     setRequestId(nextRequestId);
     setResults([]);
     setRunError('');
@@ -176,7 +176,7 @@ export function ProviderTestView(): React.ReactElement {
 
   const retryModel = (modelId: string) => {
     if (!client || running || retryingModel) return;
-    const nextRequestId = crypto.randomUUID();
+    const nextRequestId = safeId();
     setRetryRequestId(nextRequestId);
     setRetryingModel(modelId);
     client.send({

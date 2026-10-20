@@ -8,12 +8,23 @@ export function cn(...inputs: ClassValue[]) {
 /**
  * Browser-safe UUID generation. `crypto.randomUUID()` is only available in
  * secure contexts (HTTPS or localhost). In non-secure contexts (plain HTTP)
- * it is `undefined`, and calling it throws TypeError. This wrapper falls
- * back to a timestamp + Math.random combo when the API is unavailable.
+ * it is `undefined`, and calling it throws TypeError (#415: WebUI opened over
+ * plain HTTP from a LAN address). The fallback builds an RFC 4122 v4 UUID
+ * from `crypto.getRandomValues`, which secure and non-secure contexts both
+ * expose, so ids keep the same shape wherever they are stored or echoed back.
+ * Math.random only fills in when no Web Crypto exists at all.
  */
 export function safeId(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
+  const webCrypto = typeof crypto !== 'undefined' ? crypto : undefined;
+  if (typeof webCrypto?.randomUUID === 'function') return webCrypto.randomUUID();
+  const bytes = new Uint8Array(16);
+  if (typeof webCrypto?.getRandomValues === 'function') {
+    webCrypto.getRandomValues(bytes);
+  } else {
+    for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
   }
-  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  bytes[6] = ((bytes[6] ?? 0) & 0x0f) | 0x40;
+  bytes[8] = ((bytes[8] ?? 0) & 0x3f) | 0x80;
+  const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }

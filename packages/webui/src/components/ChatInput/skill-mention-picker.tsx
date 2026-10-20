@@ -5,6 +5,7 @@ import {
   type SkillMentionCandidate,
 } from '@wrongstack/webui-protocol';
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import { safeId } from '@/lib/utils';
 import type { WrongStackWebSocketClient } from '@/lib/ws-client';
 
 export function useSkillMentionPicker(
@@ -28,7 +29,7 @@ export function useSkillMentionPicker(
   const connected = client?.isConnected === true;
   useEffect(() => {
     if (!open || !client || !connected) return;
-    const requestId = `skill-mention-${crypto.randomUUID()}`;
+    const requestId = `skill-mention-${safeId()}`;
     setLoading(true);
     setError('');
     setSkills([]);

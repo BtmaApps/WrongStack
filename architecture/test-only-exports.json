@@ -947,6 +947,9 @@
     "packages/plugins/src/license-audit-gate/index.ts": [
       "parsePackageNames"
     ],
+    "packages/plugins/src/lint-gate/linter-runner.ts": [
+      "ORPHAN_MIN_AGE_MS"
+    ],
     "packages/plugins/src/llm-cache/index.ts": [
       "fingerprintRequest",
       "isDeterministic"
@@ -1961,6 +1964,9 @@
       "resetOpenModalRegistryForTests",
       "subscribeToOpenModals",
       "unregisterOpenModal"
+    ],
+    "packages/webui/src/lib/palettes.ts": [
+      "BASE_PALETTE"
     ],
     "packages/webui/src/lib/platform.ts": [
       "ALT_KEY_LABEL",

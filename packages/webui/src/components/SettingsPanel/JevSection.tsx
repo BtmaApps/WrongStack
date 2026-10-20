@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { useAppTranslation } from '@/i18n';
+import { safeId } from '@/lib/utils';
 import { useUIStore } from '@/stores';
 import type { JevSettings, JevState } from '@/types/jev';
 import { Button } from '../ui/button';
@@ -22,7 +23,7 @@ export function JevSection({
   const [filter, setFilter] = useState('');
   const [includeChecks, setIncludeChecks] = useState(false);
   const checking = useRef(false);
-  const prefix = useRef(crypto.randomUUID());
+  const prefix = useRef(safeId());
   const pending = useRef<string | undefined>(undefined);
   const initialRoute = useRef('');
   const saving = useRef(false);
@@ -77,7 +78,7 @@ export function JevSection({
   }, [busy, t]);
   const send = (type: 'jev.set' | 'jev.test' | 'jev.check') => {
     if (!form) return;
-    const requestId = `${prefix.current}:${crypto.randomUUID()}`;
+    const requestId = `${prefix.current}:${safeId()}`;
     pending.current = requestId;
     saving.current = type === 'jev.set';
     checking.current = type === 'jev.check';

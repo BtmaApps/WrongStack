@@ -34,6 +34,10 @@
       "lines": 720,
       "relativeImports": 9
     },
+    "packages/webui-server/src/server/memory-handlers.ts": {
+      "lines": 705,
+      "relativeImports": 4
+    },
     "apps/desktop/src/main/main.ts": {
       "lines": 734,
       "relativeImports": 20

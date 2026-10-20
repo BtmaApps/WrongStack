@@ -1,3 +1,4 @@
+import { safeId } from '@/lib/utils';
 import { openMainView, showPanel } from '@/lib/view-navigation';
 import { useGoalRunStore, useUIStore } from '@/stores';
 import { useGoalCatalogStore } from '@/stores/goal-catalog-store';
@@ -20,7 +21,7 @@ export function runGoalSlashCommand(
       addMessage({ role: 'assistant', content: 'Usage: `/goal start <title>`' });
       return true;
     }
-    const goalId = crypto.randomUUID();
+    const goalId = safeId();
     useGoalCatalogStore.getState().selectGoal(goalId);
     useGoalRunStore.getState().clear();
     client?.send?.({
