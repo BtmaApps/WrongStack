@@ -444,11 +444,15 @@ export async function runTests(
       }
     }
 
+    const passed = Boolean(success) && numFailedTests === 0;
+    const effectiveFailCount =
+      numFailedTests > 0 ? numFailedTests : !passed ? Math.max(1, failures.length) : 0;
+
     return {
-      passed: success && numFailedTests === 0,
+      passed,
       testCount: numTotalTests,
-      failCount: numFailedTests,
-      duration: `${data.startTime ? '—' : ''} ${numPassedTests} passed, ${numFailedTests} failed`,
+      failCount: effectiveFailCount,
+      duration: `${data.startTime ? '—' : ''} ${numPassedTests} passed, ${effectiveFailCount} failed`,
       failures,
     };
   } catch {

@@ -688,4 +688,69 @@ describe('extension filter + content-hash cache', () => {
       }),
     );
   });
+
+  it('does not collide in the content-hash cache across distinct edit old_string targets or after a failed run', async () => {
+    let shouldPass = true;
+    mockExecFile.mockImplementation((_cmd, args, _options, callback) => {
+      if (args.includes('--version')) return callback(null, '1.0.0\n', '');
+      callback(
+        null,
+        JSON.stringify({
+          numTotalTests: 1,
+          numPassedTests: shouldPass ? 1 : 0,
+          numFailedTests: shouldPass ? 0 : 1,
+          success: shouldPass,
+          testResults: [],
+        }),
+        '',
+      );
+    });
+
+    const api = makeApi({ enabled: true });
+    await testRunnerGatePlugin.setup(api as never);
+    const hook = getHook(api);
+
+    // First edit passes and caches (edit, old_string='a', new_string='shared')
+    await hook({
+      toolName: 'edit',
+      toolInput: { path: 'src/foo.ts', old_string: 'a', new_string: 'shared' },
+      toolResult: { content: 'ok', isError: false },
+    });
+    // Second edit has the same new_string='shared' but a different old_string='b' → must NOT skip
+    shouldPass = false;
+    const second = await hook({
+      toolName: 'edit',
+      toolInput: { path: 'src/foo.ts', old_string: 'b', new_string: 'shared' },
+      toolResult: { content: 'ok', isError: false },
+    });
+    expect(second?.additionalContext).toContain('1 of 1 test(s) FAILED');
+
+    // Because the second run failed, re-running the first edit payload must NOT hit a stale passed hash
+    const third = await hook({
+      toolName: 'edit',
+      toolInput: { path: 'src/foo.ts', old_string: 'a', new_string: 'shared' },
+      toolResult: { content: 'ok', isError: false },
+    });
+    expect(third?.additionalContext).toContain('FAILED');
+  });
+
+  it('aborts an in-flight setup() when teardown() runs while runner detection is pending', async () => {
+    let finishProbe!: () => void;
+    mockExecFile.mockImplementation((_cmd, args, _options, callback) => {
+      if (args.includes('--version')) {
+        finishProbe = () => callback(null, '1.0.0\n', '');
+        return;
+      }
+      callback(null, '', '');
+    });
+
+    const api = makeApi({ enabled: true });
+    const setupPromise = testRunnerGatePlugin.setup(api as never);
+    testRunnerGatePlugin.teardown!(api as never);
+    finishProbe();
+    await setupPromise;
+
+    expect(api.tools.register).not.toHaveBeenCalled();
+    expect(api.registerHook).not.toHaveBeenCalled();
+  });
 });

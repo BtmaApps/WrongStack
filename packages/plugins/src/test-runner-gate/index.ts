@@ -65,6 +65,8 @@ const state = {
   cachedSkipCount: 0,
   /** Hook handle for teardown. */
   hookUnregister: null as null | (() => void),
+  /** Monotonic lifecycle token so an in-flight setup aborted by a newer setup or teardown does not register a stale hook. */
+  setupGeneration: 0,
   /** Last test result — surfaced by health() + status tool. */
   lastResult: null as null | {
     sourcePath: string;
@@ -231,6 +233,7 @@ const plugin: Plugin = {
   },
 
   async setup(api) {
+    const generation = ++state.setupGeneration;
     // Idempotent re-init (H1 pattern).
     state.invocationCount = 0;
     state.runCount = 0;
@@ -246,8 +249,22 @@ const plugin: Plugin = {
 
     const cfg = readConfig(api.config.extensions?.['test-runner-gate']);
 
-    // Detect runner at setup time.
-    const runner = await detectRunner(cfg.runner);
+    // Detect runner at setup time. When a custom `command` is configured,
+    // skip the `npx --no -- <runner> --version` subprocess probe so setup
+    // does not depend on npx shell latency or fail when npx is slow.
+    const defaultRunnerConfigs: Record<
+      'vitest' | 'jest' | 'mocha',
+      { name: 'vitest' | 'jest' | 'mocha'; command: string; jsonFlags: string }
+    > = {
+      vitest: { name: 'vitest', command: 'npx --no -- vitest run', jsonFlags: '--reporter=json' },
+      jest: { name: 'jest', command: 'npx --no -- jest', jsonFlags: '--json' },
+      mocha: { name: 'mocha', command: 'npx --no -- mocha', jsonFlags: '--reporter json' },
+    };
+    const runner =
+      cfg.command && cfg.runner !== 'auto'
+        ? await Promise.resolve(defaultRunnerConfigs[cfg.runner])
+        : await detectRunner(cfg.runner);
+    if (generation !== state.setupGeneration) return;
     if (!runner) {
       api.log.warn(
         'test-runner-gate: no test runner found (vitest, jest, mocha) — hook will be a no-op',
@@ -305,18 +322,27 @@ const plugin: Plugin = {
 
       state.invocationCount += 1;
 
+      const contentForHash = (): string => {
+        if (input.toolName === 'write') {
+          const c = inp['content'];
+          return typeof c === 'string' && c.length > 0 ? `write:${c}` : '';
+        }
+        if (input.toolName === 'edit') {
+          const n = inp['new_string'];
+          const o = inp['old_string'];
+          if (typeof n !== 'string' || n.length === 0) return '';
+          return typeof o === 'string' ? `edit:${o}\0${n}` : `edit:${n}`;
+        }
+        return '';
+      };
+
       // Content-hash dedupe: if a previous PASS for this path
       // recorded the same content fingerprint, skip the test run.
       // Catches the "format-on-save / import-organizer re-touches the
       // file right after the test already passed" pattern.
       if (cfg.enableContentHashCache) {
-        const content =
-          input.toolName === 'write'
-            ? ((inp['content'] as unknown) ?? '')
-            : input.toolName === 'edit'
-              ? ((inp['new_string'] as unknown) ?? '')
-              : '';
-        if (typeof content === 'string' && content.length > 0) {
+        const content = contentForHash();
+        if (content.length > 0) {
           const hash = pathContentHash(content);
           const last = lastPassedHash.get(sourcePath);
           if (last !== undefined && last === hash) {
@@ -355,13 +381,8 @@ const plugin: Plugin = {
         state.passCount += 1;
         // Record content hash on PASS so enableContentHashCache can dedupe.
         if (cfg.enableContentHashCache) {
-          const content =
-            input.toolName === 'write'
-              ? ((inp['content'] as unknown) ?? '')
-              : input.toolName === 'edit'
-                ? ((inp['new_string'] as unknown) ?? '')
-                : '';
-          if (typeof content === 'string' && content.length > 0) {
+          const content = contentForHash();
+          if (content.length > 0) {
             lastPassedHash.set(sourcePath, pathContentHash(content));
           }
         }
@@ -373,7 +394,8 @@ const plugin: Plugin = {
         };
       }
 
-      // Tests failed — inject failure details.
+      // Tests failed — invalidate any cached PASS hash for this path and inject failure details.
+      lastPassedHash.delete(sourcePath);
       state.failCount += 1;
       const failureList =
         result.failures.length > 0 ? '\n' + result.failures.map((f) => `  ❌ ${f}`).join('\n') : '';
@@ -437,6 +459,7 @@ const plugin: Plugin = {
   },
 
   teardown(api) {
+    state.setupGeneration += 1;
     if (state.hookUnregister) {
       try {
         state.hookUnregister();
