@@ -145,7 +145,7 @@ function IssueCard({ issue }: { issue: (typeof issues)[number] }) {
             <ul className="mt-4 space-y-2">
               {issue.causes.map((cause) => (
                 <li key={cause} className="flex gap-2 text-sm leading-6 text-muted">
-                  <AlertCircle className="mt-1 size-3.5 shrink-0 text-amber-500" />
+                  <AlertCircle className="mt-1 size-3.5 shrink-0 text-status-warning" />
                   {cause}
                 </li>
               ))}
@@ -158,7 +158,7 @@ function IssueCard({ issue }: { issue: (typeof issues)[number] }) {
             <ul className="mt-4 space-y-2">
               {issue.fixes.map((fix) => (
                 <li key={fix} className="flex gap-2 text-sm leading-6 text-muted">
-                  <Check className="mt-1 size-3.5 shrink-0 text-emerald-500" />
+                  <Check className="mt-1 size-3.5 shrink-0 text-status-success" />
                   <code className="font-mono text-xs text-fg">{fix}</code>
                 </li>
               ))}
@@ -213,7 +213,7 @@ export function TroubleshootingPage() {
               <Stethoscope className="size-5 text-brand" />
               <code className="font-mono text-sm font-black">wstack diag</code>
             </div>
-            <p className="mt-5 text-sm leading-7 text-zinc-500">
+            <p className="mt-5 text-sm leading-7 text-terminal-muted">
               Prints version, provider, model, key status, features, MCP connections, tools,
               pipelines, context policy and session paths without mutating them.
             </p>
@@ -231,7 +231,7 @@ export function TroubleshootingPage() {
                 key={item}
                 className="flex items-center gap-3 bg-card p-4 text-sm font-semibold text-muted"
               >
-                <Check className="size-3.5 text-emerald-500" />
+                <Check className="size-3.5 text-status-success" />
                 {item}
               </div>
             ))}

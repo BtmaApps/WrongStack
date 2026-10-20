@@ -100,17 +100,17 @@ export function ShadowAgentPage() {
                 across Shadow restarts.
               </p>
               <div className="mt-5 rounded-lg border border-line bg-bg p-4 font-mono text-xs leading-6">
-                <div className="text-zinc-400">
+                <div className="text-muted">
                   10:23:01 <span className="text-brand">hoop</span> → subagent-xyz{' '}
-                  <span className="text-emerald-400">terminated</span>
+                  <span className="text-status-success">terminated</span>
                 </div>
-                <div className="text-zinc-400">
+                <div className="text-muted">
                   10:25:33 <span className="text-brand">hoop</span> → all{' '}
-                  <span className="text-emerald-400">3 agents terminated</span>
+                  <span className="text-status-success">3 agents terminated</span>
                 </div>
-                <div className="text-zinc-400">
+                <div className="text-muted">
                   10:30:15 <span className="text-brand">auto-intervene</span> →
-                  budget-exhausted-agent <span className="text-emerald-400">terminated</span>
+                  budget-exhausted-agent <span className="text-status-success">terminated</span>
                 </div>
               </div>
             </div>

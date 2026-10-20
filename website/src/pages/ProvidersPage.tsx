@@ -1,3 +1,4 @@
+import { CodeBlock } from '@/components/site/primitives';
 import {
   ArrowDown,
   ArrowUpRight,
@@ -45,10 +46,10 @@ function ProviderLogo({ provider }: { provider: CuratedProvider }) {
 }
 
 const familyBadge: Record<string, string> = {
-  anthropic: 'border-amber-500/25 bg-amber-500/10 text-amber-500',
-  openai: 'border-emerald-500/25 bg-emerald-500/10 text-emerald-500',
+  anthropic: 'border-amber-500/25 bg-amber-500/10 text-status-warning',
+  openai: 'border-emerald-500/25 bg-emerald-500/10 text-status-success',
   'openai-compatible': 'border-brand/25 bg-brand/10 text-brand',
-  google: 'border-blue-500/25 bg-blue-500/10 text-blue-500',
+  google: 'border-blue-500/25 bg-blue-500/10 text-status-info',
 };
 
 const families = [
@@ -164,7 +165,7 @@ export function ProvidersPage() {
           <div className="mt-6 grid gap-4 lg:grid-cols-2">
             <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-6 sm:p-8">
               <div className="flex items-center gap-3">
-                <LogIn className="size-5 text-emerald-500" />
+                <LogIn className="size-5 text-status-success" />
                 <h3 className="text-lg font-black text-fg">Subscription sign-in</h3>
               </div>
               <div className="mt-5 space-y-4">
@@ -305,9 +306,9 @@ export function ProvidersPage() {
         />
         <div className="mt-12 grid gap-6 lg:grid-cols-[.75fr_1fr]">
           <div className="rounded-2xl border border-line bg-ink p-6 text-zinc-300">
-            <pre className="overflow-x-auto font-mono text-xs leading-6">
+            <CodeBlock className="overflow-x-auto font-mono text-xs leading-6">
               <code>{matrixExample}</code>
-            </pre>
+            </CodeBlock>
           </div>
           <div className="space-y-2">
             {[
@@ -407,7 +408,7 @@ export function ProvidersPage() {
                 >
                   <ItemIcon className="size-5 text-brand" />
                   <h2 className="mt-8 text-xl font-black">{String(title)}</h2>
-                  <p className="mt-3 text-sm leading-7 text-zinc-500">{String(body)}</p>
+                  <p className="mt-3 text-sm leading-7 text-terminal-muted">{String(body)}</p>
                 </article>
               );
             })}

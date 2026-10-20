@@ -1,3 +1,4 @@
+import { CodeBlock } from '@/components/site/primitives';
 import {
   Blocks,
   Check,
@@ -268,7 +269,7 @@ export function PluginsPage() {
                   className={cn(
                     'rounded-full border px-3.5 py-2 text-xs font-black transition-colors',
                     filter === option.value
-                      ? 'border-brand bg-brand text-white'
+                      ? 'border-brand bg-brand text-on-brand'
                       : 'border-line bg-bg text-muted hover:border-line-strong hover:text-fg',
                   )}
                 >
@@ -313,10 +314,10 @@ export function PluginsPage() {
                               className={cn(
                                 'shrink-0 rounded-full px-2 py-1 font-mono text-xs font-black uppercase tracking-[0.08em]',
                                 plugin.risk === 'high'
-                                  ? 'bg-red-500/10 text-red-500'
+                                  ? 'bg-red-500/10 text-status-danger'
                                   : plugin.risk === 'medium'
-                                    ? 'bg-amber-500/10 text-amber-500'
-                                    : 'bg-emerald-500/10 text-emerald-500',
+                                    ? 'bg-amber-500/10 text-status-warning'
+                                    : 'bg-emerald-500/10 text-status-success',
                               )}
                             >
                               {plugin.risk} risk
@@ -344,7 +345,9 @@ export function PluginsPage() {
                           <div className="mt-5 flex items-center justify-between border-t border-line pt-4 font-mono text-xs font-black uppercase tracking-[0.1em]">
                             <span
                               className={
-                                plugin.defaultState === 'active' ? 'text-emerald-500' : 'text-faint'
+                                plugin.defaultState === 'active'
+                                  ? 'text-status-success'
+                                  : 'text-faint'
                               }
                             >
                               {plugin.defaultState === 'active'
@@ -379,7 +382,7 @@ export function PluginsPage() {
         />
         <div className="mt-12 grid gap-6 lg:grid-cols-[1.1fr_.9fr]">
           <div className="overflow-hidden rounded-2xl border border-line bg-ink p-6 text-white sm:p-8">
-            <div className="flex items-center gap-2 border-b border-white/10 pb-5 font-mono text-xs font-black uppercase tracking-[0.15em] text-zinc-500">
+            <div className="flex items-center gap-2 border-b border-white/10 pb-5 font-mono text-xs font-black uppercase tracking-[0.15em] text-terminal-muted">
               <GitBranch className="size-4 text-brand-2" /> Provider wrapper order
             </div>
             {[
@@ -437,7 +440,7 @@ export function PluginsPage() {
             description="Declare only the capabilities you need. The host scopes ownership so registrations can be audited and removed cleanly."
           />
           <div className="mt-10 grid gap-6 lg:grid-cols-[1fr_.75fr]">
-            <pre className="overflow-x-auto rounded-2xl border border-white/10 bg-ink p-6 font-mono text-xs leading-7 text-zinc-300">
+            <CodeBlock className="overflow-x-auto rounded-2xl border border-white/10 bg-ink p-6 font-mono text-xs leading-7 text-zinc-300">
               <code>{`export default {
   name: 'my-plugin',
   version: '1.0.0',
@@ -455,7 +458,7 @@ export function PluginsPage() {
     // close plugin-owned resources
   },
 };`}</code>
-            </pre>
+            </CodeBlock>
             <div className="rounded-2xl border border-line bg-card p-6">
               <Sparkles className="size-5 text-brand-2" />
               <h2 className="mt-7 text-2xl font-black text-fg">No private extension tax.</h2>
@@ -471,7 +474,7 @@ export function PluginsPage() {
                   'Runtime configuration change callbacks',
                 ].map((item) => (
                   <li key={item} className="flex gap-3">
-                    <Check className="mt-0.5 size-4 shrink-0 text-emerald-500" />
+                    <Check className="mt-0.5 size-4 shrink-0 text-status-success" />
                     {item}
                   </li>
                 ))}

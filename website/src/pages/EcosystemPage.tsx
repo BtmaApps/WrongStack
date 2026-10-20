@@ -61,7 +61,7 @@ export function EcosystemPage() {
               <ul className="mt-6 grid gap-2 sm:grid-cols-3">
                 {pillar.facts.map((fact) => (
                   <li key={fact} className="flex items-start gap-2 text-xs leading-5 text-muted">
-                    <Check className="mt-0.5 size-3.5 shrink-0 text-emerald-500" />
+                    <Check className="mt-0.5 size-3.5 shrink-0 text-status-success" />
                     {fact}
                   </li>
                 ))}
@@ -100,7 +100,7 @@ export function EcosystemPage() {
                   <span className="font-mono text-xs font-black text-brand-2">0{index + 1}</span>
                   <span className="text-sm text-zinc-300">{need}</span>
                   <strong className="text-sm">{choice}</strong>
-                  <code className="font-mono text-xs text-zinc-500">{command}</code>
+                  <code className="font-mono text-xs text-terminal-muted">{command}</code>
                 </div>
               ))}
             </div>

@@ -34,7 +34,7 @@ export function ToolDetailPage() {
             <span
               className={
                 tool.permission === 'auto'
-                  ? 'rounded-full border border-emerald-500/25 bg-emerald-500/10 px-3 py-1.5 font-mono text-xs font-black uppercase text-emerald-500'
+                  ? 'rounded-full border border-emerald-500/25 bg-emerald-500/10 px-3 py-1.5 font-mono text-xs font-black uppercase text-status-success'
                   : 'rounded-full border border-brand-2/25 bg-brand-2/10 px-3 py-1.5 font-mono text-xs font-black uppercase text-brand-2'
               }
             >

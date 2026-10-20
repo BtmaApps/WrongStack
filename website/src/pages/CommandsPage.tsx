@@ -59,7 +59,7 @@ function CommandRow({ command }: { command: (typeof commands)[number] }) {
             className="overflow-hidden"
           >
             <div className="border-t border-line bg-ink px-5 py-5 text-zinc-300 sm:ml-[190px] sm:px-6">
-              <div className="font-mono text-xs font-black uppercase tracking-[0.18em] text-zinc-600">
+              <div className="font-mono text-xs font-black uppercase tracking-[0.18em] text-terminal-muted">
                 Examples
               </div>
               <div className="mt-3 space-y-1.5">
@@ -70,7 +70,7 @@ function CommandRow({ command }: { command: (typeof commands)[number] }) {
                   </code>
                 ))}
               </div>
-              {command.note && <p className="mt-3 text-xs text-zinc-500">{command.note}</p>}
+              {command.note && <p className="mt-3 text-xs text-terminal-muted">{command.note}</p>}
             </div>
           </motion.div>
         )}

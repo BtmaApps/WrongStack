@@ -1,3 +1,4 @@
+import { CodeBlock } from '@/components/site/primitives';
 import {
   ArrowDown,
   BrainCircuit,
@@ -82,14 +83,14 @@ export function SettingsPage() {
           </div>
           <div className="rounded-2xl border border-line bg-ink p-5 text-zinc-300 sm:p-7">
             <div className="flex items-center justify-between border-b border-white/10 pb-4">
-              <span className="font-mono text-xs font-black uppercase tracking-[0.16em] text-zinc-500">
+              <span className="font-mono text-xs font-black uppercase tracking-[0.16em] text-terminal-muted">
                 ~/.wrongstack/profiles/&lt;name&gt;/config.json
               </span>
               <span className="size-2 rounded-full bg-emerald-400" />
             </div>
-            <pre className="mt-5 overflow-x-auto font-mono text-xs leading-6 text-zinc-400">
+            <CodeBlock className="mt-5 overflow-x-auto font-mono text-xs leading-6 text-zinc-400">
               <code>{sample}</code>
-            </pre>
+            </CodeBlock>
           </div>
         </div>
       </section>
@@ -193,7 +194,7 @@ export function SettingsPage() {
         <div className="mt-12 grid gap-5 lg:grid-cols-2">
           <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-6 sm:p-8">
             <div className="flex items-center gap-3">
-              <Check className="size-5 text-emerald-500" />
+              <Check className="size-5 text-status-success" />
               <h2 className="font-black text-fg">Allowed in the repository</h2>
             </div>
             <p className="mt-4 text-sm leading-7 text-muted">
@@ -205,7 +206,7 @@ export function SettingsPage() {
               {['context', 'features', 'indexing', 'session', 'log', 'launch'].map((key) => (
                 <code
                   key={key}
-                  className="rounded-full border border-emerald-500/15 bg-card px-3 py-1.5 font-mono text-xs text-emerald-600 dark:text-emerald-400"
+                  className="rounded-full border border-emerald-500/15 bg-card px-3 py-1.5 font-mono text-xs text-status-success"
                 >
                   {key}
                 </code>

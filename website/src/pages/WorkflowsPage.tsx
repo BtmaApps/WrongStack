@@ -141,7 +141,7 @@ export function WorkflowsPage() {
               ],
             ].map(([title, body]) => (
               <div key={title} className="rounded-xl border border-line bg-card p-5">
-                <Check className="size-4 text-emerald-500" />
+                <Check className="size-4 text-status-success" />
                 <h3 className="mt-5 font-black text-fg">{title}</h3>
                 <p className="mt-2 text-sm leading-6 text-muted">{body}</p>
               </div>

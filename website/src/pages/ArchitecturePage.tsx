@@ -69,10 +69,8 @@ export function ArchitecturePage() {
                         'rounded-lg border px-2.5 py-1.5 font-mono text-xs',
                         index === 0 && 'border-brand/20 bg-brand/5 text-brand',
                         index === 1 && 'border-brand-2/20 bg-brand-2/5 text-brand-2',
-                        index === 2 &&
-                          'border-sky-500/20 bg-sky-500/5 text-sky-600 dark:text-sky-400',
-                        index === 3 &&
-                          'border-emerald-500/20 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400',
+                        index === 2 && 'border-sky-500/20 bg-sky-500/5 text-status-info',
+                        index === 3 && 'border-emerald-500/20 bg-emerald-500/5 text-status-success',
                       )}
                     >
                       {pkg}

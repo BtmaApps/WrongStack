@@ -233,11 +233,11 @@ export function ModesPage() {
             ].map(([Icon, command, title, body]) => {
               const ItemIcon = Icon as typeof CircleGauge;
               return (
-                <article key={String(command)} className="bg-[#0c0d12] p-6">
+                <article key={String(command)} className="site-terminal bg-[#0c0d12] p-6">
                   <ItemIcon className="size-5 text-brand" />
                   <code className="mt-7 block font-mono text-xs text-brand">{String(command)}</code>
                   <h2 className="mt-3 font-black">{String(title)}</h2>
-                  <p className="mt-3 text-sm leading-6 text-zinc-500">{String(body)}</p>
+                  <p className="mt-3 text-sm leading-6 text-terminal-muted">{String(body)}</p>
                 </article>
               );
             })}

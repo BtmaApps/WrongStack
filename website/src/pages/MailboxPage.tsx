@@ -87,7 +87,7 @@ export function MailboxPage() {
                       <code className="font-mono text-xs font-bold">{String(title)}</code>
                       <span className="ml-auto size-2 rounded-full bg-emerald-300 shadow-[0_0_10px_#6ee7b7]" />
                     </div>
-                    <p className="mt-3 text-xs text-zinc-500">{String(body)}</p>
+                    <p className="mt-3 text-xs text-terminal-muted">{String(body)}</p>
                   </div>
                 );
               })}
@@ -96,7 +96,7 @@ export function MailboxPage() {
               <div>
                 <Mail className="mx-auto size-6 text-brand-2" />
                 <strong className="mt-3 block text-sm">Mailbox hub</strong>
-                <span className="mt-1 block font-mono text-[8px] text-zinc-600">
+                <span className="mt-1 block font-mono text-[8px] text-terminal-muted">
                   SQLite · IPC owner
                 </span>
               </div>
@@ -119,13 +119,13 @@ export function MailboxPage() {
                       <code className="font-mono text-xs font-bold">{String(title)}</code>
                       <span className="ml-auto size-2 rounded-full bg-emerald-300 shadow-[0_0_10px_#6ee7b7]" />
                     </div>
-                    <p className="mt-3 text-xs text-zinc-500">{String(body)}</p>
+                    <p className="mt-3 text-xs text-terminal-muted">{String(body)}</p>
                   </div>
                 );
               })}
             </div>
           </div>
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-x-7 gap-y-3 border-t border-white/[.08] pt-5 font-mono text-xs uppercase tracking-wider text-zinc-600">
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-x-7 gap-y-3 border-t border-white/[.08] pt-5 font-mono text-xs uppercase tracking-wider text-terminal-muted">
             <span>typed intent</span>
             <span className="text-brand-2">durable delivery</span>
             <span>isolated context</span>
@@ -172,7 +172,7 @@ export function MailboxPage() {
             ))}
           </div>
           <div className="mt-5 flex items-start gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-5">
-            <Check className="mt-1 size-4 shrink-0 text-emerald-500" />
+            <Check className="mt-1 size-4 shrink-0 text-status-success" />
             <p className="text-sm leading-7 text-muted">
               Agents register with role, surface, process id, current task, iteration and tool-call
               state. Heartbeats refresh presence; stale registry entries are pruned automatically.
@@ -249,10 +249,10 @@ export function MailboxPage() {
                       <ItemIcon className="size-4" />
                     </span>
                     <h2 className="font-black">{String(title)}</h2>
-                    <p className="text-sm leading-6 text-zinc-500">{String(body)}</p>
+                    <p className="text-sm leading-6 text-terminal-muted">{String(body)}</p>
                     <code className="font-mono text-xs text-brand-2">{String(code)}</code>
                   </article>
-                  {index < 4 && <ArrowDown className="mx-auto my-1 size-4 text-zinc-700" />}
+                  {index < 4 && <ArrowDown className="mx-auto my-1 size-4 text-terminal-muted" />}
                 </div>
               );
             })}
@@ -278,7 +278,7 @@ export function MailboxPage() {
                   <span className="mr-2 text-brand">❯</span>
                   {command}
                 </code>
-                <p className="text-xs leading-5 text-zinc-500">{body}</p>
+                <p className="text-xs leading-5 text-terminal-muted">{body}</p>
               </div>
             ))}
           </div>
@@ -334,7 +334,7 @@ export function MailboxPage() {
                 key={item}
                 className="flex items-start gap-3 rounded-xl border border-line bg-card p-5"
               >
-                <Check className="mt-1 size-3.5 shrink-0 text-emerald-500" />
+                <Check className="mt-1 size-3.5 shrink-0 text-status-success" />
                 <p className="text-sm leading-6 text-muted">{item}</p>
               </div>
             ))}

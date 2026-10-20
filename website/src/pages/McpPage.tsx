@@ -194,7 +194,7 @@ export function McpPage() {
               >
                 <span className="font-mono text-xs font-black text-brand-2">0{index + 1}</span>
                 <h2 className="mt-8 text-xl font-black">{title}</h2>
-                <p className="mt-3 text-sm leading-7 text-zinc-500">{body}</p>
+                <p className="mt-3 text-sm leading-7 text-terminal-muted">{body}</p>
               </article>
             ))}
           </div>

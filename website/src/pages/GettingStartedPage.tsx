@@ -152,7 +152,7 @@ export function GettingStartedPage() {
               </div>
             </article>
             <article className="rounded-2xl border border-line bg-card p-7">
-              <ShieldCheck className="size-5 text-emerald-500" />
+              <ShieldCheck className="size-5 text-status-success" />
               <h2 className="mt-8 text-2xl font-black text-fg">Other subscription sign-ins</h2>
               <p className="mt-3 text-sm leading-7 text-muted">
                 Claude and GitHub Copilot have their own subscription credential routes. Access and
@@ -279,7 +279,7 @@ export function GettingStartedPage() {
               and offers to scaffold this file automatically. It travels with the project and
               becomes persistent context.
             </p>
-            <p className="mt-4 rounded-xl border border-white/10 bg-white/[0.035] px-4 py-3 text-sm leading-6 text-zinc-500">
+            <p className="mt-4 rounded-xl border border-white/10 bg-white/[0.035] px-4 py-3 text-sm leading-6 text-terminal-muted">
               <code className="font-mono text-brand">/init</code> is an in-session slash command,
               not the setup command for the shell. Use it later to regenerate the project contract;
               the existing file is copied to <code className="font-mono">AGENTS.md.bak</code> first.

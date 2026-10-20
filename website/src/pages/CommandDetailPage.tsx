@@ -1,5 +1,5 @@
 import { ArrowRight, Check, Command, Copy, Layers3, Terminal } from 'lucide-react';
-import { useState } from 'react';
+import { useClipboard } from '@/lib/use-clipboard';
 import {
   ExternalDoc,
   heroTitleFontSize,
@@ -88,7 +88,7 @@ export function CommandDetailPage() {
   const pathParts = path.split('/').filter(Boolean);
   const slug = pathParts[pathParts.length - 1] ?? '';
   const command = commandFromSlug(slug);
-  const [copied, setCopied] = useState<string | null>(null);
+  const { copy, copiedValue: copied, message } = useClipboard();
 
   if (!command) return null;
 
@@ -107,16 +107,6 @@ export function CommandDetailPage() {
   const before = detail?.before ?? guidance.before;
   const during = detail?.during ?? guidance.during;
   const after = detail?.after ?? guidance.after;
-
-  const copy = async (value: string) => {
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopied(value);
-      window.setTimeout(() => setCopied(null), 1600);
-    } catch {
-      // clipboard unavailable; ignore
-    }
-  };
 
   return (
     <>
@@ -174,7 +164,7 @@ export function CommandDetailPage() {
           </article>
           <aside className="overflow-hidden rounded-2xl border border-line bg-ink text-zinc-300">
             <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
-              <span className="font-mono text-xs font-black uppercase tracking-[0.16em] text-zinc-500">
+              <span className="font-mono text-xs font-black uppercase tracking-[0.16em] text-terminal-muted">
                 Quick reference
               </span>
               <Terminal className="size-4 text-brand" />
@@ -189,7 +179,7 @@ export function CommandDetailPage() {
                 key={label}
                 className="grid grid-cols-[90px_1fr] border-b border-white/10 px-5 py-4 last:border-b-0"
               >
-                <span className="text-xs text-zinc-600">{label}</span>
+                <span className="text-xs text-terminal-muted">{label}</span>
                 <code className="font-mono text-xs text-zinc-300">{value}</code>
               </div>
             ))}
@@ -218,26 +208,24 @@ export function CommandDetailPage() {
                 <button
                   type="button"
                   onClick={() => copy(example)}
-                  className="grid size-8 shrink-0 place-items-center rounded-full text-zinc-600 hover:bg-white/5 hover:text-white"
+                  className="grid size-8 shrink-0 place-items-center rounded-full text-terminal-muted hover:bg-white/5 hover:text-white"
                   aria-label={copied === example ? 'Copied' : `Copy ${example}`}
                 >
                   {copied === example ? (
-                    <Check className="size-3.5 text-emerald-500" />
+                    <Check className="size-3.5 text-status-success" />
                   ) : (
                     <Copy className="size-3.5" />
                   )}
                 </button>
-                <span className="hidden font-mono text-xs text-zinc-700 sm:block">
+                <span className="hidden font-mono text-xs text-terminal-muted sm:block">
                   0{index + 1}
                 </span>
               </div>
             ))}
           </div>
-          {copied && (
-            <p className="mt-3 text-right text-xs font-semibold text-emerald-500">
-              Copied to clipboard.
-            </p>
-          )}
+          <p role="status" className="mt-3 text-right text-xs font-semibold text-muted">
+            {message}
+          </p>
         </div>
       </section>
 
@@ -261,7 +249,7 @@ export function CommandDetailPage() {
           ))}
         </div>
         <div className="mt-6 flex items-start gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-5">
-          <Check className="mt-0.5 size-4 shrink-0 text-emerald-500" />
+          <Check className="mt-0.5 size-4 shrink-0 text-status-success" />
           <p className="text-sm leading-6 text-muted">
             <strong className="text-fg">Live help is authoritative:</strong> run{' '}
             <code className="font-mono text-xs text-brand">/help {command.name.slice(1)}</code> to

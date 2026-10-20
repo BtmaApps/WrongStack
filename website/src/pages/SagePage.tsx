@@ -92,7 +92,7 @@ export function SagePage() {
           />
           <div className="mt-12 overflow-hidden rounded-2xl border border-line bg-ink">
             <div className="border-b border-white/10 px-6 py-4">
-              <span className="font-mono text-xs font-black uppercase tracking-[0.16em] text-zinc-500">
+              <span className="font-mono text-xs font-black uppercase tracking-[0.16em] text-terminal-muted">
                 Memory entry format
               </span>
             </div>
@@ -100,7 +100,7 @@ export function SagePage() {
               <div className="space-y-3 text-zinc-300">
                 <div className="flex flex-wrap gap-2">
                   <span className="rounded bg-brand/20 px-2 py-0.5 text-xs text-brand">type</span>
-                  <span className="text-zinc-500">
+                  <span className="text-terminal-muted">
                     fact · decision · convention · preference · reference · anti_pattern
                   </span>
                 </div>
@@ -108,29 +108,31 @@ export function SagePage() {
                   <span className="rounded bg-brand/20 px-2 py-0.5 text-xs text-brand">
                     priority
                   </span>
-                  <span className="text-zinc-500">critical ⚡ · high ▲ · medium · low</span>
+                  <span className="text-terminal-muted">critical ⚡ · high ▲ · medium · low</span>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <span className="rounded bg-brand/20 px-2 py-0.5 text-xs text-brand">tags</span>
-                  <span className="text-zinc-500">
+                  <span className="text-terminal-muted">
                     #path · #build · #convention · #bug · #architecture
                   </span>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <span className="rounded bg-brand/20 px-2 py-0.5 text-xs text-brand">source</span>
-                  <span className="text-zinc-500">session ID or agent that created the entry</span>
+                  <span className="text-terminal-muted">
+                    session ID or agent that created the entry
+                  </span>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <span className="rounded bg-brand/20 px-2 py-0.5 text-xs text-brand">
                     confidence
                   </span>
-                  <span className="text-zinc-500">
+                  <span className="text-terminal-muted">
                     0.0–1.0 — low-confidence entries are injected less often
                   </span>
                 </div>
               </div>
               <div className="mt-8 rounded-lg border border-white/10 bg-white/[0.03] p-5">
-                <span className="text-xs font-black uppercase tracking-[0.16em] text-zinc-600">
+                <span className="text-xs font-black uppercase tracking-[0.16em] text-terminal-muted">
                   Serialized on disk
                 </span>
                 <code className="mt-3 block text-xs leading-6 text-zinc-400">
@@ -208,34 +210,34 @@ export function SagePage() {
             ))}
           </div>
           <aside className="rounded-2xl border border-line bg-ink p-7 text-zinc-300">
-            <div className="font-mono text-xs font-black uppercase tracking-[0.16em] text-zinc-600">
+            <div className="font-mono text-xs font-black uppercase tracking-[0.16em] text-terminal-muted">
               Illustrative memory hints
             </div>
             <div className="mt-6 space-y-4 font-mono text-xs">
-              <p className="text-zinc-500">
+              <p className="text-terminal-muted">
                 You type: <span className="text-zinc-300">"fix the login timeout bug"</span>
               </p>
               <div className="rounded-lg border border-white/10 p-3">
-                <p className="text-xs font-black uppercase tracking-[0.16em] text-zinc-600">
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-terminal-muted">
                   Fictional entries — not runtime ranking output
                 </p>
                 <div className="mt-3 space-y-2">
                   <div className="flex items-start gap-2">
-                    <span className="shrink-0 text-emerald-500">anchored</span>
+                    <span className="shrink-0 text-status-success">anchored</span>
                     <span className="text-zinc-300">
                       [<span className="text-brand">anti_pattern</span>] Auth token refresh races
                       with concurrent requests #auth #bug
                     </span>
                   </div>
                   <div className="flex items-start gap-2">
-                    <span className="shrink-0 text-emerald-500">related</span>
+                    <span className="shrink-0 text-status-success">related</span>
                     <span className="text-zinc-300">
                       [<span className="text-brand">fact</span>] Login timeout defaults to 30s in
                       production config #auth #timeout
                     </span>
                   </div>
                   <div className="flex items-start gap-2">
-                    <span className="shrink-0 text-zinc-500">context</span>
+                    <span className="shrink-0 text-terminal-muted">context</span>
                     <span className="text-zinc-400">
                       [<span className="text-brand">reference</span>] auth module lives in
                       packages/auth/src #path #auth
@@ -325,7 +327,7 @@ export function SagePage() {
               mutation.
             </p>
             <div className="mt-5 flex items-center gap-2 text-xs text-faint">
-              <Check className="size-3.5 text-emerald-500" />
+              <Check className="size-3.5 text-status-success" />
               Up to 5 consolidation backups are kept per scope
             </div>
           </div>
@@ -339,7 +341,7 @@ export function SagePage() {
               review flows, never the unattended consolidator.
             </p>
             <div className="mt-5 flex items-center gap-2 text-xs text-faint">
-              <Check className="size-3.5 text-emerald-500" />
+              <Check className="size-3.5 text-status-success" />
               Min 2 iterations before consolidation fires; skips trivial sessions
             </div>
           </div>
@@ -499,74 +501,76 @@ export function SagePage() {
           <SectionIntro index="09" eyebrow="Configuration" title="Tune memory to your workflow." />
           <div className="mt-12 overflow-hidden rounded-2xl border border-white/10">
             <div className="border-b border-white/10 px-6 py-4">
-              <span className="font-mono text-xs font-black uppercase tracking-[0.16em] text-zinc-500">
+              <span className="font-mono text-xs font-black uppercase tracking-[0.16em] text-terminal-muted">
                 Active profile config.json → Sage
               </span>
             </div>
             <div className="p-6 font-mono text-sm leading-7 text-zinc-300">
-              <span className="text-zinc-600">{'{'}</span>
+              <span className="text-terminal-muted">{'{'}</span>
               <br />
-              <span className="text-zinc-600"> "Sage": {'{'}</span>
+              <span className="text-terminal-muted"> "Sage": {'{'}</span>
               <br />
-              <span className="text-zinc-600"> </span>
-              <span className="text-zinc-500">"enabled"</span>
-              <span className="text-zinc-600">: </span>
+              <span className="text-terminal-muted"> </span>
+              <span className="text-terminal-muted">"enabled"</span>
+              <span className="text-terminal-muted">: </span>
               <span className="text-emerald-400">true</span>
-              <span className="text-zinc-600">,</span>
-              <span className="text-zinc-700">{' // toggle the entire subsystem'}</span>
+              <span className="text-terminal-muted">,</span>
+              <span className="text-terminal-muted">{' // toggle the entire subsystem'}</span>
               <br />
-              <span className="text-zinc-600"> </span>
-              <span className="text-zinc-500">"storage"</span>
-              <span className="text-zinc-600">: {'{'}</span>
+              <span className="text-terminal-muted"> </span>
+              <span className="text-terminal-muted">"storage"</span>
+              <span className="text-terminal-muted">: {'{'}</span>
               <br />
-              <span className="text-zinc-600"> </span>
-              <span className="text-zinc-500">"projectLocal"</span>
-              <span className="text-zinc-600">: </span>
+              <span className="text-terminal-muted"> </span>
+              <span className="text-terminal-muted">"projectLocal"</span>
+              <span className="text-terminal-muted">: </span>
               <span className="text-emerald-400">true</span>
-              <span className="text-zinc-600">,</span>
-              <span className="text-zinc-700">{' // store inside .wrongstack/memories'}</span>
+              <span className="text-terminal-muted">,</span>
+              <span className="text-terminal-muted">{' // store inside .wrongstack/memories'}</span>
               <br />
-              <span className="text-zinc-600"> </span>
-              <span className="text-zinc-500">"directory"</span>
-              <span className="text-zinc-600">: </span>
+              <span className="text-terminal-muted"> </span>
+              <span className="text-terminal-muted">"directory"</span>
+              <span className="text-terminal-muted">: </span>
               <span className="text-amber-300">".wrongstack/memories"</span>
               <br />
-              <span className="text-zinc-600"> {'}'},</span>
+              <span className="text-terminal-muted"> {'}'},</span>
               <br />
-              <span className="text-zinc-600"> </span>
-              <span className="text-zinc-500">"inject"</span>
-              <span className="text-zinc-600">: {'{'}</span>
+              <span className="text-terminal-muted"> </span>
+              <span className="text-terminal-muted">"inject"</span>
+              <span className="text-terminal-muted">: {'{'}</span>
               <br />
-              <span className="text-zinc-600"> </span>
-              <span className="text-zinc-500">"turnContext"</span>
-              <span className="text-zinc-600">: </span>
+              <span className="text-terminal-muted"> </span>
+              <span className="text-terminal-muted">"turnContext"</span>
+              <span className="text-terminal-muted">: </span>
               <span className="text-emerald-400">false</span>
-              <span className="text-zinc-600">,</span>
-              <span className="text-zinc-700">
+              <span className="text-terminal-muted">,</span>
+              <span className="text-terminal-muted">
                 {' // opt in to bounded turn-context retrieval'}
               </span>
               <br />
-              <span className="text-zinc-600"> </span>
-              <span className="text-zinc-500">"toolResults"</span>
-              <span className="text-zinc-600">: </span>
+              <span className="text-terminal-muted"> </span>
+              <span className="text-terminal-muted">"toolResults"</span>
+              <span className="text-terminal-muted">: </span>
               <span className="text-emerald-400">true</span>
-              <span className="text-zinc-600">,</span>
-              <span className="text-zinc-700">{' // append hints to read/grep/tree output'}</span>
+              <span className="text-terminal-muted">,</span>
+              <span className="text-terminal-muted">
+                {' // append hints to read/grep/tree output'}
+              </span>
               <br />
-              <span className="text-zinc-600"> </span>
-              <span className="text-zinc-500">"maxHintsPerTool"</span>
-              <span className="text-zinc-600">: </span>
+              <span className="text-terminal-muted"> </span>
+              <span className="text-terminal-muted">"maxHintsPerTool"</span>
+              <span className="text-terminal-muted">: </span>
               <span className="text-amber-300">8</span>
               <br />
-              <span className="text-zinc-600"> {'}'}</span>
+              <span className="text-terminal-muted"> {'}'}</span>
               <br />
-              <span className="text-zinc-600"> {'}'}</span>
+              <span className="text-terminal-muted"> {'}'}</span>
               <br />
-              <span className="text-zinc-600">{'}'}</span>
+              <span className="text-terminal-muted">{'}'}</span>
             </div>
           </div>
           <div className="mt-6 flex items-start gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-5">
-            <Check className="mt-0.5 size-4 shrink-0 text-emerald-500" />
+            <Check className="mt-0.5 size-4 shrink-0 text-status-success" />
             <p className="text-sm leading-6 text-zinc-400">
               <strong className="text-white">Sandbox survival:</strong> when the global root is a
               temporary directory (opencode, CI sandboxes), memory files are mirrored to the project

@@ -101,15 +101,15 @@ export function PromptsPage() {
               the agent prompts you for values before injecting the rendered prompt.
             </p>
             <div className="mt-5 rounded-lg border border-line bg-bg p-4 font-mono text-sm leading-7">
-              <span className="text-zinc-400">Review the </span>
+              <span className="text-muted">Review the </span>
               <span className="text-brand">{'{{module}}'}</span>
-              <span className="text-zinc-400"> module for </span>
+              <span className="text-muted"> module for </span>
               <span className="text-brand">{'{{vulnerability_type}}'}</span>
-              <span className="text-zinc-400">.</span>
+              <span className="text-muted">.</span>
               <br />
-              <span className="text-zinc-400">Report findings at </span>
+              <span className="text-muted">Report findings at </span>
               <span className="text-brand">{'{{severity}}'}</span>
-              <span className="text-zinc-400"> severity or higher.</span>
+              <span className="text-muted"> severity or higher.</span>
             </div>
           </div>
           <div className="rounded-2xl border border-line bg-card p-7">

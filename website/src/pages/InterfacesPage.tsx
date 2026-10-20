@@ -111,7 +111,7 @@ export function InterfacesPage() {
                         key={trait}
                         className="flex items-center gap-2 text-xs font-semibold text-muted"
                       >
-                        <Check className="size-3.5 text-emerald-500" />
+                        <Check className="size-3.5 text-status-success" />
                         {trait}
                       </li>
                     ))}
@@ -153,7 +153,7 @@ export function InterfacesPage() {
                     {values.map((value, index) => (
                       <td key={`${label}-${index}`} className="p-4 text-center sm:p-5">
                         {value ? (
-                          <Check className="mx-auto size-4 text-emerald-500" />
+                          <Check className="mx-auto size-4 text-status-success" />
                         ) : (
                           <Minus className="mx-auto size-4 text-faint/50" />
                         )}

@@ -152,29 +152,29 @@ export function HqPage() {
           </div>
           <div className="mt-8 overflow-hidden rounded-2xl border border-line bg-ink">
             <div className="border-b border-white/10 px-6 py-4">
-              <span className="font-mono text-xs font-black uppercase tracking-[0.16em] text-zinc-500">
+              <span className="font-mono text-xs font-black uppercase tracking-[0.16em] text-terminal-muted">
                 Client Hello payload
               </span>
             </div>
             <div className="p-6 font-mono text-sm leading-7 text-zinc-300">
-              <span className="text-zinc-500">protocolVersion</span>
-              <span className="text-zinc-600">: </span>
+              <span className="text-terminal-muted">protocolVersion</span>
+              <span className="text-terminal-muted">: </span>
               <span className="text-amber-300">1</span>
               <br />
-              <span className="text-zinc-500">client.kind</span>
-              <span className="text-zinc-600">: </span>
+              <span className="text-terminal-muted">client.kind</span>
+              <span className="text-terminal-muted">: </span>
               <span className="text-amber-300">cli</span>
               <br />
-              <span className="text-zinc-500">client.machineId</span>
-              <span className="text-zinc-600">: </span>
+              <span className="text-terminal-muted">client.machineId</span>
+              <span className="text-terminal-muted">: </span>
               <span className="text-zinc-300">a1b2c3d4</span>
               <br />
-              <span className="text-zinc-500">project.projectRoot</span>
-              <span className="text-zinc-600">: </span>
+              <span className="text-terminal-muted">project.projectRoot</span>
+              <span className="text-terminal-muted">: </span>
               <span className="text-zinc-300">~/code/my-project</span>
               <br />
-              <span className="text-zinc-500">capabilities</span>
-              <span className="text-zinc-600">: </span>
+              <span className="text-terminal-muted">capabilities</span>
+              <span className="text-terminal-muted">: </span>
               <span className="text-zinc-300">
                 [telemetry.publish, fleet.summary, control.receive]
               </span>

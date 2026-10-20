@@ -146,7 +146,7 @@ export function SecurityPage() {
           </div>
           <div className="rounded-2xl border border-line bg-card p-6">
             <div className="flex items-center gap-3">
-              <ShieldCheck className="size-5 text-emerald-500" />
+              <ShieldCheck className="size-5 text-status-success" />
               <h2 className="font-black text-fg">Remote access needs a trusted boundary</h2>
             </div>
             <p className="mt-3 text-sm leading-7 text-muted">

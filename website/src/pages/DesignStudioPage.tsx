@@ -176,17 +176,17 @@ export function DesignStudioPage() {
               can reference.
             </p>
             <div className="mt-5 rounded-lg border border-line bg-ink p-4 font-mono text-xs text-zinc-400">
-              <span className="text-zinc-600">@theme {'{'}</span>
+              <span className="text-terminal-muted">@theme {'{'}</span>
               <br />
-              <span className="text-zinc-600"> </span>
-              <span className="text-zinc-500">--color-primary</span>
-              <span className="text-zinc-600">: </span>
+              <span className="text-terminal-muted"> </span>
+              <span className="text-terminal-muted">--color-primary</span>
+              <span className="text-terminal-muted">: </span>
               <span className="text-emerald-400">oklch(62% 0.2 25)</span>;<br />
-              <span className="text-zinc-600"> </span>
-              <span className="text-zinc-500">--color-surface</span>
-              <span className="text-zinc-600">: </span>
+              <span className="text-terminal-muted"> </span>
+              <span className="text-terminal-muted">--color-surface</span>
+              <span className="text-terminal-muted">: </span>
               <span className="text-emerald-400">oklch(98% 0.01 260)</span>;<br />
-              <span className="text-zinc-600">{'}'}</span>
+              <span className="text-terminal-muted">{'}'}</span>
             </div>
           </div>
           <div className="rounded-2xl border border-line bg-card p-7">
@@ -236,7 +236,7 @@ export function DesignStudioPage() {
             ].map(({ title, body }) => (
               <article key={title} className="bg-white/[0.035] p-7">
                 <h2 className="text-xl font-black">{title}</h2>
-                <p className="mt-3 text-sm leading-7 text-zinc-500">{body}</p>
+                <p className="mt-3 text-sm leading-7 text-terminal-muted">{body}</p>
               </article>
             ))}
           </div>

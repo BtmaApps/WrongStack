@@ -268,8 +268,8 @@ export function ToolsPage() {
                             className={cn(
                               'shrink-0 rounded-full px-2 py-1 font-mono text-xs font-black uppercase tracking-[0.08em]',
                               tool.permission === 'auto'
-                                ? 'bg-emerald-500/10 text-emerald-500'
-                                : 'bg-amber-500/10 text-amber-500',
+                                ? 'bg-emerald-500/10 text-status-success'
+                                : 'bg-amber-500/10 text-status-warning',
                             )}
                           >
                             {tool.permission}

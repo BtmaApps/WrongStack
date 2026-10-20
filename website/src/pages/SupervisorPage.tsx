@@ -28,19 +28,19 @@ export function SupervisorPage() {
               icon: ShieldCheck,
               title: 'Approve',
               body: 'Safe actions pass through automatically. Routine spawns, reads, and single-file writes skip Brain evaluation entirely.',
-              color: 'text-emerald-400',
+              color: 'text-status-success',
             },
             {
               icon: ShieldAlert,
               title: 'Block',
               body: 'Risky actions are blocked with a reason. Multi-file mutations, external network calls, and permission changes require Brain approval.',
-              color: 'text-amber-400',
+              color: 'text-status-warning',
             },
             {
               icon: Ban,
               title: 'Escalate',
               body: 'Critical actions escalate to interactive human approval. File deletion, policy changes, and production deploys always ask — regardless of YOLO mode.',
-              color: 'text-red-400',
+              color: 'text-status-danger',
             },
           ].map(({ icon: Icon, title, body, color }) => (
             <article key={title} className="rounded-2xl border border-line bg-card p-7">
@@ -99,22 +99,22 @@ export function SupervisorPage() {
           {[
             {
               level: 'Low',
-              color: 'text-emerald-400',
+              color: 'text-status-success',
               body: 'Routine spawns and reads. Automatically approved. No Brain involvement.',
             },
             {
               level: 'Medium',
-              color: 'text-amber-400',
+              color: 'text-status-warning',
               body: 'Multi-file writes, worktree creation. Fast deterministic check, approved if under ceiling.',
             },
             {
               level: 'High',
-              color: 'text-orange-400',
+              color: 'text-brand-2',
               body: 'Batch mutations, external network calls. Requires Brain model evaluation. May escalate to human.',
             },
             {
               level: 'Critical',
-              color: 'text-red-400',
+              color: 'text-status-danger',
               body: 'Deletion of tracked files, permission policy changes. Always escalates to interactive human approval.',
             },
           ].map(({ level, color, body }) => (

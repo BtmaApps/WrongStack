@@ -1,3 +1,4 @@
+import { CodeBlock } from '@/components/site/primitives';
 import {
   Activity,
   ArrowRight,
@@ -25,7 +26,7 @@ import { pluginCatalog, pluginFromSlug, pluginSlug } from '@/data/runtime-catalo
 import { Link, useRouter } from '@/lib/router';
 
 const riskStyles = {
-  low: 'border-emerald-500/25 bg-emerald-500/10 text-emerald-500',
+  low: 'border-emerald-500/25 bg-emerald-500/10 text-status-success',
   medium: 'border-brand/25 bg-brand/10 text-brand',
   high: 'border-brand-2/25 bg-brand-2/10 text-brand-2',
 } as const;
@@ -146,7 +147,7 @@ export function PluginDetailPage() {
               <ul className="mt-4 space-y-3">
                 {operational.useCases.map((useCase) => (
                   <li key={useCase} className="flex gap-3 text-sm leading-6 text-muted">
-                    <CheckCircle2 className="mt-1 size-4 shrink-0 text-emerald-500" />
+                    <CheckCircle2 className="mt-1 size-4 shrink-0 text-status-success" />
                     {useCase}
                   </li>
                 ))}
@@ -173,13 +174,13 @@ export function PluginDetailPage() {
               <div className="overflow-hidden rounded-2xl border border-line bg-ink">
                 <div className="flex items-center gap-3 border-b border-white/10 px-5 py-4">
                   <GitBranch className="size-4 text-brand" />
-                  <span className="font-mono text-xs font-black uppercase tracking-[0.16em] text-zinc-500">
+                  <span className="font-mono text-xs font-black uppercase tracking-[0.16em] text-terminal-muted">
                     Config example
                   </span>
                 </div>
-                <pre className="overflow-x-auto p-5 font-mono text-xs leading-6 text-zinc-300">
+                <CodeBlock className="overflow-x-auto p-5 font-mono text-xs leading-6 text-zinc-300">
                   {detail.example}
-                </pre>
+                </CodeBlock>
               </div>
             )}
             {sourcePath && (
@@ -240,13 +241,13 @@ export function PluginDetailPage() {
             <p className="mt-5 text-sm leading-7 text-zinc-300">{operational.llm.summary}</p>
             <dl className="mt-6 space-y-4 border-t border-white/10 pt-5 text-xs leading-6">
               <div>
-                <dt className="font-mono font-black uppercase tracking-[0.12em] text-zinc-500">
+                <dt className="font-mono font-black uppercase tracking-[0.12em] text-terminal-muted">
                   Routing
                 </dt>
                 <dd className="mt-1 text-zinc-300">{operational.llm.routing}</dd>
               </div>
               <div>
-                <dt className="font-mono font-black uppercase tracking-[0.12em] text-zinc-500">
+                <dt className="font-mono font-black uppercase tracking-[0.12em] text-terminal-muted">
                   Fallback
                 </dt>
                 <dd className="mt-1 text-zinc-300">{operational.llm.fallback}</dd>

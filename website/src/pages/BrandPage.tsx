@@ -8,7 +8,7 @@ import {
   ShieldCheck,
   Type as TypeIcon,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useClipboard } from '@/lib/use-clipboard';
 import { BrandMark } from '@/components/site/BrandMark';
 import { PageHero, PageNext, SectionIntro } from '@/components/site/primitives';
 import { TOOL_COUNT } from '@/data/runtime-catalog';
@@ -46,7 +46,7 @@ const lightPalette: BrandColor[] = [
   {
     name: 'Brand',
     value: '#D51F4D',
-    role: 'Interactive accent and small text',
+    role: 'Interactive accent; text uses a deeper semantic shade',
     textClass: 'text-white',
   },
   {
@@ -59,7 +59,7 @@ const lightPalette: BrandColor[] = [
     name: 'Orange UI',
     value: '#D97706',
     role: 'Orange accent for light-theme UI',
-    textClass: 'text-white',
+    textClass: 'text-ink',
   },
   { name: 'Canvas', value: '#F8F6F0', role: 'Page background', textClass: 'text-ink' },
   { name: 'Surface', value: '#F0EDE5', role: 'Grouped content surface', textClass: 'text-ink' },
@@ -117,30 +117,22 @@ const voicePrinciples = [
 ] as const;
 
 function CopyValue({ value, className }: { value: string; className?: string }) {
-  const [copied, setCopied] = useState(false);
-
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1400);
-    } catch {
-      // Clipboard access is optional; the visible value remains selectable.
-    }
-  };
-
+  const { copied, copy, message } = useClipboard();
   return (
     <button
       type="button"
-      onClick={copy}
+      onClick={() => copy(value)}
       className={cn(
         'inline-flex items-center gap-1.5 font-mono text-xs font-black uppercase tracking-[0.1em] transition-opacity hover:opacity-70',
         className ?? 'text-fg',
       )}
-      aria-label={`Copy ${value}`}
+      aria-label={copied ? `Copied ${value}` : `Copy ${value}`}
     >
       {copied ? <Check className="size-3" /> : <Copy className="size-3" />}
-      {copied ? 'Copied' : value}
+      {value}
+      <span role="status" className="sr-only">
+        {message}
+      </span>
     </button>
   );
 }
@@ -157,13 +149,7 @@ function ColorCard({ color, compact = false }: { color: BrandColor; compact?: bo
         </strong>
         <CopyValue value={color.value} className={color.textClass} />
       </div>
-      <p
-        className={cn(
-          'max-w-xs text-xs leading-5',
-          compact ? 'opacity-80' : 'text-sm opacity-75',
-          color.textClass,
-        )}
-      >
+      <p className={cn('max-w-xs text-xs leading-5', compact ? '' : 'text-sm', color.textClass)}>
         {color.role}
       </p>
     </article>
@@ -207,13 +193,13 @@ export function BrandPage() {
             <div className="manual-grid absolute inset-0 opacity-20" aria-hidden="true" />
             <div className="relative w-full max-w-3xl">
               <BrandMark title="WrongStack five-block mark" className="w-full" />
-              <div className="mt-10 flex items-center justify-between border-t border-white/15 pt-5 font-mono text-xs font-black uppercase tracking-[0.16em] text-zinc-500">
+              <div className="mt-10 flex items-center justify-between border-t border-white/15 pt-5 font-mono text-xs font-black uppercase tracking-[0.16em] text-terminal-muted">
                 <span>Canonical mark / 340 × 90</span>
                 <span className="text-brand-2">5 blocks · 2 signals</span>
               </div>
             </div>
           </div>
-          <div className="flex flex-col justify-between bg-[#171714] p-8 sm:p-12">
+          <div className="flex flex-col justify-between site-terminal bg-[#171714] p-8 sm:p-12">
             <div>
               <span className="font-mono text-xs font-black uppercase tracking-[0.18em] text-brand-2">
                 Brand idea
@@ -275,7 +261,7 @@ export function BrandPage() {
           </article>
 
           <article className="flex min-h-[390px] flex-col border border-line bg-card">
-            <div className="grid min-h-56 place-items-center bg-[#121210] p-8">
+            <div className="grid min-h-56 place-items-center site-terminal bg-[#121210] p-8">
               <img src="/wrongstack.svg" alt="WrongStack square app icon" className="size-44" />
             </div>
             <div className="flex flex-1 flex-col p-6">
@@ -437,13 +423,13 @@ export function BrandPage() {
               Powerful automation. Clear boundaries.
             </p>
             <p className="mt-5 text-base leading-7 text-muted">
-              Manrope carries interface labels and long-form explanations without losing the
+              Space Grotesk carries interface labels and long-form explanations without losing the
               product’s compact technical rhythm.
             </p>
             <div className="mt-auto border-t border-line pt-5">
-              <strong className="text-sm text-fg">Manrope</strong>
+              <strong className="text-sm text-fg">Space Grotesk</strong>
               <p className="mt-2 font-mono text-xs leading-5 text-faint">
-                400–800 · body copy, navigation, labels and controls
+                400–700 · body copy, navigation, labels and controls
               </p>
             </div>
           </article>
@@ -452,7 +438,7 @@ export function BrandPage() {
               <span className="font-mono text-xs font-black uppercase tracking-[0.16em] text-brand-2">
                 Technical
               </span>
-              <TypeIcon className="size-4 text-zinc-600" />
+              <TypeIcon className="size-4 text-terminal-muted" />
             </div>
             <pre className="mt-14 overflow-hidden font-mono text-sm leading-7 text-zinc-300">
               <code>
@@ -464,8 +450,8 @@ export function BrandPage() {
               </code>
             </pre>
             <div className="mt-auto border-t border-white/10 pt-5">
-              <strong className="text-sm">IBM Plex Mono</strong>
-              <p className="mt-2 font-mono text-xs leading-5 text-zinc-500">
+              <strong className="text-sm">JetBrains Mono</strong>
+              <p className="mt-2 font-mono text-xs leading-5 text-terminal-muted">
                 400–700 · code, commands, metadata, counters and system state
               </p>
             </div>

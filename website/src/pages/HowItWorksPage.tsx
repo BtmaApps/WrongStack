@@ -106,7 +106,7 @@ export function HowItWorksPage() {
                     <p className="text-sm leading-6 text-zinc-400">{body}</p>
                   </div>
                   {index < recovery.length - 1 && (
-                    <ArrowDown className="mx-auto my-2 size-4 text-zinc-700" />
+                    <ArrowDown className="mx-auto my-2 size-4 text-terminal-muted" />
                   )}
                 </div>
               ))}
@@ -166,7 +166,7 @@ export function HowItWorksPage() {
           ))}
         </div>
         <div className="mt-8 flex items-start gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-5 text-sm leading-6 text-muted">
-          <Check className="mt-0.5 size-4 shrink-0 text-emerald-500" />
+          <Check className="mt-0.5 size-4 shrink-0 text-status-success" />
           <p>
             <strong className="text-fg">Key invariant:</strong>{' '}
             <code className="font-mono text-xs text-brand">agent.ctx.session</code> is the single

@@ -402,77 +402,79 @@ export function CollabPage() {
         />
         <div className="mt-12 overflow-hidden rounded-2xl border border-line bg-ink">
           <div className="border-b border-white/10 px-6 py-4">
-            <span className="font-mono text-xs font-black uppercase tracking-[0.16em] text-zinc-500">
+            <span className="font-mono text-xs font-black uppercase tracking-[0.16em] text-terminal-muted">
               CollabDebugReport structure
             </span>
           </div>
           <div className="p-6 font-mono text-sm leading-7 text-zinc-300">
             <div className="space-y-3">
               <div>
-                <span className="text-zinc-500">sessionId</span>
-                <span className="text-zinc-600">: </span>
+                <span className="text-terminal-muted">sessionId</span>
+                <span className="text-terminal-muted">: </span>
                 <span className="text-amber-300">string</span>
               </div>
               <div>
-                <span className="text-zinc-500">disposition</span>
-                <span className="text-zinc-600">: </span>
+                <span className="text-terminal-muted">disposition</span>
+                <span className="text-terminal-muted">: </span>
                 <span className="text-emerald-400">completed</span>
-                <span className="text-zinc-600"> | </span>
+                <span className="text-terminal-muted"> | </span>
                 <span className="text-amber-400">cancelled</span>
-                <span className="text-zinc-600"> | </span>
+                <span className="text-terminal-muted"> | </span>
                 <span className="text-red-400">timeout</span>
-                <span className="text-zinc-600"> | </span>
+                <span className="text-terminal-muted"> | </span>
                 <span className="text-red-400">critical_alert</span>
               </div>
               <div>
-                <span className="text-zinc-500">overallVerdict</span>
-                <span className="text-zinc-600">: </span>
+                <span className="text-terminal-muted">overallVerdict</span>
+                <span className="text-terminal-muted">: </span>
                 <span className="text-emerald-400">approve</span>
-                <span className="text-zinc-600"> | </span>
+                <span className="text-terminal-muted"> | </span>
                 <span className="text-amber-400">needs_revision</span>
-                <span className="text-zinc-600"> | </span>
+                <span className="text-terminal-muted"> | </span>
                 <span className="text-red-400">reject</span>
-                <span className="text-zinc-600 ml-2">← worst evaluation determines overall</span>
+                <span className="text-terminal-muted ml-2">
+                  ← worst evaluation determines overall
+                </span>
               </div>
               <div className="mt-4 border-t border-white/10 pt-4">
-                <span className="text-zinc-500">bugs</span>
-                <span className="text-zinc-600">: </span>
+                <span className="text-terminal-muted">bugs</span>
+                <span className="text-terminal-muted">: </span>
                 <span className="text-zinc-400">
                   BugFinding[] — id, type, severity, location, description, suggestedFix
                 </span>
               </div>
               <div>
-                <span className="text-zinc-500">refactorPlans</span>
-                <span className="text-zinc-600">: </span>
+                <span className="text-terminal-muted">refactorPlans</span>
+                <span className="text-terminal-muted">: </span>
                 <span className="text-zinc-400">
                   RefactorPlan[] — id, basedOnBugIds, phases[], riskScore, rollbackStrategy
                 </span>
               </div>
               <div>
-                <span className="text-zinc-500">evaluations</span>
-                <span className="text-zinc-600">: </span>
+                <span className="text-terminal-muted">evaluations</span>
+                <span className="text-terminal-muted">: </span>
                 <span className="text-zinc-400">
                   CriticEvaluation[] — id, subjectType, score, verdict, strengths, weaknesses,
                   concerns
                 </span>
               </div>
               <div>
-                <span className="text-zinc-500">alerts</span>
-                <span className="text-zinc-600">: </span>
+                <span className="text-terminal-muted">alerts</span>
+                <span className="text-terminal-muted">: </span>
                 <span className="text-zinc-400">
                   DirectorAlert[] — budget warnings raised during the session
                 </span>
               </div>
               <div>
-                <span className="text-zinc-500">snapshotWarnings</span>
-                <span className="text-zinc-600">: </span>
+                <span className="text-terminal-muted">snapshotWarnings</span>
+                <span className="text-terminal-muted">: </span>
                 <span className="text-zinc-400">
                   string[] — files that changed after the snapshot was captured
                 </span>
               </div>
               <div>
-                <span className="text-zinc-500">summary</span>
-                <span className="text-zinc-600">: </span>
+                <span className="text-terminal-muted">summary</span>
+                <span className="text-terminal-muted">: </span>
                 <span className="text-zinc-400">
                   Markdown-formatted summary for the Director's context window
                 </span>

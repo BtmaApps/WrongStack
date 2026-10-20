@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import {
   ArrowRight,
   ArrowUpRight,
@@ -14,7 +14,8 @@ import {
   Users,
   Zap,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useClipboard } from '@/lib/use-clipboard';
 import { ConnectWithPreview } from '@/components/site/ConnectWithPreview';
 import { CoordinationLitePreviews } from '@/components/site/CoordinationLitePreviews';
 import { FleetTopologyPreview } from '@/components/site/FleetTopologyPreview';
@@ -54,24 +55,13 @@ const demoLines = [
 
 function HeroInstall() {
   const [platform, setPlatform] = useState<'unix' | 'windows'>('unix');
-  const [copied, setCopied] = useState(false);
+  const { copied, copy, message } = useClipboard();
   const command = platform === 'unix' ? installCommand : installCommandWindows;
 
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(command);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1600);
-    } catch {
-      // Clipboard access is unavailable in some embedded browsers.
-    }
-  };
-
   return (
-    <div className="flex min-w-0 max-w-2xl items-center rounded-2xl border border-line bg-card p-1.5 shadow-sm">
-      <div
-        className="flex shrink-0 items-center rounded-xl bg-surface p-1"
-        role="tablist"
+    <div className="grid min-w-0 max-w-2xl grid-cols-[minmax(0,1fr)_auto] items-center rounded-2xl border border-line bg-card p-1.5 shadow-sm sm:flex">
+      <fieldset
+        className="flex shrink-0 items-center justify-self-start rounded-xl bg-surface p-1"
         aria-label="Install platform"
       >
         {[
@@ -83,8 +73,7 @@ function HeroInstall() {
             <button
               key={value}
               type="button"
-              role="tab"
-              aria-selected={selected}
+              aria-pressed={selected}
               onClick={() => setPlatform(value as 'unix' | 'windows')}
               className={`rounded-lg px-2.5 py-2 text-[11px] font-bold transition-colors sm:px-3 ${
                 selected ? 'bg-fg text-bg shadow-sm' : 'text-muted hover:text-fg'
@@ -94,14 +83,22 @@ function HeroInstall() {
             </button>
           );
         })}
-      </div>
-      <code className="mx-3 min-w-0 flex-1 truncate font-mono text-xs font-bold text-fg sm:text-sm">
-        {command}
-      </code>
+      </fieldset>
+      <span role="status" className="sr-only">
+        {message}
+      </span>
+      <section
+        // biome-ignore lint/a11y/noNoninteractiveTabindex: this horizontal scrollport must be keyboard scrollable.
+        tabIndex={0}
+        aria-label="Install command"
+        className="col-span-2 row-start-2 mx-2 my-2 min-w-0 overflow-x-auto whitespace-nowrap font-mono text-xs font-bold text-fg sm:mx-3 sm:my-0 sm:flex-1 sm:text-sm"
+      >
+        <code>{command}</code>
+      </section>
       <button
         type="button"
-        onClick={copy}
-        className="grid size-9 shrink-0 place-items-center rounded-xl bg-brand-2 text-ink transition-transform hover:scale-[1.03]"
+        onClick={() => copy(command)}
+        className="col-start-2 row-start-1 grid size-10 shrink-0 place-items-center rounded-xl bg-brand-2 text-ink transition-transform hover:scale-[1.03]"
         aria-label={copied ? 'Copied' : `Copy ${command}`}
       >
         {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
@@ -111,33 +108,58 @@ function HeroInstall() {
 }
 
 function LiveRun() {
+  const reducedMotion = useReducedMotion();
+  const ref = useRef<HTMLDivElement>(null);
   const [count, setCount] = useState(1);
   useEffect(() => {
-    const timer = window.setInterval(
-      () => setCount((value) => (value >= demoLines.length ? 1 : value + 1)),
-      780,
-    );
-    return () => window.clearInterval(timer);
-  }, []);
+    if (reducedMotion) return;
+    let inView = false;
+    let timer: ReturnType<typeof setInterval> | undefined;
+    const sync = () => {
+      clearInterval(timer);
+      if (document.hidden || !inView) return;
+      timer = setInterval(
+        () => setCount((value) => (value >= demoLines.length ? 1 : value + 1)),
+        780,
+      );
+    };
+    const observer =
+      typeof IntersectionObserver === 'undefined'
+        ? null
+        : new IntersectionObserver(([entry]) => {
+            inView = entry?.isIntersecting ?? false;
+            sync();
+          });
+    if (ref.current) observer?.observe(ref.current);
+    document.addEventListener('visibilitychange', sync);
+    return () => {
+      clearInterval(timer);
+      observer?.disconnect();
+      document.removeEventListener('visibilitychange', sync);
+    };
+  }, [reducedMotion]);
 
   return (
-    <div className="hero-console overflow-hidden rounded-[22px] border border-white/10 bg-[#08090d] text-zinc-200 shadow-2xl shadow-black/30">
+    <div
+      ref={ref}
+      className="hero-console overflow-hidden rounded-[22px] border border-white/10 site-terminal bg-[#08090d] text-zinc-200 shadow-2xl shadow-black/30"
+    >
       <div className="flex items-center justify-between border-b border-white/10 px-4 py-3 sm:px-5">
-        <div className="flex items-center gap-2 font-mono text-xs text-zinc-500">
+        <div className="flex items-center gap-2 font-mono text-xs text-terminal-muted">
           <span className="size-2 rounded-full bg-brand" />
           LIVE / SESSION 7D2A
         </div>
-        <div className="flex items-center gap-3 font-mono text-xs text-zinc-600">
+        <div className="flex items-center gap-3 font-mono text-xs text-terminal-muted">
           <span>CTX 18%</span>
           <span className="hidden sm:inline">$0.014</span>
         </div>
       </div>
       <div className="grid min-h-[340px] sm:grid-cols-[1fr_150px]">
         <div className="p-4 font-mono text-[12px] leading-6 sm:p-6 sm:text-[13px]">
-          {demoLines.slice(0, count).map((line) => (
+          {demoLines.slice(0, reducedMotion ? demoLines.length : count).map((line) => (
             <motion.div
               key={`${line.text}-${count >= demoLines.length ? 2 : 1}`}
-              initial={{ opacity: 0, x: -6 }}
+              initial={reducedMotion ? false : { opacity: 0, x: -6 }}
               animate={{ opacity: 1, x: 0 }}
               className="grid grid-cols-[18px_auto] gap-2"
             >
@@ -149,7 +171,7 @@ function LiveRun() {
                       ? 'text-brand-2'
                       : line.type === 'command'
                         ? 'text-brand'
-                        : 'text-zinc-600'
+                        : 'text-terminal-muted'
                 }
               >
                 {line.type === 'command'
@@ -174,7 +196,9 @@ function LiveRun() {
                 >
                   {line.text}
                 </span>
-                {'detail' in line && <span className="ml-2 text-zinc-500">{line.detail}</span>}
+                {'detail' in line && (
+                  <span className="ml-2 text-terminal-muted">{line.detail}</span>
+                )}
               </span>
             </motion.div>
           ))}
@@ -190,7 +214,7 @@ function LiveRun() {
           </AnimatePresence>
         </div>
         <div className="hidden border-l border-white/10 bg-white/[0.02] p-4 sm:block">
-          <div className="font-mono text-xs uppercase tracking-[0.16em] text-zinc-600">
+          <div className="font-mono text-xs uppercase tracking-[0.16em] text-terminal-muted">
             Run state
           </div>
           <div className="mt-5 space-y-5">
@@ -203,8 +227,8 @@ function LiveRun() {
               const ItemIcon = Icon as typeof Radio;
               return (
                 <div key={String(label)}>
-                  <ItemIcon className="size-3.5 text-zinc-600" />
-                  <div className="mt-1.5 text-xs text-zinc-600">{String(label)}</div>
+                  <ItemIcon className="size-3.5 text-terminal-muted" />
+                  <div className="mt-1.5 text-xs text-terminal-muted">{String(label)}</div>
                   <div className="mt-0.5 truncate font-mono text-xs text-zinc-300">
                     {String(value)}
                   </div>
@@ -277,7 +301,7 @@ export function HomePage() {
             </p>
           </div>
           <div className="relative lg:mt-8">
-            <div className="absolute -left-4 -top-5 z-10 hidden rotate-[-4deg] rounded-full bg-brand px-4 py-2 font-mono text-xs font-black uppercase tracking-widest text-white sm:block">
+            <div className="absolute -left-4 -top-5 z-10 hidden rotate-[-4deg] rounded-full bg-brand px-4 py-2 font-mono text-xs font-black uppercase tracking-widest text-on-brand sm:block">
               Actual agent loop
             </div>
             <LiveRun />
@@ -389,7 +413,7 @@ export function HomePage() {
                 {journey.title}
               </h3>
               <p className="max-w-xl text-sm leading-6 text-muted">{journey.body}</p>
-              <span className="grid size-10 place-items-center rounded-full border border-line text-fg transition-all group-hover:border-brand group-hover:bg-brand group-hover:text-white">
+              <span className="grid size-10 place-items-center rounded-full border border-line text-fg transition-all group-hover:border-brand group-hover:bg-brand group-hover:text-on-brand">
                 <ChevronRight className="size-4" />
               </span>
             </Link>
@@ -419,18 +443,25 @@ export function HomePage() {
             </div>
             <div className="grid gap-px overflow-hidden rounded-2xl border border-white/10 bg-white/10 sm:grid-cols-2 lg:grid-cols-3">
               {surfaces.map((surface, index) => (
-                <Reveal key={surface.id} delay={index * 0.04} className="bg-[#0c0d12] p-6">
+                <Reveal
+                  key={surface.id}
+                  delay={index * 0.04}
+                  className="site-terminal bg-[#0c0d12] p-6"
+                >
                   <surface.icon className="size-5 text-brand" />
                   <h3 className="mt-6 text-lg font-black">{surface.name}</h3>
-                  <p className="mt-2 text-sm leading-6 text-zinc-500">
+                  <p className="mt-2 text-sm leading-6 text-terminal-muted">
                     {surface.tagline}. {surface.best}.
                   </p>
-                  <code className="mt-5 block truncate font-mono text-xs text-zinc-600">
+                  <code className="mt-5 block truncate font-mono text-xs text-terminal-muted">
                     $ {surface.launch}
                   </code>
                 </Reveal>
               ))}
-              <Reveal delay={surfaces.length * 0.04} className="bg-[#0c0d12] lg:col-span-2">
+              <Reveal
+                delay={surfaces.length * 0.04}
+                className="site-terminal bg-[#0c0d12] lg:col-span-2"
+              >
                 <Link
                   href="/interfaces"
                   className="group flex items-center justify-between gap-6 bg-white/[0.04] p-6 transition-colors duration-300 hover:bg-brand focus-visible:bg-brand"
@@ -507,7 +538,7 @@ export function HomePage() {
             </p>
             <div className="mt-8 flex flex-wrap gap-6 text-sm font-semibold text-fg">
               <span className="flex items-center gap-2">
-                <ShieldCheck className="size-4 text-emerald-500" /> Explicit deny survives YOLO
+                <ShieldCheck className="size-4 text-status-success" /> Explicit deny survives YOLO
               </span>
               <span className="flex items-center gap-2">
                 <CircleDollarSign className="size-4 text-brand-2" /> Token and cost budgets
@@ -548,7 +579,7 @@ export function HomePage() {
                     <span
                       className={
                         index < 3
-                          ? 'grid size-5 place-items-center rounded-full bg-emerald-500/10 text-emerald-500'
+                          ? 'grid size-5 place-items-center rounded-full bg-emerald-500/10 text-status-success'
                           : 'grid size-5 place-items-center rounded-full bg-brand-2/10 text-brand-2'
                       }
                     >
@@ -567,7 +598,7 @@ export function HomePage() {
                 </span>
               </div>
             </div>
-            <div className="absolute -bottom-5 -right-2 hidden items-center gap-2 rounded-full bg-brand px-4 py-2 font-mono text-xs font-black uppercase tracking-widest text-white sm:flex">
+            <div className="absolute -bottom-5 -right-2 hidden items-center gap-2 rounded-full bg-brand px-4 py-2 font-mono text-xs font-black uppercase tracking-widest text-on-brand sm:flex">
               <Layers3 className="size-3.5" /> 5 defense layers
             </div>
           </div>

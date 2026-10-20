@@ -126,17 +126,17 @@ export function MemoryPage() {
         />
         <div className="mt-12 grid gap-6 lg:grid-cols-[.72fr_1fr]">
           <div className="rounded-2xl border border-line bg-ink p-7 text-zinc-300">
-            <div className="font-mono text-xs font-black uppercase tracking-[0.16em] text-zinc-600">
+            <div className="font-mono text-xs font-black uppercase tracking-[0.16em] text-terminal-muted">
               Graph example
             </div>
             <div className="mt-8 space-y-4 font-mono text-xs">
               <div className="rounded-lg border border-brand/30 bg-brand/10 p-3 text-brand">
                 memory: provider errors classify once
               </div>
-              <div className="pl-6 text-zinc-600">├─ symbol: classifyProviderError</div>
-              <div className="pl-6 text-zinc-600">├─ file: core/src/types/provider.ts</div>
-              <div className="pl-6 text-zinc-600">├─ package: @wrongstack/core</div>
-              <div className="pl-6 text-zinc-600">└─ source: session / tool / manual</div>
+              <div className="pl-6 text-terminal-muted">├─ symbol: classifyProviderError</div>
+              <div className="pl-6 text-terminal-muted">├─ file: core/src/types/provider.ts</div>
+              <div className="pl-6 text-terminal-muted">├─ package: @wrongstack/core</div>
+              <div className="pl-6 text-terminal-muted">└─ source: session / tool / manual</div>
             </div>
           </div>
           <div className="space-y-3">
@@ -194,7 +194,7 @@ export function MemoryPage() {
               >
                 <span className="font-mono text-xs font-black text-brand-2">0{index + 1}</span>
                 <h2 className="mt-8 text-xl font-black">{title}</h2>
-                <p className="mt-3 text-sm leading-7 text-zinc-500">{body}</p>
+                <p className="mt-3 text-sm leading-7 text-terminal-muted">{body}</p>
               </article>
             ))}
           </div>
@@ -230,7 +230,7 @@ export function MemoryPage() {
                 <h3 className="font-black text-base group-hover:text-brand transition-colors">
                   {label}
                 </h3>
-                <p className="mt-2 text-xs leading-5 text-zinc-500">{desc}</p>
+                <p className="mt-2 text-xs leading-5 text-terminal-muted">{desc}</p>
                 <span className="mt-3 inline-block text-xs font-bold text-brand">Explore →</span>
               </Link>
             ))}

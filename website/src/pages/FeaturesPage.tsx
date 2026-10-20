@@ -15,7 +15,7 @@ const accentClasses = {
   red: 'text-brand bg-brand/10 border-brand/20',
   amber: 'text-brand-2 bg-brand-2/10 border-brand-2/20',
   blue: 'text-sky-500 bg-sky-500/10 border-sky-500/20',
-  green: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20',
+  green: 'text-status-success bg-emerald-500/10 border-emerald-500/20',
   purple: 'text-violet-500 bg-violet-500/10 border-violet-500/20',
 } as const;
 
@@ -78,7 +78,7 @@ export function FeaturesPage() {
                         key={detail}
                         className="flex items-start gap-3 bg-card p-4 text-sm leading-6 text-muted"
                       >
-                        <Check className="mt-1 size-3.5 shrink-0 text-emerald-500" />
+                        <Check className="mt-1 size-3.5 shrink-0 text-status-success" />
                         {detail}
                       </div>
                     ))}

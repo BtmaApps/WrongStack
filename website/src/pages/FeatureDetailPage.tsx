@@ -105,7 +105,7 @@ export function FeatureDetailPage() {
             <ul className="mt-5 space-y-3">
               {feature.details.map((item) => (
                 <li key={item} className="flex items-start gap-3 text-sm leading-6 text-muted">
-                  <Check className="mt-1 size-3.5 shrink-0 text-emerald-500" />
+                  <Check className="mt-1 size-3.5 shrink-0 text-status-success" />
                   {item}
                 </li>
               ))}

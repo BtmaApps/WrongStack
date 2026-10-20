@@ -196,7 +196,7 @@ export function FleetPage() {
           ))}
         </div>
         <div className="mt-6 flex items-start gap-3 rounded-xl border border-line bg-card p-5">
-          <Check className="mt-1 size-4 shrink-0 text-emerald-500" />
+          <Check className="mt-1 size-4 shrink-0 text-status-success" />
           <p className="text-sm leading-7 text-muted">
             CLI and WebUI hosts retire completed workers on the next event-loop turn unless queued
             work reuses them. Between-task idle timeout is separate from the in-task activity
@@ -252,10 +252,10 @@ export function FleetPage() {
               ].map(([Icon, title, body]) => {
                 const ItemIcon = Icon as typeof Network;
                 return (
-                  <article key={String(title)} className="bg-[#0c0d12] p-6">
+                  <article key={String(title)} className="site-terminal bg-[#0c0d12] p-6">
                     <ItemIcon className="size-5 text-brand" />
                     <h3 className="mt-7 font-black">{String(title)}</h3>
-                    <p className="mt-3 text-sm leading-6 text-zinc-500">{String(body)}</p>
+                    <p className="mt-3 text-sm leading-6 text-terminal-muted">{String(body)}</p>
                   </article>
                 );
               })}

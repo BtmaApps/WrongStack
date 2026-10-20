@@ -135,7 +135,7 @@ export function CommitWorkflowPage() {
                       <code className="font-mono text-xs font-black text-brand">{type}</code>
                       {bump !== 'none' && (
                         <span
-                          className={`rounded px-1 py-0.5 font-mono text-[10px] font-black ${bump === 'minor' ? 'bg-amber-400/10 text-amber-400' : 'bg-emerald-400/10 text-emerald-400'}`}
+                          className={`rounded px-1 py-0.5 font-mono text-[10px] font-black ${bump === 'minor' ? 'bg-amber-400/10 text-status-warning' : 'bg-emerald-400/10 text-status-success'}`}
                         >
                           {bump}
                         </span>
@@ -150,8 +150,8 @@ export function CommitWorkflowPage() {
                 <p className="mt-1 text-xs leading-5 text-muted">
                   Add <code className="font-mono text-brand">BREAKING CHANGE:</code> in the commit
                   body footer. The agent detects this and maps it to a{' '}
-                  <span className="font-black text-red-400">major</span> version bump, regardless of
-                  the commit type.
+                  <span className="font-black text-status-danger">major</span> version bump,
+                  regardless of the commit type.
                 </p>
               </div>
             </div>
@@ -160,28 +160,28 @@ export function CommitWorkflowPage() {
               <h2 className="mt-8 text-xl font-black text-fg">Message anatomy</h2>
               <div className="mt-5 overflow-hidden rounded-lg border border-line bg-ink">
                 <div className="border-b border-white/10 px-4 py-3">
-                  <span className="font-mono text-xs font-black uppercase tracking-[0.16em] text-zinc-500">
+                  <span className="font-mono text-xs font-black uppercase tracking-[0.16em] text-terminal-muted">
                     Example conventional commit
                   </span>
                 </div>
                 <div className="p-5 font-mono text-sm leading-7">
-                  <div className="text-emerald-400">feat(auth):</div>
+                  <div className="text-status-success">feat(auth):</div>
                   <div className="text-zinc-300">
                     add OAuth account switching with session persistence
                   </div>
-                  <div className="mt-4 text-zinc-500">
+                  <div className="mt-4 text-terminal-muted">
                     Implement multi-account OAuth flow with encrypted token storage
                     <br />
                     and automatic session refresh. Accounts are persisted in the
                     <br />
                     SecretVault and restored on next launch.
                   </div>
-                  <div className="mt-4 space-y-1 text-zinc-500">
+                  <div className="mt-4 space-y-1 text-terminal-muted">
                     <div>
-                      <span className="text-zinc-600">- </span>Closes #142
+                      <span className="text-terminal-muted">- </span>Closes #142
                     </div>
                     <div>
-                      <span className="text-zinc-600">- </span>Reviewed-by: @security-team
+                      <span className="text-terminal-muted">- </span>Reviewed-by: @security-team
                     </div>
                   </div>
                 </div>
@@ -281,17 +281,17 @@ export function CommitWorkflowPage() {
             ))}
           </div>
           <div className="mt-5 rounded-lg border border-line bg-ink p-4 font-mono text-xs leading-6">
-            <div className="text-amber-400">
+            <div className="text-status-warning">
               ⚠ Shared-worktree warning: 3 of 12 uncommitted changes were NOT recorded as authored
               by this session.
             </div>
-            <div className="mt-2 text-zinc-500"> Authored by another agent/session:</div>
+            <div className="mt-2 text-terminal-muted"> Authored by another agent/session:</div>
             <div className="text-zinc-400"> - src/auth/login.ts (by bug-hunter@a3f2b1c4)</div>
             <div className="text-zinc-400">
               {' '}
               - src/auth/middleware.ts (by refactor-planner@b4c5d6e7)
             </div>
-            <div className="mt-2 text-zinc-500">
+            <div className="mt-2 text-terminal-muted">
               {' '}
               Unverified author (concurrent agent, build/format step, or human):
             </div>

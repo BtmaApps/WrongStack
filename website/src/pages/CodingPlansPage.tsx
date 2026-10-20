@@ -1,3 +1,4 @@
+import { CodeBlock } from '@/components/site/primitives';
 import {
   ArrowRight,
   ArrowUpRight,
@@ -204,7 +205,7 @@ export function CodingPlansPage() {
                       className="rounded-xl border border-white/10 bg-white/[0.035] p-4"
                     >
                       <ItemIcon className="size-4 text-emerald-300" />
-                      <div className="mt-4 font-mono text-xs uppercase tracking-[0.14em] text-zinc-600">
+                      <div className="mt-4 font-mono text-xs uppercase tracking-[0.14em] text-terminal-muted">
                         {String(label)}
                       </div>
                       <strong className="mt-1 block text-sm text-zinc-200">{String(value)}</strong>
@@ -401,10 +402,10 @@ export function CodingPlansPage() {
           </div>
           <div className="overflow-hidden rounded-2xl border border-line bg-ink text-white">
             <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
-              <div className="flex items-center gap-2 font-mono text-xs font-black uppercase tracking-[0.15em] text-zinc-500">
+              <div className="flex items-center gap-2 font-mono text-xs font-black uppercase tracking-[0.15em] text-terminal-muted">
                 <Route className="size-3.5 text-brand-2" /> Multi-provider routing
               </div>
-              <span className="font-mono text-xs text-zinc-600">
+              <span className="font-mono text-xs text-terminal-muted">
                 ~/.wrongstack/profiles/&lt;name&gt;/config.json
               </span>
             </div>
@@ -417,10 +418,10 @@ export function CodingPlansPage() {
                 default worker on different provider credentials without changing the shared tool,
                 mailbox or permission system.
               </p>
-              <pre className="mt-7 overflow-x-auto rounded-xl border border-white/10 bg-black/30 p-5 font-mono text-xs leading-6 text-zinc-300">
+              <CodeBlock className="mt-7 overflow-x-auto rounded-xl border border-white/10 bg-black/30 p-5 font-mono text-xs leading-6 text-zinc-300">
                 <code>{multiProviderExample}</code>
-              </pre>
-              <div className="mt-6 flex gap-3 text-xs leading-6 text-zinc-500">
+              </CodeBlock>
+              <div className="mt-6 flex gap-3 text-xs leading-6 text-terminal-muted">
                 <LockKeyhole className="mt-1 size-4 shrink-0 text-emerald-400" />
                 Provider credentials stay in the machine-local vault; the matrix references provider
                 ids, not raw secrets.
@@ -506,7 +507,7 @@ export function CodingPlansPage() {
                 <article key={String(title)} className="bg-ink p-6">
                   <ItemIcon className="size-5 text-brand-2" />
                   <h2 className="mt-8 text-xl font-black">{String(title)}</h2>
-                  <p className="mt-3 text-sm leading-7 text-zinc-500">{String(body)}</p>
+                  <p className="mt-3 text-sm leading-7 text-terminal-muted">{String(body)}</p>
                 </article>
               );
             })}

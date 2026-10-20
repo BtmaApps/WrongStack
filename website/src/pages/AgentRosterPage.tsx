@@ -253,7 +253,7 @@ export function AgentRosterPage() {
                 <code className="mt-8 block font-mono text-xs text-brand">{agent.role}</code>
                 <h2 className="mt-3 text-2xl font-black">{agent.name}</h2>
                 <p className="mt-4 text-sm leading-7 text-zinc-400">{agent.summary}</p>
-                <code className="mt-6 block font-mono text-xs text-zinc-500">
+                <code className="mt-6 block font-mono text-xs text-terminal-muted">
                   /shadow start · /fleet spawn shadow-agent
                 </code>
               </Link>
@@ -263,14 +263,14 @@ export function AgentRosterPage() {
                 <Link
                   key={agent.role}
                   href={`/agent-roster/${agent.role}`}
-                  className="block bg-[#0c0d12] p-6 transition-colors hover:bg-[#12141c]"
+                  className="block site-terminal bg-[#0c0d12] p-6 transition-colors hover:site-terminal bg-[#12141c]"
                 >
-                  <span className="font-mono text-xs font-black uppercase tracking-wider text-zinc-600">
+                  <span className="font-mono text-xs font-black uppercase tracking-wider text-terminal-muted">
                     external ACP
                   </span>
                   <h2 className="mt-5 font-black">{agent.name}</h2>
                   <code className="mt-3 block font-mono text-xs text-brand">{agent.role}</code>
-                  <p className="mt-4 font-mono text-xs text-zinc-600">{agent.runtime}</p>
+                  <p className="mt-4 font-mono text-xs text-terminal-muted">{agent.runtime}</p>
                 </Link>
               ))}
             </div>
@@ -347,7 +347,7 @@ export function AgentRosterPage() {
           </div>
         </div>
         <div className="mt-6 flex items-start gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-5">
-          <Check className="mt-1 size-4 shrink-0 text-emerald-500" />
+          <Check className="mt-1 size-4 shrink-0 text-status-success" />
           <p className="text-sm leading-7 text-muted">
             Use <code className="font-mono text-xs text-brand">/fleet dispatch &lt;task&gt;</code>{' '}
             when you want routing, or{' '}
@@ -388,7 +388,7 @@ export function AgentRosterPage() {
             ))}
           </div>
           <div className="mt-6 flex items-start gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-5">
-            <Check className="mt-1 size-4 shrink-0 text-emerald-500" />
+            <Check className="mt-1 size-4 shrink-0 text-status-success" />
             <p className="text-sm leading-7 text-muted">
               It runs unattended. Use{' '}
               <code className="font-mono text-xs text-brand">/agent-improve &lt;role&gt;</code> to

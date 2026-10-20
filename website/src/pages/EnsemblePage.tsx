@@ -168,7 +168,7 @@ export function EnsemblePage() {
                 Results are cached for 5 seconds. Each entry carries a probe command (e.g. `claude
                 --version`) and an ACP startup command.
               </p>
-              <div className="mt-5 rounded-lg border border-line bg-bg p-4 font-mono text-xs leading-6 text-zinc-400">
+              <div className="mt-5 rounded-lg border border-line bg-bg p-4 font-mono text-xs leading-6 text-muted">
                 <span className="text-emerald-400">✓</span> claude-code &nbsp;(adapter)
                 <br />
                 <span className="text-emerald-400">✓</span> gemini-cli &nbsp;&nbsp;(native)
@@ -267,26 +267,26 @@ export function EnsemblePage() {
         </div>
         <div className="mt-8 grid gap-6 lg:grid-cols-2">
           <div className="rounded-2xl border border-line bg-ink p-7">
-            <div className="font-mono text-xs font-black uppercase tracking-[0.16em] text-zinc-600">
+            <div className="font-mono text-xs font-black uppercase tracking-[0.16em] text-terminal-muted">
               EnsembleResult shape
             </div>
             <div className="mt-5 font-mono text-sm leading-7 text-zinc-300">
-              <span className="text-zinc-500">task</span>
-              <span className="text-zinc-600">: </span>
+              <span className="text-terminal-muted">task</span>
+              <span className="text-terminal-muted">: </span>
               <span className="text-amber-300">"review the auth module"</span>
               <br />
-              <span className="text-zinc-500">requested</span>
-              <span className="text-zinc-600">: </span>
+              <span className="text-terminal-muted">requested</span>
+              <span className="text-terminal-muted">: </span>
               <span className="text-zinc-300">["claude-code", "gemini-cli"]</span>
               <br />
-              <span className="text-zinc-500">summary</span>
-              <span className="text-zinc-600">: </span>
+              <span className="text-terminal-muted">summary</span>
+              <span className="text-terminal-muted">: </span>
               <span className="text-zinc-300">
                 {'{ succeeded: 2, failed: 0, skipped: 0, cancelled: 0 }'}
               </span>
               <br />
-              <span className="text-zinc-500">results[]</span>
-              <span className="text-zinc-600">: </span>
+              <span className="text-terminal-muted">results[]</span>
+              <span className="text-terminal-muted">: </span>
               <span className="text-zinc-400">[agentId, status, result, durationMs]</span>
             </div>
           </div>
@@ -346,7 +346,7 @@ export function EnsemblePage() {
                 ].map((s, i) => (
                   <span
                     key={i}
-                    className={s === '→' ? 'text-zinc-600' : 'rounded bg-bg px-1.5 py-0.5'}
+                    className={s === '→' ? 'text-terminal-muted' : 'rounded bg-bg px-1.5 py-0.5'}
                   >
                     {s}
                   </span>
