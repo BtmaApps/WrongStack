@@ -846,6 +846,7 @@
   "patchedDependencies": {
     "ws@8.22.0": "patches/ws@8.22.0.patch",
     "ink@7.1.1": "patches/ink@7.1.1.patch",
+    "http-cache-semantics@4.2.0": "patches/http-cache-semantics@4.2.0.patch",
   },
   "overrides": {
     "@electron/get@3.1.0": {
@@ -863,9 +864,6 @@
     "dompurify": ">=3.4.16",
     "fast-uri@>=3.0.0 <3.1.8": {
       ".": "^3.1.8",
-    },
-    "http-cache-semantics@<4.3.0": {
-      ".": "^4.3.0",
     },
     "sharp": ">=0.35.5",
     "source-map-js@<1.2.2": {
@@ -2074,7 +2072,7 @@
 
     "html-void-elements": ["html-void-elements@3.0.0", "", {}, "sha512-bEqo66MRXsUGxWHV5IP0PUiAWwoEjba4VCzg0LjFJBpchPaTfyfCKTG6bc5F8ucKec3q5y6qOdGyYTSBEvhCrg=="],
 
-    "http-cache-semantics": ["http-cache-semantics@4.3.0", "", {}, "sha512-M5t5LlJpS1UHMjvwRQVdFHvPISGeLAxNcrWuJkeGh0KxsqCHZ1O3NXZU/8x7cD0BDcGW8kapxMKTvwlqrNkHkA=="],
+    "http-cache-semantics": ["http-cache-semantics@4.2.0", "", {}, "sha512-dTxcvPXqPvXBQpq5dUr6mEMJX4oIEFv6bwom3FDwKRDsuIjjJGANqhBuoAn9c1RQJIdAKav33ED65E2ys+87QQ=="],
 
     "http-proxy-agent": ["http-proxy-agent@7.0.2", "", { "dependencies": { "agent-base": "7.1.4", "debug": "4.4.3" } }, "sha512-T1gkAiYYDWYx3V5Bmyu7HcfcvL7mUrTWiM6yOfa3PIphViJ/gFPbvidQ+veqSOHci/PxBcDabeUNCzpOODJZig=="],
 
