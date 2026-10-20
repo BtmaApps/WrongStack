@@ -277,7 +277,11 @@ export function makeSpawnTool(
       // budget cap never ran, and counting it would overstate exactly the
       // routing volume this telemetry exists to measure.
       if (routing && director.onSpawnRouted) {
-        director.onSpawnRouted(origin ? { ...routing, sessionId: origin } : routing);
+        director.onSpawnRouted({
+          ...routing,
+          subagentId,
+          ...(origin ? { sessionId: origin } : {}),
+        });
       }
       // Report what the worker ACTUALLY got. The session model plan, the
       // routing matrix and the tier layer all resolve inside `spawn()` on a

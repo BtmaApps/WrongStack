@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-20T18:18:47.399Z",
+  "generatedAt": "2026-10-20T18:19:11.177Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 38,
-    "sourceFiles": 5199,
-    "testFiles": 4545,
-    "sourceLines": 1130963,
+    "sourceFiles": 5200,
+    "testFiles": 4546,
+    "sourceLines": 1131199,
     "workspaceEdges": 139,
-    "moduleEdges": 17096,
+    "moduleEdges": 17097,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -151,8 +151,8 @@
     {
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
-      "sourceFiles": 675,
-      "testFiles": 660,
+      "sourceFiles": 676,
+      "testFiles": 661,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -197,7 +197,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 660
+          "testFiles": 661
         }
       ]
     },
@@ -3009,6 +3009,12 @@
       },
       {
         "file": "packages/cli/tests/fleet/host-context-skill-task.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/fleet/host-dispatch-outcomes.test.ts",
         "projects": [
           "root-node"
         ]

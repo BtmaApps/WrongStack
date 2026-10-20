@@ -454,8 +454,17 @@ function handleRouting(opts: SlashCommandContext, subargs: string[]): { message:
     `  ${color.cyan('addressed by')}  description ${bySource.description}  ·  explicit role ${bySource['explicit-role']}  ·  name only ${bySource['name-only']}`,
     `  ${color.cyan('decided by  ')}  heuristic ${byMethod.heuristic}  ·  classifier ${byMethod.llm}  ·  ${color.bold(`fallback ${byMethod.fallback}`)}`,
     `  ${color.cyan('roster miss ')}  ${rosterMisses} ${color.dim('(dispatched to a catalog role with no roster entry)')}`,
-    '',
   ];
+  // Whether a pick DELIVERED, by how it was made. Recorded since 2026-10-20;
+  // older spawns have no outcome lines and simply do not count here.
+  if (summary.totals.outcomes > 0) {
+    const { outcomesBySource, outcomesByMethod } = summary.totals;
+    lines.push(
+      `  ${color.cyan('delivered   ')}  description ${successRate(outcomesBySource.description)}  ·  explicit role ${successRate(outcomesBySource['explicit-role'])}  ·  name only ${successRate(outcomesBySource['name-only'])}`,
+      `  ${color.cyan('            ')}  heuristic ${successRate(outcomesByMethod.heuristic)}  ·  classifier ${successRate(outcomesByMethod.llm)}  ·  fallback ${successRate(outcomesByMethod.fallback)}`,
+    );
+  }
+  lines.push('');
 
   const showAll = subargs.includes('--all');
   const spawned = summary.roles.filter((row) => row.spawns > 0);
@@ -463,9 +472,12 @@ function handleRouting(opts: SlashCommandContext, subargs: string[]): { message:
   lines.push(color.cyan('  Roles spawned'));
   for (const row of shown) {
     const confidence = row.avgConfidence === null ? '   —' : row.avgConfidence.toFixed(2);
+    const rate = successRate(row.outcomes);
+    const delivered =
+      rate !== '—' ? `  ok ${rate}${row.costUsd > 0 ? `  $${row.costUsd.toFixed(2)}` : ''}` : '';
     lines.push(
       `    ${color.bold(row.role.padEnd(20))} ${String(row.spawns).padStart(5)}  ` +
-        `${color.dim(`conf ${confidence}  last ${row.lastAt?.slice(0, 10) ?? '—'}`)}`,
+        `${color.dim(`conf ${confidence}  last ${row.lastAt?.slice(0, 10) ?? '—'}${delivered}`)}`,
     );
   }
   if (!showAll && spawned.length > shown.length) {
@@ -486,6 +498,16 @@ function handleRouting(opts: SlashCommandContext, subargs: string[]): { message:
     }
   }
   return { message: lines.join('\n') };
+}
+
+/**
+ * "7/9" — successful tasks over those that ran to an end, or "—" when none
+ * did. A `stopped` task was called off by the leader or user, not failed by
+ * the worker, so it is left out of both sides.
+ */
+function successRate(counts: Record<string, number>): string {
+  const ended = (counts['success'] ?? 0) + (counts['failed'] ?? 0) + (counts['timeout'] ?? 0);
+  return ended > 0 ? `${counts['success'] ?? 0}/${ended}` : '—';
 }
 
 async function handleDispatch(

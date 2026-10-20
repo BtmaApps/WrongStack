@@ -4,8 +4,10 @@ import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   type DispatchLogEntry,
+  type DispatchOutcomeStatus,
   dispatchLogPath,
   recordDispatch,
+  recordDispatchOutcome,
   summarizeDispatchLog,
 } from '../../src/coordination/agents/dispatch-log.js';
 
@@ -195,5 +197,60 @@ describe('summarizeDispatchLog', () => {
     const summary = summarizeDispatchLog(root);
     expect(summary.since).toBe('2026-09-01T00:00:00.000Z');
     expect(summary.until).toBe('2026-09-08T00:00:00.000Z');
+  });
+});
+
+describe('dispatch outcomes', () => {
+  it('joins task outcomes to their spawn and grades the routing that made it', () => {
+    const root = newRoot();
+    recordDispatch(entry({ role: 'test', method: 'heuristic', subagentId: 'w1' }), root);
+    recordDispatch(entry({ role: 'test', source: 'explicit-role', subagentId: 'w2' }), root);
+    recordDispatch(entry({ role: 'executor', method: 'fallback', subagentId: 'w3' }), root);
+    const outcome = (subagentId: string, status: DispatchOutcomeStatus, costUsd?: number) =>
+      recordDispatchOutcome(
+        {
+          at: '2026-10-20T10:00:00.000Z',
+          subagentId,
+          status,
+          costUsd,
+          provider: 'p',
+          model: 'm',
+        },
+        root,
+      );
+    outcome('w1', 'success', 0.25);
+    outcome('w1', 'failed', 0.5);
+    outcome('w2', 'success');
+    outcome('w3', 'timeout');
+    // An outcome whose spawn line was rotated away still counts for its role.
+    recordDispatchOutcome(
+      { at: '2026-10-20T10:00:00.000Z', subagentId: 'gone', role: 'test', status: 'stopped' },
+      root,
+    );
+
+    const summary = summarizeDispatchLog(root);
+    // Outcome lines are not spawns.
+    expect(summary.entries).toBe(3);
+    expect(summary.totals.outcomes).toBe(5);
+    const test = summary.roles.find((row) => row.role === 'test');
+    expect(test?.spawns).toBe(2);
+    expect(test?.outcomes).toEqual({ success: 2, failed: 1, timeout: 0, stopped: 1 });
+    expect(test?.costUsd).toBe(0.75);
+    expect(test?.models).toEqual({ 'p/m': 3 });
+    expect(summary.totals.outcomesByMethod.heuristic).toEqual({
+      success: 1,
+      failed: 1,
+      timeout: 0,
+      stopped: 0,
+    });
+    expect(summary.totals.outcomesByMethod.fallback.timeout).toBe(1);
+    expect(summary.totals.outcomesBySource['explicit-role'].success).toBe(1);
+  });
+
+  it('writes the spawn subagentId so outcomes can find it', () => {
+    const root = newRoot();
+    recordDispatch(entry({ subagentId: 'w9' }), root);
+    const line = JSON.parse(readFileSync(dispatchLogPath(root), 'utf8').trim());
+    expect(line.subagentId).toBe('w9');
   });
 });

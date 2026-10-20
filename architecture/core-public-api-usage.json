@@ -9,9 +9,9 @@
       "runtimeOrMixed": 110
     },
     "@wrongstack/core/agent-catalog": {
-      "files": 22,
+      "files": 23,
       "typeOnly": 2,
-      "runtimeOrMixed": 23
+      "runtimeOrMixed": 24
     },
     "@wrongstack/core/chronicle": {
       "files": 15,
@@ -24,8 +24,8 @@
       "runtimeOrMixed": 12
     },
     "@wrongstack/core/coordination": {
-      "files": 281,
-      "typeOnly": 107,
+      "files": 283,
+      "typeOnly": 109,
       "runtimeOrMixed": 239
     },
     "@wrongstack/core/coordination/agent-subagent-runner.js": {
@@ -89,9 +89,9 @@
       "runtimeOrMixed": 57
     },
     "@wrongstack/core/kernel": {
-      "files": 378,
-      "typeOnly": 163,
-      "runtimeOrMixed": 235
+      "files": 380,
+      "typeOnly": 164,
+      "runtimeOrMixed": 236
     },
     "@wrongstack/core/kernel/events.js": {
       "files": 6,
@@ -2726,7 +2726,7 @@
     },
     {
       "specifier": "@wrongstack/core/agent-catalog",
-      "file": "packages/cli/src/fleet/host-director-setup.ts",
+      "file": "packages/cli/src/fleet/host-dispatch-outcomes.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -2799,6 +2799,12 @@
     {
       "specifier": "@wrongstack/core/agent-catalog",
       "file": "packages/cli/tests/fleet/host-context-skill-loadability.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/agent-catalog",
+      "file": "packages/cli/tests/fleet/host-dispatch-outcomes.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -3215,6 +3221,12 @@
       "file": "packages/cli/src/fleet/host-director-setup.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 2
+    },
+    {
+      "specifier": "@wrongstack/core/coordination",
+      "file": "packages/cli/src/fleet/host-dispatch-outcomes.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
     },
     {
       "specifier": "@wrongstack/core/coordination",
@@ -3777,6 +3789,12 @@
     {
       "specifier": "@wrongstack/core/coordination",
       "file": "packages/cli/tests/fleet/host-acp-runner.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/coordination",
+      "file": "packages/cli/tests/fleet/host-dispatch-outcomes.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -7388,6 +7406,12 @@
     },
     {
       "specifier": "@wrongstack/core/kernel",
+      "file": "packages/cli/src/fleet/host-dispatch-outcomes.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
       "file": "packages/cli/src/fleet/host-event-bridge.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -7899,6 +7923,12 @@
     {
       "specifier": "@wrongstack/core/kernel",
       "file": "packages/cli/tests/fleet/host-acp-runner.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
+      "file": "packages/cli/tests/fleet/host-dispatch-outcomes.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

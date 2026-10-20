@@ -115,7 +115,7 @@ export async function startDelegationAttempt(
   if (handoffCount === 0) {
     // Recorded only once the spawn is admitted, as `spawn_subagent` does: a
     // worker refused by a budget cap never ran.
-    dir.onSpawnRouted?.(sessionId ? { ...prepared.routing, sessionId } : prepared.routing);
+    dir.onSpawnRouted?.({ ...prepared.routing, subagentId, ...(sessionId ? { sessionId } : {}) });
     prepared.opts.events?.emit('delegate.started', {
       sessionId,
       target,

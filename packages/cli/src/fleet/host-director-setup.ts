@@ -1,4 +1,3 @@
-import { recordDispatch } from '@wrongstack/core/agent-catalog';
 import {
   AdaptiveConcurrencyController,
   areSubagentCompanionsAllowedForSession,
@@ -34,6 +33,7 @@ import {
   createHostStatusBroadcaster,
   startDirectorAgentMonitor,
 } from './host-director-services.js';
+import { createDispatchOutcomeRecorder } from './host-dispatch-outcomes.js';
 import { createHostExploreCompanion } from './host-explore-companion.js';
 import {
   createExploreCompanionRegistry,
@@ -42,8 +42,8 @@ import {
 import { makeFleetWorktreeConflictResolver } from './host-helpers.js';
 import type { HostLearningScheduler } from './host-learning-scheduler.js';
 import { HostMemoryCompanion } from './host-memory-companion.js';
-import { HostSkillCompanion } from './host-skill-companion.js';
 import type { HostShadowManager } from './host-shadow-manager.js';
+import { HostSkillCompanion } from './host-skill-companion.js';
 import type { MultiAgentDeps, MultiAgentHostOptions } from './host-types.js';
 export interface HostDirectorSetupHost {
   director: Director | undefined;
@@ -104,6 +104,12 @@ export async function buildDirector(host: HostDirectorSetupHost): Promise<void> 
     deps: host.deps,
     opts: host.opts,
   });
+  const dispatchOutcomes = createDispatchOutcomeRecorder({
+    events: host.deps.events,
+    director: () => host.director,
+    projectRoot: host.deps.projectRoot,
+  });
+  host.directorOffHandles.push(dispatchOutcomes.dispose);
   host.director = new Director({
     config: coordinatorConfig,
     manifestPath: host.opts.manifestPath,
@@ -133,8 +139,9 @@ export async function buildDirector(host: HostDirectorSetupHost): Promise<void> 
       host.learningScheduler.classifyDispatch(task, candidates),
     // Routing telemetry. Sibling of `dispatchClassifier` on purpose: both are
     // seams the host fills so core keeps no provider and no filesystem
-    // dependency. See `.wrongstack/agents/dispatch-log.jsonl`.
-    onSpawnRouted: (entry) => recordDispatch(entry, host.deps.projectRoot),
+    // dependency. See `.wrongstack/agents/dispatch-log.jsonl`; each routed
+    // worker's task outcomes are appended there too.
+    onSpawnRouted: (entry) => dispatchOutcomes.onSpawnRouted(entry),
     taskResultNotifier: (n) => host.reportTaskResultToLeader(n),
     subagentIdleTimeoutMs,
     ...(host.opts.statusTracker ? { statusTracker: host.opts.statusTracker } : {}),

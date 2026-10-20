@@ -73,6 +73,32 @@ export interface DispatchLogEntry {
   sessionId?: string | undefined;
   /** Leader tool that spawned. Absent on entries written before it was recorded. */
   tool?: 'delegate' | 'spawn_subagent' | undefined;
+  /** The spawned worker, so its task outcomes can be joined back at read time. */
+  subagentId?: string | undefined;
+}
+
+/** How one task of a routed worker ended. */
+export type DispatchOutcomeStatus = 'success' | 'failed' | 'timeout' | 'stopped';
+
+/**
+ * One finished task of a worker a routing entry spawned. Written as its own
+ * line (`kind: 'outcome'`) rather than by rewriting the spawn line, so the log
+ * stays append-only; `summarizeDispatchLog` joins the two on `subagentId`.
+ * Without it the log said where work went and nothing about whether it went
+ * well — a role the dispatcher favours and that keeps failing looked the same
+ * as one that keeps delivering.
+ */
+export interface DispatchOutcomeEntry {
+  at: string;
+  subagentId: string;
+  /** Role as the host knew it; the joined spawn line wins when present. */
+  role?: string | undefined;
+  status: DispatchOutcomeStatus;
+  durationMs?: number | undefined;
+  /** Spend of this task alone, not the worker's running total. */
+  costUsd?: number | undefined;
+  provider?: string | undefined;
+  model?: string | undefined;
 }
 
 /**
@@ -126,12 +152,41 @@ export function recordDispatch(entry: DispatchLogEntry, projectRoot?: string): v
       ...(entry.rosterMiss ? { rosterMiss: true } : {}),
       ...(entry.sessionId ? { sessionId: entry.sessionId } : {}),
       ...(entry.tool ? { tool: entry.tool } : {}),
+      ...(entry.subagentId ? { subagentId: entry.subagentId } : {}),
     })}\n`;
-    appendFileSync(filePath, line, 'utf8');
-    rotateIfLarge(filePath);
+    appendLine(filePath, line);
   } catch {
     // Telemetry is best-effort by design.
   }
+}
+
+/** Append one task outcome. Never throws, for the same reason as `recordDispatch`. */
+export function recordDispatchOutcome(entry: DispatchOutcomeEntry, projectRoot?: string): void {
+  try {
+    const filePath = dispatchLogPath(projectRoot);
+    mkdirSync(path.dirname(filePath), { recursive: true });
+    const line = `${JSON.stringify({
+      kind: 'outcome',
+      at: entry.at,
+      subagentId: entry.subagentId,
+      ...(entry.role ? { role: entry.role } : {}),
+      status: entry.status,
+      ...(typeof entry.durationMs === 'number' ? { durationMs: Math.round(entry.durationMs) } : {}),
+      ...(typeof entry.costUsd === 'number' && entry.costUsd > 0
+        ? { costUsd: Math.round(entry.costUsd * 1_000_000) / 1_000_000 }
+        : {}),
+      ...(entry.provider ? { provider: entry.provider } : {}),
+      ...(entry.model ? { model: entry.model } : {}),
+    })}\n`;
+    appendLine(filePath, line);
+  } catch {
+    // Telemetry is best-effort by design.
+  }
+}
+
+function appendLine(filePath: string, line: string): void {
+  appendFileSync(filePath, line, 'utf8');
+  rotateIfLarge(filePath);
 }
 
 /**
@@ -176,7 +231,16 @@ export interface DispatchRoleSummary {
   /** Mean heuristic confidence across the spawns dispatch decided. */
   avgConfidence: number | null;
   lastAt: string | null;
+  /** Finished tasks of this role's routed workers, by how they ended. */
+  outcomes: Record<DispatchOutcomeStatus, number>;
+  /** Spend across those tasks, USD. */
+  costUsd: number;
+  /** `provider/model` → tasks run on it. */
+  models: Record<string, number>;
 }
+
+/** Outcome counts under one routing source or method. */
+export type DispatchOutcomeCounts = Record<DispatchOutcomeStatus, number>;
 
 export interface DispatchSummary {
   entries: number;
@@ -187,6 +251,15 @@ export interface DispatchSummary {
     byMethod: Record<DispatchMethodTag, number>;
     /** Spawns whose resolved role had no roster entry. */
     rosterMisses: number;
+    /** Task outcomes recorded (joined to a spawn or not). */
+    outcomes: number;
+    /**
+     * Outcomes by how the worker's role was chosen — the question this log
+     * exists to answer: does a dispatcher pick deliver as often as an explicit
+     * role? Only outcomes whose spawn line is still in the log count here.
+     */
+    outcomesBySource: Record<DispatchSource, DispatchOutcomeCounts>;
+    outcomesByMethod: Record<DispatchMethodTag, DispatchOutcomeCounts>;
   };
   roles: DispatchRoleSummary[];
 }
@@ -198,6 +271,12 @@ function emptySources(): Record<DispatchSource, number> {
 function emptyMethods(): Record<DispatchMethodTag, number> {
   return { heuristic: 0, llm: 0, fallback: 0 };
 }
+
+function emptyOutcomes(): DispatchOutcomeCounts {
+  return { success: 0, failed: 0, timeout: 0, stopped: 0 };
+}
+
+const OUTCOME_STATUSES = new Set<string>(['success', 'failed', 'timeout', 'stopped']);
 
 interface RoleAccumulator extends DispatchRoleSummary {
   confidenceSum: number;
@@ -214,7 +293,22 @@ export function summarizeDispatchLog(projectRoot?: string): DispatchSummary {
     entries: 0,
     since: null,
     until: null,
-    totals: { bySource: emptySources(), byMethod: emptyMethods(), rosterMisses: 0 },
+    totals: {
+      bySource: emptySources(),
+      byMethod: emptyMethods(),
+      rosterMisses: 0,
+      outcomes: 0,
+      outcomesBySource: {
+        'explicit-role': emptyOutcomes(),
+        description: emptyOutcomes(),
+        'name-only': emptyOutcomes(),
+      },
+      outcomesByMethod: {
+        heuristic: emptyOutcomes(),
+        llm: emptyOutcomes(),
+        fallback: emptyOutcomes(),
+      },
+    },
     roles: [],
   };
   let raw: string;
@@ -236,6 +330,9 @@ export function summarizeDispatchLog(projectRoot?: string): DispatchSummary {
         runnerUp: 0,
         avgConfidence: null,
         lastAt: null,
+        outcomes: emptyOutcomes(),
+        costUsd: 0,
+        models: {},
         confidenceSum: 0,
         decided: 0,
       };
@@ -244,11 +341,22 @@ export function summarizeDispatchLog(projectRoot?: string): DispatchSummary {
     return row;
   };
 
+  const spawnsById = new Map<string, DispatchLogEntry>();
+  const outcomes: DispatchOutcomeEntry[] = [];
   for (const line of raw.split('\n')) {
     if (line.length === 0) continue;
-    const parsed = safeParse<DispatchLogEntry>(line);
-    if (!parsed.ok || !parsed.value || typeof parsed.value.role !== 'string') continue;
+    const parsed = safeParse<DispatchLogEntry & { kind?: string }>(line);
+    if (!parsed.ok || !parsed.value) continue;
+    if (parsed.value.kind === 'outcome') {
+      const outcome = parsed.value as unknown as DispatchOutcomeEntry;
+      if (typeof outcome.subagentId === 'string' && OUTCOME_STATUSES.has(outcome.status)) {
+        outcomes.push(outcome);
+      }
+      continue;
+    }
+    if (typeof parsed.value.role !== 'string') continue;
     const entry = parsed.value;
+    if (entry.subagentId) spawnsById.set(entry.subagentId, entry);
     summary.entries += 1;
     if (typeof entry.at === 'string') {
       if (!summary.since || entry.at < summary.since) summary.since = entry.at;
@@ -279,10 +387,34 @@ export function summarizeDispatchLog(projectRoot?: string): DispatchSummary {
     }
   }
 
+  // Outcomes join after every spawn line is read: a worker's spawn line always
+  // precedes its outcomes, but a rotation can cut the spawn and keep the
+  // outcome — that one still counts for its role, just not by source.
+  for (const outcome of outcomes) {
+    const spawn = spawnsById.get(outcome.subagentId);
+    const role = spawn?.role ?? outcome.role;
+    if (!role) continue;
+    summary.totals.outcomes += 1;
+    const row = accumulator(role);
+    row.outcomes[outcome.status] += 1;
+    if (typeof outcome.costUsd === 'number') row.costUsd += outcome.costUsd;
+    if (outcome.model) {
+      const label = outcome.provider ? `${outcome.provider}/${outcome.model}` : outcome.model;
+      row.models[label] = (row.models[label] ?? 0) + 1;
+    }
+    if (spawn && spawn.source in summary.totals.outcomesBySource) {
+      summary.totals.outcomesBySource[spawn.source][outcome.status] += 1;
+    }
+    if (spawn?.method && spawn.method in summary.totals.outcomesByMethod) {
+      summary.totals.outcomesByMethod[spawn.method][outcome.status] += 1;
+    }
+  }
+
   summary.roles = [...byRole.values()]
     .map(({ confidenceSum, decided, ...rest }) => ({
       ...rest,
       avgConfidence: decided > 0 ? Math.round((confidenceSum / decided) * 1000) / 1000 : null,
+      costUsd: Math.round(rest.costUsd * 1_000_000) / 1_000_000,
     }))
     .sort((a, b) => b.spawns - a.spawns || b.runnerUp - a.runnerUp || a.role.localeCompare(b.role));
   return summary;
