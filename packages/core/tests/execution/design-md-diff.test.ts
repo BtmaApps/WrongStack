@@ -84,4 +84,20 @@ describe('diffDesignMd', () => {
     );
     expect(renderDesignMdDiff(out, 'x')).toMatch(/^x: \d+ FAIL · 1 WARN · \d+ INFO/);
   });
+
+  it('fails broken token references in newly added components and reports newly added typography properties', () => {
+    const withNewBrokenComponentAndTypography = `${BASE.replace(
+      '    fontSize: 16px',
+      '    fontSize: 16px\n    lineHeight: "1.5"',
+    )}\n  card:\n    backgroundColor: "{colors.nonexistent}"`;
+    const out = diffDesignMd(doc(BASE), doc(withNewBrokenComponentAndTypography));
+    expect(out.map((c) => `${c.severity} ${c.path}`)).toContain(
+      'FAIL components.card.backgroundColor',
+    );
+    const lineHeightChange = out.find((c) => c.path === 'typography.body.lineHeight');
+    expect(lineHeightChange).toMatchObject({
+      severity: 'INFO',
+      message: '(unset) → 1.5',
+    });
+  });
 });

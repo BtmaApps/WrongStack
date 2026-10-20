@@ -340,6 +340,9 @@ export async function captureProjectTokens(
         ...(await firstExisting(projectRoot, DART_CANDIDATES)),
       ];
 
+  const declaredLight: Record<string, string> = {};
+  const declaredDark: Record<string, string> = {};
+
   for (const { rel, text } of targets) {
     if (/(^|[\\/])DESIGN\.md$/i.test(rel)) {
       const parsed = parseDesignMd(text);
@@ -354,6 +357,8 @@ export async function captureProjectTokens(
       const fromMd = designMdToTokens(parsed.doc);
       Object.assign(light, fromMd.light);
       Object.assign(dark, fromMd.dark);
+      Object.assign(declaredLight, fromMd.light);
+      Object.assign(declaredDark, fromMd.dark);
       for (const w of parsed.issues.filter((i) => i.severity === 'warning')) {
         notes.push(`${rel}: [${w.rule}] ${w.message}`);
       }
@@ -404,6 +409,12 @@ export async function captureProjectTokens(
     } else {
       notes.push(`${rel}: unsupported capture format (expected DESIGN.md/.css/.ts/.dart)`);
     }
+  }
+
+  // Re-apply declared DESIGN.md tokens when auto-discovered alongside inferred files so DESIGN.md wins.
+  if (!explicit.length) {
+    Object.assign(light, declaredLight);
+    Object.assign(dark, declaredDark);
   }
 
   if (used.length === 0) {

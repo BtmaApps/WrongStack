@@ -250,6 +250,47 @@ describe('captureProjectTokens', () => {
       await fs.rm(root, { recursive: true, force: true });
     }
   });
+
+  it('keeps DESIGN.md declared tokens ahead of inferred CSS candidates while preserving CSS-only keys', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'design-cap-designmd-'));
+    try {
+      await fs.mkdir(path.join(root, 'src'), { recursive: true });
+      await fs.writeFile(
+        path.join(root, 'DESIGN.md'),
+        [
+          '---',
+          'name: Brand',
+          'colors:',
+          '  primary: "#112233"',
+          '  dark-primary: "#aabbcc"',
+          '---',
+          '',
+          '## Overview',
+          'Brand design system.',
+          '',
+        ].join('\n'),
+      );
+      await fs.writeFile(
+        path.join(root, 'src', 'index.css'),
+        [
+          ':root {',
+          '  --primary: #998877;',
+          '  --secondary: #445566;',
+          '}',
+          '.dark {',
+          '  --primary: #fedcba;',
+          '}',
+          '',
+        ].join('\n'),
+      );
+      const r = await captureProjectTokens(root);
+      expect(r.tokens.light?.['primary']).toBe('#112233');
+      expect(r.tokens.dark?.['primary']).toBe('#aabbcc');
+      expect(r.tokens.light?.['secondary']).toBe('#445566');
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
+  });
 });
 
 describe('captured tokens store + resolveVerifyTokens precedence', () => {

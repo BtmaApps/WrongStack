@@ -116,11 +116,14 @@ export function diffDesignMd(before: DesignMdDoc, after: DesignMdDoc): DesignMdC
       });
     }
     for (const prop of ['fontSize', 'fontWeight', 'lineHeight', 'letterSpacing'] as const) {
-      if (ta[prop] !== undefined && String(ta[prop]) !== String(tb[prop])) {
+      if (
+        (ta[prop] !== undefined || tb[prop] !== undefined) &&
+        String(ta[prop]) !== String(tb[prop])
+      ) {
         out.push({
           severity: 'INFO',
           path: `typography.${level}.${prop}`,
-          message: `${ta[prop]} → ${tb[prop] ?? '(unset)'}`,
+          message: `${ta[prop] ?? '(unset)'} → ${tb[prop] ?? '(unset)'}`,
         });
       }
     }
@@ -175,6 +178,19 @@ export function diffDesignMd(before: DesignMdDoc, after: DesignMdDoc): DesignMdC
           severity: 'FAIL',
           path: `components.${name}`,
           message: `text on background ${was.toFixed(2)}:1 → ${now.toFixed(2)}:1, below WCAG AA ${AA}:1`,
+        });
+      }
+    }
+  }
+
+  for (const [name, next] of Object.entries(after.components)) {
+    if (name in before.components) continue;
+    for (const [prop, value] of Object.entries(next)) {
+      if (resolveDesignMdRef(after, value) === undefined) {
+        out.push({
+          severity: 'FAIL',
+          path: `components.${name}.${prop}`,
+          message: `${value} no longer resolves`,
         });
       }
     }
