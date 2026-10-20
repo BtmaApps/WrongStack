@@ -203,9 +203,11 @@ export async function findSqliteMemoriesForFile(
   primaryMatches.sort(sorter);
   symbolMatches.sort(sorter);
   relatedMatches.sort(sorter);
+  // `limit` is the cap on the whole response, not independently on each
+  // display bucket. Preserve bucket priority while spending one shared budget.
   const primary = primaryMatches.slice(0, limit);
-  const symbol = symbolMatches.slice(0, limit);
-  const related = relatedMatches.slice(0, limit);
+  const symbol = symbolMatches.slice(0, Math.max(0, limit - primary.length));
+  const related = relatedMatches.slice(0, Math.max(0, limit - primary.length - symbol.length));
   const returned = [...primary, ...symbol, ...related];
   return {
     filePath: target,

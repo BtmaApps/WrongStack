@@ -31,9 +31,10 @@ export function writeEncoded(state: ClientState, encoded: string): void {
   // write-after-end (its bytes are dropped silently at best). The caller
   // already holds the stopping rejection for that id.
   if (state.socket.destroyed || state.socket.writableEnded) return;
+  const encodedBytes = Buffer.byteLength(encoded, 'utf8');
   if (
-    Buffer.byteLength(encoded, 'utf8') > MAX_CLIENT_WRITE_BUFFER_BYTES ||
-    state.socket.writableLength > MAX_CLIENT_WRITE_BUFFER_BYTES
+    encodedBytes > MAX_CLIENT_WRITE_BUFFER_BYTES ||
+    state.socket.writableLength + encodedBytes > MAX_CLIENT_WRITE_BUFFER_BYTES
   ) {
     state.socket.destroy(new Error('SAGE client fell too far behind on reads'));
     return;
@@ -98,13 +99,24 @@ export function consumeClientFrames(
 ): void {
   state.spoken = true;
   state.buffer += chunk;
-  if (state.buffer.length > MAX_FRAME_BUFFER_CHARS) {
-    state.socket.destroy(new Error('SAGE request frame exceeded maximum size'));
-    return;
-  }
   while (true) {
     const newline = state.buffer.indexOf('\n');
-    if (newline < 0) return;
+    if (newline < 0) {
+      // Cap only the incomplete frame still being assembled. A single socket
+      // read may legitimately contain many small, complete frames whose
+      // cumulative size exceeds the per-frame ceiling.
+      if (state.buffer.length > MAX_FRAME_BUFFER_CHARS) {
+        state.socket.destroy(new Error('SAGE request frame exceeded maximum size'));
+      }
+      return;
+    }
+    // A newline terminates one frame. Reject it before parsing when that one
+    // frame exceeds the cap, without penalising later/earlier bounded frames
+    // that happened to arrive in the same chunk.
+    if (newline > MAX_FRAME_BUFFER_CHARS) {
+      state.socket.destroy(new Error('SAGE request frame exceeded maximum size'));
+      return;
+    }
     const line = state.buffer.slice(0, newline);
     state.buffer = state.buffer.slice(newline + 1);
     if (!line) continue;

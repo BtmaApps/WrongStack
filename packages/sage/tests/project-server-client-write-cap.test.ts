@@ -60,6 +60,23 @@ describe('SAGE client outbound write cap (H4)', () => {
     expect(written[0]).toContain('"id":1');
   });
 
+  it('counts the next frame together with bytes already queued', () => {
+    const message = { type: 'request', id: 4 };
+    const encodedBytes = Buffer.byteLength(`${JSON.stringify(message)}\n`, 'utf8');
+    const exact = makeFakeSocket(CAP - encodedBytes);
+    writeThrough(connectionWithSocket(exact.socket), message);
+    expect(exact.socket.destroyed).toBe(false);
+    expect(exact.written).toHaveLength(1);
+
+    const overflow = makeFakeSocket(CAP - encodedBytes + 1);
+    const destroyErrors: Error[] = [];
+    overflow.socket.on('error', (error: Error) => destroyErrors.push(error));
+    writeThrough(connectionWithSocket(overflow.socket), message);
+    expect(overflow.written).toHaveLength(0);
+    expect(overflow.socket.destroyed).toBe(true);
+    expect(destroyErrors[0]?.message).toContain('fell too far behind on reads');
+  });
+
   it('destroys the socket instead of queueing past the cap', () => {
     const { socket, written } = makeFakeSocket(CAP + 1);
     const conn = connectionWithSocket(socket);

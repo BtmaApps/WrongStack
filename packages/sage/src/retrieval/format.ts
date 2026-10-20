@@ -80,7 +80,7 @@ export function formatMemoryHintsDetailed(
     // unaffected, and a model trained on tool-call fences treats the
     // interior as opaque data.
     const text = typeof memory.text === 'string' ? memory.text : '';
-    const line = `${prefix}<memory id="${memory.id}">${escapeFenceText(text)}</memory>${suffix}`;
+    const line = `${prefix}<memory id="${escapeFenceText(memory.id)}">${escapeFenceText(text)}</memory>${suffix}`;
     const currentLength = lines.join('\n').length;
     // The budget decides HOW MANY memories go in, never how much of one: a
     // memory cut mid-sentence can say the opposite of what was stored. The

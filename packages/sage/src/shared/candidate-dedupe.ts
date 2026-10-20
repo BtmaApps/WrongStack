@@ -39,7 +39,11 @@ export function reviewedTargetTexts(
   for (const c of candidates) {
     if (c.status === 'pending' || c.kind !== 'memory_review' || !c.targetMemoryId) continue;
     const at = Date.parse(c.updatedAt);
-    if (!Number.isFinite(at) || nowMs - at > REVIEW_SUPPRESSION_MS) continue;
+    const age = nowMs - at;
+    // Suppression is a look-back window. A future-dated imported/corrupt row
+    // is not evidence of a completed past review and must not suppress the
+    // target indefinitely until the local clock catches up.
+    if (!Number.isFinite(age) || age < 0 || age > REVIEW_SUPPRESSION_MS) continue;
     const text = normalizeText(c.text);
     if (!text) continue;
     const texts = reviewed.get(c.targetMemoryId) ?? [];

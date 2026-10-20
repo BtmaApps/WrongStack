@@ -41,6 +41,13 @@ describe('review suppression', () => {
           text: 'Too old',
           updatedAt: new Date(now - REVIEW_SUPPRESSION_MS - 1).toISOString(),
         },
+        {
+          status: 'rejected',
+          kind: 'memory_review',
+          targetMemoryId: 'm5',
+          text: 'Future dated',
+          updatedAt: new Date(now + 86_400_000).toISOString(),
+        },
       ],
       now,
     );

@@ -16,6 +16,9 @@ export async function importLegacyFilesIntoStore(
 ): Promise<SageServerOperations['importLegacyFiles']['result']> {
   const result = { imported: 0, skipped: 0, files: 0 };
   let totalBytes = 0;
+  // Canonicalize the root as well as each file. A daemon started through a
+  // symlinked project path must accept files reached through that same alias.
+  const canonicalProjectRoot = await fsPromises.realpath(projectRoot);
   for (const file of files) {
     // Path containment: every imported file must live under `projectRoot`.
     // This closes the threat where a same-UID caller invokes
@@ -30,7 +33,7 @@ export async function importLegacyFilesIntoStore(
     // by `fsPromises.readFile()` (which follows symlinks), so we
     // resolve to the real path first and check containment on that.
     const resolved = await fsPromises.realpath(file);
-    const rel = path.relative(projectRoot, resolved);
+    const rel = path.relative(canonicalProjectRoot, resolved);
     // Canonical escape test: `..hidden` is a legal in-root first segment; a
     // bare startsWith('..') would misread it as an escape.
     if (rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel)) {

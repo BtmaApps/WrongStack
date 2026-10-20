@@ -59,10 +59,18 @@ export type CompleteSageStore = SqliteMemoryPort &
 export function parseArgs(argv: string[]): ParsedArgs {
   let projectRoot: string | undefined;
   let directory: string | undefined;
+  const optionNames = new Set(['--project-root', '--directory']);
+  const readValue = (index: number, option: string): string => {
+    const value = argv[index + 1];
+    if (!value || optionNames.has(value)) {
+      throw new Error(`SAGE project server ${option} requires a value`);
+    }
+    return value;
+  };
   for (let index = 0; index < argv.length; index++) {
     const arg = argv[index];
-    if (arg === '--project-root') projectRoot = argv[++index];
-    else if (arg === '--directory') directory = argv[++index];
+    if (arg === '--project-root') projectRoot = readValue(index++, arg);
+    else if (arg === '--directory') directory = readValue(index++, arg);
   }
   if (!projectRoot) throw new Error('SAGE project server requires --project-root');
   return {
