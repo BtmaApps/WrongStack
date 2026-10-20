@@ -90,6 +90,10 @@ export interface KitProcessResult {
 
 /** Maximum characters of child stderr retained for post-mortem diagnosis. */
 export const STDERR_TAIL_LIMIT = 4096;
+/** After a stopped child has exited: how long inherited pipes may stay open. */
+const PIPE_GRACE_MS = 3000;
+/** After a stop: how long the forced kill may take before the run settles anyway. */
+const KILL_GRACE_MS = 15_000;
 
 export async function runKitProcess(request: {
   projectRoot: string;
@@ -139,6 +143,8 @@ export async function runKitProcess(request: {
     let receiveMs: number | undefined;
     let settled = false;
     let stopping = false;
+    let exited = false;
+    let exitCodeSeen: number | null = null;
     let backstop: ReturnType<typeof setTimeout> | undefined;
     function finish(code: number | null) {
       if (settled) return;
@@ -179,15 +185,24 @@ export async function runKitProcess(request: {
       if (child.connected) child.send('abort', () => {});
       if (child.pid) registry.kill(child.pid, { force: true });
       else child.kill();
-      // Never leave an agent waiting indefinitely on inherited pipes.
+      // A forced kill can take seconds to land under load (Windows taskkill),
+      // and resolving before it does leaves the child holding the project
+      // directory with no exit code. The short pipe window therefore starts
+      // only once the child has exited; the long one covers a kill that never
+      // lands.
+      armBackstop(exited ? PIPE_GRACE_MS : KILL_GRACE_MS);
+    }
+    // Never leave an agent waiting indefinitely on inherited pipes.
+    function armBackstop(ms: number) {
+      if (backstop) clearTimeout(backstop);
       backstop = setTimeout(() => {
         child.stdout?.destroy();
         child.stderr?.destroy();
         child.stdin?.destroy();
         if (child.connected) child.disconnect();
         child.unref();
-        finish(null);
-      }, 3000);
+        finish(exitCodeSeen);
+      }, ms);
     }
     function abort() {
       stop('Cancelled');
@@ -235,6 +250,11 @@ export async function runKitProcess(request: {
     child.once('error', () => {
       failure = 'Unable to start Node; install Node.js 22.19+ on PATH';
       finish(null);
+    });
+    child.once('exit', (code) => {
+      exited = true;
+      exitCodeSeen = code;
+      if (stopping && !settled) armBackstop(PIPE_GRACE_MS);
     });
     child.once('close', finish);
     child.stdin?.on('error', () => {});

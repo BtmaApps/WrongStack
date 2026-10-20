@@ -108,12 +108,14 @@ describe('the policy itself (WS-071)', () => {
     expect(directive(policy, 'connect-src')).toBe("connect-src 'self'");
   });
 
-  it('allows exactly the two Google Fonts origins the page uses', () => {
-    expect(directive(policy, 'style-src')).toContain('https://fonts.googleapis.com');
-    expect(directive(policy, 'font-src')).toContain('https://fonts.gstatic.com');
-    // Verify against the page rather than trusting the policy in isolation.
-    expect(sourceHtml).toContain('https://fonts.googleapis.com');
-    expect(sourceHtml).toContain('https://fonts.gstatic.com');
+  it('serves fonts and styles from the site itself, with no third-party origin', () => {
+    expect(directive(policy, 'style-src')).toBe("style-src 'self' 'unsafe-inline'");
+    expect(directive(policy, 'font-src')).toBe("font-src 'self'");
+    // Verify against the page rather than trusting the policy in isolation:
+    // the fonts are self-hosted, so no Google Fonts origin may reappear.
+    expect(sourceHtml).toContain('/fonts/');
+    expect(sourceHtml).not.toContain('fonts.googleapis.com');
+    expect(sourceHtml).not.toContain('fonts.gstatic.com');
   });
 
   it('omits the directives a <meta> policy ignores', () => {

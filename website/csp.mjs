@@ -64,8 +64,9 @@ export function websiteCsp(html) {
     // the app sets element `style` props directly and framer-motion animates
     // through inline styles. Style injection cannot execute script under the
     // `script-src` above.
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "font-src 'self' https://fonts.gstatic.com",
+    "style-src 'self' 'unsafe-inline'",
+    // Space Grotesk and JetBrains Mono are self-hosted under /fonts.
+    "font-src 'self'",
     // Deliberately broad. Provider and plan logos are hotlinked from nine
     // vendor CDNs enumerated in `src/data/providers.ts` and
     // `src/data/coding-plans.ts`; pinning them would mean every new provider
