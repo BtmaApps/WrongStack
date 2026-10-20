@@ -115,7 +115,7 @@ the per-subcommand and per-slash-command docs below.
 
 | Document | What it covers |
 |---|---|
-| [cli-reference.md](cli-reference.md) | Launch flags, subcommands, and the `wstack update` self-updater (`--check-only`, `--pm`, `--allow-scripts`) |
+| [cli-reference.md](cli-reference.md) | Launch flags, subcommands, and the GitHub Releases `wstack update` self-updater (`--check-only`, legacy package migration) |
 | [reference.md](reference.md) | Tool families, providers, slash commands, modes and skills |
 | [current-catalog.md](current-catalog.md) | Generated package, tool, shell-command, mode, skill and plugin inventories |
 

@@ -111,7 +111,8 @@ if [ -n "$libc" ] && ! ls /usr/lib/libstdc++.so.6 /lib/libstdc++.so.6 >/dev/null
   printf '\nThis musl build needs libstdc++ and libgcc. On Alpine: apk add libstdc++ libgcc\n' >&2
 fi
 
-version=$("$INSTALL_DIR/wstack" version 2>/dev/null | head -n 1 || true)
+version=$("$INSTALL_DIR/wstack" version 2>/dev/null) || fail 'the installed binary could not run; legacy packages have not been removed'
+[ -n "$version" ] || fail 'the installed binary returned no version; legacy packages have not been removed'
 printf '\nInstalled %s → %s/wstack\n' "${version:-wstack}" "$INSTALL_DIR"
 
 case ":$PATH:" in
@@ -132,6 +133,29 @@ case ":$PATH:" in
     fi
     ;;
 esac
+
+# A migration must leave the command reachable after removing the old shims.
+# The child installer cannot change its parent shell; persist the next shell's PATH.
+if [ -n "${WSTACK_MIGRATION:-}" ]; then
+  shell_name=$(basename "${SHELL:-sh}")
+  case "$shell_name" in
+    zsh) rc="$HOME/.zshrc" ;;
+    bash) rc="$HOME/.bashrc" ;;
+    fish) rc="$HOME/.config/fish/config.fish"; mkdir -p "$(dirname "$rc")" ;;
+    *) rc="$HOME/.profile" ;;
+  esac
+  quoted_dir=$(printf '%s' "$INSTALL_DIR" | sed "s/'/'\\\\''/g")
+  if [ "$shell_name" = fish ]; then
+    path_line="fish_add_path --prepend '$quoted_dir'"
+  else
+    path_line="export PATH='$quoted_dir':\$PATH"
+  fi
+  if ! grep -Fqx "$path_line" "$rc" 2>/dev/null; then
+    printf '\n%s\n' "$path_line" >> "$rc"
+  fi
+  PATH="$INSTALL_DIR:$PATH"
+  export PATH
+fi
 
 # Globals left by the old npm distribution (wrongstack / @wrongstack/cli via
 # npm, pnpm, yarn or bun) carry their own `wstack` shim that keeps shadowing
@@ -160,7 +184,7 @@ if [ -n "$old_installs" ]; then
   for entry in $old_installs; do printf '  %s  (%s global)\n' "${entry#*:}" "${entry%%:*}"; done
   printf 'They shadow the standalone binary, so they are coming off.\n'
   answer=y
-  if [ -t 1 ] && (: </dev/tty) 2>/dev/null; then
+  if [ -z "${WSTACK_MIGRATION:-}" ] && [ -t 1 ] && (: </dev/tty) 2>/dev/null; then
     printf 'Uninstall them now? [Y/n] '
     read -r answer </dev/tty || answer=y
   fi
@@ -169,6 +193,7 @@ if [ -n "$old_installs" ]; then
       printf 'Kept. Until they are gone, `wstack` may keep running the old version.\n' >&2
       ;;
     *)
+      cleanup_failed=0
       for entry in $old_installs; do
         pkg=${entry#*:}
         case "${entry%%:*}" in
@@ -178,8 +203,14 @@ if [ -n "$old_installs" ]; then
           bun) set -- bun remove -g "$pkg" ;;
         esac
         printf 'Uninstalling: %s\n' "$*"
-        "$@" >/dev/null 2>&1 || printf 'Failed (stop any running wstack and retry): %s\n' "$*" >&2
+        if ! "$@" >/dev/null 2>&1; then
+          cleanup_failed=1
+          printf 'Failed (stop any running wstack and retry): %s\n' "$*" >&2
+        fi
       done
+      if [ "$cleanup_failed" = 1 ] && [ -n "${WSTACK_MIGRATION:-}" ]; then
+        fail 'binary installed, but legacy package cleanup is incomplete; run the printed uninstall commands after stopping other WrongStack processes'
+      fi
       hash -r 2>/dev/null || true
       ;;
   esac

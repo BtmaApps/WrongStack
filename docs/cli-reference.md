@@ -94,27 +94,26 @@ terminal) so they cannot shadow the binary.
 `wstack update` downloads the latest GitHub release for your platform, verifies
 it against the release `SHA256SUMS` and swaps the executable in place.
 
-The `--pm` and `--allow-scripts` flags only apply to a legacy npm install,
-where `wstack update` still reinstalls through the detected package manager.
+Legacy package installations print a warning, install the GitHub Releases binary,
+verify it runs, then uninstall old global `wrongstack` / `@wrongstack/cli` packages
+from npm, pnpm, yarn and Bun. This migration also runs when the package version
+is already current. Open a new terminal afterward to pick up the binary's PATH.
 
 ```
-Usage: wstack update [--check-only] [--pm <manager>] [--allow-scripts]
+Usage: wstack update [--check-only]
 ```
 
 | Flag | Effect |
 |------|--------|
 | `--check-only`, `-c` | Report whether a newer version exists without installing anything. |
-| `--pm <manager>` | Force a specific package manager (`npm`, `pnpm`, `yarn`, or `bun`) instead of auto-detecting. The bare `--npm`, `--pnpm`, `--yarn`, and `--bun` shortcuts are accepted as equivalents of `--pm <name>`. |
-| `--allow-scripts`, `--lifecycle-scripts` | Run package lifecycle scripts during the update (off by default). |
+| Legacy `--pm`, `--package-manager`, `--npm`, `--pnpm`, `--yarn`, `--bun` | Ignored with a warning; updates always use GitHub Releases. |
+| Legacy `--allow-scripts`, `--lifecycle-scripts` | Ignored with a warning; cannot enable a package update. |
 
 Examples:
 
 ```bash
 wstack update                         # download + verify the latest release
 wstack update --check-only            # is there a newer release?
-wstack update --pm pnpm               # legacy npm install only: force pnpm
-wstack update --pnpm                  # equivalent shortcut for `--pm pnpm`
-wstack update --lifecycle-scripts     # equivalent shortcut for `--allow-scripts`
 ```
 
 You can always update manually by re-running the install one-liner.

@@ -102,16 +102,18 @@ try {
   Move-Item -Force $Exe $Target
   Set-Content -Path (Join-Path $InstallDir 'wrongstack.cmd') -Value "@`"%~dp0wstack.exe`" %*" -Encoding Ascii
 
-  # Put the install dir FIRST on the user PATH (moving it there if an earlier
-  # run appended it): an older npm/pnpm/bun global `wstack` earlier on PATH
-  # would otherwise keep winning and the new binary would never run.
+  $VersionOutput = & $Target version 2>$null
+  $BinaryExitCode = $LASTEXITCODE
+  $Version = $VersionOutput | Select-Object -First 1
+  if ($BinaryExitCode -ne 0 -or -not $Version) {
+    throw 'The installed binary could not run. Legacy packages have not been removed.'
+  }
+  # Change PATH only after the new binary has successfully run.
   if (-not $env:WSTACK_NO_MODIFY_PATH -and (Update-UserPath -Name 'Path' -Dir $InstallDir)) {
     $SessionOthers = @($env:Path -split ';' | Where-Object { $_ -and $_.TrimEnd('\') -ne $InstallDir.TrimEnd('\') })
     $env:Path = (@($InstallDir) + $SessionOthers) -join ';'
     Write-Host "Put $InstallDir first on your user PATH (open a new terminal to pick it up)."
   }
-
-  $Version = & $Target version 2>$null | Select-Object -First 1
   Write-Host ""
   Write-Host "Installed $Version -> $Target"
 
@@ -151,12 +153,13 @@ try {
     $OldInstalls | ForEach-Object { Write-Host "  $($_.Pkg)  ($($_.Pm) global)" }
     Write-Host "They shadow the standalone binary, so they are coming off."
     $Answer = 'y'
-    if ([Environment]::UserInteractive -and -not [Console]::IsInputRedirected) {
+    if (-not $env:WSTACK_MIGRATION -and [Environment]::UserInteractive -and -not [Console]::IsInputRedirected) {
       try { $Answer = Read-Host 'Uninstall them now? [Y/n]' } catch { $Answer = 'y' }
     }
     if ($Answer -match '^[nN]') {
       Write-Host "Kept. Until they are gone, wstack may keep running the old version." -ForegroundColor Yellow
     } else {
+      $CleanupFailed = $false
       foreach ($Old in $OldInstalls) {
         $PmArgs = switch ($Old.Pm) {
           'npm' { @('uninstall', '-g', $Old.Pkg) }
@@ -168,7 +171,13 @@ try {
         Write-Host "Uninstalling: $Line"
         $Ok = $false
         try { & $Old.Pm @PmArgs *> $null; $Ok = ($LASTEXITCODE -eq 0) } catch { $Ok = $false }
-        if (-not $Ok) { Write-Host "Failed (stop any running wstack and retry): $Line" -ForegroundColor Yellow }
+        if (-not $Ok) {
+          $CleanupFailed = $true
+          Write-Host "Failed (stop any running wstack and retry): $Line" -ForegroundColor Yellow
+        }
+      }
+      if ($CleanupFailed -and $env:WSTACK_MIGRATION) {
+        throw 'Binary installed, but legacy package cleanup is incomplete. Run the printed uninstall commands after stopping other WrongStack processes.'
       }
     }
   }

@@ -1371,8 +1371,9 @@ OTLP over HTTP (Grafana, Honeycomb, Datadog, Jaeger, …).
 ## `update` — standalone self-update
 
 The standalone executable (the `wstack-*` binaries from the GitHub releases)
-keeps itself current. The npm install is updated by its package manager and
-only shows the "Update available" notice.
+keeps itself current. Legacy package installs show update notices; running
+`wstack update` migrates them to the GitHub Releases binary and then removes old
+global packages. It never updates through a package manager.
 
 ```jsonc
 {
