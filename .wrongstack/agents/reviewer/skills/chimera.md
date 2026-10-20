@@ -1,34 +1,21 @@
 ## Verify before verdict
 
-- Before reviewing claimed work, run `git status -- <target paths>` plus an `rg` for feature identifiers (e.g. `selectionMode`). If the result is `aborted_by_parent` with zero target-path changes and zero symbol matches, the verdict is `request changes` (deliverable absent). Reserve `needs verification` for code that is present but unchecked.
-- For exhaustive usage checks in large files such as `packages/vibeui/src/lib/use-session.ts`, do not trust a single `grep` render. It reports `count=N` but may show only 3 groups. Before concluding that stale references are gone, either grep the saved log under `C:\Users\ersin\.wrongstack\tool-output\` or re-`read` with `offset` windows.
+- Resolve Chimera citations against files on disk, not only the handed-off diff. In particular, verify `escapeClosesPanels(event)` at `packages/vibeui/src/components/workspace.tsx:150` before alleging an unused import or broken test.
+- Run `git status -- <target paths>` and `rg` for feature identifiers such as `selectionMode`. If both show no implementation and the task is `aborted_by_parent`, return request changes; use needs verification only when code exists but remains unchecked.
+- Before reporting missing regression coverage for exports such as `GRAPH_HUB_DEGREE` or `traverseSqliteGraph`, grep the owning package’s `tests/` directory and trace any existing expectations against the implementation.
+- Confirm every out-of-bundle dependency: new WS routes need handlers under `packages/webui-server/src/server/` such as `memory-doctor-handler.ts`; client methods belong in `packages/webui/src/lib/ws-client-actions.ts`, not `packages/webui-protocol/src/client-integrations.ts`; new i18n keys must exist in all seven locales, including `src/i18n/locales/tr/activity.json`.
+- When `grep` reports `count=N` but renders only a few groups, inspect `C:\Users\ersin\.wrongstack\tool-output\` or re-read the file with explicit `offset`/`limit` windows.
 
 ## vibeui
 
-- Before flagging unhandled rejections or double-submits, trace `request(...)` call sites to `packages/vibeui/src/lib/use-panel-requests.ts`. It resolves `null`, dedupes by frame type, and cancels in-flight requests via `[state.id, connection]` cleanup. Sends guarded by `busy` that clear drafts with functional comparisons are race-safe.
-- For new ws calls like `mailbox.send`:
-  - Check fields against all 12 branches of `validateMailboxSendPayload` in `packages/webui-server/src/server/ws-mailbox-validation.ts`.
-  - Confirm a `mailbox.sent` reply carrying `requestId` + `success`, so `acceptsPanelReply` matches.
-- For `SessionSwitch` (`packages/vibeui/src/lib/session-switch.ts`), confirm every exit (`settle`, `cancel`, timeout) releases target, lock, timer and `held` together. A leaked `held` lets `cancel()` replay a stale `session.start`.
+- Trace `request(...)` through `packages/vibeui/src/lib/use-panel-requests.ts` before flagging rejection or submission races: it resolves `null`, deduplicates by frame type, and cancels via `[state.id, connection]`.
+- For `mailbox.send`, check all branches of `validateMailboxSendPayload` in `packages/webui-server/src/server/ws-mailbox-validation.ts` and require a `mailbox.sent` reply with `requestId` and `success`.
+- For `SessionSwitch` in `packages/vibeui/src/lib/session-switch.ts`, ensure `settle`, `cancel`, and timeout release target, lock, timer, and `held` together.
+- Resolve styling refactors at the component and stylesheet layers. Pair `.site-section--short` with `.site-section`; when `.source-preview` loses `overflow`/`max-height`, verify replacement containment such as `.code-panel pre` in `packages/vibeui/src/app/globals.css`.
 
-## tui
+## Repository conventions
 
-- When `SettingsPickerValues` (`packages/tui/src/settings-contracts.ts`) gains a required key:
-  - Find missed fixtures by grepping `packages/tui/tests` for a sibling key like `toolResultViewMode`, not the new key.
-  - Verify `Object.keys(SETTINGS_DEFAULTS).toHaveLength(N)` by counting the literal in `packages/tui/src/components/settings-picker-model.ts`, skipping comments.
-- In `packages/tui/src/app-view.tsx`, treat the `localX` + `selectionSaveQueue` + `selectionSaveVersion` trio as intentional and race-safe. Do not flag superseded-save failures. Check `historyScrollRef` against `packages/tui/src/components/history/scroll-controller-types.ts`.
-
-## Tools, dependencies, timers
-
-- Browser:
-  - `browserPrivateOrigins(root)` merges `/browser allow` with `WRONGSTACK_BROWSER_PRIVATE_ORIGINS`.
-  - Accept "takes effect immediately" only after tracing the `managerFor` cache refresh in `packages/tools/src/browser/manager.ts`.
-  - `timeoutMs` + `managesOwnTimeout: true` is the accepted convention.
-- Lockfile: attribute surviving references by their owning importer block, never by line proximity. `pnpm-workspace.yaml` `overrides:` is authoritative; root `package.json` `overrides` is inert under pnpm.
-- Before removing an entry from `architecture/test-only-exports.json`, grep for static imports. Dynamic access does not count.
-- Env-configured timer durations must follow `Number.isFinite(x) && x >= min ? Math.min(x, 2_147_483_647) : DEFAULT`.
-- For new `SessionEvent` literals (`packages/core/src/types/session-events.ts`), require one writer per surface and one fold per consumer. Replay and legacy branches must be mutually exclusive.
-
-## Output
-
-- Return `{"findings": []}` only after these checks pass.
+- For `SettingsPickerValues`, find stale fixtures by grepping `packages/tui/tests` for sibling keys such as `toolResultViewMode`; count the `SETTINGS_DEFAULTS` literal in `packages/tui/src/components/settings-picker-model.ts`.
+- Treat `pnpm-workspace.yaml` `overrides:` as authoritative; root `package.json` `overrides` is inert. Attribute lockfile references by importer block.
+- Before removing `architecture/test-only-exports.json` entries, grep for static imports; dynamic access does not count.
+- Return `{"findings": []}` only after all applicable checks pass.

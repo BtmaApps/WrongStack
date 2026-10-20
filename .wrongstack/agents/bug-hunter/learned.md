@@ -4,7 +4,7 @@
 
 ## What to avoid
 
-<!-- learned-stamp: category=warning; capturedAt=2026-10-18T09:37:28.574Z; skill=bug-hunter; skipped=6; skippedWins=6 -->
+<!-- learned-stamp: category=warning; capturedAt=2026-10-18T09:37:28.574Z; skill=bug-hunter; applied=2; wins=2; skipped=6; skippedWins=6 -->
 - **Always adjudicate `.name`-keyed error catches in `packages/cli/src` against the error class constructor and the repo's esbuild chunk-duplication hazard before flagging them as fragile — in this repo the name comparison is the hardened pattern and `instanceof` on cross-chunk workspace-imported error classes (`@wrongstack/core/*`) is the fragile variant. Anchors: `packages/cli/src/fleet/host-shadow-pass.ts` (name-keyed swallow of `FleetSpawnBudgetError`, class stamps `name` in `packages/core/src/coordination/director/director-errors.ts`), `packages/cli/src/wiring/proxy-probe.ts` (documented chunk-duplication), `packages/cli/src/goal-host.ts` (`instanceof GoalRunLeaseBusyError` — degrade-tolerant). Verify fire-and-forget containment by grepping repo-wide for the method name plus `.catch(`, and cite `packages/cli/tests/fleet/shadow-pass-unhandled.test.ts` as the regression-test pattern for unhandled-rejection probes.**
   - *Why:* Known failure mode — skipping this has caused real defects in this codebase. The cost of getting it wrong outweighs the cost of the check.
   - *How:* `.name`
@@ -22,9 +22,26 @@
   - *How:* `packages/cli/tests/fleet/shadow-pass-unhandled.test.ts`
   - *How:* `@wrongstack/core`
 
+<!-- learned-stamp: category=warning; capturedAt=2026-10-20T12:08:21.720Z; skill=bug-hunter -->
+- **When adding a reference counter that guards a resource lifecycle in `packages/core/src/session-catalog/registry.ts`, decrement it in a `finally` around the awaited RPC, not only on the success path — `activate_reservation` can reject with "Resume reservation expired" and a success-only decrement pins the binding so `closeBinding()` never closes its IPC client.**
+  - *Why:* Known failure mode — skipping this has caused real defects in this codebase. The cost of getting it wrong outweighs the cost of the check.
+  - *How:* `packages/core/src/session-catalog/registry.ts`
+  - *How:* `finally`
+  - *How:* `activate_reservation`
+  - *How:* `closeBinding()`
+
 ## What to do
 
-<!-- learned-stamp: category=convention; capturedAt=2026-10-19T07:41:28.007Z; skipped=5; skippedWins=5 -->
+<!-- learned-stamp: category=convention; capturedAt=2026-10-20T12:08:21.720Z; skill=bug-hunter -->
+- **Always resolve relative write-target paths against `ctx.workingDir ?? ctx.cwd` — the base `resolvePath()` in `packages/tools/src/_util.ts` uses — when matching them against project-relative globs; `ctx.cwd` alone diverges after `set_working_dir()` and makes a path-matched tool gate fire on the wrong file.**
+  - *Why:* Established convention for this codebase — skipping it risks regressions, merge friction, or out-of-sync state with peers.
+  - *How:* `ctx.workingDir ?? ctx.cwd`
+  - *How:* `resolvePath()`
+  - *How:* `packages/tools/src/_util.ts`
+  - *How:* `ctx.cwd`
+  - *How:* `set_working_dir()`
+
+<!-- learned-stamp: category=convention; capturedAt=2026-10-19T07:41:28.007Z; applied=2; wins=2; skipped=5; skippedWins=5 -->
 - **Always trace the synchronous `tool.confirm_resolved` emission path before accepting or rejecting double-emit claims in `packages/core/src/hq/approval-bridge.ts` — resolvers emit that event synchronously (documented at the `grantExpiries` map), the `offResolved` listener announces unconditionally even when `pending` is already deleted, so any new announce site must dedupe via a bus-announced id flag rather than removing either path. Treat a lone `packages/core/src/storage/todos-checkpoint.ts` TS2454 in `packages/core` typecheck output as pre-existing out-of-scope noise and verify it with `git status` on the exact path before letting it fail a review gate.**
   - *Why:* Established convention for this codebase — skipping it risks regressions, merge friction, or out-of-sync state with peers.
   - *How:* `tool.confirm_resolved`
@@ -36,9 +53,18 @@
   - *How:* `packages/core`
   - *How:* `git status`
 
+<!-- learned-stamp: category=convention; capturedAt=2026-10-20T12:08:21.720Z; skill=bug-hunter -->
+- **Check `connectWithElection()` in `packages/core/src/session-catalog/client.ts` for an `explicitlyClosed` guard before adding a `close()` path that rejects the in-flight connect promise — the election loop has no closed-guard and will `spawnDetached()` a catalog daemon after `close()` returned.**
+  - *Why:* Established convention for this codebase — skipping it risks regressions, merge friction, or out-of-sync state with peers.
+  - *How:* `connectWithElection()`
+  - *How:* `packages/core/src/session-catalog/client.ts`
+  - *How:* `explicitlyClosed`
+  - *How:* `close()`
+  - *How:* `spawnDetached()`
+
 ## Patterns to follow
 
-<!-- learned-stamp: category=pattern; capturedAt=2026-10-19T10:54:05.353Z; skill=typescript-strict; skipped=4; skippedWins=4 -->
+<!-- learned-stamp: category=pattern; capturedAt=2026-10-19T10:54:05.353Z; skill=typescript-strict; skipped=6; skippedWins=6 -->
 - **Always adjudicate Node-daemon TDZ-closure claims (`closure over a later-declared let`) by checking whether any *synchronous* path can invoke the closure during module evaluation — event-loop callbacks (`net` server `'connection'`, timers, IPC) cannot interleave with synchronous module-body execution. In `packages/sage/src/project-server.ts`, the forward-lazy-closure pattern (`createSlowOperationReporter(() => ({ pendingRequests, clients: clients.size }))` and the `createHygieneRunner` `isBusy` lambda) is intentional and startup-safe; a construct-time TDZ would crash every daemon start and fail `packages/sage/tests/project-server-maintenance.test.ts`. ```json { "verification_evidence": { "typecheck": { "command": "node node_modules/typescript/bin/tsc --noEmit --pretty false -p packages/sage/tsconfig.json", "exitCode": 0 }, "lint": { "command": "bunx biome check packages/sage/src/memory-text.ts", "exitCode": 0 }, "tests": { "command": "bunx vitest run packages/sage/tests/store-helpers.test.ts", "exitCode": 0 } } } ```**
   - *Why:* This project's chosen approach — alternatives were considered and either conflict with existing architecture or were rejected for known reasons.
   - *How:* `closure over a later-declared let`
@@ -53,7 +79,7 @@
   - *How:* `packages/sage/src/memory-text.ts`
   - *How:* `packages/sage/tests/store-helpers.test.ts`
 
-<!-- learned-stamp: category=pattern; capturedAt=2026-10-18T00:07:18.271Z; skipped=8; skippedWins=8 -->
+<!-- learned-stamp: category=pattern; capturedAt=2026-10-18T00:07:18.271Z; skipped=10; skippedWins=10 -->
 - **Always check markdown-renderer link components for URL-scheme validation (`javascript:` hrefs) before declaring a React UI XSS-clean — absence of `dangerouslySetInnerHTML` is not sufficient; VibeUI's `markdown-content.tsx` ArtifactLink renders agent-controlled hrefs verbatim while `provider-manager.tsx` already ships a `safeLoginUrl` allowlist pattern to reuse.**
   - *Why:* This project's chosen approach — alternatives were considered and either conflict with existing architecture or were rejected for known reasons.
   - *How:* `javascript:`
@@ -62,7 +88,7 @@
   - *How:* `provider-manager.tsx`
   - *How:* `safeLoginUrl`
 
-<!-- learned-stamp: category=pattern; capturedAt=2026-10-18T00:38:09.992Z; skill=typescript-strict; skipped=7; skippedWins=7 -->
+<!-- learned-stamp: category=pattern; capturedAt=2026-10-18T00:38:09.992Z; skill=typescript-strict; skipped=9; skippedWins=9 -->
 - **Always re-read co-modified vibeui files immediately before editing — `packages/vibeui/src/lib/use-session.ts` was rewritten by a peer mid-hunt (guarded `edit` refused with external-modification), turning confirmed findings into already-fixed ones; report externally-fixed findings as resolved with live line anchors instead of re-applying fixes. Adjudicate Chimera "file shape" claims (one-liner, missing EOF newline) with byte-level checks (`[System.IO.File]::ReadAllBytes(...)` last bytes) rather than rendered diffs — snapshots of actively co-modified trees are routinely stale. ```json { "verification_evidence": { "typecheck": { "command": "node node_modules/typescript/bin/tsc --noEmit --pretty false -p packages/vibeui/tsconfig.json", "exitCode": 0 }, "lint": { "command": "bunx biome check packages/vibeui/src/lib/use-session.ts", "exitCode": 0 }, "tests": { "command": "bunx vitest run packages/vibeui/tests/session.test.ts", "exitCode": 0 } } } ```**
   - *Why:* This project's chosen approach — alternatives were considered and either conflict with existing architecture or were rejected for known reasons.
   - *How:* `packages/vibeui/src/lib/use-session.ts`
@@ -72,4 +98,4 @@
   - *How:* `packages/vibeui/tests/session.test.ts`
 
 ---
-*Last capture: 2026-10-19T10:54:05.353Z · 5 entries*
+*Last capture: 2026-10-20T12:08:21.720Z · 8 entries*
