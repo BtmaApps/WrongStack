@@ -120,30 +120,90 @@ function normalize(text: string): string {
     .trim()} `;
 }
 
+/** Suffix → replacement, first match wins; the stem left must keep 3+ chars. */
+const STEM_RULES: readonly (readonly [string, string])[] = [
+  ['ifications', 'ify'],
+  ['ification', 'ify'],
+  ['ations', 'ate'],
+  ['ation', 'ate'],
+  ['ings', ''],
+  ['ing', ''],
+  ['ies', 'y'],
+  ['ied', 'y'],
+  ['ier', 'y'],
+  // No agentive `-er`: it would fold the role noun "writer" into every "write".
+  ['ed', ''],
+  ['es', ''],
+  ['s', ''],
+];
+
+/**
+ * A deliberately light stemmer, applied to the task and to every keyword alike
+ * so both sides land on the same form: "tests"/"testing" → "test",
+ * "translations"/"translate" → "translat", "verification"/"verify" → "verify".
+ * Without it a keyword matched only its exact spelling, and "add translations"
+ * scored nothing against the i18n role's "translation".
+ */
+export function stemDispatchWord(word: string): string {
+  let stem = word;
+  if (stem.length > 3 && !/(?:ss|us|is|eed)$/.test(stem)) {
+    for (const [suffix, replacement] of STEM_RULES) {
+      if (!stem.endsWith(suffix)) continue;
+      const base = stem.slice(0, -suffix.length);
+      if (base.length + replacement.length < 3) continue;
+      stem = base + replacement;
+      break;
+    }
+  }
+  return stem.length >= 4 && stem.endsWith('e') ? stem.slice(0, -1) : stem;
+}
+
+function dispatchWords(text: string): string[] {
+  return normalize(text).split(/\s+/).filter(Boolean).map(stemDispatchWord);
+}
+
 /**
  * Score every agent against the task. A keyword hit adds 1 point; a multi-word
  * keyword phrase adds points equal to its word count (more specific = stronger
  * signal). Returns candidates sorted best-first, zero-score agents dropped.
+ *
+ * Keywords that reduce to the same words count once. Role definitions spread a
+ * shared `signals` list and then repeat its entries (`'android'`, `'ipc'`), and
+ * spelling variants (`end-to-end` / `end to end`) normalize together; counted
+ * per entry, those 26 roles scored every hit twice and won ties they had no
+ * claim to — "explore how the mailbox IPC works" went to `desktop`.
  */
 export function scoreAgents(
   task: string,
   catalog: Record<string, AgentDefinition> = AGENT_CATALOG,
 ): DispatchCandidate[] {
   // Tokenize once — O(task words) — then do O(1) set lookups per keyword
-  const haySet = new Set(normalize(task).split(/\s+/).filter(Boolean));
+  const haySet = new Set(dispatchWords(task));
   const out: DispatchCandidate[] = [];
   for (const def of Object.values(catalog)) {
     if (!def?.config?.role) continue;
+    const hits: { kw: string; words: string[] }[] = [];
+    const counted = new Set<string>();
+    for (const kw of def.capability.keywords) {
+      const needleWords = dispatchWords(kw);
+      const key = needleWords.join(' ');
+      if (!key || counted.has(key)) continue;
+      counted.add(key);
+      // Check if all words in the keyword phrase are present in the task
+      if (needleWords.every((w) => haySet.has(w))) hits.push({ kw, words: needleWords });
+    }
+    // Longest phrases first; a hit whose words a longer hit of the same role
+    // already covered adds nothing — "test" inside "write tests" is one
+    // signal, not two.
+    hits.sort((a, b) => b.words.length - a.words.length);
     let score = 0;
     const matched: string[] = [];
-    for (const kw of def.capability.keywords) {
-      const needleWords = normalize(kw).split(/\s+/).filter(Boolean);
-      // Check if all words in the keyword phrase are present in the task
-      const allPresent = needleWords.every((w) => haySet.has(w));
-      if (allPresent) {
-        score += needleWords.length;
-        matched.push(kw);
-      }
+    const covered = new Set<string>();
+    for (const hit of hits) {
+      if (hit.words.every((w) => covered.has(w))) continue;
+      for (const w of hit.words) covered.add(w);
+      score += hit.words.length;
+      matched.push(hit.kw);
     }
     if (score > 0) {
       out.push({ role: def.config.role, name: def.config.name, score, matched });

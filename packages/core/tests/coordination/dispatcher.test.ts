@@ -96,6 +96,36 @@ describe('scoreAgents', () => {
     expect(ranked[0]?.role).toBe('e2e');
   });
 
+  it('counts a repeated or spelling-variant keyword once', () => {
+    const def = (role: string, keywords: string[]) => ({
+      config: { role, name: role },
+      budget: {},
+      capability: { phase: 'build' as const, summary: role, keywords },
+    });
+    const ranked = scoreAgents('explore how the mailbox ipc works', {
+      desktop: def('desktop', ['ipc', 'ipc', 'IPC']),
+      explore: def('explore', ['explore']),
+    });
+    expect(ranked.map((c) => [c.role, c.score])).toEqual([
+      ['desktop', 1],
+      ['explore', 1],
+    ]);
+    // On the real catalog the duplicated `ipc` no longer outvotes `explore`.
+    expect(scoreAgents('explore how the mailbox ipc works')[0]?.role).toBe('explore');
+  });
+
+  it('does not count a keyword already covered by a longer matched phrase', () => {
+    const ranked = scoreAgents('write tests for the parser');
+    const test = ranked.find((c) => c.role === 'test');
+    expect(test?.matched).toContain('write tests');
+    expect(test?.matched).not.toContain('test');
+  });
+
+  it('matches inflected task words against keyword stems', () => {
+    expect(scoreAgents('add translations for the onboarding screen')[0]?.role).toBe('i18n');
+    expect(scoreAgents('write unit tests for the journal')[0]?.role).toBe('test');
+  });
+
   it('returns empty for a task with no signal', () => {
     expect(scoreAgents('zzzzz qqqqq wwwww')).toEqual([]);
   });
