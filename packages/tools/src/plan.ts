@@ -483,10 +483,12 @@ export const planTool: Tool<PlanInput, PlanOutput> = {
       // (mirrors the plan-path derivation above; handles both separators).
       if (input.scope === 'project') {
         const lastSep = Math.max(taskPath.lastIndexOf('/'), taskPath.lastIndexOf('\\'));
-        taskPath =
-          lastSep >= 0
-            ? taskPath.slice(0, lastSep + 1) + 'backlog.tasks.json'
-            : 'backlog.tasks.json';
+        if (lastSep < 0) {
+          throw new Error(
+            `plan: cannot derive the project-scoped task path: session task path "${taskPath}" has no directory component.`,
+          );
+        }
+        taskPath = taskPath.slice(0, lastSep + 1) + 'backlog.tasks.json';
       }
       const now = new Date().toISOString();
       // Mutate the cross-file under ITS OWN lock — a raw loadTasks/push/saveTasks

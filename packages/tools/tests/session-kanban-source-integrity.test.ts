@@ -101,6 +101,48 @@ describe('session Kanban source integrity', () => {
       expect(sb.ctx.todos.every((todo) => todo.status === 'completed')).toBe(true);
     },
   );
+  it.each(['plan', 'task'] as const)(
+    'prefers %s.path.resolved over the session default path when synchronizing Kanban edits back to source',
+    async (source) => {
+      const sessionPath = `${sb.dir}/session-${source}.json`;
+      const resolvedPath = `${sb.dir}/project/backlog.${source === 'plan' ? 'plan' : 'tasks'}.json`;
+      const at = new Date().toISOString();
+      sb.ctx.meta[`${source}.path`] = sessionPath;
+      sb.ctx.meta[`${source}.path.resolved`] = resolvedPath;
+      if (source === 'plan') {
+        await savePlan(resolvedPath, {
+          version: 1,
+          sessionId: 'test',
+          updatedAt: at,
+          items: [{ id: 'same', title: 'Source', status: 'open', createdAt: at, updatedAt: at }],
+        });
+      } else {
+        await saveTasks(resolvedPath, {
+          version: 1,
+          sessionId: 'test',
+          updatedAt: at,
+          tasks: [
+            {
+              id: 'same',
+              title: 'Source',
+              type: 'feature',
+              priority: 'medium',
+              status: 'pending',
+              createdAt: at,
+              updatedAt: at,
+            },
+          ],
+        });
+      }
+      const result = await applySessionKanbanTaskToSource(sb.ctx, card(source));
+      expect(result.source).toBe(source);
+      if (source === 'plan') {
+        expect((await loadPlan(resolvedPath))?.items[0]?.status).toBe('done');
+      } else {
+        expect((await loadTasks(resolvedPath))?.tasks[0]?.status).toBe('completed');
+      }
+    },
+  );
   it('reports source synchronization failure after the board edit instead of claiming full success', async () => {
     const board = await createBoard(sb.dir, { title: 'Source sync' });
     const added = await addTask(sb.dir, board.id, { title: 'Source', origin: card('plan').origin });

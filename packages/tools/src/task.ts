@@ -268,10 +268,12 @@ export const taskTool: Tool<TaskInput, TaskOutput> = {
           sessionTaskPath.lastIndexOf('/'),
           sessionTaskPath.lastIndexOf('\\'),
         );
-        taskPath =
-          lastSep >= 0
-            ? sessionTaskPath.slice(0, lastSep + 1) + 'backlog.tasks.json'
-            : 'backlog.tasks.json';
+        if (lastSep < 0) {
+          throw new Error(
+            `task: cannot derive the project-scoped task path: session task path "${sessionTaskPath}" has no directory component.`,
+          );
+        }
+        taskPath = sessionTaskPath.slice(0, lastSep + 1) + 'backlog.tasks.json';
       }
     } else {
       taskPath = sessionTaskPath;
@@ -623,8 +625,12 @@ export const taskTool: Tool<TaskInput, TaskOutput> = {
       // handle both separators.
       if (input.scope === 'project') {
         const lastSep = Math.max(planPath.lastIndexOf('/'), planPath.lastIndexOf('\\'));
-        planPath =
-          lastSep >= 0 ? planPath.slice(0, lastSep + 1) + 'backlog.plan.json' : 'backlog.plan.json';
+        if (lastSep < 0) {
+          throw new Error(
+            `task: cannot derive the project-scoped plan path: session plan path "${planPath}" has no directory component.`,
+          );
+        }
+        planPath = planPath.slice(0, lastSep + 1) + 'backlog.plan.json';
       }
       // Mutate the cross-file under ITS OWN lock so a concurrent plan tool
       // call in the same batch can't clobber the write.

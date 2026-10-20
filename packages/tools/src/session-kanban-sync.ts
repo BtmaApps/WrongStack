@@ -393,7 +393,7 @@ export async function applySessionKanbanTaskToSource(
 
   const id = context.session?.id ?? '';
   if (isPlanOrigin) {
-    const planPath = context.meta['plan.path'];
+    const planPath = context.meta['plan.path.resolved'] ?? context.meta['plan.path'];
     if (typeof planPath !== 'string' || !planPath) {
       throw new Error(
         'Cannot reflect this Kanban edit back to its plan source: the session has no plan.path configured. ' +
@@ -427,7 +427,7 @@ export async function applySessionKanbanTaskToSource(
   }
 
   if (isTaskOrigin) {
-    const taskPath = context.meta['task.path'];
+    const taskPath = context.meta['task.path.resolved'] ?? context.meta['task.path'];
     if (typeof taskPath !== 'string' || !taskPath) {
       throw new Error(
         'Cannot reflect this Kanban edit back to its task source: the session has no task.path configured. ' +

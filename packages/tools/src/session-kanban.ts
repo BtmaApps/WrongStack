@@ -263,18 +263,24 @@ export function attachSessionKanbanMirror(context: Context): () => void {
     const generation = watcherGeneration;
     const managedBoardId = activeManagedBoardId();
     if (!id || detached) return;
-    const planPath = context.meta['plan.path'];
-    const taskPath = context.meta['task.path'];
+    const planPath = context.meta['plan.path.resolved'] ?? context.meta['plan.path'];
+    const taskPath = context.meta['task.path.resolved'] ?? context.meta['task.path'];
     if (typeof planPath === 'string' && planPath) {
       const plan = await loadPlan(planPath);
-      if (!isCurrent(id, managedBoardId, generation) || context.meta['plan.path'] !== planPath)
+      if (
+        !isCurrent(id, managedBoardId, generation) ||
+        (context.meta['plan.path.resolved'] ?? context.meta['plan.path']) !== planPath
+      )
         return;
       if (plan) await projectSessionPlanToKanban(attachedProjectRoot, plan.items, id);
     }
     if (!isCurrent(id, managedBoardId, generation)) return;
     if (typeof taskPath === 'string' && taskPath) {
       const tasks = await loadTasks(taskPath);
-      if (!isCurrent(id, managedBoardId, generation) || context.meta['task.path'] !== taskPath)
+      if (
+        !isCurrent(id, managedBoardId, generation) ||
+        (context.meta['task.path.resolved'] ?? context.meta['task.path']) !== taskPath
+      )
         return;
       if (tasks) await projectSessionTasksToKanban(attachedProjectRoot, tasks.tasks, id);
     }
@@ -505,12 +511,12 @@ async function hydrateSessionKanbanBoard(
   if (context.todos?.length) {
     board = await projectSessionTodosToKanban(context.projectRoot, context.todos, id);
   }
-  const planPath = context.meta?.['plan.path'];
+  const planPath = context.meta?.['plan.path.resolved'] ?? context.meta?.['plan.path'];
   if (typeof planPath === 'string' && planPath) {
     const plan = await loadPlan(planPath);
     if (plan) board = await projectSessionPlanToKanban(context.projectRoot, plan.items, id);
   }
-  const taskPath = context.meta?.['task.path'];
+  const taskPath = context.meta?.['task.path.resolved'] ?? context.meta?.['task.path'];
   if (typeof taskPath === 'string' && taskPath) {
     const tasks = await loadTasks(taskPath);
     if (tasks) board = await projectSessionTasksToKanban(context.projectRoot, tasks.tasks, id);

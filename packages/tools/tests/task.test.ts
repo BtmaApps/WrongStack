@@ -435,6 +435,41 @@ describe('taskTool', () => {
     ).rejects.toThrow(/not configured/i);
   });
 
+  it('refuses project scope when task.path or plan.path has no directory separator', async () => {
+    const bareCtx = {
+      cwd: sb.dir,
+      projectRoot: sb.dir,
+      session: { id: 'x', append: async () => undefined, close: async () => undefined },
+      meta: { 'task.path': 'bare-tasks.json', 'plan.path': 'bare-plan.json' },
+    } as never as Context;
+    await expect(
+      taskTool.execute({ action: 'show', scope: 'project' }, bareCtx, { signal: newSignal() }),
+    ).rejects.toThrow(/has no directory component/i);
+
+    const validTaskBarePlanCtx = {
+      cwd: sb.dir,
+      projectRoot: sb.dir,
+      session: { id: 'x', append: async () => undefined, close: async () => undefined },
+      meta: { 'task.path': sb.taskPath, 'plan.path': 'bare-plan.json' },
+    } as never as Context;
+    await taskTool.execute(
+      {
+        action: 'replace',
+        scope: 'project',
+        tasks: [{ id: 't1', title: 'T', type: 'feature', priority: 'low', status: 'pending' }],
+      },
+      validTaskBarePlanCtx,
+      { signal: newSignal() },
+    );
+    await expect(
+      taskTool.execute(
+        { action: 'planify', target: 't1', scope: 'project' },
+        validTaskBarePlanCtx,
+        { signal: newSignal() },
+      ),
+    ).rejects.toThrow(/has no directory component/i);
+  });
+
   it('replace without tasks array throws', async () => {
     await expect(
       taskTool.execute({ action: 'replace' }, sb.ctx, { signal: newSignal() }),
