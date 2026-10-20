@@ -85,10 +85,10 @@ export function renderLeaderModelMenu(
     lines.push(`- Default: a worker with no route below runs on your own model, ${own}.`);
   }
   if (routes.length > 0) {
-    // A route fills the model before the tier layer runs, and tiers only fill
-    // unset model fields — so on these roles a `tier` changes the budget only.
+    // A chosen tier outranks a route (see `resolveDirectorSpawnModel`), so the
+    // leader is told both ways off the route, not just the provider+model one.
     lines.push(
-      '- Routed by the user — these roles already get this model; `tier` does not change it, only an explicit `provider` + `model` does:',
+      '- Routed by the user — these roles get this model unless you pass a `tier` or an explicit `provider` + `model`:',
       ...routes,
     );
   }
@@ -97,7 +97,7 @@ export function renderLeaderModelMenu(
   }
   if (providers.length > 0) {
     lines.push(
-      `- Configured providers: ${providers.join(', ')}. For an explicit pick pass \`provider\` AND \`model\` together — a provider alone is not enough: the model is then filled from the routing table, the default tier or your own model.`,
+      `- Configured providers: ${providers.join(', ')}. For an explicit pick pass \`provider\` AND \`model\` together — a provider alone is not enough: the model is then filled from your \`tier\`, the routing table, the default tier or your own model.`,
     );
   }
   return lines.join('\n');

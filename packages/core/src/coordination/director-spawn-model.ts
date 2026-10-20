@@ -148,11 +148,26 @@ export function resolveDirectorSpawnModel(
     }
   }
 
+  // A tier someone CHOSE for this spawn (the leader's `tier`, a Kanban or
+  // trigger route, a user lane) is more specific than the role's standing
+  // route, so the matrix steps aside and the tier fills the model below. The
+  // tier used to be fill-only here, so on a routed role `tier: 'budget'` only
+  // tightened the budget and kept the routed model — the reverse of what the
+  // caller asked for. A guessed tier, or one naming no configured level, still
+  // leaves the route in charge.
+  const chosenTierModel =
+    tier && !config.tierSuggested && opts.config
+      ? resolveTier(opts.config, { role: config.role, tier })
+      : undefined;
+  const tierOutranksRoute = Boolean(
+    chosenTierModel && chosenTierModel.source === 'explicit' && chosenTierModel.model,
+  );
+
   // Per-task model matrix: when the caller didn't pin a model, resolve one
   // from the matrix by role (→ phase → `*`). Done here, before the spawned
   // event + manifest + coordinator handoff, so the fleet UI and the agent
   // itself all reflect the matched model. Explicit per-spawn models win.
-  if (!config.model && opts.modelMatrix) {
+  if (!config.model && opts.modelMatrix && !tierOutranksRoute) {
     const matrix = typeof opts.modelMatrix === 'function' ? opts.modelMatrix() : opts.modelMatrix;
     const resolution = resolveModelMatrixResolution(matrix, config.role);
     const entry =
@@ -184,11 +199,12 @@ export function resolveDirectorSpawnModel(
     }
   }
 
-  // Deterministic tier layer. Runs AFTER the matrix so an explicit /setmodel
-  // role or phase pin still wins — a tier is a default, not an override — and
-  // BEFORE the session fallback so a routed job actually lands on its level's
-  // model instead of silently inheriting the leader's. Only fields still unset
-  // are filled, so `delegate({ model })` is never second-guessed.
+  // Deterministic tier layer. Runs AFTER the matrix so a routing-table pin wins
+  // over a tier the routing table itself implied (role/phase/default) — only a
+  // chosen tier skipped the matrix above — and BEFORE the session fallback so a
+  // routed job actually lands on its level's model instead of silently
+  // inheriting the leader's. Only fields still unset are filled, so
+  // `delegate({ model })` is never second-guessed.
   if (opts.config) {
     // An explicit tier that names no configured level is a config mistake, and
     // the failure mode is silent: the job would just run at whatever the matrix

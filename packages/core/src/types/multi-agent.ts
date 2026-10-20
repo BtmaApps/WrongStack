@@ -206,6 +206,11 @@ export interface SubagentConfig {
    */
   tier?: string | undefined;
   /**
+   * `tier` was guessed by `delegate`'s tier suggester rather than chosen. A
+   * chosen tier outranks the role's routing-table model; a guess does not.
+   */
+  tierSuggested?: boolean | undefined;
+  /**
    * Budget field names the CALLER pinned explicitly (e.g. `delegate({ maxCostUsd })`).
    * The tier layer never touches a pinned field: a number the user typed is a
    * decision, while a roster default is just a default. Without this marker the

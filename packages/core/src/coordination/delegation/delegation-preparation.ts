@@ -287,7 +287,10 @@ export async function prepareDelegation(
   if (i.tier) cfg.tier = i.tier;
   else if (!cfg.model && !cfg.provider && opts.suggestTier) {
     const suggested = await opts.suggestTier({ task: i.task, role: i.role });
-    if (suggested) cfg.tier = suggested;
+    if (suggested) {
+      cfg.tier = suggested;
+      cfg.tierSuggested = true;
+    }
   }
   const budgetPins: string[] = [];
   if (typeof i.maxIterations === 'number') budgetPins.push('maxIterations');
