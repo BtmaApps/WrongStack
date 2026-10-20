@@ -1,3 +1,4 @@
+import { DefaultSecretScrubber } from '@wrongstack/core/security';
 import { toErrorMessage } from '@wrongstack/core/utils';
 import type { WebSocket } from 'ws';
 import type { WSServerMessage } from '../types.js';
@@ -5,6 +6,11 @@ import type { CollabContext } from './collab-context.js';
 
 /** How many historical events to replay to a late-joining observer. */
 export const REPLAY_LIMIT = 50;
+
+function defaultScrub(): (value: unknown) => unknown {
+  const scrubber = new DefaultSecretScrubber();
+  return (value) => scrubber.scrubObject(value);
+}
 
 /**
  * Replay the last `REPLAY_LIMIT` events from the on-disk session log
@@ -47,6 +53,7 @@ export async function replayHistory(
       : // Unwrap the ring back into chronological order.
         [...ring.slice(seen % REPLAY_LIMIT), ...ring.slice(0, seen % REPLAY_LIMIT)];
   if (tail.length === 0) return; // nothing to replay
+  const scrub = ctx.options.scrubPayload ?? defaultScrub();
   for (const raw of tail) {
     const ev = raw as {
       type?: string | undefined;
@@ -55,11 +62,18 @@ export async function replayHistory(
     };
     const kind = historyEventToKind(ev);
     if (!kind) continue; // skip events we don't know how to mirror
+    let payload: unknown = ev;
+    try {
+      payload = JSON.parse(JSON.stringify(ev));
+      payload = scrub(payload);
+    } catch {
+      continue;
+    }
     const msg: WSServerMessage = {
       type: 'collab.event',
       payload: {
         kind,
-        payload: ev,
+        payload,
         at: ev.ts ?? new Date().toISOString(),
         replay: true,
       },

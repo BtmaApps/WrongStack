@@ -1029,6 +1029,38 @@ describe('CollaborationWebSocketHandler — mirrored payload scrubbing', () => {
     expect(lastOfType(ws, 'collab.event')).toBeUndefined();
     h.dispose();
   });
+
+  it('redacts secrets in replayed history events for late-joining observers', async () => {
+    const fakeReader = {
+      async *replay(sessionId: string) {
+        if (sessionId !== 's-replay-scrub') return;
+        yield {
+          type: 'tool_result',
+          ts: '2026-01-01T00:00:01Z',
+          name: 'bash',
+          output: `Authorization: token ${token}`,
+        };
+      },
+    };
+    const events = new EventBus();
+    const h = new CollaborationWebSocketHandler(events, noopLogger, fakeReader as any);
+    const ws = fakeWs();
+    h.addClient(ws);
+    h.handleMessage(ws, {
+      type: 'collab.join',
+      payload: { sessionId: 's-replay-scrub', role: 'observer' },
+    });
+
+    await new Promise((r) => setImmediate(r));
+    await new Promise((r) => setImmediate(r));
+
+    const replayed = ws.sent.filter(
+      (m: any) => m.type === 'collab.event' && m.payload.replay === true,
+    );
+    expect(replayed).toHaveLength(1);
+    expect(JSON.stringify(replayed[0])).not.toContain(token);
+    h.dispose();
+  });
 });
 
 // Minimal wiring helper: a fresh handler with a real bus (no
