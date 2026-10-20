@@ -262,7 +262,7 @@ export function BrainCouncilDemo() {
   };
 
   return (
-    <section className="site-section site-section--demo border-b border-line bg-[#11131a] text-white">
+    <section className="site-section site-section--demo border-b border-line site-terminal bg-[#11131a] text-white">
       <div className="site-container">
         <div className="mb-9 grid gap-5 lg:grid-cols-[0.8fr_1.2fr] lg:items-end">
           <div>
@@ -280,7 +280,7 @@ export function BrainCouncilDemo() {
           </p>
         </div>
 
-        <div className="overflow-hidden rounded-[26px] border border-white/10 bg-[#090b10] shadow-2xl shadow-black/30">
+        <div className="overflow-hidden rounded-[26px] border border-white/10 site-terminal bg-[#090b10] shadow-2xl shadow-black/30">
           <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/[0.08] px-4 py-4 sm:px-5">
             <div className="flex items-center gap-3">
               <span className="grid size-9 place-items-center rounded-xl border border-brand/20 bg-brand/10 text-brand">
@@ -290,7 +290,7 @@ export function BrainCouncilDemo() {
                 <div className="font-mono text-xs font-black uppercase tracking-[0.16em] text-zinc-300">
                   Decision {String(scenarioIndex + 1).padStart(2, '0')} / {scenarios.length}
                 </div>
-                <div className="mt-1 flex items-center gap-2 font-mono text-xs text-zinc-600">
+                <div className="mt-1 flex items-center gap-2 font-mono text-xs text-terminal-muted">
                   <span className="uppercase">risk / {scenario.risk}</span>
                   <span>·</span>
                   <span>example / 1 round · 15s per seat</span>
@@ -316,7 +316,7 @@ export function BrainCouncilDemo() {
                 type="button"
                 onClick={reset}
                 aria-label="Restart council story"
-                className="grid size-8 place-items-center rounded-lg border border-white/10 text-zinc-500 transition-colors hover:border-brand-2/30 hover:text-brand-2"
+                className="grid size-8 place-items-center rounded-lg border border-white/10 text-terminal-muted transition-colors hover:border-brand-2/30 hover:text-brand-2"
               >
                 <RotateCcw className="size-3.5" />
               </button>
@@ -337,8 +337,8 @@ export function BrainCouncilDemo() {
                       'flex min-w-max items-center gap-2 rounded-full border px-3 py-1.5 font-mono text-xs font-black uppercase tracking-wider transition-colors',
                       active && 'border-brand/35 bg-brand/10 text-brand',
                       completed && 'border-emerald-300/20 bg-emerald-300/[0.06] text-emerald-300',
-                      !active && !completed && 'border-white/[0.07] text-zinc-600',
-                      skipped && 'opacity-35',
+                      !active && !completed && 'border-white/[0.07] text-terminal-muted',
+                      skipped && 'border-dashed',
                     )}
                   >
                     <span
@@ -355,14 +355,14 @@ export function BrainCouncilDemo() {
           </div>
 
           <div className="grid gap-px bg-white/[0.07] lg:grid-cols-[0.72fr_1.28fr]">
-            <div className="bg-[#0f1219] p-4 sm:p-6">
+            <div className="site-terminal bg-[#0f1219] p-4 sm:p-6">
               <span className="font-mono text-xs font-black uppercase tracking-[0.17em] text-brand-2">
                 High-risk request
               </span>
               <h3 className="mt-4 text-xl font-black leading-7 tracking-[-0.025em] text-zinc-100">
                 {scenario.question}
               </h3>
-              <p className="mt-3 text-xs leading-6 text-zinc-500">{scenario.context}</p>
+              <p className="mt-3 text-xs leading-6 text-terminal-muted">{scenario.context}</p>
               <div className="mt-5 grid gap-2">
                 {[
                   ['canary', 'Proceed with bounded action'],
@@ -374,7 +374,7 @@ export function BrainCouncilDemo() {
                     className="flex items-center justify-between rounded-lg border border-white/[0.07] bg-white/[0.025] px-3 py-2.5"
                   >
                     <span className="text-xs text-zinc-400">{label}</span>
-                    <code className="font-mono text-xs text-zinc-600">{id}</code>
+                    <code className="font-mono text-xs text-terminal-muted">{id}</code>
                   </div>
                 ))}
               </div>
@@ -382,24 +382,24 @@ export function BrainCouncilDemo() {
                 <div className="flex items-center gap-2 font-mono text-xs font-black uppercase tracking-wider text-cyan-300">
                   <Sparkles className="size-3.5" /> Decision ledger digest
                 </div>
-                <p className="mt-2 text-xs leading-5 text-zinc-500">
+                <p className="mt-2 text-xs leading-5 text-terminal-muted">
                   Similar changes: 3 · successful canaries: 2 · one rollback after latency
                   regression.
                 </p>
               </div>
             </div>
 
-            <div className="bg-[#0b0e14] p-4 sm:p-6">
+            <div className="site-terminal bg-[#0b0e14] p-4 sm:p-6">
               <div className="flex items-center justify-between gap-4">
                 <div>
-                  <span className="font-mono text-xs font-black uppercase tracking-[0.16em] text-zinc-500">
+                  <span className="font-mono text-xs font-black uppercase tracking-[0.16em] text-terminal-muted">
                     Independent voting seats
                   </span>
-                  <p className="mt-1 text-xs text-zinc-600">
+                  <p className="mt-1 text-xs text-terminal-muted">
                     This first round hides peer ballots; later configured rounds share them.
                   </p>
                 </div>
-                <span className="flex items-center gap-1.5 font-mono text-xs text-zinc-600">
+                <span className="flex items-center gap-1.5 font-mono text-xs text-terminal-muted">
                   <Users className="size-3" /> {castVotes}/{seats.length} returned
                 </span>
               </div>
@@ -415,7 +415,7 @@ export function BrainCouncilDemo() {
                       initial={reducedMotion ? false : { opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: reducedMotion ? 0 : index * 0.06 }}
-                      className="rounded-xl border border-white/[0.08] bg-[#151821] p-3.5"
+                      className="rounded-xl border border-white/[0.08] site-terminal bg-[#151821] p-3.5"
                     >
                       <div className="flex items-start gap-3">
                         <span
@@ -429,11 +429,11 @@ export function BrainCouncilDemo() {
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center justify-between gap-2">
                             <strong className="text-sm text-zinc-200">{seat.persona}</strong>
-                            <span className="font-mono text-xs text-zinc-600">
+                            <span className="font-mono text-xs text-terminal-muted">
                               weight {seat.weight.toFixed(2)}
                             </span>
                           </div>
-                          <div className="mt-0.5 truncate font-mono text-xs text-zinc-600">
+                          <div className="mt-0.5 truncate font-mono text-xs text-terminal-muted">
                             {seat.provider} / {seat.model}
                             {seat.veto ? ' · VETO SEAT' : ''}
                           </div>
@@ -442,7 +442,7 @@ export function BrainCouncilDemo() {
 
                       <div className="mt-3 border-t border-white/[0.07] pt-3">
                         {!votesVisible ? (
-                          <div className="flex items-center gap-2 font-mono text-xs text-zinc-600">
+                          <div className="flex items-center gap-2 font-mono text-xs text-terminal-muted">
                             <motion.span
                               animate={reducedMotion ? undefined : { opacity: [0.25, 1, 0.25] }}
                               transition={{
@@ -464,10 +464,12 @@ export function BrainCouncilDemo() {
                             >
                               {voteLabels[vote]}
                             </span>
-                            <p className="mt-2 text-xs leading-4 text-zinc-500">{rationale}</p>
+                            <p className="mt-2 text-xs leading-4 text-terminal-muted">
+                              {rationale}
+                            </p>
                           </>
                         ) : (
-                          <div className="flex items-center gap-2 font-mono text-xs text-zinc-600">
+                          <div className="flex items-center gap-2 font-mono text-xs text-terminal-muted">
                             <XCircle className="size-3 text-rose-300" /> timeout · no valid vote
                           </div>
                         )}
@@ -480,9 +482,9 @@ export function BrainCouncilDemo() {
           </div>
 
           <div className="grid gap-px border-t border-white/[0.08] bg-white/[0.07] lg:grid-cols-[0.78fr_1.22fr]">
-            <div className="bg-[#0f1219] p-4 sm:p-5">
+            <div className="site-terminal bg-[#0f1219] p-4 sm:p-5">
               <div className="flex items-center justify-between gap-3">
-                <span className="font-mono text-xs font-black uppercase tracking-[0.16em] text-zinc-500">
+                <span className="font-mono text-xs font-black uppercase tracking-[0.16em] text-terminal-muted">
                   Resolution math
                 </span>
                 <span
@@ -503,7 +505,7 @@ export function BrainCouncilDemo() {
                   return (
                     <div key={option}>
                       <div className="flex items-center justify-between font-mono text-xs">
-                        <span className="text-zinc-500">{voteLabels[option]}</span>
+                        <span className="text-terminal-muted">{voteLabels[option]}</span>
                         <span className="text-zinc-300">{weight.toFixed(2)}</span>
                       </div>
                       <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
@@ -525,7 +527,7 @@ export function BrainCouncilDemo() {
                   );
                 })}
               </div>
-              <div className="mt-4 grid grid-cols-3 gap-2 font-mono text-xs uppercase tracking-wider text-zinc-600">
+              <div className="mt-4 grid grid-cols-3 gap-2 font-mono text-xs uppercase tracking-wider text-terminal-muted">
                 <span
                   className={cn(
                     'rounded-lg border p-2 text-center',
@@ -563,7 +565,7 @@ export function BrainCouncilDemo() {
               </div>
             </div>
 
-            <div className="bg-[#0b0e14] p-4 sm:p-5">
+            <div className="site-terminal bg-[#0b0e14] p-4 sm:p-5">
               {activeStage === 'judge' && (
                 <motion.div
                   initial={reducedMotion ? false : { opacity: 0, scale: 0.98 }}
@@ -612,7 +614,7 @@ export function BrainCouncilDemo() {
                   <h3 className="mt-2 text-lg font-black tracking-[-0.025em] text-zinc-100">
                     {resolutionVisible ? scenario.verdict : 'Council decision pending'}
                   </h3>
-                  <p className="mt-1.5 text-xs leading-5 text-zinc-500">
+                  <p className="mt-1.5 text-xs leading-5 text-terminal-muted">
                     {resolutionVisible
                       ? scenario.rationale
                       : 'The resolution ladder stops at the first decisive boundary.'}
@@ -623,9 +625,9 @@ export function BrainCouncilDemo() {
           </div>
         </div>
 
-        <div className="mt-4 flex flex-col gap-2 text-xs leading-5 text-zinc-500 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-4 flex flex-col gap-2 text-xs leading-5 text-terminal-muted sm:flex-row sm:items-center sm:justify-between">
           <p>Illustrative local simulation based on the shipped Council resolution ladder.</p>
-          <p className="font-mono text-xs uppercase tracking-wider text-zinc-600">
+          <p className="font-mono text-xs uppercase tracking-wider text-terminal-muted">
             independent votes → quorum → veto → majority → judge
           </p>
         </div>

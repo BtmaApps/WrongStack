@@ -123,8 +123,8 @@ function StreamLine({ line }: { line: (typeof streamLines)[number] }) {
   if (line.kind === 'think') {
     return (
       <div className="flex gap-2.5">
-        <span className="shrink-0 text-zinc-600">✱ THINKING</span>
-        <span className="italic text-zinc-500">{line.text}</span>
+        <span className="shrink-0 text-terminal-muted">✱ THINKING</span>
+        <span className="italic text-terminal-muted">{line.text}</span>
       </div>
     );
   }
@@ -143,7 +143,7 @@ function StreamLine({ line }: { line: (typeof streamLines)[number] }) {
         <span className="min-w-0 truncate">
           <span className="font-bold text-cyan-300">{line.name}</span>{' '}
           <span className="text-zinc-400">{line.detail}</span>{' '}
-          <span className="text-zinc-600">· {line.meta}</span>
+          <span className="text-terminal-muted">· {line.meta}</span>
         </span>
       </div>
     );
@@ -192,7 +192,7 @@ function SwarmCard({
           />
         ))}
       </div>
-      <div className="mt-1.5 truncate font-mono text-[9px] text-zinc-500">{status}</div>
+      <div className="mt-1.5 truncate font-mono text-[9px] text-terminal-muted">{status}</div>
     </div>
   );
 }
@@ -230,7 +230,7 @@ export function TuiShowcase() {
           </p>
         </div>
 
-        <div className="overflow-hidden rounded-[26px] border border-white/10 bg-[#0a0b0f] shadow-2xl shadow-black/30">
+        <div className="overflow-hidden rounded-[26px] border border-white/10 site-terminal bg-[#0a0b0f] shadow-2xl shadow-black/30">
           {/* Frame title bar */}
           <div className="flex items-center justify-between gap-3 border-b border-white/[.08] px-4 py-3 sm:px-5">
             <div className="flex items-center gap-3">
@@ -241,10 +241,10 @@ export function TuiShowcase() {
                 <div className="font-mono text-xs font-black uppercase tracking-[0.18em] text-zinc-300">
                   WrongStack / TUI
                 </div>
-                <div className="text-xs text-zinc-600">read-only product preview</div>
+                <div className="text-xs text-terminal-muted">read-only product preview</div>
               </div>
             </div>
-            <div className="flex items-center gap-2 font-mono text-[8px] font-bold uppercase tracking-wider text-zinc-500">
+            <div className="flex items-center gap-2 font-mono text-[8px] font-bold uppercase tracking-wider text-terminal-muted">
               <span className="rounded-full border border-white/[.08] px-2.5 py-1.5">
                 v{version}
               </span>
@@ -259,21 +259,22 @@ export function TuiShowcase() {
           <div className="border-b border-white/[.06] px-4 py-10 text-center sm:py-12">
             <BrandMark className="mx-auto w-14 sm:w-16" />
             <PixelWord word="WRONGSTACK" className="mx-auto mt-5 w-full max-w-[560px]" />
-            <p className="mt-5 font-mono text-[11px] font-bold uppercase tracking-[0.3em] text-zinc-500">
+            <p className="mt-5 font-mono text-[11px] font-bold uppercase tracking-[0.3em] text-terminal-muted">
               Built on the wrong stack. Shipped anyway.
             </p>
-            <div className="mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5 font-mono text-[10px] text-zinc-500">
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5 font-mono text-[10px] text-terminal-muted">
               <span>
                 <span className="text-brand-2">◆</span> route&nbsp;&nbsp;openai-codex › gpt-5.6-sol
               </span>
               <span>
-                <span className="text-zinc-600">◇</span> family&nbsp;&nbsp;openai-codex
+                <span className="text-terminal-muted">◇</span> family&nbsp;&nbsp;openai-codex
               </span>
               <span>
-                <span className="text-zinc-600">⤿</span> workspace&nbsp;&nbsp;~/projects/WrongStack
+                <span className="text-terminal-muted">⤿</span>{' '}
+                workspace&nbsp;&nbsp;~/projects/WrongStack
               </span>
             </div>
-            <div className="mt-3 flex items-center justify-center gap-2 font-mono text-[10px] text-zinc-600">
+            <div className="mt-3 flex items-center justify-center gap-2 font-mono text-[10px] text-terminal-muted">
               <span className="text-brand">◆</span> wrongstack.com
               <span>·</span>
               <a
@@ -310,10 +311,10 @@ export function TuiShowcase() {
 
           {/* Input row */}
           <div className="border-t border-white/[.06] px-4 py-3 font-mono text-[11px] sm:px-6">
-            <div className="flex items-center justify-between text-zinc-500">
+            <div className="flex items-center justify-between text-terminal-muted">
               <span>
                 <span className="text-brand-2">◆</span> WRONGSTACK v{version}{' '}
-                <span className="text-zinc-600">[02:01]</span>
+                <span className="text-terminal-muted">[02:01]</span>
               </span>
               <span className="flex items-center gap-1.5">
                 <span className="size-1.5 animate-pulse rounded-full bg-brand-2" />
@@ -327,7 +328,7 @@ export function TuiShowcase() {
 
           {/* Agent swarm */}
           <div className="border-t border-white/[.06] px-4 py-4 sm:px-6">
-            <div className="flex items-center justify-between font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-zinc-500">
+            <div className="flex items-center justify-between font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-terminal-muted">
               <span>◈ Agent swarm / parallel workspace</span>
               <span className="flex items-center gap-1.5 text-emerald-300">
                 <span className="topology-pulse size-1.5 rounded-full bg-emerald-300" />
@@ -351,7 +352,7 @@ export function TuiShowcase() {
               ))}
             </div>
             <div className="mt-4 font-mono text-[10px]">
-              <div className="flex items-center justify-between text-zinc-500">
+              <div className="flex items-center justify-between text-terminal-muted">
                 <span className="font-bold uppercase tracking-[0.14em]">◈ Mission queue</span>
                 <span>
                   {doneCount >= missions.length ? 0 : 1} active ·{' '}
@@ -366,15 +367,15 @@ export function TuiShowcase() {
                     ) : i === doneCount ? (
                       <span className="text-brand-2">●</span>
                     ) : (
-                      <span className="text-zinc-600">○</span>
+                      <span className="text-terminal-muted">○</span>
                     )}
                     <span
                       className={cn(
                         i < doneCount
-                          ? 'text-zinc-600 line-through'
+                          ? 'text-terminal-muted line-through'
                           : i === doneCount
                             ? 'text-zinc-300'
-                            : 'text-zinc-600',
+                            : 'text-terminal-muted',
                       )}
                     >
                       {mission}
@@ -386,7 +387,7 @@ export function TuiShowcase() {
           </div>
 
           {/* Status bar */}
-          <div className="border-t border-white/[.08] bg-white/[0.02] px-4 py-2.5 font-mono text-[10px] text-zinc-500 sm:px-6">
+          <div className="border-t border-white/[.08] bg-white/[0.02] px-4 py-2.5 font-mono text-[10px] text-terminal-muted sm:px-6">
             <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1">
               <span className="font-bold text-brand-2">! YOLO</span>
               <span>∞ AUTO</span>

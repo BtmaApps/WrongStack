@@ -33,7 +33,7 @@ function KanbanLiteMockup({ reducedMotion }: { reducedMotion: boolean }) {
   }, [activeStage, reducedMotion]);
 
   return (
-    <div className="relative h-[380px] overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0b0e14] p-3 sm:p-4">
+    <div className="relative h-[380px] overflow-hidden rounded-2xl border border-white/[0.08] site-terminal bg-[#0b0e14] p-3 sm:p-4">
       <div className="flex items-center justify-between border-b border-white/[0.07] pb-3">
         <div className="flex items-center gap-2">
           <span className="grid size-7 place-items-center rounded-lg border border-cyan-300/20 bg-cyan-300/10 text-cyan-300">
@@ -43,7 +43,7 @@ function KanbanLiteMockup({ reducedMotion }: { reducedMotion: boolean }) {
             Sprint board
           </span>
         </div>
-        <span className="flex items-center gap-1.5 font-mono text-xs text-zinc-600">
+        <span className="flex items-center gap-1.5 font-mono text-xs text-terminal-muted">
           <CircleDot className="size-3 text-emerald-300" /> live
         </span>
       </div>
@@ -60,11 +60,11 @@ function KanbanLiteMockup({ reducedMotion }: { reducedMotion: boolean }) {
                 <div className="flex items-center justify-between gap-1">
                   <span className="flex min-w-0 items-center gap-1.5">
                     <span className={cn('size-1.5 shrink-0 rounded-full', column.dot)} />
-                    <span className="truncate font-mono text-xs font-bold uppercase text-zinc-500">
+                    <span className="truncate font-mono text-xs font-bold uppercase text-terminal-muted">
                       {column.label}
                     </span>
                   </span>
-                  <span className="font-mono text-xs text-zinc-700">
+                  <span className="font-mono text-xs text-terminal-muted">
                     {column.cards + (hasActiveCard ? 1 : 0)}
                   </span>
                 </div>
@@ -77,7 +77,7 @@ function KanbanLiteMockup({ reducedMotion }: { reducedMotion: boolean }) {
                         layout: { duration: reducedMotion ? 0 : 0.5, ease: [0.22, 1, 0.36, 1] },
                       }}
                       className={cn(
-                        'rounded-lg border bg-[#171b24] p-2 shadow-lg shadow-black/20',
+                        'rounded-lg border site-terminal bg-[#171b24] p-2 shadow-lg shadow-black/20',
                         visibleStage === 1 && 'border-brand-2/35',
                         visibleStage === 2 && 'border-violet-300/35',
                         visibleStage === 3 && 'border-emerald-300/35',
@@ -114,7 +114,7 @@ function KanbanLiteMockup({ reducedMotion }: { reducedMotion: boolean }) {
                   {Array.from({ length: column.cards }).map((_, cardIndex) => (
                     <div
                       key={`${column.label}-${cardIndex}`}
-                      className="rounded-lg border border-white/[0.07] bg-[#151922] p-2 shadow-lg shadow-black/10"
+                      className="rounded-lg border border-white/[0.07] site-terminal bg-[#151922] p-2 shadow-lg shadow-black/10"
                     >
                       <div className="h-1.5 w-7 rounded-full bg-white/10" />
                       <div className="mt-2 h-1.5 rounded-full bg-white/[0.055]" />
@@ -132,7 +132,7 @@ function KanbanLiteMockup({ reducedMotion }: { reducedMotion: boolean }) {
         </div>
       </LayoutGroup>
 
-      <div className="pointer-events-none absolute bottom-5 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-full border border-white/[0.08] bg-[#11141c] px-3 py-1 font-mono text-xs">
+      <div className="pointer-events-none absolute bottom-5 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-full border border-white/[0.08] site-terminal bg-[#11141c] px-3 py-1 font-mono text-xs">
         {[1, 2, 3].map((stage) => (
           <span
             key={stage}
@@ -144,7 +144,7 @@ function KanbanLiteMockup({ reducedMotion }: { reducedMotion: boolean }) {
                   : stage === 2
                     ? 'text-violet-300'
                     : 'text-emerald-300'
-                : 'text-zinc-700',
+                : 'text-terminal-muted',
             )}
           >
             <span
@@ -216,7 +216,7 @@ function BrainLiteMockup({ reducedMotion }: { reducedMotion: boolean }) {
   }, [reducedMotion, step, stages.length]);
 
   return (
-    <div className="relative h-[380px] overflow-hidden rounded-2xl border border-white/[0.08] bg-[#080b11] p-3 sm:p-4">
+    <div className="relative h-[380px] overflow-hidden rounded-2xl border border-white/[0.08] site-terminal bg-[#080b11] p-3 sm:p-4">
       <div className="flex items-center justify-between border-b border-white/[0.07] pb-3">
         <div className="flex items-center gap-2">
           <span className="grid size-8 place-items-center rounded-xl border border-brand/25 bg-brand/10 text-brand shadow-[0_0_24px_rgba(254,46,95,.12)]">
@@ -226,7 +226,7 @@ function BrainLiteMockup({ reducedMotion }: { reducedMotion: boolean }) {
             <span className="block font-mono text-xs font-black uppercase tracking-[0.14em] text-zinc-200">
               Decision Council
             </span>
-            <span className="mt-0.5 block font-mono text-xs text-zinc-600">
+            <span className="mt-0.5 block font-mono text-xs text-terminal-muted">
               independent seats · sealed rationales
             </span>
           </div>
@@ -248,7 +248,7 @@ function BrainLiteMockup({ reducedMotion }: { reducedMotion: boolean }) {
               'relative overflow-hidden rounded-lg border px-1.5 py-2 text-center font-mono text-xs font-black uppercase tracking-wide transition-colors',
               index < visibleStep && 'border-emerald-300/15 bg-emerald-300/[0.04] text-emerald-300',
               index === visibleStep && 'border-brand/30 bg-brand/10 text-brand',
-              index > visibleStep && 'border-white/[0.06] text-zinc-700',
+              index > visibleStep && 'border-white/[0.06] text-terminal-muted',
             )}
           >
             {stage}
@@ -276,7 +276,7 @@ function BrainLiteMockup({ reducedMotion }: { reducedMotion: boolean }) {
             <div className="h-2 w-2/3 rounded-full bg-white/[0.04]" />
           </div>
           <div className="mt-4 flex items-center justify-between border-t border-white/[0.07] pt-2.5 font-mono text-xs">
-            <span className="text-zinc-600">canary deploy</span>
+            <span className="text-terminal-muted">canary deploy</span>
             <span className="text-brand-2">10%</span>
           </div>
         </motion.div>
@@ -298,7 +298,7 @@ function BrainLiteMockup({ reducedMotion }: { reducedMotion: boolean }) {
                   : undefined
               }
               transition={{ duration: 1.1, delay: seat.delay }}
-              className="rounded-xl border border-white/[0.07] bg-[#141820] p-2.5"
+              className="rounded-xl border border-white/[0.07] site-terminal bg-[#141820] p-2.5"
             >
               <div className="flex items-center gap-2">
                 <span
@@ -311,7 +311,7 @@ function BrainLiteMockup({ reducedMotion }: { reducedMotion: boolean }) {
                 </span>
                 <div className="min-w-0">
                   <strong className="block truncate text-xs text-zinc-300">{seat.label}</strong>
-                  <span className="font-mono text-xs text-zinc-700">
+                  <span className="font-mono text-xs text-terminal-muted">
                     weight {index === 1 ? '1.5' : '1.0'}
                   </span>
                 </div>
@@ -334,8 +334,10 @@ function BrainLiteMockup({ reducedMotion }: { reducedMotion: boolean }) {
           className="rounded-xl border border-white/[0.07] bg-white/[0.025] p-2.5"
         >
           <div className="flex items-center justify-between font-mono text-xs font-bold uppercase tracking-wider">
-            <span className="text-zinc-500">Quorum</span>
-            <span className={visibleStep >= 2 ? 'text-emerald-300' : 'text-zinc-700'}>4 / 4</span>
+            <span className="text-terminal-muted">Quorum</span>
+            <span className={visibleStep >= 2 ? 'text-emerald-300' : 'text-terminal-muted'}>
+              4 / 4
+            </span>
           </div>
           <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
             <motion.div
@@ -345,7 +347,7 @@ function BrainLiteMockup({ reducedMotion }: { reducedMotion: boolean }) {
           </div>
         </motion.div>
 
-        <div className="grid place-items-center text-zinc-700">
+        <div className="grid place-items-center text-terminal-muted">
           <ArrowUpRight className="size-3.5 rotate-45" />
         </div>
 
@@ -354,8 +356,10 @@ function BrainLiteMockup({ reducedMotion }: { reducedMotion: boolean }) {
           className="rounded-xl border border-white/[0.07] bg-white/[0.025] p-2.5"
         >
           <div className="flex items-center justify-between font-mono text-xs font-bold uppercase tracking-wider">
-            <span className="text-zinc-500">Veto check</span>
-            <span className={visibleStep >= 3 ? 'text-emerald-300' : 'text-zinc-700'}>clear</span>
+            <span className="text-terminal-muted">Veto check</span>
+            <span className={visibleStep >= 3 ? 'text-emerald-300' : 'text-terminal-muted'}>
+              clear
+            </span>
           </div>
           <div className="mt-2 flex gap-1">
             {[0, 1, 2, 3].map((item) => (
@@ -444,7 +448,7 @@ export function CoordinationLitePreviews() {
             <Link
               key={preview.href}
               href={preview.href}
-              className="group overflow-hidden rounded-[24px] border border-white/10 bg-[#11141b] p-4 transition-all duration-300 hover:-translate-y-1 hover:border-brand/35 hover:shadow-2xl hover:shadow-black/25 sm:p-5"
+              className="group overflow-hidden rounded-[24px] border border-white/10 site-terminal bg-[#11141b] p-4 transition-all duration-300 hover:-translate-y-1 hover:border-brand/35 hover:shadow-2xl hover:shadow-black/25 sm:p-5"
             >
               {preview.mockup}
               <div className="flex items-end justify-between gap-5 px-1 pb-1 pt-5">
@@ -455,9 +459,11 @@ export function CoordinationLitePreviews() {
                   <h3 className="mt-2 text-xl font-black tracking-[-0.03em] text-zinc-100 sm:text-2xl">
                     {preview.title}
                   </h3>
-                  <p className="mt-2 max-w-lg text-xs leading-6 text-zinc-500">{preview.body}</p>
+                  <p className="mt-2 max-w-lg text-xs leading-6 text-terminal-muted">
+                    {preview.body}
+                  </p>
                 </div>
-                <span className="grid size-10 shrink-0 place-items-center rounded-full border border-white/10 text-zinc-400 transition-all group-hover:border-brand group-hover:bg-brand group-hover:text-white">
+                <span className="grid size-10 shrink-0 place-items-center rounded-full border border-white/10 text-zinc-400 transition-all group-hover:border-brand group-hover:bg-brand group-hover:text-on-brand">
                   <ArrowUpRight className="size-4 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
                 </span>
               </div>

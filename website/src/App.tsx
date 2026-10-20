@@ -325,7 +325,7 @@ export default function App() {
     <div className="relative isolate min-h-screen overflow-x-clip bg-bg text-fg antialiased">
       <a
         href="#main"
-        className="sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-brand focus:px-4 focus:py-2 focus:text-white"
+        className="sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-brand focus:px-4 focus:py-2 focus:text-on-brand"
       >
         Skip to content
       </a>
@@ -333,7 +333,7 @@ export default function App() {
       <SiteDecor />
       <div className="site-content">
         <Header />
-        <main id="main">
+        <main id="main" tabIndex={-1}>
           <Suspense
             fallback={
               <div className="site-foreground grid min-h-[75vh] place-items-center pt-24">

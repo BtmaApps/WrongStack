@@ -88,7 +88,7 @@ export function WrongStackFamily() {
                     href={product.docsHref}
                     target="_blank"
                     rel="noreferrer"
-                    aria-label={`Read ${product.name} documentation`}
+                    aria-label={`Read the docs for ${product.name}`}
                     className="mt-4 inline-flex items-center gap-1.5 text-xs font-bold text-muted hover:text-brand"
                   >
                     Read the docs <ArrowUpRight className="size-3" />

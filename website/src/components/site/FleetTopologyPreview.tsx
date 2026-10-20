@@ -64,7 +64,7 @@ function TopologyNode({
   return (
     <div
       className={cn(
-        'topology-node absolute z-20 w-[210px] rounded-2xl border bg-[#181b24]/95 p-4 text-zinc-100 backdrop-blur-xl',
+        'topology-node absolute z-20 w-[210px] rounded-2xl border site-terminal bg-[#181b24]/95 p-4 text-zinc-100 backdrop-blur-xl',
         toneStyle.frame,
         className,
       )}
@@ -74,19 +74,21 @@ function TopologyNode({
           <Icon className="size-4.5" />
         </span>
         <div className="min-w-0 flex-1">
-          <div className="font-mono text-[8px] font-bold uppercase tracking-[0.18em] text-zinc-600">
+          <div className="font-mono text-[8px] font-bold uppercase tracking-[0.18em] text-terminal-muted">
             {eyebrow}
           </div>
           <div className="mt-1 truncate text-sm font-black tracking-[-0.02em]">{title}</div>
-          <div className="mt-0.5 truncate font-mono text-xs text-zinc-500">{subtitle}</div>
+          <div className="mt-0.5 truncate font-mono text-xs text-terminal-muted">{subtitle}</div>
         </div>
         <span className={cn('topology-pulse mt-1 size-2 rounded-full', toneStyle.dot)} />
       </div>
       <div className="mt-4 grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-white/[.07] bg-white/[.07]">
         {metrics.map(([label, value]) => (
-          <div key={label} className="bg-[#141720] px-2.5 py-2">
+          <div key={label} className="site-terminal bg-[#141720] px-2.5 py-2">
             <div className="font-mono text-xs font-bold text-zinc-300">{value}</div>
-            <div className="mt-0.5 text-[8px] uppercase tracking-wider text-zinc-600">{label}</div>
+            <div className="mt-0.5 text-[8px] uppercase tracking-wider text-terminal-muted">
+              {label}
+            </div>
           </div>
         ))}
       </div>
@@ -108,7 +110,7 @@ function MobileFlow() {
         <div key={title}>
           <div
             className={cn(
-              'relative z-10 flex items-center gap-3 rounded-xl border bg-[#181b24]/95 p-3.5',
+              'relative z-10 flex items-center gap-3 rounded-xl border site-terminal bg-[#181b24]/95 p-3.5',
               toneStyles[tone].frame,
             )}
           >
@@ -119,7 +121,7 @@ function MobileFlow() {
             </span>
             <div>
               <div className="text-sm font-black text-zinc-100">{title}</div>
-              <div className="mt-0.5 text-xs text-zinc-500">{body}</div>
+              <div className="mt-0.5 text-xs text-terminal-muted">{body}</div>
             </div>
             <span className={cn('ml-auto size-2 rounded-full', toneStyles[tone].dot)} />
           </div>
@@ -152,7 +154,7 @@ export function FleetTopologyPreview() {
           </p>
         </div>
 
-        <div className="topology-preview overflow-hidden rounded-[26px] border border-white/10 bg-[#141720] shadow-2xl shadow-black/20">
+        <div className="topology-preview overflow-hidden rounded-[26px] border border-white/10 site-terminal bg-[#141720] shadow-2xl shadow-black/20">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[.08] px-4 py-3 sm:px-5">
             <div className="flex items-center gap-3">
               <span className="grid size-7 place-items-center rounded-lg border border-cyan-300/20 bg-cyan-300/10 text-cyan-300">
@@ -162,10 +164,10 @@ export function FleetTopologyPreview() {
                 <div className="font-mono text-xs font-black uppercase tracking-[0.18em] text-zinc-300">
                   WrongStack / Fleet map
                 </div>
-                <div className="text-xs text-zinc-600">read-only product preview</div>
+                <div className="text-xs text-terminal-muted">read-only product preview</div>
               </div>
             </div>
-            <div className="flex items-center gap-2 font-mono text-[8px] font-bold uppercase tracking-wider text-zinc-500">
+            <div className="flex items-center gap-2 font-mono text-[8px] font-bold uppercase tracking-wider text-terminal-muted">
               <span className="flex items-center gap-1.5 rounded-full border border-white/[.08] px-2.5 py-1.5">
                 <Activity className="size-3 text-emerald-300" /> 6 active
               </span>
@@ -214,16 +216,16 @@ export function FleetTopologyPreview() {
               />
             </svg>
 
-            <div className="absolute left-5 top-5 z-20 w-[150px] rounded-xl border border-white/[.08] bg-[#181b24]/85 p-3 backdrop-blur">
-              <div className="flex items-center gap-2 font-mono text-[8px] font-black uppercase tracking-wider text-zinc-500">
+            <div className="absolute left-5 top-5 z-20 w-[150px] rounded-xl border border-white/[.08] site-terminal bg-[#181b24]/85 p-3 backdrop-blur">
+              <div className="flex items-center gap-2 font-mono text-[8px] font-black uppercase tracking-wider text-terminal-muted">
                 <Activity className="size-3 text-emerald-300" /> Session stats
               </div>
               <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-                <span className="text-zinc-600">Clients</span>
+                <span className="text-terminal-muted">Clients</span>
                 <strong className="text-right font-mono text-zinc-300">3 / 3</strong>
-                <span className="text-zinc-600">Agents</span>
+                <span className="text-terminal-muted">Agents</span>
                 <strong className="text-right font-mono text-zinc-300">3 / 4</strong>
-                <span className="text-zinc-600">Tool calls</span>
+                <span className="text-terminal-muted">Tool calls</span>
                 <strong className="text-right font-mono text-brand-2">278</strong>
               </div>
             </div>
@@ -303,30 +305,30 @@ export function FleetTopologyPreview() {
               ]}
             />
 
-            <div className="topology-agent absolute left-[40%] top-[84%] z-20 w-[175px] rounded-xl border border-cyan-400/40 bg-[#181b24]/95 p-3 text-zinc-100">
+            <div className="topology-agent absolute left-[40%] top-[84%] z-20 w-[175px] rounded-xl border border-cyan-400/40 site-terminal bg-[#181b24]/95 p-3 text-zinc-100">
               <div className="flex items-center gap-2">
                 <Bot className="size-4 text-cyan-300" />
                 <strong className="text-xs">bug-hunter</strong>
                 <span className="topology-pulse ml-auto size-2 rounded-full bg-emerald-300" />
               </div>
-              <div className="mt-2 truncate font-mono text-[8px] text-zinc-500">
+              <div className="mt-2 truncate font-mono text-[8px] text-terminal-muted">
                 tracing provider boundary
               </div>
             </div>
-            <div className="topology-agent absolute left-[63%] top-[84%] z-20 w-[185px] rounded-xl border border-cyan-400/40 bg-[#181b24]/95 p-3 text-zinc-100">
+            <div className="topology-agent absolute left-[63%] top-[84%] z-20 w-[185px] rounded-xl border border-cyan-400/40 site-terminal bg-[#181b24]/95 p-3 text-zinc-100">
               <div className="flex items-center gap-2">
                 <Users className="size-4 text-cyan-300" />
                 <strong className="text-xs">refactor-planner</strong>
                 <span className="topology-pulse ml-auto size-2 rounded-full bg-emerald-300" />
               </div>
-              <div className="mt-2 truncate font-mono text-[8px] text-zinc-500">
+              <div className="mt-2 truncate font-mono text-[8px] text-terminal-muted">
                 waiting for bug.found
               </div>
             </div>
           </div>
 
           <div className="flex flex-col gap-3 border-t border-white/[.08] px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
-            <p className="text-xs leading-5 text-zinc-500">
+            <p className="text-xs leading-5 text-terminal-muted">
               Adapted from the real WebUI and HQ topology language. Sample values shown.
             </p>
             <div className="flex items-center gap-5">

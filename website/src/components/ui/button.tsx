@@ -9,8 +9,9 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          'bg-gradient-to-r from-brand via-brand to-brand-2 text-white shadow-sm hover:-translate-y-0.5 hover:shadow-lg hover:shadow-brand/25 active:translate-y-0',
-        destructive: 'border border-red-500/20 bg-red-500/10 text-red-500 hover:bg-red-500/20',
+          'bg-gradient-to-r from-action-start to-action-end text-white shadow-sm hover:-translate-y-0.5 hover:shadow-lg hover:shadow-brand/25 active:translate-y-0',
+        destructive:
+          'border border-red-500/20 bg-red-500/10 text-status-danger hover:bg-red-500/20',
         outline: 'border border-line bg-transparent text-fg hover:border-brand/50 hover:bg-surface',
         secondary: 'border border-line bg-card text-fg hover:border-brand/50 hover:bg-surface',
         ghost: 'text-fg hover:bg-surface hover:text-brand',

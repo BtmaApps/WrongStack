@@ -240,7 +240,7 @@ const eventToneStyles: Record<DemoEvent['tone'], string> = {
 };
 
 const agentStateStyles: Record<AgentState, { label: string; dot: string; text: string }> = {
-  idle: { label: 'idle', dot: 'bg-zinc-600', text: 'text-zinc-500' },
+  idle: { label: 'idle', dot: 'bg-zinc-600', text: 'text-terminal-muted' },
   queued: { label: 'queued', dot: 'bg-sky-300', text: 'text-sky-300' },
   running: { label: 'executing', dot: 'bg-brand-2', text: 'text-brand-2' },
   reviewing: { label: 'reviewing', dot: 'bg-violet-300', text: 'text-violet-300' },
@@ -335,10 +335,10 @@ function TaskCard({ task, reducedMotion }: { task: DemoTask; reducedMotion: bool
       initial={reducedMotion ? false : { opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ layout: { duration: 0.42, ease: [0.22, 1, 0.36, 1] } }}
-      className="rounded-xl border border-white/[0.09] bg-[#171a23] p-3.5 shadow-[0_20px_45px_-35px_rgba(0,0,0,.95)]"
+      className="rounded-xl border border-white/[0.09] site-terminal bg-[#171a23] p-3.5 shadow-[0_20px_45px_-35px_rgba(0,0,0,.95)]"
     >
       <div className="flex items-center justify-between gap-3">
-        <span className="font-mono text-[8px] font-black uppercase tracking-[0.14em] text-zinc-500">
+        <span className="font-mono text-[8px] font-black uppercase tracking-[0.14em] text-terminal-muted">
           {task.id}
         </span>
         <span
@@ -353,12 +353,14 @@ function TaskCard({ task, reducedMotion }: { task: DemoTask; reducedMotion: bool
       <h4 className="mt-3 text-[13px] font-black leading-5 tracking-[-0.02em] text-zinc-100">
         {task.title}
       </h4>
-      <p className="mt-1.5 line-clamp-2 text-xs leading-[1.55] text-zinc-500">{task.summary}</p>
+      <p className="mt-1.5 line-clamp-2 text-xs leading-[1.55] text-terminal-muted">
+        {task.summary}
+      </p>
       <div className="mt-3 flex flex-wrap gap-1.5">
         {task.labels.map((label) => (
           <span
             key={label}
-            className="rounded-md border border-white/[0.07] bg-white/[0.025] px-1.5 py-1 font-mono text-[7px] font-bold text-zinc-500"
+            className="rounded-md border border-white/[0.07] bg-white/[0.025] px-1.5 py-1 font-mono text-[7px] font-bold text-terminal-muted"
           >
             {label}
           </span>
@@ -367,7 +369,7 @@ function TaskCard({ task, reducedMotion }: { task: DemoTask; reducedMotion: bool
 
       {task.stage >= 2 && (
         <div className="mt-3">
-          <div className="flex items-center justify-between font-mono text-[7px] font-bold uppercase tracking-wider text-zinc-600">
+          <div className="flex items-center justify-between font-mono text-[7px] font-bold uppercase tracking-wider text-terminal-muted">
             <span>{task.stage === 3 ? 'review evidence' : 'task progress'}</span>
             <span className={column.accent}>{progress}%</span>
           </div>
@@ -385,8 +387,10 @@ function TaskCard({ task, reducedMotion }: { task: DemoTask; reducedMotion: bool
       <div className="mt-3.5 flex items-center gap-2 border-t border-white/[0.07] pt-3">
         {task.stage === 0 || !primaryAgent ? (
           <>
-            <Clock3 className="size-3 text-zinc-600" />
-            <span className="font-mono text-[8px] text-zinc-600">dependency scan pending</span>
+            <Clock3 className="size-3 text-terminal-muted" />
+            <span className="font-mono text-[8px] text-terminal-muted">
+              dependency scan pending
+            </span>
           </>
         ) : (
           <>
@@ -395,7 +399,7 @@ function TaskCard({ task, reducedMotion }: { task: DemoTask; reducedMotion: bool
               <div className="truncate text-xs font-black text-zinc-300">
                 {primaryAgent.name} · {primaryAgent.role}
               </div>
-              <div className="mt-0.5 flex items-center gap-1.5 font-mono text-[7px] uppercase tracking-wider text-zinc-600">
+              <div className="mt-0.5 flex items-center gap-1.5 font-mono text-[7px] uppercase tracking-wider text-terminal-muted">
                 <span className={cn('size-1.5 rounded-full', column.dot)} />
                 assignment / {assignmentStatus(task.stage)}
               </div>
@@ -413,7 +417,7 @@ function TaskCard({ task, reducedMotion }: { task: DemoTask; reducedMotion: bool
       </div>
 
       {task.stage === 2 && (
-        <div className="mt-2 flex items-center justify-between font-mono text-[7px] text-zinc-600">
+        <div className="mt-2 flex items-center justify-between font-mono text-[7px] text-terminal-muted">
           <span className="flex items-center gap-1">
             <Radio className="size-2.5 text-emerald-300" /> heartbeat 8s ago
           </span>
@@ -552,7 +556,7 @@ export function KanbanLiveDemo() {
           </p>
         </div>
 
-        <div className="overflow-hidden rounded-[26px] border border-white/10 bg-[#0b0d12] shadow-2xl shadow-black/30">
+        <div className="overflow-hidden rounded-[26px] border border-white/10 site-terminal bg-[#0b0d12] shadow-2xl shadow-black/30">
           <div className="border-b border-white/[0.08] px-4 py-4 sm:px-5">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-center gap-3">
@@ -572,7 +576,7 @@ export function KanbanLiveDemo() {
                       />
                     )}
                   </div>
-                  <p className="mt-1 font-mono text-[8px] text-zinc-600">
+                  <p className="mt-1 font-mono text-[8px] text-terminal-muted">
                     project board · atomic queue · sample data
                   </p>
                 </div>
@@ -596,7 +600,7 @@ export function KanbanLiveDemo() {
                 <button
                   type="button"
                   onClick={reset}
-                  className="grid size-8 place-items-center rounded-lg border border-white/10 text-zinc-500 transition-colors hover:border-brand-2/30 hover:text-brand-2"
+                  className="grid size-8 place-items-center rounded-lg border border-white/10 text-terminal-muted transition-colors hover:border-brand-2/30 hover:text-brand-2"
                   aria-label="Reset demo board"
                 >
                   <RotateCcw className="size-3.5" />
@@ -615,11 +619,11 @@ export function KanbanLiveDemo() {
                 return (
                   <div
                     key={String(label)}
-                    className="flex items-center gap-2.5 bg-[#11141c] px-3 py-2.5"
+                    className="flex items-center gap-2.5 site-terminal bg-[#11141c] px-3 py-2.5"
                   >
                     <MetricIcon className={cn('size-3.5', String(tone))} />
                     <strong className="font-mono text-xs text-zinc-200">{String(value)}</strong>
-                    <span className="font-mono text-[7px] font-bold uppercase tracking-wider text-zinc-600">
+                    <span className="font-mono text-[7px] font-bold uppercase tracking-wider text-terminal-muted">
                       {String(label)}
                     </span>
                   </div>
@@ -646,7 +650,7 @@ export function KanbanLiveDemo() {
                           {stateStyle.label}
                         </span>
                       </div>
-                      <div className="mt-0.5 truncate font-mono text-[7px] text-zinc-600">
+                      <div className="mt-0.5 truncate font-mono text-[7px] text-terminal-muted">
                         {current.task ? `${current.task.id} · ${agent.role}` : agent.role}
                       </div>
                     </div>
@@ -663,18 +667,18 @@ export function KanbanLiveDemo() {
                 {columns.map((column, columnIndex) => {
                   const columnTasks = tasks.filter((task) => task.stage === columnIndex);
                   return (
-                    <div key={column.id} className="min-h-[560px] bg-[#10131a] p-3">
+                    <div key={column.id} className="min-h-[560px] site-terminal bg-[#10131a] p-3">
                       <div className="mb-3 rounded-xl border border-white/[0.07] bg-white/[0.025] p-3">
                         <div className="flex items-center justify-between gap-3">
                           <div className="flex items-center gap-2">
                             <span className={cn('size-2 rounded-full', column.dot)} />
                             <h3 className="text-xs font-black text-zinc-200">{column.label}</h3>
                           </div>
-                          <span className="grid size-5 place-items-center rounded-full border border-white/10 font-mono text-[8px] font-black text-zinc-500">
+                          <span className="grid size-5 place-items-center rounded-full border border-white/10 font-mono text-[8px] font-black text-terminal-muted">
                             {columnTasks.length}
                           </span>
                         </div>
-                        <div className="mt-2 flex items-center justify-between font-mono text-[7px] uppercase tracking-wider text-zinc-600">
+                        <div className="mt-2 flex items-center justify-between font-mono text-[7px] uppercase tracking-wider text-terminal-muted">
                           <span>task / {column.taskStatus}</span>
                           <span>
                             {column.wip
@@ -690,8 +694,8 @@ export function KanbanLiveDemo() {
                         {columnTasks.length === 0 && (
                           <div className="grid min-h-28 place-items-center rounded-xl border border-dashed border-white/[0.07] text-center">
                             <div>
-                              <CircleDot className="mx-auto size-4 text-zinc-700" />
-                              <p className="mt-2 font-mono text-[8px] text-zinc-700">
+                              <CircleDot className="mx-auto size-4 text-terminal-muted" />
+                              <p className="mt-2 font-mono text-[8px] text-terminal-muted">
                                 waiting for task
                               </p>
                             </div>
@@ -708,10 +712,10 @@ export function KanbanLiveDemo() {
           <div className="grid border-t border-white/[0.08] lg:grid-cols-[1fr_310px]">
             <div className="border-b border-white/[0.08] px-4 py-4 lg:border-b-0 lg:border-r sm:px-5">
               <div className="flex items-center justify-between">
-                <span className="font-mono text-[8px] font-black uppercase tracking-[0.16em] text-zinc-500">
+                <span className="font-mono text-[8px] font-black uppercase tracking-[0.16em] text-terminal-muted">
                   Live board activity
                 </span>
-                <span className="flex items-center gap-1.5 font-mono text-[7px] text-zinc-600">
+                <span className="flex items-center gap-1.5 font-mono text-[7px] text-terminal-muted">
                   <Radio className="size-3 text-emerald-300" /> event stream
                 </span>
               </div>
@@ -732,7 +736,7 @@ export function KanbanLiveDemo() {
                       />
                       <div>
                         <p className="text-xs font-bold leading-4 text-zinc-300">{event.text}</p>
-                        <p className="mt-1 font-mono text-[7px] leading-3 text-zinc-600">
+                        <p className="mt-1 font-mono text-[7px] leading-3 text-terminal-muted">
                           {event.meta}
                         </p>
                       </div>
@@ -745,7 +749,7 @@ export function KanbanLiveDemo() {
               <div className="flex items-center gap-2 font-mono text-[8px] font-black uppercase tracking-[0.15em] text-brand-2">
                 <Sparkles className="size-3.5" /> Director queue
               </div>
-              <p className="mt-2 text-xs leading-5 text-zinc-500">
+              <p className="mt-2 text-xs leading-5 text-terminal-muted">
                 Dependency-ready cards are claimed atomically, then routed by role, model, tools and
                 capability policy.
               </p>
@@ -756,9 +760,9 @@ export function KanbanLiveDemo() {
           </div>
         </div>
 
-        <div className="mt-4 flex flex-col gap-2 text-xs leading-5 text-zinc-500 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-4 flex flex-col gap-2 text-xs leading-5 text-terminal-muted sm:flex-row sm:items-center sm:justify-between">
           <p>Illustrative local simulation. No project data is read or mutated.</p>
-          <p className="font-mono text-[8px] uppercase tracking-wider text-zinc-600">
+          <p className="font-mono text-[8px] uppercase tracking-wider text-terminal-muted">
             task status ≠ assignment status · sample agents and metrics
           </p>
         </div>

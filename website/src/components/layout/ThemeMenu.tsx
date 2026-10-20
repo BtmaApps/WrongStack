@@ -20,10 +20,10 @@ const options = [
     label: 'Dark',
     icon: Moon,
     description: 'A dark appearance, whatever your device uses.',
-    preview: 'bg-[#111a2a]',
+    preview: 'site-terminal bg-[#111a2a]',
     window: 'border-[#405475] bg-[#22344f]',
     lines: 'bg-[#536c92]',
-    iconTone: 'border-[#405475] bg-[#17263e] text-[#b8c7e1]',
+    iconTone: 'border-[#405475] site-terminal bg-[#17263e] text-[#b8c7e1]',
   },
   {
     value: 'system',
@@ -154,7 +154,7 @@ export function ThemeMenu() {
                       <option.icon className="size-3" />
                     </span>
                     {selected.value === option.value && (
-                      <span className="absolute right-1 top-1 grid size-4 place-items-center rounded-full bg-brand text-white">
+                      <span className="absolute right-1 top-1 grid size-4 place-items-center rounded-full bg-brand text-on-brand">
                         <Check className="size-3" />
                       </span>
                     )}

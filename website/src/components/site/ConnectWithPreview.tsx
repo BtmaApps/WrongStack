@@ -36,7 +36,6 @@ export function ConnectWithPreview() {
               className={`group flex min-h-28 items-center gap-4 rounded-2xl border bg-card p-5 transition-all hover:-translate-y-0.5 hover:border-brand hover:shadow-lg ${
                 connection.kind === 'oauth' ? 'border-emerald-500/35' : 'border-line'
               }`}
-              aria-label={`Connect WrongStack with ${connection.name}`}
             >
               <ConnectionLogo connection={connection} className="size-14 rounded-xl p-3" />
               <div>
@@ -45,7 +44,7 @@ export function ConnectWithPreview() {
                 </strong>
                 <span className="mt-1.5 flex items-center gap-1.5 font-mono text-xs font-black uppercase tracking-[0.12em] text-faint">
                   {connection.kind === 'oauth' ? (
-                    <LogIn className="size-3 text-emerald-500" />
+                    <LogIn className="size-3 text-status-success" />
                   ) : (
                     <KeyRound className="size-3 text-brand-2" />
                   )}

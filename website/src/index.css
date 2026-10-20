@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./styles/fonts.css";
 
 /* =========================================================================
    WrongStack — design system
@@ -11,6 +12,14 @@
   /* Brand — accessible UI shades; the logo keeps the exact source colors. */
   --color-brand: var(--brand-pink);
   --color-brand-strong: var(--brand-pink-strong);
+  --color-brand-2-strong: #995000;
+  --color-action-start: #b91640;
+  --color-action-end: #995000;
+  --color-status-success: var(--status-success);
+  --color-status-warning: var(--status-warning);
+  --color-status-danger: var(--status-danger);
+  --color-status-info: var(--status-info);
+  --color-on-brand: var(--on-brand);
   --color-brand-2: var(--brand-orange);
   --color-ink: var(--ink);
 
@@ -26,19 +35,25 @@
   --color-grid: var(--grid);
 
   /* Terminal palette */
+  --color-terminal-muted: #a1a1aa;
   --color-term-green: #34d399;
   --color-term-yellow: #fbbf24;
   --color-term-red: #f87171;
   --color-term-blue: #38bdf8;
   --color-term-purple: #c084fc;
 
-  --font-sans: "Manrope", system-ui, -apple-system, sans-serif;
-  --font-display: "Space Grotesk", "Manrope", system-ui, sans-serif;
-  --font-mono: "IBM Plex Mono", "JetBrains Mono", ui-monospace, monospace;
+  --font-sans: var(--font-space-grotesk);
+  --font-display: var(--font-space-grotesk);
+  --font-mono: var(--font-jetbrains);
+  --font-weight-black: 700;
+  --font-weight-extrabold: 700;
 }
 
 /* ---- Light (default) ---- */
 :root {
+  --font-space-grotesk: "Space Grotesk", "Space Grotesk Fallback", sans-serif;
+  --font-jetbrains: "JetBrains Mono", "JetBrains Mono Fallback", monospace;
+  --font-quicksand: "Quicksand", "Quicksand Fallback", sans-serif;
   /* Shared content edges: 16px on phones, 24px on tablets, 40–48px on desktop. */
   --site-content-max: 108rem;
   --site-gutter: clamp(1rem, 2.8vw, 3rem);
@@ -49,6 +64,13 @@
   --brand-pink: #d51f4d;
   --brand-pink-strong: #b91640;
   --brand-orange: #d97706;
+  --brand-pink-text: #bd1744;
+  --brand-orange-text: #9b4900;
+  --on-brand: #ffffff;
+  --status-success: #006b46;
+  --status-warning: #894000;
+  --status-danger: #b51d32;
+  --status-info: #00618b;
   --bg: #f8f6f0;
   --surface: #f0ede5;
   --card: #fffdf8;
@@ -56,7 +78,7 @@
   --line-strong: #c9c3b7;
   --fg: #171714;
   --muted: #646159;
-  --faint: #969188;
+  --faint: #6b665d;
   --ink: #121210;
   --grid: rgba(18, 18, 16, 0.045);
   color-scheme: light;
@@ -73,6 +95,13 @@
   --brand-pink: #fe2e5f;
   --brand-pink-strong: #ff5c82;
   --brand-orange: #fd9f02;
+  --brand-pink-text: #ff7897;
+  --brand-orange-text: #fd9f02;
+  --on-brand: #121210;
+  --status-success: #6ee7b7;
+  --status-warning: #fcd34d;
+  --status-danger: #fda4af;
+  --status-info: #7dd3fc;
   --bg: #1b1c1a;
   --surface: #22231f;
   --card: #292a26;
@@ -80,7 +109,7 @@
   --line-strong: #515249;
   --fg: #f5f2e9;
   --muted: #b6b2a8;
-  --faint: #858178;
+  --faint: #aaa69c;
   --ink: #121210;
   --grid: rgba(253, 159, 2, 0.045);
   color-scheme: dark;
@@ -126,7 +155,11 @@
   code,
   pre,
   kbd {
+    font-family: var(--font-jetbrains);
     letter-spacing: -0.018em;
+  }
+  html {
+    scroll-padding-top: 6rem;
   }
   ::selection {
     background-color: color-mix(in oklab, var(--color-brand) 28%, transparent);
@@ -146,7 +179,86 @@
   }
 }
 
+/* Text accents need a different luminance from the exact logo/background pigments. */
+:root,
+.dark {
+  --palette-fg: var(--fg);
+  --palette-muted: var(--muted);
+  --palette-faint: var(--faint);
+  --palette-pink-text: var(--brand-pink-text);
+  --palette-orange-text: var(--brand-orange-text);
+  --palette-success: var(--status-success);
+  --palette-warning: var(--status-warning);
+  --palette-danger: var(--status-danger);
+  --palette-info: var(--status-info);
+}
+
+@layer utilities {
+  .text-brand {
+    color: var(--brand-pink-text);
+  }
+  .text-brand-2 {
+    color: var(--brand-orange-text);
+  }
+  /* A themed card inside an inverse section recovers its own text palette. */
+  :is(.bg-bg, .bg-surface, .bg-card) {
+    --fg: var(--palette-fg);
+    --muted: var(--palette-muted);
+    --faint: var(--palette-faint);
+    --brand-pink-text: var(--palette-pink-text);
+    --brand-orange-text: var(--palette-orange-text);
+    --status-success: var(--palette-success);
+    --status-warning: var(--palette-warning);
+    --status-danger: var(--palette-danger);
+    --status-info: var(--palette-info);
+  }
+  :is(footer, .bg-ink, .site-terminal) {
+    --fg: #f5f2e9;
+    --muted: #b6b2a8;
+    --faint: #aaa69c;
+    --brand-pink-text: #ff7897;
+    --brand-orange-text: #fd9f02;
+    --status-success: #6ee7b7;
+    --status-warning: #fcd34d;
+    --status-danger: #fda4af;
+    --status-info: #7dd3fc;
+  }
+}
+
+/* Prevent focus zoom on mobile even when a field uses a compact utility size. */
+input:not([type="radio"]):not([type="checkbox"]),
+select,
+textarea {
+  font-size: max(1rem, 1em);
+}
+
 @layer components {
+  .site-dialog {
+    --site-dialog-top: clamp(12px, 9dvh, 96px);
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100dvh;
+    max-width: none;
+    max-height: none;
+    margin: 0;
+    border: 0;
+    padding: var(--site-dialog-top) max(12px, env(safe-area-inset-right))
+      max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+    overflow: hidden;
+    background: transparent;
+    color: var(--fg);
+  }
+  .site-dialog::backdrop {
+    background: rgb(12 14 20 / 65%);
+    backdrop-filter: blur(4px);
+  }
+  .site-search-panel {
+    max-height: min(
+      80dvh,
+      calc(100dvh - var(--site-dialog-top) - max(12px, env(safe-area-inset-bottom)))
+    );
+  }
   /* All page shells, navigation, demos and footer share the same content edges. */
   .site-container {
     width: min(var(--site-content-max), calc(100% - 2 * var(--site-gutter)));

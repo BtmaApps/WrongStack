@@ -76,7 +76,7 @@ export function Footer() {
             >
               Built by OxogNet <ArrowUpRight className="size-3.5" />
             </Link>
-            <div className="mt-7 flex flex-wrap gap-2 font-mono text-xs uppercase tracking-[0.14em] text-zinc-500">
+            <div className="mt-7 flex flex-wrap gap-2 font-mono text-xs uppercase tracking-[0.14em] text-terminal-muted">
               <span className="rounded-full border border-white/10 px-3 py-1.5">v{version}</span>
               <span className="rounded-full border border-white/10 px-3 py-1.5">
                 {runtimeBadge}
@@ -89,7 +89,7 @@ export function Footer() {
           </div>
           {columns.map((column) => (
             <div key={column.title}>
-              <h2 className="font-mono text-xs font-bold uppercase tracking-[0.18em] text-zinc-500">
+              <h2 className="font-mono text-xs font-bold uppercase tracking-[0.18em] text-terminal-muted">
                 {column.title}
               </h2>
               <ul className="mt-5 space-y-3">
@@ -107,7 +107,7 @@ export function Footer() {
             </div>
           ))}
         </div>
-        <div className="mt-14 flex flex-col gap-5 border-t border-white/10 pt-7 text-sm text-zinc-500 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-14 flex flex-col gap-5 border-t border-white/10 pt-7 text-sm text-terminal-muted sm:flex-row sm:items-center sm:justify-between">
           <p className="font-mono font-bold uppercase tracking-[0.08em]">
             <span className="text-brand-2">Built on the wrong stack.</span>{' '}
             <span className="text-brand">Shipped anyway.</span>
@@ -167,9 +167,9 @@ export function Footer() {
                   <strong className="block text-sm text-zinc-200 group-hover:text-white">
                     {product.name}
                   </strong>
-                  <span className="mt-1 block text-xs text-zinc-500">{product.category}</span>
+                  <span className="mt-1 block text-xs text-terminal-muted">{product.category}</span>
                 </span>
-                <ArrowUpRight className="size-4 shrink-0 text-zinc-500 group-hover:text-brand" />
+                <ArrowUpRight className="size-4 shrink-0 text-terminal-muted group-hover:text-brand" />
               </a>
             ))}
           </div>

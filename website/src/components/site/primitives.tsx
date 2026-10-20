@@ -1,6 +1,7 @@
-import { motion, useReducedMotion } from 'framer-motion';
+import { useReducedMotion } from 'framer-motion';
 import { ArrowRight, ArrowUpRight, Check, Copy } from 'lucide-react';
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useEffect, useRef } from 'react';
+import { useClipboard } from '@/lib/use-clipboard';
 import { docsUrl, repoUrl } from '@/data/content';
 import { Link } from '@/lib/router';
 import { cn } from '@/lib/utils';
@@ -40,8 +41,8 @@ export function heroTitleFontSize(
   { mono = false, lines = 1 }: { mono?: boolean; lines?: number } = {},
 ): string {
   const n = Math.max(text.trim().length, 1);
-  // Advance width per char (em): Space Grotesk display ≈ 0.51, IBM Plex Mono ≈ 0.62.
-  const K = mono ? 0.62 : 0.51;
+  // Advance width per char (em): Space Grotesk display ≈ 0.51, JetBrains Mono ≈ 0.60.
+  const K = mono ? 0.6 : 0.51;
   const CAP_PX = 76; // aesthetic ceiling so short/medium titles stay uniform
   const VW_CEIL = 5.6; // matches the default cap's vw term
   // `lines` = how many rendered lines the text is allowed to fill. Pass 1 with a
@@ -119,7 +120,12 @@ export function SectionIntro({
   className?: string;
 }) {
   return (
-    <div className={cn('grid gap-6 border-t border-line pt-7 lg:grid-cols-[.38fr_1fr]', className)}>
+    <div
+      className={cn(
+        'site-section-intro grid gap-6 border-t border-line pt-7 lg:grid-cols-[.38fr_1fr]',
+        className,
+      )}
+    >
       <div className="flex gap-3 font-mono text-xs font-black uppercase tracking-[0.18em] text-faint">
         {index && <span className="text-brand-2">{index}</span>}
         {eyebrow}
@@ -152,30 +158,52 @@ export function ExternalDoc({ path, children }: { path?: string; children: React
 }
 
 export function CopyCommand({ command, label }: { command: string; label?: string }) {
-  const [copied, setCopied] = useState(false);
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(command);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1600);
-    } catch {
-      // clipboard unavailable; ignore
-    }
-  };
-
+  const { copied, copy, message } = useClipboard();
   return (
     <div className="inline-flex max-w-full items-center gap-3 rounded-full border border-line bg-card py-1.5 pl-4 pr-1.5 shadow-sm">
       {label && <span className="hidden text-xs font-semibold text-muted sm:inline">{label}</span>}
-      <code className="truncate font-mono text-xs font-bold text-fg sm:text-sm">{command}</code>
+      <span role="status" className="sr-only">
+        {message}
+      </span>
+      <section
+        // biome-ignore lint/a11y/noNoninteractiveTabindex: this horizontal scrollport must be keyboard scrollable.
+        tabIndex={0}
+        aria-label="Command"
+        className="min-w-0 overflow-x-auto whitespace-nowrap font-mono text-xs font-bold text-fg sm:text-sm"
+      >
+        <code>{command}</code>
+      </section>
       <button
         type="button"
-        onClick={copy}
-        className="grid size-8 shrink-0 place-items-center rounded-full bg-fg text-bg"
+        onClick={() => copy(command)}
+        className="grid size-10 shrink-0 place-items-center rounded-full bg-fg text-bg"
         aria-label={copied ? 'Copied' : `Copy ${command}`}
       >
         {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
       </button>
     </div>
+  );
+}
+
+/** Named keyboard scrollport shared by configuration and command examples. */
+export function CodeBlock({
+  children,
+  className,
+  label = 'Code example',
+}: {
+  children: ReactNode;
+  className?: string;
+  label?: string;
+}) {
+  return (
+    <section
+      // biome-ignore lint/a11y/noNoninteractiveTabindex: keyboard users need to scroll long code without moving the whole page.
+      tabIndex={0}
+      aria-label={label}
+      className={cn('overflow-x-auto', className)}
+    >
+      <pre className="m-0">{children}</pre>
+    </section>
   );
 }
 
@@ -189,20 +217,42 @@ export function Reveal({
   delay?: number;
 }) {
   const reducedMotion = useReducedMotion();
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const element = ref.current;
+    if (!element || reducedMotion || !window.IntersectionObserver || !element.animate) return;
+    let animation: Animation | undefined;
+    // The document remains visible until an optional entrance animation starts.
+    // An unavailable observer or animation engine cannot leave content at opacity zero.
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+        observer.disconnect();
+        animation = element.animate(
+          [
+            { opacity: 0, transform: 'translateY(18px)' },
+            { opacity: 1, transform: 'translateY(0)' },
+          ],
+          {
+            duration: 500,
+            delay: Math.max(0, delay) * 1000,
+            easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
+            fill: 'backwards',
+          },
+        );
+      },
+      { rootMargin: '-70px' },
+    );
+    observer.observe(element);
+    return () => {
+      observer.disconnect();
+      animation?.cancel();
+    };
+  }, [delay, reducedMotion]);
   return (
-    <motion.div
-      initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 18 }}
-      whileInView={reducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: '-70px' }}
-      transition={{
-        duration: reducedMotion ? 0 : 0.5,
-        delay: reducedMotion ? 0 : delay,
-        ease: [0.22, 1, 0.36, 1],
-      }}
-      className={className}
-    >
+    <div ref={ref} className={className}>
       {children}
-    </motion.div>
+    </div>
   );
 }
 

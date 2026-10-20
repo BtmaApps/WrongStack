@@ -32,6 +32,8 @@ export function Header() {
   );
   const reducedMotion = useReducedMotion();
   const moreRef = useRef<HTMLDivElement>(null);
+  const moreTrigger = useRef<HTMLButtonElement>(null);
+  const mobileTrigger = useRef<HTMLButtonElement>(null);
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const leaveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
@@ -63,7 +65,10 @@ export function Header() {
     const closeWithEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         clearMoreTimers();
+        if (moreOpen) moreTrigger.current?.focus();
+        if (open) mobileTrigger.current?.focus();
         setMoreOpen(false);
+        setOpen(false);
       }
     };
     window.addEventListener('pointerdown', close);
@@ -73,7 +78,7 @@ export function Header() {
       window.removeEventListener('keydown', closeWithEscape);
       clearMoreTimers();
     };
-  }, [clearMoreTimers]);
+  }, [clearMoreTimers, moreOpen, open]);
 
   const handleMoreEnter = useCallback(() => {
     if (leaveTimer.current) clearTimeout(leaveTimer.current);
@@ -95,7 +100,10 @@ export function Header() {
       )}
     >
       <div className="signal-line" aria-hidden="true" />
-      <nav className="site-container flex h-[70px] items-center justify-between">
+      <nav
+        aria-label="Main navigation"
+        className="site-container flex h-[70px] items-center justify-between"
+      >
         <Brand />
 
         <div className="hidden items-center gap-0.5 lg:flex">
@@ -119,6 +127,7 @@ export function Header() {
             onMouseLeave={handleMoreLeave}
           >
             <button
+              ref={moreTrigger}
               type="button"
               onClick={() => {
                 clearMoreTimers();
@@ -144,7 +153,7 @@ export function Header() {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 8, scale: 0.98 }}
                   transition={{ duration: 0.16 }}
-                  className="fixed left-1/2 top-[82px] w-[min(1080px,calc(100vw-2rem))] -translate-x-1/2 overflow-hidden rounded-2xl border border-line bg-surface shadow-2xl shadow-black/20"
+                  className="fixed left-1/2 top-[82px] max-h-[calc(100dvh-96px)] w-[min(1080px,calc(100vw-2rem))] -translate-x-1/2 overflow-y-auto rounded-2xl border border-line bg-surface shadow-2xl shadow-black/20"
                 >
                   <div className="manual-grid absolute inset-0 opacity-35" aria-hidden="true" />
                   <div className="relative flex">
@@ -154,6 +163,7 @@ export function Header() {
                         <button
                           key={group.id}
                           type="button"
+                          aria-pressed={activeGroup === group.id}
                           onMouseEnter={() => setActiveGroup(group.id)}
                           onClick={() => setActiveGroup(group.id)}
                           style={{ animationDelay: `${30 + groupIndex * 24}ms` }}
@@ -269,6 +279,7 @@ export function Header() {
             Start here
           </Link>
           <button
+            ref={mobileTrigger}
             type="button"
             onClick={() => setOpen((value) => !value)}
             aria-label="Open navigation"
@@ -286,7 +297,7 @@ export function Header() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="max-h-[calc(100vh-70px)] overflow-y-auto border-t border-line bg-bg/98 backdrop-blur-xl lg:hidden"
+            className="max-h-[calc(100dvh-72px)] overflow-y-auto border-t border-line bg-bg/98 backdrop-blur-xl lg:hidden"
           >
             <div className="site-container py-5">
               <div className="grid gap-1 sm:grid-cols-2">
