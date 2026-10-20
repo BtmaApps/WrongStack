@@ -161,7 +161,20 @@ export async function runSqliteSageHygiene(
       let nearPassDeduped = 0;
       for (const bucket of nearBuckets.values()) {
         if (bucket.length < 2) continue;
-        const capped = [...bucket]
+        // Like the exact-dedup pass above, re-read inside the mutation. The
+        // near-duplicate snapshot was built before this queued mutation, so a
+        // concurrent edit must not be superseded or overwritten from stale
+        // objects merely because its old text matched this bucket.
+        const observedBucketKey = `${hygieneScopeKey(bucket[0]!)}\0${bucket[0]!.kind}\0${JSON.stringify(normalizeAudience(bucket[0]!.audience) ?? null)}`;
+        const currentBucket = bucket
+          .map((observed) => readSqliteSageRow(ctx.stmt, observed.id))
+          .filter((current): current is Sage => {
+            if (current?.status !== 'active' || current.validity) return false;
+            const currentKey = `${hygieneScopeKey(current)}\0${current.kind}\0${JSON.stringify(normalizeAudience(current.audience) ?? null)}`;
+            return currentKey === observedBucketKey;
+          });
+        if (currentBucket.length < 2) continue;
+        const capped = [...currentBucket]
           .sort(
             (a, b) =>
               b.importance - a.importance ||

@@ -1,9 +1,9 @@
 import type { DatabaseSync } from 'node:sqlite';
+import type { MemoryScope } from '@wrongstack/core/types';
+import { sqliteRowToMemory } from './sqlite-store-codec.js';
 import { cleanReferencingMemories, memoryNodeId } from './sqlite-store-graph-helpers.js';
 import { matchesLegacyForget } from './sqlite-store-legacy.js';
-import { sqliteRowToMemory } from './sqlite-store-codec.js';
 import { legacyScopeFilterClause } from './store-helpers.js';
-import type { MemoryScope } from '@wrongstack/core/types';
 import type { Sage } from './types.js';
 import { DEFAULT_PERSISTENCE, sageToLegacyScope } from './types.js';
 
@@ -45,6 +45,9 @@ export function forgetLegacySqliteMemory(
     ctx.upsertMemory({
       ...memory,
       status: 'deleted',
+      supersedes: undefined,
+      contradicts: undefined,
+      supersededBy: undefined,
       revision: memory.revision + 1,
       updatedAt: ctx.nowIso(),
     });

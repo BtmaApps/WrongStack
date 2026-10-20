@@ -42,6 +42,9 @@ export function clearLegacySqliteMemory(ctx: SqliteLegacyClearContext, scope?: M
     ctx.upsertMemory({
       ...memory,
       status: 'deleted',
+      supersedes: undefined,
+      contradicts: undefined,
+      supersededBy: undefined,
       revision: memory.revision + 1,
       updatedAt: ctx.nowIso(),
     });

@@ -67,4 +67,62 @@ describe('hygiene exact-dedup listing/mutation gap', () => {
     expect(changedAfter?.importance).toBe(0.8);
     expect(controlStatuses.filter((status) => status === 'superseded')).toHaveLength(1);
   });
+
+  it('does not near-merge or revert a memory updated after the near-duplicate snapshot', async () => {
+    dir = await fs.mkdtemp(path.join(os.tmpdir(), 'sage-near-dedup-toctou-'));
+    const currentStore = new SqliteMemoryPort({ projectRoot: dir });
+    store = currentStore;
+    const base =
+      'Session tokens in packages/auth must be compared in milliseconds after normalizing exp claims from the JWT payload.';
+    const changed = await currentStore.rememberSage({ text: base, importance: 0.4 });
+    const changedPeer = await currentStore.rememberSage({
+      text: 'Distinct changed-pair seed.',
+      importance: 0.8,
+    });
+    const control = await currentStore.rememberSage({
+      text: 'Cache retry counts must remain stable across worker restarts.',
+      importance: 0.4,
+    });
+    const controlPeer = await currentStore.rememberSage({
+      text: 'Distinct control-pair seed.',
+      importance: 0.8,
+    });
+    await currentStore.updateSage(changedPeer.id, {
+      text: `${base} before Date.now checks.`,
+    });
+    await currentStore.updateSage(controlPeer.id, {
+      text: 'Cache retry counts must remain stable across worker restarts and deploys.',
+    });
+
+    const realList = currentStore.listMemories.bind(currentStore);
+    let activeListCalls = 0;
+    let gapFired = false;
+    (currentStore as unknown as { listMemories: typeof currentStore.listMemories }).listMemories =
+      async (opts) => {
+        const rows = await realList(opts);
+        if (opts?.status === 'active' && ++activeListCalls === 3) {
+          await currentStore.updateSage(changed.id, {
+            text: 'Concurrent update made this memory completely unrelated to authentication.',
+            importance: 1,
+          });
+          gapFired = true;
+        }
+        return rows;
+      };
+
+    const report = await currentStore.hygiene({ verify: false });
+    const changedAfter = await currentStore.getSage(changed.id);
+    const controlStatuses = await Promise.all(
+      [control.id, controlPeer.id].map(async (id) => (await currentStore.getSage(id))?.status),
+    );
+
+    expect(gapFired).toBe(true);
+    expect(report.deduplicated).toBe(1);
+    expect(changedAfter).toMatchObject({
+      status: 'active',
+      importance: 1,
+      text: 'Concurrent update made this memory completely unrelated to authentication.',
+    });
+    expect(controlStatuses.filter((status) => status === 'superseded')).toHaveLength(1);
+  });
 });

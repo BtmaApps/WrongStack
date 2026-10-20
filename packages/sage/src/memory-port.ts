@@ -196,9 +196,13 @@ export class SqliteMemoryPort extends SqliteSageStore implements MemoryPort {
     return this.runCompositeOperation(async () => {
       const result = { imported: 0, skipped: 0, files: 0 };
       let totalBytes = 0;
+      // Compare canonical paths on both sides. The project root may itself be
+      // reached through a symlink/junction; comparing a real file path against
+      // that lexical alias falsely classifies an in-project file as outside.
+      const canonicalProjectRoot = await fs.realpath(this.importProjectRoot);
       for (const file of files) {
         const resolved = await fs.realpath(file);
-        const relative = path.relative(this.importProjectRoot, resolved);
+        const relative = path.relative(canonicalProjectRoot, resolved);
         if (
           relative === '..' ||
           relative.startsWith(`..${path.sep}`) ||

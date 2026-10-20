@@ -98,6 +98,33 @@ describe('SQLite legacy MemoryStore compatibility coverage', () => {
     );
   });
 
+  it('clears relationship fields from legacy deletion tombstones', async () => {
+    const store = createStore();
+    const target = await store.rememberSage({ text: 'Legacy relationship target' });
+    const forgotten = await store.rememberSage({
+      text: 'Legacy relationship source forgotten',
+      legacyScope: 'project-memory',
+      supersedes: [target.id],
+    });
+    const cleared = await store.rememberSage({
+      text: 'Legacy relationship source cleared',
+      legacyScope: 'user-memory',
+      contradicts: [target.id],
+    });
+
+    expect(await store.forget('source forgotten', 'project-memory')).toBe(1);
+    await store.clear('user-memory');
+
+    const recoveredForgotten = await store.recoverSage(forgotten.id, 'regression check');
+    const recoveredCleared = await store.recoverSage(cleared.id, 'regression check');
+    expect(recoveredForgotten.supersedes).toBeUndefined();
+    expect(recoveredForgotten.contradicts).toBeUndefined();
+    expect(recoveredForgotten.supersededBy).toBeUndefined();
+    expect(recoveredCleared.supersedes).toBeUndefined();
+    expect(recoveredCleared.contradicts).toBeUndefined();
+    expect(recoveredCleared.supersededBy).toBeUndefined();
+  });
+
   it('consolidates mutable duplicates while leaving permanent-only groups untouched', async () => {
     const events = { emit: vi.fn() };
     const store = createStore(events);
