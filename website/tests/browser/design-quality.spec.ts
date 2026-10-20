@@ -17,6 +17,7 @@ test('scrolled search stays in the top layer and contains keyboard focus', async
   await expect(input).toBeFocused();
   await input.fill('no-such-destination-quality-check');
   await expect(dialog.getByText('No exact trail found.')).toBeVisible();
+  await expect(dialog.getByRole('listbox').getByRole('heading')).toHaveCount(0);
   await page.keyboard.press('ArrowDown');
   await expect(input).not.toHaveAttribute('aria-activedescendant');
   await page.keyboard.press('Escape');
@@ -30,6 +31,32 @@ test('scrolled search stays in the top layer and contains keyboard focus', async
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL(/\/mailbox$/);
   await expect(page.locator('main h1')).toBeVisible();
+});
+
+test('brand links retain readable contrast on hover in both themes', async ({ page }) => {
+  for (const colorScheme of ['light', 'dark'] as const) {
+    await page.emulateMedia({ colorScheme });
+    await page.goto('/ecosystem');
+    const link = page.getByRole('link', { name: 'Read the docs for WrongStack', exact: true });
+    await link.hover();
+    const colors = await link.evaluate((element) => ({
+      text: getComputedStyle(element).color,
+      background: getComputedStyle(element.closest('article')!).backgroundColor,
+    }));
+    const luminance = (color: string) => {
+      const channels = color
+        .match(/[\d.]+/g)!
+        .slice(0, 3)
+        .map((value) => {
+          const c = Number(value) / 255;
+          return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+        });
+      return channels[0]! * 0.2126 + channels[1]! * 0.7152 + channels[2]! * 0.0722;
+    };
+    const a = luminance(colors.text),
+      b = luminance(colors.background);
+    expect((Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05)).toBeGreaterThanOrEqual(4.5);
+  }
 });
 
 test('short-screen navigation scrolls and Escape returns focus', async ({ page }) => {

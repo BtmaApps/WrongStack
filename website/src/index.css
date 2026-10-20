@@ -183,6 +183,7 @@
 :root,
 .dark {
   --palette-fg: var(--fg);
+  --palette-bg: var(--bg);
   --palette-muted: var(--muted);
   --palette-faint: var(--faint);
   --palette-pink-text: var(--brand-pink-text);
@@ -194,14 +195,24 @@
 }
 
 @layer utilities {
-  .text-brand {
+  /* Keep text accents and their interaction states separate from logo fills. */
+  .text-brand,
+  .hover\:text-brand:hover,
+  .focus\:text-brand:focus,
+  .focus-visible\:text-brand:focus-visible,
+  .group:hover .group-hover\:text-brand {
     color: var(--brand-pink-text);
   }
-  .text-brand-2 {
+  .text-brand-2,
+  .hover\:text-brand-2:hover,
+  .focus\:text-brand-2:focus,
+  .focus-visible\:text-brand-2:focus-visible,
+  .group:hover .group-hover\:text-brand-2 {
     color: var(--brand-orange-text);
   }
   /* A themed card inside an inverse section recovers its own text palette. */
   :is(.bg-bg, .bg-surface, .bg-card) {
+    --bg: var(--palette-bg);
     --fg: var(--palette-fg);
     --muted: var(--palette-muted);
     --faint: var(--palette-faint);
@@ -213,6 +224,7 @@
     --status-info: var(--palette-info);
   }
   :is(footer, .bg-ink, .site-terminal) {
+    --bg: #121210;
     --fg: #f5f2e9;
     --muted: #b6b2a8;
     --faint: #aaa69c;
