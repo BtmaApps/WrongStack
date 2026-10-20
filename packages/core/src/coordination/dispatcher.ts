@@ -163,9 +163,10 @@ function dispatchWords(text: string): string[] {
 }
 
 /**
- * Score every agent against the task. A keyword hit adds 1 point; a multi-word
- * keyword phrase adds points equal to its word count (more specific = stronger
- * signal). Returns candidates sorted best-first, zero-score agents dropped.
+ * Score every agent against the task. A keyword hit adds 1 point; an n-word
+ * keyword phrase adds 2n-1 (more specific = stronger signal than the same words
+ * matched separately). Returns candidates sorted best-first, zero-score agents
+ * dropped.
  *
  * Keywords that reduce to the same words count once. Role definitions spread a
  * shared `signals` list and then repeat its entries (`'android'`, `'ipc'`), and
@@ -202,7 +203,10 @@ export function scoreAgents(
     for (const hit of hits) {
       if (hit.words.every((w) => covered.has(w))) continue;
       for (const w of hit.words) covered.add(w);
-      score += hit.words.length;
+      // A phrase outscores the same words matched loose: "sql injection" is a
+      // stronger signal than "sql" and "injection" scattered across a role's
+      // list, so an n-word phrase scores 2n-1.
+      score += hit.words.length * 2 - 1;
       matched.push(hit.kw);
     }
     if (score > 0) {

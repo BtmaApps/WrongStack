@@ -121,6 +121,14 @@ describe('scoreAgents', () => {
     expect(test?.matched).not.toContain('test');
   });
 
+  it('lets a matched phrase outscore the same number of loose words', () => {
+    // security-reviewer matches the phrase "sql injection"; security-scanner
+    // matches "scan", "injection" and "vulnerability" one by one.
+    const ranked = scoreAgents('scan this code for sql injection vulnerabilities');
+    expect(ranked[0]?.role).toBe('security-reviewer');
+    expect(ranked[0]?.matched).toContain('sql injection');
+  });
+
   it('matches inflected task words against keyword stems', () => {
     expect(scoreAgents('add translations for the onboarding screen')[0]?.role).toBe('i18n');
     expect(scoreAgents('write unit tests for the journal')[0]?.role).toBe('test');
