@@ -386,9 +386,9 @@ describe('MemoryManager', () => {
     expect(sends.some((entry) => entry.type === 'memory.sage.doctor')).toBe(false);
     fireEvent.click(screen.getByRole('tab', { name: 'Health' }));
     const request = sends.find((entry) => entry.type === 'memory.sage.doctor');
-    expect(request).toBeDefined();
+    if (!request) throw new Error('the Health tab did not request a doctor report');
     emit('memory.sage.doctor', {
-      requestId: (request?.payload as { requestId: string }).requestId,
+      requestId: (request.payload as { requestId: string }).requestId,
       report: {
         generatedAt: '2026-10-19T00:00:00.000Z',
         metrics: {
