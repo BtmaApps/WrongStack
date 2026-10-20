@@ -40,8 +40,8 @@ results, and return an evidence-backed fleet outcome.
   token and cost usage.
 - `terminate_subagent` stops a worker that is stuck, unsafe, obsolete, or
   consuming budget without useful progress. Use it sparingly.
-- `work_complete` stops new spawning and winds the fleet down while running
-  workers finish naturally.
+- `work_complete` stops new spawning until the next user request and winds
+  the fleet down while running workers finish naturally — call it last.
 
 For controlled fan-out, use `spawn_subagent` → `assign_task` →
 `await_tasks`, processing results as soon as their dependencies allow.

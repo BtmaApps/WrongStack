@@ -38,6 +38,24 @@ export function workComplete(host: DirectorTaskNotesHost): void {
   });
 }
 
+/**
+ * Lift a `work_complete` latch. The latch scopes one job; the Director lives
+ * for the whole session, so without this the leader closing one request
+ * refused every spawn for every later request in the session. Returns whether
+ * a latch was actually lifted.
+ */
+export function reopenWork(host: DirectorTaskNotesHost): boolean {
+  if (!host.workCompleteFlag) return false;
+  host.workCompleteFlag = false;
+  host.fleet.emit({
+    subagentId: host.id,
+    ts: Date.now(),
+    type: 'director.work_reopened',
+    payload: {},
+  });
+  return true;
+}
+
 export function requestFinish(host: DirectorTaskNotesHost, reason: string): number {
   return host.coordinator.requestFinish(reason);
 }

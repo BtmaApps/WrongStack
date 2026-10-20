@@ -196,6 +196,21 @@ describe('Director.spawn budget rejections', () => {
     );
   });
 
+  it('spawns again once the next job reopens the work_complete latch', async () => {
+    const { d } = makeDirector();
+    const events: string[] = [];
+    d.fleet.onAny((e) => events.push(e.type));
+    expect(d.reopenWork()).toBe(false);
+    d.workComplete();
+    await expect(d.spawn({ name: 'x', provider: 'anthropic', model: 'm' })).rejects.toThrow(
+      /workComplete/,
+    );
+    expect(d.reopenWork()).toBe(true);
+    expect(d.isWorkComplete()).toBe(false);
+    await expect(d.spawn({ name: 'y', provider: 'anthropic', model: 'm' })).resolves.toBeTruthy();
+    expect(events).toContain('director.work_reopened');
+  });
+
   it('refuses spawning beyond the max spawn depth', async () => {
     const { d } = makeDirector({ spawnDepth: 2, maxSpawnDepth: 2 });
     await expect(d.spawn({ name: 'x', provider: 'anthropic', model: 'm' })).rejects.toThrow();

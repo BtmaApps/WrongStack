@@ -269,6 +269,11 @@ export async function buildDirector(host: HostDirectorSetupHost): Promise<void> 
       // Workers have agentRole metadata and must never open their own verifier.
       if (!e.ctx.meta?.['agentRole']) host.memoryCompanion?.ensure(e.sessionId);
     }
+    // `work_complete` closes one job, but this Director serves the whole
+    // session: a leader run starting is the next job, so lift the latch —
+    // otherwise every later request's spawn failed with "director closed
+    // further spawning".
+    if (!e.ctx.meta?.['agentRole']) host.director?.reopenWork();
   });
 
   host.directorOffHandles.push(

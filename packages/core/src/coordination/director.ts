@@ -41,6 +41,7 @@ import {
   observeTask as observeTaskFromHost,
   onSessionTerminate as onSessionTerminateFromHost,
   peekLeaderBtwNotes as peekLeaderBtwNotesFromHost,
+  reopenWork as reopenWorkFromHost,
   requestFinish as requestFinishFromHost,
   setLeaderBtwNote as setLeaderBtwNoteFromHost,
   subagentIdsForSession as subagentIdsForSessionFromHost,
@@ -96,6 +97,11 @@ export class Director extends DirectorCore implements DirectorFleetHost, ICoordi
 
   isWorkComplete(): boolean {
     return this.workCompleteFlag;
+  }
+
+  /** Lift a `work_complete` latch for the next job; see `reopenWork`. */
+  reopenWork(): boolean {
+    return reopenWorkFromHost(this.directorTaskNotesHost());
   }
 
   /**

@@ -217,8 +217,9 @@ export function makeWorkCompleteTool(
     name: 'work_complete',
     description:
       'Signal that the director is satisfied with the results and the fleet should wind down. ' +
-      'After calling this, spawn_subagent will refuse with a budget error and assign_task ' +
-      'will instantly complete any queued tasks as aborted. Running subagents finish naturally. ' +
+      'Until the next user request, spawn_subagent and delegate refuse and assign_task ' +
+      'instantly completes any queued tasks as aborted. Running subagents finish naturally. ' +
+      'Call it last: the fleet reopens only when a new request starts. ' +
       'Call terminate_subagent separately to stop specific subagents immediately.',
     permission: 'auto',
     mutating: false,
