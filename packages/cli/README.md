@@ -2,15 +2,17 @@
 
 The terminal binary for WrongStack. Provides the `wstack` and `wrongstack` commands.
 
-Most users don't depend on this package directly — they install [`wrongstack`](../../README.md) (the umbrella) and run `wrongstack` / `wstack` from any project directory.
+This is a private workspace package: WrongStack is distributed only as standalone `wstack` binaries on GitHub Releases, which bundle this CLI with `core`, `runtime`, `providers`, `tools`, `mcp`, `plug-lsp`, `telegram`, `tui`, `webui` and the other workspace packages. npm publishing is retired; the versions already on npm are frozen.
 
 ## Install
 
 ```bash
-npm install -g wrongstack
-```
+# macOS / Linux
+curl -fsSL https://wrongstack.com/install.sh | sh
 
-The `wrongstack` umbrella package transitively installs `@wrongstack/cli` along with `core`, `runtime`, `providers`, `tools`, `mcp`, `plug-lsp`, `telegram`, `tui`, `webui`, and optional desktop support.
+# Windows PowerShell
+irm https://wrongstack.com/install.ps1 | iex
+```
 
 ## Commands
 

@@ -5,8 +5,8 @@
  * but the patch/minor/major arithmetic (`split('.').map(Number)`) turns such a
  * root version into a NaN component and — before the fix — silently wrote
  * `1.2.NaN...` into EVERY workspace manifest in one pass. Because the bump
- * rewrites all manifests together, the version-drift check in
- * publish-workspace.mjs cannot catch the corruption afterwards.
+ * rewrites all manifests together, no later drift check can catch the
+ * corruption afterwards.
  *
  * bump-version.mjs is a top-level side-effecting script that derives its
  * repoRoot from its own location, so these tests copy the CURRENT production
@@ -104,6 +104,23 @@ describe('bump-version script', () => {
     const bumpRun = fixture.run(['patch']);
     expect(bumpRun.status).toBe(0);
     expect(manifestVersions(fixture)).toEqual(['9.9.10', '9.9.10', '9.9.10']);
+  });
+
+  it('bumps private workspace manifests and keeps them private', () => {
+    // npm publishing is retired: every workspace package is `"private": true`,
+    // and the binaries/Desktop still read their version from these manifests.
+    fixture = makeFixture();
+    for (const p of fixture.manifestPaths.slice(1)) {
+      writeFileSync(
+        p,
+        `${JSON.stringify({ name: 'fixture', version: '0.0.1', private: true }, null, 2)}\n`,
+      );
+    }
+    expect(fixture.run(['set', '3.1.4']).status).toBe(0);
+    expect(manifestVersions(fixture)).toEqual(['3.1.4', '3.1.4', '3.1.4']);
+    for (const p of fixture.manifestPaths.slice(1)) {
+      expect(JSON.parse(readFileSync(p, 'utf8')).private).toBe(true);
+    }
   });
 
   it('runs the protocol writer after manifest updates for both set and patch', () => {

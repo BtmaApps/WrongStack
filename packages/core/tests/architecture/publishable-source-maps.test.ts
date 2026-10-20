@@ -7,10 +7,12 @@
 // 246 KB Electron-main map that makes the main/preload IPC boundary
 // trivially readable.
 //
-// This test enumerates every package.json whose `private` is not
-// `true` (i.e. that npm actually publishes) and asserts the exclusion
-// is present.
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+// npm publishing is retired (every workspace package is `"private": true`),
+// but the standalone binary and Desktop deploy still packs each workspace
+// package with `bun pm pack`, which honours the same `files` block. So this
+// test enumerates every workspace member manifest directly under packages/
+// and apps/ and asserts the exclusion is present.
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
@@ -18,43 +20,32 @@ const repoRoot = resolve(import.meta.dirname, '../../../..');
 
 function findPackageJsonFiles(): string[] {
   const out: string[] = [];
-  function walk(dir: string): void {
-    if (!statSync(dir, { throwIfNoEntry: false })?.isDirectory()) return;
-    for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      if (entry.name === 'node_modules' || entry.name === 'dist' || entry.name.startsWith('.')) {
-        continue;
-      }
-      const p = join(dir, entry.name);
-      if (entry.isDirectory()) {
-        walk(p);
-        continue;
-      }
-      if (entry.name === 'package.json' && !p.includes('/node_modules/')) {
-        out.push(p);
-      }
-    }
-  }
   for (const top of ['packages', 'apps']) {
-    walk(join(repoRoot, top));
+    const base = join(repoRoot, top);
+    if (!existsSync(base)) continue;
+    for (const entry of readdirSync(base, { withFileTypes: true })) {
+      const manifest = join(base, entry.name, 'package.json');
+      if (entry.isDirectory() && existsSync(manifest)) out.push(manifest);
+    }
   }
   return out;
 }
 
-describe('I5 / publishable manifests omit dist source maps', () => {
+describe('I5 / workspace package manifests omit dist source maps', () => {
+  it('finds the workspace packages (guards against a vacuous pass)', () => {
+    expect(findPackageJsonFiles().length).toBeGreaterThan(20);
+  });
+
   for (const pkgPath of findPackageJsonFiles()) {
     it(`${pkgPath.slice(repoRoot.length + 1).replace(/\\/g, '/')}`, () => {
-      const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as {
-        private?: boolean;
-        files?: string[];
-      };
-      if (pkg.private === true) return; // never published
+      const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as { files?: string[] };
       const files = pkg.files ?? [];
       // The 34 package manifests pin a `!dist/**/*.map` exclusion; the
-      // two `apps/*` manifests were the offenders. A new publishable
-      // manifest must follow suit.
+      // two `apps/*` manifests were the offenders. A new workspace
+      // package must follow suit.
       expect(
         files.some((f) => /dist.*\.map/.test(f) && f.startsWith('!')),
-        `${pkgPath} is publishable (private !== true) but its \`files\` block does not exclude \`dist/**/*.map\` — the tarball would ship TypeScript source maps alongside the compiled JS`,
+        `${pkgPath} does not exclude \`dist/**/*.map\` in its \`files\` block — the packed tarball the binary deploy consumes would ship TypeScript source maps alongside the compiled JS`,
       ).toBe(true);
     });
   }

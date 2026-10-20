@@ -509,10 +509,13 @@ plugin picks up the change automatically (hot keys) or on restart
 ### Rollback a plugin upgrade
 
 1. Stop wstack.
-2. Install the previous version:
+2. Install the previous release's standalone binary (the Telegram plugin ships
+   inside it; npm packages are no longer published):
    ```
-   npm install @wrongstack/telegram@<previous-version>
+   curl -fsSL https://wrongstack.com/install.sh | WSTACK_VERSION=<previous-version> sh
    ```
+   On Windows: `$env:WSTACK_VERSION='<previous-version>'; irm https://wrongstack.com/install.ps1 | iex`.
+   The assets are also on the matching GitHub Release (`v<previous-version>`).
 3. Start wstack. Verify with `/telegram-health`.
 
 ### Rollback a full deployment

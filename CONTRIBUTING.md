@@ -256,14 +256,17 @@ All jobs must pass before merge.
 
 ## Release Process
 
-Releases are manual (no automated publishing yet):
+WrongStack ships only through GitHub Releases: standalone `wstack` binaries and
+Desktop packages, built by `.github/workflows/release.yml` when a `vX.Y.Z` tag
+is pushed. **npm publishing is retired for good** — every workspace package is
+`"private": true`, and the versions already on npm stay frozen as they are.
 
 ```bash
 bun run release:check    # Full gate: audit + build + contracts + lint + typecheck + test
-bun run release          # release:check + portable build + ordered publish
-bun run release:plan     # print the dependency-layer publish order (publishes nothing)
-bun run release:verify   # confirm every working-tree version is live on npm
+bun run release          # alias for release:check (publishes nothing)
 ```
+
+See [docs/release.md](docs/release.md) for the full procedure.
 
 Versioning uses `bun run version:patch` (or `version:minor` / `version:major`) and conventional-commit-based semver bumps.
 
@@ -271,19 +274,6 @@ The lockstep bump also runs the official WebUI protocol schema generator after
 updating manifests, keeping generated schema version metadata aligned. A generator
 failure exits nonzero even though the manifest versions have already changed;
 repair the failure and rerun `bun scripts/generate-protocol-schema.mjs` before release.
-
-### Why the publish is ordered
-
-`bun run publish -r` sorts topologically but publishes concurrently, so the
-registry can observe a package before its dependencies. That shipped a real
-outage in 0.317.2: `wrongstack` landed on npm 25 seconds ahead of its
-transitive dependency `@wrongstack/webui-hq`, and every `npm i -g wrongstack`
-in that window failed with `ETARGET`. `scripts/publish-workspace.mjs` publishes
-in dependency layers, one layer at a time, so the install target always reaches
-npm last. Locally it does not wait for the CDN between layers: once every layer
-is published it confirms all packages on the npm origin in one pass and reports
-which ones the CDN already serves (`bun run release:verify` waits for the rest).
-CI passes `--gate-layers`, which polls the CDN after each layer instead.
 
 ---
 

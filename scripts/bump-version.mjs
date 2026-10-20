@@ -10,6 +10,9 @@ const repoRoot = resolve(__dirname, '..');
  * Collect every package.json that should share the repo version: the root
  * manifest plus every workspace package under packages/* and apps/*.
  * Internal deps use `workspace:*`, so only the `version` field needs updating.
+ * Every workspace package is `"private": true` (npm publishing is retired), so
+ * private manifests are bumped like any other — the binaries and Desktop read
+ * their version from these manifests.
  */
 function collectManifests() {
   const paths = [resolve(repoRoot, 'package.json')];
@@ -157,8 +160,8 @@ const parts = rootPkg.version.split('.').map(Number);
 // components. A root version carrying a prerelease/build suffix (e.g.
 // `1.2.3-beta.1`, which `set` deliberately accepts) splits into a NaN
 // component, and this script would then silently write `1.2.NaN...` into
-// EVERY manifest in one pass — a corruption the version-drift check in
-// publish-workspace.mjs cannot catch, because all manifests drift together.
+// EVERY manifest in one pass — a corruption no later drift check can catch,
+// because all manifests drift together.
 if (type !== 'set' && !(parts.length === 3 && parts.every((n) => Number.isInteger(n) && n >= 0))) {
   console.error(
     `error: cannot ${type}-bump "${rootPkg.version}" — version bumps require exactly X.Y.Z. ` +

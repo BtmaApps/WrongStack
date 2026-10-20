@@ -407,7 +407,7 @@ async function installService(deps: SubcommandDeps): Promise<number> {
   ) {
     deps.renderer.writeError(
       'The HQ system service requires a system-wide wstack executable outside /root and /home. ' +
-        'Install with `sudo npm install -g wrongstack` and retry.\n',
+        'Install it with `curl -fsSL https://wrongstack.com/install.sh | sudo WSTACK_INSTALL_DIR=/usr/local/bin sh` and retry.\n',
     );
     return 1;
   }

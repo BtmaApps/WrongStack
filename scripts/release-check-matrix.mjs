@@ -214,7 +214,7 @@ const GATES = [
   },
   {
     id: 'dist-hidden',
-    label: 'No hidden files in published trees',
+    label: 'No hidden files in dist trees',
     cmd: 'bun run check:dist-hidden',
     prereq: 'build',
   },
@@ -238,14 +238,8 @@ const GATES = [
   },
   {
     id: 'package-contracts',
-    label: 'Publishable package contracts',
+    label: 'Workspace package contracts',
     cmd: 'bun scripts/check-package-contracts.mjs',
-    prereq: 'build',
-  },
-  {
-    id: 'npm-package-install',
-    label: 'Packed providers install with npm 10.9.8',
-    cmd: 'bun scripts/check-npm-package-install.mjs',
     prereq: 'build',
   },
   {

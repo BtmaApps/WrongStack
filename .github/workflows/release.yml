@@ -1,15 +1,14 @@
 name: Release
 
 # Builds the GitHub release for a `vX.Y.Z` tag: standalone binaries,
-# installers, checksums and Desktop packages. It does NOT publish to npm.
+# installers, checksums and Desktop packages. GitHub Releases are the ONLY
+# distribution channel.
 #
-# npm is published from the maintainer's machine (`bun run release`, which
-# runs release:check and then scripts/publish-workspace.mjs) BEFORE the tag is
-# pushed. The CI OIDC publish path never worked: no trusted publisher is
-# registered for the packages, so every attempt ended in ENEEDAUTH, and a run
-# that looked green had only skipped versions already published locally. The
-# `npm-verify` job below only READS the registry, to report whether the tagged
-# version is live; it holds no credential and blocks nothing.
+# npm publishing is retired for good: every workspace package is
+# `"private": true`, there is no publish script, and no job here publishes to
+# or reads from the npm registry. Versions already on npm stay frozen as they
+# are. The maintainer runs `bun run release:check` locally, pushes main, then
+# pushes the annotated `vX.Y.Z` tag that triggers this workflow.
 
 on:
   push:
@@ -208,35 +207,10 @@ jobs:
               wrongstack-desktop-* DESKTOP-SHA256SUMS
           fi
 
-  npm-verify:
-    name: Check npm has this version
-    # Read-only: asks the public registry whether every publishable package is
-    # live at the tagged version. npm is published locally before the tag is
-    # pushed, so a red result here means the local publish was skipped or is
-    # incomplete — re-run `bun run release` (it resumes; no version bump).
-    needs: verify
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    permissions:
-      contents: read
-    steps:
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        with:
-          bun-version: 1.4.3
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0 (Node 24 runtime, pinned 2026-09-06)
-        with:
-          ref: ${{ needs.verify.outputs.sha }}
-          persist-credentials: false
-
-      # No install: publish-workspace.mjs --verify-only uses only Node
-      # built-ins and the workspace manifests.
-      - name: Verify the release is live on npm
-        run: bun scripts/publish-workspace.mjs --verify-only
-
   github-release:
     name: Create GitHub release
     # Depends on the binaries only: the standalone executables are the primary
-    # distribution, and neither the release gate nor npm-verify holds them back.
+    # distribution, and the release gate does not hold them back.
     needs: [verify, binaries]
     runs-on: ubuntu-latest
     timeout-minutes: 15

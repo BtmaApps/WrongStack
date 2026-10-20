@@ -1,11 +1,14 @@
 # HQ as an always-on service (Ubuntu)
 
-Install the globally available CLI as a boot-persistent, automatically
-restarting systemd service. The password is written to a root-only environment
-file rather than the unit or process arguments:
+Install the standalone `wstack` binary system-wide, then register it as a
+boot-persistent, automatically restarting systemd service. The service needs an
+executable outside `/root` and `/home`, so point the installer at
+`/usr/local/bin` instead of its per-user default (`~/.wrongstack/bin`). The
+password is written to a root-only environment file rather than the unit or
+process arguments:
 
 ```bash
-sudo npm install -g wrongstack
+curl -fsSL https://wrongstack.com/install.sh | sudo WSTACK_INSTALL_DIR=/usr/local/bin sh
 sudo -E WRONGSTACK_HQ_PASSWORD='use-a-long-random-password' \
   wstack hq service install
 ```

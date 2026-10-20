@@ -16,8 +16,11 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { workspaceMemberDirs } from '../../../../scripts/lib/publishable-packages.mjs';
 
 const repoRoot = resolve(import.meta.dirname, '../../../..');
+/** The deleted npm publish driver; spelled by parts so repo greps for it stay empty. */
+const RETIRED_PUBLISHER = ['publish', 'workspace'].join('-');
 const workflowDir = join(repoRoot, '.github', 'workflows');
 
 function workflowFiles(): string[] {
@@ -110,23 +113,17 @@ describe('release workflow (WS-040)', () => {
     expect(text).not.toMatch(/^\s*branches:\s*\[main\]/m);
   });
 
-  it('does not publish to npm; it only reads whether the version is live', () => {
-    // npm is published locally (`bun run release`) before the tag is pushed.
-    // The CI OIDC path never worked, and a tag push must not be able to ship
-    // to the registry, so no job here may publish or hold a publish credential.
+  it('neither publishes to nor reads from npm — GitHub Releases are the only channel', () => {
+    // npm publishing is retired for good: every workspace package is
+    // `"private": true` and there is no publish script. A tag push must not be
+    // able to ship to the registry, and no job checks the registry any more.
     const text = withoutComments(release());
     expect(text).not.toMatch(/^ {2}(?:pack|publish):$/m);
     expect(text).not.toContain('npm-publish');
+    expect(text).not.toContain(`  ${['npm', 'verify'].join('-')}:`);
     expect(text).not.toContain('--tarballs-dir');
+    expect(text).not.toContain(RETIRED_PUBLISHER);
     expect(text).not.toMatch(/\b(?:npm|bun|pnpm) publish\b/);
-
-    const verifyStart = text.indexOf('  npm-verify:');
-    const verifyEnd = text.indexOf('  github-release:', verifyStart);
-    expect(verifyStart).toBeGreaterThan(-1);
-    const verifyJob = text.slice(verifyStart, verifyEnd !== -1 ? verifyEnd : undefined);
-    expect(verifyJob).toContain('bun scripts/publish-workspace.mjs --verify-only');
-    expect(verifyJob).toContain('needs.verify.outputs.sha');
-    expect(verifyJob).not.toMatch(/(?:contents|id-token):\s*write/);
   });
 
   it('does NOT set registry-url on setup-node', () => {
@@ -187,9 +184,8 @@ describe('release workflow (WS-040)', () => {
     expect(binaries).toContain('sha256sum install.sh install.ps1 >> SHA256SUMS');
     expect(binaries).toContain('(cd dist-bin && sha256sum --check SHA256SUMS)');
 
-    // Provenance: the npm half of the release publishes with OIDC provenance,
-    // and the standalone executables -- the primary distribution -- had only a
-    // checksum file fetched from the same release as the binary. The
+    // Provenance: the standalone executables -- the only distribution -- had
+    // only a checksum file fetched from the same release as the binary. The
     // attestation has to be minted in the job that BUILT them, which is why
     // the permissions live here and on release.yml's call site (a called
     // workflow's permissions are capped by the caller's).
@@ -231,12 +227,30 @@ describe('release scripts (WS-040)', () => {
     expect(scripts()['release']).not.toContain('--no-git-checks');
   });
 
-  it('keeps --no-git-checks out of the tarball publish path too', () => {
-    expect(scripts()['release:ci']).not.toContain('--no-git-checks');
+  it('release is the gate alone — no npm publish path remains', () => {
+    const all = scripts();
+    expect(all['release']).toBe('bun run release:check');
+    expect(all['release:fast']).toBe('bun scripts/release-check-matrix.mjs --profile release-fast');
+    // Built by concatenation so a repo-wide grep for the retired names stays
+    // empty outside the changelog.
+    for (const removed of ['dry', 'ci', 'packages', 'plan', 'verify'].map((s) => `release:${s}`)) {
+      expect(all[removed], removed).toBeUndefined();
+    }
+    for (const [name, command] of Object.entries(all)) {
+      expect(command, name).not.toContain(RETIRED_PUBLISHER);
+      expect(command, name).not.toMatch(/\b(?:npm|bun|pnpm) publish\b/);
+    }
+    // The root lifecycle hook refuses outright instead of running a guard.
+    expect(all['prepublishOnly']).toContain('process.exit(1)');
+    expect(all['prepublishOnly']).toContain('npm publishing is retired');
   });
 
-  it('runs the full gate before a local publish', () => {
-    expect(scripts()['release']).toContain('release:check');
+  it('marks every workspace package private so no manual publish can reach npm', () => {
+    const offenders = workspaceMemberDirs(repoRoot)
+      .map((dir) => JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')))
+      .filter((manifest) => manifest.private !== true)
+      .map((manifest) => manifest.name);
+    expect(offenders).toEqual([]);
   });
 
   it('keeps architecture verification read-only in the release gate', () => {

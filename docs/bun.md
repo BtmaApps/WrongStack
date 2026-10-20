@@ -73,7 +73,6 @@ isolation. `WRONGSTACK_VITEST_MAX_WORKERS` can override the shared worker cap.
 ```sh
 bun migration:check       # frozen install dry-run, workspace and CI command checks
 bun release:check --list # list gates without running them
-bun release:dry           # exercise every publishable package without publishing
 ```
 
 `bun.lock` is the installation lockfile. `bunfig.toml` enables Bun execution and

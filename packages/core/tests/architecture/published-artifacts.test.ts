@@ -11,6 +11,10 @@
  *
  * Maps are still produced locally, where they are useful for stack traces; they
  * are excluded from the tarball via a `files` negation.
+ *
+ * npm publishing is retired (every package is `"private": true`), but the
+ * standalone binary and Desktop deploy still pack every workspace package with
+ * `bun pm pack`, so the `files` contract applies to all of them.
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -20,23 +24,23 @@ import { describe, expect, it } from 'vitest';
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..');
 const packagesDir = path.join(repoRoot, 'packages');
 
-function publishableManifests(): { name: string; files: string[] }[] {
+function packedManifests(): { name: string; files: string[] }[] {
   return fs
     .readdirSync(packagesDir)
     .map((dir) => path.join(packagesDir, dir, 'package.json'))
     .filter((file) => fs.existsSync(file))
     .map((file) => JSON.parse(fs.readFileSync(file, 'utf8')) as Record<string, unknown>)
-    .filter((pkg) => pkg['private'] !== true && Array.isArray(pkg['files']))
+    .filter((pkg) => Array.isArray(pkg['files']))
     .map((pkg) => ({ name: String(pkg['name']), files: pkg['files'] as string[] }));
 }
 
 describe('published package artifacts', () => {
-  it('finds the publishable packages (guards against a vacuous pass)', () => {
-    expect(publishableManifests().length).toBeGreaterThan(20);
+  it('finds the packed workspace packages (guards against a vacuous pass)', () => {
+    expect(packedManifests().length).toBeGreaterThan(20);
   });
 
   it('every package that ships dist/ excludes source maps from the tarball', () => {
-    const offenders = publishableManifests()
+    const offenders = packedManifests()
       .filter((pkg) => pkg.files.includes('dist'))
       .filter((pkg) => !pkg.files.includes('!dist/**/*.map'))
       .map((pkg) => pkg.name);

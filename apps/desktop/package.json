@@ -1,6 +1,7 @@
 {
   "name": "@wrongstack/desktop",
   "version": "1.1.11",
+  "private": true,
   "license": "MIT",
   "description": "WrongStack Desktop - Electron shell for managing multiple local WrongStack runtimes.",
   "author": "WrongStack contributors",

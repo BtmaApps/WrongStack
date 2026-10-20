@@ -347,8 +347,9 @@ Added by the **August 2026** `security-check` audit:
     that never runs third-party code. Deferred rather than done because a release pipeline cannot be
     dry-run, and a mistake here breaks shipping rather than security.
   - **Superseded 2026-10-13:** `release.yml` no longer publishes to npm or mints an npm OIDC token.
-    npm is published locally (`bun run release`); the workflow only runs a read-only
-    `publish-workspace.mjs --verify-only` check.
+  - **Superseded 2026-10-21:** npm publishing is retired entirely. Every workspace package is
+    `"private": true`, the publish scripts are deleted, and `release.yml` no longer touches the
+    npm registry at all; releases ship only as GitHub Release binaries and Desktop packages.
 
 - **Loopback is authenticated, not trusted — but the token is readable by same-user processes** (H3):
   - The WebUI/SimpleUI HTTP API now requires a token on every bind (previously loopback required

@@ -2,19 +2,25 @@
 /**
  * Package contract smoke check.
  *
- * Verifies that every publishable workspace package's manifest export
- * targets (main, types, bin, exports) exist on disk after a build. This
- * catches manifest/build drift early — e.g. a package.json that declares
+ * Verifies that every workspace package's manifest export targets (main,
+ * types, bin, exports) exist on disk after a build. This catches
+ * manifest/build drift early — e.g. a package.json that declares
  * `dist/index.js` but the build produces `dist/index.html` only.
+ *
+ * Nothing is published to npm any more (every package is `"private": true`),
+ * but the standalone binary and Desktop deploy (`scripts/lib/deploy-bun-workspace.mjs`)
+ * packs these packages and resolves them through the same manifest fields, so
+ * the contract still holds for every workspace member. The `website` app is
+ * skipped: it is a Vite site, not a package anything imports.
  *
  * Run: bun scripts/check-package-contracts.mjs
  *
  * Exit 0 = all contracts satisfied, exit 1 = one or more broken.
  */
 import { existsSync, readFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { basename, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { collectPublishablePackages } from './lib/publishable-packages.mjs';
+import { workspaceMemberDirs } from './lib/publishable-packages.mjs';
 
 const root = resolve(fileURLToPath(import.meta.url), '..', '..');
 
@@ -67,11 +73,14 @@ function checkTargets(pkgDir) {
 }
 
 // Main
-const { publishable } = collectPublishablePackages(root);
+/** Workspace members that are not importable packages and carry no dist contract. */
+const EXCLUDED_MEMBERS = new Set(['website']);
+
+const members = workspaceMemberDirs(root).filter((dir) => !EXCLUDED_MEMBERS.has(basename(dir)));
 const allErrors = [];
 
-for (const pkg of publishable) {
-  const errors = checkTargets(pkg.dir);
+for (const dir of members) {
+  const errors = checkTargets(dir);
   allErrors.push(...errors);
 }
 
@@ -83,5 +92,5 @@ if (allErrors.length > 0) {
   console.error('Run `bun run build` to produce the missing dist files.');
   process.exit(1);
 } else {
-  console.log(`✅ All ${publishable.length} publishable package contracts satisfied.`);
+  console.log(`✅ All ${members.length} workspace package contracts satisfied.`);
 }

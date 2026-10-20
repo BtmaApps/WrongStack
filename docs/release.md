@@ -1,40 +1,38 @@
 # Release Checklist
 
-Step-by-step guide for publishing a WrongStack release.
+Step-by-step guide for cutting a WrongStack release.
+
+WrongStack ships **only through GitHub Releases**: standalone `wstack` binaries,
+installers, checksum manifests and Desktop packages, all built by
+`.github/workflows/release.yml` when a `vX.Y.Z` tag is pushed.
+
+**npm publishing is retired for good.** Every workspace package is
+`"private": true`, there is no publish script, the root `prepublishOnly` hook
+refuses, and no workflow publishes to or reads from the npm registry. The
+versions already on npm stay frozen exactly as they are — they are neither
+deprecated nor unpublished. Users install the binary
+(`curl -fsSL https://wrongstack.com/install.sh | sh`); `wstack update` moves a
+legacy npm install onto the binary.
 
 ---
 
-## Pre-release
-
-- [ ] If source changes made committed projections stale, refresh them first with `bun run release:prepare` and review the diff before committing. It regenerates, in order:
-  - the provider catalog (`providers:catalog:write`)
-  - the plugin manifest projections (`plugins:manifest:write`)
-  - Core API snapshots, hotspot and test-only-export baselines, and `docs/reports` architecture evidence (`check:architecture:sync` + `report:architecture`)
-  - the test-skip budget (`test-skips:sync` — review required; every skip declaration change is a policy decision)
-- [ ] Run the repository release gate: `bun run release:check`
-  - `bun scripts/audit-dependencies.mjs --audit-level=moderate`
-  - dependency-ordered `bun run build`, tools-package WASM smoke, then `bun run check:dist-hidden`
-  - `bun run providers:catalog:check`, `bun run website:tools:check` and `bun run plugins:manifest:check`
-  - `bun scripts/check-package-contracts.mjs`
-  - `bun scripts/check-npm-package-install.mjs`
-  - `bun run write:build-manifest` → `bun run check:build-manifest`
-  - `bun run check:architecture`, `bun run check:test-inventory`, `bun run check:test-skips`
-  - `bun run check:node-pty`, `bun run check:rulebook`, `bun run lint:i18n`
-  - `bun run typecheck:only` (the workspace build from the top of the gate is reused; no rebuild) and `bun run check:test-types`
-  - `bun run test:coverage`
-- [ ] Run the exact publish dry-run script: `bun run release:dry`
-- [ ] Run `bun run lint` separately if the release policy requires the full Biome lint; it is not currently part of `release:check`.
-- [ ] Manually dispatch the CI and dependency-audit workflows for the reviewed ref and inspect their results. `ci.yml` and `audit.yml` are `workflow_dispatch` only; a push or pull request does not run them.
-- [ ] Run `bun run docs:check`, `bun run website:tools:check`, and `bun run --filter wrongstack-website build` for the release documentation and website. Update README highlights, website changelog/homepage and HTML metadata together.
-- [ ] Deploy website content with a separate manual `pages.yml` dispatch after the reviewed ref is published. A successful local website build does not deploy it.
-
-## Version bump
+## Procedure at a glance
 
 ```bash
-# Pick the right bump (patch / minor / major)
-bun scripts/bump-version.mjs minor
+bun run version:set X.Y.Z        # 1. bump every manifest + website version surfaces
+# 2. CHANGELOG.md, README.md "What's new", website changelog/homepage
+bun run release:prepare          # 3. refresh committed projections and evidence
+git commit -am 'release: X.Y.Z'  # 4. commit the release candidate
+bun run release:check            # 5. full gate — do not touch the tree afterwards
+git push origin main             # 6. push main
+git tag -a vX.Y.Z -m 'X.Y.Z'     # 7. annotated tag on the release commit
+git push origin vX.Y.Z           #    → CI builds binaries + Desktop and creates the GitHub release
+```
 
-# Verify
+## 1. Version bump
+
+```bash
+bun run version:set X.Y.Z
 git diff --stat
 ```
 
@@ -44,34 +42,59 @@ git diff --stat
 - [ ] The bump script regenerated WebUI protocol schemas with the official writer;
       `bun scripts/generate-protocol-schema.mjs --check` passes
 - [ ] `website/package-lock.json`, `website/src/lib/utils.ts`, and `website/index.html` contain the intended website version
-- [ ] CHANGELOG.md has a new dated release section; do not rewrite older release entries
 
-## Commit the release candidate
+## 2. Release notes and website
+
+- [ ] CHANGELOG.md has a new dated release section; do not rewrite older release entries
+- [ ] README highlights, website changelog/homepage and HTML metadata are updated together
+- [ ] `bun run docs:check`, `bun run website:tools:check`, and `bun run --filter wrongstack-website build` pass
+
+## 3. Refresh projections
+
+- [ ] `bun run release:prepare`, then review the diff. It regenerates, in order:
+  - the provider catalog (`providers:catalog:write`)
+  - the plugin manifest projections (`plugins:manifest:write`)
+  - Core API snapshots, hotspot and test-only-export baselines, and `docs/reports` architecture evidence (`check:architecture:sync` + `report:architecture`)
+  - the test-skip budget (`test-skips:sync` — review required; every skip declaration change is a policy decision)
+
+## 4. Commit the release candidate
 
 ```bash
-git commit -am 'release: <version>'
+git commit -am 'release: X.Y.Z'
 ```
 
 - [ ] Commit message follows `release: X.Y.Z` format
 - [ ] Working tree is clean and the commit contains the intended version/docs only
 
-## Publish and verify
+## 5. Release gate
 
-npm is published locally; the tag then builds the GitHub Release (see
-[release-process.md](release-process.md)). From a clean, up-to-date `main`:
+- [ ] `bun run release:check` (`bun run release` is an alias) passes. It runs:
+  - `bun scripts/audit-dependencies.mjs --audit-level=moderate`
+  - dependency-ordered `bun run build`, tools-package WASM smoke, then `bun run check:dist-hidden`
+  - `bun run providers:catalog:check`, `bun run website:tools:check` and `bun run plugins:manifest:check`
+  - `bun scripts/check-package-contracts.mjs`
+  - `bun run write:build-manifest` → `bun run check:build-manifest`
+  - `bun run check:architecture`, `bun run check:test-inventory`, `bun run check:test-skips`
+  - `bun run check:node-pty`, `bun run check:rulebook`, `bun run lint:i18n`
+  - `bun run typecheck:only` (the workspace build from the top of the gate is reused; no rebuild) and `bun run check:test-types`
+  - `bun run test:coverage`
+- [ ] Run `bun run lint` separately if the release policy requires the full Biome lint; it is not currently part of `release:check`.
+- [ ] Do not edit the tree after the gate passes; a change invalidates it.
+- [ ] Optionally dispatch the CI and dependency-audit workflows for the reviewed ref. `ci.yml` and `audit.yml` are `workflow_dispatch` only; a push or pull request does not run them.
+
+## 6–7. Push main, then the tag
 
 ```bash
-bun run release            # release:check, then layered npm publish
-git tag v<version>
+git push origin main
+git tag -a v<version> -m '<version>'
 git push origin v<version>
 ```
 
 The workflow verifies that the tag version matches `package.json` and that the
 tagged commit belongs to `main`. It then builds and smokes standalone binaries
 on Linux, Windows, and macOS, creates the GitHub Release, and attaches the
-verified binaries, installers, checksum manifest, and Desktop packages. It does
-not publish to npm; its read-only `npm-verify` job reports whether the tagged
-version is live there.
+verified binaries, installers, checksum manifest, and Desktop packages. That is
+the whole release; nothing is published anywhere else.
 
 - [ ] The tag points at the exact reviewed release commit
 - [ ] `verify`, `binaries`, `binaries-smoke`, and `github-release` succeeded
@@ -80,11 +103,9 @@ version is live there.
 - [ ] `SHA256SUMS` verifies every uploaded standalone binary
 - [ ] The four Desktop matrix jobs passed package smoke; Desktop assets and
       `DESKTOP-SHA256SUMS` were attached
-- [ ] `npm-verify` succeeded (or `bun run release:verify` passes locally)
 
-`bun run release` enforces a clean main checkout and resumes from the registry:
-if it stops partway, re-run it; never bump the version to recover. It does not
-replace the GitHub binary/Desktop release path.
+A failed binary or Desktop job is re-run for the same tag through the
+workflow's manual `workflow_dispatch` input; never bump the version to recover.
 
 ## Post-release
 
@@ -104,8 +125,7 @@ irm https://wrongstack.com/install.ps1 | iex
   `scripts/install/` by the website build.
 
 - [ ] Run `wstack version` from the installed standalone binary
-- [ ] Verify npm with `bun run release:verify` or `npm info wrongstack version`
-- [ ] Update README.md "What's new" section if major release
+- [ ] Deploy website content with a separate manual `pages.yml` dispatch for the released ref. A successful local website build does not deploy it.
 
 ## Hotfix process
 
@@ -115,7 +135,7 @@ If a critical bug is found after release:
 git checkout v<version>
 git checkout -b hotfix/0.5.1
 # fix the bug
-bun scripts/bump-version.mjs patch
+bun run version:set 0.5.1
 git commit -am 'release: 0.5.1'
 # Push and merge the hotfix through the repository's normal review path.
 git push -u origin hotfix/0.5.1
@@ -123,7 +143,7 @@ git push -u origin hotfix/0.5.1
 # After the reviewed commit is on main:
 git checkout main
 git pull --ff-only
-git tag v0.5.1
+git tag -a v0.5.1 -m '0.5.1'
 git push origin v0.5.1
 ```
 
@@ -132,20 +152,10 @@ git push origin v0.5.1
 ## Automation status
 
 - `.github/workflows/release.yml` handles tag/SHA verification, standalone
-  binaries, GitHub Release creation, Desktop packages, and a read-only npm
-  version check. It never publishes to npm.
+  binaries, GitHub Release creation, and Desktop packages. It never publishes
+  to npm and does not query the npm registry.
 - `.github/workflows/binaries.yml` is reusable and can prove the standalone
   build and cross-platform smoke without cutting a release.
 - `.github/workflows/desktop.yml` is reusable and packages/smokes each Desktop
   target without publishing credentials.
 - `.github/workflows/pages.yml` builds and deploys `website/` independently.
-
----
-
-## npm publish dry run
-
-To see exactly what would be published without actually publishing:
-
-```bash
-bun run release:dry
-```

@@ -434,7 +434,8 @@ Full walk-through: [`docs/architecture.md`](docs/architecture.md).
 ## Status
 
 - **v1.1.11** — current repository version; semver from 1.0.0 onward
-- Full release verification: `bun run release:check` before publishing
+- Distribution: GitHub Releases only (standalone `wstack` binaries + Desktop); npm publishing is retired and the existing npm versions are frozen
+- Full release verification: `bun run release:check` before pushing the `vX.Y.Z` release tag
 - Coverage thresholds (root Vitest): ≥76% lines / ≥75% functions / ≥66% branches / ≥75% statements
 - Packages and apps use TypeScript strict + `noUncheckedIndexedAccess`
 - CI, dependency audit and Pages deployment are manually dispatched; pushes do not run them

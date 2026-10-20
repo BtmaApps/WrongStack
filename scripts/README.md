@@ -79,12 +79,9 @@ All remaining scripts are **Wired** — see the tables below.
 | Script | Status | What it does | Used by |
 | --- | --- | --- | --- |
 | `bump-version.mjs` | Wired | Sets one shared version across the root and every workspace `package.json` (`patch`/`minor`/`major`/`set`). | `version:*` |
-| `publish-workspace.mjs` | Wired | Publishes to npm in dependency layers and proves each layer resolves on the registry before the next (`--plan`, `--dry-run`, `--verify-only`, `--tarballs-dir`). | `release*`, `release.yml` (`--verify-only`) |
-| `list-publishable-packages.mjs` | Wired | Prints the packages that would be published and flags `publishConfig` drift. | `release:packages` |
-| `lib/publishable-packages.mjs` | Wired (lib) | Publish inventory and dependency layering shared by the publish scripts and package-contract checks. | `publish-workspace.mjs`, `list-…`, `check-package-contracts.mjs` |
+| `lib/publishable-packages.mjs` | Wired (lib) | Workspace member discovery (`workspaceMemberDirs`). npm publishing is retired, so it no longer carries a publish inventory. | `build.mjs`, `lib/deploy-bun-workspace.mjs`, `check-package-contracts.mjs` |
 | `release-check-matrix.mjs` | Wired | Runs *every* release gate and reports one pass/fail matrix (profiles `release`, `release-fast`, `local`). | `release:check`, `release:fast`, `ci:local` |
-| `check-package-contracts.mjs` | Wired | Verifies each publishable package's `main`/`types`/`bin`/`exports` targets exist after a build. | `ci.yml`, release matrix |
-| `check-npm-package-install.mjs` | Wired | Proves the providers tarball has a finite, valid npm dependency graph (guards a past npm Arborist cycle). | release matrix |
+| `check-package-contracts.mjs` | Wired | Verifies each workspace package's (except `website`) `main`/`types`/`bin`/`exports` targets exist after a build. | `ci.yml`, release matrix |
 | `check-tools-package-smoke.mjs` | Wired | Packs `@wrongstack/tools` and checks the vendored Tree-sitter WASM grammars load from the tarball. | release matrix |
 | `check-build-lineage.mjs` | Wired | `--assert-clean` / `--write` / `--verify` for the build-artifact manifest (stale or foreign `dist` detection). | `check:clean-dist`, `check:build-manifest`, `write:build-manifest` |
 | `lib/build-lineage.mjs` | Wired (lib) | Manifest creation/validation used by the above. | `check-build-lineage.mjs` |
@@ -188,7 +185,7 @@ Declaration files that give TypeScript consumers (mostly tests under `packages/*
 types for the plain `.mjs` scripts next to them. They are not executable; keep each one next to its `.mjs`.
 
 `build-binaries`, `check-audit-suppressions`, `check-dep-path-separators`, `check-dist-hidden-files`,
-`check-zero-coverage`, `coverage-lock`, `coverage-matrix`, `publish-workspace`,
+`check-zero-coverage`, `coverage-lock`, `coverage-matrix`,
 `sync-core-public-api-snapshot`, `test-coverage`, `vitest-core-aliases`, and `lib/`:
 `architecture-health`, `build-lineage`, `build-output-cleanup`, `deploy-bun-workspace`,
 `desktop-package-checksums`, `publishable-packages`, `read-bun-lock`, `test-inventory`, `test-skip-budget`.

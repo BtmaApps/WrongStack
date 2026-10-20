@@ -1,35 +1,23 @@
 /**
- * Workspace publish inventory and dependency layering.
+ * Workspace member discovery.
  *
- * Why this exists
- * ---------------
- * `pnpm publish -r` sorts the workspace topologically but publishes with
- * `workspace-concurrency` > 1, so several packages are in flight at once and
- * the ORDER THE REGISTRY OBSERVES is not the order pnpm printed. On the
- * 0.317.2 release that landed `wrongstack@0.317.2` on npm at 23:30:15Z and
- * `@wrongstack/webui-hq@0.317.2` — a transitive dependency of it — 25 seconds
- * later, so every `npm i -g wrongstack` in that window failed with
- * `ETARGET No matching version found for @wrongstack/webui-hq@0.317.2`.
- * npm's packument cache (both the CDN edge and the client's own, ~5 minutes)
- * then kept the broken resolution alive well past the 25-second gap.
- *
- * The fix is to publish in explicit dependency LAYERS and prove each layer is
- * resolvable on the registry before starting the next, so a package is never
- * on npm before the workspace packages it depends on. This module owns the
- * inventory and the layering; `scripts/publish-workspace.mjs` owns the driving.
+ * WrongStack no longer publishes to npm: every workspace package is
+ * `"private": true` and releases ship only as GitHub Release binaries and
+ * Desktop installers. The npm publish inventory and dependency layering that
+ * used to live here went away with the npm publish script; what remains is the workspace member list that the build (`scripts/build.mjs`),
+ * the binary deploy (`scripts/lib/deploy-bun-workspace.mjs`) and the
+ * package-contract gate (`scripts/check-package-contracts.mjs`) share.
  */
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { basename, join } from 'node:path';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const repoRoot = fileURLToPath(new URL('../..', import.meta.url));
 
-/** Dependency fields that make one workspace package require another at install time. */
-const DEPENDENCY_FIELDS = ['dependencies', 'optionalDependencies', 'peerDependencies'];
-
 /**
- * Resolve the workspace member directories from `pnpm-workspace.yaml`, so the
- * list matches what `pnpm publish -r` actually considers — not just `packages/*`.
+ * Resolve the workspace member directories from the root `workspaces` field
+ * (falling back to a legacy `pnpm-workspace.yaml`), so the
+ * list covers every member — not just `packages/*`.
  * The workspace globs here are simple (`packages/*`, `apps/*`, a literal
  * `website`), so a line parse avoids pulling in a YAML dependency.
  * @param {string} [root] repository root to read the workspace file from
@@ -84,136 +72,4 @@ export function workspaceMemberDirs(root = repoRoot) {
     if (/^\S/.test(line)) break;
   }
   return dirs;
-}
-
-/**
- * @typedef {object} PublishablePackage
- * @property {string} name package name as published
- * @property {string} version version in the working tree
- * @property {string} dir absolute directory of the workspace member
- * @property {string | undefined} access declared `publishConfig.access`
- * @property {boolean} provenance whether `publishConfig.provenance` is set
- * @property {string[]} workspaceDeps names of OTHER publishable workspace
- *   packages this one requires at install time
- */
-
-/**
- * Enumerate the workspace packages `pnpm publish -r` would publish.
- * @param {string} [root] repository root
- * @returns {{publishable: PublishablePackage[], skipped: string[]}}
- */
-export function collectPublishablePackages(root = repoRoot) {
-  /** @type {PublishablePackage[]} */
-  const publishable = [];
-  /** @type {string[]} */
-  const skipped = [];
-  /** @type {{manifest: Record<string, any>, dir: string}[]} */
-  const manifests = [];
-
-  for (const dir of workspaceMemberDirs(root)) {
-    let manifest;
-    try {
-      manifest = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
-    } catch {
-      continue;
-    }
-    if (manifest.private === true) {
-      skipped.push(`${manifest.name ?? basename(dir)} (private)`);
-      continue;
-    }
-    manifests.push({ manifest, dir });
-  }
-
-  const publishedNames = new Set(manifests.map((m) => m.manifest.name));
-
-  for (const { manifest, dir } of manifests) {
-    /** @type {Set<string>} */
-    const deps = new Set();
-    for (const field of DEPENDENCY_FIELDS) {
-      for (const dep of Object.keys(manifest[field] ?? {})) {
-        // A package depending on itself (or on a private member, which is
-        // never published) contributes no registry ordering constraint.
-        if (dep !== manifest.name && publishedNames.has(dep)) deps.add(dep);
-      }
-    }
-    publishable.push({
-      name: manifest.name,
-      version: manifest.version,
-      dir,
-      access: manifest.publishConfig?.access,
-      provenance: manifest.publishConfig?.provenance === true,
-      workspaceDeps: [...deps].sort(),
-    });
-  }
-
-  publishable.sort((a, b) => a.name.localeCompare(b.name));
-  return { publishable, skipped };
-}
-
-/**
- * Publishable packages whose version differs from the release version.
- *
- * The workspace releases in lockstep (`scripts/bump-version.mjs` writes one
- * version into every manifest) and internal deps are `workspace:*`, which pnpm
- * pins to each sibling's CURRENT version at pack time. So one stale manifest
- * does not fail the publish - it silently ships dependents pinned to an old
- * sibling. 1.0.9: `packages/plugins/package.json` fell back to 1.0.8 after the
- * bump, the resume logic correctly skipped the already-live plugins@1.0.8, and
- * `@wrongstack/cli@1.0.9` went out depending on `@wrongstack/plugins@1.0.8`.
- *
- * The release version is the most common one; ties break toward the higher.
- * @param {Pick<PublishablePackage, 'name' | 'version'>[]} packages
- * @returns {{expected: string | undefined, drifted: {name: string, version: string}[]}}
- */
-export function findVersionDrift(packages) {
-  /** @type {Map<string, number>} */
-  const counts = new Map();
-  for (const p of packages) counts.set(p.version, (counts.get(p.version) ?? 0) + 1);
-  const expected = [...counts.entries()].sort(
-    ([va, ca], [vb, cb]) => cb - ca || vb.localeCompare(va, undefined, { numeric: true }),
-  )[0]?.[0];
-  const drifted = packages
-    .filter((p) => p.version !== expected)
-    .map((p) => ({ name: p.name, version: p.version }))
-    .sort((a, b) => a.name.localeCompare(b.name));
-  return { expected, drifted };
-}
-
-/**
- * Group packages into publish layers: layer N contains only packages whose
- * workspace dependencies all live in layers < N. Publishing layer by layer,
- * and confirming each layer is live on the registry before starting the next,
- * is what makes a partially-visible release impossible to resolve into a
- * broken tree.
- *
- * A dependency CYCLE cannot be ordered, so the remaining packages are emitted
- * as one final layer and reported in `cycles` for the caller to surface — the
- * publish still happens, it just cannot promise ordering within that group.
- *
- * @param {PublishablePackage[]} packages
- * @returns {{layers: PublishablePackage[][], cycles: string[]}}
- */
-export function layerByDependencies(packages) {
-  const byName = new Map(packages.map((p) => [p.name, p]));
-  /** @type {PublishablePackage[][]} */
-  const layers = [];
-  /** @type {Set<string>} */
-  const placed = new Set();
-  let remaining = [...packages];
-
-  while (remaining.length > 0) {
-    const ready = remaining.filter((p) =>
-      p.workspaceDeps.every((d) => !byName.has(d) || placed.has(d)),
-    );
-    if (ready.length === 0) {
-      // Everything left is in (or behind) a cycle. Ship it as one layer.
-      layers.push([...remaining].sort((a, b) => a.name.localeCompare(b.name)));
-      return { layers, cycles: remaining.map((p) => p.name).sort() };
-    }
-    layers.push(ready.sort((a, b) => a.name.localeCompare(b.name)));
-    for (const p of ready) placed.add(p.name);
-    remaining = remaining.filter((p) => !placed.has(p.name));
-  }
-
-  return { layers, cycles: [] };
 }
