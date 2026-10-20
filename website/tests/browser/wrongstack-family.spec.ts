@@ -18,9 +18,10 @@ test('the family is discoverable and links to the official sibling projects', as
       const link = family.getByRole('link', { name: `Explore ${name} on GitHub`, exact: true });
       await expect(link).toHaveAttribute('href', href);
       await expect(link).toHaveAttribute('target', '_blank');
-      await expect(
-        family.getByRole('link', { name: `Read ${name} documentation` }),
-      ).toHaveAttribute('href', /^https:\/\/github\.com\/WrongStack\//);
+      await expect(family.getByRole('link', { name: `Read the docs for ${name}` })).toHaveAttribute(
+        'href',
+        /^https:\/\/github\.com\/WrongStack\//,
+      );
     }
     await expect(family.getByRole('link', { name: 'WrongTrace license: BUSL-1.1' })).toBeVisible();
     await expect(
@@ -49,10 +50,10 @@ test('the family is discoverable and links to the official sibling projects', as
     if (route === '/')
       await family.screenshot({ path: testInfo.outputPath('wrongstack-family.png') });
   }
-  await page.getByRole('button', { name: 'Search pages, features and commands' }).click();
+  await page.getByRole('button', { name: 'Search ⌘ K: pages, features and commands' }).click();
   const search = page.getByRole('dialog', { name: 'Search WrongStack documentation' });
   for (const query of ['WrongForge', 'WrongTrace']) {
-    await search.getByRole('textbox').fill(query);
+    await search.getByRole('combobox').fill(query);
     await expect(search.getByRole('option').filter({ hasText: 'Ecosystem' })).toBeVisible();
   }
   await search.getByRole('option').filter({ hasText: 'Ecosystem' }).click();

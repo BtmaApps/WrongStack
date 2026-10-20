@@ -114,10 +114,10 @@ test('navigation, search, theme and catalog filters remain usable', async ({ pag
     );
     await page.keyboard.press('Escape');
   }
-  await page.getByRole('button', { name: 'Search pages, features and commands' }).click();
+  await page.getByRole('button', { name: 'Search ⌘ K: pages, features and commands' }).click();
   const search = page.getByRole('dialog', { name: 'Search WrongStack documentation' });
   await expect(search).toBeVisible();
-  await search.getByRole('textbox').fill('mailbox');
+  await search.getByRole('combobox').fill('mailbox');
   await expect(search.getByRole('option').first()).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(search).not.toBeVisible();

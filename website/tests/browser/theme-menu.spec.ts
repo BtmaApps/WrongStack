@@ -44,7 +44,8 @@ test('appearance selection persists and System follows device changes', async ({
   await page.keyboard.press('Escape');
   await expect(trigger).toBeFocused();
   await trigger.click();
-  await page.locator('main h1').click();
+  // The heading's center may sit behind the popover on narrow screens.
+  await page.mouse.click(8, page.viewportSize()!.height - 8);
   await expect(dialog).not.toBeVisible();
   await trigger.click();
   await page.keyboard.press('Tab');

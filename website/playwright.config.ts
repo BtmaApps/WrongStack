@@ -13,7 +13,7 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     trace: 'retain-on-failure',
   },
-  projects: [375, 768, 1024, 1440, 1920, 2560].map((width) => ({
+  projects: [320, 375, 390, 768, 1024, 1280, 1440, 1920, 2560].map((width) => ({
     name: `${width}px`,
     use: { viewport: { width, height: 1000 } },
   })),
