@@ -44,6 +44,15 @@ describe('spawn_subagent capability toggles', () => {
     expect(adHoc.allowedCapabilities).toBeUndefined();
   });
 
+  it('carries leader-requested skills, trimmed, deduped and capped', async () => {
+    const cfg = await spawnWith({
+      role: 'executor',
+      skills: [' testing ', 'testing', '', 3, 'a', 'b', 'c', 'd'],
+    });
+    expect(cfg.requestedSkills).toEqual(['testing', 'a', 'b', 'c']);
+    expect((await spawnWith({ role: 'executor' })).requestedSkills).toBeUndefined();
+  });
+
   it('widens a narrowed role grant by exactly the requested capabilities', async () => {
     const cfg = await spawnWith({
       role: 'read-only',

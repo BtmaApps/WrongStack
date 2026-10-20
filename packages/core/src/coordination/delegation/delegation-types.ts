@@ -50,6 +50,8 @@ export interface DelegateInput {
   tier?: string | undefined;
   /** Leader-chosen reasoning effort; see `SubagentConfig.leaderEffort`. */
   effort?: string | undefined;
+  /** Skills to load first; see `SubagentConfig.requestedSkills`. */
+  skills?: string[] | undefined;
   systemPromptOverride?: string | undefined;
   timeoutMs?: number | undefined;
   maxIterations?: number | undefined;

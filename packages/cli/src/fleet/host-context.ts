@@ -12,6 +12,7 @@ import {
   runtimeToolReferencesFromText,
   type SkillBlockReason,
 } from '@wrongstack/core/agent-catalog';
+import { FLEET_ROSTER } from '@wrongstack/core/coordination';
 import { TOKENS } from '@wrongstack/core/kernel';
 import type { SubagentConfig } from '@wrongstack/core/types';
 import { activeLimits, positiveLimit } from '@wrongstack/core/types';
@@ -62,13 +63,14 @@ export async function resolveHostSubagentSkillResolution(
   const rosterEntry = role ? roster[role] : undefined;
   const directContent = subCfg.skillContent?.trim();
   const dropped: SkillResolutionReport['dropped'] = {};
+  const explicitSkills = explicitSkillList(subCfg);
 
   // Candidate pool, widest first: an explicit per-spawn list wins; otherwise
   // the role's full curated pool (not just the catalog's default eager slice)
   // plus any skill this project has already developed an addendum for.
   const pool = [
     ...new Set(
-      subCfg.skillNames ??
+      explicitSkills ??
         (role
           ? [
               ...(rosterEntry?.skillPool ?? rosterEntry?.skillNames ?? []),
@@ -84,20 +86,29 @@ export async function resolveHostSubagentSkillResolution(
   // every spawn and so ran on two skills, never reaching `code-review`.
   // An explicit per-spawn list is the caller's own priority order and is kept.
   let ranked =
-    role && !subCfg.skillNames ? rankRoleSkills(role, pool, deps.projectRoot, pool.length) : pool;
+    role && !explicitSkills ? rankRoleSkills(role, pool, deps.projectRoot, pool.length) : pool;
 
   // Affinity knows what this role usually needs, not what this task needs: a
   // role's pool was always served in the same order whatever it was asked to
   // do, and a role-less worker got no pool at all — only the prompt's generic
   // catalog-order skill block, unrelated to its task. Skills the task names
   // strongly enough move to the front (role) or form the pool (role-less).
-  if (!subCfg.skillNames && taskText?.trim() && deps.skillLoader) {
+  if (!explicitSkills && taskText?.trim() && deps.skillLoader) {
     const scores = await taskSkillScores(deps.skillLoader, taskText, availableToolNames);
     const strong = (name: string) => (scores.get(name) ?? 0) >= MIN_TASK_SKILL_SCORE;
     const byScore = (a: string, b: string) => (scores.get(b) ?? 0) - (scores.get(a) ?? 0);
     ranked = role
       ? [...ranked.filter(strong).sort(byScore), ...ranked.filter((name) => !strong(name))]
       : [...scores.keys()].filter(strong).sort(byScore);
+  }
+
+  // Skills the leader asked for by name go first, ahead of anything ranked —
+  // the leader may know a method fits from context no ranking can see. They
+  // join the pool rather than replace it; an empty explicit list (companions)
+  // still means none.
+  const requested = subCfg.requestedSkills?.filter((name) => name.trim()) ?? [];
+  if (requested.length > 0 && explicitSkills?.length !== 0) {
+    ranked = [...new Set([...requested, ...ranked])];
   }
 
   if (ranked.length === 0 || !deps.skillLoader) {
@@ -291,6 +302,30 @@ export async function resolveHostSubagentSkillResolution(
     blocks.length > 0 ? `${skillsHeader}${blocks.join('\n\n---\n\n')}` : undefined,
   ].filter((section): section is string => Boolean(section));
   return { content: sections.join('\n\n'), selected, dropped, trimmed, addendumOnly };
+}
+
+/**
+ * The spawn's `skillNames` when it is a real per-spawn choice, else undefined.
+ *
+ * Every roster spawn copies its role's catalog entry, so `skillNames` arrives
+ * holding the role's default eager slice whether or not anyone chose it. Read
+ * as an explicit list, that froze every roster worker on the same three skills:
+ * the curated pool, the project's developed skills, affinity and task ranking
+ * never ran. A list equal to the catalog default is that default; an empty
+ * list (companions), a project override or any other list is a real choice.
+ */
+function explicitSkillList(subCfg: SubagentConfig): string[] | undefined {
+  const names = subCfg.skillNames;
+  if (!names) return undefined;
+  if (names.length === 0 || !subCfg.role) return names;
+  const catalogDefault = Object.hasOwn(FLEET_ROSTER, subCfg.role)
+    ? FLEET_ROSTER[subCfg.role]?.skillNames
+    : undefined;
+  const isDefault =
+    catalogDefault !== undefined &&
+    catalogDefault.length === names.length &&
+    catalogDefault.every((name, index) => names[index] === name);
+  return isDefault ? undefined : names;
 }
 
 /**

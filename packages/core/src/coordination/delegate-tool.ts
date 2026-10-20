@@ -20,7 +20,7 @@ import {
   startDelegationAttempt,
   validateDelegationInput,
 } from './delegation/run-delegation.js';
-import { LEADER_EFFORT_SCHEMA } from './director-spawn-model.js';
+import { LEADER_EFFORT_SCHEMA, SPAWN_SKILLS_SCHEMA } from './director-spawn-model.js';
 import { rosterRoleMenu } from './dispatcher.js';
 import { callerSessionId } from './origin-session.js';
 import { taskBoundarySchemaProperties } from './task-boundary.js';
@@ -211,6 +211,7 @@ export function createDelegateTool(opts: CreateDelegateToolOptions): Tool {
           "Cost/capability level for this worker: 'budget' (cheap + fast, for mechanical or well-specified work), 'standard' (the default), or 'premium' (expensive + most capable, for work where being wrong is costly). Resolved deterministically into a model, a failover chain, and a spend budget from `modelTiers` config, so you do NOT need to know any model id. Omit to let the routing table decide by role. An explicit `model` always wins over the tier.\n\nA cheaper tier is usually a SLOWER model. With `wait: true` the leader is blocked for the whole run, so `tier: 'budget'` there can cost more of your wall-clock than it saves in dollars. In the default background mode you keep working meanwhile, so that trade-off does not apply.",
       },
       effort: LEADER_EFFORT_SCHEMA,
+      skills: SPAWN_SKILLS_SCHEMA,
       systemPromptOverride: {
         type: 'string',
         description: 'Extra prompt text appended to the role baseline.',

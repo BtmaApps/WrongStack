@@ -23,7 +23,7 @@ import { ToolValidationError } from '../../types/errors.js';
 import type { SubagentConfig } from '../../types/multi-agent.js';
 import type { DispatchLogEntry } from '../agents/dispatch-log.js';
 import type { Director } from '../director.js';
-import { readLeaderEffort } from '../director-spawn-model.js';
+import { readLeaderEffort, readSpawnSkills } from '../director-spawn-model.js';
 import { dispatchAgent, rosterDispatchCatalog } from '../dispatcher.js';
 import { isExternalAgentProvider } from '../external-agent-provider.js';
 import { applyRosterBudget, FLEET_ROSTER_BUDGETS } from '../fleet.js';
@@ -282,6 +282,8 @@ export async function prepareDelegation(
   // with the leader (see `SubagentConfig.leaderEffort`).
   const effort = readLeaderEffort(i.effort);
   if (effort) cfg.leaderEffort = effort;
+  const skills = readSpawnSkills(i.skills);
+  if (skills) cfg.requestedSkills = skills;
   if (i.tier) cfg.tier = i.tier;
   else if (!cfg.model && !cfg.provider && opts.suggestTier) {
     const suggested = await opts.suggestTier({ task: i.task, role: i.role });

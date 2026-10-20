@@ -6,7 +6,12 @@ import { snapshotConversationEffort } from '../utils/leader-effort-override.js';
 import type { DispatchLogEntry } from './agents/dispatch-log.js';
 import type * as Host from './director-host-contracts.js';
 import { instantiateRosterConfig } from './director-input-helpers.js';
-import { LEADER_EFFORT_SCHEMA, readLeaderEffort } from './director-spawn-model.js';
+import {
+  LEADER_EFFORT_SCHEMA,
+  readLeaderEffort,
+  readSpawnSkills,
+  SPAWN_SKILLS_SCHEMA,
+} from './director-spawn-model.js';
 
 import { dispatchAgent, rosterDispatchCatalog } from './dispatcher.js';
 
@@ -57,6 +62,7 @@ export function makeSpawnTool(
           "Cost/capability level for this worker: 'budget' (cheap + fast, for mechanical or well-specified work), 'standard' (the default), or 'premium' (expensive + most capable, for work where being wrong is costly). Resolved deterministically into a model, a failover chain, and a spend budget from `modelTiers` config, so you do NOT need to know any model id. Omit to let the routing table decide by role. An explicit `model` always wins over the tier.\n\nThis is the RIGHT place to spend a cheap tier. Because this spawn is non-blocking, a budget-tier worker being slower costs you nothing — you keep working while it runs. The same tier on `delegate` would just make you wait longer.",
       },
       effort: LEADER_EFFORT_SCHEMA,
+      skills: SPAWN_SKILLS_SCHEMA,
       systemPromptOverride: {
         type: 'string',
         description: 'Extra prompt text appended after the role-base prompt.',
@@ -214,6 +220,8 @@ export function makeSpawnTool(
       // leaves this decision with the leader (see `leaderEffort`).
       const effort = readLeaderEffort(i.effort);
       if (effort) cfg.leaderEffort = effort;
+      const skills = readSpawnSkills(i.skills);
+      if (skills) cfg.requestedSkills = skills;
       // What the leader runs at, for a worker nothing else picks an effort for.
       const ownEffort = snapshotConversationEffort(
         (ctx as { meta?: Record<string, unknown> } | undefined)?.meta,

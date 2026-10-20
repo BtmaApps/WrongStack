@@ -285,6 +285,14 @@ export interface SubagentConfig {
   skillNames?: string[] | undefined;
 
   /**
+   * Skills the leader asked for by name on this spawn (`delegate` /
+   * `spawn_subagent` `skills`). Loaded ahead of the role's ranked pool rather
+   * than replacing it; unknown or unloadable names are dropped and reported
+   * like any other skill.
+   */
+  requestedSkills?: string[] | undefined;
+
+  /**
    * Every skill this role may draw on, before per-project ranking. The catalog
    * sets this to the full curated set while `skillNames` holds the default
    * eager slice; the spawn path ranks the pool by project skill-affinity so a

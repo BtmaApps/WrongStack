@@ -290,6 +290,11 @@ export function resolveDirectorSpawnModel(
   }
 }
 
+/** True when the spawn runs an external ACP agent (Claude Code, Codex CLI, …). */
+export function isExternalAgentSpawn(config: SubagentConfig): boolean {
+  return isExternalAgentProvider(config.provider);
+}
+
 /**
  * True when a PERSON pinned this spawn's model rather than the leader.
  *
@@ -305,11 +310,6 @@ export function resolveDirectorSpawnModel(
  * exists in neither place. The layers below — matrix, tier, session — fill the
  * gap the same way they did before the plan existed.
  */
-/** True when the spawn runs an external ACP agent (Claude Code, Codex CLI, …). */
-export function isExternalAgentSpawn(config: SubagentConfig): boolean {
-  return isExternalAgentProvider(config.provider);
-}
-
 export function isHumanPinnedSpawn(config: SubagentConfig): boolean {
   if (config.modelChosenByLeader === true) return false;
   return Boolean(config.provider || config.model);
@@ -326,6 +326,32 @@ export const LEADER_EFFORT_SCHEMA: JSONSchema = {
   description:
     "Reasoning effort for this worker — YOUR call, made per task and per model, just like provider/model. Match it to the work: 'low'/'minimal' for mechanical, well-specified edits or lookups; 'medium' for ordinary work; 'high'/'xhigh'/'max' for deep debugging, design, security or review where being wrong is costly; 'none' to switch reasoning off. It is applied to whatever model the worker resolves to (your pin, a user lane, the routing table or the tier) and mapped onto the nearest level that model supports. It survives a user's locked model lane; only an effort the user set on that lane or role wins over it. Omit to inherit your own session effort.",
 };
+
+/** Most skills a leader may request per spawn — each one costs prompt space. */
+const MAX_SPAWN_SKILLS = 4;
+
+/** The `skills` input shared by `delegate` and `spawn_subagent`. */
+export const SPAWN_SKILLS_SCHEMA: JSONSchema = {
+  type: 'array',
+  items: { type: 'string' },
+  maxItems: MAX_SPAWN_SKILLS,
+  description:
+    'Skill names to load into this worker first (e.g. one the skill companion suggested). Added ahead of the skills its role and task already select — omit to let those choose.',
+};
+
+/** Read leader-requested skill names; non-strings and blanks are dropped, the list is capped. */
+export function readSpawnSkills(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const names = [
+    ...new Set(
+      value
+        .filter((name): name is string => typeof name === 'string')
+        .map((name) => name.trim())
+        .filter(Boolean),
+    ),
+  ].slice(0, MAX_SPAWN_SKILLS);
+  return names.length > 0 ? names : undefined;
+}
 
 /** Read and validate a leader-supplied `effort`; throws a teaching error on a bad value. */
 export function readLeaderEffort(value: unknown): ReasoningEffort | undefined {
