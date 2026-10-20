@@ -1030,6 +1030,7 @@
     "lanes": "Carriles",
     "graph": "Grafo",
     "planningAck": "🚀 **Goal** — entendido. Planificando fases para tu objetivo…",
+    "planningFailed": "⚠️ **Goal** — la planificación falló: {{message}}",
     "assess": {
       "analyzing": "Analizando alcance de la meta…",
       "realistic": "✓ El alcance parece realista",

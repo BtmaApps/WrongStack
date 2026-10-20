@@ -1030,6 +1030,7 @@
     "lanes": "Faixas",
     "graph": "Grafo",
     "planningAck": "🚀 **Goal** — entendido. Planejando fases para seu objetivo…",
+    "planningFailed": "⚠️ **Goal** — o planejamento falhou: {{message}}",
     "assess": {
       "analyzing": "Analisando escopo da meta…",
       "realistic": "✓ O escopo parece realista",

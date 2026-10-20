@@ -11,15 +11,12 @@ export const OPERATIONS_HELP_ENTRIES: Record<string, PerSubcommandHelp> = {
     name: 'update',
     title: 'wstack update — self-update the CLI',
     description:
-      'Check the latest npm version and update the globally-installed ' +
-      '`wrongstack` package. Use `--check-only` to just print the ' +
-      'current/latest without installing. Pass `--pm <manager>` (or its ' +
-      'shorthand `--npm`, `--pnpm`, `--yarn`, `--bun`) to force a specific ' +
-      'package manager; pass `--allow-scripts` (alias `--lifecycle-scripts`) ' +
-      'to opt into package lifecycle scripts during the update (off by default). ' +
-      'The update is global; run from any project root.',
-    usage:
-      'wstack update [--check-only] [--pm <manager>] [--allow-scripts (alias: --lifecycle-scripts)]',
+      'Update using the latest GitHub Releases binary. Legacy package installations ' +
+      'print a warning, install the binary, then uninstall old global wrongstack / ' +
+      '@wrongstack/cli packages from npm, pnpm, yarn and Bun. Package-manager updates ' +
+      'are disabled; legacy manager/script flags are ignored with a warning. ' +
+      'Use --check-only to report versions without installing or uninstalling anything.',
+    usage: 'wstack update [--check-only]',
     seeAlso: 'wstack version (read-only version info)',
   },
 

@@ -1043,6 +1043,7 @@
     "lanes": "Lanes",
     "graph": "Graph",
     "planningAck": "🚀 **Goal** — got it. Planning phases for your goal now…",
+    "planningFailed": "⚠️ **Goal** — planning failed: {{message}}",
     "assess": {
       "analyzing": "Analyzing goal scope…",
       "realistic": "✓ Scope looks realistic",

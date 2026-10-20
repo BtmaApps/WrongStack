@@ -1030,6 +1030,7 @@
     "lanes": "Spuren",
     "graph": "Graph",
     "planningAck": "🚀 **Goal** — verstanden. Plane Phasen für dein Ziel…",
+    "planningFailed": "⚠️ **Goal** — Planung fehlgeschlagen: {{message}}",
     "assess": {
       "analyzing": "Analysiere Zielumfang…",
       "realistic": "✓ Umfang sieht realistisch aus",

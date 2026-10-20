@@ -181,6 +181,10 @@ CHECK_OUTPUT=$("$WSTACK_BIN" update --check-only --pm "$PACKAGE_MANAGER") || {
   exit 1
 }
 printf '%s\\n' "$CHECK_OUTPUT"
+if printf '%s\\n' "$CHECK_OUTPUT" | grep -q 'Run wstack update to migrate this package installation'; then
+  echo "Legacy package migration requires manual installation: reconfigure the HQ service to use the standalone binary before enabling unattended updates." >&2
+  exit 1
+fi
 if ! printf '%s\\n' "$CHECK_OUTPUT" | grep -q '^Update available:'; then
   exit 0
 fi

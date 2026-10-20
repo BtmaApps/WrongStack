@@ -17,6 +17,7 @@ vi.mock('@/lib/ws-client', () => ({
 }));
 
 const { useGoalRunStore, useGoalStateStore, useUIStore } = await import('../../src/stores');
+const { chatLane } = await import('../../src/stores/chat-lanes');
 const { useLocalPrefs } = await import('../../src/stores/local-prefs');
 const {
   handleGoalLifecycle,
@@ -428,6 +429,32 @@ describe('misc ws-handlers — goal run', () => {
       it('uses the "Goal" fallback title', () => {
         handleGoalLifecycle(msg('goal.failed', {}));
         expect(run().lastError).toBe('Goal failed');
+      });
+
+      // #416: the chat promised "planning phases…"; a planning failure must
+      // be reported there too, not only in a transient toast.
+      it("reports a planning failure in the owning session's chat", () => {
+        const lane = chatLane('sess-416');
+        const before = lane.messages.length;
+        handleGoalLifecycle(
+          msg('goal.error', {
+            message: 'The planner did not produce tasks.',
+            stage: 'planning',
+            sessionId: 'sess-416',
+          }),
+        );
+        const added = chatLane('sess-416').messages.slice(before);
+        expect(added).toHaveLength(1);
+        expect(added[0]).toMatchObject({ role: 'assistant' });
+        expect(JSON.stringify(added[0])).toContain('The planner did not produce tasks.');
+      });
+
+      it('leaves the chat alone for failures outside planning', () => {
+        const before = chatLane('sess-416').messages.length;
+        handleGoalLifecycle(
+          msg('goal.error', { message: 'compile failed', sessionId: 'sess-416' }),
+        );
+        expect(chatLane('sess-416').messages.length).toBe(before);
       });
     });
 

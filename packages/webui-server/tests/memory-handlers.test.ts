@@ -303,6 +303,22 @@ describe('memory-handlers', () => {
       expect(sent.payload.error).toBe('id is required');
     });
 
+    it('answers a payload-less frame with a structured error, not a throw', async () => {
+      // The protocol decoder only requires a payload for server-direction
+      // frames, so client frames can arrive without one (same class the
+      // candidateResolve handler documents). The handler must answer with the
+      // same "id is required" frame instead of throwing a TypeError from the
+      // unguarded destructure, which escapes the handler and leaves the
+      // client without any response.
+      const ws = mockWs();
+      mockGetSageSurface.mockReturnValue(makeSage());
+      await handleSageGet(ws, { type: 'memory.sage.get' } as any, {} as any);
+      expect(ws.send).toHaveBeenCalledTimes(1);
+      const sent = JSON.parse(ws.send.mock.calls[0][0]);
+      expect(sent.type).toBe('memory.sage.get');
+      expect(sent.payload.error).toBe('id is required');
+    });
+
     it('sends error when memory not found', async () => {
       const ws = mockWs();
       const sage = makeSage({ getSage: vi.fn(async () => null) });

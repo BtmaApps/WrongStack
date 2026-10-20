@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  GoalPlanner,
   extractJSONArray as extractGoalJSONArray,
+  GoalPlanner,
 } from '../../src/goal/goal-planner.js';
 import { PhaseGraphBuilder } from '../../src/goal/phase-graph-builder.js';
 
@@ -106,6 +106,61 @@ describe('GoalPlanner', () => {
     );
   });
 
+  // #416: a planner that followed Markdown plan guidance (from role skills)
+  // returned no JSON, and the goal failed with zero phases on the first try.
+  it('asks the model once to convert a Markdown plan into the JSON schema', async () => {
+    const markdownPlan = '## Plan Summary\n\n| Step | Task |\n|---|---|\n| 1 | Read the code |';
+    const prompts: string[] = [];
+    const planner = new GoalPlanner({
+      goal: 'Build a thing',
+      runOnce: async (prompt) => {
+        prompts.push(prompt);
+        return prompts.length === 1 ? markdownPlan : '```json\n' + VALID_PLAN + '\n```';
+      },
+    });
+    const result = await planner.plan();
+
+    expect(prompts).toHaveLength(2);
+    expect(prompts[1]).toContain(markdownPlan);
+    expect(prompts[1]).toContain('```json');
+    expect(result.parseFailed).toBe(false);
+    expect(result.repaired).toBe(true);
+    expect(result.phases.map((p) => p.name)).toEqual(['Discovery', 'Implementation']);
+  });
+
+  it('does not ask for a conversion when the planner returned nothing', async () => {
+    let calls = 0;
+    const planner = new GoalPlanner({
+      goal: 'x',
+      runOnce: async () => {
+        calls++;
+        return '   ';
+      },
+    });
+    const result = await planner.plan();
+    expect(calls).toBe(1);
+    expect(result.parseFailed).toBe(true);
+  });
+
+  it('stops after the configured number of conversion attempts', async () => {
+    let calls = 0;
+    const planner = new GoalPlanner({
+      goal: 'x',
+      repairAttempts: 0,
+      runOnce: async () => {
+        calls++;
+        return 'Still prose.';
+      },
+    });
+    expect((await planner.plan()).parseFailed).toBe(true);
+    expect(calls).toBe(1);
+  });
+
+  it('states that the JSON format overrides other formatting guidance', () => {
+    const prompt = new GoalPlanner({ goal: 'x', runOnce: async () => '' }).buildPrompt();
+    expect(prompt).toMatch(/overrides any other formatting guidance/i);
+  });
+
   it('produces templates a PhaseGraphBuilder can materialize into a populated graph', async () => {
     const planner = new GoalPlanner({ goal: 'Build a thing', runOnce: async () => VALID_PLAN });
     const { phases } = await planner.plan();
@@ -129,6 +184,16 @@ describe('extractGoalJSONArray', () => {
   it('extracts the first balanced array even with brackets inside strings', () => {
     const out = extractGoalJSONArray('noise [{"t":"a [nested] ]bracket"}] more');
     expect(out).toBe('[{"t":"a [nested] ]bracket"}]');
+  });
+
+  it('finds the JSON fence when an earlier fence holds something else (#416)', () => {
+    const text = 'Run:\n```bash\nls\n```\nPlan:\n```json\n[{"name":"P"}]\n```';
+    expect(extractGoalJSONArray(text)).toBe('[{"name":"P"}]');
+  });
+
+  it('skips bracketed prose that is not JSON (#416)', () => {
+    const text = 'See [the docs](https://x.test) and [ ] todo.\n[{"name":"P"}]';
+    expect(extractGoalJSONArray(text)).toBe('[{"name":"P"}]');
   });
 
   it('returns null when there is no array', () => {

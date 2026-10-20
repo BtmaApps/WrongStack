@@ -266,6 +266,7 @@ Director and autonomy templates are also file-backed:
 - `autonomy/active-mission.md`
 - `autonomy/goal-preamble.md`
 - `goal/phase-planner.md`
+- `goal/phase-plan-repair.md`
 - `sdd/decompose-task.md`
 - `sdd/merge-conflict-resolver.md`
 - `security-scanner/generate-skill.md`

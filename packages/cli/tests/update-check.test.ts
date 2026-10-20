@@ -44,6 +44,21 @@ describe('update-check', () => {
   // ─────────────────────────────────────────────────────────────── checkForUpdate
 
   describe('checkForUpdate()', () => {
+    it('uses GitHub Releases for a manual update from a package install', async () => {
+      const mockFetch = vi
+        .fn()
+        .mockResolvedValue(new Response(JSON.stringify({ tag_name: 'v999.0.0', assets: [] })));
+      vi.stubGlobal('fetch', mockFetch);
+      const info = await checkForUpdate({
+        source: 'github-releases',
+        forceRefresh: true,
+        homeFn: () => userHome,
+      });
+      expect(info).toMatchObject({ latest: '999.0.0', outdated: true, checkFailed: false });
+      expect(mockFetch.mock.calls[0]![0]).toBe(
+        'https://api.github.com/repos/WrongStack/WrongStack/releases/latest',
+      );
+    });
     it('returns outdated:false when already on latest', async () => {
       const mockFetch = vi.fn().mockResolvedValue({
         ok: true,

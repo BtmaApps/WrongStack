@@ -1030,6 +1030,7 @@
     "lanes": "Corsie",
     "graph": "Grafo",
     "planningAck": "🚀 **Goal** — ricevuto. Sto pianificando le fasi per il tuo obiettivo…",
+    "planningFailed": "⚠️ **Goal** — pianificazione non riuscita: {{message}}",
     "assess": {
       "analyzing": "Analisi dell'ambito dell'obiettivo…",
       "realistic": "✓ L'ambito sembra realistico",

@@ -1,5 +1,5 @@
-import { Box, Text } from '../ink.js';
 import type React from 'react';
+import { Box, Text } from '../ink.js';
 import { rainbowColor } from './animation-style.js';
 
 const fmtElapsed = (ms: number): string => {
@@ -88,19 +88,25 @@ export function PhasePanel({ phases, nowTick }: PhasePanelProps): React.ReactEle
         // from nowTick (ms). 250ms per step matches the status bar spinner
         // cadence so the gradient feels lively but not frantic.
         const animPhase = Math.floor(nowTick / 250);
+        // A partially mapped phase without a name took the whole TUI down with
+        // it (#373); render its key instead.
+        const label = (typeof phase.name === 'string' && phase.name ? phase.name : phaseKey).slice(
+          0,
+          14,
+        );
 
         return (
           <Box key={phaseKey} flexDirection="row" gap={1}>
             <Text color={st.color}>{st.icon}</Text>
             {isRunning ? (
               // Running phase: smooth rainbow gradient on the name
-              Array.from(phase.name.slice(0, 14)).map((ch, ci) => (
+              Array.from(label).map((ch, ci) => (
                 <Text key={ci} bold color={rainbowColor(ci, animPhase)}>
                   {ch}
                 </Text>
               ))
             ) : (
-              <Text>{phase.name.slice(0, 14).padEnd(14)}</Text>
+              <Text>{label.padEnd(14)}</Text>
             )}
             <Text color={st.color} dimColor>
               {isRunning ? phase.status : ''}

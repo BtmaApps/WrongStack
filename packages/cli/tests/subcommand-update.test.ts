@@ -1,416 +1,81 @@
 import { EventEmitter } from 'node:events';
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import * as path from 'node:path';
+import { existsSync, readFileSync } from 'node:fs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const updateMocks = vi.hoisted(() => ({
-  checkForUpdate: vi.fn(),
+const mocks = vi.hoisted(() => ({
+  check: vi.fn(),
   spawn: vi.fn(),
+  standalone: false,
+  updateBinary: vi.fn(),
+  clear: vi.fn(),
+}));
+vi.mock('../src/update-check.js', () => ({ checkForUpdate: mocks.check }));
+vi.mock('node:child_process', () => ({ spawn: mocks.spawn }));
+// Vite does not implement Bun/esbuild's text import attribute. The real
+// installer scripts are exercised by standalone-migration-installer.test.ts.
+vi.mock('../../../scripts/install.ps1', () => ({ default: '# installer fixture' }));
+vi.mock('../../../scripts/install.sh', () => ({ default: '# installer fixture' }));
+vi.mock('@wrongstack/core/utils', async (original) => ({
+  ...(await original<typeof import('@wrongstack/core/utils')>()),
+  isStandaloneBinary: () => mocks.standalone,
+}));
+vi.mock('../src/standalone-update.js', () => ({ updateStandaloneBinary: mocks.updateBinary }));
+vi.mock('../src/standalone-auto-update.js', () => ({
+  standaloneUpdater: () => ({ pending: () => undefined, clear: mocks.clear }),
 }));
 
-vi.mock('../src/update-check.js', () => ({
-  checkForUpdate: updateMocks.checkForUpdate,
-}));
-
-vi.mock('node:child_process', async (orig) => {
-  const actual = (await orig()) as Record<string, unknown>;
-  return {
-    ...actual,
-    spawn: (...args: unknown[]) => updateMocks.spawn(...args),
-  };
-});
-
-import { removeProjectFixtureDirectorySync } from '../../core/tests/helpers/project-server-harness.js';
-import { parseArgs } from '../src/arg-parser.js';
 import {
   detectUpdatePackageManager,
   detectUpdatePackageName,
-  updateCmd,
+  runUpdateCommand,
 } from '../src/subcommands/handlers/update.js';
 
-let writes: string[];
-let deps: Parameters<typeof updateCmd>[1];
+let output: string;
+const deps = {
+  cwd: process.cwd(),
+  userHome: process.cwd(),
+  renderer: {
+    write: (s: string) => {
+      output += s;
+    },
+  },
+};
 
 beforeEach(() => {
-  writes = [];
-  updateMocks.checkForUpdate.mockReset();
-  updateMocks.spawn.mockReset();
-  vi.stubEnv('WRONGSTACK_UPDATE_PM', 'npm');
-  deps = {
-    cwd: '/tmp',
-    renderer: {
-      write: (s: string) => {
-        writes.push(s);
-      },
-    },
-  } as never;
+  output = '';
+  mocks.standalone = false;
+  mocks.updateBinary.mockResolvedValue(0);
+  mocks.check.mockResolvedValue({
+    current: '1.0.0',
+    latest: '1.2.3',
+    outdated: true,
+    checkFailed: false,
+  });
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('# installer fixture')));
+  mocks.spawn.mockImplementation(() => {
+    const child = Object.assign(new EventEmitter(), {
+      stdout: new EventEmitter(),
+      stderr: new EventEmitter(),
+    });
+    setImmediate(() => child.emit('close', 0, null));
+    return child;
+  });
 });
-
 afterEach(() => {
+  vi.unstubAllGlobals();
   vi.unstubAllEnvs();
   vi.restoreAllMocks();
 });
 
-function makeFakeChild(
-  exitCode: number | null,
-  errOnSpawn?: Error,
-  stderrChunks: string[] = [],
-  signal: NodeJS.Signals | null = null,
-) {
-  const ee = new EventEmitter() as EventEmitter & {
-    stderr: EventEmitter | null;
-    stdout: EventEmitter | null;
-  };
-  ee.stderr = new EventEmitter();
-  ee.stdout = new EventEmitter();
-  setImmediate(() => {
-    if (errOnSpawn) {
-      ee.emit('error', errOnSpawn);
-      return;
-    }
-    for (const c of stderrChunks) ee.stderr?.emit('data', Buffer.from(c));
-    ee.emit('close', exitCode, signal);
-  });
-  return ee;
-}
-
-function expectSpawned(pm: 'npm' | 'pnpm' | 'yarn' | 'bun', args: string[]): void {
-  if (process.platform === 'win32') {
-    const [executable, actualArgs, options] = updateMocks.spawn.mock.calls[0] as [
-      string,
-      string[],
-      Record<string, unknown>,
-    ];
-    if (executable === (process.env['COMSPEC'] ?? 'cmd.exe')) {
-      expect(actualArgs.slice(0, 2)).toEqual(['/d', '/c']);
-      expect(actualArgs[2]).toMatch(/^call "/);
-      for (const arg of args) expect(actualArgs[2]).toContain(`"${arg}"`);
-      expect(options).toMatchObject({ cwd: '/tmp', stdio: 'pipe', windowsVerbatimArguments: true });
-    } else {
-      expect(actualArgs).toEqual(args);
-      expect(options).toMatchObject({ cwd: '/tmp', stdio: 'pipe' });
-    }
-    return;
-  }
-  expect(updateMocks.spawn).toHaveBeenCalledWith(
-    pm,
-    args,
-    expect.objectContaining({ cwd: '/tmp', stdio: 'pipe' }),
-  );
-}
-
-describe('updateCmd subcommand', () => {
-  it('--check-only on outdated prints "Update available"', async () => {
-    updateMocks.checkForUpdate.mockResolvedValue({
-      outdated: true,
-      current: '1.0.0',
-      latest: '1.2.3',
-    });
-    const code = await updateCmd(['--check-only'], deps);
-    expect(code).toBe(0);
-    expect(writes.join('')).toContain('Update available: v1.0.0 → v1.2.3');
-    expect(updateMocks.spawn).not.toHaveBeenCalled();
-  });
-
-  it('--check-only on up-to-date prints latest message', async () => {
-    updateMocks.checkForUpdate.mockResolvedValue({
-      outdated: false,
-      current: '2.0.0',
-      latest: '2.0.0',
-    });
-    const code = await updateCmd(['--check-only'], deps);
-    expect(code).toBe(0);
-    expect(writes.join('')).toContain('You are on the latest version: v2.0.0');
-  });
-
-  it('-c is an alias for --check-only', async () => {
-    updateMocks.checkForUpdate.mockResolvedValue({
-      outdated: false,
-      current: '1.0.0',
-      latest: '1.0.0',
-    });
-    await updateCmd(['-c'], deps);
-    expect(writes.join('')).toContain('You are on the latest version');
-    expect(updateMocks.spawn).not.toHaveBeenCalled();
-  });
-
-  it('keeps -c as check-only after the top-level parser expands it to --continue', async () => {
-    updateMocks.checkForUpdate.mockResolvedValue({
-      outdated: false,
-      current: '1.0.0',
-      latest: '1.0.0',
-    });
-    await updateCmd([], { ...deps, flags: { continue: true } });
-    expect(writes.join('')).toContain('You are on the latest version');
-    expect(updateMocks.spawn).not.toHaveBeenCalled();
-  });
-
-  it('when already latest, returns 0 without spawning npm', async () => {
-    updateMocks.checkForUpdate.mockResolvedValue({
-      outdated: false,
-      current: '1.0.0',
-      latest: '1.0.0',
-    });
-    const code = await updateCmd([], deps);
-    expect(code).toBe(0);
-    expect(writes.join('')).toContain('already on the latest version');
-    expect(updateMocks.spawn).not.toHaveBeenCalled();
-  });
-
-  it('runs npm install -g --ignore-scripts wrongstack@1.2.3 by default', async () => {
-    updateMocks.checkForUpdate.mockResolvedValue({
-      outdated: true,
-      current: '1.0.0',
-      latest: '1.2.3',
-    });
-    updateMocks.spawn.mockReturnValue(makeFakeChild(0));
-    const code = await updateCmd([], deps);
-    expect(code).toBe(0);
-    expectSpawned('npm', ['install', '-g', '--ignore-scripts', 'wrongstack@1.2.3']);
-    const out = writes.join('');
-    expect(out).toContain('Updating wrongstack from v1.0.0 to v1.2.3');
-    expect(out).toContain('Updated to v1.2.3');
-  });
-
-  it('omits --ignore-scripts when --allow-scripts is passed', async () => {
-    updateMocks.checkForUpdate.mockResolvedValue({
-      outdated: true,
-      current: '1.0.0',
-      latest: '1.2.3',
-    });
-    updateMocks.spawn.mockReturnValue(makeFakeChild(0));
-    const code = await updateCmd(['--allow-scripts'], deps);
-    expect(code).toBe(0);
-    expectSpawned('npm', ['install', '-g', 'wrongstack@1.2.3']);
-  });
-
-  it('runs the selected package manager when --pm is provided (with --ignore-scripts)', async () => {
-    updateMocks.checkForUpdate.mockResolvedValue({
-      outdated: true,
-      current: '1.0.0',
-      latest: '1.2.3',
-    });
-    updateMocks.spawn.mockReturnValue(makeFakeChild(0));
-    const code = await updateCmd(['--pm', 'pnpm'], deps);
-    expect(code).toBe(0);
-    expectSpawned('pnpm', ['add', '-g', '--ignore-scripts', 'wrongstack@1.2.3']);
-    expect(writes.join('')).toContain('Running: pnpm add -g --ignore-scripts wrongstack@1.2.3');
-  });
-
-  it.each([
-    { pm: 'yarn', argv: ['global', 'add', '--ignore-scripts', 'wrongstack@1.2.3'] },
-    { pm: 'bun', argv: ['add', '-g', '--ignore-scripts', 'wrongstack@1.2.3'] },
-  ] as const)('passes --ignore-scripts to $pm global add', async ({ pm, argv }) => {
-    updateMocks.checkForUpdate.mockResolvedValue({
-      outdated: true,
-      current: '1.0.0',
-      latest: '1.2.3',
-    });
-    updateMocks.spawn.mockReturnValue(makeFakeChild(0));
-    // On win32 the handler resolves the manager against the real PATH unless
-    // the environment seam is set, which would require yarn and bun to be
-    // installed on the host. Stub both executables instead.
-    const stubBin =
-      process.platform === 'win32'
-        ? mkdtempSync(path.join(tmpdir(), 'wrongstack-update-pm-'))
-        : undefined;
-    try {
-      if (stubBin) {
-        writeFileSync(path.join(stubBin, 'yarn.CMD'), '@echo yarn');
-        writeFileSync(path.join(stubBin, 'bun.EXE'), 'stub');
-        (deps as unknown as { environment: NodeJS.ProcessEnv }).environment = {
-          Path: stubBin,
-          PATHEXT: '.COM;.EXE;.BAT;.CMD',
-        };
-      }
-      const code = await updateCmd(['--pm', pm], deps);
-      expect(code).toBe(0);
-      expectSpawned(pm, [...argv]);
-    } finally {
-      if (stubBin) removeProjectFixtureDirectorySync(stubBin, { maxRetries: 3, retryDelay: 50 });
-    }
-  });
-
-  it('prints help without checking or installing', async () => {
-    deps.flags = { help: true };
-
-    expect(await updateCmd([], deps)).toBe(0);
-    expect(writes.join('')).toContain('Usage: wstack update');
-    expect(updateMocks.checkForUpdate).not.toHaveBeenCalled();
-    expect(updateMocks.spawn).not.toHaveBeenCalled();
-  });
-
-  it('rejects unknown update flags before checking or installing', async () => {
-    deps.flags = { typo: true };
-
-    expect(await updateCmd([], deps)).toBe(1);
-    expect(writes.join('')).toContain('Unknown update option: --typo');
-    expect(updateMocks.checkForUpdate).not.toHaveBeenCalled();
-    expect(updateMocks.spawn).not.toHaveBeenCalled();
-  });
-
-  it('rehydrates --check-only from real top-level parser flags and never installs', async () => {
-    const parsed = parseArgs(['update', '--check-only']);
-    updateMocks.checkForUpdate.mockResolvedValue({
-      outdated: true,
-      current: '1.0.0',
-      latest: '1.2.3',
-      checkFailed: false,
-    });
-    deps.flags = parsed.flags;
-
-    const code = await updateCmd(parsed.positional.slice(1), deps);
-
-    expect(code).toBe(0);
-    expect(writes.join('')).toContain('Update available');
-    expect(updateMocks.spawn).not.toHaveBeenCalled();
-  });
-
-  it('rehydrates --pm and --allow-scripts from real top-level parser flags', async () => {
-    const parsed = parseArgs(['update', '--pm', 'pnpm', '--allow-scripts']);
-    updateMocks.checkForUpdate.mockResolvedValue({
-      outdated: true,
-      current: '1.0.0',
-      latest: '1.2.3',
-      checkFailed: false,
-    });
-    updateMocks.spawn.mockReturnValue(makeFakeChild(0));
-    deps.flags = parsed.flags;
-
-    expect(await updateCmd(parsed.positional.slice(1), deps)).toBe(0);
-    expectSpawned('pnpm', ['add', '-g', 'wrongstack@1.2.3']);
-  });
-
-  it('rejects an invalid --pm value before checking for updates', async () => {
-    const code = await updateCmd(['--pm', 'pip'], deps);
-    expect(code).toBe(1);
-    expect(writes.join('')).toContain('Invalid package manager: pip');
-    expect(updateMocks.checkForUpdate).not.toHaveBeenCalled();
-    expect(updateMocks.spawn).not.toHaveBeenCalled();
-  });
-
-  it('fails closed when the registry check fails', async () => {
-    updateMocks.checkForUpdate.mockResolvedValue({
-      outdated: false,
-      current: '1.0.0',
-      latest: '1.0.0',
-      checkFailed: true,
-    });
-
-    expect(await updateCmd([], deps)).toBe(1);
-    expect(writes.join('')).toContain('Update check failed');
-    expect(writes.join('')).not.toContain('latest version');
-    expect(updateMocks.spawn).not.toHaveBeenCalled();
-  });
-
-  it('reports failure when npm exits non-zero', async () => {
-    updateMocks.checkForUpdate.mockResolvedValue({
-      outdated: true,
-      current: '1.0.0',
-      latest: '1.2.3',
-    });
-    updateMocks.spawn.mockReturnValue(makeFakeChild(2, undefined, ['npm err\n']));
-    const code = await updateCmd([], deps);
-    expect(code).toBe(2);
-    expect(writes.join('')).toContain('Update failed with exit code 2');
-  });
-
-  it('surfaces npm stderr and package-manager guidance on failure (#13)', async () => {
-    updateMocks.checkForUpdate.mockResolvedValue({
-      outdated: true,
-      current: '1.0.0',
-      latest: '1.2.3',
-    });
-    // Exit 243 with a real reason in stderr — previously discarded, leaving the
-    // user with only the opaque code.
-    updateMocks.spawn.mockReturnValue(
-      makeFakeChild(243, undefined, [
-        'npm error code EACCES\n',
-        'npm error EACCES: permission denied\n',
-      ]),
-    );
-    const code = await updateCmd([], deps);
-    expect(code).toBe(243);
-    const out = writes.join('');
-    expect(out).toContain('Update failed with exit code 243');
-    // The underlying npm reason is now shown.
-    expect(out).toContain('EACCES: permission denied');
-    // And the alternative package managers are offered.
-    expect(out).toContain('pnpm add -g --ignore-scripts wrongstack@1.2.3');
-    expect(out).toContain('yarn global add --ignore-scripts wrongstack@1.2.3');
-    expect(out).toContain('bun add -g --ignore-scripts wrongstack@1.2.3');
-  });
-
-  it('explains Windows native-file locks without relying on a user-specific path', async () => {
-    updateMocks.checkForUpdate.mockResolvedValue({
-      outdated: true,
-      current: '1.0.0',
-      latest: '1.2.3',
-    });
-    updateMocks.spawn.mockReturnValue(
-      makeFakeChild(1, undefined, [
-        'npm error code EBUSY\n',
-        'npm error EBUSY: resource busy or locked, copyfile .wrongstack-staging\\electron.exe\n',
-      ]),
-    );
-
-    expect(await updateCmd([], deps)).toBe(1);
-    const out = writes.join('');
-    if (process.platform === 'win32') {
-      expect(out).toContain('native file held by a running WrongStack process');
-      expect(out).toContain('Stop any WrongStack WebUI, Desktop, or background process');
-      expect(out).not.toMatch(/Users\\|AppData\\|PID \d+/);
-    } else {
-      expect(out).not.toContain('native file held by a running WrongStack process');
-    }
-  });
-
-  it('treats signal-only child termination as failure', async () => {
-    updateMocks.checkForUpdate.mockResolvedValue({
-      outdated: true,
-      current: '1.0.0',
-      latest: '1.2.3',
-      checkFailed: false,
-    });
-    updateMocks.spawn.mockReturnValue(makeFakeChild(null, undefined, [], 'SIGTERM'));
-
-    expect(await updateCmd([], deps)).toBe(1);
-    expect(writes.join('')).toContain('Update terminated by SIGTERM');
-    expect(writes.join('')).not.toContain('Updated to');
-  });
-
-  it('handles ENOENT (npm not installed)', async () => {
-    updateMocks.checkForUpdate.mockResolvedValue({
-      outdated: true,
-      current: '1.0.0',
-      latest: '1.2.3',
-    });
-    updateMocks.spawn.mockImplementation(() => {
-      throw new Error('spawn npm ENOENT');
-    });
-    const code = await updateCmd([], deps);
-    expect(code).toBe(1);
-    expect(writes.join('')).toContain('npm not found in PATH');
-  });
-
-  it('reports generic error string when spawn throws non-ENOENT', async () => {
-    updateMocks.checkForUpdate.mockResolvedValue({
-      outdated: true,
-      current: '1.0.0',
-      latest: '1.2.3',
-    });
-    updateMocks.spawn.mockImplementation(() => {
-      throw 'boom';
-    });
-    const code = await updateCmd([], deps);
-    expect(code).toBe(1);
-    expect(writes.join('')).toContain('Update failed: boom');
-  });
-});
-
-describe('detectUpdatePackageName', () => {
-  it('detects the direct CLI package and defaults to the umbrella package', () => {
+describe('binary-only update policy', () => {
+  it('retains package detection for HQ service consumers', () => {
+    expect(detectUpdatePackageManager({ WRONGSTACK_UPDATE_PM: 'pnpm' }, [])).toBe('pnpm');
+    expect(
+      detectUpdatePackageManager({ npm_config_user_agent: 'yarn/1.22.22 npm/? node/v24' }, []),
+    ).toBe('yarn');
+    expect(
+      detectUpdatePackageManager({ npm_config_user_agent: 'bun/1.2.0 npm/? node/v24' }, []),
+    ).toBe('bun');
     expect(
       detectUpdatePackageName(['node', 'C:\\x\\node_modules\\@wrongstack\\cli\\dist\\index.js']),
     ).toBe('@wrongstack/cli');
@@ -418,57 +83,152 @@ describe('detectUpdatePackageName', () => {
       detectUpdatePackageName(['node', 'C:\\x\\node_modules\\wrongstack\\src\\index.js']),
     ).toBe('wrongstack');
   });
-});
+  it.each(
+    [[], ['--npm'], ['--pm', 'pnpm'], ['--yarn'], ['--bun'], ['--allow-scripts']].map((args) => ({
+      args,
+    })),
+  )(
+    'migrates through the release installer instead of a package update: $args',
+    async ({ args }) => {
+      expect(await runUpdateCommand(args, deps)).toBe(0);
+      expect(output).toContain('Warning:');
+      expect(output).toContain('GitHub Releases');
+      expect(mocks.check).toHaveBeenCalledWith(
+        expect.objectContaining({ source: 'github-releases' }),
+      );
+      const [exe, , options] = mocks.spawn.mock.calls.at(-1)!;
+      expect(exe).not.toMatch(/^(npm|pnpm|yarn|bun)(\.cmd)?$/);
+      expect(options.env).toMatchObject({ WSTACK_VERSION: '1.2.3', WSTACK_MIGRATION: '1' });
+    },
+  );
 
-describe('detectUpdatePackageManager', () => {
-  it('uses WRONGSTACK_UPDATE_PM when present', () => {
-    expect(detectUpdatePackageManager({ WRONGSTACK_UPDATE_PM: 'pnpm' }, [])).toBe('pnpm');
+  it('migrates even when the package version is already current', async () => {
+    mocks.check.mockResolvedValue({
+      current: '1.2.3',
+      latest: '1.2.3',
+      outdated: false,
+      checkFailed: false,
+    });
+    expect(await runUpdateCommand([], deps)).toBe(0);
+    expect(mocks.spawn).toHaveBeenCalled();
   });
 
-  it('detects package managers from npm_config_user_agent', () => {
-    expect(
-      detectUpdatePackageManager({ npm_config_user_agent: 'pnpm/11.5.3 npm/? node/v24' }, []),
-    ).toBe('pnpm');
-    expect(
-      detectUpdatePackageManager({ npm_config_user_agent: 'yarn/1.22.22 npm/? node/v24' }, []),
-    ).toBe('yarn');
-    expect(
-      detectUpdatePackageManager({ npm_config_user_agent: 'bun/1.2.0 npm/? node/v24' }, []),
-    ).toBe('bun');
+  it('check-only does not install or uninstall anything', async () => {
+    expect(await runUpdateCommand(['--check-only'], deps)).toBe(0);
+    expect(mocks.spawn).not.toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalled();
+    expect(output).toContain('Update available');
   });
-});
 
-describe('Windows package-manager resolution', () => {
-  it('skips a project-local npm.cmd shim and invokes an external executable', async () => {
-    if (process.platform !== 'win32') return;
-    const root = mkdtempSync(path.join(tmpdir(), 'wrongstack-update-'));
-    const projectDir = path.join(root, 'project');
-    const projectBin = path.join(projectDir, 'node_modules', '.bin');
-    const globalBin = path.join(root, 'global-bin');
-    const externalNpm = path.join(globalBin, 'npm.CMD');
-    try {
-      mkdirSync(projectBin, { recursive: true });
-      mkdirSync(globalBin, { recursive: true });
-      writeFileSync(path.join(projectBin, 'npm.CMD'), '@echo broken');
-      writeFileSync(externalNpm, '@echo external');
-      deps.cwd = projectDir;
-      (deps as unknown as { environment: NodeJS.ProcessEnv }).environment = {
-        Path: `${projectBin};${globalBin}`,
-        PATHEXT: '.COM;.EXE;.BAT;.CMD',
-      };
-      updateMocks.checkForUpdate.mockResolvedValue({
-        outdated: true,
-        current: '1.0.0',
-        latest: '1.2.3',
+  it('preserves the parser-expanded -c check-only alias', async () => {
+    expect(await runUpdateCommand([], { ...deps, flags: { continue: true } })).toBe(0);
+    expect(mocks.spawn).not.toHaveBeenCalled();
+  });
+
+  it('ignores parsed package-manager flags without enabling package updates', async () => {
+    expect(
+      await runUpdateCommand([], { ...deps, flags: { pm: 'npm', 'allow-scripts': true } }),
+    ).toBe(0);
+    expect(output).toContain('options are ignored');
+    expect(mocks.spawn.mock.calls.at(-1)![0]).not.toBe('npm');
+  });
+
+  it.each([['--force'], ['--pm', 'pip']])('rejects invalid options %j', async (...args) => {
+    expect(await runUpdateCommand(args, deps)).toBe(1);
+    expect(mocks.check).not.toHaveBeenCalled();
+    expect(mocks.spawn).not.toHaveBeenCalled();
+  });
+
+  it('fails closed on an unavailable GitHub release', async () => {
+    mocks.check.mockResolvedValue({
+      current: '1.0.0',
+      latest: '1.0.0',
+      outdated: false,
+      checkFailed: true,
+    });
+    expect(await runUpdateCommand([], deps)).toBe(1);
+    expect(mocks.spawn).not.toHaveBeenCalled();
+    expect(output).toContain('Update check failed for GitHub Releases');
+  });
+
+  it('does not run an installer for an invalid release version', async () => {
+    mocks.check.mockResolvedValue({
+      current: '1.0.0',
+      latest: '../bad',
+      outdated: true,
+      checkFailed: false,
+    });
+    expect(await runUpdateCommand([], deps)).toBe(1);
+    expect(mocks.spawn).not.toHaveBeenCalled();
+    expect(output).toContain('Binary migration failed');
+  });
+
+  it('uses the bundled installer, pins the binary version and clears inherited mirror settings', async () => {
+    vi.stubEnv('WSTACK_DOWNLOAD_BASE', 'https://example.invalid');
+    vi.stubEnv('WSTACK_NO_MODIFY_PATH', '1');
+    vi.stubEnv('WSTACK_INSTALL_DIR', '/old/node_modules/wrongstack');
+    let scriptPath = '';
+    mocks.spawn.mockImplementationOnce((_exe, args, opts) => {
+      scriptPath = args.at(-1);
+      expect(readFileSync(scriptPath, 'utf8')).toBe('# installer fixture');
+      expect(opts.env.WSTACK_DOWNLOAD_BASE).toBeUndefined();
+      expect(opts.env.WSTACK_NO_MODIFY_PATH).toBeUndefined();
+      expect(opts.env.WSTACK_INSTALL_DIR).toContain('.wrongstack');
+      const child = Object.assign(new EventEmitter(), {
+        stdout: new EventEmitter(),
+        stderr: new EventEmitter(),
       });
-      updateMocks.spawn.mockReturnValue(makeFakeChild(0));
+      setImmediate(() => child.emit('close', 0, null));
+      return child;
+    });
+    expect(await runUpdateCommand([], deps)).toBe(0);
+    expect(fetch).not.toHaveBeenCalled();
+    expect(existsSync(scriptPath)).toBe(false);
+  });
 
-      expect(await updateCmd([], deps)).toBe(0);
-      const [, args] = updateMocks.spawn.mock.calls[0] as [string, string[]];
-      expect(args[2]).toContain(`"${externalNpm}"`);
-      expect(args[2]).not.toContain(`"${path.join(projectBin, 'npm.CMD')}"`);
-    } finally {
-      removeProjectFixtureDirectorySync(root, { maxRetries: 3, retryDelay: 50 });
-    }
+  it.each([
+    { code: 17, signal: null },
+    { code: null, signal: 'SIGTERM' },
+  ])('reports installer failure: $code/$signal', async ({ code, signal }) => {
+    mocks.spawn.mockImplementationOnce(() => {
+      const child = Object.assign(new EventEmitter(), {
+        stdout: new EventEmitter(),
+        stderr: new EventEmitter(),
+      });
+      setImmediate(() => child.emit('close', code, signal));
+      return child;
+    });
+    expect(await runUpdateCommand([], deps)).toBe(code ?? 1);
+    expect(output).toContain('Binary migration failed');
+    expect(output).not.toContain('migration completed');
+  });
+
+  it('reports a missing installer shell', async () => {
+    mocks.spawn.mockImplementationOnce(() => {
+      throw new Error('spawn ENOENT');
+    });
+    expect(await runUpdateCommand([], deps)).toBe(1);
+    expect(output).toContain('ENOENT');
+  });
+
+  it('keeps a current standalone binary without migration', async () => {
+    mocks.standalone = true;
+    mocks.check.mockResolvedValue({
+      current: '1.2.3',
+      latest: '1.2.3',
+      outdated: false,
+      checkFailed: false,
+    });
+    expect(await runUpdateCommand([], deps)).toBe(0);
+    expect(output).toContain('already on the latest');
+    expect(mocks.spawn).not.toHaveBeenCalled();
+  });
+
+  it('updates a standalone binary in place and clears its staged update', async () => {
+    mocks.standalone = true;
+    expect(await runUpdateCommand([], deps)).toBe(0);
+    expect(mocks.updateBinary).toHaveBeenCalled();
+    expect(mocks.clear).toHaveBeenCalled();
+    expect(mocks.spawn).not.toHaveBeenCalled();
   });
 });

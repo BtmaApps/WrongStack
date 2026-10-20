@@ -1030,6 +1030,7 @@
     "lanes": "Voies",
     "graph": "Graphe",
     "planningAck": "🚀 **Goal** — compris. Je planifie les phases pour votre objectif…",
+    "planningFailed": "⚠️ **Goal** — la planification a échoué : {{message}}",
     "assess": {
       "analyzing": "Analyse de la portée de l'objectif…",
       "realistic": "✓ La portée semble réaliste",

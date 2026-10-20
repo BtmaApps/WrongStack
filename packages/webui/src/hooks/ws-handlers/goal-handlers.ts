@@ -1,6 +1,8 @@
 import type { GoalSummary } from '@wrongstack/core/goal';
 import type { PhaseItem } from '@/components/PhasePanel';
 import { toast } from '@/components/Toaster';
+import { i18n } from '@/i18n';
+import { chatFor } from '@/lib/ws-client-utils';
 import { useGoalRunStore, useGoalStateStore } from '@/stores';
 import { useGoalCatalogStore } from '@/stores/goal-catalog-store';
 import type { WSServerMessage } from '@/types';
@@ -187,6 +189,15 @@ export function handleGoalLifecycle(msg: WSServerMessage) {
       .getState()
       .setState({ status: 'failed', autonomous: false, lastEvent: 'failed', lastError: message });
     toast.error(message);
+    // Starting a goal posts a "planning phases…" acknowledgement in chat and
+    // switches to it; a planning failure must close that loop there too, or the
+    // transcript keeps promising a plan that will never arrive (#416).
+    if (p.stage === 'planning') {
+      chatFor(msg)?.addMessage({
+        role: 'assistant',
+        content: i18n.t('activity:goalRun.planningFailed', { message }),
+      });
+    }
   }
 }
 

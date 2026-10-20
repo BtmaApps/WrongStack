@@ -37,9 +37,13 @@ import {
   lintAndFix,
   lintContent,
   linterCache,
+  sweepOrphanedTempDirs,
 } from './linter-runner.js';
 
-export { resolveLocalLinter } from './linter-runner.js';
+export { resolveLocalLinter, sweepOrphanedTempDirs } from './linter-runner.js';
+
+/** The orphan sweep scans the whole temp dir, so it runs once per process. */
+let orphanSweepStarted = false;
 
 const API_VERSION = '^0.1.10';
 
@@ -219,6 +223,16 @@ const plugin: Plugin = {
 
     // Clear linter detection cache to ensure fresh detection after config changes.
     linterCache.clear();
+
+    // Reclaim temp dirs from lint-gate processes that died mid-lint (#363).
+    if (!orphanSweepStarted) {
+      orphanSweepStarted = true;
+      void sweepOrphanedTempDirs().then((removed) => {
+        if (removed.length > 0) {
+          api.log.info('lint-gate: removed orphaned temp dirs', { count: removed.length });
+        }
+      });
+    }
 
     const cfg = readConfig(api.config.extensions?.['lint-gate']);
     const cwd = resolve(api.config.cwd ?? process.cwd());

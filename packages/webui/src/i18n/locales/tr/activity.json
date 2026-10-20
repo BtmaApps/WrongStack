@@ -1030,6 +1030,7 @@
     "lanes": "Şeritler",
     "graph": "Graf",
     "planningAck": "🚀 **Goal** — anlaşıldı. Hedefiniz için aşamalar planlanıyor…",
+    "planningFailed": "⚠️ **Goal** — planlama başarısız: {{message}}",
     "assess": {
       "analyzing": "Hedef kapsamı analiz ediliyor…",
       "realistic": "✓ Kapsam gerçekçi görünüyor",

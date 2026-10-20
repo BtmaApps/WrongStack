@@ -11,7 +11,9 @@ Rules:
 - Prefer concrete verbs ("Add X", "Refactor Y", "Write tests for Z").
 
 Respond with ONLY a JSON array inside a ```json code fence. No prose before
-or after. Schema (TypeScript):
+or after. This output format overrides any other formatting guidance you were
+given (skills, Markdown plan templates, summary tables): a program parses your
+answer, and anything but this JSON array is discarded. Schema (TypeScript):
 
 ```json
 [

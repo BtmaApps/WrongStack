@@ -1899,6 +1899,32 @@ describe('goalRun board reducer', () => {
     expect(phase.activeTasks).toHaveLength(1);
   });
 
+  // #373: a nameless phase event used to store `name: undefined`, which
+  // PhasePanel then sliced and crashed the TUI.
+  it('goalRunPhaseUpdate without a name keeps the known name, else uses the phase id', () => {
+    const nameOf = (state: unknown, id: string) =>
+      (state as { goalRun: { phases: Record<string, { name: unknown }> } }).goalRun.phases[id]!
+        .name;
+    let s = withPhase();
+    const before = nameOf(s, 'p1');
+    s = reducer(s, {
+      type: 'goalRunPhaseUpdate',
+      phaseId: 'p1',
+      status: 'failed',
+      completedTasks: 0,
+      totalTasks: 2,
+    } as never);
+    expect(nameOf(s, 'p1')).toBe(before);
+    s = reducer(s, {
+      type: 'goalRunPhaseUpdate',
+      phaseId: 'p9',
+      status: 'running',
+      completedTasks: 0,
+      totalTasks: 1,
+    } as never);
+    expect(nameOf(s, 'p9')).toBe('p9');
+  });
+
   it('goalRunTaskActive with active:false removes the worker', () => {
     let s = withPhase();
     s = reducer(s, {

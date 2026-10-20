@@ -212,4 +212,18 @@ describe('PhasePanel', () => {
     expect(frame).toContain('A c t i v e');
     view.unmount();
   });
+
+  // #373: `phase.name.slice` on a partially mapped phase threw inside render
+  // and the TUI exited back to the shell mid-Goal.
+  it.each(['running', 'pending'])('renders a %s phase without a name by its key', (status) => {
+    const view = render(
+      React.createElement(PhasePanel, {
+        phases: { ph1: { status, completedTasks: 0, totalTasks: 2 } },
+        nowTick: 0,
+      } as never),
+    );
+    const frame = view.lastFrame() ?? '';
+    expect(frame).toMatch(/p ?h ?1/);
+    view.unmount();
+  });
 });

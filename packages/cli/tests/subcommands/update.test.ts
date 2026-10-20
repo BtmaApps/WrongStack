@@ -77,7 +77,7 @@ describe('update subcommand', () => {
     });
 
     const rig = mkRig();
-    const code = await subcommands['update']!([], mkDeps(rig));
+    const code = await subcommands['update']!(['--check-only'], mkDeps(rig));
 
     expect(code).toBe(0);
     expect(rig.out.buf).toContain('latest version');
@@ -147,7 +147,7 @@ describe('update subcommand', () => {
     expect(rig.out.buf).not.toContain('latest version');
   });
 
-  it('skips update when not outdated', async () => {
+  it('check-only skips installation when not outdated', async () => {
     mockCheckForUpdate.mockResolvedValue({
       current: '0.5.2',
       latest: '0.5.2',
@@ -156,10 +156,10 @@ describe('update subcommand', () => {
     });
 
     const rig = mkRig();
-    const code = await subcommands['update']!([], mkDeps(rig));
+    const code = await subcommands['update']!(['--check-only'], mkDeps(rig));
 
     expect(code).toBe(0);
     expect(rig.out.buf).not.toContain('Updating');
-    expect(rig.out.buf).toContain('already on');
+    expect(rig.out.buf).toContain('latest version');
   });
 });

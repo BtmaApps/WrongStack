@@ -320,8 +320,13 @@ describe('GoalWebSocketHandler — goal.start', () => {
       payload: { goal: 'vague goal' },
     });
     await new Promise((r) => setTimeout(r, 30));
+    // `stage` lets the client report the failure in the chat that showed the
+    // "planning" acknowledgement, not only as a transient toast (#416).
     expect(ws.sent.find((m) => m.type === 'goal.error')?.payload).toMatchObject({
       message: expect.stringContaining('did not produce executable tasks'),
+      stage: 'planning',
+      title: 'vague goal',
+      sessionId: 'sess-1',
     });
     handler.dispose();
   });

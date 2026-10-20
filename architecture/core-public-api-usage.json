@@ -239,8 +239,8 @@
       "runtimeOrMixed": 20
     },
     "@wrongstack/core/utils": {
-      "files": 832,
-      "typeOnly": 71,
+      "files": 833,
+      "typeOnly": 72,
       "runtimeOrMixed": 790
     },
     "@wrongstack/core/utils/child-env": {
@@ -25991,6 +25991,12 @@
       "file": "packages/cli/tests/subcommand-rewind.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/tests/subcommand-update.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
     },
     {
       "specifier": "@wrongstack/core/utils",

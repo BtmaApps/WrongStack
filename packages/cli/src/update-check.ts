@@ -205,6 +205,8 @@ export async function fetchLatestFromNpm(
 }
 
 interface CheckForUpdateOptions {
+  /** Manual updates migrate package installs to the GitHub Releases binary. */
+  source?: 'github-releases' | undefined;
   signal?: AbortSignal | undefined;
   homeFn?: HomeDirFn | undefined;
   packageName?: UpdatePackageName | undefined;
@@ -224,7 +226,7 @@ export async function checkForUpdate(
   const current = currentVersion();
   const signal = options.signal;
   // The standalone executable updates from GitHub releases, not npm.
-  const standalone = isStandaloneBinary();
+  const standalone = options.source === 'github-releases' || isStandaloneBinary();
   const packageName: UpdateSource = standalone
     ? 'standalone-binary'
     : (options.packageName ?? 'wrongstack');

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "package": "@wrongstack/core",
-  "packageVersion": "1.1.10",
+  "packageVersion": "1.1.11",
   "policy": "Root is compatibility-only; new imports use owned domain subpaths.",
   "subpaths": [
     {
@@ -1660,7 +1660,7 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "repository behind persistence primitive",
       "sourceFiles": 23,
-      "sourceLines": 4888
+      "sourceLines": 4952
     },
     {
       "directory": "hooks",

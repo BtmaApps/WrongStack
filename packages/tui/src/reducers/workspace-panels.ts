@@ -433,6 +433,13 @@ export function reduceWorkspacePanels(state: State, action: WorkspacePanelAction
         elapsedMs: 0,
         monitorOpen: false,
       };
+      const previous = existing.phases[action.phaseId];
+      // Phase events cross process and version boundaries; one without a name
+      // must not blank the row, and a nameless row crashed PhasePanel (#373).
+      const name =
+        typeof action.name === 'string' && action.name
+          ? action.name
+          : (previous?.name ?? action.phaseId);
       return {
         ...state,
         goalRun: {
@@ -440,12 +447,12 @@ export function reduceWorkspacePanels(state: State, action: WorkspacePanelAction
           phases: {
             ...existing.phases,
             [action.phaseId]: {
-              name: action.name,
+              name,
               status: action.status,
               completedTasks: action.completedTasks,
               totalTasks: action.totalTasks,
               startedAt: action.startedAt,
-              activeTasks: existing.phases[action.phaseId]?.activeTasks,
+              activeTasks: previous?.activeTasks,
             },
           },
         },

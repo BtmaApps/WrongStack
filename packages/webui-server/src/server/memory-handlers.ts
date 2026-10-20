@@ -323,8 +323,14 @@ export async function handleSageGet(
     });
     return;
   }
-  const { id } = (msg as { payload: { id: string } }).payload;
-  if (!id) {
+  // Client frames can reach this handler without a payload (the protocol
+  // decoder only requires one for server frames — same class the
+  // candidateResolve handler documents). The unguarded destructure threw a
+  // TypeError that escaped the handler and left the client with no response
+  // frame at all; the structured "id is required" answer below is the
+  // documented reply for that input.
+  const id = (msg as { payload?: { id?: unknown } }).payload?.id;
+  if (typeof id !== 'string' || !id) {
     send(ws, {
       type: 'memory.sage.get',
       payload: withRequestId(msg, { error: 'id is required' }),

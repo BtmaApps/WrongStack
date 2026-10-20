@@ -1,10 +1,10 @@
 import { execFile } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { lstat, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
-import { scriptSpawnArgs } from '@wrongstack/core/utils';
+import { isPidAlive, scriptSpawnArgs } from '@wrongstack/core/utils';
 import { BoundedMap } from '../runtime/index.js';
 
 export type Linter = 'biome' | 'eslint' | 'auto';
@@ -144,6 +144,63 @@ export async function detectLinter(requested: Linter, cwd: string): Promise<Reso
 }
 
 // ---------------------------------------------------------------------------
+// Temp directories
+// ---------------------------------------------------------------------------
+
+/**
+ * Temp dirs carry the owning process id (`lint-gate-<pid>-XXXXXX`) so a later
+ * process can prove a leftover is an orphan. Dirs from before this naming have
+ * no owner on record and are never swept.
+ */
+const OWNED_TEMP_DIR = /^lint-gate-(?:fix-)?(\d+)-[A-Za-z0-9]{6}$/;
+/** A dir younger than this may belong to a process whose pid was just reused. */
+export const ORPHAN_MIN_AGE_MS = 10 * 60_000;
+
+function tempDirPrefix(kind: 'lint' | 'fix'): string {
+  return join(tmpdir(), `${kind === 'fix' ? 'lint-gate-fix-' : 'lint-gate-'}${process.pid}-`);
+}
+
+/**
+ * Remove temp dirs a lint-gate process left behind when it was killed between
+ * `mkdtemp` and its `finally` cleanup (#363); `finally` never runs after a hard
+ * termination. A dir is removed only when it is positively ours: its name
+ * carries an owner pid that is no longer alive, it holds nothing but the single
+ * `input.<ext>` file lint-gate writes, and it is older than
+ * {@link ORPHAN_MIN_AGE_MS}. Anything else is left alone.
+ *
+ * @returns the removed directories
+ */
+export async function sweepOrphanedTempDirs(
+  root: string = tmpdir(),
+  now: number = Date.now(),
+): Promise<string[]> {
+  let names: string[];
+  try {
+    names = await readdir(root);
+  } catch {
+    return [];
+  }
+  const removed: string[] = [];
+  for (const name of names) {
+    const owner = OWNED_TEMP_DIR.exec(name);
+    if (!owner || isPidAlive(Number(owner[1]))) continue;
+    const dir = join(root, name);
+    try {
+      const stat = await lstat(dir);
+      if (!stat.isDirectory() || now - stat.mtimeMs < ORPHAN_MIN_AGE_MS) continue;
+      const entries = await readdir(dir, { withFileTypes: true });
+      const onlyInput = entries.every((e) => e.isFile() && /^input(\.[^.]+)*$/.test(e.name));
+      if (entries.length > 1 || !onlyInput) continue;
+      await rm(dir, { recursive: true, force: true });
+      removed.push(dir);
+    } catch {
+      // Another sweeper got there first, or the entry is not ours to read.
+    }
+  }
+  return removed;
+}
+
+// ---------------------------------------------------------------------------
 // Linter execution
 // ---------------------------------------------------------------------------
 
@@ -171,7 +228,7 @@ export async function lintContent(
   const ext = filePath.includes('.') ? filePath.slice(filePath.lastIndexOf('.')) : '.ts';
   let tmpDir: string | undefined;
   try {
-    tmpDir = await mkdtemp(join(tmpdir(), 'lint-gate-'));
+    tmpDir = await mkdtemp(tempDirPrefix('lint'));
     const tmpFile = join(tmpDir, `input${ext}`);
     await writeFile(tmpFile, content, 'utf-8');
     const fullArgs = [...linter.args, tmpFile];
@@ -210,7 +267,7 @@ export async function lintAndFix(
   const ext = filePath.includes('.') ? filePath.slice(filePath.lastIndexOf('.')) : '.ts';
   let tmpDir: string | undefined;
   try {
-    tmpDir = await mkdtemp(join(tmpdir(), 'lint-gate-fix-'));
+    tmpDir = await mkdtemp(tempDirPrefix('fix'));
     const tmpFile = join(tmpDir, `input${ext}`);
     await writeFile(tmpFile, content, 'utf-8');
     // Build the fix command: biome uses `check --write`, eslint uses `--fix`.

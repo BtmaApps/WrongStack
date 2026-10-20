@@ -1,10 +1,52 @@
 import { spawnSync } from 'node:child_process';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parseArgs } from '../src/arg-parser.js';
 import { hqServiceCmd, renderHqServiceAssets } from '../src/hq-service.js';
 import { hqCmd } from '../src/subcommands/handlers/hq.js';
 
 describe('HQ systemd service assets', () => {
+  it('requires service reconfiguration before an unattended package migration', () => {
+    const dir = mkdtempSync(path.join(tmpdir(), 'wstack-hq-migration-'));
+    try {
+      const log = path.join(dir, 'calls.log');
+      writeFileSync(log, '');
+      const executable = path.join(dir, 'wstack-fixture').replaceAll('\\', '/');
+      writeFileSync(
+        executable,
+        '#!/bin/sh\nprintf "%s\\n" "$*" >> "$HQ_TEST_LOG"\nprintf "%s\\n" "Run wstack update to migrate this package installation to the standalone binary." "Update available: v1.0.0 -> v1.2.3"\n',
+        { mode: 0o755 },
+      );
+      const script = renderHqServiceAssets({
+        wstackBin: executable,
+        packageManager: 'npm',
+        packageName: 'wrongstack',
+        password: 'long-enough-password',
+        port: 3499,
+      }).updateScript;
+      const bash =
+        process.platform === 'win32'
+          ? path.join(process.env['ProgramFiles'] ?? 'C:\\Program Files', 'Git', 'bin', 'bash.exe')
+          : '/bin/sh';
+      const result = spawnSync(bash, ['-s'], {
+        input: script,
+        env: { ...process.env, HQ_TEST_LOG: log },
+        encoding: 'utf8',
+        timeout: 30_000,
+        windowsHide: true,
+      });
+      expect(result.error).toBeUndefined();
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain('reconfigure the HQ service');
+      expect(readFileSync(log, 'utf8').trim().split(/\r?\n/)).toEqual([
+        'update --check-only --pm npm',
+      ]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
   it('renders an always-on, least-privilege HQ service without embedding its password', () => {
     const assets = renderHqServiceAssets({
       wstackBin: '/usr/local/bin/wstack',

@@ -43,6 +43,13 @@ export interface GoalPlannerOptions {
    * describe the overage. Defaults to 0 (no limit).
    */
   maxTotalTasks?: number | undefined;
+  /**
+   * Follow-up calls that ask the model to convert a non-JSON answer (e.g. a
+   * Markdown plan written to some other format guidance) into the schema.
+   * Defaults to 1; 0 disables. An empty answer is never repaired, since that
+   * means the run failed rather than the format.
+   */
+  repairAttempts?: number | undefined;
 }
 
 export interface GoalPlanResult {
@@ -61,7 +68,12 @@ export interface GoalPlanResult {
   estimatedCostTokens?: number | undefined;
   /** True when the plan exceeds `maxTotalTasks` budget. */
   budgetExceeded?: boolean | undefined;
+  /** True when the plan came from a conversion follow-up, not the first answer. */
+  repaired?: boolean | undefined;
 }
+
+/** Cap on how much of a rejected answer is sent back for conversion. */
+const MAX_REPAIR_SOURCE_CHARS = 24_000;
 
 const VALID_TASK_TYPES: ReadonlySet<TaskType> = new Set([
   'feature',
@@ -82,8 +94,20 @@ export class GoalPlanner {
   /** Convert the goal into a phase-and-todo plan. */
   async plan(): Promise<GoalPlanResult> {
     const prompt = this.buildPrompt();
-    const raw = await this.opts.runOnce(prompt);
-    const { phases, warnings } = this.parse(raw);
+    let raw = await this.opts.runOnce(prompt);
+    let { phases, warnings } = this.parse(raw);
+    let repaired = false;
+    const repairAttempts = this.opts.repairAttempts ?? 1;
+    for (let attempt = 0; phases.length === 0 && attempt < repairAttempts; attempt++) {
+      if (!raw.trim()) break;
+      const rejected = warnings.join('; ') || 'no executable phases';
+      raw = await this.opts.runOnce(this.buildRepairPrompt(raw));
+      const next = this.parse(raw);
+      phases = next.phases;
+      warnings = [`First planner answer was unusable (${rejected}); asked for a conversion.`];
+      warnings.push(...next.warnings);
+      repaired = phases.length > 0;
+    }
     // Rough cost estimate: each task runs ~5 LLM round-trips at ~2k tokens each.
     const totalTasks = phases.reduce((s, p) => s + (p.taskTemplates?.length ?? 0), 0);
     const estimatedCostTokens = totalTasks > 0 ? totalTasks * 5 * 2000 : undefined;
@@ -104,7 +128,20 @@ export class GoalPlanner {
       warnings,
       estimatedCostTokens,
       budgetExceeded,
+      repaired,
     };
+  }
+
+  /** Follow-up prompt that converts an off-format answer into the plan schema. */
+  buildRepairPrompt(previous: string): string {
+    const source =
+      previous.length > MAX_REPAIR_SOURCE_CHARS
+        ? `${previous.slice(0, MAX_REPAIR_SOURCE_CHARS)}\n[…truncated]`
+        : previous;
+    return renderInstructionTemplate(readBundledInstructionText('goal/phase-plan-repair.md'), {
+      goal: this.opts.goal,
+      previous: source,
+    });
   }
 
   /** Instruction prompt for the plan the model should produce. */
@@ -255,30 +292,57 @@ function coerceHours(value: unknown, fallback: number): number {
   return Number.isFinite(n) && n > 0 ? n : fallback;
 }
 
+/** Bound on bracket starts tried per candidate, so prose full of links stays linear-ish. */
+const MAX_ARRAY_STARTS = 256;
+
 /**
- * Extract the first JSON array from text. Tries, in order:
- *  1. The first [ ... ] inside a ```json ... ``` or bare ``` code block
- *  2. The first balanced [ ... ] block in the text, aware of strings and escapes
+ * Extract the first JSON array from text. Searches every ``` code block in
+ * order, then the whole text, and returns the first balanced `[ ... ]` (aware
+ * of strings and escapes) that parses as a JSON array. Markdown around a plan
+ * is full of brackets — links, checkboxes, tables — and an earlier fence may
+ * hold a shell snippet, so the first bracket is not necessarily the plan.
+ * A non-empty array wins over an empty one (a Markdown `[ ]` checkbox parses).
+ * When nothing parses, the first balanced block is returned so the caller can
+ * report a parse failure rather than "no array".
  */
 export function extractJSONArray(text: string): string | null {
-  // 1) Fenced code block
-  const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  const candidates: string[] = [];
-  if (fence?.[1]) candidates.push(fence[1]);
+  const candidates = [...text.matchAll(/```(?:json)?\s*([\s\S]*?)```/gi)]
+    .map((m) => m[1] ?? '')
+    .filter(Boolean);
   candidates.push(text);
 
+  let firstBalanced: string | null = null;
+  let firstEmpty: string | null = null;
   for (const candidate of candidates) {
-    const balanced = firstBalancedArray(candidate);
-    if (balanced) return balanced;
+    let from = 0;
+    for (let tries = 0; tries < MAX_ARRAY_STARTS; tries++) {
+      const start = candidate.indexOf('[', from);
+      if (start === -1) break;
+      const balanced = balancedArrayAt(candidate, start);
+      if (balanced) {
+        firstBalanced ??= balanced;
+        const length = parsedArrayLength(balanced);
+        if (length > 0) return balanced;
+        if (length === 0) firstEmpty ??= balanced;
+      }
+      from = start + 1;
+    }
   }
-  return null;
+  return firstEmpty ?? firstBalanced;
 }
 
-/** Return the first balanced `[ ... ]` block, aware of strings and escapes. */
-function firstBalancedArray(text: string): string | null {
-  const start = text.indexOf('[');
-  if (start === -1) return null;
+/** Element count when `json` parses as an array, otherwise -1. */
+function parsedArrayLength(json: string): number {
+  try {
+    const data: unknown = JSON.parse(json);
+    return Array.isArray(data) ? data.length : -1;
+  } catch {
+    return -1;
+  }
+}
 
+/** Return the balanced `[ ... ]` block opening at `start`, aware of strings and escapes. */
+function balancedArrayAt(text: string, start: number): string | null {
   let depth = 0;
   let inString = false;
   let escaped = false;

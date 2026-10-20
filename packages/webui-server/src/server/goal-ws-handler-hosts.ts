@@ -156,6 +156,10 @@ export async function planGoalPhases(
       role: 'planner',
       cwd: self.projectRoot,
       allowedCapabilities: ['fs.read'],
+      // An explicit empty list keeps the planner role's skill pool out (#416):
+      // those skills teach a Markdown plan layout, and a model that followed
+      // them instead of the JSON-only phase prompt produced no phases at all.
+      skillNames: [],
     });
     try {
       return await delegatePlanPhases({ agent: built.agent, logger: self.logger }, goal, signal);

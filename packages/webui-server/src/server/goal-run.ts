@@ -154,6 +154,9 @@ export async function startGoalRun(
       type: 'goal.error',
       payload: {
         message: 'The planner did not produce executable tasks. Refine the goal and try again.',
+        stage: 'planning',
+        title,
+        ...(ownerSessionId ? { sessionId: ownerSessionId } : {}),
       },
     });
     return;
