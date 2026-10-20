@@ -13,7 +13,14 @@ async function productionTypeScriptFiles(root: string): Promise<string[]> {
   const entries = await fs.readdir(root, { withFileTypes: true });
   const files: string[] = [];
   for (const entry of entries) {
-    if (entry.name === 'dist' || entry.name === 'node_modules' || entry.name === 'tests') continue;
+    // `.temp_files/` is gitignored ad-hoc proof scratch (AGENTS.md), never production.
+    if (
+      entry.name === 'dist' ||
+      entry.name === 'node_modules' ||
+      entry.name === 'tests' ||
+      entry.name === '.temp_files'
+    )
+      continue;
     const absolute = path.join(root, entry.name);
     if (entry.isDirectory()) files.push(...(await productionTypeScriptFiles(absolute)));
     else if (entry.isFile() && /\.(?:ts|tsx)$/u.test(entry.name)) files.push(absolute);

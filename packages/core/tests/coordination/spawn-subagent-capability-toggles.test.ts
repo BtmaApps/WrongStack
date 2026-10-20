@@ -25,7 +25,11 @@ async function spawnWith(input: Record<string, unknown>): Promise<SubagentConfig
       return 'sub-1';
     },
   } as unknown as Host.DirectorAdmissionPort;
-  await makeSpawnTool(director, ROSTER).execute(input as never, { meta: {} } as never);
+  await makeSpawnTool(director, ROSTER).execute(
+    input as never,
+    { meta: {} } as never,
+    { signal: new AbortController().signal } as never,
+  );
   if (!spawned) throw new Error('spawn was not called');
   return spawned;
 }

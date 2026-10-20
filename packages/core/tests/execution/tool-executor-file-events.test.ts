@@ -427,6 +427,7 @@ describe('ToolExecutor — file event auto-emission', () => {
         tool,
         makeToolUse('write', 'tu-Confirmed-1', { path: 'confirmed.ts', content: 'ok' }),
         ctx,
+        100_000,
       );
 
       expect(result.block.is_error).toBeFalsy();

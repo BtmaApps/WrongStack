@@ -138,7 +138,7 @@ describe('ProjectSessionRegistry daemon lifecycle', () => {
 
     const subscribe = vi
       .spyOn(SessionCatalogProjectClient.prototype, 'subscribe')
-      .mockResolvedValue(() => {});
+      .mockResolvedValue(async () => {});
     const call = vi
       .spyOn(SessionCatalogProjectClient.prototype, 'call')
       .mockImplementation(async (operation) => {

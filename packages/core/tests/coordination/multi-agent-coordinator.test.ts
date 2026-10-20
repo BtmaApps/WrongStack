@@ -285,8 +285,8 @@ describe('DefaultMultiAgentCoordinator', () => {
 
       await coord.spawn({ id: 'a1', name: 'A1' });
       await coord.spawn({ id: 'a2', name: 'A2' });
-      await coord.assign({ id: 't1', subagentId: 'a1' });
-      await coord.assign({ id: 't2', subagentId: 'a1' });
+      await coord.assign({ id: 't1', description: 't1', subagentId: 'a1' });
+      await coord.assign({ id: 't2', description: 't2', subagentId: 'a1' });
 
       await coord.stop('a1');
       releaseFirst();

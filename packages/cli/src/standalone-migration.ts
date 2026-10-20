@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import * as path from 'node:path';
+import { buildChildEnv } from '@wrongstack/core/utils';
 import windowsInstaller from '../../../scripts/install.ps1' with { type: 'text' };
 import posixInstaller from '../../../scripts/install.sh' with { type: 'text' };
 import type { TerminalRenderer } from './renderer.js';
@@ -28,8 +29,18 @@ export async function migrateToStandalone(options: {
     const scriptPath = path.join(scratch, scriptName);
     await writeFile(scriptPath, script, { mode: 0o600, flag: 'wx' });
     // Do not inherit a download mirror or a disabled PATH update during migration.
+    // The installer needs no credentials: buildChildEnv strips provider keys and
+    // the vault passphrase while keeping PATH/HOME/APPDATA for the package managers.
+    // Proxy settings are the exception: curl / Invoke-WebRequest download the
+    // binary through them, and buildChildEnv drops a proxy URL that carries a
+    // password, which would break the update behind an authenticated proxy.
+    const proxy = Object.fromEntries(
+      Object.entries(process.env).filter(
+        ([name, value]) => value && /^(?:https?|all|no)_proxy$/i.test(name),
+      ),
+    );
     const env: NodeJS.ProcessEnv = {
-      ...process.env,
+      ...buildChildEnv({ extra: proxy }),
       WSTACK_VERSION: version,
       WSTACK_MIGRATION: '1',
       // Never place the new binary inside a package tree about to be removed.

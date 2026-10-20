@@ -172,7 +172,7 @@ function bun { Invoke-FixturePm 'bun' $args }
 `;
         const file = path.join(dir, windows ? 'harness.ps1' : 'harness.sh');
         writeFileSync(file, windows ? harness : shellHarness);
-        const shell = windows
+        const interpreter = windows
           ? path.join(
               process.env['SystemRoot'] ?? 'C:\\Windows',
               'System32',
@@ -184,7 +184,7 @@ function bun { Invoke-FixturePm 'bun' $args }
             ? gitBash
             : '/bin/sh';
         const result = spawnSync(
-          shell,
+          interpreter,
           windows
             ? ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', file]
             : [file.replaceAll('\\', '/')],

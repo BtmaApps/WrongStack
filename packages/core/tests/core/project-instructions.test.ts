@@ -42,6 +42,9 @@ function makeCtx(): Context {
     systemPrompt: [],
     provider: null as never,
     session: {
+      // File-tool calls now record a file event, which is stamped with the
+      // session id (requireSessionId) — a real session always has one.
+      id: 'project-instructions-test',
       append: async () => {},
       appendBatch: async () => {},
       flush: async () => {},

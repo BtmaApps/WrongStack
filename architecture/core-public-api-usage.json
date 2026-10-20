@@ -239,9 +239,9 @@
       "runtimeOrMixed": 20
     },
     "@wrongstack/core/utils": {
-      "files": 833,
+      "files": 834,
       "typeOnly": 72,
-      "runtimeOrMixed": 790
+      "runtimeOrMixed": 791
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -25233,6 +25233,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/src/standalone-auto-update.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/src/standalone-migration.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
