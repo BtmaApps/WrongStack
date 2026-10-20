@@ -8,6 +8,68 @@ export type FeatureDeepDive = {
 };
 
 export const featureDeepDives: Record<string, FeatureDeepDive> = {
+  'persistent-automation': {
+    promise:
+      'Scheduled and event-driven agent work should leave reviewable evidence beyond the lifetime of a chat session.',
+    mechanism: [
+      {
+        title: 'Define a bounded job',
+        body: 'Versioned definitions carry the prompt, provider, model, iteration limit, timeout and credential references. Calendar schedules and event filters determine when work is queued.',
+        code: 'definition → schedule or signed GitHub event',
+      },
+      {
+        title: 'Launch an isolated run',
+        body: 'Queued definitions are frozen and launched headlessly in copied Docker workspaces. Credentials are resolved when used; the launch plan carries references rather than secret values.',
+        code: 'validateJobSpec → createHeadlessLaunchPlan',
+      },
+      {
+        title: 'Inspect the evidence',
+        body: 'Structured results retain duration, token usage, changed files and estimated cost when known. Logs and patches are evidence to review; completion alone does not certify validation.',
+        code: 'output.log + changes.patch → AutomationResult',
+      },
+    ],
+    operatorNotes: [
+      'Inspect the schedule preview and event filters before enabling a job.',
+      'Use the structured result and patch to review each run; validation is reported separately from completion.',
+      'Manage definitions and inspect results in WebUI or SimpleUI.',
+    ],
+    signals: [
+      { label: 'Triggers', value: 'Calendar + GitHub' },
+      { label: 'Workspace', value: 'Copied Docker workspace' },
+      { label: 'Evidence', value: 'Structured result + patch' },
+    ],
+  },
+  'self-developing-agents': {
+    promise:
+      'A specialist should carry useful project lessons into its next run through inspectable skill addenda.',
+    mechanism: [
+      {
+        title: 'Capture a directive',
+        body: 'Tagged directives from agent runs are quality-gated into structured what, why and how entries. Failed runs can contribute a useful lesson too.',
+        code: 'directive → what / why / how',
+      },
+      {
+        title: 'Refine the relevant skill',
+        body: 'Routed entries are distilled into project skill addenda. Automatic optimization is debounced and rate-limited, while unrouted entries remain at role level.',
+        code: '.wrongstack/agents/<role>/skills/<skill>.md',
+      },
+      {
+        title: 'Reuse project learning',
+        body: 'Future spawns load the developed addendum beneath the corresponding skill. The project files can be committed so a fresh checkout carries the same learned guidance.',
+        code: 'base skill + project addendum → specialist prompt',
+      },
+    ],
+    operatorNotes: [
+      'Inspect learned directives and their concrete anchors before relying on them.',
+      'Disabling a role’s learning policy retains its knowledge while stopping automatic capture and prompt injection.',
+      'Keep useful .wrongstack/agents/ files under version control to share the project guidance.',
+    ],
+    signals: [
+      { label: 'Structure', value: 'What · why · how' },
+      { label: 'Scope', value: 'Project + roster role' },
+      { label: 'Storage', value: '.wrongstack/agents/' },
+    ],
+  },
   'tool-execution': {
     promise:
       'A tool call should be understandable before it runs, observable while it runs and interruptible until the last safe write boundary.',

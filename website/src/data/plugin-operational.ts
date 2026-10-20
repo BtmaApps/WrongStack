@@ -15,6 +15,14 @@ export interface PluginLlmProfile {
 interface DeclaredLlmProfile extends Omit<PluginLlmProfile, 'label'> {}
 
 const llmProfiles: Record<string, DeclaredLlmProfile> = {
+  'wstack-specialist-triggers': {
+    mode: 'core-orchestrated',
+    summary:
+      'Glob matching is deterministic; a matching settled change asks the host to dispatch a roster specialist.',
+    routing: 'The CLI host owns the worker, model selection and bounded background execution.',
+    fallback:
+      'No worker fires while disabled, outside Git, when subagents are disallowed, or once the configured caps are reached.',
+  },
   'wstack-prompts': {
     mode: 'core-orchestrated',
     summary: 'Prompt generation can run an AI-guided authoring interview through the host runtime.',
