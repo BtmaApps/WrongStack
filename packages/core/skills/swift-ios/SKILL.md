@@ -9,6 +9,7 @@ optional-capabilities: [filesystem.write, execution.shell, verification.run, web
 metadata:
   routing-group: mobile
   domain: "mobile"
+paths: ["*.swift", "Package.swift", "Info.plist"]
 ---
 
 # Swift Ios

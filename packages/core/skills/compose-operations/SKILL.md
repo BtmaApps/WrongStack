@@ -9,6 +9,7 @@ optional-capabilities: [filesystem.write, execution.shell, verification.run, web
 metadata:
   routing-group: operations
   domain: "containers"
+paths: ["docker-compose*.{yml,yaml}", "compose.{yml,yaml}", "compose.*.{yml,yaml}"]
 ---
 
 # Compose Operations

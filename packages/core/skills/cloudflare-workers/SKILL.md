@@ -8,6 +8,7 @@ required-tools: []
 optional-capabilities: [verification.run, web.research]
 metadata:
   routing-group: operations
+paths: ["wrangler.{toml,json,jsonc}"]
 ---
 
 # Cloudflare Workers

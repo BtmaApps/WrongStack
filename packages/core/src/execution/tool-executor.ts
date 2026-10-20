@@ -160,7 +160,11 @@ export class ToolExecutor extends ToolExecutorCore {
         }
         // A Skill Companion recommendation holds the first file change once;
         // a deliberate retry passes and drops it (see skill-speed-bump.ts).
-        const bump = skillSpeedBump(ctx, use);
+        const bump = skillSpeedBump(ctx, {
+          id: use.id,
+          name: use.name,
+          targets: describeWriteTargets(tool, use.input),
+        });
         if (bump) {
           const result = deniedResult(use, bump);
           budget = this.budgetForString(result.content, budget);
@@ -458,6 +462,27 @@ export class ToolExecutor extends ToolExecutorCore {
   ): Promise<{ block: ToolResultBlock; bytes: number }> {
     ctx.catalogTools = this.registry.list();
     return this.withGovernedExecutionBridge(ctx, async () => {
+      const start = Date.now();
+      const inputPath =
+        use.input && typeof use.input === 'object'
+          ? (use.input as Record<string, unknown>).path
+          : undefined;
+      const caps = tool.capabilities ?? [];
+      const hasFileCapability = caps.includes('fs.read') || caps.includes('fs.write');
+      const absPath =
+        hasFileCapability && typeof inputPath === 'string'
+          ? path.isAbsolute(inputPath)
+            ? inputPath
+            : path.resolve(ctx.projectRoot, inputPath)
+          : undefined;
+      let writeTargetExisted: boolean | undefined;
+      if (tool.name === 'write' && caps.includes('fs.write') && absPath) {
+        writeTargetExisted = await fs.stat(absPath).then(
+          (stat) => stat.isFile(),
+          (error: NodeJS.ErrnoException) => (error.code === 'ENOENT' ? false : undefined),
+        );
+      }
+
       let produced: Awaited<ReturnType<ToolExecutorCore['produceToolOutput']>>;
       try {
         produced = await this.produceToolOutput(tool, use, ctx, budget);
@@ -469,7 +494,7 @@ export class ToolExecutor extends ToolExecutorCore {
       if (preToolContext?.contextAs === 'inline') {
         text = `${text}\n\n${preToolContext.text}`;
       }
-      const settled = this.settleToolOutput(tool, use, text, budget);
+      let settled = this.settleToolOutput(tool, use, text, budget);
       rememberToolResultFingerprint(
         settled.block,
         preToolContext?.contextAs === 'inline'
@@ -503,13 +528,20 @@ export class ToolExecutor extends ToolExecutorCore {
             rememberPendingContext(ctx, post.additionalContext, room, enforceCap);
           } else {
             const fitted = fitToBudget(enforceCap, `\n\n${post.additionalContext}`, room);
-            if (fitted.text.length === 0) return settled;
-            return {
-              block: appendToolResultContext(settled.block, fitted.text),
-              bytes: settled.bytes + Buffer.byteLength(fitted.text, 'utf8'),
-            };
+            if (fitted.text.length > 0) {
+              settled = {
+                block: appendToolResultContext(settled.block, fitted.text),
+                bytes: settled.bytes + Buffer.byteLength(fitted.text, 'utf8'),
+              };
+            }
           }
         }
+      }
+      const outputChars =
+        typeof settled.block.content === 'string' ? settled.block.content.length : 0;
+      this.logToolSuccess(ctx, use, tool.name, Date.now() - start, outputChars);
+      if (!settled.block.is_error && typeof inputPath === 'string' && absPath) {
+        this.emitToolFileEvent(tool, use, ctx, inputPath, absPath, caps, writeTargetExisted, start);
       }
       return settled;
     });

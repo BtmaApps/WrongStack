@@ -20,8 +20,8 @@ import { describe, expect, it, vi } from 'vitest';
 import type { Context } from '../../src/core/context.js';
 import { ToolExecutor } from '../../src/execution/tool-executor.js';
 import { EventBus } from '../../src/kernel/events.js';
-import { AutoApprovePermissionPolicy } from '../../src/security/permission-policy.js';
 import { setKanbanGovernance } from '../../src/security/kanban-governance-port.js';
+import { AutoApprovePermissionPolicy } from '../../src/security/permission-policy.js';
 import type { ToolUseBlock } from '../../src/types/blocks.js';
 import type { Tool } from '../../src/types/tool.js';
 
@@ -406,5 +406,45 @@ describe('ToolExecutor — file event auto-emission', () => {
 
     expect((fileEvents[0] as Record<string, unknown>).operation).toBe('read');
     expect((fileEvents[1] as Record<string, unknown>).operation).toBe('create');
+  });
+
+  it('emits ctx.recordFileEvent and file.event when executing a single tool via executeTool()', async () => {
+    const projectRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'wstack-exec-single-'));
+    try {
+      const events = makeEventBus();
+      const fileEvents: unknown[] = [];
+      events.on('file.event', (p) => fileEvents.push(p));
+
+      const tool = fsWriteTool('write');
+      const exec = new ToolExecutor(makeRegistry([tool]), {
+        events,
+        secretScrubber: noopScrubber,
+        permissionPolicy: autoApprovePolicy,
+      } as any);
+      const ctx = makeFileEventCtx({ projectRoot, cwd: projectRoot, workingDir: projectRoot });
+
+      const result = await exec.executeTool(
+        tool,
+        makeToolUse('write', 'tu-Confirmed-1', { path: 'confirmed.ts', content: 'ok' }),
+        ctx,
+      );
+
+      expect(result.block.is_error).toBeFalsy();
+      expect(ctx.recordFileEvent).toHaveBeenCalledTimes(1);
+      expect(ctx.recordFileEvent.mock.calls[0]![0]).toMatchObject({
+        operation: 'create',
+        filePath: 'confirmed.ts',
+        toolName: 'write',
+        toolUseId: 'tu-Confirmed-1',
+      });
+      expect(fileEvents).toHaveLength(1);
+      expect(fileEvents[0]).toMatchObject({
+        operation: 'create',
+        filePath: 'confirmed.ts',
+        toolName: 'write',
+      });
+    } finally {
+      await fs.rm(projectRoot, { recursive: true, force: true });
+    }
   });
 });

@@ -18,6 +18,8 @@ import { activeLimits, positiveLimit } from '@wrongstack/core/types';
 import { formatMemoryEvidenceBlock, formatProjectSuppliedBlock } from '@wrongstack/core/utils';
 import { formatMemoryHintsDetailed, getSageRetrieval } from '@wrongstack/sage';
 import type { MultiAgentDeps } from './host-types.js';
+import { skillCompanionCandidates } from './skill-companion-policy.js';
+import { skillOverlap, workTerms } from './skill-companion-signals.js';
 
 /**
  * Eagerly-loaded skills per spawn. Kept small so the prompt stays affordable.
@@ -53,6 +55,8 @@ export async function resolveHostSubagentSkillResolution(
   roster: Record<string, SubagentConfig>,
   subCfg: SubagentConfig,
   availableToolNames: readonly string[] = [],
+  /** The assigned task, when known at build time — steers which skills load. */
+  taskText?: string,
 ): Promise<SkillResolutionReport> {
   const role = subCfg.role;
   const rosterEntry = role ? roster[role] : undefined;
@@ -79,8 +83,22 @@ export async function resolveHostSubagentSkillResolution(
   // reviewer ranked `testing` (needs `verification.run`) into its top three on
   // every spawn and so ran on two skills, never reaching `code-review`.
   // An explicit per-spawn list is the caller's own priority order and is kept.
-  const ranked =
+  let ranked =
     role && !subCfg.skillNames ? rankRoleSkills(role, pool, deps.projectRoot, pool.length) : pool;
+
+  // Affinity knows what this role usually needs, not what this task needs: a
+  // role's pool was always served in the same order whatever it was asked to
+  // do, and a role-less worker got no pool at all — only the prompt's generic
+  // catalog-order skill block, unrelated to its task. Skills the task names
+  // strongly enough move to the front (role) or form the pool (role-less).
+  if (!subCfg.skillNames && taskText?.trim() && deps.skillLoader) {
+    const scores = await taskSkillScores(deps.skillLoader, taskText, availableToolNames);
+    const strong = (name: string) => (scores.get(name) ?? 0) >= MIN_TASK_SKILL_SCORE;
+    const byScore = (a: string, b: string) => (scores.get(b) ?? 0) - (scores.get(a) ?? 0);
+    ranked = role
+      ? [...ranked.filter(strong).sort(byScore), ...ranked.filter((name) => !strong(name))]
+      : [...scores.keys()].filter(strong).sort(byScore);
+  }
 
   if (ranked.length === 0 || !deps.skillLoader) {
     return { content: directContent ?? '', selected: [], dropped, trimmed: [], addendumOnly: [] };
@@ -273,6 +291,40 @@ export async function resolveHostSubagentSkillResolution(
     blocks.length > 0 ? `${skillsHeader}${blocks.join('\n\n---\n\n')}` : undefined,
   ].filter((section): section is string => Boolean(section));
   return { content: sections.join('\n\n'), selected, dropped, trimmed, addendumOnly };
+}
+
+/**
+ * Overlap a skill needs with the task text to be picked on that alone: one
+ * term in its name, or three in its description. A single shared description
+ * word is not evidence the method applies.
+ */
+const MIN_TASK_SKILL_SCORE = 3;
+
+/** Task-text overlap per loadable skill, in catalog order; skills with none are left out. */
+async function taskSkillScores(
+  loader: NonNullable<MultiAgentDeps['skillLoader']>,
+  taskText: string,
+  availableToolNames: readonly string[],
+): Promise<Map<string, number>> {
+  const scores = new Map<string, number>();
+  try {
+    const terms = workTerms([taskText], []);
+    if (terms.size === 0) return scores;
+    const catalog = await loader.list();
+    const candidates = skillCompanionCandidates(
+      catalog,
+      availableToolNames,
+      () => false,
+      catalog.length,
+    );
+    for (const candidate of candidates) {
+      const { score } = skillOverlap(candidate, terms);
+      if (score > 0) scores.set(candidate.name, score);
+    }
+  } catch {
+    // Task steering is an ordering hint; a catalog read failure keeps the pool as it was.
+  }
+  return scores;
 }
 
 interface LoadableSkill {

@@ -8,6 +8,7 @@ optional-capabilities: [verification.run, web.research]
 trigger: "implementing cameras, materials, 3D interaction, model loading or renderer performance; preserve renderer compatibility and resource ownership."
 metadata:
   routing-group: media
+paths: ["*.{glsl,wgsl,vert,frag}"]
 ---
 
 # Three.js and Browser 3D

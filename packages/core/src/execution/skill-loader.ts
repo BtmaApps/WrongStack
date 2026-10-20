@@ -221,6 +221,7 @@ export class DefaultSkillLoader implements SkillLoader {
             requiredCapabilities: fm.requiredCapabilities,
             requiredTools: fm.requiredTools,
             optionalCapabilities: fm.optionalCapabilities,
+            paths: fm.paths,
             path: skillFile,
             source,
             originTool,

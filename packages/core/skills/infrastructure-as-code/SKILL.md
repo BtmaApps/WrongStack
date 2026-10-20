@@ -9,6 +9,7 @@ optional-capabilities: [filesystem.write, execution.shell, verification.run, web
 metadata:
   routing-group: operations
   domain: "infrastructure"
+paths: ["*.tf", "*.tfvars", "Pulumi.yaml", "Pulumi.*.yaml"]
 ---
 
 # Infrastructure As Code

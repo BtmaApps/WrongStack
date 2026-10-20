@@ -9,6 +9,7 @@ optional-capabilities: [filesystem.write, execution.shell, verification.run, web
 metadata:
   routing-group: backend
   domain: "backend"
+paths: ["artisan", "routes/{web,api,console}.php", "app/Http/**/*.php", "app/Models/*.php"]
 ---
 
 # Php Laravel

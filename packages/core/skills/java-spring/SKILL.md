@@ -9,6 +9,7 @@ optional-capabilities: [filesystem.write, execution.shell, verification.run, web
 metadata:
   routing-group: backend
   domain: "backend"
+paths: ["application.{properties,yml,yaml}", "application-*.{properties,yml,yaml}"]
 ---
 
 # Java Spring

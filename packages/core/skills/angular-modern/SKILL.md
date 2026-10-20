@@ -9,6 +9,7 @@ optional-capabilities: [filesystem.write, execution.shell, verification.run, web
 metadata:
   routing-group: frontend
   domain: "web"
+paths: ["angular.json", "*.component.ts"]
 ---
 
 # Angular Modern

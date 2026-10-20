@@ -54,20 +54,6 @@ export {
 } from './required-skill-gate.js';
 export { collectSkillFiles } from './skill-files.js';
 export {
-  isSkillRecommendable,
-  markRecommendedSkillLoaded,
-  markRecommendedSkillUnavailable,
-  readSkillCompanionState,
-  recommendSkills,
-  SKILL_BUMP_TOOLS,
-  SKILL_COMPANION_META_KEY,
-  type SkillCompanionState,
-  type SkillRecommendation,
-  skillDeliveredInTranscript,
-  skillSpeedBump,
-  skillSpeedBumpMessage,
-} from './skill-speed-bump.js';
-export {
   bodyLineAdvisory,
   type ExtractedSkillDraft,
   extractSkillFromPrompt,
@@ -84,6 +70,23 @@ export {
   type SkillInstallerOptions,
   type UpdateResult,
 } from './skill-installer.js';
+export { declaredPathMatch, expandBraces } from './skill-path-rules.js';
+export {
+  armSkillPathRules,
+  isSkillRecommendable,
+  markRecommendedSkillLoaded,
+  markRecommendedSkillUnavailable,
+  readSkillCompanionState,
+  recommendSkills,
+  SKILL_BUMP_TOOLS,
+  SKILL_COMPANION_META_KEY,
+  type SkillCompanionState,
+  type SkillPathRule,
+  type SkillRecommendation,
+  skillDeliveredInTranscript,
+  skillSpeedBump,
+  skillSpeedBumpMessage,
+} from './skill-speed-bump.js';
 export {
   buildSuggesterFromConfig,
   type ChoiceAnswer,
@@ -127,5 +130,6 @@ export {
 export {
   createLocalSkillSuggestionSetup,
   type LocalSkillRecommendation,
+  normalizeSkillRequest,
   recommendLocalSkills,
 } from './suggest/local.js';

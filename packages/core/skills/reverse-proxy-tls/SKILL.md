@@ -9,6 +9,7 @@ optional-capabilities: [filesystem.write, execution.shell, verification.run, web
 metadata:
   routing-group: operations
   domain: "deployment"
+paths: ["Caddyfile", "nginx.conf", "**/nginx/**/*.conf", "traefik.{yml,yaml,toml}"]
 ---
 
 # Reverse Proxy Tls

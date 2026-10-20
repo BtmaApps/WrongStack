@@ -10,6 +10,7 @@ optional-capabilities: [verification.run]
 trigger: "Use this skill when writing, reviewing, or fixing TypeScript where type safety matters \u2014 type errors, narrowing, unsafe casts, or tightening compiler strictness."
 metadata:
   routing-group: frontend
+paths: ["tsconfig*.json"]
 ---
 
 # TypeScript Strict

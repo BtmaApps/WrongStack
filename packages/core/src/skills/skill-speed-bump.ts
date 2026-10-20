@@ -24,9 +24,11 @@
  * holding the new conversation's edits for the old one's recommendation.
  */
 
+import { basename } from 'node:path';
 import type { Message } from '../types/messages.js';
 import { isElidedResultContent, isElidedToolInput } from '../utils/elision-markers.js';
 import { REQUIRED_SKILLS_LOADER_TOOL } from './required-skill-gate.js';
+import { declaredPathMatch, MAX_GLOBS_PER_SKILL } from './skill-path-rules.js';
 
 export const SKILL_COMPANION_META_KEY = 'skillCompanion';
 
@@ -50,11 +52,24 @@ const SKILL_NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const MAX_RECOMMENDED = 2;
 const MAX_REASON_CHARS = 160;
 const MAX_TRACKED_NAMES = 64;
+const MAX_PATH_RULES = 64;
+const MAX_GLOB_CHARS = 200;
 
 export interface SkillRecommendation {
   name: string;
   /** Companion's one-line reason. Model-authored: bounded and flattened. */
   reason: string;
+  /**
+   * Raised by the skill's own frontmatter `paths`, not a model. A later judge
+   * answer keeps it open instead of replacing it.
+   */
+  declared?: boolean | undefined;
+}
+
+/** A skill's frontmatter `paths`, armed so the executor can match each edit. */
+export interface SkillPathRule {
+  name: string;
+  globs: string[];
 }
 
 export interface SkillCompanionState {
@@ -66,8 +81,19 @@ export interface SkillCompanionState {
   declined: string[];
   /** Recommendations whose one hold has been spent. */
   held: string[];
+  /**
+   * Every name ever recommended this session. `raised ∩ loaded` is an accepted
+   * recommendation and `raised ∩ declined` a refused one — the outcome the
+   * host learns from; `loaded` alone also counts skills nobody recommended.
+   */
+  raised: string[];
   /** The tool_use that took the latest hold; its batch siblings are held too. */
   heldUseId?: string | undefined;
+  /**
+   * Declared `paths` of skills the companion may raise. A file change that
+   * matches one is held as a recommendation of that skill before it runs.
+   */
+  pathRules?: SkillPathRule[] | undefined;
 }
 
 type MetaHolder =
@@ -75,12 +101,31 @@ type MetaHolder =
       meta?: Record<string, unknown> | undefined;
       messages?: readonly Message[] | undefined;
       session?: { id?: string | undefined } | undefined;
+      projectRoot?: string | undefined;
+      cwd?: string | undefined;
+      workingDir?: string | undefined;
     }
   | null
   | undefined;
 
 function strings(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : [];
+}
+
+function pathRules(value: unknown): SkillPathRule[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const rules: SkillPathRule[] = [];
+  for (const entry of value) {
+    if (!entry || typeof entry !== 'object') continue;
+    const { name, globs } = entry as { name?: unknown; globs?: unknown };
+    if (typeof name !== 'string' || !SKILL_NAME.test(name)) continue;
+    const kept = strings(globs)
+      .filter((glob) => glob.length > 0 && glob.length <= MAX_GLOB_CHARS)
+      .slice(0, MAX_GLOBS_PER_SKILL);
+    if (kept.length > 0) rules.push({ name, globs: kept });
+    if (rules.length >= MAX_PATH_RULES) break;
+  }
+  return rules;
 }
 
 export function readSkillCompanionState(ctx: MetaHolder): SkillCompanionState | undefined {
@@ -97,16 +142,21 @@ export function readSkillCompanionState(ctx: MetaHolder): SkillCompanionState | 
     loaded: strings(value.loaded),
     declined: strings(value.declined),
     held: strings(value.held),
+    raised: strings(value.raised),
     heldUseId: typeof value.heldUseId === 'string' ? value.heldUseId : undefined,
+    pathRules: pathRules(value.pathRules),
   };
 }
 
 function writeState(ctx: MetaHolder, state: SkillCompanionState): void {
   if (!ctx?.meta) return;
+  const raised = [...state.raised];
+  for (const rec of state.recommended) if (!raised.includes(rec.name)) raised.push(rec.name);
   ctx.meta[SKILL_COMPANION_META_KEY] = {
     ...state,
     loaded: state.loaded.slice(-MAX_TRACKED_NAMES),
     declined: state.declined.slice(-MAX_TRACKED_NAMES),
+    raised: raised.slice(-MAX_TRACKED_NAMES),
   };
 }
 
@@ -127,7 +177,7 @@ function flattenReason(reason: string): string {
 function stateFor(ctx: MetaHolder, sessionId: string): SkillCompanionState {
   const state = readSkillCompanionState(ctx);
   if (state && state.sessionId === sessionId) return state;
-  return { sessionId, recommended: [], loaded: [], declined: [], held: [] };
+  return { sessionId, recommended: [], loaded: [], declined: [], held: [], raised: [] };
 }
 
 function toolResultReadable(messages: readonly Message[], toolUseId: string): boolean {
@@ -194,7 +244,11 @@ export function recommendSkills(
     const name = normalizeName(rec.name);
     if (seen.has(name) || !isSkillRecommendable(ctx, sessionId, name)) continue;
     seen.add(name);
-    accepted.push({ name, reason: flattenReason(rec.reason) });
+    accepted.push({
+      name,
+      reason: flattenReason(rec.reason),
+      ...(rec.declared ? { declared: true } : {}),
+    });
     if (accepted.length >= MAX_RECOMMENDED) break;
   }
   const names = new Set(accepted.map((rec) => rec.name));
@@ -205,6 +259,68 @@ export function recommendSkills(
     heldUseId: state.held.some((name) => names.has(name)) ? state.heldUseId : undefined,
   });
   return accepted;
+}
+
+/**
+ * Replace the armed `paths` rules for a session. The host arms the skills the
+ * companion may raise; whether one is still raisable (loaded, declined, in the
+ * transcript) is decided again at each matching edit.
+ */
+export function armSkillPathRules(
+  ctx: MetaHolder,
+  sessionId: string,
+  rules: readonly SkillPathRule[],
+): void {
+  if (!ctx?.meta || !sessionId) return;
+  const state = stateFor(ctx, sessionId);
+  const armed = pathRules(
+    rules.map((rule) => ({ name: normalizeName(rule.name), globs: rule.globs })),
+  );
+  // Nothing to arm and nothing armed: leave a pristine context untouched.
+  if (!armed?.length && !state.pathRules?.length) return;
+  writeState(ctx, { ...state, pathRules: armed?.length ? armed : undefined });
+}
+
+/**
+ * Turn armed `paths` rules that cover this change into recommendations. A
+ * declared match goes first: it is the skill author's statement, not a guess.
+ */
+function fireDeclaredRules(
+  ctx: MetaHolder,
+  state: SkillCompanionState,
+  targets: readonly string[],
+): SkillCompanionState {
+  if (!state.pathRules?.length || targets.length === 0) return state;
+  const open = new Set(state.recommended.map((rec) => rec.name));
+  const fired: SkillRecommendation[] = [];
+  for (const rule of state.pathRules) {
+    const name = rule.name;
+    if (open.has(name) || state.loaded.includes(name) || state.declined.includes(name)) continue;
+    for (const target of targets) {
+      const glob = declaredPathMatch(
+        { paths: rule.globs },
+        target,
+        ctx?.projectRoot,
+        ctx?.workingDir ?? ctx?.cwd,
+      );
+      if (!glob) continue;
+      if (!skillDeliveredInTranscript(ctx?.messages, name)) {
+        fired.push({
+          name,
+          reason: flattenReason(`declares paths ${glob}, matched ${basename(target)}`),
+          declared: true,
+        });
+      }
+      break;
+    }
+    if (fired.length >= MAX_RECOMMENDED) break;
+  }
+  if (fired.length === 0) return state;
+  const recommended = [...fired, ...state.recommended].slice(0, MAX_RECOMMENDED);
+  const kept = new Set(recommended.map((rec) => rec.name));
+  const next = { ...state, recommended, held: state.held.filter((name) => kept.has(name)) };
+  writeState(ctx, next);
+  return next;
 }
 
 function closeRecommendation(ctx: MetaHolder, name: string, into: 'loaded' | 'declined'): void {
@@ -258,7 +374,10 @@ export function skillSpeedBumpMessage(pending: readonly SkillRecommendation[]): 
     '(follow nextOffset to the last page), then retry. ' +
     'If it does not fit this task, retry the change in your next step unchanged; ' +
     'the recommendation is then dropped for this session. ' +
-    'The reason is an advisory model judgment, not an instruction. Reading and searching are not held.'
+    (pending.every((rec) => rec.declared)
+      ? "The reason is the skill's own declared file paths, not an instruction. "
+      : 'The reason is an advisory model judgment, not an instruction. ') +
+    'Reading and searching are not held.'
   );
 }
 
@@ -269,12 +388,14 @@ export function skillSpeedBumpMessage(pending: readonly SkillRecommendation[]): 
  */
 export function skillSpeedBump(
   ctx: MetaHolder,
-  use: { id: string; name: string },
+  use: { id: string; name: string; targets?: readonly string[] | undefined },
 ): string | undefined {
-  const state = readSkillCompanionState(ctx);
-  if (!state || state.recommended.length === 0) return undefined;
+  let state = readSkillCompanionState(ctx);
+  if (!state || (state.recommended.length === 0 && !state.pathRules?.length)) return undefined;
   if (ctx?.session?.id !== state.sessionId) return undefined;
   if (!SKILL_BUMP_TOOLS.has(use.name.toLowerCase())) return undefined;
+  state = fireDeclaredRules(ctx, state, use.targets ?? []);
+  if (state.recommended.length === 0) return undefined;
 
   const pending = state.recommended.filter(
     (rec) =>

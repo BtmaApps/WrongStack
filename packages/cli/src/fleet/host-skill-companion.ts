@@ -11,6 +11,14 @@
  * that the leader has not loaded, declined, or been handed by the local
  * advisor.
  *
+ * Deterministic rules run before and around the judge: the frontmatter
+ * `paths` of every raisable skill are armed in the leader's meta, and the
+ * tool executor holds a change to a matching file before it runs, without a
+ * model call (core skills/skill-path-rules.ts); candidates are
+ * ranked by word overlap with the work before the `maxCandidates` cut; and a
+ * todo or file-family probe whose overlap the judge already answered "nothing
+ * fits" for is not asked again.
+ *
  * A pick reaches the leader two ways:
  *   - a same-session `[skill:recommend]` note, folded at its next iteration;
  *   - with `enforce: 'speed-bump'` (default), a recommendation in the leader's
@@ -26,18 +34,23 @@
  */
 
 import { createHash, randomUUID } from 'node:crypto';
+import { basename } from 'node:path';
 import { type Context, keepsOwnContext } from '@wrongstack/core/agent';
 import type { Director } from '@wrongstack/core/coordination';
 import type { EventBus } from '@wrongstack/core/kernel';
 import {
+  armSkillPathRules,
+  declaredPathMatch,
   extractSkillMentions,
   isSkillRecommendable,
   readRequiredSkillsState,
+  readSkillCompanionState,
   recommendLocalSkills,
   recommendSkills,
   SKILL_BUMP_TOOLS,
   SKILL_COMPANION_META_KEY,
   type SkillRecommendation,
+  skillPromptExclusionReasons,
 } from '@wrongstack/core/skills';
 import type {
   FleetConfig,
@@ -46,6 +59,12 @@ import type {
   SubagentConfig,
   TaskResult,
 } from '@wrongstack/core/types';
+import {
+  isSkillSuppressed,
+  loadSkillOutcomes,
+  recordSkillOutcomes,
+  type SkillOutcomes,
+} from './skill-companion-outcomes.js';
 import {
   constrainSkillCompanion,
   isProofDrivenBugHuntRequest,
@@ -56,6 +75,13 @@ import {
   type SkillCandidate,
   skillCompanionCandidates,
 } from './skill-companion-policy.js';
+import {
+  editedPaths,
+  evidenceSignature,
+  fileFamily,
+  rankSkillCandidates,
+  workTerms,
+} from './skill-companion-signals.js';
 
 type SkillCompanionConfig = NonNullable<FleetConfig['skillCompanion']>;
 type ProbeTrigger = 'turn' | 'todo' | 'file_family';
@@ -70,6 +96,8 @@ interface Input {
   note: (sessionId: string, subject: string, body: string) => void;
   /** Leader agent id inside `session.agents_updated`. Default 'leader'. */
   leaderAgentId?: string | undefined;
+  /** Where outcomes are learned (skill-companion-outcomes.ts). Absent: no learning. */
+  projectRoot?: string | undefined;
 }
 
 interface Session {
@@ -81,7 +109,19 @@ interface Session {
   families: Set<string>;
   todos: Map<string, { status: string; content: string }>;
   recentFiles: string[];
+  /** Skills the post-edit `paths` rule already noted; once per conversation. */
+  declared: Set<string>;
+  /** Lexical evidence the judge already answered "nothing fits" for. */
+  emptyEvidence: Set<string>;
+  /** Recommendations whose outcome is already recorded. */
+  settled: Set<string>;
 }
+
+type Eligibility = {
+  catalog: SkillManifest[];
+  toolNames: string[];
+  excluded: (name: string) => boolean;
+};
 
 /** The slice of `session.agents_updated` snapshots this companion reads. */
 interface AgentTodos {
@@ -100,6 +140,7 @@ const MAX_SESSIONS = 4;
 const MAX_PENDING = 6;
 const MIN_REQUEST_CHARS = 12;
 const MAX_REQUEST_CHARS = 2000;
+const MAX_EMPTY_EVIDENCE = 32;
 
 function positive(value: number | undefined, fallback: number): number {
   return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : fallback;
@@ -107,27 +148,6 @@ function positive(value: number | undefined, fallback: number): number {
 
 function hash(text: string): string {
   return createHash('sha256').update(text).digest('hex').slice(0, 16);
-}
-
-/** A coarse "kind of file" so a shift from app code to tests or infra re-probes. */
-function fileFamily(file: string): string | undefined {
-  const base = file.replace(/\\/g, '/').split('/').pop()?.toLowerCase() ?? '';
-  if (!base) return undefined;
-  if (/\.(?:test|spec)\.[cm]?[jt]sx?$/.test(base) || /_test\.(?:go|py)$/.test(base)) return 'test';
-  if (base === 'dockerfile' || base.startsWith('docker-compose')) return 'docker';
-  if (base.startsWith('wrangler.')) return 'wrangler';
-  const dot = base.lastIndexOf('.');
-  return dot > 0 ? base.slice(dot) : base;
-}
-
-function editedPaths(input: unknown, writeTargets: readonly string[] | undefined): string[] {
-  if (writeTargets?.length) return [...writeTargets];
-  const record = (input ?? {}) as Record<string, unknown>;
-  for (const key of ['path', 'file_path', 'file']) {
-    const value = record[key];
-    if (typeof value === 'string' && value.trim()) return [value];
-  }
-  return [];
 }
 
 export class HostSkillCompanion {
@@ -144,6 +164,9 @@ export class HostSkillCompanion {
   private readonly probeTimeoutMs: number;
   private readonly maxCandidates: number;
   private readonly enforce: boolean;
+  private readonly pathRules: boolean;
+  private readonly learn: boolean;
+  private outcomes: SkillOutcomes | undefined;
 
   constructor(private readonly input: Input) {
     const config = input.config ?? {};
@@ -152,6 +175,8 @@ export class HostSkillCompanion {
     this.probeTimeoutMs = positive(config.probeTimeoutMs, 45_000);
     this.maxCandidates = Math.floor(positive(config.maxCandidates, 80));
     this.enforce = config.enforce !== 'off';
+    this.pathRules = config.pathRules !== false;
+    this.learn = config.learnOutcomes !== false;
     const leaderId = input.leaderAgentId ?? 'leader';
     this.off = [
       input.events.on('agent.run.started', (event) => {
@@ -178,9 +203,15 @@ export class HostSkillCompanion {
         this.ensure(sessionId);
         const session = this.sessions.get(sessionId)!;
         session.ctx = event.ctx;
+        // The previous turn's loads and refusals settle its recommendations.
+        this.harvest(sessionId, session);
         const request = (event.inputText ?? '').trim();
-        if (request.length < MIN_REQUEST_CHARS) return;
-        session.request = request.slice(0, MAX_REQUEST_CHARS);
+        const judged = request.length >= MIN_REQUEST_CHARS;
+        if (judged) session.request = request.slice(0, MAX_REQUEST_CHARS);
+        // Declared paths need no request: arm them for every turn, "continue"
+        // included, so the executor holds the matching edit itself.
+        void this.armPathRules(sessionId, session).catch(() => {});
+        if (!judged) return;
         // A new request makes every queued probe for the old one stale.
         for (const [key, probe] of this.pending)
           if (probe.sessionId === sessionId) this.pending.delete(key);
@@ -196,21 +227,13 @@ export class HostSkillCompanion {
         if (!sessionId || !event.ok || !SKILL_BUMP_TOOLS.has(event.name.toLowerCase())) return;
         const session = this.sessions.get(sessionId);
         if (!session?.ctx || !this.allowed(sessionId)) return;
-        for (const file of editedPaths(event.input, event.writeTargets)) {
+        const files = editedPaths(event.input, event.writeTargets);
+        for (const file of files)
           session.recentFiles = [file, ...session.recentFiles.filter((f) => f !== file)].slice(
             0,
             8,
           );
-          const family = fileFamily(file);
-          if (!family || session.families.has(family)) continue;
-          session.families.add(family);
-          this.enqueue({
-            sessionId,
-            trigger: 'file_family',
-            subject: `family:${family}`,
-            detail: `The leader started editing a new kind of file: ${file}`,
-          });
-        }
+        void this.onEdit(sessionId, session, files).catch(() => {});
       }),
       input.events.on('session.agents_updated', (event) => {
         const sessionId = event.sessionId;
@@ -242,11 +265,15 @@ export class HostSkillCompanion {
       families: new Set(),
       todos: new Map(),
       recentFiles: [],
+      declared: new Set(),
+      emptyEvidence: new Set(),
+      settled: new Set(),
     });
   }
 
   release(sessionId: string): void {
     const session = this.sessions.get(sessionId);
+    if (session) this.harvest(sessionId, session);
     this.sessions.delete(sessionId);
     for (const [key, probe] of this.pending)
       if (probe.sessionId === sessionId) this.pending.delete(key);
@@ -323,29 +350,166 @@ export class HostSkillCompanion {
     return ctx;
   }
 
-  private async candidates(
+  /** The catalog and the names this session must not be offered, or undefined. */
+  private async eligibility(
     sessionId: string,
     session: Session,
     ctx: Context,
-  ): Promise<SkillCandidate[]> {
+  ): Promise<Eligibility | undefined> {
     const loader = this.input.skillLoader();
-    if (!loader) return [];
+    if (!loader) return undefined;
     const toolNames = (ctx.catalogTools ?? ctx.tools ?? []).map((tool) => tool.name);
-    if (!toolNames.includes('skill')) return [];
+    if (!toolNames.includes('skill')) return undefined;
     const catalog: SkillManifest[] = await loader.list();
-    const excluded = new Set<string>([
+    const names = new Set<string>([
       ...(readRequiredSkillsState(ctx)?.required ?? []),
       ...extractSkillMentions(session.request).map((name) => name.toLowerCase()),
       // The local advisor already put its pick, often with its body, in front
       // of this turn; holding an edit for it would be a duplicate nudge.
       ...(recommendLocalSkills(session.request, catalog, toolNames)?.names ?? []),
     ]);
-    return skillCompanionCandidates(
+    return {
       catalog,
       toolNames,
-      (name) => excluded.has(name) || !isSkillRecommendable(ctx, sessionId, name),
-      this.maxCandidates,
+      excluded: (name) =>
+        names.has(name) || !isSkillRecommendable(ctx, sessionId, name) || this.suppressed(name),
+    };
+  }
+
+  /** Turned down often and lately in this project (skill-companion-outcomes.ts). */
+  private suppressed(name: string): boolean {
+    const root = this.input.projectRoot;
+    if (!root || !this.learn) return false;
+    this.outcomes ??= loadSkillOutcomes(root);
+    return isSkillSuppressed(this.outcomes.skills[name]);
+  }
+
+  /** Record recommendations the leader has since loaded or refused. */
+  private harvest(sessionId: string, session: Session): void {
+    const root = this.input.projectRoot;
+    const ctx = this.leaderCtx(sessionId, session);
+    if (!root || !this.learn || !ctx) return;
+    const state = readSkillCompanionState(ctx);
+    if (state?.sessionId !== sessionId) return;
+    const settle = (names: readonly string[]) =>
+      names.filter((name) => state.raised.includes(name) && !session.settled.has(name));
+    const accepted = settle(state.loaded);
+    const declined = settle(state.declined);
+    for (const name of [...accepted, ...declined]) session.settled.add(name);
+    const next = recordSkillOutcomes(root, { accepted, declined });
+    if (next) this.outcomes = next;
+  }
+
+  private async candidates(
+    sessionId: string,
+    session: Session,
+    ctx: Context,
+  ): Promise<SkillCandidate[]> {
+    const eligible = await this.eligibility(sessionId, session, ctx);
+    if (!eligible) return [];
+    const all = skillCompanionCandidates(
+      eligible.catalog,
+      eligible.toolNames,
+      eligible.excluded,
+      Number.POSITIVE_INFINITY,
     );
+    const openTodos = [...session.todos.values()]
+      .filter((todo) => todo.status !== 'completed')
+      .map((todo) => todo.content);
+    const terms = workTerms([session.request, ...openTodos], session.recentFiles);
+    return rankSkillCandidates(all, terms, this.maxCandidates);
+  }
+
+  /**
+   * Arm the declared `paths` of every skill the companion may raise in this
+   * session, so the executor holds the matching change before it runs
+   * (skill-speed-bump.ts). Without enforcement there is no hold to arm; the
+   * post-edit note in {@link declaredPaths} carries the recommendation.
+   */
+  private async armPathRules(sessionId: string, session: Session): Promise<void> {
+    const ctx = this.leaderCtx(sessionId, session);
+    if (!this.enforce || !this.pathRules || !ctx) return;
+    const eligible = await this.eligibility(sessionId, session, ctx);
+    if (!eligible || !this.current(sessionId, session)) return;
+    const rules = eligible.catalog
+      .filter(
+        (skill) =>
+          skill.paths?.length &&
+          !eligible.excluded(skill.name.trim().toLowerCase()) &&
+          skillPromptExclusionReasons(skill, eligible.toolNames).length === 0,
+      )
+      .map((skill) => ({ name: skill.name, globs: skill.paths! }));
+    armSkillPathRules(ctx, sessionId, rules);
+  }
+
+  /**
+   * An edit landed: a skill whose declared `paths` cover the file is
+   * recommended outright; files a declared rule covers do not go to the judge
+   * as a new file family.
+   */
+  private async onEdit(sessionId: string, session: Session, files: string[]): Promise<void> {
+    const covered = await this.declaredPaths(sessionId, session, files);
+    if (!this.current(sessionId, session)) return;
+    for (const file of files) {
+      if (covered.has(file)) continue;
+      const family = fileFamily(file);
+      if (!family || session.families.has(family)) continue;
+      session.families.add(family);
+      this.enqueue({
+        sessionId,
+        trigger: 'file_family',
+        subject: `family:${family}`,
+        detail: `The leader started editing a new kind of file: ${file}`,
+      });
+    }
+  }
+
+  private async declaredPaths(
+    sessionId: string,
+    session: Session,
+    files: readonly string[],
+  ): Promise<Set<string>> {
+    const covered = new Set<string>();
+    const ctx = this.leaderCtx(sessionId, session);
+    if (!this.pathRules || !ctx || files.length === 0) return covered;
+    const eligible = await this.eligibility(sessionId, session, ctx);
+    if (!eligible || !this.current(sessionId, session)) return covered;
+    // The executor already raised what an armed rule matched; this catches an
+    // edit that ran before arming finished, and every edit when not enforcing.
+    const open = new Set(readSkillCompanionState(ctx)?.recommended.map((rec) => rec.name));
+    const picks: SkillRecommendation[] = [];
+    for (const skill of eligible.catalog) {
+      if (!skill.paths?.length) continue;
+      if (skillPromptExclusionReasons(skill, eligible.toolNames).length > 0) continue;
+      const name = skill.name.trim().toLowerCase();
+      const raisable =
+        picks.length < 2 &&
+        !open.has(name) &&
+        !session.declared.has(name) &&
+        !eligible.excluded(name);
+      for (const file of files) {
+        const glob = declaredPathMatch(
+          skill,
+          file,
+          ctx.projectRoot,
+          ctx.workingDir ?? ctx.cwd,
+        );
+        if (!glob) continue;
+        // A declared skill covers its files even once loaded or declined.
+        covered.add(file);
+        if (raisable)
+          picks.push({
+            name,
+            reason: `declares paths ${glob}, matched ${basename(file)}`,
+            declared: true,
+          });
+        break;
+      }
+    }
+    // Once per skill per conversation: a declined declared pick stays declined.
+    for (const pick of picks) session.declared.add(pick.name);
+    if (picks.length > 0) this.deliver(sessionId, session, picks, 'paths');
+    return covered;
   }
 
   private async judge(probe: Probe): Promise<void> {
@@ -356,6 +520,11 @@ export class HostSkillCompanion {
     if (!ctx || !session.request || session.probes >= this.maxProbes) return;
     const candidates = await this.candidates(sessionId, session, ctx);
     if (candidates.length === 0 || !this.current(sessionId, session)) return;
+    // Same lexical evidence the judge already found nothing in: a todo or a
+    // new file family that adds no new overlap gets the same answer. A new
+    // user turn always reaches the judge.
+    const evidence = evidenceSignature(candidates);
+    if (probe.trigger !== 'turn' && evidence && session.emptyEvidence.has(evidence)) return;
     const agentId = await this.resident(sessionId, session);
     if (!agentId || !this.current(sessionId, session)) return;
     session.probes++;
@@ -399,8 +568,16 @@ export class HostSkillCompanion {
       const raw =
         result.report?.summary ?? (typeof result.result === 'string' ? result.result : '');
       const pick = parseSkillCompanionPick(raw, candidates);
-      if (!pick || pick.skills.length === 0 || pick.confidence < this.minConfidence) return;
-      this.deliver(sessionId, session, pick.skills);
+      if (!pick) return;
+      if (pick.skills.length === 0 || pick.confidence < this.minConfidence) {
+        if (evidence) {
+          session.emptyEvidence.add(evidence);
+          if (session.emptyEvidence.size > MAX_EMPTY_EVIDENCE)
+            session.emptyEvidence.delete(session.emptyEvidence.values().next().value!);
+        }
+        return;
+      }
+      this.deliver(sessionId, session, pick.skills, 'judge');
     } finally {
       if (timeout) clearTimeout(timeout);
       if (this.active?.taskId === taskId) this.active = undefined;
@@ -411,13 +588,28 @@ export class HostSkillCompanion {
     return this.allowed(sessionId) && this.sessions.get(sessionId) === session;
   }
 
-  private deliver(sessionId: string, session: Session, picks: SkillRecommendation[]): void {
+  private deliver(
+    sessionId: string,
+    session: Session,
+    picks: SkillRecommendation[],
+    source: 'judge' | 'paths',
+  ): void {
     const ctx = this.leaderCtx(sessionId, session);
     if (!ctx) return;
     // The judge ran asynchronously: the leader may have loaded or declined a
     // pick in the meantime.
     const fresh = picks.filter((pick) => isSkillRecommendable(ctx, sessionId, pick.name));
-    const accepted = this.enforce ? recommendSkills(ctx, sessionId, fresh) : fresh;
+    // A judge answer replaces the previous judge answer but never a declared
+    // match, which is the skill author's own statement; a declared match goes
+    // first and keeps whatever is still open.
+    const state = readSkillCompanionState(ctx);
+    const open = (state?.sessionId === sessionId ? state.recommended : []).filter(
+      (rec) => source === 'paths' || rec.declared,
+    );
+    const ordered = source === 'paths' ? [...fresh, ...open] : [...open, ...fresh];
+    const accepted = (this.enforce ? recommendSkills(ctx, sessionId, ordered) : fresh).filter(
+      (rec) => fresh.some((pick) => pick.name === rec.name),
+    );
     if (accepted.length === 0) return;
     const first = accepted[0]!.name;
     const lines = [
@@ -430,7 +622,9 @@ export class HostSkillCompanion {
             'Your next file change is held once until you load it. If it does not fit, retry that change and the recommendation is dropped for this session.',
           ]
         : []),
-      'Advisory model judgment over the skill catalog, not a user instruction.',
+      source === 'paths'
+        ? "Deterministic match on the skill's declared paths, not a user instruction."
+        : 'Advisory model judgment over the skill catalog, not a user instruction.',
     ];
     try {
       this.input.note(sessionId, '[skill:recommend]', this.input.scrub(lines.join('\n')));

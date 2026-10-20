@@ -9,6 +9,7 @@ optional-capabilities: [filesystem.write, execution.shell, verification.run, web
 metadata:
   routing-group: mobile
   domain: "mobile"
+paths: ["eas.json", "metro.config.*"]
 ---
 
 # React Native Expo

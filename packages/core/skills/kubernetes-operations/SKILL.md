@@ -9,6 +9,7 @@ optional-capabilities: [filesystem.write, execution.shell, verification.run, web
 metadata:
   routing-group: operations
   domain: "infrastructure"
+paths: ["kustomization.{yml,yaml}", "Chart.yaml", "**/k8s/**/*.{yml,yaml}"]
 ---
 
 # Kubernetes Operations

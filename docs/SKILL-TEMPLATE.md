@@ -7,6 +7,10 @@ version: 2.0.0
 required-capabilities: [<list>]
 required-tools: [<list>]
 optional-capabilities: [<list>]
+# Optional: project-relative globs this skill covers (bare names match any
+# directory). Editing a matching file makes the Skill Companion recommend the
+# skill without a model call.
+paths: [<glob>, <glob>]
 ---
 
 # <Skill Title> — WrongStack

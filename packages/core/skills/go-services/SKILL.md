@@ -9,6 +9,7 @@ optional-capabilities: [filesystem.write, execution.shell, verification.run, web
 metadata:
   routing-group: backend
   domain: "backend"
+paths: ["*.go", "go.mod"]
 ---
 
 # Go Services

@@ -9,6 +9,7 @@ required-tools: []
 trigger: "Use this skill when writing or reviewing a Dockerfile, docker-compose setup, or container image build for a project, or when debugging a container that won't build, start, or stay healthy."
 metadata:
   routing-group: operations
+paths: ["Dockerfile", "Dockerfile.*", "*.Dockerfile", ".dockerignore"]
 ---
 
 # Docker Deploy

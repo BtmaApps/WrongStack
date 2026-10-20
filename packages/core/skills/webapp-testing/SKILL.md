@@ -8,6 +8,7 @@ optional-capabilities: [browser.interact, verification.run, web.research]
 trigger: "validating UI user journeys, reproducing frontend bugs, testing form interactions, or verifying responsive layouts."
 metadata:
   routing-group: quality
+paths: ["playwright.config.*"]
 ---
 
 # Web Application Testing — WrongStack

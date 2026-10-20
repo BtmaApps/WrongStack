@@ -8,6 +8,7 @@ required-tools: []
 optional-capabilities: [verification.run, web.research]
 metadata:
   routing-group: data
+paths: ["**/migrations/**"]
 ---
 
 # Database Migrations

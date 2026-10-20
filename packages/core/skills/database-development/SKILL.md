@@ -9,6 +9,7 @@ optional-capabilities: [filesystem.write, execution.shell, verification.run, web
 metadata:
   routing-group: data
   domain: "data"
+paths: ["*.sql"]
 ---
 
 # Database Development

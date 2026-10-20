@@ -29,6 +29,12 @@ export interface SkillManifest {
   requiredTools?: string[] | undefined;
   /** Optional capabilities; the skill must remain useful when these are absent. */
   optionalCapabilities?: string[] | undefined;
+  /**
+   * Frontmatter `paths`: project-relative file globs the skill covers. The
+   * Skill Companion recommends the skill, without a model call, when the
+   * leader edits a matching file. Advisory: it never gates loading.
+   */
+  paths?: string[] | undefined;
   path: string;
   /**
    * Discovery layer the skill came from. `claude-*`, `foreign`, and `extra` are

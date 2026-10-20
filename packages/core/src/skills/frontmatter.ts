@@ -40,6 +40,12 @@ export interface ParsedSkillFrontmatter {
   requiredTools?: string[] | undefined;
   /** Capabilities that improve the workflow but have documented fallbacks. */
   optionalCapabilities?: string[] | undefined;
+  /**
+   * Project-relative file globs the skill covers (`paths`). A glob without a
+   * `/` matches the file name in any directory. Editing a matching file lets
+   * the Skill Companion recommend the skill without asking a model.
+   */
+  paths?: string[] | undefined;
 }
 
 /** Fields whose value is a single scalar string. */
@@ -89,6 +95,25 @@ const LIST_KEYS = {
   optionalCapabilities: 'optionalCapabilities',
 } as const;
 
+/** Split on commas and whitespace outside `{…}`, so `src/*.{ts,tsx}` stays one glob. */
+function splitGlobList(value: string): string[] {
+  const out: string[] = [];
+  let depth = 0;
+  let current = '';
+  for (const ch of value) {
+    if (ch === '{') depth++;
+    else if (ch === '}' && depth > 0) depth--;
+    if (depth === 0 && /[\s,]/.test(ch)) {
+      if (current) out.push(current);
+      current = '';
+      continue;
+    }
+    current += ch;
+  }
+  if (current) out.push(current);
+  return out;
+}
+
 export function parseSkillFrontmatter(raw: string): ParsedSkillFrontmatter {
   const { data, errors } = readFrontmatter(raw);
   if (errors.length) return {};
@@ -102,6 +127,9 @@ export function parseSkillFrontmatter(raw: string): ParsedSkillFrontmatter {
     else if (Array.isArray(value) && value.every((item) => typeof item === 'string'))
       out[target] = value.map((item) => item.trim()).filter(Boolean);
   }
+  if (typeof data.paths === 'string') out.paths = splitGlobList(data.paths);
+  else if (Array.isArray(data.paths) && data.paths.every((item) => typeof item === 'string'))
+    out.paths = data.paths.map((item) => item.trim()).filter(Boolean);
   if (data.metadata && typeof data.metadata === 'object' && !Array.isArray(data.metadata)) {
     const entries = Object.entries(data.metadata);
     if (entries.every(([, value]) => typeof value === 'string'))
@@ -144,7 +172,7 @@ export function validateSkillDocument(raw: string, parentDirName?: string): stri
   ) {
     errors.push('metadata must map string keys to string values');
   }
-  for (const key of Object.keys(LIST_KEYS)) {
+  for (const key of [...Object.keys(LIST_KEYS), 'paths']) {
     const value = data[key];
     if (
       value !== undefined &&

@@ -24,9 +24,11 @@ import { DefaultPermissionPolicy } from '../../src/security/permission-policy.js
 import { DefaultSecretScrubber } from '../../src/security/secret-scrubber.js';
 import { markRequiredSkillLoaded } from '../../src/skills/required-skill-gate.js';
 import {
+  armSkillPathRules,
   markRecommendedSkillLoaded,
   readSkillCompanionState,
   recommendSkills,
+  skillSpeedBump,
 } from '../../src/skills/skill-speed-bump.js';
 import { DefaultSessionStore } from '../../src/storage/session-store.js';
 import type { ContentBlock, ToolResultBlock } from '../../src/types/blocks.js';
@@ -180,6 +182,105 @@ describe('Agent.run Skill Companion speed bump', () => {
     expect(results.find((result) => result.tool_use_id === 'b1')?.is_error).toBe(true);
     expect(results.find((result) => result.tool_use_id === 'b2')?.is_error).toBe(true);
     expect(readSkillCompanionState(ctx)?.declined).toEqual([]);
+  });
+
+  it('holds the edit an armed paths rule covers, before it runs, and only that one', async () => {
+    const { agent, provider, editSpy, tmp, ctx } = await buildAgent([
+      toolUse('e1', 'edit', { path: 'src/app.ts' }),
+      toolUse('e2', 'edit', { path: 'apps/edge/wrangler.toml' }),
+      toolUse('s1', 'skill', { name: 'cloudflare-workers' }),
+      toolUse('e3', 'edit', { path: 'apps/edge/wrangler.toml' }),
+      DONE,
+    ]);
+    dirs.push(tmp);
+    armSkillPathRules(ctx, ctx.session.id, [
+      { name: 'cloudflare-workers', globs: ['wrangler.{toml,jsonc}'] },
+    ]);
+
+    await agent.run('Move the edge config.');
+
+    expect(editSpy).toHaveBeenCalledTimes(2);
+    const results = toolResults(provider);
+    expect(results.find((result) => result.tool_use_id === 'e1')?.is_error).toBe(false);
+    const held = results.find((result) => result.tool_use_id === 'e2');
+    expect(held?.is_error).toBe(true);
+    expect(String(held?.content)).toContain(
+      'cloudflare-workers (declares paths wrangler.{toml,jsonc}, matched wrangler.toml)',
+    );
+    expect(String(held?.content)).toContain("skill's own declared file paths");
+    expect(results.find((result) => result.tool_use_id === 'e3')?.is_error).toBe(false);
+    expect(readSkillCompanionState(ctx)?.loaded).toEqual(['cloudflare-workers']);
+  });
+
+  it('resolves declared path rules from the active working directory', async () => {
+    const { agent, provider, editSpy, tmp, ctx } = await buildAgent([
+      toolUse('e1', 'edit', { path: 'wrangler.toml' }),
+      toolUse('s1', 'skill', { name: 'cloudflare-workers' }),
+      toolUse('e2', 'edit', { path: 'wrangler.toml' }),
+      DONE,
+    ]);
+    dirs.push(tmp);
+    const workingDir = path.join(tmp, 'apps', 'edge');
+    await fs.mkdir(workingDir, { recursive: true });
+    ctx.setWorkingDir(workingDir);
+    armSkillPathRules(ctx, ctx.session.id, [
+      { name: 'cloudflare-workers', globs: ['apps/edge/wrangler.toml'] },
+    ]);
+
+    await agent.run('Update the edge config from its working directory.');
+
+    expect(editSpy).toHaveBeenCalledTimes(1);
+    const results = toolResults(provider);
+    const held = results.find((result) => result.tool_use_id === 'e1');
+    expect(held?.is_error).toBe(true);
+    expect(String(held?.content)).toContain(
+      'cloudflare-workers (declares paths apps/edge/wrangler.toml, matched wrangler.toml)',
+    );
+    expect(results.find((result) => result.tool_use_id === 'e2')?.is_error).toBe(false);
+    expect(readSkillCompanionState(ctx)?.loaded).toEqual(['cloudflare-workers']);
+  });
+
+  it('declines a declared skill on a retry and never raises it again', async () => {
+    const { agent, provider, editSpy, tmp, ctx } = await buildAgent([
+      toolUse('e1', 'edit', { path: 'wrangler.toml' }),
+      toolUse('e2', 'edit', { path: 'wrangler.toml' }),
+      toolUse('e3', 'edit', { path: 'wrangler.jsonc' }),
+      DONE,
+    ]);
+    dirs.push(tmp);
+    armSkillPathRules(ctx, ctx.session.id, [{ name: 'cloudflare-workers', globs: ['wrangler.*'] }]);
+
+    await agent.run('Move the edge config.');
+
+    expect(editSpy).toHaveBeenCalledTimes(2);
+    const results = toolResults(provider);
+    expect(results.find((result) => result.tool_use_id === 'e1')?.is_error).toBe(true);
+    expect(results.find((result) => result.tool_use_id === 'e3')?.is_error).toBe(false);
+    expect(readSkillCompanionState(ctx)?.declined).toEqual(['cloudflare-workers']);
+  });
+
+  it('keeps a declared recommendation open when a judge answer replaces the set', () => {
+    const ctx = {
+      meta: {} as Record<string, unknown>,
+      session: { id: 'S1' },
+    };
+    armSkillPathRules(ctx, 'S1', [{ name: 'cloudflare-workers', globs: ['wrangler.toml'] }]);
+    expect(
+      skillSpeedBump(ctx, { id: 'u1', name: 'edit', targets: ['wrangler.toml'] }),
+    ).toBeDefined();
+    const state = readSkillCompanionState(ctx)!;
+    expect(state.recommended).toEqual([
+      expect.objectContaining({ name: 'cloudflare-workers', declared: true }),
+    ]);
+    expect(state.pathRules).toEqual([{ name: 'cloudflare-workers', globs: ['wrangler.toml'] }]);
+    // recommendSkills carries the flag the host uses to keep it open.
+    recommendSkills(ctx, 'S1', [...state.recommended, { name: 'testing', reason: 'tests' }]);
+    expect(
+      readSkillCompanionState(ctx)?.recommended.map((rec) => [rec.name, rec.declared]),
+    ).toEqual([
+      ['cloudflare-workers', true],
+      ['testing', undefined],
+    ]);
   });
 
   it('does nothing without a recommendation', async () => {

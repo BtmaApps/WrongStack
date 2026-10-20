@@ -239,6 +239,7 @@ export async function buildDirector(host: HostDirectorSetupHost): Promise<void> 
           events: host.deps.events,
           skillLoader: () => host.deps.skillLoader,
           config: config.fleet?.skillCompanion,
+          projectRoot: host.deps.projectRoot,
           enabled: (sessionId) => {
             const current = host.deps.configStore.get();
             return (

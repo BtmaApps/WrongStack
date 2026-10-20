@@ -8,6 +8,7 @@ optional-capabilities: [verification.run, web.research]
 trigger: "implementing Next.js routes, upgrading to the latest stable Next.js, or fixing rendering and cache behavior."
 metadata:
   routing-group: frontend
+paths: ["next.config.*"]
 ---
 
 # Next.js 16 App Router

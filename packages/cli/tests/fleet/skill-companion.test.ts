@@ -1,9 +1,16 @@
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import type { Context } from '@wrongstack/core/agent';
 import { renderInstructionLayer } from '@wrongstack/core/agent';
 import type { Director } from '@wrongstack/core/coordination';
 import { DEFAULT_SUBAGENT_BASELINE, makeSubagentResultTool } from '@wrongstack/core/coordination';
 import { EventBus } from '@wrongstack/core/kernel';
-import { readSkillCompanionState } from '@wrongstack/core/skills';
+import {
+  markRecommendedSkillLoaded,
+  markRecommendedSkillUnavailable,
+  readSkillCompanionState,
+} from '@wrongstack/core/skills';
 import type {
   SkillLoader,
   SkillManifest,
@@ -13,6 +20,10 @@ import type {
 import { estimateTextTokens } from '@wrongstack/core/utils';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { HostSkillCompanion } from '../../src/fleet/host-skill-companion.js';
+import {
+  loadSkillOutcomes,
+  recordSkillOutcomes,
+} from '../../src/fleet/skill-companion-outcomes.js';
 import {
   constrainSkillCompanion,
   isSkillCompanion,
@@ -46,7 +57,14 @@ function leaderCtx(sessionId = 'S1') {
 }
 
 function harness(
-  options: { enforce?: 'speed-bump' | 'off'; maxProbes?: number; timeoutMs?: number } = {},
+  options: {
+    enforce?: 'speed-bump' | 'off';
+    maxProbes?: number;
+    timeoutMs?: number;
+    catalog?: SkillManifest[];
+    pathRules?: boolean;
+    projectRoot?: string;
+  } = {},
 ) {
   const events = new EventBus();
   let completed: (event: { result: TaskResult }) => void = () => {};
@@ -67,7 +85,9 @@ function harness(
       return () => {};
     },
   } as unknown as Director;
-  const loader = { list: vi.fn(async () => CATALOG) } as unknown as SkillLoader;
+  const loader = {
+    list: vi.fn(async () => options.catalog ?? CATALOG),
+  } as unknown as SkillLoader;
   const companion = new HostSkillCompanion({
     director,
     events,
@@ -77,9 +97,11 @@ function harness(
       ...(options.enforce ? { enforce: options.enforce } : {}),
       ...(options.maxProbes ? { maxProbesPerSession: options.maxProbes } : {}),
       ...(options.timeoutMs ? { probeTimeoutMs: options.timeoutMs } : {}),
+      ...(options.pathRules === false ? { pathRules: false } : {}),
     },
     scrub: (text) => text.replaceAll('secret-fixture', '[redacted]'),
     note,
+    projectRoot: options.projectRoot,
   });
   instances.push(companion);
   const ctx = leaderCtx();
@@ -298,6 +320,194 @@ describe('Skill Companion', () => {
     expect(h.assignInternal).toHaveBeenCalledTimes(2);
   });
 
+  const DECLARED = [
+    ...CATALOG.filter((skill) => skill.name !== 'cloudflare'),
+    { ...manifest('cloudflare', 'Workers and edge deployment.'), paths: ['wrangler.{toml,jsonc}'] },
+  ];
+  const edit = (h: ReturnType<typeof harness>, path: string) =>
+    h.events.emit('tool.executed', {
+      sessionId: 'S1',
+      id: path,
+      name: 'edit',
+      ok: true,
+      durationMs: 1,
+      input: { path },
+    } as never);
+
+  it('recommends a skill whose declared paths cover an edit, without a model call', async () => {
+    const h = harness({ catalog: DECLARED });
+    h.run('Tune the settings page please');
+    await vi.waitFor(() => expect(h.assignInternal).toHaveBeenCalledTimes(1));
+    // Armed for the executor, which holds the matching change before it runs.
+    expect(readSkillCompanionState(h.ctx)?.pathRules).toEqual([
+      { name: 'cloudflare', globs: ['wrangler.{toml,jsonc}'] },
+    ]);
+    h.finish({ skills: [], confidence: 0 });
+    // An edit that ran anyway (arming raced it) still gets the note.
+    edit(h, 'apps/edge/wrangler.toml');
+    await vi.waitFor(() => expect(h.note).toHaveBeenCalledTimes(1));
+    const body = h.note.mock.calls[0]![2] as string;
+    expect(body).toContain(
+      'cloudflare: declares paths wrangler.{toml,jsonc}, matched wrangler.toml',
+    );
+    expect(body).toContain('Deterministic match');
+    expect(readSkillCompanionState(h.ctx)?.recommended.map((rec) => rec.name)).toEqual([
+      'cloudflare',
+    ]);
+    // The declared rule covered the file: no file-family judge call.
+    expect(h.assignInternal).toHaveBeenCalledTimes(1);
+    // Once per conversation: a second matching edit raises nothing new.
+    edit(h, 'wrangler.jsonc');
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(h.note).toHaveBeenCalledTimes(1);
+  });
+
+  it('resolves post-edit declared paths from the active working directory', async () => {
+    const projectRoot = join(process.cwd(), 'skill-companion-project');
+    const nestedDeclared = [
+      ...CATALOG.filter((skill) => skill.name !== 'cloudflare'),
+      {
+        ...manifest('cloudflare', 'Workers and edge deployment.'),
+        paths: ['apps/edge/wrangler.toml'],
+      },
+    ];
+    const h = harness({ catalog: nestedDeclared });
+    Object.assign(h.ctx, {
+      projectRoot,
+      cwd: projectRoot,
+      workingDir: join(projectRoot, 'apps', 'edge'),
+    });
+    h.run('Tune the edge config please');
+    await vi.waitFor(() => expect(h.assignInternal).toHaveBeenCalledTimes(1));
+    h.finish({ skills: [], confidence: 0 });
+
+    edit(h, 'wrangler.toml');
+
+    await vi.waitFor(() => expect(h.note).toHaveBeenCalledTimes(1));
+    const body = h.note.mock.calls[0]![2] as string;
+    expect(body).toContain(
+      'cloudflare: declares paths apps/edge/wrangler.toml, matched wrangler.toml',
+    );
+    expect(h.assignInternal).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps a declared recommendation open when a later judge answer arrives', async () => {
+    const h = harness({ catalog: DECLARED });
+    h.run('Tune the settings page please');
+    await vi.waitFor(() => expect(h.assignInternal).toHaveBeenCalledTimes(1));
+    h.finish({ skills: [], confidence: 0 });
+    edit(h, 'wrangler.toml');
+    await vi.waitFor(() => expect(h.note).toHaveBeenCalledTimes(1));
+    h.run('Now redesign the settings screen');
+    await vi.waitFor(() => expect(h.assignInternal).toHaveBeenCalledTimes(2));
+    h.finish(PICK);
+    await vi.waitFor(() => expect(h.note).toHaveBeenCalledTimes(2));
+    expect(readSkillCompanionState(h.ctx)?.recommended.map((rec) => rec.name)).toEqual([
+      'cloudflare',
+      'frontend-design',
+    ]);
+  });
+
+  it('leaves declared paths to the judge when path rules are off', async () => {
+    const h = harness({ catalog: DECLARED, pathRules: false });
+    h.run('Tune the settings page please');
+    await vi.waitFor(() => expect(h.assignInternal).toHaveBeenCalledTimes(1));
+    expect(readSkillCompanionState(h.ctx)?.pathRules).toBeUndefined();
+    h.finish({ skills: [], confidence: 0 });
+    edit(h, 'wrangler.toml');
+    await vi.waitFor(() => expect(h.assignInternal).toHaveBeenCalledTimes(2));
+    expect(h.note).not.toHaveBeenCalled();
+  });
+
+  it('offers the overlapping candidates first, with the overlapping words', async () => {
+    const h = harness();
+    h.run('Ship the workers with wrangler today');
+    await vi.waitFor(() => expect(h.assignInternal).toHaveBeenCalledTimes(1));
+    const task = h.assignInternal.mock.calls[0]![0].description;
+    const payload = JSON.parse(task.slice(task.indexOf('Payload:\n') + 9)) as {
+      CANDIDATES: Array<{ name: string; match?: string[] }>;
+    };
+    expect(payload.CANDIDATES[0]).toEqual({
+      name: 'cloudflare',
+      description: 'Workers, wrangler and edge deployment.',
+      match: ['workers', 'wrangler'],
+    });
+  });
+
+  it('does not re-ask a todo whose overlap the judge already found empty', async () => {
+    const h = harness();
+    const todos = (items: Array<{ id: string; content: string; status: string }>) =>
+      h.events.emit('session.agents_updated', {
+        sessionId: 'S1',
+        agents: [{ id: 'leader', todos: items }],
+      } as never);
+    h.run('Ship the workers with wrangler today');
+    await vi.waitFor(() => expect(h.assignInternal).toHaveBeenCalledTimes(1));
+    h.finish({ skills: [], confidence: 0.2 });
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    // Adds no overlapping word: same evidence, same answer, no model call.
+    todos([{ id: 't1', content: 'Kick off the rollout', status: 'in_progress' }]);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(h.assignInternal).toHaveBeenCalledTimes(1);
+    // New overlap ("tests") is new evidence: the judge is asked.
+    todos([
+      { id: 't1', content: 'Kick off the rollout', status: 'completed' },
+      { id: 't2', content: 'Write tests for the rollout', status: 'in_progress' },
+    ]);
+    await vi.waitFor(() => expect(h.assignInternal).toHaveBeenCalledTimes(2));
+  });
+
+  it('records loaded and refused recommendations for the project', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'wstack-skill-companion-'));
+    try {
+      const h = harness({ projectRoot: dir });
+      h.run('Redesign the settings page please');
+      await vi.waitFor(() => expect(h.assignInternal).toHaveBeenCalledTimes(1));
+      h.finish({
+        skills: [
+          { name: 'frontend-design', reason: 'new screen' },
+          { name: 'testing', reason: 'tests' },
+        ],
+        confidence: 0.9,
+      });
+      await vi.waitFor(() => expect(h.note).toHaveBeenCalledTimes(1));
+      // The leader loads one and the skill tool cannot provide the other.
+      markRecommendedSkillLoaded(h.ctx, 'frontend-design');
+      markRecommendedSkillUnavailable(h.ctx, 'testing');
+      // A skill loaded without a recommendation is not the companion's outcome.
+      markRecommendedSkillLoaded(h.ctx, 'cloudflare');
+      h.run('Now polish the settings page');
+      h.run('And once more for good measure');
+      expect(loadSkillOutcomes(dir).skills).toEqual({
+        'frontend-design': expect.objectContaining({ accepted: 1, declined: 0 }),
+        testing: expect.objectContaining({ accepted: 0, declined: 1 }),
+      });
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('stops offering a skill the leader keeps refusing in this project', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'wstack-skill-companion-'));
+    try {
+      for (let i = 0; i < 3; i++)
+        recordSkillOutcomes(dir, { accepted: [], declined: ['frontend-design'] });
+      const h = harness({
+        projectRoot: dir,
+        catalog: [...CATALOG, { ...manifest('vue', 'Vue components.'), paths: ['*.vue'] }],
+      });
+      recordSkillOutcomes(dir, { accepted: [], declined: ['vue', 'vue', 'vue'] });
+      h.run('Redesign the settings page please');
+      await vi.waitFor(() => expect(h.assignInternal).toHaveBeenCalledTimes(1));
+      const task = h.assignInternal.mock.calls[0]![0].description;
+      expect(task).not.toContain('"frontend-design"');
+      expect(task).toContain('"testing"');
+      expect(readSkillCompanionState(h.ctx)?.pathRules).toBeUndefined();
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it('retires a resident that misses the deadline', async () => {
     const h = harness({ timeoutMs: 20 });
     h.run('Redesign the settings page please');
@@ -359,6 +569,7 @@ describe('Skill Companion policy', () => {
       CANDIDATES: Array.from({ length: 80 }, (_, i) => ({
         name: `candidate-skill-name-${i}`,
         description: 'word '.repeat(44),
+        match: ['overlapping', 'request', 'words', 'shown'],
       })),
     })}`;
     const answerAllowance = 2000;

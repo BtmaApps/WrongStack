@@ -347,9 +347,9 @@ export interface ExploreCompanionConfig {
   maxProbeAgeMs?: number | undefined;
   /** Hard host deadline per probe, including assignment. Default 120000. */
   probeTimeoutMs?: number | undefined;
-  /** Runtime tool-call ceiling for each probe. Default 32. */
+  /** Runtime tool-call ceiling for each probe. Default 16. */
   maxToolCallsPerProbe?: number | undefined;
-  /** Maximum characters forwarded to the leader per result. Default 4000. */
+  /** Maximum characters forwarded to the leader per result. Default 1800. */
   maxFindingsChars?: number | undefined;
 }
 
@@ -369,8 +369,22 @@ export interface SkillCompanionConfig {
   minConfidence?: number | undefined;
   /** Hard host deadline per probe, including spawn and assignment. Default 45000. */
   probeTimeoutMs?: number | undefined;
-  /** Skills offered to the judge per probe, after eligibility filtering. Default 80. */
+  /**
+   * Skills offered to the judge per probe, after eligibility filtering and
+   * lexical ranking against the work (best overlap first). Default 80.
+   */
   maxCandidates?: number | undefined;
+  /**
+   * Recommend a skill without a model call when the leader edits a file that
+   * matches the skill's frontmatter `paths` globs. Default true.
+   */
+  pathRules?: boolean | undefined;
+  /**
+   * Record whether the leader loaded or refused each recommendation
+   * (`.wrongstack/agents/skill-companion/outcomes.json`, local) and stop
+   * offering a skill it keeps refusing in this project. Default true.
+   */
+  learnOutcomes?: boolean | undefined;
 }
 
 /** Git behavior overrides for agent-run git commands. See `Config.git`. */

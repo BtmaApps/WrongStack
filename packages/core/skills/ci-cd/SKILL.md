@@ -8,6 +8,7 @@ required-tools: []
 optional-capabilities: [verification.run, web.research]
 metadata:
   routing-group: operations
+paths: [".github/workflows/*.{yml,yaml}", ".gitlab-ci.yml", "Jenkinsfile", ".circleci/config.yml", "azure-pipelines.yml"]
 ---
 
 # CI/CD

@@ -9,6 +9,7 @@ optional-capabilities: [filesystem.write, execution.shell, verification.run, web
 metadata:
   routing-group: operations
   domain: "operations"
+paths: ["*.{service,timer,socket}"]
 ---
 
 # Linux Service Ops
