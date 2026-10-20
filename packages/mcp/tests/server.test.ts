@@ -771,6 +771,56 @@ describe('serveStdio', () => {
     handle.close();
     await expect(handle.done).resolves.toBeUndefined();
   });
+
+  it('discards an unterminated partial line on handle.close() while flushing split UTF-8 bytes on natural EOF', async () => {
+    const callTool = vi.fn(async (_name: string, args: unknown) => ({
+      content: JSON.stringify(args),
+      isError: false,
+    }));
+
+    // 1. handle.close() with an unterminated line must NOT dispatch or emit a parse error
+    const stdinClose = new PassThrough();
+    const stdoutClose = new PassThrough();
+    let closeOutput = '';
+    stdoutClose.on('data', (c: Buffer) => {
+      closeOutput += c.toString('utf8');
+    });
+    const handleClose = serveStdio(new MCPServer({ host: makeHost({ callTool }) }), {
+      stdin: stdinClose,
+      stdout: stdoutClose,
+    });
+    stdinClose.write('{"jsonrpc":"2.0","id":99,"method":"ping"'); // no trailing newline
+    handleClose.close();
+    await handleClose.done;
+    expect(closeOutput).toBe('');
+
+    // 2. Natural EOF flushes multi-byte UTF-8 split across chunks without a trailing newline
+    const stdinEof = new PassThrough();
+    const stdoutEof = new PassThrough();
+    const eofLines: string[] = [];
+    stdoutEof.on('data', (c: Buffer) => {
+      for (const l of c.toString('utf8').split('\n')) if (l.trim()) eofLines.push(l);
+    });
+    const handleEof = serveStdio(new MCPServer({ host: makeHost({ callTool }) }), {
+      stdin: stdinEof,
+      stdout: stdoutEof,
+    });
+    const payloadBuf = Buffer.from(
+      JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: { name: 'echo', arguments: { text: '🚀' } },
+      }),
+      'utf8',
+    );
+    const rocketIdx = payloadBuf.indexOf(Buffer.from('🚀', 'utf8'));
+    stdinEof.write(payloadBuf.subarray(0, rocketIdx + 2));
+    stdinEof.end(payloadBuf.subarray(rocketIdx + 2));
+    await handleEof.done;
+    expect(eofLines).toHaveLength(1);
+    expect(callTool).toHaveBeenCalledWith('echo', { text: '🚀' }, expect.any(Object));
+  });
 });
 
 describe('serveHttp', () => {

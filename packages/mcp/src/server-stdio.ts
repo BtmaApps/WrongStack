@@ -146,12 +146,28 @@ export function serveStdio(server: MCPServer, opts: ServeStdioOptions = {}): Ser
     };
   });
 
-  const onEnd = () => {
-    if (closed) return;
-    closed = true;
+  const detachListeners = () => {
     stdin.off('data', onData);
     stdin.off('end', onEnd);
     stdin.off('close', onEnd);
+  };
+
+  const onEnd = () => {
+    if (closed) return;
+    closed = true;
+    detachListeners();
+    const tail = decoder.decode();
+    if (tail && !bufferTooLarge) {
+      const tailBytes = Buffer.byteLength(tail, 'utf8');
+      if (bufferBytes + tailBytes > HTTP_BODY_CAP) {
+        buffer = '';
+        bufferBytes = 0;
+        bufferTooLarge = true;
+      } else {
+        buffer += tail;
+        bufferBytes += tailBytes;
+      }
+    }
     if (!bufferTooLarge && buffer.trim()) {
       const line = buffer.trim();
       buffer = '';
@@ -188,7 +204,12 @@ export function serveStdio(server: MCPServer, opts: ServeStdioOptions = {}): Ser
 
   return {
     close: () => {
-      onEnd();
+      if (closed) return;
+      closed = true;
+      detachListeners();
+      buffer = '';
+      bufferBytes = 0;
+      resolveDone();
     },
     done,
   };
