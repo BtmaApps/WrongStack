@@ -599,7 +599,7 @@ export const toolCatalog = [
   {
     name: 'design_reference',
     summary:
-      'Measure rendered web pages in a browser instead of describing screenshots. extract records a reference site’s design DNA (color roles, type scale, spacing unit, radii, motion, section rhythm); compare scores an implementation against it per axis; inspect is a reference-free FAIL/WARN gate for overflow, contrast, target size, type and broken media. Use before claiming a UI matches a reference or is done.',
+      'Measure rendered web pages in a browser instead of describing screenshots. extract records a reference site’s design DNA (color roles, type scale, spacing unit, radii, motion, section rhythm); compare scores an implementation against it per axis; inspect is a reference-free FAIL/WARN gate for overflow, contrast, target size, type and broken media. Pass url for a served page or file for a project .html (served on loopback for the call, no dev server needed). Use before claiming a UI matches a reference or is done.',
     permission: 'confirm',
     mutating: true,
     category: 'Generation & design',

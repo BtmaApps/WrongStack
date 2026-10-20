@@ -486,7 +486,7 @@ export const toolDetailsPart4: Record<string, ToolDetail> = {
   },
   design_reference: {
     longDescription:
-      'Measure rendered web pages in a browser instead of describing screenshots. extract records a reference site’s design DNA (color roles, type scale, spacing unit, radii, motion, section rhythm); compare scores an implementation against it per axis; inspect is a reference-free FAIL/WARN gate for overflow, contrast, target size, type and broken media. Use before claiming a UI matches a reference or is done.',
+      'Measure rendered web pages in a browser instead of describing screenshots. extract records a reference site’s design DNA (color roles, type scale, spacing unit, radii, motion, section rhythm); compare scores an implementation against it per axis; inspect is a reference-free FAIL/WARN gate for overflow, contrast, target size, type and broken media. Pass url for a served page or file for a project .html (served on loopback for the call, no dev server needed). Use before claiming a UI matches a reference or is done.',
     params: [
       {
         name: 'action',
@@ -500,6 +500,12 @@ export const toolDetailsPart4: Record<string, ToolDetail> = {
         type: 'string',
         description:
           'Absolute http(s) URL. A localhost dev server needs /browser allow <origin> first.',
+      },
+      {
+        name: 'file',
+        type: 'string',
+        description:
+          'Instead of url: a project-relative .html file (e.g. "index.html"). The tool serves the project on 127.0.0.1 for this call only — no dev server needed for static pages.',
       },
       {
         name: 'name',
