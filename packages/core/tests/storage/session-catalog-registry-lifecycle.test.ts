@@ -130,4 +130,84 @@ describe('ProjectSessionRegistry daemon lifecycle', () => {
     await registry.dispose();
     expect(close).toHaveBeenCalledTimes(2);
   });
+
+  it('keeps a shared project binding open while another subscriber or reservation is active', async () => {
+    const globalRoot = await tempGlobalRoot();
+    const projectRoot = path.join(globalRoot, 'repo-shared');
+    await writeDiscoveryMetadata(globalRoot, 'project-shared', projectRoot);
+
+    const subscribe = vi
+      .spyOn(SessionCatalogProjectClient.prototype, 'subscribe')
+      .mockResolvedValue(() => {});
+    const call = vi
+      .spyOn(SessionCatalogProjectClient.prototype, 'call')
+      .mockImplementation(async (operation) => {
+        if (operation === 'reserve_resume') {
+          return {
+            sessionId: '2026-08-09/project-shared',
+            reservationId: 'res-shared',
+            ownerInstanceId: 'registry-test',
+            expiresAt: Date.now() + 30_000,
+          } as never;
+        }
+        return undefined as never;
+      });
+    const close = vi.spyOn(SessionCatalogProjectClient.prototype, 'close').mockResolvedValue();
+
+    const registry = new ProjectSessionRegistry(globalRoot);
+    const unsub1 = await registry.subscribeProject('project-shared', projectRoot, () => {});
+    const unsub2 = await registry.subscribeProject('project-shared', projectRoot, () => {});
+    expect(subscribe).toHaveBeenCalledTimes(2);
+
+    // Unsubscribing the first listener must not close the shared binding while unsub2 is active.
+    await unsub1();
+    await unsub1(); // idempotent
+    expect(close).not.toHaveBeenCalled();
+
+    const reserved = await registry.reserveResume({
+      sessionId: '2026-08-09/project-shared',
+      projectSlug: 'project-shared',
+      projectRoot,
+    });
+    expect(call).toHaveBeenCalledWith('reserve_resume', expect.any(Object));
+
+    // Unsubscribing the second listener while a reservation is active still keeps the binding open.
+    await unsub2();
+    expect(close).not.toHaveBeenCalled();
+
+    await reserved.cancel();
+    expect(close).toHaveBeenCalledOnce();
+    await registry.dispose();
+  });
+
+  it('rejects in-flight pending requests immediately when SessionCatalogProjectClient.close() is called', async () => {
+    const globalRoot = await tempGlobalRoot();
+    const client = new SessionCatalogProjectClient({
+      projectDir: path.join(globalRoot, 'projects', 'project-close'),
+      projectRoot: path.join(globalRoot, 'repo-close'),
+    });
+
+    const timer = setTimeout(() => {}, 30_000);
+    let rejectedError: Error | undefined;
+    const pendingPromise = new Promise<unknown>((resolve, reject) => {
+      (
+        client as unknown as {
+          pending: Map<
+            string,
+            {
+              resolve: (v: unknown) => void;
+              reject: (e: Error) => void;
+              timer: ReturnType<typeof setTimeout>;
+            }
+          >;
+        }
+      ).pending.set('req-inflight', { resolve, reject, timer });
+    }).catch((err: Error) => {
+      rejectedError = err;
+    });
+
+    await client.close();
+    await pendingPromise;
+    expect(rejectedError?.message).toMatch(/closed/i);
+  });
 });

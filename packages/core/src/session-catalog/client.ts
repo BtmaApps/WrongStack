@@ -233,11 +233,24 @@ export class SessionCatalogProjectClient {
     const socket = this.socket;
     this.socket = null;
     this.info = null;
+    this.authToken = undefined;
+    this.failInFlight(new Error('Session Catalog connection closed'));
     if (socket && !socket.destroyed)
       await new Promise<void>((resolve) => {
         socket.once('close', resolve);
         socket.end();
       });
+  }
+
+  private failInFlight(error: Error): void {
+    this.connectReject?.(error);
+    this.connectResolve = null;
+    this.connectReject = null;
+    for (const pending of this.pending.values()) {
+      clearTimeout(pending.timer);
+      pending.reject(error);
+    }
+    this.pending.clear();
   }
 
   private async ensureConnected(spawnIfMissing: boolean): Promise<void> {
@@ -513,15 +526,7 @@ export class SessionCatalogProjectClient {
     this.socket = null;
     this.info = null;
     this.authToken = undefined;
-    const error = new Error('Session Catalog connection closed');
-    this.connectReject?.(error);
-    this.connectResolve = null;
-    this.connectReject = null;
-    for (const pending of this.pending.values()) {
-      clearTimeout(pending.timer);
-      pending.reject(error);
-    }
-    this.pending.clear();
+    this.failInFlight(new Error('Session Catalog connection closed'));
     this.scheduleSubscriptionReconnect();
   }
 

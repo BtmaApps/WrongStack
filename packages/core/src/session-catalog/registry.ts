@@ -15,6 +15,8 @@ interface ProjectBinding {
   projectDir: string;
   projectRoot: string;
   client: SessionCatalogProjectClient;
+  subscriptions: number;
+  reservations: number;
 }
 
 export interface SessionResumeClaim {
@@ -68,10 +70,17 @@ export class ProjectSessionRegistry {
     return process.platform === 'win32' ? resolved.toLowerCase() : resolved;
   }
 
+  private isBindingInUse(binding: ProjectBinding): boolean {
+    return (
+      this.current?.binding === binding || binding.subscriptions > 0 || binding.reservations > 0
+    );
+  }
+
   private async closeBinding(binding: ProjectBinding): Promise<void> {
-    if (this.current?.binding === binding) return;
+    if (this.isBindingInUse(binding)) return;
     const key = this.bindingKey(binding.projectDir);
-    if (this.clients.get(key) === binding) this.clients.delete(key);
+    if (this.clients.get(key) !== binding) return;
+    this.clients.delete(key);
     await binding.client.close();
   }
 
@@ -82,7 +91,7 @@ export class ProjectSessionRegistry {
     if (!binding) {
       if (this.clients.size >= MAX_PROJECT_CLIENTS) {
         const oldest = [...this.clients.entries()].find(
-          ([, candidate]) => candidate !== this.current?.binding,
+          ([, candidate]) => !this.isBindingInUse(candidate),
         );
         if (oldest) {
           this.clients.delete(oldest[0]);
@@ -93,6 +102,8 @@ export class ProjectSessionRegistry {
         projectDir,
         projectRoot: path.resolve(projectRoot),
         client: new SessionCatalogProjectClient({ projectDir, projectRoot }),
+        subscriptions: 0,
+        reservations: 0,
       };
       this.clients.set(key, binding);
     } else {
@@ -156,6 +167,7 @@ export class ProjectSessionRegistry {
     reservationMs?: number | undefined;
   }): Promise<SessionResumeClaim> {
     const binding = this.binding(target.projectSlug, target.projectRoot);
+    binding.reservations += 1;
     let reservation: ResumeReservation;
     try {
       reservation = await binding.client.call('reserve_resume', {
@@ -165,6 +177,7 @@ export class ProjectSessionRegistry {
         ...(target.reservationMs !== undefined ? { reservationMs: target.reservationMs } : {}),
       });
     } catch (error) {
+      binding.reservations = Math.max(0, binding.reservations - 1);
       await this.closeBinding(binding).catch(() => undefined);
       throw error;
     }
@@ -192,6 +205,7 @@ export class ProjectSessionRegistry {
         const previous = this.current;
         this.current = { binding, credential, entry };
         settled = true;
+        binding.reservations = Math.max(0, binding.reservations - 1);
         this.agentRevision = 0;
         this.cancelAgentTimer();
         this.startHeartbeat();
@@ -213,6 +227,7 @@ export class ProjectSessionRegistry {
             })
             .catch(() => undefined);
         } finally {
+          binding.reservations = Math.max(0, binding.reservations - 1);
           await this.closeBinding(binding).catch(() => undefined);
         }
       },
@@ -382,10 +397,27 @@ export class ProjectSessionRegistry {
     listener: (event: SessionCatalogEvent) => void,
   ): Promise<() => Promise<void>> {
     const binding = this.binding(projectSlug, projectRoot);
-    return binding.client.subscribe(listener).then((unsubscribe) => async () => {
-      await unsubscribe();
-      await this.closeBinding(binding);
-    });
+    binding.subscriptions += 1;
+    return binding.client.subscribe(listener).then(
+      (unsubscribe) => {
+        let closed = false;
+        return async () => {
+          if (closed) return;
+          closed = true;
+          try {
+            await unsubscribe();
+          } finally {
+            binding.subscriptions = Math.max(0, binding.subscriptions - 1);
+            await this.closeBinding(binding);
+          }
+        };
+      },
+      async (error) => {
+        binding.subscriptions = Math.max(0, binding.subscriptions - 1);
+        await this.closeBinding(binding).catch(() => undefined);
+        throw error;
+      },
+    );
   }
 
   get registryPath(): string {
