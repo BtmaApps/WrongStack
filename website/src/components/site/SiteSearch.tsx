@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import {
   ArrowRight,
   Blocks,
@@ -144,6 +144,7 @@ function scoreEntry(entry: SearchEntry, query: string) {
 }
 
 export function SiteSearch() {
+  const reducedMotion = useReducedMotion();
   const { navigate, path } = useRouter();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -219,10 +220,10 @@ export function SiteSearch() {
             initialFocus={inputRef}
           >
             <motion.div
-              initial={{ opacity: 0, y: 18, scale: 0.985 }}
+              initial={reducedMotion ? false : { opacity: 0, y: 18, scale: 0.985 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 10, scale: 0.99 }}
-              transition={{ duration: 0.18 }}
+              exit={reducedMotion ? { opacity: 1 } : { opacity: 0, y: 10, scale: 0.99 }}
+              transition={{ duration: reducedMotion ? 0 : 0.18 }}
               className="site-search-panel mx-auto flex max-w-2xl flex-col overflow-hidden rounded-[22px] border border-line bg-bg shadow-2xl shadow-black/40"
             >
               <div className="flex items-center gap-3 border-b border-line px-4 sm:px-5">
@@ -290,64 +291,65 @@ export function SiteSearch() {
                   {query ? `${results.length} best matches` : 'Start here'}
                 </div>
                 <div id={`${id}-results`} role="listbox" aria-label="Search results">
-                  {results.length > 0 ? (
-                    results.map((entry, index) => {
-                      const Icon = iconForKind[entry.kind];
-                      return (
-                        <button
-                          key={entry.id}
-                          id={`${id}-result-${index}`}
-                          type="button"
-                          role="option"
-                          tabIndex={-1}
-                          aria-selected={activeIndex === index}
-                          onMouseEnter={() => setActiveIndex(index)}
-                          onClick={() => choose(entry)}
-                          className={cn(
-                            'group grid w-full grid-cols-[38px_1fr_auto] gap-3 rounded-xl p-3 text-left transition-colors sm:p-4',
-                            activeIndex === index ? 'bg-card' : 'hover:bg-card/70',
-                          )}
-                        >
-                          <span className="grid size-9 place-items-center rounded-lg border border-line bg-surface text-brand">
-                            <Icon className="size-4" />
-                          </span>
-                          <span className="min-w-0">
-                            <span className="flex items-center gap-2">
-                              <strong
-                                className={cn(
-                                  'truncate text-sm text-fg',
-                                  entry.kind === 'Command' && 'font-mono text-brand',
-                                )}
-                              >
-                                {entry.label}
-                              </strong>
-                              <span className="rounded-full border border-line px-2 py-0.5 font-mono text-[8px] uppercase tracking-wider text-faint">
-                                {entry.kind}
+                  {results.length > 0
+                    ? results.map((entry, index) => {
+                        const Icon = iconForKind[entry.kind];
+                        return (
+                          <button
+                            key={entry.id}
+                            id={`${id}-result-${index}`}
+                            type="button"
+                            role="option"
+                            tabIndex={-1}
+                            aria-selected={activeIndex === index}
+                            onMouseEnter={() => setActiveIndex(index)}
+                            onClick={() => choose(entry)}
+                            className={cn(
+                              'group grid w-full grid-cols-[38px_1fr_auto] gap-3 rounded-xl p-3 text-left transition-colors sm:p-4',
+                              activeIndex === index ? 'bg-card' : 'hover:bg-card/70',
+                            )}
+                          >
+                            <span className="grid size-9 place-items-center rounded-lg border border-line bg-surface text-brand">
+                              <Icon className="size-4" />
+                            </span>
+                            <span className="min-w-0">
+                              <span className="flex items-center gap-2">
+                                <strong
+                                  className={cn(
+                                    'truncate text-sm text-fg',
+                                    entry.kind === 'Command' && 'font-mono text-brand',
+                                  )}
+                                >
+                                  {entry.label}
+                                </strong>
+                                <span className="rounded-full border border-line px-2 py-0.5 font-mono text-[8px] uppercase tracking-wider text-faint">
+                                  {entry.kind}
+                                </span>
+                              </span>
+                              <span className="mt-1 line-clamp-1 block text-xs text-muted">
+                                {entry.description}
                               </span>
                             </span>
-                            <span className="mt-1 line-clamp-1 block text-xs text-muted">
-                              {entry.description}
-                            </span>
-                          </span>
-                          <ArrowRight
-                            className={cn(
-                              'mt-2 size-4 text-faint transition-transform',
-                              activeIndex === index && 'translate-x-1 text-brand',
-                            )}
-                          />
-                        </button>
-                      );
-                    })
-                  ) : (
-                    <div className="px-4 py-14 text-center">
-                      <Search className="mx-auto size-6 text-faint" />
-                      <h2 className="mt-5 font-black text-fg">No exact trail found.</h2>
-                      <p className="mt-2 text-sm text-muted">
-                        Try a system name, command, role or operational intent.
-                      </p>
-                    </div>
-                  )}
+                            <ArrowRight
+                              className={cn(
+                                'mt-2 size-4 text-faint transition-transform',
+                                activeIndex === index && 'translate-x-1 text-brand',
+                              )}
+                            />
+                          </button>
+                        );
+                      })
+                    : null}
                 </div>
+                {results.length === 0 && (
+                  <div className="px-4 py-14 text-center">
+                    <Search className="mx-auto size-6 text-faint" />
+                    <h2 className="mt-5 font-black text-fg">No exact trail found.</h2>
+                    <p className="mt-2 text-sm text-muted">
+                      Try a system name, command, role or operational intent.
+                    </p>
+                  </div>
+                )}
               </div>
 
               <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line bg-surface px-4 py-3 font-mono text-xs text-faint sm:px-5">

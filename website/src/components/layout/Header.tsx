@@ -149,10 +149,10 @@ export function Header() {
             <AnimatePresence>
               {moreOpen && (
                 <motion.div
-                  initial={{ opacity: 0, y: 8, scale: 0.98 }}
+                  initial={reducedMotion ? false : { opacity: 0, y: 8, scale: 0.98 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 8, scale: 0.98 }}
-                  transition={{ duration: 0.16 }}
+                  transition={{ duration: reducedMotion ? 0 : 0.16 }}
                   className="fixed left-1/2 top-[82px] max-h-[calc(100dvh-96px)] w-[min(1080px,calc(100vw-2rem))] -translate-x-1/2 overflow-y-auto rounded-2xl border border-line bg-surface shadow-2xl shadow-black/20"
                 >
                   <div className="manual-grid absolute inset-0 opacity-35" aria-hidden="true" />
@@ -294,9 +294,10 @@ export function Header() {
       <AnimatePresence>
         {open && (
           <motion.div
-            initial={{ opacity: 0, height: 0 }}
+            initial={reducedMotion ? false : { opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: reducedMotion ? 0 : 0.2 }}
             className="max-h-[calc(100dvh-72px)] overflow-y-auto border-t border-line bg-bg/98 backdrop-blur-xl lg:hidden"
           >
             <div className="site-container py-5">
