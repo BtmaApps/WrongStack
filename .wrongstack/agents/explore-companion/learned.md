@@ -4,7 +4,7 @@
 
 ## What to do
 
-<!-- learned-stamp: category=convention; capturedAt=2026-10-20T09:39:07.270Z; skill=codebase-navigation; skipped=7; skippedWins=7 -->
+<!-- learned-stamp: category=convention; capturedAt=2026-10-20T09:39:07.270Z; skill=codebase-navigation; skipped=10; skippedWins=10 -->
 - **When probing TUI card-frame modules, treat `react-wrap-truncate.ts` as internal to `packages/tui/src/components/sidebar-card.tsx` — no direct test or other importer exists; behavioral coverage lives in `packages/tui/tests/card-frame-integrity.test.tsx` via the `Card`/`SidebarPanelCard` chain.**
   - *Why:* Established convention for this codebase — skipping it risks regressions, merge friction, or out-of-sync state with peers.
   - *How:* `react-wrap-truncate.ts`
