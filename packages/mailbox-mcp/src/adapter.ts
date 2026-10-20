@@ -23,6 +23,7 @@ import {
   credentialOptions,
   HEARTBEAT_STATUSES,
   MAILBOX_CAPABILITIES,
+  MESSAGE_TYPES,
   optionalBoolean,
   optionalEnum,
   optionalNonNegativeInteger,
@@ -32,22 +33,12 @@ import {
   queryFromArgs,
   requiredString,
   sendTtlMs,
+  WATCH_EVENT_TYPES,
 } from './tool-arg-parsing.js';
 import { SERVER_INFO } from './version.js';
 
 const WATCH_DEFAULT_TIMEOUT_MS = 15_000;
 const WATCH_MAX_TIMEOUT_MS = 25_000;
-const MESSAGE_TYPES = [
-  'note',
-  'ask',
-  'assign',
-  'steer',
-  'btw',
-  'broadcast',
-  'status',
-  'result',
-  'review',
-] as const satisfies readonly Exclude<MailboxMessageType, 'control'>[];
 
 export interface MailboxMcpToolHostOptions extends MailboxMcpPolicyOptions {
   actor: string;
@@ -199,7 +190,7 @@ async function watchForMailboxEvent(
   args: Record<string, unknown>,
   signal: AbortSignal,
 ): Promise<unknown> {
-  const eventType = optionalString(args, 'eventType');
+  const eventType = optionalEnum(args, 'eventType', WATCH_EVENT_TYPES);
   const timeoutMs = normalizeTimeout(args['timeoutMs']);
   if (signal.aborted) {
     throw signal.reason instanceof Error ? signal.reason : new Error('Mailbox watch cancelled');
@@ -311,8 +302,14 @@ async function executeManage(
 ): Promise<unknown> {
   switch (action) {
     case 'send': {
-      const type = requiredString(args, 'type') as MailboxMessageType;
-      if (type === 'control') throw new Error('Runtime control messages are not exposed over MCP');
+      const rawType = requiredString(args, 'type');
+      if (rawType === 'control') {
+        throw new Error('Runtime control messages are not exposed over MCP');
+      }
+      if (!(MESSAGE_TYPES as readonly string[]).includes(rawType)) {
+        throw new Error(`type must be one of ${MESSAGE_TYPES.join(', ')}`);
+      }
+      const type = rawType as MailboxMessageType;
       return {
         message: await mailbox.send({
           from: identity.actor,
@@ -352,8 +349,11 @@ async function executeManage(
       };
     case 'ack_many': {
       const messageIds = args['messageIds'];
-      if (!Array.isArray(messageIds) || messageIds.some((id) => typeof id !== 'string')) {
-        throw new Error('messageIds must be an array of message ids');
+      if (
+        !Array.isArray(messageIds) ||
+        messageIds.some((id) => typeof id !== 'string' || !id.trim())
+      ) {
+        throw new Error('messageIds must be an array of non-empty message ids');
       }
       // `ackMany` applies the whole batch inside one `BEGIN IMMEDIATE` with a
       // lookup per entry, so an unbounded array here holds the project's only
@@ -368,7 +368,7 @@ async function executeManage(
         );
       }
       const acks: MailboxAckInput[] = messageIds.map((messageId) => ({
-        messageId,
+        messageId: messageId.trim(),
         readerId: identity.actor,
         ...(optionalBoolean(args, 'read') !== undefined
           ? { read: optionalBoolean(args, 'read') }

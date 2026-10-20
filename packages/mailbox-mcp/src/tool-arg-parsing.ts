@@ -113,6 +113,23 @@ export const HEARTBEAT_STATUSES = [
   'waiting_user',
   'error',
 ] as const;
+export const MESSAGE_TYPES = [
+  'note',
+  'ask',
+  'assign',
+  'steer',
+  'btw',
+  'broadcast',
+  'status',
+  'result',
+  'review',
+] as const satisfies readonly Exclude<MailboxMessageType, 'control'>[];
+export const WATCH_EVENT_TYPES = [
+  'message.sent',
+  'message.acked',
+  'message.deleted',
+  'message.restored',
+] as const;
 
 /**
  * `ttlMs` of a send, held to the schema's `minimum: 1`: zero or a negative TTL
@@ -231,8 +248,8 @@ export function queryFromArgs(args: Record<string, unknown>): MailboxQuery {
     ...(optionalBoolean(args, 'incompleteOnly') !== undefined
       ? { incompleteOnly: optionalBoolean(args, 'incompleteOnly') }
       : {}),
-    ...(optionalString(args, 'type') !== undefined
-      ? { type: optionalString(args, 'type') as MailboxMessageType }
+    ...(optionalEnum(args, 'type', MESSAGE_TYPES) !== undefined
+      ? { type: optionalEnum(args, 'type', MESSAGE_TYPES) }
       : {}),
     ...(optionalEnum(args, 'minPriority', PRIORITIES) !== undefined
       ? { minPriority: optionalEnum(args, 'minPriority', PRIORITIES) }

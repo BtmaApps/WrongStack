@@ -534,6 +534,64 @@ describe('createMailboxMcpToolHost', () => {
       }),
     );
   });
+
+  it('validates message type on send/query, eventType on mailbox_watch, and non-blank messageIds on ack_many', async () => {
+    const send = vi.fn();
+    const query = vi.fn();
+    const ackMany = vi.fn();
+    const emitter = new MailboxEventEmitter();
+    const host = createMailboxMcpToolHost(backend({ send, query, ackMany }), emitter, {
+      actor: 'external-agent',
+      writable: true,
+    });
+
+    await expect(
+      host.callTool('mailbox_manage', {
+        action: 'send',
+        to: 'leader',
+        type: 'bogus-type',
+        subject: 'Subj',
+        body: 'Body',
+      }),
+    ).resolves.toMatchObject({
+      isError: true,
+      content: expect.stringContaining('type must be one of'),
+    });
+    expect(send).not.toHaveBeenCalled();
+
+    await expect(
+      host.callTool('mailbox_read', {
+        action: 'query',
+        type: 'control',
+      }),
+    ).resolves.toMatchObject({
+      isError: true,
+      content: expect.stringContaining('type must be one of'),
+    });
+    expect(query).not.toHaveBeenCalled();
+
+    await expect(
+      host.callTool('mailbox_watch', {
+        eventType: 'not.an.event',
+        timeoutMs: 100,
+      }),
+    ).resolves.toMatchObject({
+      isError: true,
+      content: expect.stringContaining('eventType must be one of'),
+    });
+    expect(emitter.subscriberCount).toBe(0);
+
+    await expect(
+      host.callTool('mailbox_manage', {
+        action: 'ack_many',
+        messageIds: ['valid-id', '   '],
+      }),
+    ).resolves.toMatchObject({
+      isError: true,
+      content: expect.stringContaining('non-empty'),
+    });
+    expect(ackMany).not.toHaveBeenCalled();
+  });
 });
 
 describe('createMailboxMcpServer', () => {
