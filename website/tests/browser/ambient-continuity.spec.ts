@@ -50,9 +50,10 @@ test('shared effects paint across clipped cards and follow text through scroll',
   await page.mouse.move(160, 360);
   await page.clock.runFor(80);
   await expect(cursor).toHaveAttribute('transform', 'translate(160 360)');
-  await page.mouse.move(335, 360);
+  const cardEdge = Math.min(335, page.viewportSize()!.width - 16);
+  await page.mouse.move(cardEdge, 360);
   await page.clock.runFor(80);
-  await expect(cursor).toHaveAttribute('transform', 'translate(335 360)');
+  await expect(cursor).toHaveAttribute('transform', `translate(${cardEdge} 360)`);
   expect(Number(await cursor.getAttribute('opacity'))).toBeGreaterThan(0);
   await page.mouse.move(160, 360);
   await page.mouse.wheel(0, 650);
