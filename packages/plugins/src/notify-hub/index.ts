@@ -81,6 +81,8 @@ interface NotifyHubState {
   disabledReason: string | null;
   /** Local desktop notifier; null unless `desktop` is on. */
   desktop: DesktopNotifier | null;
+  /** Bumped by every setup/teardown: a setup resuming after its DNS check is stale when it moved. */
+  setupGeneration: number;
 }
 
 const state: NotifyHubState = {
@@ -91,6 +93,7 @@ const state: NotifyHubState = {
   circuitWarned: false,
   disabledReason: null,
   desktop: null,
+  setupGeneration: 0,
 };
 
 // ---------------------------------------------------------------------------
@@ -350,6 +353,7 @@ const plugin: Plugin = {
 
   async setup(api) {
     // Idempotent re-init (H1 pattern).
+    const generation = ++state.setupGeneration;
     _pluginLog = api.log;
     state.circuitWarned = false;
     state.channel = null;
@@ -393,6 +397,9 @@ const plugin: Plugin = {
       try {
         const url = new URL(cfg.webhookUrl);
         const hostnameBlocked = await hasPrivateResolvedIP(url.hostname);
+        // A newer setup or a teardown ran meanwhile: registering now would
+        // revive this (possibly removed) webhook over the current state.
+        if (generation !== state.setupGeneration) return;
         if (hostnameBlocked) {
           state.disabledReason = `webhookUrl was refused: ${url.hostname} resolves to a private/local IP`;
           api.log.warn(
@@ -619,6 +626,7 @@ const plugin: Plugin = {
   },
 
   teardown(api) {
+    state.setupGeneration += 1;
     _pluginLog = null;
     state.circuitWarned = false;
     state.desktop = null;

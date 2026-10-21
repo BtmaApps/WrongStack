@@ -310,4 +310,26 @@ describe('notify-hub plugin', () => {
     await getTool(api, 'notify_send').execute({ message: 'x' });
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
+
+  it('a setup superseded during its DNS check does not revive the removed webhook', async () => {
+    let releaseDns!: () => void;
+    vi.mocked(lookup).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          releaseDns = () => resolve([{ address: '93.184.216.34', family: 4 }] as never);
+        }) as never,
+    );
+    const stale = makeApi({ extensions: URL_CFG });
+    const staleSetup = notifyHubPlugin.setup(stale as never);
+    const current = makeApi({ extensions: { 'notify-hub': { enabled: true } } });
+    await notifyHubPlugin.setup(current as never);
+    releaseDns();
+    await staleSetup;
+
+    expect(stale.registerHook).not.toHaveBeenCalled();
+    await expect(getTool(current, 'notify_send').execute({ message: 'x' })).rejects.toThrow(
+      /no webhookUrl configured/,
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 });

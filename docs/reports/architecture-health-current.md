@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-21T20:20:51.812Z
+**Generated:** 2026-10-21T20:21:19.060Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,7 +9,7 @@
 |---|---:|
 | Workspace packages | 38 |
 | Production source files | 5200 |
-| Production source lines | 1131768 |
+| Production source lines | 1131776 |
 | Test files | 4556 |
 | Workspace dependency edges | 139 |
 | Relative module edges | 17099 |
@@ -123,6 +123,7 @@ None.
 | 690 | `packages/cli/src/fleet/host-skill-companion.ts` |
 | 690 | `packages/cli/src/slash-commands/kanban-task-subcommands.ts` |
 | 690 | `packages/core/src/coordination/autonomous-coordinator.ts` |
+| 690 | `packages/plugins/src/notify-hub/index.ts` |
 | 690 | `packages/tui/src/reducers/settings-value-cycle.ts` |
 | 689 | `packages/core/src/core/agent-tools.ts` |
 | 689 | `packages/core/src/storage/file-session-writer.ts` |
@@ -133,7 +134,6 @@ None.
 | 686 | `apps/desktop/src/main/runtime-manager.ts` |
 | 686 | `packages/core/src/coordination/provider-status-tracker.ts` |
 | 686 | `packages/webui-server/src/server/session-handler-helpers.ts` |
-| 685 | `packages/core/src/session-catalog/session-registry.ts` |
 
 ## Exports only tests reference
 
