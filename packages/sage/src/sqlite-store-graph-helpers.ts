@@ -95,7 +95,15 @@ export function cleanReferencingMemoriesBatch(
 
   for (const ref of refs) {
     if (targets.has(ref.id)) continue;
-    const other = sqliteRowToMemory(ref);
+    let other: Sage;
+    try {
+      other = sqliteRowToMemory(ref);
+    } catch {
+      // Corrupt-row convention (sqlite-store-codec): json_valid passes a
+      // parseable row that fails the shape check; skip it rather than abort
+      // the delete / supersede / GC that is cleaning references.
+      continue;
+    }
     const patch: Partial<Sage> = {};
     if (other.supersedes?.some((value) => targets.has(value))) {
       patch.supersedes = other.supersedes.filter((value) => !targets.has(value));

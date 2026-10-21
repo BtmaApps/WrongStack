@@ -61,4 +61,23 @@ describe('deleting a memory while another row is corrupt', () => {
     const row = await store.getSage(good.id);
     expect(row?.status).toBe('deleted');
   });
+
+  it('still deletes when a referencing row is parseable JSON with a broken shape', async () => {
+    // json_valid() passes this row into the reference scan; the strict decode
+    // then rejects it (missing `text`), which must skip it, not abort.
+    const good = await store.rememberSage({ text: 'Healthy memory about staging', kind: 'fact' });
+    const bad = await store.rememberSage({ text: 'Memory that loses its text', kind: 'fact' });
+    const db = (store as unknown as { db: DatabaseSync }).db;
+    db.exec('DROP TRIGGER IF EXISTS memories_au');
+    const data = JSON.parse(
+      (db.prepare('SELECT data FROM memories WHERE id = ?').get(bad.id) as { data: string }).data,
+    ) as Record<string, unknown>;
+    delete data['text'];
+    data['supersedes'] = ['some-old-id'];
+    db.prepare('UPDATE memories SET data = ? WHERE id = ?').run(JSON.stringify(data), bad.id);
+
+    await store.deleteSage(good.id, 'cleanup', { force: true });
+    const row = await store.getSage(good.id);
+    expect(row?.status).toBe('deleted');
+  });
 });
