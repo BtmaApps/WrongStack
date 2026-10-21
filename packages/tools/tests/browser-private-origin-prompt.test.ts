@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { browserPrivateOrigins } from '../src/browser/policy.js';
 import { promptForPrivateOrigin } from '../src/browser/private-origin-prompt.js';
 import { LOOPBACK_ALLOWANCE } from '../src/browser/security.js';
+import { browserNavigateTool } from '../src/browser/tools.js';
 
 let root: string;
 beforeEach(async () => {
@@ -68,6 +69,19 @@ describe('browser private-origin prompt', () => {
     );
     const ids = seen[0]?.tabs[0]?.questions[0]?.options?.map((option) => option.id);
     expect(ids).toEqual(['origin', 'deny']);
+    expect(browserPrivateOrigins(root)).toEqual([]);
+  });
+
+  it('does not ask for or persist an origin when the browser session is invalid', async () => {
+    const seen: UserInputRequest[] = [];
+    await expect(
+      browserNavigateTool.execute(
+        { sessionId: 'missing-session', url: 'http://127.0.0.1:43123/private' },
+        ctxAnswering('origin', seen),
+        { signal },
+      ),
+    ).rejects.toThrow('browser: unknown session "missing-session"');
+    expect(seen).toHaveLength(0);
     expect(browserPrivateOrigins(root)).toEqual([]);
   });
 

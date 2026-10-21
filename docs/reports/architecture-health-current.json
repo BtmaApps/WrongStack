@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-21T10:21:21.753Z",
+  "generatedAt": "2026-10-21T10:21:54.644Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -14,7 +14,7 @@
     "packages": 38,
     "sourceFiles": 5200,
     "testFiles": 4548,
-    "sourceLines": 1131477,
+    "sourceLines": 1131481,
     "workspaceEdges": 139,
     "moduleEdges": 17098,
     "nonCommandSlashImports": 0,
@@ -28799,6 +28799,11 @@
       "relativeImports": 28
     },
     {
+      "file": "packages/tools/src/browser/tools.ts",
+      "lines": 695,
+      "relativeImports": 4
+    },
+    {
       "file": "packages/cli/src/slash-commands/fix-classifier.ts",
       "lines": 694,
       "relativeImports": 0
@@ -28812,11 +28817,6 @@
       "file": "packages/simpleui/src/automation-workspace.tsx",
       "lines": 693,
       "relativeImports": 1
-    },
-    {
-      "file": "packages/tools/src/browser/tools.ts",
-      "lines": 693,
-      "relativeImports": 4
     },
     {
       "file": "packages/tools/src/codebase-index/project-server.ts",

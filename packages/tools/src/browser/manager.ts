@@ -188,13 +188,15 @@ export class BrowserSessionManager {
     ownerId: string,
     rawUrl: string,
     signal: AbortSignal,
+    beforeNavigation?: (() => Promise<void>) | undefined,
   ): Promise<BrowserSessionSummary> {
+    const session = this.requireOwned(id, ownerId);
+    await beforeNavigation?.();
     await assertBrowserUrlAllowed(rawUrl, {
       allowPrivateHosts: this.allowPrivateHosts,
       allowedPrivateOrigins: this.allowedPrivateOrigins,
       navigation: true,
     });
-    const session = this.requireOwned(id, ownerId);
     await this.runPageOperation(session, signal, () =>
       session.page.goto(rawUrl, {
         waitUntil: 'domcontentloaded',

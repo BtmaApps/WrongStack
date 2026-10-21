@@ -248,9 +248,11 @@ export const browserNavigateTool: Tool<BrowserNavigateInput> = {
     required: ['sessionId', 'url'],
   },
   async execute(input, ctx, opts) {
-    await promptForPrivateOrigin(ctx, input.url, signalFor(ctx, opts));
+    const signal = signalFor(ctx, opts);
     return json(
-      await managerFor(ctx).navigate(input.sessionId, owner(ctx), input.url, signalFor(ctx, opts)),
+      await managerFor(ctx).navigate(input.sessionId, owner(ctx), input.url, signal, () =>
+        promptForPrivateOrigin(ctx, input.url, signal),
+      ),
     );
   },
 };

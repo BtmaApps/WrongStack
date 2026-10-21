@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-21T10:21:21.753Z
+**Generated:** 2026-10-21T10:21:54.644Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,7 +9,7 @@
 |---|---:|
 | Workspace packages | 38 |
 | Production source files | 5200 |
-| Production source lines | 1131477 |
+| Production source lines | 1131481 |
 | Test files | 4548 |
 | Workspace dependency edges | 139 |
 | Relative module edges | 17098 |
@@ -106,10 +106,10 @@ None.
 | 696 | `packages/webui/src/components/KanbanView.tsx` |
 | 695 | `packages/core/src/registry/tool-registry.ts` |
 | 695 | `packages/core/src/storage/config-loader.ts` |
+| 695 | `packages/tools/src/browser/tools.ts` |
 | 694 | `packages/cli/src/slash-commands/fix-classifier.ts` |
 | 693 | `packages/core/src/coordination/agent-monitor.ts` |
 | 693 | `packages/simpleui/src/automation-workspace.tsx` |
-| 693 | `packages/tools/src/browser/tools.ts` |
 | 692 | `packages/tools/src/codebase-index/project-server.ts` |
 | 692 | `packages/webui/src/components/MailboxPanel.tsx` |
 | 691 | `packages/core/src/core/agent-response.ts` |
