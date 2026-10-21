@@ -1,6 +1,7 @@
 import { type ChildProcess, spawn } from 'node:child_process';
 import { performance } from 'node:perf_hooks';
 import { cliSpawnArgs } from '@wrongstack/core/utils';
+import { settleWin32Kill } from '@wrongstack/core/utils/tree-kill';
 import type { ModelCell, RawRun } from './types.js';
 
 /** Everything needed to run one (task × cell) subprocess. */
@@ -258,14 +259,13 @@ export function treeKill(child: ChildProcess): void {
       stdio: 'ignore',
       windowsHide: true,
     });
-    killer.once('error', () => {
+    settleWin32Kill(killer, child, () => {
       try {
         child.kill();
       } catch {
         /* already gone */
       }
     });
-    killer.unref();
     return;
   }
   try {

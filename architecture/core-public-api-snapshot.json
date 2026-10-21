@@ -644,8 +644,11 @@
       },
       "source": "packages/core/src/utils/tree-kill.ts",
       "declarations": [
+        "export const WIN32_TASKKILL_BACKSTOP_MS",
+        "export function settleWin32Kill",
         "export function treeKill",
         "export interface KillableChild",
+        "export interface TaskkillHandle",
         "export interface TreeKillOptions"
       ]
     },
@@ -1837,7 +1840,7 @@
       "classification": "kernel primitive",
       "intendedOwner": "split dependency-free primitives from concrete helpers",
       "sourceFiles": 92,
-      "sourceLines": 15447
+      "sourceLines": 15486
     },
     {
       "directory": "vcs",

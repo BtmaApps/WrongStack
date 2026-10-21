@@ -30,6 +30,46 @@ export interface TreeKillOptions {
   graceMs?: number | undefined;
 }
 
+/** Upper bound for taskkill before the direct-kill backstop runs anyway. */
+export const WIN32_TASKKILL_BACKSTOP_MS = 5000;
+
+/** The parts of a spawned taskkill process the backstop listens to. */
+export interface TaskkillHandle {
+  once(event: 'error' | 'close', listener: () => void): unknown;
+  unref(): void;
+}
+
+/**
+ * Chain a direct kill after taskkill, for when taskkill leaves the child alive.
+ *
+ * taskkill can exit non-zero (a race inside its tree walk, access denied) or
+ * stall for seconds on a loaded host; firing it and forgetting it left the
+ * child running until it exited on its own. The direct kill waits for taskkill
+ * to settle, or for {@link WIN32_TASKKILL_BACKSTOP_MS}, because killing the
+ * root first breaks taskkill's parent-pid walk and orphans grandchildren.
+ * `child.kill()` signals through the process handle, never a recycled PID.
+ */
+export function settleWin32Kill(
+  killer: TaskkillHandle,
+  child: KillableChild,
+  directKill: () => void,
+  backstopMs = WIN32_TASKKILL_BACKSTOP_MS,
+): void {
+  let settled = false;
+  const settle = (): void => {
+    if (settled) return;
+    settled = true;
+    clearTimeout(timer);
+    if (child.exitCode != null || child.signalCode != null) return;
+    directKill();
+  };
+  const timer = setTimeout(settle, backstopMs);
+  timer.unref?.();
+  killer.once('error', settle);
+  killer.once('close', settle);
+  killer.unref();
+}
+
 /**
  * Kill a spawned process AND its descendants.
  *
@@ -38,7 +78,7 @@ export interface TreeKillOptions {
  * so a bare `child.kill()` signals only the wrapper and orphans the real
  * process, which then accumulates across every close/restart/idle-sleep.
  * `taskkill /T /F` tears down the whole tree, with a direct kill as the
- * fallback when spawning taskkill fails.
+ * fallback when spawning taskkill fails or it leaves the child alive.
  *
  * POSIX sends SIGTERM then a SIGKILL backstop (graceful — the default), or
  * SIGKILL immediately when `force` is set.
@@ -74,8 +114,7 @@ export function treeKill(child: KillableChild, opts: TreeKillOptions = {}): void
         env: buildChildEnv(),
         windowsHide: true,
       });
-      killer.once('error', directKill);
-      killer.unref();
+      settleWin32Kill(killer, child, directKill);
     } catch {
       directKill();
     }

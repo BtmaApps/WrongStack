@@ -284,9 +284,9 @@
       "runtimeOrMixed": 4
     },
     "@wrongstack/core/utils/tree-kill": {
-      "files": 14,
+      "files": 16,
       "typeOnly": 0,
-      "runtimeOrMixed": 14
+      "runtimeOrMixed": 16
     },
     "@wrongstack/core/wiring/proxy-rewrite": {
       "files": 21,
@@ -29030,6 +29030,12 @@
     },
     {
       "specifier": "@wrongstack/core/utils/tree-kill",
+      "file": "packages/bench/src/runner.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils/tree-kill",
       "file": "packages/cli/src/chimera-cascade-evidence.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -29043,6 +29049,12 @@
     {
       "specifier": "@wrongstack/core/utils/tree-kill",
       "file": "packages/cli/src/slash-commands/dev.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils/tree-kill",
+      "file": "packages/mcp/src/client-process.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

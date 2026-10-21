@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 const { spawnMock } = vi.hoisted(() => ({ spawnMock: vi.fn() }));
 vi.mock('node:child_process', () => ({ spawn: spawnMock }));
 
-import { treeKill } from '../../src/utils/tree-kill.js';
+import { treeKill, WIN32_TASKKILL_BACKSTOP_MS } from '../../src/utils/tree-kill.js';
 
 const REAL_PLATFORM = process.platform;
 
@@ -64,6 +64,46 @@ describe('treeKill', () => {
     killer.emit('error', new Error('ENOENT'));
     expect(kill).toHaveBeenCalledTimes(1);
     expect(killer.unref).toHaveBeenCalledTimes(1);
+  });
+
+  it('on Windows kills the child directly when taskkill exits but left it alive', () => {
+    // taskkill exits non-zero on a race inside its tree walk; fire-and-forget
+    // left the child running until it exited on its own.
+    setPlatform('win32');
+    const killer = fakeKiller();
+    spawnMock.mockReturnValue(killer);
+    const kill = vi.fn();
+    treeKill({ pid: 42, exitCode: null, kill }, { force: true });
+    expect(kill).not.toHaveBeenCalled();
+    killer.emit('close', 255);
+    expect(kill).toHaveBeenCalledExactlyOnceWith('SIGKILL');
+  });
+
+  it('on Windows skips the direct kill once Node has seen the child exit', () => {
+    setPlatform('win32');
+    const killer = fakeKiller();
+    spawnMock.mockReturnValue(killer);
+    const child = { pid: 42, exitCode: null as number | null, kill: vi.fn() };
+    treeKill(child);
+    child.exitCode = 1;
+    killer.emit('close', 0);
+    expect(child.kill).not.toHaveBeenCalled();
+  });
+
+  it('on Windows kills the child directly when taskkill stalls past the backstop', () => {
+    vi.useFakeTimers();
+    setPlatform('win32');
+    const killer = fakeKiller();
+    spawnMock.mockReturnValue(killer);
+    const kill = vi.fn();
+    treeKill({ pid: 42, exitCode: null, kill });
+    vi.advanceTimersByTime(WIN32_TASKKILL_BACKSTOP_MS - 1);
+    expect(kill).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1);
+    expect(kill).toHaveBeenCalledTimes(1);
+    // A late taskkill exit does not kill twice.
+    killer.emit('close', 0);
+    expect(kill).toHaveBeenCalledTimes(1);
   });
 
   it('on Windows falls back to child.kill() when spawning taskkill throws', () => {

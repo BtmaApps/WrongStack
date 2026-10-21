@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-21T10:22:24.505Z",
+  "generatedAt": "2026-10-21T12:22:21.326Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -14,7 +14,7 @@
     "packages": 38,
     "sourceFiles": 5200,
     "testFiles": 4548,
-    "sourceLines": 1131481,
+    "sourceLines": 1131520,
     "workspaceEdges": 139,
     "moduleEdges": 17098,
     "nonCommandSlashImports": 0,
@@ -22,7 +22,7 @@
     "typeModuleCycles": 5,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
-    "testOnlyExports": 966
+    "testOnlyExports": 967
   },
   "errors": [],
   "packageCycles": [],
@@ -30311,6 +30311,10 @@
     {
       "file": "packages/core/src/utils/tool-wire-compact.ts",
       "name": "findSemanticBoundary"
+    },
+    {
+      "file": "packages/core/src/utils/tree-kill.ts",
+      "name": "WIN32_TASKKILL_BACKSTOP_MS"
     },
     {
       "file": "packages/core/src/utils/wstack-paths.ts",

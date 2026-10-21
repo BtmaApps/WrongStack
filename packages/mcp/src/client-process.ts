@@ -1,5 +1,6 @@
 import { type ChildProcess, spawn } from 'node:child_process';
 import { buildChildEnv } from '@wrongstack/core/utils';
+import { settleWin32Kill } from '@wrongstack/core/utils/tree-kill';
 
 /** Resolve an HTTP Bearer token without ever persisting the secret itself. */
 export function resolveHttpBearerHeaders(
@@ -52,14 +53,13 @@ export function forceKillTree(child: ChildProcess): void {
       env: buildChildEnv(),
       windowsHide: true,
     });
-    killer.once('error', () => {
+    settleWin32Kill(killer, child, () => {
       try {
         child.kill('SIGKILL');
       } catch {
         /* already gone */
       }
     });
-    killer.unref();
     return;
   }
   try {

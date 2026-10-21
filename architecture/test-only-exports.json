@@ -704,6 +704,9 @@
       "compactDescription",
       "findSemanticBoundary"
     ],
+    "packages/core/src/utils/tree-kill.ts": [
+      "WIN32_TASKKILL_BACKSTOP_MS"
+    ],
     "packages/core/src/utils/wstack-paths.ts": [
       "bootstrapProfileName"
     ],
