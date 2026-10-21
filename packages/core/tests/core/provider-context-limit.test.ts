@@ -731,6 +731,63 @@ describe('context accounting at async request boundaries', () => {
   );
 });
 
+describe('pre-send overflow rescue', () => {
+  it('compacts history to make room for wire-only content instead of failing the turn', async () => {
+    const provider = mockProviderWithProbe({ id: 'presend-rescue', maxContext: 10000 });
+    provider.capabilities.streaming = false;
+    const sent: number[] = [];
+    const key = `${provider.id}/test-model`;
+    provider.complete = async (req) => {
+      sent.push(estimateRequestTokens(req.messages, req.system, req.tools ?? [], key).total);
+      return {
+        model: req.model,
+        content: [{ type: 'text', text: 'ok' }],
+        stopReason: 'end_turn',
+        usage: { input: 10, output: 1 },
+      };
+    };
+    const { agent, ctx, pipelines, tmp, session } = await buildAgentWithProbe(provider);
+    // Durable history the compactor measures as below its hard line...
+    for (let i = 0; i < 6; i++) {
+      ctx.state.appendMessage({ role: 'user', content: `turn ${i} ${'history '.repeat(230)}` });
+      ctx.state.appendMessage({
+        role: 'assistant',
+        content: `reply ${i} ${'answer '.repeat(230)}`,
+      });
+    }
+    pipelines.contextWindow.use({
+      name: 'AutoCompaction',
+      handler: new AutoCompactionMiddleware(createStrategyCompactor(), 10000, undefined, {
+        warn: 0.7,
+        soft: 0.8,
+        hard: 0.9,
+      }).handler(),
+    });
+    // ...plus wire-only content it never sees pushes the real request over.
+    pipelines.request.use({
+      name: 'wire-only-system',
+      handler: async (req: Request, next: NextFn<Request>) =>
+        next({
+          ...req,
+          system: [...(req.system ?? []), { type: 'text', text: 'injected '.repeat(1500) }],
+        }),
+    });
+    try {
+      const historyTokens = estimateRequestTokens(ctx.messages, ctx.systemPrompt, [], key).total;
+      expect(historyTokens).toBeLessThan(9000 * 0.7);
+      const result = await agent.run('hello', {});
+      expect(result.status).not.toBe('failed');
+      expect(sent.length).toBeGreaterThan(0);
+      expect(sent[0]).toBeLessThanOrEqual(9000);
+      expect(ctx.messages.at(-1)?.role).toBe('assistant');
+    } finally {
+      resetCalibration(key);
+      await session.close();
+      await fs.rm(tmp, { recursive: true, force: true });
+    }
+  });
+});
+
 describe('append-only history while a provider response is pending', () => {
   it('preserves the old request anchor and counts appended messages as its unsent delta', async () => {
     const provider = mockProviderWithProbe({ id: 'inflight-append-regression' });

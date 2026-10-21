@@ -1,5 +1,7 @@
 import type { Context } from '../core/context.js';
 import {
+  CONTEXT_REQUEST_OVERHEAD_META,
+  type ContextRequestOverhead,
   type ContextWindowBudgetSnapshot,
   computeContextWindowBudget,
 } from '../utils/context-budget.js';
@@ -40,7 +42,23 @@ export function contextWindowBudget(
     maxOutput: ctx.provider?.capabilities?.maxOutput,
     outputReserveTokens: readPositiveMetaNumber(ctx, 'contextOutputReserveTokens'),
     safetyBufferTokens: readPositiveMetaNumber(ctx, 'contextSafetyBufferTokens'),
+    // Set by the agent loop from the last prepared request: what the request
+    // pipeline adds beyond the durable transcript this pass measures.
+    requestOverheadTokens: readRequestOverhead(ctx),
   });
+}
+
+function readRequestOverhead(ctx: Context): number | undefined {
+  const value = ctx.meta?.[CONTEXT_REQUEST_OVERHEAD_META] as
+    | Partial<ContextRequestOverhead>
+    | undefined;
+  if (!value || typeof value !== 'object') return undefined;
+  // Measured for one route; another provider/model has different wire content.
+  if (value.routeKey !== `${ctx.provider?.id ?? 'unknown'}/${ctx.model}`) return undefined;
+  const tokens = value.tokens;
+  return typeof tokens === 'number' && Number.isFinite(tokens) && tokens > 0
+    ? Math.floor(tokens)
+    : undefined;
 }
 
 function readPositiveMetaNumber(ctx: Context, key: string): number | undefined {

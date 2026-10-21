@@ -1,6 +1,10 @@
 import { AgentError, ERROR_CODES } from '../types/errors.js';
 import type { Request } from '../types/provider.js';
-import { computeContextWindowBudget } from '../utils/context-budget.js';
+import {
+  CONTEXT_REQUEST_OVERHEAD_META,
+  type ContextRequestOverhead,
+  computeContextWindowBudget,
+} from '../utils/context-budget.js';
 import {
   estimateMessageTokens,
   estimateRequestTokens,
@@ -36,6 +40,23 @@ export interface AgentLoopContextManager {
   calibrationKey(model?: string): string;
   get lastPreFlightMsgCount(): number;
 }
+
+interface PreparedRequestCheck {
+  maxContext: number;
+  inputTokens: number;
+  availableInputTokens: number;
+  overflowTokens: number;
+  /** Request tokens the durable transcript does not account for. */
+  wireOverheadTokens: number;
+  /** Over budget even with the whole conversation history compacted away. */
+  irreducible: boolean;
+}
+
+/**
+ * Pre-send compaction passes for one request before it is sent as-is. Each
+ * pass must shrink the transcript; this only stops a pathological loop.
+ */
+const MAX_PRESEND_OVERFLOW_RESCUES = 3;
 
 export function createAgentLoopContextManager(
   a: AgentInternals,
@@ -377,67 +398,123 @@ export function createAgentLoopContextManager(
       }
     }
 
-    // The request pipeline can add wire-only system blocks, tools or messages.
-    // Durable-history compaction cannot remove those; check the actual rebuilt
-    // request before any provider call when context-window management is active.
-    if (
-      !a.ctx.signal?.aborted &&
-      !keepsOwnContext(prepared.provider) &&
-      a.pipelines.contextWindow.size() > 0 &&
-      a.ctx.meta?.['contextAutoCompact'] !== false
-    ) {
-      const routeKey = `${prepared.provider.id}/${req.model}`;
-      const inputTokens = estimateRequestTokensUpperBound(
-        req.messages,
-        req.system,
-        req.tools ?? [],
-        routeKey,
-      ).total;
-      const reserve = (key: string): number | undefined => {
-        const value = a.ctx.meta?.[key];
-        return typeof value === 'number' && Number.isFinite(value) && value >= 0
-          ? Math.floor(value)
-          : undefined;
+    // The request pipeline can add wire-only system blocks, tools or messages
+    // that durable-history compaction never measured. Check the rebuilt
+    // request itself; when it is over budget, tell compaction how much more it
+    // must free and run it again instead of failing the turn. The window is
+    // whatever the route reports today, so this must hold for any limit.
+    let rescueTokens = 0;
+    let check: PreparedRequestCheck | undefined;
+    for (let attempt = 0; ; attempt++) {
+      check = measurePreparedRequest(prepared.provider, req);
+      if (!check) break;
+      // Compacting history cannot fix an irreducible overflow; don't shred it trying.
+      const overflowing =
+        check.overflowTokens > 0 && !check.irreducible && attempt < MAX_PRESEND_OVERFLOW_RESCUES;
+      if (overflowing) rescueTokens += check.overflowTokens;
+      const overhead: ContextRequestOverhead = {
+        routeKey: `${prepared.provider.id}/${req.model}`,
+        tokens: check.wireOverheadTokens + rescueTokens,
       };
-      // The live context may already point to the next provider. This request
-      // must use the window resolved for its captured route, not the new tab state.
-      const routeLimit = a.ctx.meta?.['effectiveMaxContext'];
-      const nativeLimit = prepared.provider.capabilities.maxContext;
-      const maxContext =
-        typeof routeLimit === 'number' && Number.isFinite(routeLimit) && routeLimit > 0
-          ? routeLimit
-          : typeof nativeLimit === 'number' && Number.isFinite(nativeLimit) && nativeLimit > 0
-            ? nativeLimit
-            : 0;
-      // Unknown window: there is no ceiling to overflow, so there is nothing
-      // to refuse. The provider's own overflow error still teaches the limit.
-      const budget =
-        maxContext > 0
-          ? computeContextWindowBudget({
-              maxContext,
-              inputTokens,
-              maxOutput: prepared.provider.capabilities.maxOutput,
-              outputReserveTokens: reserve('contextOutputReserveTokens'),
-              safetyBufferTokens: reserve('contextSafetyBufferTokens'),
-            })
-          : undefined;
-      if (budget && budget.overflowTokens > 0) {
-        throw new AgentError({
-          message: 'Prepared request exceeds the context input budget after compaction',
-          code: ERROR_CODES.AGENT_CONTEXT_OVERFLOW,
-          recoverable: true,
-          context: {
-            providerId: prepared.provider.id,
-            modelId: req.model,
-            maxContext: budget.maxContext,
-            inputTokens,
-            availableInputTokens: budget.availableInputTokens,
-            overflowTokens: budget.overflowTokens,
-          },
-        });
+      a.ctx.meta[CONTEXT_REQUEST_OVERHEAD_META] = overhead;
+      if (!overflowing) break;
+      // The overhead moved, so a cached "nothing to do" verdict is stale.
+      _lastCompactionWasNoop = false;
+      if (!(await compactContextIfNeeded())) break;
+      prepared = await handlers.response.buildAndRunRequestPipeline(opts);
+      req = prepared.request;
+      preFlight = stashRequestTokens(req);
+      const rebuiltRouteKey = `${prepared.provider.id}/${req.model}`;
+      if (rebuiltRouteKey !== probedRouteKey) {
+        probedRouteKey = rebuiltRouteKey;
+        await refreshProviderContextLimit(prepared.provider, req.model);
       }
     }
+    // Only content no compaction can touch (system, tools, wire-only blocks)
+    // makes the send impossible. Anything else still over the estimate is
+    // sent: the estimate is an upper bound, and a real provider overflow is
+    // recovered by the error handler (learned limit + compaction + retry).
+    if (check && check.overflowTokens > 0 && check.irreducible) {
+      throw new AgentError({
+        message: 'Request content outside the conversation history exceeds the context window',
+        code: ERROR_CODES.AGENT_CONTEXT_OVERFLOW,
+        recoverable: true,
+        context: {
+          maxContext: check.maxContext,
+          inputTokens: check.inputTokens,
+          availableInputTokens: check.availableInputTokens,
+          overflowTokens: check.overflowTokens,
+          providerId: prepared.provider.id,
+          modelId: req.model,
+        },
+      });
+    }
     return { req, provider: prepared.provider, preFlight };
+  }
+
+  /**
+   * Upper-bound size of a prepared request against its route's window, plus
+   * how much of it the durable transcript does not account for. Undefined
+   * when context-window management does not apply to this request.
+   */
+  function measurePreparedRequest(
+    provider: import('../types/provider.js').Provider,
+    req: Request,
+  ): PreparedRequestCheck | undefined {
+    if (
+      a.ctx.signal?.aborted ||
+      keepsOwnContext(provider) ||
+      a.pipelines.contextWindow.size() === 0 ||
+      a.ctx.meta?.['contextAutoCompact'] === false
+    ) {
+      return undefined;
+    }
+    // The live context may already point to the next provider. This request
+    // must use the window resolved for its captured route, not the new tab state.
+    const routeLimit = a.ctx.meta?.['effectiveMaxContext'];
+    const nativeLimit = provider.capabilities.maxContext;
+    const maxContext =
+      typeof routeLimit === 'number' && Number.isFinite(routeLimit) && routeLimit > 0
+        ? routeLimit
+        : typeof nativeLimit === 'number' && Number.isFinite(nativeLimit) && nativeLimit > 0
+          ? nativeLimit
+          : 0;
+    // Unknown window: there is no ceiling to overflow.
+    if (maxContext <= 0) return undefined;
+    const routeKey = `${provider.id}/${req.model}`;
+    const inputTokens = estimateRequestTokensUpperBound(
+      req.messages,
+      req.system,
+      req.tools ?? [],
+      routeKey,
+    ).total;
+    const durable = estimateRequestTokensUpperBound(
+      a.ctx.messages,
+      a.ctx.systemPrompt,
+      a.ctx.tools ?? [],
+      routeKey,
+    );
+    const reserve = (key: string): number | undefined => {
+      const value = a.ctx.meta?.[key];
+      return typeof value === 'number' && Number.isFinite(value) && value >= 0
+        ? Math.floor(value)
+        : undefined;
+    };
+    const budget = computeContextWindowBudget({
+      maxContext,
+      inputTokens,
+      maxOutput: provider.capabilities.maxOutput,
+      outputReserveTokens: reserve('contextOutputReserveTokens'),
+      safetyBufferTokens: reserve('contextSafetyBufferTokens'),
+    });
+    return {
+      maxContext: budget.maxContext,
+      inputTokens,
+      availableInputTokens: budget.availableInputTokens,
+      overflowTokens: budget.overflowTokens,
+      wireOverheadTokens: Math.max(0, inputTokens - durable.total),
+      irreducible: inputTokens - durable.messages >= budget.availableInputTokens,
+    };
   }
 
   function emitContextPct(): void {
