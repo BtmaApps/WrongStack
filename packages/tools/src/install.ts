@@ -240,9 +240,11 @@ export const installTool: Tool<InstallInput, InstallOutput> = {
     // Cap at 200 chars to prevent ReDoS on the regex engine (npm's max is 214).
     const PKG_NAME_RE = /^(?:@[a-z0-9._-]+\/)?[a-z0-9._-]+(?:@[a-z0-9^~><=*.+-]+)?$/i;
     for (const pkg of pkgList) {
-      if (!PKG_NAME_RE.test(pkg) || pkg.startsWith('-') || pkg.length > 200) {
+      // A spec starting with "." is a directory to npm/pnpm/yarn (`..` installs
+      // the parent folder); no registry name starts with one.
+      if (!PKG_NAME_RE.test(pkg) || /^[-.]/.test(pkg) || pkg.length > 200) {
         throw new ToolValidationError({
-          message: `install: Invalid package name "${pkg}". Names must match ${PKG_NAME_RE} and not start with "-".`,
+          message: `install: Invalid package name "${pkg}". Names must match ${PKG_NAME_RE} and not start with "-" or ".".`,
           field: 'packages',
         });
       }

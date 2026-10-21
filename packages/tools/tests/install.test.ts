@@ -270,14 +270,19 @@ describe('installTool', () => {
     expect(call.args).toContain(spec);
   });
 
-  it.each(['file:../../etc/passwd', 'pkg@1.0.0; rm -rf /', 'pkg@1.0.0 --flag', 'pkg@ver$(whoami)'])(
-    'still rejects malicious spec %s',
-    async (spec) => {
-      await expect(installTool.execute({ packages: spec }, makeCtx(), makeOpts())).rejects.toThrow(
-        'Invalid package name',
-      );
-    },
-  );
+  it.each([
+    'file:../../etc/passwd',
+    'pkg@1.0.0; rm -rf /',
+    'pkg@1.0.0 --flag',
+    'pkg@ver$(whoami)',
+    // Package managers read a dot-led spec as a directory: `..` installs the parent.
+    '..',
+    '.hidden',
+  ])('still rejects malicious spec %s', async (spec) => {
+    await expect(installTool.execute({ packages: spec }, makeCtx(), makeOpts())).rejects.toThrow(
+      'Invalid package name',
+    );
+  });
 
   it('emits `pnpm install` (not bare `pnpm add`) when packages is empty', async () => {
     spawnStreamMock.mockClear();
