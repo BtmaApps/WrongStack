@@ -11,3 +11,11 @@ export declare function parseBinaryBuildArgs(argv: string[]): BinaryBuildOptions
 
 /** Release asset name for a build target, e.g. `wstack-windows-x64.exe`. */
 export declare function outputName(target: string): string;
+
+/** Shared compiler arguments used by release builds and renderer regressions. */
+export declare function binaryCompileArgs(
+  target: string,
+  versions: { version: string; apiVersion: string; packId: string },
+  entry: string,
+  outfile: string,
+): string[];

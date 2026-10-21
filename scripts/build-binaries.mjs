@@ -175,11 +175,10 @@ function readVersions() {
   return { version, apiVersion };
 }
 
-function compile(target, { version, apiVersion, packId }) {
-  const outfile = path.join(outDir, outputName(target));
-  const args = [
+export function binaryCompileArgs(target, { version, apiVersion, packId }, entry, outfile) {
+  return [
     'build',
-    'scripts/binary/entry.mjs',
+    entry,
     '--compile',
     `--target=${target}`,
     `--outfile=${outfile}`,
@@ -195,12 +194,21 @@ function compile(target, { version, apiVersion, packId }) {
     // provider / WRONGSTACK_* settings. The Node build loads neither.
     '--no-compile-autoload-dotenv',
     '--no-compile-autoload-bunfig',
+    // Bun otherwise folds NODE_ENV checks to "development" at build time.
+    // The CLI's runtime default cannot undo that: React/Ink then retain
+    // per-component performance timings and pay development render costs.
+    '--define=process.env.NODE_ENV="production"',
     `--define=WRONGSTACK_BINARY_VERSION=${JSON.stringify(version)}`,
     `--define=WRONGSTACK_BINARY_API_VERSION=${JSON.stringify(apiVersion)}`,
     `--define=WRONGSTACK_BINARY_PACK_ID=${JSON.stringify(packId)}`,
     `--define=WRONGSTACK_BINARY_TARGET=${JSON.stringify(target)}`,
     ...EXTERNALS.flatMap((name) => ['--external', name]),
   ];
+}
+
+function compile(target, versions) {
+  const outfile = path.join(outDir, outputName(target));
+  const args = binaryCompileArgs(target, versions, 'scripts/binary/entry.mjs', outfile);
   console.log(`\n→ ${target}`);
   run('bun', args);
   return outfile;
