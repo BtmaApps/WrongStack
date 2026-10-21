@@ -28,6 +28,8 @@ const MAX_TIMEOUT_MS = 600_000;
 const STREAM_FLUSH_INTERVAL_MS = 200;
 const STREAM_FLUSH_BYTES = 4 * 1024;
 const MAX_QUEUE_CHUNKS = 500;
+/** Drain window for a killed shell's pipes before orphans holding them are cut loose. */
+const PIPE_RELEASE_AFTER_EXIT_MS = 2000;
 export async function* executeBashStream(
   ...executionArgs: Parameters<NonNullable<Tool<BashInput, BashOutput>['executeStream']>>
 ): AsyncGenerator<ToolStreamEvent<BashOutput>> {
@@ -364,8 +366,30 @@ export async function* executeBashStream(
   const capture = createCommandOutputCapture(previewBytes);
   const spool = createOutputSpool({ tool: 'bash', thresholdBytes: previewBytes });
 
+  // After a kill, 'close' waits for every holder of the stdio pipes. A
+  // grandchild that outlived the tree-kill (taskkill stalled on a loaded
+  // host, the direct fallback took only the shell) holds them until it
+  // exits on its own, so an abort waited out the whole command. Once the
+  // shell itself has exited, give the pipes a short drain and then drop them.
+  let pipeReleaseArmed = false;
+  function releasePipesAfterExit(): void {
+    if (pipeReleaseArmed) return;
+    pipeReleaseArmed = true;
+    const arm = () => {
+      const t = setTimeout(() => {
+        child.stdout?.destroy();
+        child.stderr?.destroy();
+      }, PIPE_RELEASE_AFTER_EXIT_MS);
+      timers.push(t);
+      t.unref?.();
+    };
+    if (child.exitCode !== null || child.signalCode !== null) arm();
+    else child.once('exit', arm);
+  }
+
   function killWithTimeout(child: ReturnType<typeof spawn>, timeoutMs: number): void {
     if (isWin) {
+      releasePipesAfterExit();
       // Let the registry handle Windows tree-kill and its fallback timing.
       // A direct child.kill() before taskkill settles can orphan the real
       // command and leave inherited stdio pipes open.
