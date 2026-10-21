@@ -323,7 +323,8 @@ async function extractCandidatePaths(
 }
 
 async function canonicalizeCandidatePath(candidate: string, ctx: Context): Promise<string> {
-  if (path.isAbsolute(candidate)) return candidate;
+  // Absolute candidates too: one written through the real (symlink-resolved)
+  // root is in-project once both sides are canonical.
   const absolute = path.resolve(ctx.projectRoot, candidate);
   const canonicalRoot = await realpath(ctx.projectRoot).catch(() => ctx.projectRoot);
   let probe = absolute;

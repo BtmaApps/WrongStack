@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-21T20:19:29.678Z",
+  "generatedAt": "2026-10-21T20:19:57.131Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 38,
     "sourceFiles": 5200,
-    "testFiles": 4552,
-    "sourceLines": 1131674,
+    "testFiles": 4553,
+    "sourceLines": 1131675,
     "workspaceEdges": 139,
     "moduleEdges": 17099,
     "nonCommandSlashImports": 0,
@@ -249,7 +249,7 @@
       "name": "@wrongstack/core",
       "dir": "packages/core",
       "sourceFiles": 1162,
-      "testFiles": 1003,
+      "testFiles": 1004,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -264,7 +264,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 1003
+          "testFiles": 1004
         }
       ]
     },
@@ -10119,6 +10119,12 @@
       },
       {
         "file": "packages/core/tests/security/file-permissions.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/security/kanban-boundary-real-root.test.ts",
         "projects": [
           "root-node"
         ]
