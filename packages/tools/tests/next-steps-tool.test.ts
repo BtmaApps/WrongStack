@@ -20,13 +20,21 @@ function run(input: unknown, c = ctx()) {
 }
 
 describe('nextStepsTool', () => {
+  it('tells the caller to finish the response after recording suggestions', async () => {
+    const result = await run({ steps: [{ text: 'Run another proof-driven ACP round' }] });
+    expect(result).toMatchObject({
+      accepted: 1,
+      auto: false,
+      message: expect.stringContaining('Do not call nextsteps again'),
+    });
+  });
   it('reports the accepted non-empty prompts and their actual auto flag', async () => {
     const c = ctx();
     const result = await run(
       { steps: [{ text: '   ', auto: true }, { text: 'Inspect the parser' }] },
       c,
     );
-    expect(result).toEqual({ accepted: 1, auto: false });
+    expect(result).toMatchObject({ accepted: 1, auto: false });
     expect(readPendingNextSteps(c as never)).toEqual([{ text: 'Inspect the parser' }]);
   });
 
@@ -60,7 +68,7 @@ describe('nextStepsTool', () => {
     const c = ctx();
     const out = await run({ steps: [{ text: 'Run the tests' }, { text: 'Update the docs' }] }, c);
 
-    expect(out).toEqual({ accepted: 2, auto: false });
+    expect(out).toMatchObject({ accepted: 2, auto: false });
     expect(readPendingNextSteps(c as never)).toEqual([
       { text: 'Run the tests' },
       { text: 'Update the docs' },
@@ -71,7 +79,7 @@ describe('nextStepsTool', () => {
     const c = ctx();
     const out = await run({ steps: [{ text: 'Run the tests', auto: true }] }, c);
 
-    expect(out).toEqual({ accepted: 1, auto: true });
+    expect(out).toMatchObject({ accepted: 1, auto: true });
     expect(readPendingNextSteps(c as never)).toEqual([{ text: 'Run the tests', auto: true }]);
   });
 

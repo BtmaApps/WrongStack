@@ -3,6 +3,7 @@ import type { NextStepsMode } from '../types/config/autonomy.js';
 import { NEXT_STEPS_COMPLETE_MARKER } from '../utils/next-steps.js';
 import { formatTodoForModel, hasKanbanBoundTodos } from '../utils/todos-format.js';
 import type { Context } from './context.js';
+import { readPendingNextSteps } from './next-steps-slot.js';
 import { SYSTEM_BLOCK_SOURCE } from './system-prompt-blocks.js';
 
 const MAX_TODO_SNAPSHOT_ITEMS = 10;
@@ -40,7 +41,8 @@ export function hasLeaderNextStepsPolicy(systemPrompt: readonly TextBlock[]): bo
  * and, on automatic-prefix wires, a permanent replayed copy per state change.
  */
 export function buildLiveNextStepsGateBlock(
-  ctx: Pick<Context, 'agentId' | 'todos'> & { tools?: readonly { name: string }[] | undefined },
+  ctx: Pick<Context, 'agentId' | 'todos'> &
+    Partial<Pick<Context, 'meta'>> & { tools?: readonly { name: string }[] | undefined },
   mode: NextStepsMode = 'optional',
   policyInPrompt = false,
 ): TextBlock | undefined {
@@ -52,6 +54,22 @@ export function buildLiveNextStepsGateBlock(
   );
 
   if (openTodos.length === 0) {
+    // The tool has already satisfied the suggestion contract. Repeating the
+    // required/optional branch here makes the next request ask for work that
+    // succeeded, inviting identical tool calls until the loop guard fires.
+    const pending = ctx.meta && readPendingNextSteps({ meta: ctx.meta });
+    if (pending) {
+      return {
+        type: 'text',
+        text: [
+          '[nextsteps_gate]',
+          `Authoritative live state for this request: open todos = 0; ${pending.length} nextsteps suggestions already recorded for this turn.`,
+          'The next-steps requirement is satisfied. When the current work is complete, write your final response; the runtime will append the recorded suggestions automatically.',
+          'Do not call `nextsteps` again unless you need to replace the recorded list. You do not need to repeat the <nextsteps> block in your final response.',
+          '[/nextsteps_gate]',
+        ].join('\n'),
+      };
+    }
     if (policyInPrompt) return buildCompactNoTodoGate(mode);
     // The opt-in `nextsteps` tool is a second way to satisfy branch 2. Mention
     // it only when it is actually registered, so a request without the tool

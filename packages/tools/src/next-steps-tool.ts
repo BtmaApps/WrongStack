@@ -25,6 +25,7 @@ export interface NextStepsInput {
 export interface NextStepsOutput {
   accepted: number;
   auto: boolean;
+  message: string;
 }
 
 export const nextStepsTool: Tool<NextStepsInput, NextStepsOutput> = {
@@ -95,6 +96,11 @@ export const nextStepsTool: Tool<NextStepsInput, NextStepsOutput> = {
     writePendingNextSteps(ctx, steps);
 
     const accepted = Math.min(steps.length, MAX_PENDING_NEXT_STEPS);
-    return { accepted, auto: steps[0]?.auto === true };
+    return {
+      accepted,
+      auto: steps[0]?.auto === true,
+      message:
+        'Suggestions recorded for this turn. When the current work is complete, write your final response; the runtime will append these suggestions automatically. Do not call nextsteps again unless you need to replace the list.',
+    };
   },
 };

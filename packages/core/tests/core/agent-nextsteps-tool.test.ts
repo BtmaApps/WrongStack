@@ -125,6 +125,37 @@ describe('nextsteps tool → final assistant text (E2E)', () => {
     for (const d of dirs) await fs.rm(d, { recursive: true, force: true });
   });
 
+  it('marks the required gate satisfied after recording, then resets it for the next turn', async () => {
+    const text =
+      'Run another proof-driven bug-hunt round over the acp surfaces still marked unread after round 2/25 — acp-session-prompt.ts, acp-session-ops.ts, acp-session-auth.ts, acp-late-session.ts, ensemble-registry.ts, tools-registry.ts, ensemble-runner.ts, and the fs/read_text_file policy-gating observation (needs file-server.ts containment + ACP v1 spec contract) — skipping everything marked clean or do-not-re-raise in SAGE rounds r1-r16, and following coverage memory 01M5FJPRG3TJMGBBH85888PR9D.';
+    const provider = new MockProvider([
+      ...toolThenAnswer('Round complete.', [{ text }]),
+      {
+        content: [{ type: 'text', text: 'All verified.\n<nextsteps-complete/>' }],
+        stopReason: 'end_turn',
+      },
+    ]);
+    const { agent, ctx, tmp } = await buildAgent(provider);
+    dirs.push(tmp);
+    ctx.meta['nextStepsMode'] = 'required';
+
+    const result = await agent.run('finish this round');
+    const gateText = (index: number) => JSON.stringify(provider.receivedRequests[index]);
+
+    expect(result.status).toBe('done');
+    expect(provider.calls).toBe(2);
+    expect(gateText(0)).toContain('Every final response MUST end with exactly one of');
+    expect(gateText(1)).toContain('suggestions already recorded for this turn');
+    expect(gateText(1)).toContain('Do not call `nextsteps` again');
+    expect(result.finalText).toContain(text);
+    expect(readPendingNextSteps(ctx)).toBeUndefined();
+
+    await agent.run('verify completion');
+    expect(provider.calls).toBe(3);
+    expect(gateText(2)).not.toContain('suggestions already recorded for this turn');
+    expect(gateText(2)).toContain('Every final response MUST end with exactly one of');
+  });
+
   it('appends the recorded steps to the turn-ending message', async () => {
     const provider = new MockProvider(
       toolThenAnswer('Parser fixed.', [

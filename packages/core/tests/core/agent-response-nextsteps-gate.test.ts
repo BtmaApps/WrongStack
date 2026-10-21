@@ -5,6 +5,7 @@ import {
   createAgentResponseHandler,
 } from '../../src/core/agent-response.js';
 import type { TodoItem } from '../../src/core/context.js';
+import { writePendingNextSteps } from '../../src/core/next-steps-slot.js';
 import { conversationBoundToRequest } from '../../src/core/request-conversation-binding.js';
 import { tagBlock } from '../../src/core/system-prompt-blocks.js';
 import type { Request } from '../../src/types/provider.js';
@@ -20,6 +21,39 @@ const todo = (id: string, status: TodoItem['status'], content = `todo ${id}`): T
 });
 
 describe('buildLiveNextStepsGateBlock', () => {
+  it.each([
+    ['optional', false],
+    ['required', false],
+    ['optional', true],
+    ['required', true],
+  ] as const)(
+    'acknowledges recorded suggestions in %s mode (cached policy: %s)',
+    (mode, cached) => {
+      const ctx = { agentId: 'leader', todos: [], meta: {} };
+      writePendingNextSteps(ctx, [{ text: 'Run another proof-driven ACP round' }]);
+
+      const block = buildLiveNextStepsGateBlock(ctx, mode, cached);
+
+      expect(block?.text).toContain('suggestions already recorded for this turn');
+      expect(block?.text).toContain('Do not call `nextsteps` again');
+      expect(block?.text).toContain('final response');
+      expect(block?.text).not.toContain('MUST end with exactly one of');
+      expect(block?.text).not.toContain('end with a balanced <nextsteps> block or');
+    },
+  );
+
+  it('keeps unfinished work ahead of recorded suggestions', () => {
+    const ctx = { agentId: 'leader', todos: [todo('a', 'in_progress')], meta: {} };
+    writePendingNextSteps(ctx, [{ text: 'Run another round' }]);
+
+    expect(buildLiveNextStepsGateBlock(ctx, 'required')?.text).toContain(
+      'MUST omit <nextsteps> entirely',
+    );
+    expect(buildLiveNextStepsGateBlock(ctx, 'required')?.text).not.toContain(
+      'suggestions already recorded',
+    );
+  });
+
   it('offers agent prompts or a quiet finish when no todos are open', () => {
     const block = buildLiveNextStepsGateBlock({
       agentId: 'leader',
