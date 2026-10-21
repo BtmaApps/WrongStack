@@ -1,5 +1,6 @@
 // ── blocks (10 symbols) ──
 
+export type { BrowserElementSelection } from '@wrongstack/primitives';
 // ── attachment (6 symbols) ──
 export type {
   AddAttachmentInput,

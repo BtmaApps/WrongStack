@@ -1,3 +1,4 @@
+import type { BrowserElementSelection } from '@wrongstack/webui-protocol';
 import type { BrainConfigWire } from './brain.js';
 import type { SessionScopedPayload } from './protocol-core.js';
 
@@ -186,6 +187,16 @@ export type WSSystemMiscServerMessage =
       type: 'browser.live.frame';
       /** One screencast frame, a base64 JPEG. */
       payload: { id: string; data: string; width: number; height: number; sessionId?: string };
+    }
+  | {
+      type: 'browser.live.selection';
+      payload: {
+        id: string;
+        requestId: string;
+        selection?: BrowserElementSelection;
+        error?: string;
+        sessionId?: string;
+      };
     }
   | {
       type: 'browser.live.details';

@@ -1,6 +1,17 @@
 {
   "version": 1,
   "client": [
+    {
+      "type": "browser.live.pick",
+      "payload": {
+        "sessionId": "s1",
+        "id": "b1",
+        "requestId": "pick-1",
+        "x": 0.25,
+        "y": 0.375,
+        "url": "https://example.test/"
+      }
+    },
     { "type": "user_message", "payload": { "content": "hello" } },
     { "type": "files.read", "payload": { "filePath": "README.md" } },
     { "type": "goal.start", "payload": { "title": "Ship" } },
@@ -25,6 +36,15 @@
     { "type": "sdd.run.from_spec", "payload": { "specId": "spec-1", "planDecompose": true } }
   ],
   "server": [
+    {
+      "type": "browser.live.selection",
+      "payload": {
+        "sessionId": "s1",
+        "id": "b1",
+        "requestId": "pick-1",
+        "error": "Browser navigated; select again"
+      }
+    },
     { "type": "session.start", "payload": { "sessionId": "s1", "protocolVersion": 1 } },
     { "type": "provider.text_delta", "payload": { "text": "hello" } },
     { "type": "files.read", "payload": { "content": "# Readme" } },

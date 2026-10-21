@@ -3,10 +3,10 @@ import type { Context } from '@wrongstack/core/agent';
 import { ToolCapabilities } from '@wrongstack/core/security';
 import type { Tool } from '@wrongstack/core/types';
 import { resolveWstackPaths } from '@wrongstack/core/utils';
+import { createLiveBrowserAccess } from './live-access.js';
 import { BrowserSessionManager, browserInstallationDiagnostics } from './manager.js';
 import { browserPrivateOrigins } from './policy.js';
 import { promptForPrivateOrigin } from './private-origin-prompt.js';
-import type { BrowserFrame, BrowserLiveDetails, BrowserLiveSummary } from './types.js';
 
 const managers = new Map<string, BrowserSessionManager>();
 const cleanupSignalByContext = new WeakMap<object, AbortSignal>();
@@ -62,27 +62,7 @@ export function managerFor(ctx: Context): BrowserSessionManager {
  * The WebUI's read-only live view of the agent's browser, by project root.
  * No manager (nothing opened a browser in that project yet) means no sessions.
  */
-export const liveBrowser = {
-  async sessions(projectRoot: string): Promise<BrowserLiveSummary[]> {
-    return (await managers.get(path.resolve(projectRoot))?.liveSessions()) ?? [];
-  },
-  async details(
-    projectRoot: string,
-    id: string,
-    limit: number,
-  ): Promise<BrowserLiveDetails | undefined> {
-    return managers.get(path.resolve(projectRoot))?.liveDetails(id, limit);
-  },
-  async watch(
-    projectRoot: string,
-    id: string,
-    viewer: (frame: BrowserFrame) => void,
-  ): Promise<() => Promise<void>> {
-    const manager = managers.get(path.resolve(projectRoot));
-    if (!manager) throw new Error(`browser session ${id} is not open`);
-    return manager.watch(id, viewer);
-  },
-};
+export const liveBrowser = createLiveBrowserAccess((root) => managers.get(path.resolve(root)));
 
 export function owner(ctx: Context): string {
   return ctx.agentId || 'leader';

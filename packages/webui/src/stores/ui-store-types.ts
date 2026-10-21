@@ -197,6 +197,7 @@ export interface SessionChromeState {
   modelSwitcherOpen: boolean;
   promptLibraryOpen: boolean;
   promptInsertRequest: string | null;
+  promptInsertImages: ImageAttachment[];
   refinePanel: UIState['refinePanel'];
   draftInput: string;
   draftImages: ImageAttachment[];
@@ -476,7 +477,8 @@ export interface UIState {
   setPromptLibraryOpen: (open: boolean) => void;
   /** Text the prompt library wants pushed into the chat input. ChatInput consumes + clears it. */
   promptInsertRequest: string | null;
-  requestPromptInsert: (text: string) => void;
+  promptInsertImages: ImageAttachment[];
+  requestPromptInsert: (text: string, images?: ImageAttachment[]) => void;
   clearPromptInsert: () => void;
 
   /** Select an activity. If clicking the already-active icon, closes the sidebar. */

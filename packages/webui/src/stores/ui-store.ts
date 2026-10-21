@@ -1,10 +1,3 @@
-export {
-  SIDEBAR_DEFAULT_WIDTH,
-  SIDEBAR_MAX_WIDTH,
-  SIDEBAR_MIN_WIDTH,
-  VIEWS,
-  coerceActivity,
-} from './ui-store-types.js';
 export type {
   Activity,
   DockSection,
@@ -12,6 +5,13 @@ export type {
   MailboxComposeRequest,
   View,
   WorkDashboardTab,
+} from './ui-store-types.js';
+export {
+  coerceActivity,
+  SIDEBAR_DEFAULT_WIDTH,
+  SIDEBAR_MAX_WIDTH,
+  SIDEBAR_MIN_WIDTH,
+  VIEWS,
 } from './ui-store-types.js';
 
 import { create } from 'zustand';
@@ -27,11 +27,11 @@ import {
 import { uiPersistOptions } from './ui-store-persist.js';
 import type { InspectorTab, InspectorTarget, UIState, View } from './ui-store-types.js';
 import {
+  coerceSettingsTab,
+  coerceView,
   SIDEBAR_DEFAULT_WIDTH,
   SIDEBAR_MAX_WIDTH,
   SIDEBAR_MIN_WIDTH,
-  coerceSettingsTab,
-  coerceView,
 } from './ui-store-types.js';
 
 export const useUIStore = create<UIState>()(
@@ -62,6 +62,7 @@ export const useUIStore = create<UIState>()(
       refinePanel: null,
       promptLibraryOpen: false,
       promptInsertRequest: null,
+      promptInsertImages: [],
       dockSection: null,
       workDashboardTab: 'todos',
       chromeSessionId: null,
@@ -210,16 +211,22 @@ export const useUIStore = create<UIState>()(
           promptLibraryOpen: open,
           ...parkChrome(state, { promptLibraryOpen: open }),
         })),
-      requestPromptInsert: (text) =>
+      requestPromptInsert: (text, images = []) =>
         set((state) => ({
           promptInsertRequest: text,
+          promptInsertImages: images.slice(0, MAX_ATTACHED_IMAGES),
           promptLibraryOpen: false,
-          ...parkChrome(state, { promptInsertRequest: text, promptLibraryOpen: false }),
+          ...parkChrome(state, {
+            promptInsertRequest: text,
+            promptInsertImages: images.slice(0, MAX_ATTACHED_IMAGES),
+            promptLibraryOpen: false,
+          }),
         })),
       clearPromptInsert: () =>
         set((state) => ({
           promptInsertRequest: null,
-          ...parkChrome(state, { promptInsertRequest: null }),
+          promptInsertImages: [],
+          ...parkChrome(state, { promptInsertRequest: null, promptInsertImages: [] }),
         })),
       setDockSection: (section) =>
         set((state) => ({
@@ -269,6 +276,7 @@ export const useUIStore = create<UIState>()(
             modelSwitcherOpen: chrome.modelSwitcherOpen,
             promptLibraryOpen: chrome.promptLibraryOpen,
             promptInsertRequest: chrome.promptInsertRequest,
+            promptInsertImages: chrome.promptInsertImages ?? [],
             refinePanel: chrome.refinePanel,
             draftInput: chrome.draftInput,
             draftImages: chrome.draftImages,

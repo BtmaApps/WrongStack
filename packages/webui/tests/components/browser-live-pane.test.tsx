@@ -27,6 +27,7 @@ vi.mock('@/stores', async (importOriginal) => ({
 }));
 
 const { useConfigStore } = await import('@/stores');
+const { useUIStore } = await import('@/stores');
 const { BrowserLivePane } = await import('../../src/components/BrowserLivePane.js');
 
 function emit(type: string, payload: unknown) {
@@ -40,12 +41,94 @@ const shop = { id: 'b1', url: 'https://shop.test/', title: 'Shop' };
 const docs = { id: 'b2', url: 'https://docs.test/', title: 'Docs' };
 
 beforeEach(() => {
+  client.isConnected = true;
   handlers.clear();
   sends.length = 0;
   useConfigStore.setState({ wsConnected: true });
 });
 
 describe('BrowserLivePane', () => {
+  it('restarts its watch after reconnect and discards the old frame', () => {
+    render(<BrowserLivePane />);
+    emit('browser.live.list', { sessionId: 's1', sessions: [shop] });
+    emit('browser.live.frame', {
+      sessionId: 's1',
+      id: 'b1',
+      data: 'AAAA',
+      width: 1280,
+      height: 800,
+    });
+    expect(screen.getByRole('img')).toBeTruthy();
+    client.isConnected = false;
+    act(() => useConfigStore.setState({ wsConnected: false }));
+    expect(screen.queryByRole('img')).toBeNull();
+    client.isConnected = true;
+    act(() => useConfigStore.setState({ wsConnected: true }));
+    // Reconnect asks the server for a fresh inventory before remounting the viewer.
+    emit('browser.live.list', { sessionId: 's1', sessions: [shop] });
+    expect(sent('browser.live.watch')).toHaveLength(2);
+    expect(screen.getByText('Waiting for the first frame…')).toBeTruthy();
+  });
+  it('selects context without clicking the page and queues text plus an image for review', () => {
+    render(<BrowserLivePane />);
+    emit('browser.live.list', { sessionId: 's1', sessions: [shop] });
+    emit('browser.live.frame', {
+      sessionId: 's1',
+      id: 'b1',
+      data: 'AAAA',
+      width: 1280,
+      height: 800,
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Pick element' }));
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Pick element' }), { key: 'Escape' });
+    expect(
+      screen.queryByRole('button', { name: 'Select an element in the browser preview' }),
+    ).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Pick element' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Select an element in the browser preview' }),
+    );
+    const request = sent('browser.live.pick').at(-1)!.payload as { requestId: string };
+    expect(request).toMatchObject({ id: 'b1', x: 0.5, y: 0.5, sessionId: 's1', url: shop.url });
+    const selection = {
+      url: shop.url,
+      title: 'Shop',
+      capturedAt: 'now',
+      selector: '#buy',
+      tag: 'button',
+      role: '',
+      text: 'Buy',
+      styles: { color: 'red' },
+      bounds: { x: 1, y: 1, width: 20, height: 10 },
+      viewport: { width: 1280, height: 800 },
+      image: { mimeType: 'image/jpeg', data: 'AAAA', width: 20, height: 10 },
+    };
+    emit('browser.live.selection', {
+      sessionId: 's2',
+      id: 'b1',
+      requestId: request.requestId,
+      selection,
+    });
+    expect(screen.queryByText('#buy')).toBeNull();
+    emit('browser.live.selection', { sessionId: 's1', id: 'b1', requestId: 'stale', selection });
+    expect(screen.queryByText('#buy')).toBeNull();
+    emit('browser.live.selection', {
+      sessionId: 's1',
+      id: 'b1',
+      requestId: request.requestId,
+      selection,
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Add to prompt' }));
+    expect(useUIStore.getState().promptInsertRequest).toContain('untrusted context');
+    expect(useUIStore.getState().promptInsertRequest).toContain('#buy');
+    expect(useUIStore.getState().promptInsertImages[0]?.dataUrl).toBe(
+      'data:image/jpeg;base64,AAAA',
+    );
+    expect(
+      sends.some((message) => ['user_message', 'message', 'user.message'].includes(message.type)),
+    ).toBe(false);
+    useUIStore.getState().clearPromptInsert();
+  });
   it('lists the tab’s browsers, and says so when there is none', () => {
     render(<BrowserLivePane />);
     expect(sent('browser.live.list')).toEqual([

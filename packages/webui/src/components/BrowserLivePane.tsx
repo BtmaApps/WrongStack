@@ -3,18 +3,21 @@
  *
  * The picture is the page's CDP screencast, which updates when the page
  * changes; beside it the URL, title, and the session's recent console and
- * network entries. Read-only: nothing here reaches the page. Watching starts
+ * network entries. Picking reads element context without sending page input. Watching starts
  * when the pane opens and stops when it closes.
  */
+
+import type { BrowserElementSelection as Selection } from '@wrongstack/webui-protocol';
 import { Globe, MonitorPlay } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { type LiveBrowserSession, useLiveBrowserSessions } from '@/hooks/use-live-browser';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { useAppTranslation } from '@/i18n';
 import { agentBelongsToSession } from '@/lib/agent-session';
 import { presentedBrowserId } from '@/lib/artifact-presentation';
-import { cn } from '@/lib/utils';
-import { useActiveSessionId } from '@/stores';
+import { cn, safeId } from '@/lib/utils';
+import { useActiveSessionId, useConfigStore } from '@/stores';
+import { BrowserElementSelection } from './BrowserElementSelection.js';
 
 interface Frame {
   id: string;
@@ -81,7 +84,7 @@ export function BrowserLivePane(): React.ReactElement {
           ))}
         </div>
       ) : null}
-      <LiveView key={selected.id} session={selected} />
+      <LiveView key={`${sessionId ?? 'none'}:${selected.id}`} session={selected} />
     </div>
   );
 }
@@ -90,11 +93,40 @@ function LiveView({ session }: { session: LiveBrowserSession }): React.ReactElem
   const { t } = useAppTranslation();
   const ws = useWebSocket();
   const sessionId = useActiveSessionId();
+  const connected = useConfigStore((state) => state.wsConnected);
   const [frame, setFrame] = useState<Frame | undefined>();
   const [details, setDetails] = useState<Details | undefined>();
   const [tab, setTab] = useState<'console' | 'network'>('console');
+  const [picking, setPicking] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [selection, setSelection] = useState<Selection>();
+  const [pickError, setPickError] = useState('');
+  const requestId = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (connected) return;
+    requestId.current = undefined;
+    setFrame(undefined);
+    setDetails(undefined);
+    setSelection(undefined);
+    setPending(false);
+    setPicking(false);
+  }, [connected]);
+  useEffect(() => {
+    if (!pending) return;
+    const timer = setTimeout(() => {
+      requestId.current = undefined;
+      setPending(false);
+      setPickError(t('activity:browserLive.inspectionTimeout'));
+    }, 90_000);
+    return () => clearTimeout(timer);
+  }, [pending, t]);
 
   useEffect(() => {
+    setFrame(undefined);
+    setDetails(undefined);
+    setSelection(undefined);
+    setPending(false);
+    setPicking(false);
     if (!ws.client?.isConnected) return;
     const mine = (payload: { id?: string; sessionId?: string } | undefined) =>
       payload?.id === session.id && agentBelongsToSession(payload.sessionId, sessionId);
@@ -106,6 +138,24 @@ function LiveView({ session }: { session: LiveBrowserSession }): React.ReactElem
       const payload = (msg as { payload?: Details & { sessionId?: string } }).payload;
       if (payload && mine(payload)) setDetails(payload);
     });
+    const offSelection = ws.client.on?.('browser.live.selection', (msg: unknown) => {
+      const payload = (
+        msg as {
+          payload?: {
+            id: string;
+            sessionId?: string;
+            requestId: string;
+            selection?: Selection;
+            error?: string;
+          };
+        }
+      ).payload;
+      if (!payload || !mine(payload) || payload.requestId !== requestId.current) return;
+      requestId.current = undefined;
+      setPending(false);
+      setSelection(payload.selection);
+      setPickError(payload.error ?? '');
+    });
     const watch = { id: session.id };
     ws.client.send?.({
       type: 'browser.live.watch',
@@ -114,10 +164,13 @@ function LiveView({ session }: { session: LiveBrowserSession }): React.ReactElem
     return () => {
       offFrame?.();
       offDetails?.();
-      ws.client.send?.({
-        type: 'browser.live.unwatch',
-        payload: ws.client.withSession?.({}) ?? (sessionId ? { sessionId } : {}),
-      });
+      offSelection?.();
+      requestId.current = undefined;
+      if (ws.client.isConnected)
+        ws.client.send?.({
+          type: 'browser.live.unwatch',
+          payload: ws.client.withSession?.({}) ?? (sessionId ? { sessionId } : {}),
+        });
     };
   }, [session.id, ws.client, sessionId]);
 
@@ -136,7 +189,73 @@ function LiveView({ session }: { session: LiveBrowserSession }): React.ReactElem
           {t('activity:browserLive.readOnly')}
         </span>
       </div>
+      <div className="flex flex-wrap items-center gap-2 text-xs">
+        <button
+          type="button"
+          aria-pressed={picking}
+          disabled={!connected || !sessionId || !frame || details?.gone || pending}
+          onKeyDown={(event) => {
+            if (event.key === 'Escape' && picking) {
+              event.preventDefault();
+              event.stopPropagation();
+              setPicking(false);
+            }
+          }}
+          className="rounded border border-border px-2 py-1 disabled:opacity-50"
+          onClick={() => {
+            setPicking(!picking);
+            setPickError('');
+          }}
+        >
+          {pending ? t('activity:browserLive.inspecting') : t('activity:browserLive.pickElement')}
+        </button>
+        {picking && (
+          <span className="text-muted-foreground">{t('activity:browserLive.pickHint')}</span>
+        )}
+      </div>
       <div className="relative overflow-hidden rounded-md border border-border/60 bg-black/80">
+        {picking && frame && !details?.gone && (
+          <button
+            type="button"
+            aria-label={t('activity:browserLive.pickPoint')}
+            className="absolute inset-0 z-10 cursor-crosshair outline-2 outline-primary focus:outline"
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') {
+                event.preventDefault();
+                event.stopPropagation();
+                setPicking(false);
+              }
+            }}
+            onClick={(event) => {
+              if (!sessionId) return;
+              const bounds = event.currentTarget.getBoundingClientRect();
+              const x = event.detail === 0 ? 0.5 : (event.clientX - bounds.left) / bounds.width;
+              const y = event.detail === 0 ? 0.5 : (event.clientY - bounds.top) / bounds.height;
+              const token = safeId();
+              requestId.current = token;
+              setPicking(false);
+              setPending(true);
+              setSelection(undefined);
+              const payload = {
+                id: session.id,
+                requestId: token,
+                x: Math.max(0, Math.min(1, x)),
+                y: Math.max(0, Math.min(1, y)),
+                url,
+              };
+              if (
+                ws.client?.send?.({
+                  type: 'browser.live.pick',
+                  payload: { ...payload, sessionId },
+                }) === false
+              ) {
+                requestId.current = undefined;
+                setPending(false);
+                setPickError(t('activity:browserLive.inspectionTimeout'));
+              }
+            }}
+          />
+        )}
         {details?.gone ? (
           <div className="flex aspect-[16/10] items-center justify-center text-xs text-muted-foreground">
             {t('activity:browserLive.closed')}
@@ -156,6 +275,12 @@ function LiveView({ session }: { session: LiveBrowserSession }): React.ReactElem
           </div>
         )}
       </div>
+      {pickError && (
+        <p role="alert" className="text-xs text-destructive">
+          {pickError}
+        </p>
+      )}
+      {selection && selection.url === url && <BrowserElementSelection selection={selection} />}
       <div className="rounded-md border border-border/60 text-xs">
         <div className="flex gap-1 border-b border-border/40 px-1.5 py-1" role="tablist">
           {(['console', 'network'] as const).map((name) => (

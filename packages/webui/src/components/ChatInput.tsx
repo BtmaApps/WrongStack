@@ -23,6 +23,7 @@ import {
 import { ComposerButtonBar } from './ChatInput/composer-button-bar.js';
 import { DraftTokenCounter } from './ChatInput/draft-token-counter.js';
 import { FileMentionPicker, type FileMentionState } from './ChatInput/file-mention-picker.js';
+import { MAX_ATTACHED_IMAGES } from './ChatInput/image-attachments.js';
 import { handleNextList, handleNextSelect } from './ChatInput/next-steps-helpers.js';
 import { QueuedMessages } from './ChatInput/queued-messages.js';
 import { ChatInputRefinePanelHost } from './ChatInput/refine-panel-host.js';
@@ -68,6 +69,7 @@ export function ChatInput({
   const pushPrompt = useUIStore((s) => s.pushPrompt);
   const promptHistory = useUIStore((s) => s.promptHistory);
   const promptInsertRequest = useUIStore((s) => s.promptInsertRequest);
+  const promptInsertImages = useUIStore((s) => s.promptInsertImages);
   const clearPromptInsert = useUIStore((s) => s.clearPromptInsert);
   const setProcessMonitorOpen = useUIStore((s) => s.setProcessMonitorOpen);
   const setQueuePanelOpen = useUIStore((s) => s.setQueuePanelOpen);
@@ -313,9 +315,23 @@ export function ChatInput({
   useEffect(() => {
     if (promptInsertRequest == null) return;
     setInput((prev) => (prev.trim() ? `${prev}\n${promptInsertRequest}` : promptInsertRequest));
+    if (promptInsertImages.length) {
+      const pending = pendingImagesRef.current;
+      const available = Math.max(0, MAX_ATTACHED_IMAGES - pending.length);
+      if (promptInsertImages.length > available)
+        toast.error(t('chat:input.tooManyImages', { max: MAX_ATTACHED_IMAGES }));
+      setPendingImages([...pending, ...promptInsertImages.slice(0, available)]);
+    }
     clearPromptInsert();
     requestAnimationFrame(() => textareaRef.current?.focus());
-  }, [promptInsertRequest, clearPromptInsert]);
+  }, [
+    promptInsertRequest,
+    promptInsertImages,
+    clearPromptInsert,
+    pendingImagesRef,
+    setPendingImages,
+    t,
+  ]);
 
   const adjustTextareaHeight = () => {
     const textarea = textareaRef.current;

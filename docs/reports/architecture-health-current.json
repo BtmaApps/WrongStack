@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-21T20:26:17.084Z",
+  "generatedAt": "2026-10-21T20:26:43.408Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 38,
-    "sourceFiles": 5202,
+    "sourceFiles": 5206,
     "testFiles": 4562,
-    "sourceLines": 1132374,
+    "sourceLines": 1132811,
     "workspaceEdges": 139,
-    "moduleEdges": 17114,
+    "moduleEdges": 17120,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -493,7 +493,7 @@
     {
       "name": "@wrongstack/primitives",
       "dir": "packages/primitives",
-      "sourceFiles": 11,
+      "sourceFiles": 12,
       "testFiles": 14,
       "workspaceDependencies": [],
       "tsconfigs": [
@@ -770,7 +770,7 @@
     {
       "name": "@wrongstack/tools",
       "dir": "packages/tools",
-      "sourceFiles": 340,
+      "sourceFiles": 342,
       "testFiles": 339,
       "workspaceDependencies": [
         "@wrongstack/core",
@@ -869,7 +869,7 @@
     {
       "name": "@wrongstack/webui",
       "dir": "packages/webui",
-      "sourceFiles": 759,
+      "sourceFiles": 760,
       "testFiles": 500,
       "workspaceDependencies": [
         "@wrongstack/core",
@@ -28888,11 +28888,6 @@
       "relativeImports": 28
     },
     {
-      "file": "packages/tools/src/browser/tools.ts",
-      "lines": 695,
-      "relativeImports": 4
-    },
-    {
       "file": "packages/cli/src/slash-commands/fix-classifier.ts",
       "lines": 694,
       "relativeImports": 0
@@ -29020,6 +29015,11 @@
     {
       "file": "packages/webui-server/src/server/session-handler-helpers.ts",
       "lines": 686,
+      "relativeImports": 5
+    },
+    {
+      "file": "packages/core/src/session-catalog/session-registry.ts",
+      "lines": 685,
       "relativeImports": 5
     }
   ],

@@ -6,12 +6,16 @@ const live = vi.hoisted(() => ({
   sessions: vi.fn(),
   details: vi.fn(),
   watch: vi.fn(),
+  pick: vi.fn(),
 }));
 vi.mock('@wrongstack/tools', () => ({ liveBrowser: live }));
 
-const { handleBrowserLiveList, handleBrowserLiveUnwatch, handleBrowserLiveWatch } = await import(
-  '../src/server/browser-live.js'
-);
+const {
+  handleBrowserLiveList,
+  handleBrowserLivePick,
+  handleBrowserLiveUnwatch,
+  handleBrowserLiveWatch,
+} = await import('../src/server/browser-live.js');
 
 type Sent = { type: string; payload: Record<string, unknown> };
 function createWs() {
@@ -63,6 +67,56 @@ const msg = (type: string, payload: Record<string, unknown>) => ({ type, payload
 const frames = (ws: { sent: Sent[] }) => ws.sent.filter((m) => m.type === 'browser.live.frame');
 
 describe('browser live view', () => {
+  it('requires a session and finite viewport coordinates for inspection, and echoes correlation', async () => {
+    const ws = createWs();
+    await handleBrowserLivePick(
+      ws,
+      msg('browser.live.pick', {
+        id: 'b1',
+        requestId: 'p1',
+        x: 0.5,
+        y: 0.5,
+        url: 'https://example.test/',
+      }),
+      '/p',
+    );
+    expect(live.pick).not.toHaveBeenCalled();
+    live.pick.mockResolvedValue({ tag: 'button' });
+    await handleBrowserLivePick(
+      ws,
+      msg('browser.live.pick', {
+        sessionId: 's1',
+        id: 'b1',
+        requestId: 'p2',
+        x: 0.5,
+        y: 0.5,
+        url: 'https://example.test/',
+      }),
+      '/p',
+    );
+    expect(live.pick).toHaveBeenCalledWith('/p', 'b1', 's1', {
+      x: 0.5,
+      y: 0.5,
+      url: 'https://example.test/',
+    });
+    expect(ws.sent.at(-1)).toEqual({
+      type: 'browser.live.selection',
+      payload: { sessionId: 's1', id: 'b1', requestId: 'p2', selection: { tag: 'button' } },
+    });
+    await handleBrowserLivePick(
+      ws,
+      msg('browser.live.pick', {
+        sessionId: 's1',
+        id: 'b1',
+        requestId: 'bad',
+        x: Infinity,
+        y: 0,
+        url: 'https://example.test/',
+      }),
+      '/p',
+    );
+    expect(live.pick).toHaveBeenCalledTimes(1);
+  });
   it("lists only the asking tab's browser sessions", async () => {
     const ws = createWs();
     await handleBrowserLiveList(ws, msg('browser.live.list', { sessionId: 's1' }), '/p');

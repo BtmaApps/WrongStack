@@ -32,12 +32,32 @@ beforeEach(() => {
     draftInput: '',
     promptLibraryOpen: false,
     promptInsertRequest: null,
+    promptInsertImages: [],
     refineEnabled: false,
     fileExplorerWidth: 240,
   });
 });
 
 describe('dock sections', () => {
+  it('keeps pending browser context images within their conversation and out of persisted settings', () => {
+    ui().bindSessionChrome('session-a');
+    const image = {
+      id: 'picked',
+      dataUrl: 'data:image/jpeg;base64,AAAA',
+      mediaType: 'image/jpeg',
+      bytes: 3,
+    };
+    ui().requestPromptInsert('Selected element context', [image]);
+    ui().bindSessionChrome('session-b');
+    expect(ui().promptInsertRequest).toBeNull();
+    expect(ui().promptInsertImages).toEqual([]);
+    ui().bindSessionChrome('session-a');
+    expect(ui().promptInsertRequest).toBe('Selected element context');
+    expect(ui().promptInsertImages).toEqual([image]);
+    expect(options.partialize?.(ui())).not.toHaveProperty('promptInsertImages');
+    ui().clearPromptInsert();
+    expect(ui().promptInsertImages).toEqual([]);
+  });
   it('opening a section closes the inspector', () => {
     ui().setInspectorOpen(true);
     ui().setDockSection('fleet');

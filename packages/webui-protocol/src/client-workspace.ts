@@ -35,6 +35,7 @@ export const CLIENT_WORKSPACE_MESSAGE_TYPES = [
   'process.output',
   'browser.live.list',
   'browser.live.watch',
+  'browser.live.pick',
   'browser.live.unwatch',
   'terminal.close',
   'terminal.create',

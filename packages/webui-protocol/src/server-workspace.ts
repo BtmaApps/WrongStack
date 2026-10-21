@@ -28,6 +28,7 @@ export const SERVER_WORKSPACE_MESSAGE_TYPES = [
   'browser.live.list',
   'browser.live.frame',
   'browser.live.details',
+  'browser.live.selection',
   'projects.added',
   'projects.list',
   'projects.selected',

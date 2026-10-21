@@ -1,6 +1,7 @@
 import type { WebSocket } from 'ws';
 import {
   handleBrowserLiveList,
+  handleBrowserLivePick,
   handleBrowserLiveUnwatch,
   handleBrowserLiveWatch,
 } from './browser-live.js';
@@ -99,6 +100,9 @@ export async function handleContentRoute(
       return true;
     case 'browser.live.watch':
       await handleBrowserLiveWatch(ws, message, ctx.getProjectRoot());
+      return true;
+    case 'browser.live.pick':
+      await handleBrowserLivePick(ws, message, ctx.getProjectRoot());
       return true;
     case 'browser.live.unwatch':
       await handleBrowserLiveUnwatch(ws);

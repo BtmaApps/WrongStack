@@ -42,12 +42,16 @@ describe('surface protocol contract', () => {
   it('keeps every exact registry entry executable through its directional decoder', () => {
     // +1: browser.policy (/browser and /network typed in the WebUI composer).
     // +1: memory.sage.doctor (SAGE Doctor / Health tab).
-    expect(new Set(CLIENT_MESSAGE_TYPES).size).toBe(292);
+    // +1: browser.live.pick (explicit element-context capture).
+    expect(new Set(CLIENT_MESSAGE_TYPES).size).toBe(293);
+    expect(CLIENT_MESSAGE_TYPES).toContain('browser.live.pick');
     // +2: worktree.timeline / worktree.timeline_event (worktree timeline log).
     // +1: leader.effort_changed (the leader's own effort, shown in the composer).
     // +1: browser.policy.result (its reply).
     // +1: memory.sage.doctor (the doctor report reply).
-    expect(new Set(SERVER_MESSAGE_TYPES).size).toBe(304);
+    // +1: browser.live.selection (correlated capture result).
+    expect(new Set(SERVER_MESSAGE_TYPES).size).toBe(305);
+    expect(SERVER_MESSAGE_TYPES).toContain('browser.live.selection');
     for (const type of CLIENT_MESSAGE_TYPES) {
       expect(decodeProtocolMessage({ type }, 'client')).toEqual({
         ok: true,

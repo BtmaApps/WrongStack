@@ -2,6 +2,7 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import type { Browser } from '@playwright/test';
 import { ulid } from '@wrongstack/core/utils';
+import type { BrowserElementSelection } from '@wrongstack/primitives';
 import { BrowserArtifactStore } from './artifacts.js';
 import type { LiveSession } from './manager-support.js';
 import {
@@ -12,6 +13,7 @@ import {
   withoutAnsi,
 } from './manager-support.js';
 import { BrowserNetworkGuardProxy } from './network-guard-proxy.js';
+import { browserPointExpression } from './pick.js';
 import { launchBrowserRuntime } from './runtime.js';
 import { assertBrowserUrlAllowed, redactBrowserText, safeBrowserUrl } from './security.js';
 import type {
@@ -462,6 +464,55 @@ export class BrowserSessionManager {
       title,
       console: session.console.slice(-limit).map((entry) => ({ ...entry })),
       network: session.network.slice(-limit).map((entry) => ({ ...entry })),
+    };
+  }
+
+  async pickElement(
+    id: string,
+    conversationId: string,
+    point: { x: number; y: number; url: string },
+  ): Promise<BrowserElementSelection> {
+    const session = this.sessions.get(id);
+    if (!session || !conversationId || session.conversationId !== conversationId)
+      throw new Error('Browser session is not open in this conversation');
+    const expression = browserPointExpression(point.x, point.y);
+    const url = safeBrowserUrl(session.page.url());
+    if (url !== point.url)
+      throw new Error('The browser navigated; wait for a current frame and select again');
+    const selected = (await this.evaluate(
+      id,
+      session.ownerId,
+      expression,
+      new AbortController().signal,
+    )) as Omit<BrowserElementSelection, 'url' | 'title' | 'capturedAt' | 'image'>;
+    const { bounds, viewport } = selected;
+    const x = Math.max(0, bounds.x),
+      y = Math.max(0, bounds.y);
+    const width = Math.min(1024, viewport.width - x, bounds.x + bounds.width - x);
+    const height = Math.min(768, viewport.height - y, bounds.y + bounds.height - y);
+    let image: BrowserElementSelection['image'];
+    if (width >= 1 && height >= 1) {
+      const bytes = await session.page.screenshot({
+        type: 'jpeg',
+        quality: 65,
+        clip: { x, y, width, height },
+        timeout: this.operationTimeoutMs,
+      });
+      if (bytes.byteLength <= 1024 * 1024)
+        image = { data: bytes.toString('base64'), mimeType: 'image/jpeg', width, height };
+    }
+    if (safeBrowserUrl(session.page.url()) !== url)
+      throw new Error('The browser navigated during inspection; select again');
+    return {
+      ...selected,
+      browserId: id,
+      ownerId: session.ownerId,
+      text: redactBrowserText(selected.text),
+      selector: selected.selector,
+      url,
+      title: redactBrowserText((await session.page.title()).slice(0, 300)),
+      capturedAt: new Date().toISOString(),
+      ...(image ? { image } : {}),
     };
   }
 

@@ -240,6 +240,7 @@
         "export type { AnyHookOutcome, ConfiguredHook, HookEntry, HookEvent, HookFailurePolicy, HookInput, HookInvocationContext, HookMatcher, HookOutcome, HookRegistrationOptions, HttpHook, InProcessHook, ObservationalHookEvent, PreToolUseOutcome, PreToolUseStage, ShellHook, } from './hooks.js';",
         "export type { AutonomyStage } from './autonomy.js';",
         "export type { AwaitAnyResult, CoordinatorEvents, CoordinatorStatus, DoneCondition, MultiAgentConfig, MultiAgentCoordinator, SpawnResult, SubagentConfig, SubagentContext, SubagentError, SubagentErrorKind, SubagentPartialResult, SubagentRunContext, SubagentRunner, SubagentRunOutcome, SubagentSpawnLineage, SubagentStructuredReport, TaskDelegation, TaskResult, TaskSpec, } from './multi-agent.js';",
+        "export type { BrowserElementSelection } from '@wrongstack/primitives';",
         "export type { BuildContext, ModelCapabilities, SystemPromptBuilder, SystemPromptRegions, } from './system-prompt.js';",
         "export type { BuiltinPromptCategory, PromptCategory, PromptCategoryCount, PromptEntry, PromptLoader, PromptManifest, PromptManifestRef, PromptSearchOptions, PromptSource, PromptVariable, } from './prompt.js';",
         "export type { CacheStats, LastRequestCacheStats, ProviderCacheStats, TokenCounter, } from './token-counter.js';",
@@ -1826,7 +1827,7 @@
       "classification": "agent-domain contract",
       "intendedOwner": "Core type-only subpaths",
       "sourceFiles": 86,
-      "sourceLines": 16751
+      "sourceLines": 16752
     },
     {
       "directory": "typesafe",

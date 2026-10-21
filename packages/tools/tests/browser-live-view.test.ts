@@ -51,6 +51,55 @@ const until = async (check: () => boolean, ms = 10_000) => {
 };
 
 describe.skipIf(!playwrightAvailable)('BrowserSessionManager live view', () => {
+  it('selects a real DOM element and screenshot without clicking or crossing conversations', async () => {
+    const manager = new BrowserSessionManager({
+      artifactRoot: path.join(tmp, 'artifacts'),
+      allowedPrivateOrigins: [new URL(baseUrl).origin],
+      operationTimeoutMs: 10_000,
+    });
+    const signal = new AbortController().signal;
+    try {
+      const opened = await manager.open('leader', { url: baseUrl, conversationId: 's1' }, signal);
+      const point = (await manager.evaluate(
+        opened.id,
+        'leader',
+        `(() => { const r=document.querySelector('#go').getBoundingClientRect(); return {x:(r.x+r.width/2)/innerWidth,y:(r.y+r.height/2)/innerHeight}; })()`,
+        signal,
+      )) as { x: number; y: number };
+      const selected = await manager.pickElement(opened.id, 's1', { ...point, url: baseUrl });
+      expect(selected).toMatchObject({
+        browserId: opened.id,
+        ownerId: 'leader',
+        selector: '#go',
+        tag: 'button',
+        text: 'Go',
+        url: baseUrl,
+      });
+      expect(selected.styles['font-size']).toBeTruthy();
+      expect(Buffer.from(selected.image!.data, 'base64').subarray(0, 3)).toEqual(
+        Buffer.from([0xff, 0xd8, 0xff]),
+      );
+      expect(
+        await manager.evaluate(
+          opened.id,
+          'leader',
+          "document.querySelector('#n').textContent",
+          signal,
+        ),
+      ).toBe('0');
+      await expect(
+        manager.pickElement(opened.id, 'another-session', { ...point, url: baseUrl }),
+      ).rejects.toThrow('conversation');
+      await expect(
+        manager.pickElement(opened.id, 's1', { ...point, url: 'https://stale.test/' }),
+      ).rejects.toThrow('navigated');
+      await expect(
+        manager.pickElement(opened.id, 's1', { x: NaN, y: 0, url: baseUrl }),
+      ).rejects.toThrow('coordinates');
+    } finally {
+      await manager.dispose();
+    }
+  });
   it('lists sessions with their conversation, and streams frames to every viewer', async () => {
     const manager = new BrowserSessionManager({
       artifactRoot: path.join(tmp, 'artifacts'),

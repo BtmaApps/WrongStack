@@ -11,7 +11,7 @@
  * time. Frames are sent at most ten a second, the newest winning, and are
  * held back while the socket's send buffer is full: `sendSerialized`
  * terminates a socket past 32 MB buffered, and a screencast can outrun a slow
- * link. Nothing sent here reaches the page.
+ * link. Element picking reads the DOM and a cropped image; no page input is sent.
  *
  * A tab sees only the sessions its own conversation opened, as for processes.
  */
@@ -32,6 +32,54 @@ interface Watch {
 }
 
 const watches = new WeakMap<WebSocket, Watch>();
+const picking = new WeakSet<WebSocket>();
+
+export async function handleBrowserLivePick(
+  ws: WebSocket,
+  message: WSClientMessage,
+  projectRoot: string,
+): Promise<void> {
+  const sessionId = messageSessionId(message);
+  const input = message.payload as
+    | { id?: unknown; requestId?: unknown; x?: unknown; y?: unknown; url?: unknown }
+    | undefined;
+  if (
+    !sessionId ||
+    typeof input?.id !== 'string' ||
+    typeof input.requestId !== 'string' ||
+    !/^[\w-]{1,80}$/.test(input.requestId) ||
+    typeof input.url !== 'string' ||
+    input.url.length > 8192 ||
+    typeof input.x !== 'number' ||
+    typeof input.y !== 'number' ||
+    ![input.x, input.y].every((value) => Number.isFinite(value) && value >= 0 && value <= 1)
+  ) {
+    sendResult(ws, false, 'Invalid browser element selection request');
+    return;
+  }
+  const reply = (result: object) =>
+    send(ws, {
+      type: 'browser.live.selection',
+      payload: { id: input.id, requestId: input.requestId, ...stamp(sessionId), ...result },
+    });
+  if (picking.has(ws)) {
+    reply({ error: 'Another element inspection is still running' });
+    return;
+  }
+  picking.add(ws);
+  try {
+    const selection = await liveBrowser.pick(projectRoot, input.id, sessionId, {
+      x: input.x,
+      y: input.y,
+      url: input.url,
+    });
+    reply({ selection });
+  } catch (error) {
+    reply({ error: toErrorMessage(error) });
+  } finally {
+    picking.delete(ws);
+  }
+}
 
 function stamp(sessionId: string | undefined) {
   return sessionId ? { sessionId } : {};

@@ -6,6 +6,7 @@
  * belong here.
  */
 
+export type { BrowserElementSelection } from './browser-selection.js';
 export {
   COMMAND_REDACTION_PROFILE,
   OUTBOUND_REDACTION_PROFILE,

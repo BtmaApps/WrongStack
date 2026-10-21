@@ -12,6 +12,7 @@ export {
   type SkillMentionCandidate,
 } from '@wrongstack/core/skill-mentions';
 export type {
+  BrowserElementSelection,
   Message,
   SessionEvent,
   SessionMarker,
