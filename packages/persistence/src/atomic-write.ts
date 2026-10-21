@@ -419,7 +419,7 @@ export function createPersistencePrimitives(
               recheck.mtimeMs === stat.mtimeMs &&
               Date.now() - recheck.mtimeMs > staleMs
             ) {
-              await fs.unlink(lockPath).catch(() => undefined);
+              await breakStaleLock(lockPath, recheck);
             }
             await retryAfterBackoff();
             continue;
@@ -467,21 +467,61 @@ export function createPersistencePrimitives(
       // re-acquire the lock because a heartbeat missed the staleMs
       // window, the file is now a *different* live holder's lock and
       // unlinking it would be a lock-stealing bug.
-      if (handle) {
-        try {
-          const contents = await fs.readFile(lockPath, 'utf8').catch(() => '');
+      // A concurrent breakStaleLock renames a live lock aside before linking it
+      // back; a release in that window reads ENOENT and would orphan the lock
+      // until staleMs. Look again briefly before giving it up as gone.
+      try {
+        for (let look = 0; handle && look < 5; look++) {
+          const contents = await fs
+            .readFile(lockPath, 'utf8')
+            .catch((err: NodeJS.ErrnoException) => (err.code === 'ENOENT' ? undefined : ''));
+          if (contents === undefined && look < 4) {
+            await new Promise((resolve) => setTimeout(resolve, 10));
+            continue;
+          }
           if (contents === `${process.pid}:${myToken}`) {
             await fs.unlink(lockPath).catch(() => undefined);
           }
-        } catch {
-          // Best-effort cleanup; the heartbeat loop will reap it on
-          // the next stale break if anything went wrong here.
+          break;
         }
+      } catch {
+        // Best-effort cleanup; the heartbeat loop will reap it on
+        // the next stale break if anything went wrong here.
       }
     }
   }
 
   return { atomicWrite, atomicReplaceWithWriter, ensureDir, withFileLock };
+}
+
+/**
+ * Remove the stale lock `observed` and nothing else. Another waiter may break
+ * the same stale lock and acquire a fresh one between our stat and our removal;
+ * unlinking by pathname then deleted that live lock and admitted a second
+ * holder. Renaming captures exactly one file: delete it only when it is the one
+ * we judged stale, otherwise link the live lock back (same inode, so its
+ * holder's token and heartbeat still apply).
+ */
+async function breakStaleLock(
+  lockPath: string,
+  observed: { ino: number; dev: number; birthtimeMs: number },
+): Promise<void> {
+  const grave = `${lockPath}.stale-${process.pid}-${randomBytes(6).toString('hex')}`;
+  try {
+    await fs.rename(lockPath, grave);
+  } catch {
+    return;
+  }
+  const moved = await fs.stat(grave).catch(() => undefined);
+  if (
+    moved &&
+    (moved.ino !== observed.ino ||
+      moved.dev !== observed.dev ||
+      moved.birthtimeMs !== observed.birthtimeMs)
+  ) {
+    await fs.link(grave, lockPath).catch(() => undefined);
+  }
+  await fs.unlink(grave).catch(() => undefined);
 }
 
 async function waitForLockRelease(lockPath: string, remainingMs: number): Promise<void> {

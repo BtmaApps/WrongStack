@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-21T20:20:25.506Z
+**Generated:** 2026-10-21T20:20:51.812Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,8 +9,8 @@
 |---|---:|
 | Workspace packages | 38 |
 | Production source files | 5200 |
-| Production source lines | 1131703 |
-| Test files | 4553 |
+| Production source lines | 1131768 |
+| Test files | 4556 |
 | Workspace dependency edges | 139 |
 | Relative module edges | 17099 |
 | Non-command slash imports | 0 |
@@ -39,7 +39,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/kanban-mcp | 6 | 5 | @wrongstack/core, @wrongstack/kanban, @wrongstack/mcp, @wrongstack/primitives, @wrongstack/tools |
 | @wrongstack/mailbox-mcp | 7 | 8 | @wrongstack/core, @wrongstack/mcp |
 | @wrongstack/mcp | 63 | 78 | @wrongstack/core |
-| @wrongstack/persistence | 9 | 21 | — |
+| @wrongstack/persistence | 9 | 23 | — |
 | @wrongstack/plug-lsp | 52 | 57 | @wrongstack/core, @wrongstack/tools |
 | @wrongstack/plugin-sdk | 12 | 10 | @wrongstack/core, @wrongstack/tools |
 | @wrongstack/plugins | 152 | 127 | @wrongstack/core, @wrongstack/plugin-sdk, @wrongstack/primitives, @wrongstack/tools |
@@ -55,7 +55,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/simpleui | 128 | 98 | @wrongstack/kanban, @wrongstack/tools, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/techstack | 55 | 64 | @wrongstack/core, @wrongstack/persistence, @wrongstack/tools |
 | @wrongstack/telegram | 28 | 43 | @wrongstack/core, @wrongstack/primitives |
-| @wrongstack/tools | 340 | 337 | @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
+| @wrongstack/tools | 340 | 338 | @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/tui | 496 | 428 | @wrongstack/core, @wrongstack/kanban, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/tools |
 | @wrongstack/vector-memory | 18 | 28 | @wrongstack/core, @wrongstack/persistence, @wrongstack/sage |
 | @wrongstack/vibeui | 53 | 14 | @wrongstack/webui-protocol |

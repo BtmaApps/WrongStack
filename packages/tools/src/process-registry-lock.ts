@@ -43,6 +43,25 @@ export function isNodeError(err: unknown): err is NodeJS.ErrnoException {
   return typeof err === 'object' && err !== null && 'code' in err;
 }
 
+/**
+ * Remove the lock only when the file captured is still the one judged stale.
+ * `unlink(path)` after the re-read raced a second stealer that removed the stale
+ * lock and created a fresh one in between, deleting a LIVE lock. Renaming
+ * captures exactly one file; a live lock caught that way is linked back (the
+ * breakStaleLock contract of withFileLock in @wrongstack/persistence).
+ */
+async function breakStaleLock(lockfilePath: string, staleContent: string): Promise<void> {
+  const grave = `${lockfilePath}.stale-${process.pid}-${randomBytes(6).toString('hex')}`;
+  try {
+    await fs.rename(lockfilePath, grave);
+  } catch {
+    return;
+  }
+  const captured = await fs.readFile(grave, 'utf-8').catch(() => undefined);
+  if (captured !== staleContent) await fs.link(grave, lockfilePath).catch(() => undefined);
+  await fs.unlink(grave).catch(() => undefined);
+}
+
 export async function acquireLock(
   lockfilePath: string,
   timeoutMs = 5000,
@@ -78,12 +97,20 @@ export async function acquireLock(
       const token = `${pidStr}:${hostStr}:${randomBytes(4).toString('hex')}:${Date.now()}`;
       await fs.writeFile(lockfilePath, token, { flag: 'wx' });
       return async () => {
-        try {
-          const current = await fs.readFile(lockfilePath, 'utf-8');
-          if (current !== token) return;
-          await fs.unlink(lockfilePath);
-        } catch {
-          // Lock file is already gone (stolen or cleaned up) — nothing to release.
+        // A concurrent breakStaleLock renames a live lock aside for two fs
+        // calls before linking it back; a release in that window reads ENOENT
+        // and would leave the lock orphaned until LOCK_STALE_MS. Look again.
+        for (let attempt = 0; attempt < 5; attempt++) {
+          try {
+            const current = await fs.readFile(lockfilePath, 'utf-8');
+            if (current !== token) return;
+            await fs.unlink(lockfilePath);
+            return;
+          } catch (err) {
+            // Gone for good (stolen or cleaned up) — nothing to release.
+            if (!isNodeError(err) || err.code !== 'ENOENT' || attempt === 4) return;
+            await new Promise((r) => setTimeout(r, 10));
+          }
         }
       };
     } catch (err) {
@@ -128,9 +155,7 @@ export async function acquireLock(
             // observed (same recheck discipline as withFileLock in
             // @wrongstack/persistence).
             const recheck = await fs.readFile(lockfilePath, 'utf-8').catch(() => undefined);
-            if (recheck === content) {
-              await fs.unlink(lockfilePath).catch(() => {});
-            }
+            if (recheck === content) await breakStaleLock(lockfilePath, content);
             continue;
           }
         } catch {

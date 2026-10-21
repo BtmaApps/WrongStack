@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-21T20:20:25.506Z",
+  "generatedAt": "2026-10-21T20:20:51.812Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 38,
     "sourceFiles": 5200,
-    "testFiles": 4553,
-    "sourceLines": 1131703,
+    "testFiles": 4556,
+    "sourceLines": 1131768,
     "workspaceEdges": 139,
     "moduleEdges": 17099,
     "nonCommandSlashImports": 0,
@@ -407,7 +407,7 @@
       "name": "@wrongstack/persistence",
       "dir": "packages/persistence",
       "sourceFiles": 9,
-      "testFiles": 21,
+      "testFiles": 23,
       "workspaceDependencies": [],
       "tsconfigs": [
         {
@@ -418,7 +418,7 @@
         {
           "path": "packages/persistence/tsconfig.test.json",
           "error": null,
-          "testFiles": 21
+          "testFiles": 23
         }
       ]
     },
@@ -771,7 +771,7 @@
       "name": "@wrongstack/tools",
       "dir": "packages/tools",
       "sourceFiles": 340,
-      "testFiles": 337,
+      "testFiles": 338,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -787,7 +787,7 @@
         {
           "path": "packages/tools/tsconfig.test.json",
           "error": null,
-          "testFiles": 337
+          "testFiles": 338
         }
       ]
     },
@@ -13382,6 +13382,18 @@
         ]
       },
       {
+        "file": "packages/persistence/tests/file-lock-release-during-break.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/persistence/tests/file-lock-stale-break-race.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/persistence/tests/file-lock-token.test.ts",
         "projects": [
           "root-node"
@@ -19845,6 +19857,12 @@
       },
       {
         "file": "packages/tools/tests/process-registry-killtree.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tools/tests/process-registry-lock-stale-break.test.ts",
         "projects": [
           "root-node"
         ]
