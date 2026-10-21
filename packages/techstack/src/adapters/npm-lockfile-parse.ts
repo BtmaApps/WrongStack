@@ -159,7 +159,7 @@ export function parseNpmLockVersions(lockContent: string): {
         const cleanVersion = depInfo.version.replace(/^[^0-9]+/, '');
         if (cleanVersion) record(name, cleanVersion);
         // npm v1 spelled an alias in the version (`npm:typescript@5.9.3`).
-        const alias = /^npm:(?:@[^/@]+\/)?([^@]+)@/.exec(depInfo.version);
+        const alias = /^npm:((?:@[^/@]+\/)?[^@]+)@/.exec(depInfo.version);
         if (alias?.[1] && alias[1] !== name) aliases.set(name, alias[1]);
       }
     }
