@@ -8,6 +8,14 @@ interface AgentWorkSignals {
   status: string;
 }
 
+/**
+ * Whether an `error` frame's phase ends the run: the server's prompt/run phases
+ * and core's terminal `error` events. Refusals of other requests (rate limit,
+ * parse, queue, ...) also arrive as `error` while the run goes on.
+ */
+export const endsRun = (phase: unknown) =>
+  ['user_message', 'agent.run', 'abort', 'agent', 'provider', 'tool'].includes(String(phase));
+
 export const isActiveAgent = (status: string) =>
   ['running', 'busy', 'working', 'active', 'starting', 'spawned'].includes(status);
 

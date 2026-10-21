@@ -164,10 +164,31 @@ describe('VibeUI conversation', () => {
   it('ends a failed stream and keeps its error visible', () => {
     let state = reduceFrame(initialState(), start());
     state = reduceFrame(state, { type: 'provider.text_delta', payload: { text: 'in progress' } });
-    state = reduceFrame(state, { type: 'error', payload: { message: 'Provider unavailable' } });
+    state = reduceFrame(state, {
+      type: 'error',
+      payload: { phase: 'provider', message: 'Provider unavailable' },
+    });
     expect(state.running).toBe(false);
     expect(state.messages.at(-1)?.text).toBe('Provider unavailable');
     expect(state.messages.some((m) => m.streaming)).toBe(false);
+  });
+  it('keeps the run going when the server refuses an unrelated request', () => {
+    let state = reduceFrame(initialState(), start());
+    state = reduceFrame(state, { type: 'provider.text_delta', payload: { text: 'in progress' } });
+    state = reduceFrame(state, {
+      type: 'tool.started',
+      payload: { id: 't1', name: 'bash', input: {} },
+    });
+    for (const phase of ['rate_limit', 'parse', 'queue.add', undefined]) {
+      const next = reduceFrame(state, {
+        type: 'error',
+        payload: { ...(phase ? { phase } : {}), message: 'Too many messages. Please wait.' },
+      });
+      expect(next).toMatchObject({ running: true, runOutcome: null, runFailure: '' });
+      expect(next.tools[0]?.status).toBe('running');
+      expect(next.messages.at(-1)).toMatchObject({ text: 'in progress', streaming: true });
+      expect(next.notice).toBe('Too many messages. Please wait.');
+    }
   });
   it('projects real model, git and agent payloads without hardcoded model IDs', () => {
     let state = reduceFrame(initialState(), start());

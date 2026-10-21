@@ -9,7 +9,7 @@ import {
   type SessionMarker,
   type SessionToolMeta,
 } from '@wrongstack/webui-protocol';
-import { isActiveAgent } from './agent-state';
+import { endsRun, isActiveAgent } from './agent-state';
 import { type Artifact, parseArtifact } from './artifacts';
 import { type FileNode, parseFileTree } from './workspace-model';
 
@@ -389,7 +389,7 @@ export function reduceFrame(state: SessionState, frame: ProtocolEnvelope): Sessi
             : state.messages,
     };
   }
-  if (chat?.kind === 'run-result' || chat?.kind === 'error') {
+  if (chat?.kind === 'run-result' || (chat?.kind === 'error' && endsRun(p.phase))) {
     const failure =
       chat.kind === 'error'
         ? chat.message
@@ -783,8 +783,8 @@ export function reduceFrame(state: SessionState, frame: ProtocolEnvelope): Sessi
       return { ...state, inputs: state.inputs.filter((r) => r.id !== p.requestId) };
     case 'chimera.report_available':
       return { ...state, notice: 'A review report is ready. Open WebUI to inspect it.' };
-    default:
-      return state;
+    default: // An `error` outside a run phase refused another request; the run goes on.
+      return chat?.kind === 'error' ? { ...state, notice: chat.message } : state;
   }
 }
 
