@@ -270,4 +270,21 @@ describe('model smoke runner', () => {
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
     );
   });
+
+  it('fails a target whose provider answers after the deadline', async () => {
+    const complete = (_request: unknown, options: { signal: AbortSignal }) =>
+      new Promise((resolve) =>
+        options.signal.addEventListener(
+          'abort',
+          () => resolve({ content: [{ type: 'text', text: 'OK' }], stopReason: 'end_turn' }),
+          { once: true },
+        ),
+      );
+    const [result] = await runModelSmokeTests({
+      targets: [{ providerId: 'late', modelId: 'm' } as never],
+      options: { timeoutMs: 20, maxTokens: 8 },
+      createProvider: () => ({ id: 'late', complete }) as never,
+    });
+    expect(result).toMatchObject({ status: 'failed', errorKind: 'timeout' });
+  });
 });

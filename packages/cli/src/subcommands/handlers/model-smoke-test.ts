@@ -260,6 +260,7 @@ export async function runModelSmokeTests(params: {
     }
 
     try {
+      const requestSignal = AbortSignal.timeout(params.options.timeoutMs);
       const response = await provider.complete(
         {
           model: target.modelId,
@@ -271,8 +272,10 @@ export async function runModelSmokeTests(params: {
           ],
           maxTokens: params.options.maxTokens,
         },
-        { signal: AbortSignal.timeout(params.options.timeoutMs) },
+        { signal: requestSignal },
       );
+      // A provider may ignore the signal and answer after the deadline.
+      requestSignal.throwIfAborted();
       const result: ModelSmokeResult = {
         providerId: target.providerId,
         modelId: target.modelId,
