@@ -1229,6 +1229,7 @@ describe('HTTP transport authorization provider', () => {
 
     try {
       const transport = new StreamableHTTPTransport({
+        protocolMode: 'legacy',
         name: 'auth-server',
         url: 'https://m.test/mcp',
         authorizationProvider: provider,
@@ -1270,6 +1271,7 @@ describe('HTTP transport authorization provider', () => {
 
     try {
       const transport = new StreamableHTTPTransport({
+        protocolMode: 'legacy',
         name: 'future-server',
         url: 'https://m.test/mcp',
       });
@@ -1309,6 +1311,7 @@ describe('HTTP transport authorization provider', () => {
 
     try {
       const transport = new StreamableHTTPTransport({
+        protocolMode: 'legacy',
         name: 'auth-server',
         url: 'https://m.test/mcp',
         authorizationProvider: provider,

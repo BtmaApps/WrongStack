@@ -103,7 +103,11 @@ function jsonResponse(body: unknown): Response {
 
 describe('StreamableHTTPTransport', () => {
   it('rejects a response whose id belongs to another request', async () => {
-    const transport = new StreamableHTTPTransport({ name: 's', url: 'https://mcp.example.com/' });
+    const transport = new StreamableHTTPTransport({
+      protocolMode: 'legacy',
+      name: 's',
+      url: 'https://mcp.example.com/',
+    });
     globalThis.fetch = vi.fn(async () =>
       jsonResponse({ jsonrpc: '2.0', id: 999_999, result: { stolen: true } }),
     ) as never as typeof fetch;
@@ -129,7 +133,11 @@ describe('StreamableHTTPTransport', () => {
       });
     }) as never as typeof fetch;
 
-    const transport = new StreamableHTTPTransport({ name: 's', url: 'https://mcp.example.com/' });
+    const transport = new StreamableHTTPTransport({
+      protocolMode: 'legacy',
+      name: 's',
+      url: 'https://mcp.example.com/',
+    });
     await transport.connect();
     expect(transport.listTools().map((tool) => tool.name)).toEqual(['first', 'second']);
     const initialized = bodies.find((body) => body.method === 'notifications/initialized');

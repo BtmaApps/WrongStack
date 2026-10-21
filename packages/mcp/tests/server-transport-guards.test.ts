@@ -617,10 +617,10 @@ describe('MCP stdio framing — multi-byte UTF-8 across chunk boundaries', () =>
     });
   }
 
-  function requestLine(text: string): string {
+  function requestLine(text: string, id = 1): string {
     return `${JSON.stringify({
       jsonrpc: '2.0',
-      id: 1,
+      id,
       method: 'tools/call',
       params: { name: 'echo', arguments: { text } },
     })}\n`;
@@ -696,7 +696,8 @@ describe('MCP stdio framing — multi-byte UTF-8 across chunk boundaries', () =>
     });
     const handle = serveStdio(echoServer(), { stdin, stdout });
     const first = Buffer.from(requestLine(PAYLOAD), 'utf8');
-    const second = Buffer.from(requestLine('second-line ✓'), 'utf8');
+    // Distinct in-flight IDs keep this a framing control, independent of cancellation.
+    const second = Buffer.from(requestLine('second-line ✓', 2), 'utf8');
     // One line split mid-character, then a second whole line in the same chunk.
     const lead = first.indexOf(Buffer.from('→', 'utf8')[0]!);
     stdin.write(first.subarray(0, lead + 1));

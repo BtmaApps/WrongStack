@@ -284,6 +284,7 @@ export async function attemptConnectSlot(
         ...expandMcpEnvPlaceholders(slot.cfg),
         bearerTokenEnv: slot.cfg.bearerTokenEnv,
         startupTimeoutMs: slot.cfg.startupTimeoutMs,
+        protocolMode: slot.cfg.protocolMode,
         requestTimeoutMs: slot.cfg.requestTimeoutMs,
         cwd: ctx.cwd,
         allowPrivateNetworks: slot.cfg.allowPrivateNetworks,

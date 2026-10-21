@@ -36,6 +36,7 @@ export async function connectSSE(host: ClientHttpConnectionHost): Promise<void> 
     throw new Error('MCP SSE transport requires "url"');
   }
   const httpOpts: HttpTransportOptions = {
+    protocolMode: host.opts.protocolMode,
     name: host.opts.name,
     url: host.opts.url,
     headers: resolveHttpBearerHeaders(host.opts),
@@ -107,6 +108,7 @@ export async function connectStreamableHTTP(host: ClientHttpConnectionHost): Pro
     throw new Error('MCP streamable-http transport requires "url"');
   }
   const httpOpts: HttpTransportOptions = {
+    protocolMode: host.opts.protocolMode,
     name: host.opts.name,
     url: host.opts.url,
     headers: resolveHttpBearerHeaders(host.opts),

@@ -217,9 +217,14 @@ describe('validateTransportUrl SSRF guard (via constructor)', () => {
 
   // F-07: IPv6 parity for the IPv4 IMDS/link-local block.
   it('blocks IPv6 link-local (fe80::/10)', () => {
-    expect(() => new StreamableHTTPTransport({ name: 'x', url: 'https://[fe80::1]/' })).toThrow(
-      /link-local|IMDS/,
-    );
+    expect(
+      () =>
+        new StreamableHTTPTransport({
+          protocolMode: 'legacy',
+          name: 'x',
+          url: 'https://[fe80::1]/',
+        }),
+    ).toThrow(/link-local|IMDS/);
   });
 
   it('blocks the AWS IPv6 IMDS address (fd00:ec2::254)', () => {
@@ -252,6 +257,7 @@ describe('validateTransportUrl SSRF guard (via constructor)', () => {
     expect(
       () =>
         new StreamableHTTPTransport({
+          protocolMode: 'legacy',
           name: 'x',
           url: 'https://mcp.example.com/',
           tls: { rejectUnauthorized: false },
@@ -262,13 +268,18 @@ describe('validateTransportUrl SSRF guard (via constructor)', () => {
 
 describe('StreamableHTTPTransport — connection failure modes', () => {
   it('starts in idle state', () => {
-    const t = new StreamableHTTPTransport({ name: 'x', url: 'https://example.test' });
+    const t = new StreamableHTTPTransport({
+      protocolMode: 'legacy',
+      name: 'x',
+      url: 'https://example.test',
+    });
     expect(t.getState()).toBe('idle');
     expect(t.listTools()).toEqual([]);
   });
 
   it('transitions to failed when fetch rejects', async () => {
     const t = new StreamableHTTPTransport({
+      protocolMode: 'legacy',
       name: 'x',
       url: 'http://127.0.0.1:1/never',
       startupTimeoutMs: 200,
@@ -278,12 +289,17 @@ describe('StreamableHTTPTransport — connection failure modes', () => {
   });
 
   it('callTool throws when not connected', async () => {
-    const t = new StreamableHTTPTransport({ name: 'x', url: 'https://example.test' });
+    const t = new StreamableHTTPTransport({
+      protocolMode: 'legacy',
+      name: 'x',
+      url: 'https://example.test',
+    });
     await expect(t.callTool('any', {})).rejects.toThrow(/not connected/);
   });
 
   it('startupTimeoutMs bounds connect() wall-clock duration', async () => {
     const t = new StreamableHTTPTransport({
+      protocolMode: 'legacy',
       name: 'slow',
       url: 'https://10.255.255.1/never', // blackholed (https: non-loopback http is rejected)
       startupTimeoutMs: 150,
@@ -295,7 +311,11 @@ describe('StreamableHTTPTransport — connection failure modes', () => {
   });
 
   it('onDisconnect returns unsubscribe function', () => {
-    const t = new StreamableHTTPTransport({ name: 'x', url: 'https://example.test' });
+    const t = new StreamableHTTPTransport({
+      protocolMode: 'legacy',
+      name: 'x',
+      url: 'https://example.test',
+    });
     const cb = vi.fn();
     const off = t.onDisconnect(cb);
     expect(typeof off).toBe('function');
@@ -303,7 +323,11 @@ describe('StreamableHTTPTransport — connection failure modes', () => {
   });
 
   it('onDisconnect unsubscribe works', () => {
-    const t = new StreamableHTTPTransport({ name: 'x', url: 'https://example.test' });
+    const t = new StreamableHTTPTransport({
+      protocolMode: 'legacy',
+      name: 'x',
+      url: 'https://example.test',
+    });
     const handlers = (t as unknown as { disconnectHandlers: Array<() => void> }).disconnectHandlers;
     const cb = vi.fn();
     const keep = vi.fn();
@@ -320,7 +344,11 @@ describe('StreamableHTTPTransport — connection failure modes', () => {
   });
 
   it('close is idempotent', async () => {
-    const t = new StreamableHTTPTransport({ name: 'x', url: 'https://example.test' });
+    const t = new StreamableHTTPTransport({
+      protocolMode: 'legacy',
+      name: 'x',
+      url: 'https://example.test',
+    });
     await t.close(); // first call
     await t.close(); // second call — must not throw
     expect(t.getState()).toBe('disconnected');
@@ -378,7 +406,11 @@ describe('StreamableHTTPTransport — connect/callTool with mocked fetch', () =>
     const origFetch = globalThis.fetch;
     (globalThis as { fetch: typeof globalThis.fetch }).fetch = fetchImpl;
     try {
-      const t = new StreamableHTTPTransport({ name: 'x', url: 'https://m.test' });
+      const t = new StreamableHTTPTransport({
+        protocolMode: 'legacy',
+        name: 'x',
+        url: 'https://m.test',
+      });
       await t.connect();
       expect(t.getState()).toBe('connected');
       expect(t.getServerMetadata()?.capabilities).toMatchObject({ resources: {}, prompts: {} });
@@ -410,7 +442,11 @@ describe('StreamableHTTPTransport — connect/callTool with mocked fetch', () =>
     const origFetch = globalThis.fetch;
     (globalThis as { fetch: typeof globalThis.fetch }).fetch = fetchImpl;
     try {
-      const t = new StreamableHTTPTransport({ name: 'x', url: 'https://m.test' });
+      const t = new StreamableHTTPTransport({
+        protocolMode: 'legacy',
+        name: 'x',
+        url: 'https://m.test',
+      });
       await t.connect();
       expect(t.listTools()).toEqual([
         { name: 'ok', inputSchema: { type: 'object', properties: {} } },
@@ -445,7 +481,11 @@ describe('StreamableHTTPTransport — connect/callTool with mocked fetch', () =>
     const origFetch = globalThis.fetch;
     (globalThis as { fetch: typeof globalThis.fetch }).fetch = fetchImpl;
     try {
-      const t = new StreamableHTTPTransport({ name: 'x', url: 'https://m.test' });
+      const t = new StreamableHTTPTransport({
+        protocolMode: 'legacy',
+        name: 'x',
+        url: 'https://m.test',
+      });
       await t.connect();
       const res = await t.callTool('hello', { who: 'world' });
       expect(res.content).toBe('hi');
@@ -476,7 +516,11 @@ describe('StreamableHTTPTransport — connect/callTool with mocked fetch', () =>
     const origFetch = globalThis.fetch;
     (globalThis as { fetch: typeof globalThis.fetch }).fetch = fetchImpl;
     try {
-      const t = new StreamableHTTPTransport({ name: 'x', url: 'https://m.test' });
+      const t = new StreamableHTTPTransport({
+        protocolMode: 'legacy',
+        name: 'x',
+        url: 'https://m.test',
+      });
       await t.connect();
       const res = await t.callTool('nope', {});
       expect(res.isError).toBe(true);
@@ -498,7 +542,11 @@ describe('StreamableHTTPTransport — connect/callTool with mocked fetch', () =>
     const origFetch = globalThis.fetch;
     (globalThis as { fetch: typeof globalThis.fetch }).fetch = fetchImpl;
     try {
-      const t = new StreamableHTTPTransport({ name: 'x', url: 'https://m.test' });
+      const t = new StreamableHTTPTransport({
+        protocolMode: 'legacy',
+        name: 'x',
+        url: 'https://m.test',
+      });
       await expect(t.connect()).rejects.toThrow(/initialize failed/);
       expect(t.getState()).toBe('failed');
     } finally {
@@ -517,7 +565,11 @@ describe('StreamableHTTPTransport — connect/callTool with mocked fetch', () =>
     const origFetch = globalThis.fetch;
     (globalThis as { fetch: typeof globalThis.fetch }).fetch = fetchImpl;
     try {
-      const t = new StreamableHTTPTransport({ name: 'x', url: 'https://m.test' });
+      const t = new StreamableHTTPTransport({
+        protocolMode: 'legacy',
+        name: 'x',
+        url: 'https://m.test',
+      });
       await expect(t.connect()).rejects.toThrow();
       expect(t.getState()).toBe('failed');
     } finally {
@@ -542,7 +594,11 @@ describe('StreamableHTTPTransport — connect/callTool with mocked fetch', () =>
     const origFetch = globalThis.fetch;
     (globalThis as { fetch: typeof globalThis.fetch }).fetch = fetchImpl;
     try {
-      const t = new StreamableHTTPTransport({ name: 'x', url: 'https://m.test' });
+      const t = new StreamableHTTPTransport({
+        protocolMode: 'legacy',
+        name: 'x',
+        url: 'https://m.test',
+      });
       await t.connect();
       expect(t.getState()).toBe('connected');
     } finally {
@@ -557,7 +613,11 @@ describe('StreamableHTTPTransport — connect/callTool with mocked fetch', () =>
     const origFetch = globalThis.fetch;
     (globalThis as { fetch: typeof globalThis.fetch }).fetch = fetchImpl;
     try {
-      const t = new StreamableHTTPTransport({ name: 'x', url: 'https://m.test' });
+      const t = new StreamableHTTPTransport({
+        protocolMode: 'legacy',
+        name: 'x',
+        url: 'https://m.test',
+      });
       await expect(t.connect()).rejects.toThrow(/initialize HTTP 502/);
       expect(t.getState()).toBe('failed');
     } finally {
@@ -566,7 +626,7 @@ describe('StreamableHTTPTransport — connect/callTool with mocked fetch', () =>
   });
 
   it('onToolsChanged subscribe + unsubscribe', () => {
-    const t = new StreamableHTTPTransport({ name: 'x', url: 'https://x' });
+    const t = new StreamableHTTPTransport({ protocolMode: 'legacy', name: 'x', url: 'https://x' });
     const cb = vi.fn();
     const off = t.onToolsChanged(cb);
     off();
@@ -916,7 +976,11 @@ describe('SSETransport — mocked connect + callTool', () => {
     const origFetch = globalThis.fetch;
     (globalThis as { fetch: typeof globalThis.fetch }).fetch = fetchImpl;
     try {
-      const t = new StreamableHTTPTransport({ name: 'x', url: 'https://m.test' });
+      const t = new StreamableHTTPTransport({
+        protocolMode: 'legacy',
+        name: 'x',
+        url: 'https://m.test',
+      });
       await expect(t.connect()).rejects.toThrow(/410/);
       expect(t.getState()).toBe('failed');
     } finally {
@@ -926,7 +990,11 @@ describe('SSETransport — mocked connect + callTool', () => {
 
   it('StreamableHTTPTransport close does NOT fire disconnect handlers', async () => {
     // Create a transport and verify close doesn't call disconnect handlers
-    const t = new StreamableHTTPTransport({ name: 'x', url: 'https://m.test' });
+    const t = new StreamableHTTPTransport({
+      protocolMode: 'legacy',
+      name: 'x',
+      url: 'https://m.test',
+    });
     const cb = vi.fn();
     t.onDisconnect(cb);
     await t.close();
@@ -935,7 +1003,11 @@ describe('SSETransport — mocked connect + callTool', () => {
   });
 
   it('StreamableHTTPTransport close sets state to disconnected', async () => {
-    const t = new StreamableHTTPTransport({ name: 'x', url: 'https://m.test' });
+    const t = new StreamableHTTPTransport({
+      protocolMode: 'legacy',
+      name: 'x',
+      url: 'https://m.test',
+    });
     await t.close();
     expect(t.getState()).toBe('disconnected');
   });
@@ -952,7 +1024,11 @@ describe('SSETransport — mocked connect + callTool', () => {
     const origFetch = globalThis.fetch;
     (globalThis as { fetch: typeof globalThis.fetch }).fetch = fetchImpl;
     try {
-      const t = new StreamableHTTPTransport({ name: 'x', url: 'https://m.test' });
+      const t = new StreamableHTTPTransport({
+        protocolMode: 'legacy',
+        name: 'x',
+        url: 'https://m.test',
+      });
       await expect(t.connect()).rejects.toThrow(/Could not parse/);
     } finally {
       (globalThis as { fetch: typeof globalThis.fetch }).fetch = origFetch;
@@ -981,7 +1057,11 @@ describe('SSETransport — mocked connect + callTool', () => {
     const origFetch = globalThis.fetch;
     (globalThis as { fetch: typeof globalThis.fetch }).fetch = fetchImpl;
     try {
-      const t = new StreamableHTTPTransport({ name: 'x', url: 'https://m.test' });
+      const t = new StreamableHTTPTransport({
+        protocolMode: 'legacy',
+        name: 'x',
+        url: 'https://m.test',
+      });
       await t.connect();
       // Without x-mcp-session header, sessionId is undefined — postRaw uses URL without session param
       expect(t.getState()).toBe('connected');
@@ -1022,7 +1102,11 @@ describe('SSETransport — mocked connect + callTool', () => {
     const origFetch = globalThis.fetch;
     (globalThis as { fetch: typeof globalThis.fetch }).fetch = fetchImpl;
     try {
-      const t = new StreamableHTTPTransport({ name: 'x', url: 'https://m.test' });
+      const t = new StreamableHTTPTransport({
+        protocolMode: 'legacy',
+        name: 'x',
+        url: 'https://m.test',
+      });
       await t.connect();
       // The transport should have stored the session ID and used it in postRaw
       expect(t.getState()).toBe('connected');
@@ -1078,7 +1162,11 @@ describe('SSETransport — mocked connect + callTool', () => {
     const origFetch = globalThis.fetch;
     (globalThis as { fetch: typeof globalThis.fetch }).fetch = fetchImpl;
     try {
-      const t = new StreamableHTTPTransport({ name: 'x', url: 'https://m.test' });
+      const t = new StreamableHTTPTransport({
+        protocolMode: 'legacy',
+        name: 'x',
+        url: 'https://m.test',
+      });
       await expect(t.connect()).rejects.toThrow(/id mismatch/);
       expect(t.getState()).toBe('failed');
     } finally {
@@ -1104,6 +1192,7 @@ describe('SSETransport — mocked connect + callTool', () => {
     (globalThis as { fetch: typeof globalThis.fetch }).fetch = fetchImpl;
     try {
       const t = new StreamableHTTPTransport({
+        protocolMode: 'legacy',
         name: 'x',
         url: 'https://m.test',
         requestTimeoutMs: 20,
@@ -1135,7 +1224,11 @@ describe('SSETransport — mocked connect + callTool', () => {
     const origFetch = globalThis.fetch;
     (globalThis as { fetch: typeof globalThis.fetch }).fetch = fetchImpl;
     try {
-      const t = new StreamableHTTPTransport({ name: 'x', url: 'https://m.test' });
+      const t = new StreamableHTTPTransport({
+        protocolMode: 'legacy',
+        name: 'x',
+        url: 'https://m.test',
+      });
       await t.connect();
       // callTool uses postRaw for error handling, but we test request() directly
       // to cover the non-OK throw path in StreamableHTTPTransport.request()
@@ -1170,7 +1263,11 @@ describe('SSETransport — mocked connect + callTool', () => {
     const origFetch = globalThis.fetch;
     (globalThis as { fetch: typeof globalThis.fetch }).fetch = fetchImpl;
     try {
-      const t = new StreamableHTTPTransport({ name: 'x', url: 'https://m.test' });
+      const t = new StreamableHTTPTransport({
+        protocolMode: 'legacy',
+        name: 'x',
+        url: 'https://m.test',
+      });
       await t.connect();
       await expect(
         (t as never as { request: (m: string, p: unknown) => Promise<unknown> }).request(
@@ -1206,7 +1303,11 @@ describe('SSETransport — mocked connect + callTool', () => {
     const origFetch = globalThis.fetch;
     (globalThis as { fetch: typeof globalThis.fetch }).fetch = fetchImpl;
     try {
-      const t = new StreamableHTTPTransport({ name: 'x', url: 'https://m.test' });
+      const t = new StreamableHTTPTransport({
+        protocolMode: 'legacy',
+        name: 'x',
+        url: 'https://m.test',
+      });
       await t.connect();
       const res = await (
         t as never as { request: (m: string, p: unknown) => Promise<unknown> }
@@ -1242,7 +1343,11 @@ describe('SSETransport — mocked connect + callTool', () => {
     const origFetch = globalThis.fetch;
     (globalThis as { fetch: typeof globalThis.fetch }).fetch = fetchImpl;
     try {
-      const t = new StreamableHTTPTransport({ name: 'x', url: 'https://m.test' });
+      const t = new StreamableHTTPTransport({
+        protocolMode: 'legacy',
+        name: 'x',
+        url: 'https://m.test',
+      });
       await t.connect();
       await expect(
         (t as never as { request: (m: string, p: unknown) => Promise<unknown> }).request(
@@ -1326,6 +1431,7 @@ describe('HTTP generic request cancellation', () => {
     const methods: string[] = [];
     try {
       const transport = new StreamableHTTPTransport({
+        protocolMode: 'legacy',
         name: 'cancel-fixture',
         url: 'https://mcp.example.com/',
       });
@@ -1389,6 +1495,7 @@ describe('HTTP capability change listeners', () => {
     const originalFetch = globalThis.fetch;
     try {
       const transport = new StreamableHTTPTransport({
+        protocolMode: 'legacy',
         name: 'events',
         url: 'https://mcp.example.com/',
       });

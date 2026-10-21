@@ -6,6 +6,8 @@ export interface MCPServerConfig {
   description?: string | undefined;
   name: string;
   transport: 'stdio' | 'sse' | 'streamable-http';
+  /** Default auto probes modern MCP first. Legacy explicitly selects the initialize-based path. */
+  protocolMode?: 'auto' | 'legacy' | undefined;
   command?: string | undefined;
   args?: string[] | undefined;
   env?: Record<string, string>;

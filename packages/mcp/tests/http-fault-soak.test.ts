@@ -49,6 +49,7 @@ function httpCfg(name: string): MCPServerConfig {
   return {
     name,
     transport: 'streamable-http',
+    protocolMode: 'legacy',
     url: 'https://faulty.example/mcp',
     startupTimeoutMs: 1000,
     requestTimeoutMs: 1000,

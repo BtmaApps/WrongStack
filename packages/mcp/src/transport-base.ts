@@ -79,6 +79,7 @@ if (!pinnedAgentsCleanupRegistered) {
 export interface HttpTransportOptions {
   name: string;
   url: string;
+  protocolMode?: 'auto' | 'legacy' | undefined;
   headers?: Record<string, string> | undefined;
   startupTimeoutMs?: number | undefined;
   requestTimeoutMs?: number | undefined;

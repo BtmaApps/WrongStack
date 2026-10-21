@@ -32,7 +32,12 @@ function notification(method: string, params?: unknown): string {
 
 describe('stdio transport — inbound progress and log notifications', () => {
   it('delivers both notifications to client listeners with parsed values', () => {
-    const client = new MCPClient({ name: 'fixture', transport: 'stdio', command: 'fixture' });
+    const client = new MCPClient({
+      protocolMode: 'legacy',
+      name: 'fixture',
+      transport: 'stdio',
+      command: 'fixture',
+    });
     const onProgress = vi.fn();
     const onLog = vi.fn();
     client.addProgressListener(onProgress);
@@ -63,7 +68,12 @@ describe('stdio transport — inbound progress and log notifications', () => {
   });
 
   it('ignores malformed payloads and keeps delivering later messages', () => {
-    const client = new MCPClient({ name: 'fixture', transport: 'stdio', command: 'fixture' });
+    const client = new MCPClient({
+      protocolMode: 'legacy',
+      name: 'fixture',
+      transport: 'stdio',
+      command: 'fixture',
+    });
     const onProgress = vi.fn();
     const onLog = vi.fn();
     client.addProgressListener(onProgress);
@@ -89,7 +99,12 @@ describe('stdio transport — inbound progress and log notifications', () => {
   });
 
   it('isolates a throwing listener', () => {
-    const client = new MCPClient({ name: 'fixture', transport: 'stdio', command: 'fixture' });
+    const client = new MCPClient({
+      protocolMode: 'legacy',
+      name: 'fixture',
+      transport: 'stdio',
+      command: 'fixture',
+    });
     const seenProgress = vi.fn();
     const seenLog = vi.fn();
     client.addProgressListener(() => {
@@ -109,7 +124,12 @@ describe('stdio transport — inbound progress and log notifications', () => {
   });
 
   it('stops delivery after remove listener', () => {
-    const client = new MCPClient({ name: 'fixture', transport: 'stdio', command: 'fixture' });
+    const client = new MCPClient({
+      protocolMode: 'legacy',
+      name: 'fixture',
+      transport: 'stdio',
+      command: 'fixture',
+    });
     const onProgress = vi.fn();
     const onLog = vi.fn();
     client.addProgressListener(onProgress);
@@ -123,7 +143,12 @@ describe('stdio transport — inbound progress and log notifications', () => {
   });
 
   it('sends a fresh params._meta.progressToken on every tools/call', async () => {
-    const client = new MCPClient({ name: 'fixture', transport: 'stdio', command: 'fixture' });
+    const client = new MCPClient({
+      protocolMode: 'legacy',
+      name: 'fixture',
+      transport: 'stdio',
+      command: 'fixture',
+    });
     const internals = client as never as {
       state: 'connected';
       request: (
@@ -256,6 +281,7 @@ describe('SSE transport — inbound progress and log notifications', () => {
 describe('streamable-http transport — inbound progress and log notifications', () => {
   it('delivers both from the response stream and survives malformed payloads', async () => {
     const transport = new StreamableHTTPTransport({
+      protocolMode: 'legacy',
       name: 'streamable',
       url: 'https://example.test',
     });
@@ -317,6 +343,7 @@ describe('streamable-http transport — inbound progress and log notifications',
 
   it('sends a fresh params._meta.progressToken on every tools/call', async () => {
     const transport = new StreamableHTTPTransport({
+      protocolMode: 'legacy',
       name: 'streamable',
       url: 'https://example.test',
     });
@@ -380,6 +407,7 @@ describe('streamable-http transport — inbound progress and log notifications',
       });
     });
     const client = new MCPClient({
+      protocolMode: 'legacy',
       name: 'http-fixture',
       transport: 'streamable-http',
       url: 'https://m.test/mcp',
@@ -446,6 +474,7 @@ describe('streamable-http transport — inbound progress and log notifications',
       });
     });
     const client = new MCPClient({
+      protocolMode: 'legacy',
       name: 'sse-fixture',
       transport: 'sse',
       url: 'https://m.test/mcp',

@@ -15,7 +15,12 @@ const METADATA = {
 
 describe('MCPClient coverage', () => {
   it('returns defensive metadata snapshots and delegates active transports', async () => {
-    const client = new MCPClient({ name: 'client', transport: 'stdio', command: 'noop' });
+    const client = new MCPClient({
+      protocolMode: 'legacy',
+      name: 'client',
+      transport: 'stdio',
+      command: 'noop',
+    });
     expect(client.getServerMetadata()).toBeUndefined();
     const internals = client as never as {
       state: 'connected';
@@ -76,6 +81,7 @@ describe('MCPClient coverage', () => {
       return () => {};
     });
     const client = new MCPClient({
+      protocolMode: 'legacy',
       name: 'sse',
       transport: 'sse',
       url: 'https://example.test',
@@ -134,6 +140,7 @@ describe('MCPClient coverage', () => {
       return () => {};
     });
     const client = new MCPClient({
+      protocolMode: 'legacy',
       name: 'http',
       transport: 'streamable-http',
       url: 'https://example.test',
@@ -170,6 +177,7 @@ describe('MCPClient coverage', () => {
     vi.spyOn(SSETransport.prototype, 'close').mockRejectedValue(new Error('close failed'));
     await expect(
       new MCPClient({
+        protocolMode: 'legacy',
         name: 'sse',
         transport: 'sse',
         url: 'https://example.test',
@@ -185,6 +193,7 @@ describe('MCPClient coverage', () => {
     );
     await expect(
       new MCPClient({
+        protocolMode: 'legacy',
         name: 'http',
         transport: 'streamable-http',
         url: 'https://example.test',
@@ -193,7 +202,12 @@ describe('MCPClient coverage', () => {
   });
 
   it('normalizes stdio tool errors and empty results', async () => {
-    const client = new MCPClient({ name: 'stdio', transport: 'stdio', command: 'noop' });
+    const client = new MCPClient({
+      protocolMode: 'legacy',
+      name: 'stdio',
+      transport: 'stdio',
+      command: 'noop',
+    });
     const internals = client as never as {
       state: 'connected';
       request: (method: string, params: unknown) => Promise<unknown>;
@@ -217,7 +231,12 @@ describe('MCPClient coverage', () => {
   });
 
   it('covers capability state, metadata, validation, and empty-result errors', async () => {
-    const client = new MCPClient({ name: 'client', transport: 'stdio', command: 'noop' });
+    const client = new MCPClient({
+      protocolMode: 'legacy',
+      name: 'client',
+      transport: 'stdio',
+      command: 'noop',
+    });
     await expect(client.listResources()).rejects.toThrow(/not connected/);
     await expect(client.subscribeResource('mem://one')).rejects.toThrow(/not connected/);
     const internals = client as never as {
@@ -243,7 +262,12 @@ describe('MCPClient coverage', () => {
   });
 
   it('covers strict stdio response validation and notification guards', () => {
-    const client = new MCPClient({ name: 'client', transport: 'stdio', command: 'noop' });
+    const client = new MCPClient({
+      protocolMode: 'legacy',
+      name: 'client',
+      transport: 'stdio',
+      command: 'noop',
+    });
     const internals = client as never as {
       onLine: (line: string) => void;
       pending: Map<number, unknown>;
@@ -276,7 +300,12 @@ describe('MCPClient coverage', () => {
   });
 
   it('closes on an oversized receive buffer', async () => {
-    const client = new MCPClient({ name: 'client', transport: 'stdio', command: 'noop' });
+    const client = new MCPClient({
+      protocolMode: 'legacy',
+      name: 'client',
+      transport: 'stdio',
+      command: 'noop',
+    });
     const close = vi.spyOn(client, 'close');
     (
       client as never as {
@@ -287,7 +316,12 @@ describe('MCPClient coverage', () => {
   });
 
   it('resolves drain backpressure and clears listeners', async () => {
-    const client = new MCPClient({ name: 'client', transport: 'stdio', command: 'noop' });
+    const client = new MCPClient({
+      protocolMode: 'legacy',
+      name: 'client',
+      transport: 'stdio',
+      command: 'noop',
+    });
     let drain: (() => void) | undefined;
     const removeListener = vi.fn();
     (client as never as { child: unknown }).child = {
@@ -313,6 +347,7 @@ describe('MCPClient coverage', () => {
     const existingName = 'WRONGSTACK_CLIENT_COVERAGE_ENV';
     process.env[existingName] = 'forwarded';
     const client = new MCPClient({
+      protocolMode: 'legacy',
       name: 'stdio',
       transport: 'stdio',
       command: process.execPath,
@@ -356,6 +391,7 @@ describe('MCPClient coverage', () => {
   it('rejects stdio initialize errors and malformed metadata', async () => {
     const create = () =>
       new MCPClient({
+        protocolMode: 'legacy',
         name: 'stdio',
         transport: 'stdio',
         command: process.execPath,
@@ -388,7 +424,12 @@ describe('MCPClient coverage', () => {
   });
 
   it('tolerates failed cancellation notifications', async () => {
-    const client = new MCPClient({ name: 'client', transport: 'stdio', command: 'noop' });
+    const client = new MCPClient({
+      protocolMode: 'legacy',
+      name: 'client',
+      transport: 'stdio',
+      command: 'noop',
+    });
     const internals = client as never as {
       child: { stdin: { destroyed: boolean; write: () => boolean } };
       request: (
@@ -411,7 +452,12 @@ describe('MCPClient coverage', () => {
   });
 
   it('handles missing pending entries in stdin failure guards', async () => {
-    const client = new MCPClient({ name: 'client', transport: 'stdio', command: 'noop' });
+    const client = new MCPClient({
+      protocolMode: 'legacy',
+      name: 'client',
+      transport: 'stdio',
+      command: 'noop',
+    });
     const internals = client as never as {
       pending: Map<number, unknown>;
       child: { stdin: { destroyed: boolean; write?: () => boolean } };
@@ -440,7 +486,12 @@ describe('MCPClient coverage', () => {
   });
 
   it('ignores blank lines, unknown notifications, and unmatched responses', () => {
-    const client = new MCPClient({ name: 'client', transport: 'stdio', command: 'noop' });
+    const client = new MCPClient({
+      protocolMode: 'legacy',
+      name: 'client',
+      transport: 'stdio',
+      command: 'noop',
+    });
     const internals = client as never as {
       onData: (data: string) => void;
       onLine: (line: string) => void;
@@ -463,7 +514,12 @@ describe('MCPClient coverage', () => {
   });
 
   it('handles abort after a pending entry was externally cleared', async () => {
-    const client = new MCPClient({ name: 'client', transport: 'stdio', command: 'noop' });
+    const client = new MCPClient({
+      protocolMode: 'legacy',
+      name: 'client',
+      transport: 'stdio',
+      command: 'noop',
+    });
     const internals = client as never as {
       child: { stdin: { destroyed: boolean; write: () => boolean } };
       pending: Map<number, unknown>;
@@ -488,6 +544,7 @@ describe('MCPClient coverage', () => {
     const originalPlatform = process.platform;
     Object.defineProperty(process, 'platform', { value: 'linux' });
     const client = new MCPClient({
+      protocolMode: 'legacy',
       name: 'stdio-posix',
       transport: 'stdio',
       command: process.execPath,

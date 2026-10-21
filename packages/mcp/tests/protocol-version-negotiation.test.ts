@@ -132,7 +132,7 @@ describe('MCP client-side protocol version enforcement', () => {
 
       // Nothing after `initialize` may reach a server we refused.
       const seen = (await readFile(markerPath, 'utf8')).trim().split('\n');
-      expect(seen).toEqual(['initialize']);
+      expect(seen).toEqual(['server/discover', 'initialize']);
 
       // connect() awaited close(), so the escalation has already run. Poll for
       // the PID to disappear (ESRCH) rather than sleeping a guess.

@@ -68,6 +68,7 @@ describe('StreamableHTTPTransport — response bodies honor MAX_MCP_HTTP_BODY_BY
     );
 
     const transport = new StreamableHTTPTransport({
+      protocolMode: 'legacy',
       name: 'cap-json',
       url: 'https://mcp.example.com',
     });
@@ -89,6 +90,7 @@ describe('StreamableHTTPTransport — response bodies honor MAX_MCP_HTTP_BODY_BY
     );
 
     const transport = new StreamableHTTPTransport({
+      protocolMode: 'legacy',
       name: 'cap-sse',
       url: 'https://mcp.example.com',
     });
@@ -122,6 +124,7 @@ describe('StreamableHTTPTransport — response bodies honor MAX_MCP_HTTP_BODY_BY
     );
 
     const transport = new StreamableHTTPTransport({
+      protocolMode: 'legacy',
       name: 'cap-notify',
       url: 'https://mcp.example.com',
     });

@@ -1,5 +1,13 @@
 import { assertSupportedServerProtocolVersion, MCP_CONSTANTS } from './constants.js';
 import type { JsonRpcResponse, ToolCallResult } from './contracts.js';
+import { modernRequestHeaders, toolHeaderBindings } from './modern-http-headers.js';
+import {
+  assertCompleteResult,
+  isModernError,
+  MODERN_PROTOCOL_VERSION,
+  modernParams,
+  parseDiscovery,
+} from './modern-protocol.js';
 import {
   logMessageNotification,
   parseServerMetadata,
@@ -37,9 +45,13 @@ export class StreamableHTTPTransport extends BaseHTTPTransport {
   private toolCatalogVersion = 0;
   private toolCatalogRevision = 0;
   private sessionId?: string | undefined;
+  private readonly protocolMode: 'auto' | 'legacy';
 
   constructor(opts: HttpTransportOptions) {
     super(opts, 'StreamableHTTP');
+    if (opts.protocolMode !== undefined && !['auto', 'legacy'].includes(opts.protocolMode))
+      throw new Error('MCP protocolMode must be auto or legacy');
+    this.protocolMode = opts.protocolMode ?? 'auto';
   }
 
   protected override genId(): number {
@@ -113,6 +125,7 @@ export class StreamableHTTPTransport extends BaseHTTPTransport {
         if (envelope.id === requestId) match ??= envelope;
         else others.push(envelope);
       } else if (envelope.id !== undefined) {
+        if (this.protocolVersion === MODERN_PROTOCOL_VERSION) continue;
         void this.replyToServer(
           { id: envelope.id, method: envelope.method, params: envelope.params },
           this.url,
@@ -157,7 +170,9 @@ export class StreamableHTTPTransport extends BaseHTTPTransport {
   private async refreshTools(): Promise<void> {
     const version = ++this.toolCatalogVersion;
     try {
-      const tools = await listAllTools((params) => this.postRaw('tools/list', params));
+      const tools = this.filterModernTools(
+        await listAllTools((params) => this.postRaw('tools/list', params)),
+      );
       if (!tools || version !== this.toolCatalogVersion) return;
       this.tools.splice(0, this.tools.length, ...tools);
       this.toolCatalogRevision++;
@@ -174,11 +189,95 @@ export class StreamableHTTPTransport extends BaseHTTPTransport {
     }
   }
 
+  private filterModernTools<T extends { name: string; inputSchema: Record<string, unknown> }>(
+    tools: T[] | null,
+  ): T[] | null {
+    if (this.protocolVersion !== MODERN_PROTOCOL_VERSION) return tools;
+    return (
+      tools?.filter((tool) => {
+        try {
+          toolHeaderBindings(tool.inputSchema);
+          return true;
+        } catch {
+          console.warn(
+            `MCP "${this.name}" excluded tool "${tool.name}": invalid x-mcp-header annotation`,
+          );
+          return false;
+        }
+      }) ?? null
+    );
+  }
+
+  private requestHeaders(method: string, params: unknown): Record<string, string> {
+    const schema =
+      method === 'tools/call'
+        ? this.tools.find((tool) => tool.name === (params as { name?: unknown } | undefined)?.name)
+            ?.inputSchema
+        : undefined;
+    const headers = {
+      'Content-Type': 'application/json',
+      ...this.sessionHeaders(),
+    };
+    if (this.protocolVersion !== MODERN_PROTOCOL_VERSION) return headers;
+    const canonical = new Headers(headers);
+    for (const name of [...canonical.keys()]) {
+      if (/^mcp-(?:protocol-version|method|name|session-id)$|^mcp-param-/i.test(name))
+        canonical.delete(name);
+    }
+    canonical.set('Content-Type', 'application/json');
+    canonical.set('Accept', 'application/json, text/event-stream');
+    for (const [name, value] of Object.entries(modernRequestHeaders(method, params, schema)))
+      canonical.set(name, value);
+    return Object.fromEntries(canonical.entries());
+  }
+
+  private async discoverModern(signal: AbortSignal): Promise<boolean> {
+    this.protocolVersion = MODERN_PROTOCOL_VERSION;
+    this.sessionId = undefined;
+    const id = this.genId();
+    const params = modernParams({});
+    const options: RequestInit = {
+      method: 'POST',
+      headers: this.requestHeaders('server/discover', params),
+      body: encodeJsonRpcMessage(id, 'server/discover', params),
+      signal,
+    };
+    this.applyTlsAgent(options);
+    const response = await this.fetchWithAuthorization(this.url, options, signal);
+    const parsed = await this.readResponse(response, id);
+    const data = parsed ? assertMatchingJsonRpcResult(parsed, id, 'server/discover') : undefined;
+    if (data && isModernError(data.error)) {
+      this.serverMetadata = parseDiscovery(this.name, data); // recognized modern errors never downgrade
+      return true;
+    }
+    if (!response.ok) {
+      if (
+        [400, 404, 405].includes(response.status) &&
+        !(response.status === 404 && data?.error?.code === -32601)
+      ) {
+        this.protocolVersion = undefined;
+        return false;
+      }
+      throw new Error(
+        `server/discover HTTP ${response.status}: ${data?.error?.message ?? response.statusText}`,
+      );
+    }
+    if (data?.error) {
+      this.protocolVersion = undefined;
+      return false;
+    }
+    if (!data) throw new Error('Could not parse server/discover response');
+    this.serverMetadata = parseDiscovery(this.name, data);
+    return true;
+  }
+
   async connect(): Promise<void> {
     this.toolCatalogVersion++;
     this.closed = false;
     this.state = 'connecting';
     this.serverMetadata = undefined;
+    this.protocolVersion = undefined;
+    this.sessionId = undefined;
     const controller = new AbortController();
     this.abortController = controller;
     const signal = controller.signal;
@@ -190,66 +289,72 @@ export class StreamableHTTPTransport extends BaseHTTPTransport {
     const startupTimer = setTimeout(() => controller.abort(), this.timeout);
 
     try {
-      const initializeId = this.genId();
-      const initFetchOpts: RequestInit = {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json, text/event-stream',
-          ...this.headers,
-        },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          id: initializeId,
-          method: 'initialize',
-          params: {
-            protocolVersion: MCP_CONSTANTS.PROTOCOL_VERSION,
-            // Client capabilities: elicitation when the host can ask its user
-            // (`tools` is a server capability and never belongs here).
-            capabilities: this.serverRequests.capabilities(),
-            clientInfo: MCP_CONSTANTS.CLIENT_INFO,
+      const modern = this.protocolMode !== 'legacy' && (await this.discoverModern(signal));
+      assertCurrent();
+      if (!modern) {
+        const initializeId = this.genId();
+        const initFetchOpts: RequestInit = {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json, text/event-stream',
+            ...this.headers,
           },
-        }),
-        signal,
-      };
-      this.applyTlsAgent(initFetchOpts);
-      const initRes = await this.fetchWithAuthorization(this.url, initFetchOpts, signal);
-      assertCurrent();
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            id: initializeId,
+            method: 'initialize',
+            params: {
+              protocolVersion: MCP_CONSTANTS.PROTOCOL_VERSION,
+              // Client capabilities: elicitation when the host can ask its user
+              // (`tools` is a server capability and never belongs here).
+              capabilities: this.serverRequests.capabilities(),
+              clientInfo: MCP_CONSTANTS.CLIENT_INFO,
+            },
+          }),
+          signal,
+        };
+        this.applyTlsAgent(initFetchOpts);
+        const initRes = await this.fetchWithAuthorization(this.url, initFetchOpts, signal);
+        assertCurrent();
 
-      if (!initRes.ok) {
-        throw new Error(`initialize HTTP ${initRes.status}: ${initRes.statusText}`);
+        if (!initRes.ok) {
+          throw new Error(`initialize HTTP ${initRes.status}: ${initRes.statusText}`);
+        }
+
+        let data = await this.readResponse(initRes, initializeId);
+
+        assertCurrent();
+        if (!data) {
+          throw new Error('Could not parse initialize response');
+        }
+        data = assertMatchingJsonRpcResult(data, initializeId, 'initialize');
+
+        if (data.error) {
+          throw new Error(`initialize failed: ${data.error.message}`);
+        }
+        this.serverMetadata = parseServerMetadata(data.result);
+        // Throws on a revision we do not implement: the catch below aborts the
+        // connect controller and marks the transport failed, and MCPClient's
+        // connect wrapper closes the transport — that is the disconnect the
+        // 2024-11-05 lifecycle asks for.
+        this.protocolVersion = assertSupportedServerProtocolVersion(
+          this.name,
+          this.serverMetadata.protocolVersion,
+        );
+
+        // MCP Streamable HTTP spec: the server assigns a session via the
+        // `Mcp-Session-Id` response header, which the client must echo on every
+        // subsequent request. (Header lookups are case-insensitive.)
+        this.sessionId = initRes.headers.get('mcp-session-id') ?? undefined;
+        await this.postRaw('notifications/initialized', {});
+        assertCurrent();
       }
-
-      let data = await this.readResponse(initRes, initializeId);
-
-      assertCurrent();
-      if (!data) {
-        throw new Error('Could not parse initialize response');
-      }
-      data = assertMatchingJsonRpcResult(data, initializeId, 'initialize');
-
-      if (data.error) {
-        throw new Error(`initialize failed: ${data.error.message}`);
-      }
-      this.serverMetadata = parseServerMetadata(data.result);
-      // Throws on a revision we do not implement: the catch below aborts the
-      // connect controller and marks the transport failed, and MCPClient's
-      // connect wrapper closes the transport — that is the disconnect the
-      // 2024-11-05 lifecycle asks for.
-      this.protocolVersion = assertSupportedServerProtocolVersion(
-        this.name,
-        this.serverMetadata.protocolVersion,
-      );
-
-      // MCP Streamable HTTP spec: the server assigns a session via the
-      // `Mcp-Session-Id` response header, which the client must echo on every
-      // subsequent request. (Header lookups are case-insensitive.)
-      this.sessionId = initRes.headers.get('mcp-session-id') ?? undefined;
-      await this.postRaw('notifications/initialized', {});
-      assertCurrent();
 
       const revision = this.toolCatalogRevision;
-      const tools = await listAllTools((params) => this.postRaw('tools/list', params));
+      const tools = this.filterModernTools(
+        await listAllTools((params) => this.postRaw('tools/list', params)),
+      );
       assertCurrent();
       if (revision === this.toolCatalogRevision) {
         this.tools.splice(0, this.tools.length, ...(tools ?? []));
@@ -271,24 +376,21 @@ export class StreamableHTTPTransport extends BaseHTTPTransport {
     method: string,
     params: unknown,
     opts?: { signal?: AbortSignal | undefined },
+    timeoutMs = this.requestTimeout,
   ): Promise<JsonRpcResult> {
     const id = this.genId();
-    const body = encodeJsonRpcMessage(id, method, params);
+    const modern = this.protocolVersion === MODERN_PROTOCOL_VERSION;
+    const body = encodeJsonRpcMessage(id, method, modern ? modernParams(params) : params);
 
     const external = opts?.signal;
     const parent =
       external && this.abortController
         ? AbortSignal.any([this.abortController.signal, external])
         : (external ?? this.abortController?.signal);
-    const timeoutSignal = this.requestTimeoutSignal(parent, this.requestTimeout);
+    const timeoutSignal = this.requestTimeoutSignal(parent, timeoutMs);
     const fetchOpts: RequestInit = {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json, text/event-stream',
-        ...(this.sessionId ? { 'Mcp-Session-Id': this.sessionId } : {}),
-        ...this.headers,
-      },
+      headers: this.requestHeaders(method, params),
       body,
       signal: timeoutSignal.signal,
     };
@@ -298,6 +400,14 @@ export class StreamableHTTPTransport extends BaseHTTPTransport {
     try {
       const res = await this.fetchWithAuthorization(this.url, fetchOpts, timeoutSignal.signal);
       if (!res.ok) {
+        if ([401, 403, 410].includes(res.status)) this.markDisconnected();
+        if (modern) {
+          const response = await this.readResponse(res, id);
+          if (response?.error) {
+            if (res.status === 404 && response.error.code !== -32601) this.markDisconnected();
+            return assertMatchingJsonRpcResult(response, id, method);
+          }
+        }
         if (StreamableHTTPTransport.SESSION_FATAL_HTTP_STATUSES.has(res.status)) {
           this.markDisconnected();
         }
@@ -314,17 +424,20 @@ export class StreamableHTTPTransport extends BaseHTTPTransport {
 
       const match = await this.readResponse(res, id);
       if (match) {
-        return assertMatchingJsonRpcResult(match, id, method);
+        const matched = assertMatchingJsonRpcResult(match, id, method);
+        if (modern) assertCompleteResult(matched);
+        return matched;
       }
       throw new Error('Could not parse response as JSON-RPC');
     } catch (err) {
       if (external?.aborted && !method.startsWith('notifications/')) {
         // MCP spec cancellation: tell the server to stop the in-flight
         // request. Best-effort fire-and-forget.
-        void this.postRaw('notifications/cancelled', {
-          requestId: id,
-          reason: 'client aborted',
-        }).catch(() => {});
+        if (!modern)
+          void this.postRaw('notifications/cancelled', {
+            requestId: id,
+            reason: 'client aborted',
+          }).catch(() => {});
         throw makeAbortError(method);
       }
       throw err;
@@ -340,69 +453,8 @@ export class StreamableHTTPTransport extends BaseHTTPTransport {
     timeoutMs?: number,
     opts?: { signal?: AbortSignal | undefined },
   ): Promise<JsonRpcResponse> {
-    const id = this.genId();
-    const body = encodeJsonRpcMessage(id, method, params);
-
-    const external = opts?.signal;
-    const parent =
-      external && this.abortController
-        ? AbortSignal.any([this.abortController.signal, external])
-        : (external ?? this.abortController?.signal);
-    const timeoutSignal = this.requestTimeoutSignal(parent, timeoutMs ?? this.requestTimeout);
-    const fetchOpts: RequestInit = {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json, text/event-stream',
-        ...(this.sessionId ? { 'Mcp-Session-Id': this.sessionId } : {}),
-        ...this.headers,
-      },
-      body,
-      signal: timeoutSignal.signal,
-    };
-    this.applyTlsAgent(fetchOpts);
-    try {
-      const res = await this.fetchWithAuthorization(this.url, fetchOpts, timeoutSignal.signal);
-      if (!res.ok) {
-        if (StreamableHTTPTransport.SESSION_FATAL_HTTP_STATUSES.has(res.status)) {
-          this.markDisconnected();
-        }
-        throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-      }
-
-      if (method.startsWith('notifications/')) {
-        // 202/empty in practice, but a hostile server can attach a huge body —
-        // drain it through the cap instead of res.text().
-        await readBodyCapped(res).catch(() => undefined);
-        return { jsonrpc: '2.0', id };
-      }
-
-      const parsed = await this.readResponse(res, id);
-      if (parsed) {
-        // readResponse falls back to the FIRST response when none
-        // carries our id; without this check another request's result was
-        // returned as this one's.
-        const matched = assertMatchingJsonRpcResult(parsed, id, method);
-        return {
-          jsonrpc: '2.0',
-          id,
-          result: matched.result,
-          error: matched.error,
-        };
-      }
-      throw new Error('Could not parse response as JSON-RPC');
-    } catch (err) {
-      if (external?.aborted && !method.startsWith('notifications/')) {
-        void this.postRaw('notifications/cancelled', {
-          requestId: id,
-          reason: 'client aborted',
-        }).catch(() => {});
-        throw makeAbortError(method);
-      }
-      throw err;
-    } finally {
-      timeoutSignal.dispose();
-    }
+    if (opts?.signal?.aborted) throw makeAbortError(method);
+    return this.postRaw(method, params, opts, timeoutMs ?? this.requestTimeout);
   }
 
   async callTool(
@@ -421,7 +473,7 @@ export class StreamableHTTPTransport extends BaseHTTPTransport {
       { name, arguments: input, _meta: { progressToken: this.nextProgressToken() } },
       opts,
     );
-    return toToolCallResult(res);
+    return toToolCallResult(res, this.protocolVersion !== MODERN_PROTOCOL_VERSION);
   }
 
   async close(): Promise<void> {

@@ -39,6 +39,7 @@ import type {
 } from './client-types.js';
 import type { ConnectionState, JsonRpcResponse, MCPTool, ToolCallResult } from './contracts.js';
 import { ServerRequestResponder, type UrlElicitation } from './elicitation.js';
+import { MODERN_PROTOCOL_VERSION } from './modern-protocol.js';
 import {
   type MCPCompletionReference,
   type MCPCompletionResult,
@@ -255,7 +256,7 @@ export class MCPClient {
       undefined,
       opts,
     );
-    return toToolCallResult(res);
+    return toToolCallResult(res, this._serverMetadata?.protocolVersion !== MODERN_PROTOCOL_VERSION);
   }
 
   /**
@@ -407,6 +408,7 @@ export class MCPClient {
   }
 
   protected async handleServerRequest(request: JsonRpcServerRequest): Promise<void> {
+    if (this._serverMetadata?.protocolVersion === MODERN_PROTOCOL_VERSION) return;
     const response = await this.serverRequests.answer(request);
     try {
       this.child?.stdin?.write(`${JSON.stringify(response)}\n`);

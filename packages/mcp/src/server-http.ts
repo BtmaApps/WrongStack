@@ -2,6 +2,7 @@ import { timingSafeEqual } from 'node:crypto';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { type AddressInfo, isIP } from 'node:net';
 import { toErrorMessage } from '@wrongstack/core/utils';
+import { hasModernMetadata, objectRecord } from './modern-protocol.js';
 import type { MCPServer, MCPServerLogger } from './server-dispatch.js';
 import { HTTP_BODY_CAP } from './server-stdio.js';
 // 4 MiB
@@ -161,9 +162,70 @@ export async function handleHttpRequest(
   req.on('end', () => {
     if (aborted) return;
     const body = Buffer.concat(chunks, bodyBytes).toString('utf8');
-    void server
-      .handleMessage(body)
+    void (async () => {
+      let message: Record<string, unknown> | undefined;
+      try {
+        message = objectRecord(JSON.parse(body));
+      } catch {
+        /* The core owns parse errors. */
+      }
+      const modern =
+        hasModernMetadata(message?.['params']) ||
+        (typeof req.headers['mcp-protocol-version'] === 'string' &&
+          req.headers['mcp-protocol-version'] >= '2026-07-28');
+      if (modern) {
+        try {
+          const headers = new Headers();
+          for (const [name, value] of Object.entries(req.headers)) {
+            if (typeof value === 'string') headers.set(name, value);
+          }
+          await server.validateHttpHeaders(
+            String(message?.['method']),
+            message?.['params'],
+            headers,
+          );
+        } catch (error) {
+          send(
+            400,
+            JSON.stringify({
+              jsonrpc: '2.0',
+              id: message?.['id'] ?? null,
+              error: { code: -32020, message: toErrorMessage(error) },
+            }),
+          );
+          return undefined;
+        }
+      }
+      const controller = new AbortController();
+      const abort = () => {
+        if (!res.writableEnded) controller.abort();
+      };
+      if (modern) res.once('close', abort);
+      try {
+        const out = await server.handleMessage(
+          body,
+          modern ? { signal: controller.signal } : undefined,
+        );
+        if (res.destroyed) return undefined;
+        if (modern && out) {
+          const error = objectRecord(JSON.parse(out))?.['error'];
+          const code = objectRecord(error)?.['code'];
+          if (code === -32022 || code === -32020) {
+            send(400, out);
+            return undefined;
+          }
+          if (code === -32601) {
+            send(404, out);
+            return undefined;
+          }
+        }
+        return out;
+      } finally {
+        res.removeListener('close', abort);
+      }
+    })()
       .then((out) => {
+        if (out === undefined) return;
         // Notifications produce no response body.
         if (out === null) return send(202, '');
         return send(200, out);

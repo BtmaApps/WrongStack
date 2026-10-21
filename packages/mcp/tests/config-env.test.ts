@@ -147,6 +147,10 @@ rl.createInterface({ input: process.stdin, terminal: false }).on('line', (line) 
       let body = '';
       for await (const chunk of req) body += chunk;
       const msg = JSON.parse(body) as { id?: number; method: string };
+      if (msg.method === 'server/discover') {
+        res.writeHead(400).end();
+        return;
+      }
       if (msg.id === undefined) {
         res.writeHead(202).end();
         return;

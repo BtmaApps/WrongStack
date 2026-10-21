@@ -48,12 +48,15 @@ function sanitizeToolAnnotations(value: unknown): MCPToolAnnotations | undefined
  * JSON-RPC error becomes an error result; `structuredContent` is kept only
  * when it is the object the spec requires.
  */
-export function toToolCallResult(response: {
-  result?: unknown | undefined;
-  error?: { message: string; code?: number | undefined; data?: unknown } | undefined;
-}): ToolCallResult {
+export function toToolCallResult(
+  response: {
+    result?: unknown | undefined;
+    error?: { message: string; code?: number | undefined; data?: unknown } | undefined;
+  },
+  allowUrlElicitation = true,
+): ToolCallResult {
   if (response.error) {
-    const pages = urlElicitationsOf(response.error);
+    const pages = allowUrlElicitation ? urlElicitationsOf(response.error) : [];
     return {
       content: response.error.message,
       isError: true,

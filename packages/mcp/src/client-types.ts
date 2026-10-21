@@ -9,6 +9,7 @@ export type Transport = 'stdio' | 'sse' | 'streamable-http';
 export interface MCPClientOptions {
   name: string;
   transport: Transport;
+  protocolMode?: 'auto' | 'legacy' | undefined;
   command?: string | undefined;
   args?: string[] | undefined;
   env?: Record<string, string> | undefined;

@@ -1,6 +1,19 @@
 import { expectDefined, toErrorMessage, validateAgainstSchema } from '@wrongstack/core/utils';
-import { MCP_CONSTANTS, negotiateProtocolVersion } from './constants.js';
+import {
+  MCP_CONSTANTS,
+  negotiateProtocolVersion,
+  SUPPORTED_PROTOCOL_VERSIONS,
+} from './constants.js';
 import type { MCPToolAnnotations } from './contracts.js';
+import { validateModernHeaders } from './modern-http-headers.js';
+import {
+  CAPABILITIES_META,
+  hasModernMetadata,
+  INFO_META,
+  MODERN_PROTOCOL_VERSION,
+  objectRecord,
+  requestVersion,
+} from './modern-protocol.js';
 import type { MCPPromptArgument, MCPPromptMessage, MCPResourceContents } from './protocol.js';
 
 /**
@@ -122,7 +135,7 @@ export class MCPServer {
   private readonly resources: MCPServerResource[];
   private readonly prompts: MCPServerPrompt[];
   private readonly instructions: string | undefined;
-  private readonly inFlightRequests = new Map<number | string, AbortController>();
+  private readonly inFlightRequests = new Map<number | string | symbol, AbortController>();
 
   constructor(opts: MCPServerOptions) {
     this.host = opts.host;
@@ -136,12 +149,21 @@ export class MCPServer {
     this.prompts = structuredClone(opts.prompts ?? []);
   }
 
+  async validateHttpHeaders(method: string, params: unknown, headers: Headers): Promise<void> {
+    const name = objectRecord(params)?.['name'];
+    const schema =
+      method === 'tools/call'
+        ? (await this.host.listTools()).find((tool) => tool.name === name)?.inputSchema
+        : undefined;
+    validateModernHeaders(method, params, headers, schema);
+  }
+
   /**
    * Handle one raw JSON-RPC line. Returns the response JSON string for
    * requests, or `null` for notifications (no `id`) and for blank input —
    * the caller should write the string to its output stream when non-null.
    */
-  async handleMessage(raw: string): Promise<string | null> {
+  async handleMessage(raw: string, options?: { signal?: AbortSignal }): Promise<string | null> {
     const line = raw.trim();
     if (!line) return null;
 
@@ -188,18 +210,73 @@ export class MCPServer {
     }
 
     const requestId = expectDefined(msg.id);
+    const version = requestVersion(msg.params);
+    const modern = hasModernMetadata(msg.params);
+    if (modern && typeof version !== 'string')
+      return this.encodeError(
+        requestId,
+        INVALID_PARAMS,
+        'Missing or invalid protocol version metadata',
+      );
+    if (modern && version !== MODERN_PROTOCOL_VERSION) {
+      return JSON.stringify({
+        jsonrpc: '2.0',
+        id: requestId,
+        error: {
+          code: -32022,
+          message: 'Unsupported protocol version',
+          data: {
+            supported: [MODERN_PROTOCOL_VERSION, ...SUPPORTED_PROTOCOL_VERSIONS],
+            requested: version,
+          },
+        },
+      });
+    }
+    if (modern) {
+      const meta = objectRecord(objectRecord(msg.params)?.['_meta']);
+      const info = objectRecord(meta?.[INFO_META]);
+      if (
+        !info ||
+        typeof info['name'] !== 'string' ||
+        typeof info['version'] !== 'string' ||
+        !info['name'] ||
+        !info['version'] ||
+        !objectRecord(meta?.[CAPABILITIES_META])
+      )
+        return this.encodeError(
+          requestId,
+          INVALID_PARAMS,
+          'Modern requests require clientInfo and clientCapabilities metadata',
+        );
+      if (msg.method === 'initialize')
+        return this.encodeError(
+          requestId,
+          METHOD_NOT_FOUND,
+          'Modern MCP requests do not use initialize',
+        );
+    }
     const controller = new AbortController();
+    const abort = () => controller.abort(options?.signal?.reason);
+    options?.signal?.addEventListener('abort', abort, { once: true });
+    if (options?.signal?.aborted) abort();
+    // Modern HTTP has request-scoped cancellation and no shared session IDs.
+    const requestKey = options?.signal ? Symbol() : requestId;
     // One id has one abort handle. A retry that reuses the id must not orphan
     // the call already running under it: cancellation is keyed only by id.
-    const displaced = this.inFlightRequests.get(requestId);
-    this.inFlightRequests.set(requestId, controller);
+    const displaced = this.inFlightRequests.get(requestKey);
+    this.inFlightRequests.set(requestKey, controller);
     displaced?.abort(new Error('MCP request id reused by a newer in-flight call'));
     try {
+      controller.signal.throwIfAborted();
       const result = await this.dispatch(msg.method, msg.params, controller.signal);
       if (result === METHOD_NOT_FOUND_SENTINEL) {
         return this.encodeError(requestId, METHOD_NOT_FOUND, `Method not found: ${msg.method}`);
       }
-      return JSON.stringify({ jsonrpc: '2.0', id: msg.id, result });
+      return JSON.stringify({
+        jsonrpc: '2.0',
+        id: msg.id,
+        result: modern ? { ...objectRecord(result), resultType: 'complete' } : result,
+      });
     } catch (err) {
       const message = toErrorMessage(err);
       this.logger?.warn?.(`MCP server: method "${msg.method}" threw: ${message}`);
@@ -213,7 +290,11 @@ export class MCPServer {
         return JSON.stringify({
           jsonrpc: '2.0',
           id: requestId,
-          result: { content: [{ type: 'text', text: message }], isError: true },
+          result: {
+            ...(modern ? { resultType: 'complete' } : {}),
+            content: [{ type: 'text', text: message }],
+            isError: true,
+          },
         });
       }
       // Anything in the InvalidParamsError family is the caller's request
@@ -222,8 +303,9 @@ export class MCPServer {
       const code = err instanceof InvalidParamsError ? INVALID_PARAMS : INTERNAL_ERROR;
       return this.encodeError(requestId, code, message);
     } finally {
-      if (this.inFlightRequests.get(requestId) === controller) {
-        this.inFlightRequests.delete(requestId);
+      options?.signal?.removeEventListener('abort', abort);
+      if (this.inFlightRequests.get(requestKey) === controller) {
+        this.inFlightRequests.delete(requestKey);
       }
     }
   }
@@ -234,6 +316,18 @@ export class MCPServer {
     signal?: AbortSignal | undefined,
   ): Promise<unknown> {
     switch (method) {
+      case 'server/discover':
+        return {
+          resultType: 'complete',
+          supportedVersions: [MODERN_PROTOCOL_VERSION, ...SUPPORTED_PROTOCOL_VERSIONS],
+          capabilities: {
+            tools: {},
+            ...(this.resources.length ? { resources: {} } : {}),
+            ...(this.prompts.length ? { prompts: {} } : {}),
+          },
+          _meta: { 'io.modelcontextprotocol/serverInfo': this.serverInfo },
+          ...(this.instructions ? { instructions: this.instructions } : {}),
+        };
       case 'initialize':
         return {
           protocolVersion: negotiateProtocolVersion(
@@ -265,6 +359,7 @@ export class MCPServer {
             ? (p.arguments as Record<string, unknown>)
             : {};
         await this.assertArgumentsMatchSchema(p.name, args);
+        signal?.throwIfAborted();
         const res = await this.host.callTool(p.name, args, { signal });
         return { content: toContentBlocks(res.content), isError: res.isError };
       }

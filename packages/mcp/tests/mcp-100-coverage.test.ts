@@ -68,6 +68,7 @@ describe('mcp 100% coverage suite', () => {
 
   it('covers client.ts stdout end with rxBuffer, and notify on destroyed/unwritable stdin', async () => {
     const client = new MCPClient({
+      protocolMode: 'legacy',
       name: 'stdio-test',
       transport: 'stdio',
       command: process.execPath,
@@ -117,7 +118,12 @@ describe('mcp 100% coverage suite', () => {
     }
 
     // 4. notify() when child is undefined (!stdin)
-    const noChildClient = new MCPClient({ name: 'no-child', transport: 'stdio', command: 'node' });
+    const noChildClient = new MCPClient({
+      protocolMode: 'legacy',
+      name: 'no-child',
+      transport: 'stdio',
+      command: 'node',
+    });
     await expect((noChildClient as any).notify('test/method', {})).resolves.toBeUndefined();
 
     // 5. onData without newline (false branch of line 910 if (start > 0))
@@ -128,6 +134,7 @@ describe('mcp 100% coverage suite', () => {
 
     // 6. concurrent close() calls (line 594 if (this.closePromise) return this.closePromise)
     const clientForClose = new MCPClient({
+      protocolMode: 'legacy',
       name: 'close-test',
       transport: 'stdio',
       command: 'node',
@@ -138,6 +145,7 @@ describe('mcp 100% coverage suite', () => {
 
     // 7. connect failure with close rejecting (line 201 catch (() => {}))
     const failCloseClient = new MCPClient({
+      protocolMode: 'legacy',
       name: 'fail-close',
       transport: 'stdio',
       command: 'node',
@@ -610,6 +618,7 @@ describe('mcp 100% coverage suite', () => {
 
   it('covers transport-streamable.ts session fatal status codes marking disconnected', async () => {
     const transport = new StreamableHTTPTransport({
+      protocolMode: 'legacy',
       name: 'streamable',
       url: 'https://example.com',
     });

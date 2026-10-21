@@ -16,6 +16,7 @@ describe('StreamableHTTPTransport.connect SSE handling', () => {
     globalThis.fetch = (async (_url: unknown, init?: RequestInit) => {
       const headers = new Headers(init?.headers);
       const body = JSON.parse(String(init?.body ?? '{}')) as { id?: number; method?: string };
+      if (body.method === 'server/discover') return new Response(null, { status: 400 });
       if (body.method === 'initialize') {
         const encoder = new TextEncoder();
         const stream = new ReadableStream<Uint8Array>({

@@ -927,6 +927,7 @@ describe('elicitation over Streamable HTTP', () => {
       return { action: 'accept' as const, content: { name: 'Ada' } };
     });
     const client = new MCPClient({
+      protocolMode: 'legacy',
       name: 'http-elicit',
       transport: 'streamable-http',
       url: `${url}/mcp`,
@@ -986,6 +987,7 @@ describe('elicitation over SSE', () => {
     });
 
     const client = new MCPClient({
+      protocolMode: 'legacy',
       name: 'sse-elicit',
       transport: 'sse',
       url: `${url}/sse`,

@@ -29,7 +29,11 @@ function fixture(kind: 'stdio' | 'sse' | 'streamable') {
       ? new MCPClient({ name: 'fixture', transport: 'stdio', command: 'unused' })
       : kind === 'sse'
         ? new SSETransport({ name: 'fixture', url: 'https://example.test' })
-        : new StreamableHTTPTransport({ name: 'fixture', url: 'https://example.test' });
+        : new StreamableHTTPTransport({
+            protocolMode: 'legacy',
+            name: 'fixture',
+            url: 'https://example.test',
+          });
   const requestKey = kind === 'stdio' ? 'request' : kind === 'sse' ? 'httpPost' : 'postRaw';
   const refreshKey = kind === 'streamable' ? 'refreshTools' : 'handleToolsListChanged';
   const raw = target as unknown as Record<string, unknown>;

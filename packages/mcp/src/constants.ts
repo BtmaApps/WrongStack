@@ -7,7 +7,9 @@
  * - No scattered magic values across multiple files
  */
 /**
- * Protocol revisions this package actually implements, newest first.
+ * Handshake-based protocol revisions, newest first. The modern per-request
+ * revision is implemented separately in modern-protocol.ts and must never be
+ * selected by an initialize handshake.
  *
  * Deliberately conservative: a revision belongs here only once its wire
  * requirements are met, because the version we send in `initialize` is a
@@ -16,13 +18,10 @@
  * WrongStack speaks the 2024-11-05 shape: tools, resources, prompts,
  * pagination, list_changed, resource subscriptions, cancellation, and
  * progress notifications (`notifications/progress`, with a
- * `params._meta.progressToken` sent on every `tools/call`). It does
- * NOT implement sampling (deliberately denied — see below), nor resource links
- * (added by a later revision). It is also short of the 2024-11-05 shape
- * itself in two places: `completion/complete` and client-initiated `ping`
- * are 2024-11-05 and not implemented/not sent. Those are gaps in the
- * revision we claim, not deferrals — recorded here so the list is not read
- * as full conformance.
+ * `params._meta.progressToken` sent on every `tools/call`). The client also
+ * exposes ping and argument completion and renders resource links. Exported
+ * servers do not supply completion suggestions. Sampling is deliberately
+ * denied. This list is not a full-conformance certificate.
  *
  * Known drift, accepted: the HTTP layer already implements Streamable HTTP
  * (added 2025-03-26), the `MCP-Protocol-Version` header and OAuth resource
@@ -37,10 +36,8 @@
  * Deprecated in revision 2026-07-28 (SEP-2577), with new implementations told
  * not to adopt them. Not having them is alignment, not lag.
  *
- * The current revision (2026-07-28) also replaced the `initialize` handshake
- * with per-request version negotiation plus a mandatory `server/discover` RPC.
- * Reaching it is an architectural change, not another entry in this list; the
- * spec keeps a backward-compatibility path for handshake-based clients.
+ * The modern revision (2026-07-28) uses server/discover, request metadata and
+ * stateless HTTP. Its compatibility path selects this legacy list explicitly.
  *
  * Adding a revision: implement its additions, then put it at the FRONT.
  * `PROTOCOL_VERSION` follows automatically, and the negotiation below starts

@@ -2,6 +2,7 @@ import type { MCPClientInternals, PendingStdioRequest } from './client-internals
 import type { JsonRpcRequest } from './client-types.js';
 import { MCP_CONSTANTS } from './constants.js';
 import type { JsonRpcResponse } from './contracts.js';
+import { assertCompleteResult, MODERN_PROTOCOL_VERSION, modernParams } from './modern-protocol.js';
 import { nextJsonRpcId } from './transport-base.js';
 
 /**
@@ -45,7 +46,13 @@ export function sendStdioRequest(
   }
   const id = self.nextId;
   self.nextId = nextJsonRpcId(id);
-  const req: JsonRpcRequest = { jsonrpc: '2.0', id, method, params };
+  const modern = self._serverMetadata?.protocolVersion === MODERN_PROTOCOL_VERSION;
+  const req: JsonRpcRequest = {
+    jsonrpc: '2.0',
+    id,
+    method,
+    params: modern || method === 'server/discover' ? modernParams(params) : params,
+  };
   return new Promise((resolve, reject) => {
     // Abort support: drop the pending entry, notify the server per the MCP
     // cancellation spec (`notifications/cancelled`, best-effort — the
@@ -91,7 +98,11 @@ export function sendStdioRequest(
       resolve: (res: JsonRpcResponse) => {
         clearTimeout(entry.timer);
         detach();
-        resolve(res);
+        try {
+          resolve(modern && method !== 'server/discover' ? assertCompleteResult(res) : res);
+        } catch (error) {
+          reject(error);
+        }
       },
       reject: (err: Error) => {
         clearTimeout(entry.timer);

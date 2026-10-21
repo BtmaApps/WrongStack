@@ -23,6 +23,7 @@ function jsonResponse(value: unknown): Response {
 describe('StreamableHTTPTransport coverage', () => {
   it('dispatches all catalog notifications and refreshes tools safely', async () => {
     const transport = new StreamableHTTPTransport({
+      protocolMode: 'legacy',
       name: 'streamable',
       url: 'https://example.test',
     });
@@ -77,6 +78,7 @@ describe('StreamableHTTPTransport coverage', () => {
         }),
       );
     const transport = new StreamableHTTPTransport({
+      protocolMode: 'legacy',
       name: 'streamable',
       url: 'https://example.test',
     });
@@ -99,6 +101,7 @@ describe('StreamableHTTPTransport coverage', () => {
       .mockResolvedValueOnce(new Response('', { status: 202 }))
       .mockResolvedValueOnce(jsonResponse({ jsonrpc: '2.0', id: 3, result: { tools: [] } }));
     const transport = new StreamableHTTPTransport({
+      protocolMode: 'legacy',
       name: 'streamable',
       url: 'https://example.test',
     });
@@ -109,6 +112,7 @@ describe('StreamableHTTPTransport coverage', () => {
   it('rejects an application/json initialize body that is not JSON-RPC', async () => {
     globalThis.fetch = vi.fn(async () => jsonResponse({ unexpected: true }));
     const transport = new StreamableHTTPTransport({
+      protocolMode: 'legacy',
       name: 'streamable',
       url: 'https://example.test',
     });
@@ -118,6 +122,7 @@ describe('StreamableHTTPTransport coverage', () => {
 
   it('tolerates unreadable notification bodies in both request paths', async () => {
     const transport = new StreamableHTTPTransport({
+      protocolMode: 'legacy',
       name: 'streamable',
       url: 'https://example.test',
     });
@@ -145,6 +150,7 @@ describe('StreamableHTTPTransport coverage', () => {
 
   it('uses response fallback order and processes embedded notifications', () => {
     const transport = new StreamableHTTPTransport({
+      protocolMode: 'legacy',
       name: 'streamable',
       url: 'https://example.test',
     });
@@ -180,6 +186,7 @@ describe('StreamableHTTPTransport coverage', () => {
 
   it('covers postRaw HTTP, parse, session, and cancellation failures', async () => {
     const transport = new StreamableHTTPTransport({
+      protocolMode: 'legacy',
       name: 'streamable',
       url: 'https://example.test',
     });
@@ -212,6 +219,7 @@ describe('StreamableHTTPTransport coverage', () => {
 
   it('reports request cancellation even if the cancellation notification fails', async () => {
     const transport = new StreamableHTTPTransport({
+      protocolMode: 'legacy',
       name: 'streamable',
       url: 'https://example.test',
     });
@@ -231,6 +239,7 @@ describe('StreamableHTTPTransport coverage', () => {
 
   it('defaults an empty successful tool result', async () => {
     const transport = new StreamableHTTPTransport({
+      protocolMode: 'legacy',
       name: 'streamable',
       url: 'https://example.test',
     });
@@ -249,6 +258,7 @@ describe('StreamableHTTPTransport coverage', () => {
 
   it('sends an existing session id with generic requests', async () => {
     const transport = new StreamableHTTPTransport({
+      protocolMode: 'legacy',
       name: 'streamable',
       url: 'https://example.test',
     });

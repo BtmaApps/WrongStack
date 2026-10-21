@@ -13,7 +13,12 @@ function connectedClient(
   capabilities: MCPServerMetadata['capabilities'],
   request: RequestFn,
 ): MCPClient {
-  const client = new MCPClient({ name: 'fixture', transport: 'stdio', command: 'fixture' });
+  const client = new MCPClient({
+    protocolMode: 'legacy',
+    name: 'fixture',
+    transport: 'stdio',
+    command: 'fixture',
+  });
   const internals = client as never as {
     state: 'connected';
     _serverMetadata: MCPServerMetadata;
@@ -61,6 +66,7 @@ describe('MCPClient resources and prompts', () => {
     }) as typeof globalThis.fetch;
 
     const client = new MCPClient({
+      protocolMode: 'legacy',
       name: 'http-fixture',
       transport: 'streamable-http',
       url: 'https://m.test/mcp',

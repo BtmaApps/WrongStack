@@ -1,22 +1,25 @@
 # MCP protocol conformance
 
-**Last verified against the published spec: 2026-09-22.**
+**Modern transport work checked against the published spec: 2026-10-21.**
 Source of truth: <https://modelcontextprotocol.io/specification/latest> and the
 [deprecated features registry](https://modelcontextprotocol.io/specification/2026-07-28/deprecated).
-The upstream comparison is the September spec review. Local version declarations
-were checked on 2026-10-06; this task did not refresh the upstream spec.
+The modern versioning, discovery, stdio and Streamable HTTP contracts were
+refreshed on that date. Historical feature notes below retain their own dates.
 Implementation and gaps are described here; the plan lives in
 `competitive-roadmap-2026-2027/09-mcp-authentication-and-sampling.md`.
 
 ## Short answer
 
-We are **not** fully conformant with the current revision. We implement the `2024-11-05` revision,
-declared in `SUPPORTED_PROTOCOL_VERSIONS` (`packages/mcp/src/constants.ts`). The current revision is
-`2026-07-28`. Revisions in between: `2025-03-26`, `2025-06-18`, `2025-11-25`.
+The client and server now implement modern `2026-07-28` core request flows over
+stdio and Streamable HTTP, alongside the existing `2024-11-05` handshake path.
+This is not a claim of full conformance or support for every optional extension.
+Modern clients advertise empty client capabilities: MRTR elicitation, sampling,
+MCP Apps and Tasks are not advertised or silently executed. An `input_required`
+result produces an actionable unsupported-interaction error.
 
-This is a deliberate, documented position rather than an accident: the constant carries a rule that
-a revision is listed only once its wire requirements are met, because the version sent in
-`initialize` is a promise about what the peer may then use.
+`SUPPORTED_PROTOCOL_VERSIONS` in `constants.ts` describes handshake revisions
+only. `MODERN_PROTOCOL_VERSION` and the per-request envelope live separately in
+`modern-protocol.ts`; adding a modern version to `initialize` would be wrong.
 
 ## What changed in 2026-07-28 (the reason this is not just "a few versions behind")
 
@@ -27,13 +30,31 @@ The current revision replaced the `initialize` handshake with a different model:
 - `server/discover` is a **mandatory** RPC returning supported versions, capabilities and identity;
 - a version mismatch is answered with `UnsupportedProtocolVersionError` listing supported versions.
 
-We speak none of this. The spec keeps a backward-compatibility path for handshake-based clients
-(`2025-11-25` and earlier), which is why we still interoperate — at `2024-11-05` feature level.
-That path is permissive, not guaranteed: it exists only where the *peer* also implements the
-handshake. Against a modern-only server we are the "Legacy client × Modern server = Fails" row of
-the spec's own compatibility matrix, and we now fail fast rather than limping along (see below).
+These flows are now implemented. Auto mode probes with `server/discover` before
+initialization. A non-modern stdio error or bounded probe timeout selects the
+legacy path. HTTP examines the error body before falling back on 400/404/405;
+recognized modern errors never cause a downgrade. Modern requests include the
+version, identity and capabilities in `_meta`, validate `resultType`, and neither
+mint nor echo protocol session IDs. Server-initiated requests are ignored on
+modern connections; HTTP cancellation closes the originating request.
 
-## Version adoption is enforced on both sides
+HTTP mirrors `MCP-Protocol-Version`, `Mcp-Method`, `Mcp-Name` and annotated
+`Mcp-Param-*` values, including nested primitive parameters and Base64 sentinels.
+Invalid header annotations are excluded from modern HTTP tool catalogs. Our
+server validates header/body consistency before dispatch and returns protocol
+errors for mismatches and unsupported revisions. Independent HTTP requests have
+separate cancellation scopes even when their JSON-RPC IDs coincide.
+
+Set a server's `protocolMode` to `"legacy"` to explicitly select its older
+handshake behavior without a modern probe. The default is `"auto"`. Deprecated
+HTTP+SSE stays on the legacy path. See the published
+[versioning](https://modelcontextprotocol.io/specification/2026-07-28/basic/versioning),
+[discovery](https://modelcontextprotocol.io/specification/2026-07-28/server/discover),
+[stdio](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/stdio)
+and [HTTP](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http)
+contracts.
+
+## Legacy handshake version adoption is enforced on both sides
 
 `initialize` asks for the newest revision in `SUPPORTED_PROTOCOL_VERSIONS`. A server that cannot
 honour it answers with a revision of its own — which describes the server, not a grant to us. So:
@@ -74,16 +95,15 @@ The server's claimed revision remains visible via `getServerMetadata()` for diag
 | Elicitation, form mode (`elicitation/create`) | Yes (added 2026-09-23) — see below |
 | Elicitation, URL mode (`mode: "url"`, `-32042` URL elicitation required) | Yes (added 2026-09-25) — see below |
 | Structured tool output (`outputSchema` / `structuredContent`) | Yes (added 2026-09-23) — see below |
+| Resource links in tool results | Rendered and preserved; no automatic resource fetch |
+| `completion/complete` | Client API exists; exported servers supply no suggestions |
 
 ## Not implemented — genuine gaps
 
 | Feature | Introduced | Note |
 | --- | --- | --- |
-| Per-request versioning + `server/discover` | `2026-07-28` | Architectural; not a list entry |
-| `UnsupportedProtocolVersionError` | `2026-07-28` | Follows the above |
-| Resource links in tool results | `2025-06-18` | |
-| `completion/complete` | `2025-03-26` | Argument autocompletion |
-| Progress (`notifications/progress`, `progressToken`) | `2024-11-05` | Cancellation is done; progress is not |
+| Exported-server argument completion handlers | Legacy | The client API already exists |
+| Modern MRTR and subscription-listen host flow | `2026-07-28` | Not advertised; there is no modern live catalog subscription |
 | Extensions: Tasks, MCP Apps, Skills over MCP | `2026-07-28` | Opt-in by design; skipping is fine |
 
 ## Not implemented — and that is correct
@@ -97,7 +117,7 @@ them. Earliest removal is the first revision on or after 2027-07-28.
 | **Roots** | Deprecated; migration path is tool parameters, resource URIs or server config. |
 | **Logging** (`logging/setLevel`, `notifications/message`) | Deprecated; migration path is stderr for stdio, OpenTelemetry for observability. |
 
-As a client we advertise `capabilities: { elicitation: { form: {}, url: {} } }` when the host passes an elicitation
+On legacy connections we advertise `capabilities: { elicitation: { form: {}, url: {} } }` when the host passes an elicitation
 handler (the CLI host always does), and `{}` otherwise. Sampling and roots are never advertised, so
 a server cannot call something we do not implement.
 

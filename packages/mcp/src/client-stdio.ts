@@ -5,6 +5,7 @@ import type { ExitListener, MCPClientOptions } from './client-types.js';
 import { assertSupportedServerProtocolVersion, MCP_CONSTANTS } from './constants.js';
 import type { ConnectionState, JsonRpcResponse, MCPTool } from './contracts.js';
 import type { ServerRequestResponder } from './elicitation.js';
+import { isModernError, MODERN_PROTOCOL_VERSION, parseDiscovery } from './modern-protocol.js';
 import { type MCPServerMetadata, parseServerMetadata } from './protocol.js';
 import { listAllTools } from './tool-schema.js';
 
@@ -37,6 +38,8 @@ export interface ClientStdioHost {
 }
 
 export async function connectStdio(host: ClientStdioHost): Promise<void> {
+  if (host.opts.protocolMode !== undefined && !['auto', 'legacy'].includes(host.opts.protocolMode))
+    throw new Error('MCP protocolMode must be auto or legacy');
   if (!host.opts.command) {
     host.state = 'failed';
     throw new Error('MCP stdio transport requires "command"');
@@ -152,46 +155,76 @@ export async function connectStdio(host: ClientStdioHost): Promise<void> {
     host.failPending(`MCP "${host.opts.name}" child error: ${toErrorMessage(err)}`);
   });
 
-  const initialize = await host.request(
-    'initialize',
-    {
-      protocolVersion: MCP_CONSTANTS.PROTOCOL_VERSION,
-      // Client capabilities: elicitation when the host can ask its user.
-      // `tools` is a SERVER capability and never belonged here.
-      capabilities: host.serverRequests.capabilities(),
-      clientInfo: MCP_CONSTANTS.CLIENT_INFO,
-    },
-    typeof host.opts.startupTimeoutMs === 'number' &&
-      Number.isFinite(host.opts.startupTimeoutMs) &&
-      host.opts.startupTimeoutMs > 0
-      ? Math.min(host.opts.startupTimeoutMs, 2_147_483_647)
-      : 10_000,
-  );
-  if (initialize.error) {
-    host.state = 'failed';
-    throw new Error(`MCP initialize failed: ${initialize.error.message}`);
+  let discovery: JsonRpcResponse | undefined;
+  if (host.opts.protocolMode !== 'legacy') {
+    host._serverMetadata = {
+      protocolVersion: MODERN_PROTOCOL_VERSION,
+      capabilities: {},
+      serverInfo: { name: host.opts.name, version: 'unknown' },
+    };
+    try {
+      discovery = await host.request(
+        'server/discover',
+        {},
+        Math.min(
+          typeof host.opts.startupTimeoutMs === 'number' &&
+            Number.isFinite(host.opts.startupTimeoutMs) &&
+            host.opts.startupTimeoutMs > 0
+            ? host.opts.startupTimeoutMs
+            : 10_000,
+          1000,
+        ),
+      );
+    } catch {
+      // Legacy stdio peers may ignore unknown requests instead of answering.
+      // A process/pipe failure still rejects the initialize below immediately.
+    }
   }
-  try {
-    host._serverMetadata = parseServerMetadata(initialize.result);
-  } catch (err) {
-    host.state = 'failed';
-    throw new Error(`MCP initialize returned malformed server metadata: ${toErrorMessage(err)}`);
-  }
-  // stdio carries no `MCP-Protocol-Version` header, but the rule is the same:
-  // a server that answered with a revision we do not implement is not a server
-  // we can talk to. Throwing here means disconnecting — MCPClient.connect's
-  // catch closes the client, which terminates the child process, so nothing is
-  // left running behind the failed handshake.
-  assertSupportedServerProtocolVersion(host.opts.name, host._serverMetadata.protocolVersion);
-  try {
-    await host.notify('notifications/initialized', {});
-  } catch (err) {
-    console.warn(
-      '[MCP] notify("notifications/initialized") failed for "' +
-        host.opts.name +
-        '": ' +
-        toErrorMessage(err),
+  if (discovery && (!discovery.error || isModernError(discovery.error))) {
+    host._serverMetadata = parseDiscovery(host.opts.name, discovery);
+  } else {
+    host._serverMetadata = undefined;
+    const initialize = await host.request(
+      'initialize',
+      {
+        protocolVersion: MCP_CONSTANTS.PROTOCOL_VERSION,
+        // Client capabilities: elicitation when the host can ask its user.
+        // `tools` is a SERVER capability and never belonged here.
+        capabilities: host.serverRequests.capabilities(),
+        clientInfo: MCP_CONSTANTS.CLIENT_INFO,
+      },
+      typeof host.opts.startupTimeoutMs === 'number' &&
+        Number.isFinite(host.opts.startupTimeoutMs) &&
+        host.opts.startupTimeoutMs > 0
+        ? Math.min(host.opts.startupTimeoutMs, 2_147_483_647)
+        : 10_000,
     );
+    if (initialize.error) {
+      host.state = 'failed';
+      throw new Error(`MCP initialize failed: ${initialize.error.message}`);
+    }
+    try {
+      host._serverMetadata = parseServerMetadata(initialize.result);
+    } catch (err) {
+      host.state = 'failed';
+      throw new Error(`MCP initialize returned malformed server metadata: ${toErrorMessage(err)}`);
+    }
+    // stdio carries no `MCP-Protocol-Version` header, but the rule is the same:
+    // a server that answered with a revision we do not implement is not a server
+    // we can talk to. Throwing here means disconnecting — MCPClient.connect's
+    // catch closes the client, which terminates the child process, so nothing is
+    // left running behind the failed handshake.
+    assertSupportedServerProtocolVersion(host.opts.name, host._serverMetadata.protocolVersion);
+    try {
+      await host.notify('notifications/initialized', {});
+    } catch (err) {
+      console.warn(
+        '[MCP] notify("notifications/initialized") failed for "' +
+          host.opts.name +
+          '": ' +
+          toErrorMessage(err),
+      );
+    }
   }
   const revision = host.toolCatalogRevision;
   const tools = (await listAllTools((params) => host.request('tools/list', params))) ?? [];

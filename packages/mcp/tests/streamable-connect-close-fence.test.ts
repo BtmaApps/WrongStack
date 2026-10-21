@@ -11,7 +11,11 @@ function deferred<T>() {
   return { promise, resolve, reject };
 }
 async function exercise(mode: 'normal' | 'close' | 'restart' | 'reject') {
-  const transport = new StreamableHTTPTransport({ name: 'fixture', url: 'https://example.test' });
+  const transport = new StreamableHTTPTransport({
+    protocolMode: 'legacy',
+    name: 'fixture',
+    url: 'https://example.test',
+  });
   const metadata = {
     protocolVersion: '2024-11-05',
     capabilities: { tools: {} },
