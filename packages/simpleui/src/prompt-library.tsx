@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useFocusTrap } from './hooks/use-focus-trap.js';
 import { onPanelActivation, onSimplePanel } from './lib/panel-events.js';
 import { readPersisted, writePersisted } from './lib/persisted.js';
+import { messageId } from './lib/session-helpers.js';
 import { socketRequest } from './lib/socket-request.js';
 import type { SimpleSocket } from './lib/ws.js';
 
@@ -86,7 +87,7 @@ export function PromptLibrary({ onRecall, socketRef }: PromptLibraryProps) {
     let active = true;
     setLoading(true);
     setLibraryError('');
-    const requestId = crypto.randomUUID();
+    const requestId = messageId('prompts');
     const handle = socketRequest({
       socket: socketRef.current,
       sendType: 'prompts.list',
@@ -113,7 +114,7 @@ export function PromptLibrary({ onRecall, socketRef }: PromptLibraryProps) {
     setValues({});
     if (!open || !selected || !socketRef?.current) return;
     let active = true;
-    const requestId = crypto.randomUUID();
+    const requestId = messageId('prompts');
     const handle = socketRequest({
       socket: socketRef.current,
       sendType: 'prompts.content',

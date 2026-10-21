@@ -4,6 +4,7 @@ import { type AddMode, AddProvider, type CatalogProvider } from './auth-panel-ad
 import { type SavedProvider, SavedProviders, type Strategy } from './auth-panel-saved.js';
 import { useFocusTrap } from './hooks/use-focus-trap.js';
 import { onPanelActivation, onSimplePanel } from './lib/panel-events.js';
+import { messageId } from './lib/session-helpers.js';
 import { type SocketRequestHandle, socketRequest } from './lib/socket-request.js';
 import type { SimpleSocket } from './lib/ws.js';
 
@@ -139,7 +140,7 @@ export function AuthPanel({ socketRef }: { socketRef: React.RefObject<SimpleSock
       setBusy(true);
       setStatus({ tone: 'info', text: 'Saving…' });
       try {
-        const requestId = crypto.randomUUID();
+        const requestId = messageId('auth');
         const request = socketRequest({
           socket,
           sendType: type,
