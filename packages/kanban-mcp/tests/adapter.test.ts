@@ -107,6 +107,27 @@ describe('createKanbanMcpToolHost', () => {
     ]);
   });
 
+  it('holds external calls to the advertised schema before the tool runs', async () => {
+    const executeKanban = vi.fn().mockResolvedValue({ ok: true });
+    const host = createKanbanMcpToolHost('C:/project', {
+      writable: true,
+      dependencies: { executeKanban },
+    });
+
+    const bad = await host.callTool('kanban_manage', {
+      action: 'add_task',
+      boardId: 'b1',
+      title: 't',
+      priority: 'urgent!!',
+    });
+    await host.callTool('kanban_read', { action: 'list_boards', limit: '5' });
+
+    expect(bad).toMatchObject({ isError: true, content: expect.stringMatching(/priority/) });
+    expect(executeKanban.mock.calls.map((call) => call[0])).toEqual([
+      { action: 'list_boards', limit: 5, includeArchived: false },
+    ]);
+  });
+
   it('rejects hidden tools and cross-tier actions', async () => {
     const host = createKanbanMcpToolHost('C:/project', {
       dependencies: { executeKanban: vi.fn() },

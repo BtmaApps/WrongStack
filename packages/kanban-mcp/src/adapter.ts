@@ -1,4 +1,6 @@
 import type { Context } from '@wrongstack/core/agent';
+import type { JSONSchema } from '@wrongstack/core/types';
+import { coerceAgainstSchema, validateAgainstSchema } from '@wrongstack/core/utils';
 import { getKanbanServerConnection, type KanbanServerEvent } from '@wrongstack/kanban';
 import {
   MCPServer,
@@ -280,9 +282,12 @@ export function createKanbanMcpToolHost(
         };
       }
 
+      const checked = argsWithinSchema(actionSchema(actions), args);
+      if ('error' in checked) return { content: checked.error, isError: true };
+
       try {
         signal.throwIfAborted();
-        const result = await executeKanban(withListDefaults(action, args), context, signal);
+        const result = await executeKanban(withListDefaults(action, checked.args), context, signal);
         signal.throwIfAborted();
         const failed =
           !!result &&
@@ -295,6 +300,29 @@ export function createKanbanMcpToolHost(
       }
     },
   };
+}
+
+/**
+ * MCPServer validates nothing, and nothing behind it checks the schema's enums
+ * (an out-of-range priority was stored as is). Hold an external call to the
+ * schema this host advertises, as the agent loop holds its own calls: validate,
+ * then coerce and re-validate.
+ */
+function argsWithinSchema(
+  schema: Record<string, unknown>,
+  input: Record<string, unknown>,
+): { args: Record<string, unknown> } | { error: string } {
+  // An `undefined` value is an absent key (JSON cannot carry one).
+  const args = Object.fromEntries(Object.entries(input).filter(([, v]) => v !== undefined));
+  const validation = validateAgainstSchema(args, schema as JSONSchema);
+  if (validation.ok) return { args };
+  const coercion = coerceAgainstSchema(args, schema as JSONSchema);
+  const revalidation = coercion.changed
+    ? validateAgainstSchema(coercion.value, schema as JSONSchema)
+    : validation;
+  if (coercion.changed && revalidation.ok)
+    return { args: coercion.value as Record<string, unknown> };
+  return { error: revalidation.errors.map((e) => `${e.path || 'input'}: ${e.message}`).join('\n') };
 }
 
 /**

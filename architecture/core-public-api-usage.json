@@ -194,8 +194,8 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1463,
-      "typeOnly": 1288,
+      "files": 1464,
+      "typeOnly": 1289,
       "runtimeOrMixed": 432
     },
     "@wrongstack/core/types/limits": {
@@ -239,9 +239,9 @@
       "runtimeOrMixed": 20
     },
     "@wrongstack/core/utils": {
-      "files": 833,
+      "files": 834,
       "typeOnly": 72,
-      "runtimeOrMixed": 790
+      "runtimeOrMixed": 791
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -17600,6 +17600,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/kanban-mcp/src/adapter.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/mcp/src/config-env.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -26225,6 +26231,12 @@
       "file": "packages/cli/tests/zero-statement-cli-modules.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/kanban-mcp/src/adapter.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/utils",
