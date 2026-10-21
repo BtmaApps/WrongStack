@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -21,6 +22,7 @@ async function fixture() {
     let stdout = '';
     if (args[0] === 'create') stdout = `${'a'.repeat(64)}\n`;
     if (args[0] === 'inspect') stdout = `${'a'.repeat(64)} ${owner}\n`;
+    if (args[0] === 'inspect' && args[2] === '{{.Image}}') stdout = `sha256:${'c'.repeat(64)}\n`;
     if (args.at(-1)?.includes('git rev-parse')) stdout = `${'a'.repeat(40)}\n`;
     if (args.at(-1)?.includes('git diff')) stdout = 'diff --git a/original.txt b/original.txt\n';
     return { code: 0, stdout, stderr: '' };
@@ -28,6 +30,53 @@ async function fixture() {
   return { dir, runner, calls };
 }
 describe('Docker workspace ownership', () => {
+  it('hashes the full collected command output before clipping its metadata preview', async () => {
+    const { dir, runner } = await fixture();
+    const output = 'x'.repeat(65_000);
+    const wrapped: DockerCommandRunner = async (args, opts) => {
+      if (args.at(-1) === 'write-tree')
+        return { code: 0, stdout: `${'b'.repeat(40)}\n`, stderr: '' };
+      if (args.at(-1) === 'large-output') return { code: 0, stdout: output, stderr: '' };
+      return runner(args, opts);
+    };
+    const result = await runDockerWorkspace({
+      projectRoot: dir,
+      image: 'trusted:1',
+      command: 'large-output',
+      captureTreeIdentity: true,
+      runner: wrapped,
+    });
+    expect(result.stepResults?.[0]).toMatchObject({
+      outputTruncated: true,
+      outputSha256: createHash('sha256').update(output).digest('hex'),
+    });
+    expect(result.stepResults?.[0]?.output.length).toBe(64_000);
+  });
+  it('captures source and candidate identities and stops a verification sequence on failure', async () => {
+    const { dir, runner, calls } = await fixture();
+    const wrapped: DockerCommandRunner = async (args, opts) => {
+      if (args.at(-1) === 'write-tree')
+        return { code: 0, stdout: `${'b'.repeat(40)}\n`, stderr: '' };
+      if (args.includes('check-fail')) return { code: 2, stdout: 'failed check', stderr: '' };
+      return runner(args, opts);
+    };
+    const result = await runDockerWorkspace({
+      projectRoot: dir,
+      image: 'trusted:1',
+      command: 'check-pass',
+      followupCommands: [['check-fail'], ['must-not-run']],
+      captureTreeIdentity: true,
+      runner: wrapped,
+    });
+    expect(result).toMatchObject({
+      exitCode: 2,
+      sourceTree: 'b'.repeat(40),
+      inputTree: 'b'.repeat(40),
+      outputTree: 'b'.repeat(40),
+    });
+    expect(result.stepResults?.map((step) => step.exitCode)).toEqual([0, 2]);
+    expect(calls.some((args) => args.includes('must-not-run'))).toBe(false);
+  });
   it('uses immutable Docker IDs for execution and removal', async () => {
     const { dir, runner, calls } = await fixture();
     await runDockerWorkspace({ projectRoot: dir, image: 'trusted:1', command: 'wstack', runner });

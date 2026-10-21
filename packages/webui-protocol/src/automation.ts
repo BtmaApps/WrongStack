@@ -1,4 +1,33 @@
 /** Browser-safe management projection. The runtime validates the persisted job contract. */
+export interface AutomationVerificationSpec {
+  commands: string[][];
+  timeoutMs: number;
+}
+export interface AutomationValidation {
+  status: 'not-verified' | 'passed' | 'failed' | 'stale' | 'cancelled';
+  evidence: Array<'output.log' | 'changes.patch' | 'verification.json' | 'verification.log'>;
+  workspaceTree?: string | undefined;
+  imageId?: string | undefined;
+  planFingerprint?: string | undefined;
+  reason?: string | undefined;
+  checks?:
+    | Array<{
+        argv: string[];
+        exitCode: number;
+        durationMs: number;
+        outputSha256: string;
+        binding: {
+          schemaVersion: 1;
+          registryFingerprint: string;
+          checkId: string;
+          evidenceKind: 'test' | 'typecheck' | 'lint' | 'build' | 'static_analysis';
+          handlerVersion: string;
+          executionClass: 'trusted_deterministic';
+          handlerFingerprint: string;
+        };
+      }>
+    | undefined;
+}
 export interface AutomationJobInput {
   name: string;
   image: string;
@@ -14,6 +43,7 @@ export interface AutomationJobInput {
   enabled: boolean;
   timeoutMs: number;
   maxIterations?: number | undefined;
+  verification?: AutomationVerificationSpec | undefined;
   intervalMs?: number | undefined;
   schedule?: { type: 'cron'; expression: string; timezone: string } | undefined;
   github?:
@@ -34,6 +64,20 @@ export interface AutomationJobInput {
       }
     | undefined;
 }
+
+/** Fresh defaults shared by the two management screens; arrays are never shared. */
+export function createAutomationJobInput(): AutomationJobInput {
+  return {
+    name: '',
+    image: '',
+    prompt: '',
+    envNames: [],
+    enabled: true,
+    yolo: false,
+    timeoutMs: 600_000,
+    maxIterations: 40,
+  };
+}
 export interface AutomationJobRecord extends AutomationJobInput {
   id: string;
   projectRoot: string;
@@ -42,6 +86,7 @@ export interface AutomationJobRecord extends AutomationJobInput {
   nextRunAt: number | null;
 }
 export interface AutomationRunRecord {
+  continuationRunId?: string | undefined;
   id: string;
   jobId: string;
   subjectKey: string;
@@ -67,7 +112,7 @@ export interface AutomationResultView {
   };
   changedFiles: string[];
   changedFilesTruncated: boolean;
-  validation: { status: 'not-verified'; evidence: Array<'output.log' | 'changes.patch'> };
+  validation: AutomationValidation;
 }
 export interface AutomationStateView {
   jobs: AutomationJobRecord[];
@@ -95,6 +140,7 @@ export function editableAutomationJob(job: AutomationJobInput): AutomationJobInp
     enabled,
     timeoutMs,
     maxIterations,
+    verification,
     intervalMs,
     schedule,
     github,
@@ -112,6 +158,7 @@ export function editableAutomationJob(job: AutomationJobInput): AutomationJobInp
     enabled,
     timeoutMs,
     maxIterations,
+    verification: structuredClone(verification),
     intervalMs,
     schedule: structuredClone(schedule),
     github: structuredClone(github),

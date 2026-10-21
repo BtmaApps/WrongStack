@@ -44,6 +44,33 @@ function completed(options: DockerWorkspaceOptions) {
   };
 }
 describe('persistent automation', () => {
+  it('persists independently checked patch evidence with the frozen job plan', async () => {
+    const { store, spec } = await fixture();
+    const job = await store.add({
+      ...spec,
+      verification: { commands: [['bun', 'run', 'test']], timeoutMs: 1000 },
+    });
+    const queued = await store.enqueue(job.id);
+    const execute = vi.fn(async (options: DockerWorkspaceOptions) => ({
+      ...completed(options),
+      sourceTree: 'a'.repeat(40),
+      imageId: `sha256:${'c'.repeat(64)}`,
+      inputTree: options.initialPatch ? 'b'.repeat(40) : 'a'.repeat(40),
+      outputTree: 'b'.repeat(40),
+      stepResults: [{ exitCode: 0, durationMs: 1, output: 'test passed' }],
+    }));
+    const service = new AutomationService(store, execute);
+    await service.tick();
+    await service.idle();
+    const run = (await store.snapshot()).runs.find((item) => item.id === queued.id)!;
+    expect(run.result?.validation.status).toBe('passed');
+    expect(execute).toHaveBeenCalledTimes(2);
+    expect(
+      JSON.parse(
+        await readFile(path.join(store.directory, 'runs', run.id, 'verification.json'), 'utf8'),
+      ).workspaceTree,
+    ).toBe('b'.repeat(40));
+  });
   it('persists structured execution metadata without promoting final-text claims to test evidence', async () => {
     const { store, spec } = await fixture();
     const job = await store.add(spec);

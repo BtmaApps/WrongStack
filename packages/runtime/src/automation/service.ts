@@ -14,6 +14,7 @@ import type { AutomationRun } from './contracts.js';
 import { createHeadlessLaunchPlan } from './launch-plan.js';
 import { buildAutomationResult } from './result.js';
 import type { AutomationStore } from './store.js';
+import { verifyAutomationPatch } from './verification.js';
 
 export type AutomationExecutor = (
   options: DockerWorkspaceOptions,
@@ -101,8 +102,15 @@ export class AutomationService {
         { mode: 0o600 },
       );
       const args = createHeadlessLaunchPlan(run.job, run.context).args;
-      const previous =
-        run.trigger === 'github'
+      const previous = run.continuationRunId
+        ? (await this.store.snapshot()).runs.find(
+            (item) =>
+              item.id === run.continuationRunId &&
+              item.jobId === run.jobId &&
+              item.subjectKey === run.subjectKey &&
+              item.status === 'completed',
+          )
+        : run.trigger === 'github'
           ? (await this.store.snapshot()).runs
               .filter(
                 (item) =>
@@ -113,6 +121,8 @@ export class AutomationService {
               )
               .sort((a, b) => (b.completedAt ?? 0) - (a.completedAt ?? 0))[0]
           : undefined;
+      if (run.continuationRunId && !previous)
+        throw new Error('Explicit continuation source is unavailable');
       let initialPatch: string | undefined;
       let previousConversationDirectory: string | undefined;
       if (previous) {
@@ -150,6 +160,7 @@ export class AutomationService {
         previousConversationDirectory,
         conversationDirectory: path.join(directory, 'conversation'),
         timeoutMs: run.job.timeoutMs,
+        captureTreeIdentity: run.job.verification !== undefined,
         signal,
       });
       await mkdir(directory, { recursive: true });
@@ -162,6 +173,22 @@ export class AutomationService {
         result.patch,
         performance.now() - started,
       );
+      if (run.job.verification) {
+        const verified = await verifyAutomationPatch(run.job, result, signal, this.execute);
+        await atomicWrite(path.join(directory, 'verification.log'), verified.output, {
+          mode: 0o600,
+        });
+        await atomicWrite(
+          path.join(directory, 'verification.json'),
+          `${JSON.stringify(verified.validation, null, 2)}\n`,
+          { mode: 0o600 },
+        );
+        summary.validation = {
+          ...verified.validation,
+          evidence: [...summary.validation.evidence, 'verification.json', 'verification.log'],
+        };
+      }
+      summary.durationMs = Math.round(performance.now() - started);
       await atomicWrite(
         path.join(directory, 'run.json'),
         `${JSON.stringify({ ...metadata, result: summary }, null, 2)}\n`,

@@ -79,6 +79,33 @@ describe('project automation HTTP integration', () => {
     const state = (await (await request('state')).json()) as AutomationStateView;
     expect(state.jobs).toHaveLength(1);
     expect(state.runs).toHaveLength(1);
+    const runId = state.runs[0]!.id;
+    expect((await request(`runs/${runId}/pr`)).status).toBe(200);
+    expect((await request(`runs/${runId}/pr?sessionId=second-session`)).status).toBe(404);
+    expect(
+      (
+        await request(`runs/${runId}/pr/follow-up?sessionId=second-session`, 'POST', {
+          fingerprint: 'c'.repeat(64),
+        })
+      ).status,
+    ).toBe(404);
+    expect(
+      (
+        await request(`runs/${runId}/pr/publish?sessionId=second-session`, 'POST', {
+          fingerprint: 'f'.repeat(64),
+        })
+      ).status,
+    ).toBe(404);
+    expect(
+      (
+        await request(
+          `runs/${runId}/pr/publish`,
+          'POST',
+          { fingerprint: 'f'.repeat(64) },
+          'http://evil.invalid',
+        )
+      ).status,
+    ).toBe(403);
     expect(state.workerOnline).toBe(false);
     expect(JSON.stringify(state)).not.toContain('fixture-token');
     expect((await request(`runs/${state.runs[0]!.id}/cancel`, 'POST')).status).toBe(200);

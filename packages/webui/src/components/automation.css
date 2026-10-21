@@ -165,3 +165,32 @@
     grid-template-columns: 1fr;
   }
 }
+.automation-pr {
+  margin-top: 0.75rem;
+  min-width: 0;
+}
+.automation-pr dt {
+  font-size: 0.75rem;
+  opacity: 0.7;
+  margin-top: 0.65rem;
+}
+.automation-pr dd {
+  margin: 0.15rem 0 0.5rem;
+  overflow-wrap: anywhere;
+}
+.automation-pr ul {
+  padding-left: 1.2rem;
+  list-style: disc;
+  overflow-wrap: anywhere;
+}
+.automation-pr-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 0.75rem 0;
+}
+.automation-pr-actions a {
+  text-decoration: underline;
+  text-underline-offset: 0.2rem;
+}

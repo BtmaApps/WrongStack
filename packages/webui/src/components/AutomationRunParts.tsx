@@ -67,7 +67,22 @@ export function AutomationRunResult({ result }: { result: AutomationRunResultRec
         Agent: {result.agentStatus ?? 'unknown'} · Tokens: {result.usage.inputTokens ?? '?'} in /{' '}
         {result.usage.outputTokens ?? '?'} out · Iterations: {result.usage.iterations ?? '?'}
       </p>
-      <p>Tests not independently verified. Evidence: {result.validation.evidence.join(', ')}.</p>
+      <p>
+        {result.validation.status === 'not-verified'
+          ? 'Tests not independently verified.'
+          : `Independent checks: ${result.validation.status}.`}{' '}
+        Evidence: {result.validation.evidence.join(', ')}.
+      </p>
+      {result.validation.reason && <p>{result.validation.reason}</p>}
+      {result.validation.checks && (
+        <ul>
+          {result.validation.checks.map((check) => (
+            <li key={check.binding.checkId}>
+              {check.argv.join(' ')} · exit {check.exitCode} · {check.durationMs} ms
+            </li>
+          ))}
+        </ul>
+      )}
       <pre>{result.finalText ?? 'No structured final message.'}</pre>
       <p>
         Changed files{result.changedFilesTruncated ? ' (first 200)' : ''}:{' '}

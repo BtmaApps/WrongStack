@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-21T20:26:43.408Z",
+  "generatedAt": "2026-10-21T20:27:06.918Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,17 +12,17 @@
   },
   "summary": {
     "packages": 38,
-    "sourceFiles": 5206,
-    "testFiles": 4562,
-    "sourceLines": 1132811,
+    "sourceFiles": 5216,
+    "testFiles": 4566,
+    "sourceLines": 1134744,
     "workspaceEdges": 139,
-    "moduleEdges": 17120,
+    "moduleEdges": 17138,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
-    "testOnlyExports": 967
+    "testOnlyExports": 966
   },
   "errors": [],
   "packageCycles": [],
@@ -577,8 +577,8 @@
     {
       "name": "@wrongstack/runtime",
       "dir": "packages/runtime",
-      "sourceFiles": 28,
-      "testFiles": 25,
+      "sourceFiles": 33,
+      "testFiles": 27,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/governance",
@@ -598,7 +598,7 @@
         {
           "path": "packages/runtime/tsconfig.test.json",
           "error": null,
-          "testFiles": 25
+          "testFiles": 27
         }
       ]
     },
@@ -696,7 +696,7 @@
     {
       "name": "@wrongstack/simpleui",
       "dir": "packages/simpleui",
-      "sourceFiles": 128,
+      "sourceFiles": 130,
       "testFiles": 99,
       "workspaceDependencies": [
         "@wrongstack/kanban",
@@ -869,8 +869,8 @@
     {
       "name": "@wrongstack/webui",
       "dir": "packages/webui",
-      "sourceFiles": 760,
-      "testFiles": 500,
+      "sourceFiles": 761,
+      "testFiles": 501,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -893,7 +893,7 @@
         {
           "path": "packages/webui/tsconfig.test.json",
           "error": null,
-          "testFiles": 500
+          "testFiles": 501
         }
       ]
     },
@@ -924,8 +924,8 @@
     {
       "name": "@wrongstack/webui-protocol",
       "dir": "packages/webui-protocol",
-      "sourceFiles": 25,
-      "testFiles": 13,
+      "sourceFiles": 27,
+      "testFiles": 14,
       "workspaceDependencies": [
         "@wrongstack/core"
       ],
@@ -938,7 +938,7 @@
         {
           "path": "packages/webui-protocol/tsconfig.test.json",
           "error": null,
-          "testFiles": 13
+          "testFiles": 14
         }
       ]
     },
@@ -15584,6 +15584,12 @@
         ]
       },
       {
+        "file": "packages/runtime/tests/automation-pull-request.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/runtime/tests/automation-reenable-schedule.test.ts",
         "projects": [
           "root-node"
@@ -15597,6 +15603,12 @@
       },
       {
         "file": "packages/runtime/tests/automation-stop-claim.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/runtime/tests/automation-verification.test.ts",
         "projects": [
           "root-node"
         ]
@@ -23576,6 +23588,12 @@
         ]
       },
       {
+        "file": "packages/webui-protocol/tests/automation-commands.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/webui-protocol/tests/automation-portability.test.ts",
         "projects": [
           "root-node"
@@ -25551,6 +25569,12 @@
       },
       {
         "file": "packages/webui/tests/components/audience-memory-panel.test.tsx",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
+        "file": "packages/webui/tests/components/automation-pull-request.test.tsx",
         "projects": [
           "webui-jsdom"
         ]
@@ -28853,6 +28877,11 @@
       "relativeImports": 6
     },
     {
+      "file": "packages/simpleui/src/automation-workspace.tsx",
+      "lines": 698,
+      "relativeImports": 3
+    },
+    {
       "file": "packages/core/src/security/secret-vault.ts",
       "lines": 697,
       "relativeImports": 11
@@ -28896,11 +28925,6 @@
       "file": "packages/core/src/coordination/agent-monitor.ts",
       "lines": 693,
       "relativeImports": 4
-    },
-    {
-      "file": "packages/simpleui/src/automation-workspace.tsx",
-      "lines": 693,
-      "relativeImports": 1
     },
     {
       "file": "packages/core/src/chronicle/project-server-client.ts",
@@ -28993,6 +29017,11 @@
       "relativeImports": 13
     },
     {
+      "file": "packages/webui/src/components/AutomationView.tsx",
+      "lines": 688,
+      "relativeImports": 4
+    },
+    {
       "file": "packages/core/src/hq/commands.ts",
       "lines": 687,
       "relativeImports": 2
@@ -29015,11 +29044,6 @@
     {
       "file": "packages/webui-server/src/server/session-handler-helpers.ts",
       "lines": 686,
-      "relativeImports": 5
-    },
-    {
-      "file": "packages/core/src/session-catalog/session-registry.ts",
-      "lines": 685,
       "relativeImports": 5
     }
   ],
@@ -30967,10 +30991,6 @@
     {
       "file": "packages/runtime/src/automation/github.ts",
       "name": "verifyGitHubSignature"
-    },
-    {
-      "file": "packages/runtime/src/automation/management.ts",
-      "name": "readAutomationArtifact"
     },
     {
       "file": "packages/runtime/src/governance-bootstrap.ts",

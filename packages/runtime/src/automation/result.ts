@@ -14,7 +14,7 @@ export interface AutomationResult {
   };
   changedFiles: string[];
   changedFilesTruncated: boolean;
-  validation: { status: 'not-verified'; evidence: Array<'output.log' | 'changes.patch'> };
+  validation: import('@wrongstack/webui-protocol').AutomationValidation;
 }
 
 export function buildAutomationResult(

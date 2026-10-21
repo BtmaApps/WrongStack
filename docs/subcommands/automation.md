@@ -60,6 +60,35 @@ legacy CLI output. Execution completion and an agent's claim that tests passed
 do not constitute independent test verification. Review the log/patch or run
 the project's deterministic tests. Patches render as read-only diffs.
 
+Configure independent checks with `--verify` (one argv command per line) and
+`--verify-timeout <seconds>` (default 300; range 1–3600), or use **Verification
+commands** in either graphical screen. For example, in PowerShell:
+
+```powershell
+$checks = "bun install --frozen-lockfile`nbun run test"
+wstack automation preview --name verified-review --image wrongstack-sandbox --prompt "Review and fix the parser" --verify $checks
+```
+
+Plans allow up to 16 commands, 64 argv entries per command and 64 KiB in total.
+Commands support quoted arguments; shell expansion, pipes and redirects are not
+interpreted. Select a shell explicitly if a check needs shell syntax. After a
+successful agent run, the worker creates a fresh source copy, applies the
+candidate patch and runs the frozen commands sequentially using the candidate's
+immutable Docker image ID. It does not forward the agent's selected environment,
+provider settings or conversation. Project files still follow the sandbox copy
+rules, including project-local configuration. Checks stop on the first failure
+and share one execution timeout. Provisioning has separate bounded timeouts.
+
+`validation.status` is independent of execution completion: `passed`, `failed`,
+`stale`, `cancelled` or `not-verified`. A missing check or nonzero exit cannot
+pass. Different source, candidate or post-check Git tree identities produce
+`stale`; checks that deliberately rewrite tracked files therefore need a
+non-mutating mode. Git-ignored files are outside this tree comparison. Jobs
+without a verification plan remain `not-verified`. `verification.json` records
+check identities, argv, actual exits, duration and output digests;
+`verification.log` contains bounded check output. These are execution receipts,
+not a guarantee that the selected checks cover every defect.
+
 These screens use the machine's default automation directory and the same
 persisted job validator as the CLI. Their API is scoped to the server's project
 and uses existing WebUI access/origin guards. The worker token stays on the
@@ -160,7 +189,8 @@ Additional authenticated management routes are `POST /v1/jobs`,
 Create/edit/preview bodies contain `spec`; preview optionally includes `event`.
 The WebUI exposes the same operations under `/api/automation/` and fixes the
 project root server-side. Artifact names are restricted to `changes.patch`,
-`output.log` and `run.json`, with a 2 MB read limit. Private conversation and
+`output.log`, `run.json`, `verification.json`, `verification.log`, `pull-request.json`
+and `ci.json`, with a 2 MB read limit. Private conversation and
 credential checkpoint files are never served by these routes.
 
 Per-run artifacts include `claim.json`, `run.json`, `output.log`, a successful
@@ -176,3 +206,97 @@ not delete artifact files. Delivery IDs removed by pruning no longer deduplicate
 
 The existing in-session cron plugin remains a timer/event facility. Its legacy
 `persistSchedules` field is not the implementation of this standalone service.
+
+## Verified patch to draft PR and CI
+
+Both graphical run histories expose **Review draft PR** after independent checks
+pass. Choose the repository, base branch and title, then prepare a local plan.
+Review its target, file list, verification receipts and the patch before selecting
+**Publish draft PR to GitHub**. Preparation makes no GitHub request. Publication
+is an explicit action and requires `GITHUB_TOKEN` or `GH_TOKEN` on the managing
+host; the token is never sent to the agent container or written into artifacts.
+For the CLI, use the same state directory and project:
+
+```powershell
+wstack automation pr-prepare <run-id> --repository owner/repo --base main --title "Fix parser"
+wstack automation pr-view <run-id>
+wstack automation pr-publish <run-id> --plan <fingerprint-from-preparation>
+wstack automation pr-check <run-id>
+```
+
+Preparation requires a completed run with passing independent checks and a
+committed source tree that matches the captured source. It applies the exported
+patch in an isolated Git index and compares the result with the verified tree.
+The project files, real Git index, HEAD and local branches are unchanged. Dirty
+files included in the original sandbox snapshot cannot silently enter a PR;
+rerun from a clean committed source if its identity differs. SHA-1 repositories
+are currently supported, with at most 200 changed files, 5 MB per blob and 16 MB
+of blobs in total. Artifact reads, including the patch, remain limited to 2 MB.
+Submodule changes are refused.
+
+The reviewed plan binds the repository, base commit, candidate tree, patch and
+verification digests. Publication checks the live base, uploads those exact Git
+objects and creates `wrongstack/automation/<run-id>` plus a draft PR. An occupied
+branch with another commit is refused. Retries reuse the same deterministic
+commit/branch and discover an already created PR, including after a lost network
+response. Partial network failures can leave the branch or unreferenced Git
+objects on GitHub; retry the same plan to recover. This action does not merge
+or enable auto-merge. CI repair runs can explicitly update their existing draft
+PR as described below.
+
+**Refresh CI** reads check runs and commit statuses for the published commit and
+stores `ci.json`. A different PR head produces `stale`; absent or inconclusive
+checks produce `unknown`; incomplete collections are refused. A successful
+observation is not branch-protection or merge-readiness certification. Existing
+signed `check_run.completed` webhook jobs can separately queue CI investigations;
+refreshing CI itself starts no model request.
+
+Authenticated management routes are `GET /v1/runs/<id>/pr` and
+`POST /v1/runs/<id>/pr/{prepare,publish,check,follow-up}`. The prepare body contains
+`repository`, `base`, `title`; publish requires the reviewed `fingerprint`;
+check accepts an empty object. The project/session scope is the same as the
+other automation routes.
+
+### Continue a failed CI run on the same PR
+
+After **Refresh CI** reports a failure, select **Queue CI repair**. The service
+rechecks the live PR head and CI fingerprint before queueing one deduplicated
+repair. The job must still have the same operator-authored revision. The repair
+continues that exact source run's cumulative patch and saved conversation, even
+if other runs of the same job finished later. Pruning retains required ancestors.
+An offline worker leaves the repair queued until `automation serve` is running.
+
+```powershell
+wstack automation pr-check <published-run-id>
+wstack automation pr-follow-up <published-run-id> --ci <fingerprint-from-CI>
+wstack automation pr-view <repair-run-id>
+wstack automation pr-prepare <repair-run-id> --repository owner/repo --base main --title "Fix parser"
+wstack automation pr-publish <repair-run-id> --plan <reviewed-plan-fingerprint>
+```
+
+The worker receives bounded check summaries and descriptions as untrusted task
+data, not the host's GitHub token. It makes a new candidate and reruns the frozen
+independent checks. A successful execution without passing verification cannot
+prepare an update. The graphical prepare form prefills the original target;
+the reviewed plan shows the existing PR number and expected head commit.
+
+**Publish verified update to the same PR** is a separate action. It requires an
+unchanged source/base and new verified changes. GitHub receives the exact tree
+with the previous PR head as parent, then an atomic `updateRefs` mutation with
+`beforeOid`, `afterOid` and `force: false`. A concurrent head change, including a
+branch reset, is refused. No second PR is opened. An accepted update whose network
+response was lost is recovered from the recorded pending commit on retry.
+
+CI refresh, incoming GitHub events and creating a plan do not automatically
+publish a repair. This is a bounded operator-triggered flow, with one repair per
+published run; further failed CI after a published repair can be followed from
+that repair's own run. Automatic rebase, merge and unattended retry loops are
+not implemented. A failed or cancelled unpublished repair remains inspectable
+and does not overwrite its source PR. The follow-up request body is the observed
+CI `fingerprint`, distinct from the publication plan fingerprint.
+
+API contracts: [GitHub pull requests](https://docs.github.com/en/rest/pulls/pulls),
+[Git database](https://docs.github.com/en/rest/git),
+[check runs](https://docs.github.com/en/rest/checks/runs) and
+[commit statuses](https://docs.github.com/en/rest/commits/statuses).
+Atomic expected-head updates follow [GitHub's `updateRefs` contract](https://docs.github.com/en/graphql/reference/git#updaterefs).

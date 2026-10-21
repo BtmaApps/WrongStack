@@ -27,6 +27,28 @@ describe.each([
   ['WebUI', WebWorkspace],
   ['SimpleUI', SimpleWorkspace],
 ] as const)('%s automation management', (_name, Workspace) => {
+  it('saves independently authored verification commands', async () => {
+    render(<Workspace />);
+    await screen.findByText('No jobs in this project.');
+    fireEvent.change(screen.getByLabelText('Verification commands'), {
+      target: { value: 'bun install --frozen-lockfile\nbun run test' },
+    });
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Verified task' } });
+    fireEvent.change(screen.getByLabelText('Runtime image'), { target: { value: 'trusted:1' } });
+    fireEvent.change(screen.getByLabelText('Task'), { target: { value: 'Fix parser' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create job' }));
+    await waitFor(() => expect(request.mock.calls.some(([route]) => route === 'jobs')).toBe(true));
+    const saved = request.mock.calls.find(([route]) => route === 'jobs')![2] as {
+      spec: AutomationJobInput;
+    };
+    expect(saved.spec.verification).toEqual({
+      commands: [
+        ['bun', 'install', '--frozen-lockfile'],
+        ['bun', 'run', 'test'],
+      ],
+      timeoutMs: 300_000,
+    });
+  });
   it('shows unknown cost and keeps agent test claims distinct from verification', async () => {
     request.mockResolvedValue({
       ...empty,

@@ -75,6 +75,10 @@ export class AutomationStore {
         typeof run.subjectKey !== 'string' ||
         typeof run.deliveryKey !== 'string' ||
         typeof run.context !== 'string' ||
+        (run.continuationRunId !== undefined &&
+          (typeof run.continuationRunId !== 'string' ||
+            !UUID.test(run.continuationRunId) ||
+            run.continuationRunId === run.id)) ||
         !Number.isFinite(run.createdAt)
       )
         throw new Error('Invalid automation run record');
@@ -281,6 +285,39 @@ export class AutomationStore {
       }
     });
   }
+  /** A repair continues one exact successful run using the still-current frozen job revision. */
+  async enqueueCIRepair(
+    sourceRunId: string,
+    context: string,
+    payloadHash: string,
+  ): Promise<AutomationRun> {
+    return this.change((state) => {
+      const source = state.runs.find((run) => run.id === sourceRunId);
+      if (source?.status !== 'completed' || source.result?.validation.status !== 'passed')
+        throw new Error('Verified CI repair source is unavailable');
+      const job = state.jobs.find((job) => job.id === source.jobId);
+      if (
+        !job ||
+        job.projectRoot !== source.job.projectRoot ||
+        (job.revision ?? 1) !== (source.job.revision ?? 1)
+      )
+        throw new AutomationRevisionConflict();
+      const run = this.enqueueIn(
+        state,
+        job,
+        'github',
+        `ci-repair:${source.id}:${payloadHash}`,
+        source.subjectKey,
+        context,
+        Date.now(),
+        payloadHash,
+      );
+      if (run.continuationRunId !== undefined && run.continuationRunId !== source.id)
+        throw new Error('CI repair continuation identity changed');
+      run.continuationRunId = source.id;
+      return run;
+    });
+  }
   async claim(workerId: string, now = Date.now(), leaseMs = 60_000): Promise<AutomationRun | null> {
     return this.change((state) => {
       const run = state.runs.find(
@@ -358,6 +395,20 @@ export class AutomationStore {
           retained.set(key, run);
       }
       const keep = new Set([...retained.values()].map((run) => run.id));
+      for (const run of state.runs) {
+        if (
+          run.status === 'queued' ||
+          run.status === 'running' ||
+          (run.completedAt ?? run.createdAt) >= before
+        )
+          keep.add(run.id);
+      }
+      // Retained continuations need their exact ancestor artifacts, not a newer unrelated checkpoint.
+      const byId = new Map(state.runs.map((run) => [run.id, run]));
+      for (const id of keep) {
+        const parent = byId.get(id)?.continuationRunId;
+        if (parent) keep.add(parent);
+      }
       const length = state.runs.length;
       state.runs = state.runs.filter(
         (run) =>

@@ -4,7 +4,29 @@ React 19 + Vite browser client for WrongStack. The WebSocket and HTTP backend is
 published separately as [`@wrongstack/webui-server`](../webui-server); the CLI
 starts both surfaces with `wstack --webui` (equivalent to `wstack webui`).
 
-## Development
+## Browser element context and independent automation checks
+
+In the Browser dock, choose **Pick element**, select a point in the live
+preview, then review the selector, visible text, computed styles and cropped
+image. **Add to prompt** appends the context and image to the current
+conversation's unsent draft; sending remains the usual composer action. The
+picker reads the page without clicking it. It rejects another conversation's
+browser and detects URL changes. The capture describes the live DOM at selection
+time; it is not a source-component mapping. Open shadow roots are inspected;
+closed roots and cross-origin frames expose their containing element.
+
+The Automations screen in WebUI and SimpleUI accepts one independent verification
+command per line and shows actual check exits separately from agent completion.
+See [the automation guide](../../docs/subcommands/automation.md) for its isolation
+and evidence contract.
+
+`bun packages/webui/tests/competitive-improvements-browser-smoke.mjs` checks the
+real forms and context/image composer flow at desktop and phone widths, using a
+fixture API/transport. The real DOM picker is covered by
+`packages/tools/tests/browser-live-view.test.ts`; the independent Docker proof is
+`bun packages/runtime/scripts/automation-verification-smoke.ts --image <trusted-image-with-git>`.
+
+## Development commands
 
 From the workspace root:
 

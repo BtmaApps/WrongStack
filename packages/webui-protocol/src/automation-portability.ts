@@ -42,6 +42,7 @@ export function importAutomationJob(raw: unknown): AutomationJobInput {
     'enabled',
     'timeoutMs',
     'maxIterations',
+    'verification',
     'intervalMs',
     'schedule',
     'github',

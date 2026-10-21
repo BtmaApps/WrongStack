@@ -1023,9 +1023,6 @@
     "packages/runtime/src/automation/github.ts": [
       "verifyGitHubSignature"
     ],
-    "packages/runtime/src/automation/management.ts": [
-      "readAutomationArtifact"
-    ],
     "packages/runtime/src/governance-bootstrap.ts": [
       "bootstrapGovernanceRuntimeWithFactory",
       "MAX_PENDING_GOVERNANCE_OBSERVATIONS",

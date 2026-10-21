@@ -239,9 +239,9 @@
       "runtimeOrMixed": 20
     },
     "@wrongstack/core/utils": {
-      "files": 834,
+      "files": 836,
       "typeOnly": 72,
-      "runtimeOrMixed": 791
+      "runtimeOrMixed": 793
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -26655,6 +26655,18 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/runtime/src/automation/management.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/runtime/src/automation/pull-request-git.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/runtime/src/automation/pull-request.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

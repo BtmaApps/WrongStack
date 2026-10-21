@@ -9,6 +9,7 @@ import {
 } from '@wrongstack/core/utils';
 import type { CredentialReference } from '@wrongstack/runtime';
 import {
+  AutomationPullRequests,
   AutomationService,
   AutomationStore,
   createAutomationServer,
@@ -18,12 +19,13 @@ import {
 import {
   exportAutomationJob,
   importAutomationJob,
+  parseAutomationCommands,
   VERSIONED_AUTOMATION_TEMPLATES,
 } from '@wrongstack/webui-protocol';
 import type { SubcommandHandler } from '../contracts.js';
 import { resolveAutomationCredentialBundle } from './automation-credentials.js';
 
-const USAGE = `Usage: wstack automation <add|preview|templates|import|export|list|run|enable|disable|cancel|serve|prune> [id] [options]
+const USAGE = `Usage: wstack automation <add|preview|templates|import|export|list|run|enable|disable|cancel|serve|prune|pr-prepare|pr-publish|pr-check|pr-view|pr-follow-up> [id] [options]
 
 Persistent agent jobs and run history. Jobs execute in a copied Docker workspace
 and produce reviewable patches. No host project edits or automatic publishing.
@@ -36,6 +38,7 @@ add --name <name> --image <trusted-image> --prompt <task>
     [--cron "0 9 * * 1-5" --timezone Europe/Istanbul]
     [--mention @wrongstack] [--label agent] [--branch main]
     [--conclusion failure] [--exclude-bots] [--exclude-drafts]
+    [--verify <newline-separated argv commands>] [--verify-timeout <seconds>]
 preview               Same options as add; validate without writing or executing
     [--event-file <json>] Preview GitHub conditions against a sample payload
 templates             List versioned templates and required setup
@@ -49,6 +52,15 @@ enable|disable <id>   Change scheduling state
 cancel <run-id>       Cancel a queued run (running cancellation uses the API)
 prune --days <n>      Prune old terminal metadata; retain latest PR checkpoints and artifacts
 serve [--port 3501]   Start worker and loopback HTTP API until interrupted
+pr-prepare <run-id> --repository owner/repo --base main --title <title>
+                     Prepare a local review plan from independently verified work
+pr-view <run-id>      Inspect the plan, publication receipt and observed CI
+pr-publish <run-id> --plan <fingerprint>
+                     Explicitly publish the reviewed plan as a draft PR
+pr-check <run-id>     Refresh checks and statuses for the published commit
+pr-follow-up <run-id> --ci <CI-fingerprint>
+                     Queue an explicit repair continuing that exact run; rechecks live CI
+                     Host authentication: GITHUB_TOKEN or GH_TOKEN (never sent to the agent)
 --data-dir <path>     Explicit state directory (default machine home/automation)
 
 The API token is stored in token.txt, not printed. GitHub POSTs use
@@ -86,12 +98,40 @@ export const automationCmd: SubcommandHandler = async (args, deps) => {
   const directory = path.resolve(value('data-dir') ?? path.join(wstackGlobalRoot(), 'automation'));
   const store = new AutomationStore(directory);
   try {
+    if (['pr-prepare', 'pr-publish', 'pr-check', 'pr-view', 'pr-follow-up'].includes(action)) {
+      const id = args[1];
+      if (!id) throw new Error('Automation run ID is required');
+      const run = (await store.snapshot()).runs.find((item) => item.id === id);
+      if (!run || path.resolve(run.job.projectRoot) !== path.resolve(deps.projectRoot))
+        throw new Error('Automation run not found in this project');
+      const requests = new AutomationPullRequests(store);
+      const result =
+        action === 'pr-prepare'
+          ? await requests.prepare(id, {
+              repository: value('repository') ?? '',
+              base: value('base') ?? '',
+              title: value('title') ?? '',
+            })
+          : action === 'pr-publish'
+            ? await requests.publish(id, value('plan') ?? '')
+            : action === 'pr-check'
+              ? await requests.check(id)
+              : action === 'pr-follow-up'
+                ? await requests.followUp(id, value('ci') ?? '')
+                : await requests.inspect(id);
+      deps.renderer.write(JSON.stringify(result, null, 2));
+      return 0;
+    }
     if (action === 'add' || action === 'preview') {
       const template = value('template')
         ? VERSIONED_AUTOMATION_TEMPLATES.find((item) => item.id === value('template'))
         : undefined;
       if (value('template') && !template) throw new Error('Unknown automation template');
       if (value('timezone') && !value('cron')) throw new Error('--timezone requires --cron');
+      if (Object.hasOwn(flags, 'verify') && !value('verify')?.trim())
+        throw new Error('--verify requires one or more newline-separated commands');
+      if (value('verify-timeout') && !value('verify'))
+        throw new Error('--verify-timeout requires --verify');
       const credentials: CredentialReference[] | undefined = value('credential')
         ?.split(',')
         .map((item) => {
@@ -132,6 +172,12 @@ export const automationCmd: SubcommandHandler = async (args, deps) => {
         yolo: flags['yolo'] === true,
         timeoutMs: Number(value('timeout') ?? 600) * 1000,
         maxIterations: Number(value('max-iterations') ?? 40),
+        verification: value('verify')
+          ? {
+              commands: parseAutomationCommands(value('verify')!),
+              timeoutMs: Number(value('verify-timeout') ?? 300) * 1000,
+            }
+          : undefined,
         credentials,
         github: value('repository')
           ? {

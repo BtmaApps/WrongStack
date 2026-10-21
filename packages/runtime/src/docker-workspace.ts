@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { cp, mkdtemp, realpath, rm } from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -154,6 +154,9 @@ export interface DockerWorkspaceOptions {
   signal?: AbortSignal | undefined;
   onOutput?: ((text: string) => void) | undefined;
   runner?: DockerCommandRunner | undefined;
+  /** Operator-authored verification sequence; each command is direct argv. */
+  followupCommands?: readonly (readonly string[])[] | undefined;
+  captureTreeIdentity?: boolean | undefined;
 }
 export interface DockerWorkspaceResult {
   id: string;
@@ -164,6 +167,20 @@ export interface DockerWorkspaceResult {
   output: string;
   cleanup: 'removed' | 'retained' | 'unverified';
   failure?: string | undefined;
+  sourceTree?: string | undefined;
+  inputTree?: string | undefined;
+  outputTree?: string | undefined;
+  /** Immutable image used by this container, captured with verification identities. */
+  imageId?: string | undefined;
+  stepResults?:
+    | Array<{
+        exitCode: number;
+        durationMs: number;
+        output: string;
+        outputSha256?: string;
+        outputTruncated?: boolean;
+      }>
+    | undefined;
 }
 
 const SETUP =
@@ -182,6 +199,18 @@ export async function runDockerWorkspace(
     throw new Error('Select a valid trusted Docker image');
   if (!options.command || options.command.startsWith('-') || /[\x00-\x1f]/.test(options.command))
     throw new Error('A command is required');
+  for (const argv of options.followupCommands ?? []) {
+    if (
+      !Array.isArray(argv) ||
+      !argv.length ||
+      !argv[0] ||
+      argv[0].startsWith('-') ||
+      argv.length > 64 ||
+      argv.some((arg) => typeof arg !== 'string' || arg.length > 8192 || /[\x00-\x1f]/.test(arg))
+    )
+      throw new Error('Invalid workspace command argv');
+  }
+  if ((options.followupCommands?.length ?? 0) > 15) throw new Error('Too many workspace commands');
   const timeoutMs = options.timeoutMs ?? 600_000;
   if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1000 || timeoutMs > 86_400_000)
     throw new Error('timeoutMs must be between 1000 and 86400000');
@@ -236,6 +265,12 @@ export async function runDockerWorkspace(
   let created = false;
   let result: DockerWorkspaceResult | undefined;
   let snapshotRevision: string | undefined;
+  let sourceTree: string | undefined;
+  let inputTree: string | undefined;
+  let outputTree: string | undefined;
+  let imageId: string | undefined;
+  const stepResults: NonNullable<DockerWorkspaceResult['stepResults']> = [];
+  let execution: DockerCommandResult = { code: 0, stdout: '', stderr: '' };
   let temporaryCleanupFailed = false;
   try {
     const nested = path.relative(root, snapshot);
@@ -295,6 +330,12 @@ export async function runDockerWorkspace(
     if (!/^[a-f0-9]{64}$/.test(creation.stdout.trim()))
       throw new Error('Docker create did not return an immutable container identity');
     name = creation.stdout.trim();
+    if (options.captureTreeIdentity) {
+      const image = await run(['inspect', '--format', '{{.Image}}', name]);
+      imageId = image.stdout.trim();
+      if (!/^sha256:[a-f0-9]{64}$/.test(imageId))
+        throw new Error('Workspace image identity unavailable');
+    }
     await run(['start', name]);
     await run(['exec', '--user', '0:0', name, 'mkdir', '-p', '/workspace', '/home/node']);
     await run(['cp', `${snapshot}${path.sep}.`, `${name}:/workspace`], 120_000);
@@ -378,6 +419,14 @@ export async function runDockerWorkspace(
     snapshotRevision = initial.stdout.trim();
     if (!/^[a-f0-9]{40,64}$/.test(snapshotRevision))
       throw new Error('Workspace snapshot did not produce a valid revision');
+    const readTree = async () => {
+      const captured = await run(['exec', '--workdir', '/workspace', name, 'git', 'write-tree']);
+      const tree = captured.stdout.trim();
+      if (!/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(tree))
+        throw new Error('Workspace tree identity unavailable');
+      return tree;
+    };
+    if (options.captureTreeIdentity) sourceTree = await readTree();
     if (options.initialPatch) {
       if (Buffer.byteLength(options.initialPatch) > MAX_OUTPUT)
         throw new Error('Previous patch exceeds 16 MB');
@@ -396,15 +445,45 @@ export async function runDockerWorkspace(
         '/tmp/wrongstack-previous.patch',
       ]);
     }
-    const execution = await runner(
-      ['exec', '--workdir', '/workspace', name, options.command, ...(options.args ?? [])],
-      { signal: options.signal, timeoutMs, onOutput: options.onOutput, env: forwardedEnv },
-    );
+    if (options.captureTreeIdentity) inputTree = await readTree();
+    const executionStarted = performance.now();
+    for (const argv of [
+      [options.command, ...(options.args ?? [])],
+      ...(options.followupCommands ?? []),
+    ]) {
+      const remaining = timeoutMs - (performance.now() - executionStarted);
+      if (remaining <= 0) throw new Error('Workspace command sequence timed out');
+      const stepStarted = performance.now();
+      const step = await runner(['exec', '--workdir', '/workspace', name, ...argv], {
+        signal: options.signal,
+        timeoutMs: Math.max(1, Math.floor(remaining)),
+        onOutput: options.onOutput,
+        env: forwardedEnv,
+      });
+      options.signal?.throwIfAborted();
+      const output = step.stdout + step.stderr;
+      stepResults.push({
+        exitCode: step.code,
+        durationMs: Math.round(performance.now() - stepStarted),
+        output: output.slice(0, 64_000),
+        outputSha256: createHash('sha256').update(output).digest('hex'),
+        outputTruncated: output.length > 64_000,
+      });
+      execution = {
+        code: step.code,
+        stdout: execution.stdout + step.stdout,
+        stderr: execution.stderr + step.stderr,
+      };
+      if (Buffer.byteLength(execution.stdout) + Buffer.byteLength(execution.stderr) > MAX_OUTPUT)
+        throw new Error('Workspace sequence output exceeds 16 MB');
+      if (step.code !== 0) break;
+    }
     options.signal?.throwIfAborted();
     const patch = await run(
       ['exec', '--workdir', '/workspace', name, '/bin/sh', '-c', PATCH],
       120_000,
     );
+    if (options.captureTreeIdentity) outputTree = await readTree();
     if (options.conversationDirectory) {
       const { mkdir, rename } = await import('node:fs/promises');
       const captureParent = path.dirname(path.resolve(options.conversationDirectory));
@@ -452,6 +531,9 @@ export async function runDockerWorkspace(
       snapshotRevision,
       patch: patch.stdout,
       output: execution.stdout + execution.stderr,
+      ...(options.captureTreeIdentity
+        ? { sourceTree, inputTree, outputTree, imageId, stepResults }
+        : {}),
       cleanup: 'unverified',
     };
   } catch (error) {
@@ -462,7 +544,10 @@ export async function runDockerWorkspace(
       exitCode: options.signal?.aborted ? 130 : 1,
       snapshotRevision,
       patch: null,
-      output: '',
+      output: execution.stdout + execution.stderr,
+      ...(options.captureTreeIdentity
+        ? { sourceTree, inputTree, outputTree, imageId, stepResults }
+        : {}),
       cleanup: 'unverified',
       failure: error instanceof Error ? error.message : 'Docker workspace failed',
     };

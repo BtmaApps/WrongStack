@@ -1,4 +1,8 @@
-import { open, readFile, realpath } from 'node:fs/promises';
+import { readFile, realpath } from 'node:fs/promises';
+import { readAutomationArtifact } from './artifact.js';
+
+export { readAutomationArtifact } from './artifact.js';
+
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import * as path from 'node:path';
 import { wstackGlobalRoot } from '@wrongstack/core/utils';
@@ -10,6 +14,7 @@ import {
 import type { AutomationJobSpec } from './contracts.js';
 import { evaluateGitHubFilters } from './github-filters.js';
 import { createHeadlessLaunchPlan } from './launch-plan.js';
+import { AutomationPullRequests } from './pull-request.js';
 import { AutomationRevisionConflict, type AutomationStore } from './store.js';
 
 export async function readAutomationBody(
@@ -27,36 +32,6 @@ export async function readAutomationBody(
   if (!value || typeof value !== 'object' || Array.isArray(value))
     throw new Error('Expected an object');
   return value as Record<string, unknown>;
-}
-
-export async function readAutomationArtifact(
-  store: AutomationStore,
-  id: string,
-  name: string,
-): Promise<string> {
-  if (!['changes.patch', 'output.log', 'run.json'].includes(name))
-    throw new Error('Artifact not available');
-  if (!(await store.snapshot()).runs.some((run) => run.id === id))
-    throw new Error('Automation run not found');
-  const base = await realpath(path.join(store.directory, 'runs'));
-  if (path.dirname(base) !== (await realpath(store.directory)))
-    throw new Error('Artifact not available');
-  const root = await realpath(path.join(base, id));
-  if (path.dirname(root) !== base) throw new Error('Artifact not available');
-  const target = await realpath(path.join(root, name));
-  if (path.dirname(target) !== root || path.basename(target) !== name)
-    throw new Error('Artifact not available');
-  const file = await open(target, 'r');
-  try {
-    const info = await file.stat();
-    if (!info.isFile() || info.size > 2 * 1024 * 1024) throw new Error('Artifact exceeds 2 MB');
-    const buffer = Buffer.alloc(2 * 1024 * 1024 + 1);
-    const { bytesRead } = await file.read(buffer, 0, buffer.length, 0);
-    if (bytesRead > 2 * 1024 * 1024) throw new Error('Artifact exceeds 2 MB');
-    return buffer.subarray(0, bytesRead).toString('utf8');
-  } finally {
-    await file.close();
-  }
 }
 
 /** Only reads a machine-owned descriptor. The browser cannot select the worker URL or token. */
@@ -108,7 +83,7 @@ export async function handleAutomationManagement(
 ): Promise<boolean> {
   const route = url.pathname;
   const known =
-    /^\/v1\/(state|preview|import|templates|jobs(?:\/[a-f0-9-]{36}(?:\/(?:enabled|run|export))?)?|runs\/[a-f0-9-]{36}\/(?:cancel|artifact))$/;
+    /^\/v1\/(state|preview|import|templates|jobs(?:\/[a-f0-9-]{36}(?:\/(?:enabled|run|export))?)?|runs\/[a-f0-9-]{36}\/(?:cancel|artifact|pr(?:\/(?:prepare|publish|check|follow-up))?))$/;
   if (!known.test(route)) return false;
   const reply = (status: number, data: unknown) => {
     response.writeHead(status, {
@@ -148,7 +123,10 @@ export async function handleAutomationManagement(
       return true;
     }
     const jobMatch = /^\/v1\/jobs\/([a-f0-9-]{36})(?:\/(enabled|run|export))?$/.exec(route);
-    const runMatch = /^\/v1\/runs\/([a-f0-9-]{36})\/(cancel|artifact)$/.exec(route);
+    const runMatch =
+      /^\/v1\/runs\/([a-f0-9-]{36})\/(cancel|artifact|pr(?:\/(?:prepare|publish|check|follow-up))?)$/.exec(
+        route,
+      );
     if (jobMatch && !jobs.some((job) => job.id === jobMatch[1])) {
       reply(404, { error: 'Automation job not found' });
       return true;
@@ -157,7 +135,41 @@ export async function handleAutomationManagement(
       reply(404, { error: 'Automation run not found' });
       return true;
     }
-    if (jobMatch?.[2] === 'export' && request.method === 'GET') {
+    if (runMatch?.[2]?.startsWith('pr')) {
+      const pullRequests = new AutomationPullRequests(store);
+      const operation = runMatch[2];
+      if (operation === 'pr' && request.method === 'GET')
+        reply(200, await pullRequests.inspect(runMatch[1]!));
+      else if (operation !== 'pr' && request.method === 'POST') {
+        const body = await readAutomationBody(request);
+        if (operation === 'pr/prepare')
+          reply(
+            200,
+            await pullRequests.prepare(runMatch[1]!, {
+              repository: body['repository'] as string,
+              base: body['base'] as string,
+              title: body['title'] as string,
+            }),
+          );
+        else if (operation === 'pr/publish')
+          reply(
+            200,
+            await pullRequests.publish(
+              runMatch[1]!,
+              typeof body['fingerprint'] === 'string' ? body['fingerprint'] : '',
+            ),
+          );
+        else if (operation === 'pr/follow-up')
+          reply(
+            202,
+            await pullRequests.followUp(
+              runMatch[1]!,
+              typeof body['fingerprint'] === 'string' ? body['fingerprint'] : '',
+            ),
+          );
+        else reply(200, await pullRequests.check(runMatch[1]!));
+      } else reply(405, { error: 'Method not allowed' });
+    } else if (jobMatch?.[2] === 'export' && request.method === 'GET') {
       reply(200, exportAutomationJob(jobs.find((job) => job.id === jobMatch[1])!));
     } else if (runMatch?.[2] === 'artifact' && request.method === 'GET') {
       reply(200, {

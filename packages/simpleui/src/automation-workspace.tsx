@@ -7,22 +7,16 @@ import {
   automationRequest,
   editableAutomationJob,
   exportAutomationJob,
+  formatAutomationCommands,
+  createAutomationJobInput as freshJob,
   importAutomationJob,
+  parseAutomationCommands,
 } from '@wrongstack/webui-protocol';
 import { useEffect, useRef, useState } from 'react';
 import './automation.css';
 import { parseUnifiedDiff } from '@wrongstack/tools/tool-diff';
-
-const freshJob = (): AutomationJobInput => ({
-  name: '',
-  image: '',
-  prompt: '',
-  envNames: [],
-  enabled: true,
-  yolo: false,
-  timeoutMs: 600_000,
-  maxIterations: 40,
-});
+import { AutomationPullRequestPanel } from './automation-pull-request.js';
+import { AutomationRunResult, AutomationVerificationFields } from './automation-run-parts.js';
 
 export function AutomationWorkspace({ sessionId }: { sessionId?: string | undefined } = {}) {
   const request = <T,>(route: string, method = 'GET', body?: unknown, signal?: AbortSignal) =>
@@ -31,6 +25,7 @@ export function AutomationWorkspace({ sessionId }: { sessionId?: string | undefi
   const [spec, setSpec] = useState<AutomationJobInput>(freshJob);
   const [editing, setEditing] = useState<{ id: string; revision: number } | null>(null);
   const [credentialText, setCredentialText] = useState('');
+  const [verificationText, setVerificationText] = useState('');
   const [eventText, setEventText] = useState('');
   const [preview, setPreview] = useState<AutomationPreview | null>(null);
   const [artifact, setArtifact] = useState('');
@@ -95,6 +90,12 @@ export function AutomationWorkspace({ sessionId }: { sessionId?: string | undefi
         ...spec,
         envNames: spec.envNames.map((name) => name.trim()).filter(Boolean),
         credentials,
+        verification: verificationText.trim()
+          ? {
+              commands: parseAutomationCommands(verificationText),
+              timeoutMs: spec.verification?.timeoutMs ?? 300_000,
+            }
+          : undefined,
         github: spec.github?.repository.trim()
           ? {
               ...spec.github,
@@ -111,6 +112,7 @@ export function AutomationWorkspace({ sessionId }: { sessionId?: string | undefi
     setError('');
     setSpec(job ? editableAutomationJob(job) : freshJob());
     setEditing(job ? { id: job.id, revision: job.revision ?? 1 } : null);
+    setVerificationText(formatAutomationCommands(job?.verification?.commands ?? []));
     setCredentialText(
       job?.credentials
         ?.map((ref) => `${ref.envName}=${ref.profile}/${ref.provider}/${ref.keyLabel}`)
@@ -387,6 +389,21 @@ export function AutomationWorkspace({ sessionId }: { sessionId?: string | undefi
           )}
           <details>
             <summary>Credentials and execution limits</summary>
+            <AutomationVerificationFields
+              commands={verificationText}
+              timeoutMs={spec.verification?.timeoutMs ?? 300_000}
+              onCommandsChange={(text) => {
+                previewSequence.current++;
+                setPreview(null);
+                setVerificationText(text);
+              }}
+              onTimeoutChange={(timeoutMs) =>
+                change('verification', {
+                  commands: spec.verification?.commands ?? [],
+                  timeoutMs,
+                })
+              }
+            />
             <label>
               Environment names
               <input
@@ -576,8 +593,8 @@ export function AutomationWorkspace({ sessionId }: { sessionId?: string | undefi
       <section aria-label="Run history">
         <h2>Run history</h2>
         <p>
-          Completed means execution and patch export succeeded. Check the log and patch for
-          validation evidence.
+          Completed means execution and patch export succeeded. Independent check results are
+          reported separately, with their saved evidence.
         </p>
         {state?.runs
           .slice()
@@ -588,30 +605,9 @@ export function AutomationWorkspace({ sessionId }: { sessionId?: string | undefi
               <strong>{state.jobs.find((job) => job.id === run.jobId)?.name ?? run.jobId}</strong> ·{' '}
               {run.status} · {run.subjectKey} · {new Date(run.createdAt).toLocaleString()}
               {run.error && <p>{run.error}</p>}
-              {run.result && (
-                <details>
-                  <summary>
-                    Result · {(run.result.durationMs / 1000).toFixed(1)} s ·{' '}
-                    {run.result.usage.costUsd === null
-                      ? 'Cost unknown'
-                      : `$${run.result.usage.costUsd.toFixed(4)} (estimate)`}
-                  </summary>
-                  <p>
-                    Agent: {run.result.agentStatus ?? 'unknown'} · Tokens:{' '}
-                    {run.result.usage.inputTokens ?? '?'} in /{' '}
-                    {run.result.usage.outputTokens ?? '?'} out · Iterations:{' '}
-                    {run.result.usage.iterations ?? '?'}
-                  </p>
-                  <p>
-                    Tests not independently verified. Evidence:{' '}
-                    {run.result.validation.evidence.join(', ')}.
-                  </p>
-                  <pre>{run.result.finalText ?? 'No structured final message.'}</pre>
-                  <p>
-                    Changed files{run.result.changedFilesTruncated ? ' (first 200)' : ''}:{' '}
-                    {run.result.changedFiles.join(', ') || 'none detected'}
-                  </p>
-                </details>
+              {run.result && <AutomationRunResult result={run.result} />}
+              {run.status === 'completed' && run.result?.validation.status === 'passed' && (
+                <AutomationPullRequestPanel runId={run.id} sessionId={sessionId} />
               )}
               {(run.status === 'queued' || run.status === 'running') && (
                 <button
@@ -627,7 +623,16 @@ export function AutomationWorkspace({ sessionId }: { sessionId?: string | undefi
                   Cancel run
                 </button>
               )}
-              {(['changes.patch', 'output.log', 'run.json'] as const).map((name) => (
+              {(
+                [
+                  'changes.patch',
+                  'output.log',
+                  'run.json',
+                  ...(run.result?.validation.evidence.includes('verification.log')
+                    ? (['verification.log', 'verification.json'] as const)
+                    : []),
+                ] as const
+              ).map((name) => (
                 <button
                   key={name}
                   type="button"

@@ -1,3 +1,9 @@
+export type {
+  AutomationCIResult,
+  AutomationPullRequestPlan,
+  AutomationPullRequestReceipt,
+  AutomationPullRequestView,
+} from './automation-pull-request.js';
 // The two core types the projector's input names. Re-exported for the same
 // reason as the projector itself: SimpleUI reaches core only through this
 // package.
@@ -61,6 +67,7 @@ export {
   isAutoWakePrompt,
 } from './auto-wake.js';
 export * from './automation.js';
+export * from './automation-commands.js';
 export * from './automation-portability.js';
 export type {
   CodeAssistDelta,

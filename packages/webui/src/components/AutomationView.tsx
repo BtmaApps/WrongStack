@@ -7,26 +7,19 @@ import {
   automationRequest,
   editableAutomationJob,
   exportAutomationJob,
+  formatAutomationCommands,
+  createAutomationJobInput as freshJob,
   importAutomationJob,
+  parseAutomationCommands,
 } from '@wrongstack/webui-protocol';
 import { useEffect, useRef, useState } from 'react';
 import { PageMotif } from '@/components/PageMotif';
 import { useAppTranslation } from '@/i18n';
 import { useActiveSessionId, useSessionStore } from '@/stores';
 import './automation.css';
+import { AutomationPullRequestPanel } from './AutomationPullRequestPanel';
 import { AutomationPreviewPanel, AutomationRunResult } from './AutomationRunParts';
 import { ToolDiffView } from './DiffView';
-
-const freshJob = (): AutomationJobInput => ({
-  name: '',
-  image: '',
-  prompt: '',
-  envNames: [],
-  enabled: true,
-  yolo: false,
-  timeoutMs: 600_000,
-  maxIterations: 40,
-});
 
 export function AutomationWorkspace({ sessionId }: { sessionId?: string | undefined } = {}) {
   const request = <T,>(route: string, method = 'GET', body?: unknown, signal?: AbortSignal) =>
@@ -36,6 +29,7 @@ export function AutomationWorkspace({ sessionId }: { sessionId?: string | undefi
   const [spec, setSpec] = useState<AutomationJobInput>(freshJob);
   const [editing, setEditing] = useState<{ id: string; revision: number } | null>(null);
   const [credentialText, setCredentialText] = useState('');
+  const [verificationText, setVerificationText] = useState('');
   const [eventText, setEventText] = useState('');
   const [preview, setPreview] = useState<AutomationPreview | null>(null);
   const [artifact, setArtifact] = useState('');
@@ -100,6 +94,12 @@ export function AutomationWorkspace({ sessionId }: { sessionId?: string | undefi
         ...spec,
         envNames: spec.envNames.map((name) => name.trim()).filter(Boolean),
         credentials,
+        verification: verificationText.trim()
+          ? {
+              commands: parseAutomationCommands(verificationText),
+              timeoutMs: spec.verification?.timeoutMs ?? 300_000,
+            }
+          : undefined,
         github: spec.github?.repository.trim()
           ? {
               ...spec.github,
@@ -116,6 +116,7 @@ export function AutomationWorkspace({ sessionId }: { sessionId?: string | undefi
     setError('');
     setSpec(job ? editableAutomationJob(job) : freshJob());
     setEditing(job ? { id: job.id, revision: job.revision ?? 1 } : null);
+    setVerificationText(formatAutomationCommands(job?.verification?.commands ?? []));
     setCredentialText(
       job?.credentials
         ?.map((ref) => `${ref.envName}=${ref.profile}/${ref.provider}/${ref.keyLabel}`)
@@ -402,6 +403,35 @@ export function AutomationWorkspace({ sessionId }: { sessionId?: string | undefi
               })}
             </summary>
             <label>
+              {t('activity:automation.verificationCommands')}
+              <textarea
+                rows={4}
+                placeholder={'bun install --frozen-lockfile\nbun run test'}
+                value={verificationText}
+                onChange={(event) => {
+                  previewSequence.current++;
+                  setPreview(null);
+                  setVerificationText(event.target.value);
+                }}
+              />
+            </label>
+            <p>{t('activity:automation.verificationHint')}</p>
+            <label>
+              {t('activity:automation.verificationTimeout')}
+              <input
+                type="number"
+                min={1}
+                max={3600}
+                value={(spec.verification?.timeoutMs ?? 300_000) / 1000}
+                onChange={(event) =>
+                  change('verification', {
+                    commands: spec.verification?.commands ?? [],
+                    timeoutMs: Number(event.target.value) * 1000,
+                  })
+                }
+              />
+            </label>
+            <label>
               Environment names
               <input
                 placeholder="OPENAI_API_KEY"
@@ -561,10 +591,7 @@ export function AutomationWorkspace({ sessionId }: { sessionId?: string | undefi
       </div>
       <section aria-label="Run history">
         <h2>Run history</h2>
-        <p>
-          Completed means execution and patch export succeeded. Check the log and patch for
-          validation evidence.
-        </p>
+        <p>{t('activity:automation.verificationHistoryHint')}</p>
         {state?.runs
           .slice()
           .reverse()
@@ -575,6 +602,9 @@ export function AutomationWorkspace({ sessionId }: { sessionId?: string | undefi
               {run.status} · {run.subjectKey} · {new Date(run.createdAt).toLocaleString()}
               {run.error && <p>{run.error}</p>}
               {run.result && <AutomationRunResult result={run.result} />}
+              {run.status === 'completed' && run.result?.validation.status === 'passed' && (
+                <AutomationPullRequestPanel runId={run.id} sessionId={sessionId} />
+              )}
               {(run.status === 'queued' || run.status === 'running') && (
                 <button
                   type="button"
@@ -589,7 +619,16 @@ export function AutomationWorkspace({ sessionId }: { sessionId?: string | undefi
                   Cancel run
                 </button>
               )}
-              {(['changes.patch', 'output.log', 'run.json'] as const).map((name) => (
+              {(
+                [
+                  'changes.patch',
+                  'output.log',
+                  'run.json',
+                  ...(run.result?.validation.evidence.includes('verification.log')
+                    ? (['verification.log', 'verification.json'] as const)
+                    : []),
+                ] as const
+              ).map((name) => (
                 <button
                   key={name}
                   type="button"

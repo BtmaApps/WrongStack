@@ -14,6 +14,7 @@ export interface AutomationJobSpec {
   enabled: boolean;
   timeoutMs: number;
   maxIterations?: number | undefined;
+  verification?: import('@wrongstack/webui-protocol').AutomationVerificationSpec | undefined;
   github?:
     | {
         repository: string;
@@ -31,6 +32,8 @@ export interface AutomationJob extends AutomationJobSpec {
   revision?: number | undefined;
 }
 export interface AutomationRun {
+  /** Explicit parent for a reviewed CI repair; never inferred from the latest subject run. */
+  continuationRunId?: string | undefined;
   id: string;
   jobId: string;
   job: AutomationJob;
@@ -62,6 +65,7 @@ export function validateJobSpec(spec: AutomationJobSpec): void {
     throw new Error('Invalid automation definition');
   const fields = new Set([
     'maxIterations',
+    'verification',
     'template',
     'name',
     'projectRoot',
@@ -84,6 +88,7 @@ export function validateJobSpec(spec: AutomationJobSpec): void {
   ]);
   if (Object.keys(spec).some((key) => !fields.has(key)))
     throw new Error('Unknown automation definition field');
+  if (spec.verification !== undefined) validateAutomationVerification(spec.verification);
   for (const [field, limit] of [
     ['name', 128],
     ['projectRoot', 4096],
@@ -205,3 +210,4 @@ import type { CredentialReference } from '../credential-reference.js';
 import { isCredentialEnvName } from '../credential-reference.js';
 import { type GitHubFilters, validateGitHubFilters } from './github-filters.js';
 import { type CronSchedule, validateCronSchedule } from './schedule.js';
+import { validateAutomationVerification } from './verification.js';
