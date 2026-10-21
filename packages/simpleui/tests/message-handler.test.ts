@@ -1158,6 +1158,25 @@ describe('run lifecycle and queue drain', () => {
     expect(harness.mutableRefs.queueRef.current.map((e) => e.id)).toEqual(['q1']);
   });
 
+  it('a side-request refusal mid-run neither ends the run nor drains the queue', () => {
+    // fallbackChoice answers a stale pick with invalid_request while the run
+    // continues on the auto-switched model.
+    harness.mutableRefs.sessionIdRef.current = 'sess-1';
+    harness.handler({ type: 'iteration.started', payload: {} });
+    harness.mutableRefs.queueRef.current = [
+      { id: 'q1', text: 'queued while running', mode: 'queue', addedAt: 1 },
+    ];
+
+    harness.handler({
+      type: 'error',
+      payload: { phase: 'invalid_request', message: 'Unknown fallback request' },
+    });
+
+    expect(harness.state.running).toBe(true);
+    expect(harness.dispatchUserMessage).not.toHaveBeenCalled();
+    expect(harness.state.notice).toMatchObject({ tone: 'warning' });
+  });
+
   it('rate_limit error clears the running spinner (dropped frame leaves no run.result)', () => {
     harness.handler({ type: 'iteration.started', payload: {} });
     expect(harness.state.running).toBe(true);

@@ -41,6 +41,7 @@ import type { MessageHandlerDeps } from './message-handler-deps.js';
 import { messageId } from './message-handler-notices.js';
 import { handleSessionStartMessage } from './message-handler-session-start.js';
 import {
+  errorEndsRun,
   handleProviderResponseMessage,
   handleRunErrorMessage,
   handleThinkingDeltaMessage,
@@ -440,8 +441,9 @@ export function createMessageHandler(deps: MessageHandlerDeps): ServerMessageHan
         break;
       }
       case 'error': {
-        if (deps.localRunRef) deps.localRunRef.current = false;
-        if (payload['phase'] !== 'rate_limit') {
+        const ends = errorEndsRun(payload['phase']);
+        if (ends && deps.localRunRef) deps.localRunRef.current = false;
+        if (ends && payload['phase'] !== 'rate_limit') {
           nextStepsByToolId.clear();
           completedToolNextSteps = [];
         }

@@ -96,6 +96,29 @@ export function handleProviderResponseMessage(
 }
 
 /** `error` — end the run with a system line (or a transient rate-limit notice). */
+/**
+ * Phases whose `error` ends the active run (no phase = a run failure too). Any
+ * other phase refused a side request — a stale fallback pick, a malformed
+ * frame — while the run goes on, so it must neither stop the spinner nor send
+ * the queued prompt into the live run.
+ */
+const RUN_ERROR_PHASES = new Set([
+  '',
+  'rate_limit',
+  'session.resume',
+  'session.focus',
+  'user_message',
+  'agent.run',
+  'abort',
+  'agent',
+  'provider',
+  'tool',
+]);
+
+export function errorEndsRun(phase: unknown): boolean {
+  return RUN_ERROR_PHASES.has(typeof phase === 'string' ? phase : '');
+}
+
 export function handleRunErrorMessage(
   message: ServerMessage,
   deps: MessageHandlerDeps,
@@ -104,6 +127,14 @@ export function handleRunErrorMessage(
   const { setMessages, setRunning, setActivity, setToolCalls, setNotice } = deps;
   const payload = message.payload ?? {};
   const phase = typeof payload['phase'] === 'string' ? payload['phase'] : '';
+  if (!errorEndsRun(phase)) {
+    setNotice({
+      id: messageId('error'),
+      text: typeof payload['message'] === 'string' ? payload['message'] : 'Request refused',
+      tone: 'warning',
+    });
+    return;
+  }
   if (phase === 'session.resume' || phase === 'session.focus') {
     deps.setResumeProgress?.(null);
   }
