@@ -63,7 +63,8 @@ export async function loadManifest(
     });
   }
   try {
-    const parsed = JSON.parse(raw) as unknown;
+    // A Windows editor saves the file with a UTF-8 BOM, which JSON.parse rejects.
+    const parsed = JSON.parse(raw.charCodeAt(0) === 0xfeff ? raw.slice(1) : raw) as unknown;
     if (
       !parsed ||
       typeof parsed !== 'object' ||
