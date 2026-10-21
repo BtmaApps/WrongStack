@@ -371,8 +371,8 @@ export function attachSessionKanbanMirror(context: Context): () => void {
           watchedDir = '';
           return;
         }
-        const currentPlanPath = context.meta['plan.path'];
-        const currentTaskPath = context.meta['task.path'];
+        const currentPlanPath = context.meta['plan.path.resolved'] ?? context.meta['plan.path'];
+        const currentTaskPath = context.meta['task.path.resolved'] ?? context.meta['task.path'];
         const planName = typeof currentPlanPath === 'string' ? basename(currentPlanPath) : '';
         const taskName = typeof currentTaskPath === 'string' ? basename(currentTaskPath) : '';
         if (name && name !== planName && name !== taskName) return;

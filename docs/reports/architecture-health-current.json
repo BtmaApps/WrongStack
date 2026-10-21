@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-21T20:23:49.885Z",
+  "generatedAt": "2026-10-21T20:24:23.021Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,7 +13,7 @@
   "summary": {
     "packages": 38,
     "sourceFiles": 5200,
-    "testFiles": 4558,
+    "testFiles": 4559,
     "sourceLines": 1131789,
     "workspaceEdges": 139,
     "moduleEdges": 17102,
@@ -771,7 +771,7 @@
       "name": "@wrongstack/tools",
       "dir": "packages/tools",
       "sourceFiles": 340,
-      "testFiles": 338,
+      "testFiles": 339,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -787,7 +787,7 @@
         {
           "path": "packages/tools/tsconfig.test.json",
           "error": null,
-          "testFiles": 338
+          "testFiles": 339
         }
       ]
     },
@@ -20145,6 +20145,12 @@
       },
       {
         "file": "packages/tools/tests/session-kanban-sync-guard.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tools/tests/session-kanban-watch-resolved-path.test.ts",
         "projects": [
           "root-node"
         ]

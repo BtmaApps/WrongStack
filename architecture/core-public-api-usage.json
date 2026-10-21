@@ -4,8 +4,8 @@
   "rootImportFiles": 0,
   "bySpecifier": {
     "@wrongstack/core/agent": {
-      "files": 402,
-      "typeOnly": 312,
+      "files": 403,
+      "typeOnly": 313,
       "runtimeOrMixed": 110
     },
     "@wrongstack/core/agent-catalog": {
@@ -179,8 +179,8 @@
       "runtimeOrMixed": 30
     },
     "@wrongstack/core/storage": {
-      "files": 150,
-      "typeOnly": 39,
+      "files": 151,
+      "typeOnly": 40,
       "runtimeOrMixed": 141
     },
     "@wrongstack/core/tasking": {
@@ -1965,6 +1965,12 @@
     {
       "specifier": "@wrongstack/core/agent",
       "file": "packages/tools/tests/session-kanban-sync-guard.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/tools/tests/session-kanban-watch-resolved-path.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -13829,6 +13835,12 @@
       "file": "packages/tools/tests/session-kanban-source-integrity.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/storage",
+      "file": "packages/tools/tests/session-kanban-watch-resolved-path.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
     },
     {
       "specifier": "@wrongstack/core/storage",
