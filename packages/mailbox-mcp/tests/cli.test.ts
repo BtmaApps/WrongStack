@@ -66,6 +66,16 @@ describe('Mailbox MCP CLI arguments', () => {
     expect(warn).toHaveBeenCalled();
   });
 
+  it('keeps a token that starts with a dash and never echoes it', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const token = '-Qx7_secretTok3n';
+    expect(
+      parseArgs(['--project-root', '.', '--http', '--token', token, '--writable'], {}),
+    ).toMatchObject({ httpToken: token, writable: true });
+    expect(warn.mock.calls.flat().join(' ')).not.toContain(token);
+    warn.mockRestore();
+  });
+
   it('accepts only integer HTTP ports in range', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     expect(parseArgs(['--port', '70000'], {}).httpPort).toBe(0);

@@ -90,9 +90,11 @@ export function parseArgs(
   };
   for (let index = 0; index < argv.length; index++) {
     const arg = argv[index];
-    const value = (): string | undefined => {
+    // A secret may begin with "-" (base64url); refusing it dropped the token
+    // and echoed it to stderr as an unknown option.
+    const value = (allowDash = false): string | undefined => {
       const next = argv[index + 1];
-      if (next === undefined || next.startsWith('-')) {
+      if (next === undefined || (!allowDash && next.startsWith('-'))) {
         warn('mcp_cli_flag_missing_value', `${arg} expects a value; ignoring it.`);
         return undefined;
       }
@@ -145,7 +147,7 @@ export function parseArgs(
         break;
       }
       case '--token': {
-        const next = value();
+        const next = value(true);
         if (next !== undefined) parsed.httpToken = next;
         break;
       }

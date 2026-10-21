@@ -93,9 +93,11 @@ export function parseArgs(
     // A value-taking flag must be followed by a value. `path.resolve('')` is
     // the cwd, so a bare `--project-root` used to serve whatever directory the
     // MCP client happened to launch in, and swallowed the next flag as a value.
-    const value = (): string | undefined => {
+    // A secret may begin with "-" (base64url); refusing it dropped the token
+    // and echoed it to stderr as an unknown option.
+    const value = (allowDash = false): string | undefined => {
       const next = argv[index + 1];
-      if (next === undefined || next.startsWith('-')) {
+      if (next === undefined || (!allowDash && next.startsWith('-'))) {
         warn('mcp_cli_flag_missing_value', `${arg} expects a value; ignoring it.`);
         return undefined;
       }
@@ -139,7 +141,7 @@ export function parseArgs(
         break;
       }
       case '--token': {
-        const v = value();
+        const v = value(true);
         if (v !== undefined) parsed.httpToken = v;
         break;
       }

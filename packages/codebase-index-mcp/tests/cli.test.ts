@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { parseArgs } from '../src/cli.js';
 
 describe('Codebase Index MCP CLI arguments', () => {
@@ -35,6 +35,16 @@ describe('Codebase Index MCP CLI arguments', () => {
       httpToken: 'secret',
       writable: true,
     });
+  });
+
+  it('keeps a token that starts with a dash and never echoes it', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const token = '-Qx7_secretTok3n';
+    expect(
+      parseArgs(['--project-root', '.', '--http', '--token', token, '--writable'], {}),
+    ).toMatchObject({ httpToken: token, writable: true });
+    expect(warn.mock.calls.flat().join(' ')).not.toContain(token);
+    warn.mockRestore();
   });
 
   it('parses --watch independently of --writable', () => {
