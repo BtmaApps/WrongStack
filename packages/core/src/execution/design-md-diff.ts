@@ -108,11 +108,11 @@ export function diffDesignMd(before: DesignMdDoc, after: DesignMdDoc): DesignMdC
       out.push({ severity: 'WARN', path: `typography.${level}`, message: 'removed' });
       continue;
     }
-    if (ta.fontFamily && tb.fontFamily && ta.fontFamily !== tb.fontFamily) {
+    if ((ta.fontFamily || tb.fontFamily) && ta.fontFamily !== tb.fontFamily) {
       out.push({
         severity: 'WARN',
         path: `typography.${level}.fontFamily`,
-        message: `${ta.fontFamily} → ${tb.fontFamily} (a brand-level change; state it)`,
+        message: `${ta.fontFamily ?? '(unset)'} → ${tb.fontFamily ?? '(unset)'} (a brand-level change; state it)`,
       });
     }
     for (const prop of ['fontSize', 'fontWeight', 'lineHeight', 'letterSpacing'] as const) {

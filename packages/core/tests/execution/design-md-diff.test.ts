@@ -100,4 +100,12 @@ describe('diffDesignMd', () => {
       message: '(unset) → 1.5',
     });
   });
+
+  it('warns when a typography level drops its fontFamily', () => {
+    const out = diffDesignMd(doc(BASE), doc(BASE.replace('    fontFamily: Inter\n', '')));
+    expect(out.find((c) => c.path === 'typography.body.fontFamily')).toMatchObject({
+      severity: 'WARN',
+      message: 'Inter → (unset) (a brand-level change; state it)',
+    });
+  });
 });
