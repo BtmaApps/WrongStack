@@ -151,6 +151,15 @@ export async function handleHqShortCircuit(
   } else port = DEFAULT_PORT;
 
   const dataDir = typeof flags['data-dir'] === 'string' ? flags['data-dir'] : undefined;
+  // `--password` without a usable value parses as `true` — including a password
+  // that starts with "-". Starting then would silently drop the password.
+  if (flags['password'] === true) {
+    process.stderr.write(
+      `${color.red('✗')} --password requires a value. For a password that starts with "-", ` +
+        'use --password=<value> or WRONGSTACK_HQ_PASSWORD.\n',
+    );
+    return 1;
+  }
   let password: string | undefined;
   try {
     password = await resolveHqPasswordInput({

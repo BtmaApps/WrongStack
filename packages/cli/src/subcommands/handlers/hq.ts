@@ -44,6 +44,16 @@ import { resolveDataDir } from './hq-data-dir.js';
 import { hqTokenCmd } from './hq-token.js';
 
 export const hqCmd: SubcommandHandler = async (args, deps) => {
+  // `--password -x…` parses as `password: true` with the password left in
+  // positional, where it would be echoed as an unknown subcommand. Refuse
+  // before anything reads or prints the positional.
+  if (deps.flags?.['password'] === true) {
+    deps.renderer.writeError(
+      '--password requires a value. For a password that starts with "-", ' +
+        'use --password=<value> or WRONGSTACK_HQ_PASSWORD.\n',
+    );
+    return 1;
+  }
   const sub = args[0];
 
   // `wstack hq --help` / `wstack hq serve --help` → top-level HQ help.

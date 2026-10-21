@@ -312,6 +312,16 @@ export async function serveMcpStdio(
     const httpHost = typeof flags['host'] === 'string' ? flags['host'] : '127.0.0.1';
     // Keep bearer credentials out of the process list where possible. The
     // standalone MCP packages use the same environment variable.
+    // `--token` without a usable value parses as `true` — including a token that
+    // starts with "-", which the top-level parser leaves in positional. Serving
+    // then would bind with no auth at all, so refuse instead.
+    if (flags['token'] === true) {
+      log(
+        'wrongstack MCP server: --token requires a value. For a token that starts with "-", ' +
+          'use --token=<value> or WRONGSTACK_MCP_TOKEN.',
+      );
+      return 1;
+    }
     const tokenFromArg = typeof flags['token'] === 'string' ? flags['token'] : undefined;
     const token = tokenFromArg ?? process.env.WRONGSTACK_MCP_TOKEN?.trim() ?? undefined;
     if (tokenFromArg) {

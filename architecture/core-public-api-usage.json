@@ -134,9 +134,9 @@
       "runtimeOrMixed": 58
     },
     "@wrongstack/core/registry": {
-      "files": 166,
+      "files": 167,
       "typeOnly": 70,
-      "runtimeOrMixed": 99
+      "runtimeOrMixed": 100
     },
     "@wrongstack/core/replay": {
       "files": 3,
@@ -10773,6 +10773,12 @@
     {
       "specifier": "@wrongstack/core/registry",
       "file": "packages/cli/tests/light-subagent-rate-limit-end-to-end.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/registry",
+      "file": "packages/cli/tests/mcp-serve-token.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
