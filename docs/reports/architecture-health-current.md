@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-21T20:18:09.034Z
+**Generated:** 2026-10-21T20:18:36.243Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,7 +9,7 @@
 |---|---:|
 | Workspace packages | 38 |
 | Production source files | 5200 |
-| Production source lines | 1131627 |
+| Production source lines | 1131650 |
 | Test files | 4552 |
 | Workspace dependency edges | 139 |
 | Relative module edges | 17098 |
@@ -90,7 +90,7 @@ None.
 | 733 | `packages/vibeui/src/components/provider-manager.tsx` |
 | 720 | `packages/webui/src/components/MemoryManager/useMemoryManagerState.ts` |
 | 715 | `packages/plugins/src/audit/index.ts` |
-| 714 | `packages/core/src/coordination/multi-agent-coordinator.ts` |
+| 712 | `packages/core/src/coordination/multi-agent-coordinator.ts` |
 | 708 | `packages/vibeui/src/lib/use-session.ts` |
 | 707 | `packages/acp/src/client/acp-session.ts` |
 | 705 | `packages/webui-server/src/server/memory-handlers.ts` |

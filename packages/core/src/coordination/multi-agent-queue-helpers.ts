@@ -41,13 +41,38 @@ export function assertSealedAdmission(
   if (subagents.get(subagentId)?.config.sealed) throw new Error(sealedSubagentRefusal(subagentId));
 }
 
-/** A pending task may be moved only when neither its current nor its new pin is sealed. */
+/**
+ * A pending task may be moved only when neither its current nor its new pin is
+ * sealed, and never onto a stopped subagent (it would wait there forever).
+ */
 export function canRetargetAroundSealed(
   subagents: Map<string, SubagentEntry>,
   from: string | undefined,
   to: string | undefined,
 ): boolean {
-  return !(from && subagents.get(from)?.config.sealed) && !(to && subagents.get(to)?.config.sealed);
+  return (
+    !(from && subagents.get(from)?.config.sealed) &&
+    !(to && subagents.get(to)?.config.sealed) &&
+    !isStoppedPin(subagents, to)
+  );
+}
+
+/** Only an idle pin is ever dispatched: a task pinned to a stopped subagent would wait forever. */
+export function isStoppedPin(
+  subagents: Map<string, SubagentEntry>,
+  subagentId: string | undefined,
+): boolean {
+  return subagentId !== undefined && subagents.get(subagentId)?.status === 'stopped';
+}
+
+/** Remove and return, in queue order, the pending tasks pinned to `subagentId`. */
+export function takePendingPinnedTo(pendingTasks: TaskSpec[], subagentId: string): TaskSpec[] {
+  const taken: TaskSpec[] = [];
+  for (let i = 0; i < pendingTasks.length; ) {
+    if (pendingTasks[i]?.subagentId === subagentId) taken.push(...pendingTasks.splice(i, 1));
+    else i++;
+  }
+  return taken;
 }
 
 export function isIdleSubagentInMap(

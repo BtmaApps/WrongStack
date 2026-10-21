@@ -7,7 +7,7 @@
       "relativeImports": 23
     },
     "packages/core/src/coordination/multi-agent-coordinator.ts": {
-      "lines": 714,
+      "lines": 712,
       "relativeImports": 15
     },
     "packages/core/src/execution/auto-compaction-middleware.ts": {

@@ -32,8 +32,10 @@ import {
   canRetargetAroundSealed,
   createPendingAbortedResult,
   hasLiveSubagentInMap,
+  isStoppedPin,
   type SubagentEntry,
   takeNextDispatchableTaskFromQueue,
+  takePendingPinnedTo,
 } from './multi-agent-queue-helpers.js';
 import {
   beginSubagentTask,
@@ -297,6 +299,9 @@ export class DefaultMultiAgentCoordinator extends EventEmitter implements MultiA
 
   async assign(task: TaskSpec, opts?: { hostOwned?: boolean | undefined }): Promise<void> {
     assertSealedAdmission(this.subagents, task.subagentId, opts?.hostOwned);
+    if (isStoppedPin(this.subagents, task.subagentId)) {
+      return this.emitPendingAborted(task, `Subagent "${task.subagentId}" is stopped`);
+    }
     this.pendingTasks.push(task);
     this.tryDispatchNext();
   }
@@ -325,14 +330,7 @@ export class DefaultMultiAgentCoordinator extends EventEmitter implements MultiA
     const subagent = this.subagents.get(subagentId);
     if (!subagent) return;
 
-    const orphaned: TaskSpec[] = [];
-    for (let i = this.pendingTasks.length - 1; i >= 0; i--) {
-      if (this.pendingTasks[i]?.subagentId === subagentId) {
-        orphaned.unshift(this.pendingTasks[i]!);
-        this.pendingTasks.splice(i, 1);
-      }
-    }
-    for (const t of orphaned) {
+    for (const t of takePendingPinnedTo(this.pendingTasks, subagentId)) {
       this.emitPendingAborted(
         t,
         `Subagent "${subagentId}" was stopped while task "${t.id}" was pending`,
