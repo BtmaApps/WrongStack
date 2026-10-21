@@ -41,6 +41,10 @@ export interface AgentLoopContextManager {
   get lastPreFlightMsgCount(): number;
 }
 
+function isContextOverflowError(err: unknown): boolean {
+  return err instanceof AgentError && err.code === ERROR_CODES.AGENT_CONTEXT_OVERFLOW;
+}
+
 interface PreparedRequestCheck {
   maxContext: number;
   inputTokens: number;
@@ -347,7 +351,15 @@ export function createAgentLoopContextManager(
     const beforeMessages = a.ctx.messages;
     const beforeMsgCount = a.ctx.messages.length;
     const beforeRevision = a.ctx.state.revision;
-    await a.pipelines.contextWindow.run(a.ctx);
+    try {
+      await a.pipelines.contextWindow.run(a.ctx);
+    } catch (err) {
+      // Compaction that cannot reach its hard line (or whose compactor failed
+      // at hard pressure) must not end the turn here: this also runs after a
+      // final answer. The pre-send check measures the real request and is the
+      // one place that decides whether a send is impossible.
+      if (a.ctx.signal?.aborted || !isContextOverflowError(err)) throw err;
+    }
     _lastCompactionMsgCount = a.ctx.messages.length;
     _lastCompactionRevision = a.ctx.state.revision;
     _lastCompactionToolsRef = a.ctx.tools;

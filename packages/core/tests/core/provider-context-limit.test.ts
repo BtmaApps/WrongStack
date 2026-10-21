@@ -788,6 +788,58 @@ describe('pre-send overflow rescue', () => {
   });
 });
 
+describe('compaction failure does not end the turn', () => {
+  it('sends a request that still fits when the compactor fails at hard pressure', async () => {
+    const provider = mockProviderWithProbe({ id: 'compactor-failure', maxContext: 10000 });
+    provider.capabilities.streaming = false;
+    let providerCalls = 0;
+    provider.complete = async (req) => {
+      providerCalls++;
+      return {
+        model: req.model,
+        content: [{ type: 'text', text: 'ok' }],
+        stopReason: 'end_turn',
+        usage: { input: 10, output: 1 },
+      };
+    };
+    const { agent, ctx, pipelines, tmp, session } = await buildAgentWithProbe(provider);
+    for (let i = 0; i < 6; i++) {
+      ctx.state.appendMessage({ role: 'user', content: `turn ${i} ${'history '.repeat(330)}` });
+      ctx.state.appendMessage({
+        role: 'assistant',
+        content: `reply ${i} ${'answer '.repeat(330)}`,
+      });
+    }
+    const failing = {
+      async compact(): Promise<never> {
+        throw new Error('summarizer unavailable');
+      },
+    };
+    pipelines.contextWindow.use({
+      name: 'AutoCompaction',
+      handler: new AutoCompactionMiddleware(failing as never, 10000, undefined, {
+        warn: 0.5,
+        soft: 0.75,
+        hard: 0.9,
+      }).handler(),
+    });
+    try {
+      const key = `${provider.id}/test-model`;
+      const historyTokens = estimateRequestTokens(ctx.messages, ctx.systemPrompt, [], key).total;
+      // Above the 0.9 hard line of the 9000-token input budget, still under it.
+      expect(historyTokens).toBeGreaterThan(9000 * 0.9);
+      expect(historyTokens).toBeLessThan(9000);
+      const result = await agent.run('hello', {});
+      expect(result.status).toBe('done');
+      expect(providerCalls).toBe(1);
+    } finally {
+      resetCalibration(`${provider.id}/test-model`);
+      await session.close();
+      await fs.rm(tmp, { recursive: true, force: true });
+    }
+  });
+});
+
 describe('append-only history while a provider response is pending', () => {
   it('preserves the old request anchor and counts appended messages as its unsent delta', async () => {
     const provider = mockProviderWithProbe({ id: 'inflight-append-regression' });
