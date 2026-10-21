@@ -531,6 +531,42 @@ describe('the fleet endpoint for a leader', () => {
 });
 
 describe('the host binding', () => {
+  it('keeps an "always" or "deny" given at the REPL prompt, like the event prompt (F497)', async () => {
+    const trusted: unknown[] = [];
+    const denied: unknown[] = [];
+    const bindRepl = (answer: 'always' | 'deny') =>
+      bindAcpLeaderHost({
+        events: new EventBus(),
+        projectRoot: '/proj',
+        getConfig: () => CONFIG,
+        permission: () =>
+          ({
+            trust: async (r: unknown) => void trusted.push(r),
+            deny: async (r: unknown) => void denied.push(r),
+          }) as never,
+        context: () => ({}) as never,
+        getTool: () => undefined,
+        runTool: async () => ({ content: '', isError: false }),
+        confirmAwaiter: async () => answer,
+      });
+    const provider = new AcpLeaderProvider({ bootConfig: CONFIG, buildProvider: () => undefined });
+    const confirm = (
+      provider as unknown as {
+        confirm: (s: string, t: unknown, i: unknown, r: unknown) => Promise<boolean>;
+      }
+    ).confirm.bind(provider);
+    const tool = { name: 'write', description: 'write', inputSchema: { type: 'object' } };
+    bindRepl('always');
+    expect(await confirm('s1', tool, { path: 'a.ts' }, { toolCallId: '1', signal: SIGNAL })).toBe(
+      true,
+    );
+    bindRepl('deny');
+    expect(await confirm('s1', tool, { path: 'a.ts' }, { toolCallId: '2', signal: SIGNAL })).toBe(
+      false,
+    );
+    expect([trusted.length, denied.length]).toEqual([1, 1]);
+  });
+
   it('asks through events, not stdin, once the surface (TUI, WebUI) takes confirmations over', () => {
     bindAcpLeaderHost({
       events: new EventBus(),

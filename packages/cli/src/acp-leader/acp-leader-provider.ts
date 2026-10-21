@@ -37,7 +37,7 @@ import { wrongstackAcpPermissionPolicy } from '../fleet/acp-permission-bridge.js
 import { recordAcpRateLimit } from '../fleet/acp-quota-reading.js';
 import { acpBtwBlock, startAcpTurnReminders } from '../fleet/acp-turn-reminders.js';
 import { wrongstackBridgeSetup } from '../fleet/acp-wrongstack-bridge.js';
-import { confirmThroughEvents } from './acp-leader-confirm.js';
+import { confirmThroughEvents, rememberConfirmAnswer } from './acp-leader-confirm.js';
 import { LeaderContext, publishLeaderContext } from './acp-leader-context.js';
 import {
   FLEET_SERVER_NAME,
@@ -475,6 +475,16 @@ export class AcpLeaderProvider implements Provider {
     const toolUseId = request.toolCallId ?? `acp-${Date.now()}`;
     if (host?.confirmAwaiter) {
       const answer = await host.confirmAwaiter(tool, input, toolUseId, suggestedPattern);
+      await rememberConfirmAnswer(
+        {
+          tool,
+          input,
+          suggestedPattern,
+          permission: host.permission(sessionId),
+          context: host.context(sessionId),
+        },
+        answer,
+      );
       return answer !== 'no' && answer !== 'deny';
     }
     if (!host?.confirmThroughEvents) return false;

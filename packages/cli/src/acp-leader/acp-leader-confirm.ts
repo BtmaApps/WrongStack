@@ -73,10 +73,22 @@ export async function confirmThroughEvents(req: EventConfirmRequest): Promise<bo
     });
   });
   if (answer === 'abort' || answer === 'no') return false;
+  await rememberConfirmAnswer(req, answer);
+  return answer !== 'deny';
+}
+
+/**
+ * Keep an "always" or "deny" answer the way the leader's own prompt keeps it,
+ * whichever prompt (events or the REPL's) the user answered on.
+ */
+export async function rememberConfirmAnswer(
+  req: Pick<EventConfirmRequest, 'tool' | 'input' | 'suggestedPattern' | 'permission' | 'context'>,
+  answer: Answer,
+): Promise<void> {
   try {
     if (answer === 'deny') {
       await req.permission?.deny({ tool: req.tool.name, pattern: req.suggestedPattern });
-    } else if (answer !== 'yes') {
+    } else if (answer !== 'yes' && answer !== 'no') {
       // As the leader's own prompt keeps it: the scope the user picked, for a day.
       await req.permission?.trust({
         tool: req.tool.name,
@@ -93,5 +105,4 @@ export async function confirmThroughEvents(req: EventConfirmRequest): Promise<bo
   } catch {
     // Remembering the answer is best-effort; this call is decided either way.
   }
-  return answer !== 'deny';
 }
