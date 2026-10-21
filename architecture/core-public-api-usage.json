@@ -154,9 +154,9 @@
       "runtimeOrMixed": 11
     },
     "@wrongstack/core/security": {
-      "files": 213,
+      "files": 214,
       "typeOnly": 30,
-      "runtimeOrMixed": 185
+      "runtimeOrMixed": 186
     },
     "@wrongstack/core/session-catalog": {
       "files": 13,
@@ -12459,6 +12459,12 @@
     {
       "specifier": "@wrongstack/core/security",
       "file": "packages/tui/src/hooks/use-input-history-persistence.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/tui/src/run-tui.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

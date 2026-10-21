@@ -1,6 +1,7 @@
 import { createWriteStream, type WriteStream } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { scrubErrorText } from '@wrongstack/core/security';
 import { TerminalLifecycle, writeErr } from '@wrongstack/core/utils';
 import React from 'react';
 import { App } from './app.js';
@@ -364,9 +365,14 @@ export async function runTui(opts: RunTuiOptions): Promise<number> {
         mount.detachResize();
         exits.settle(exits.getRunExitCode());
       })
-      .catch(() => {
+      .catch((err: unknown) => {
         mount.detachResize();
-        exits.settle(1);
+        // Ink may have drawn the error into the alternate screen, which
+        // cleanup discards. Keep the cause visible on the restored shell.
+        exits.settle(1, () => {
+          const detail = err instanceof Error ? (err.stack ?? err.message) : String(err);
+          writeErr(`wstack: TUI render failed: ${scrubErrorText(detail)}\n`);
+        });
       });
   });
 }
