@@ -257,6 +257,8 @@ export class ChronicleProjectServerClient {
     const socket = this.socket;
     this.socket = null;
     this.info = null;
+    // onClose() no longer sees this socket as current, so its calls fail here.
+    this.failInFlight(new Error('Chronicle project server connection closed'));
     if (socket && !socket.destroyed) {
       await new Promise<void>((resolve) => {
         socket.once('close', resolve);
@@ -488,7 +490,10 @@ export class ChronicleProjectServerClient {
     if (socket !== this.socket) return;
     this.socket = null;
     this.info = null;
-    const error = new Error('Chronicle project server connection closed');
+    this.failInFlight(new Error('Chronicle project server connection closed'));
+  }
+
+  private failInFlight(error: Error): void {
     this.connectReject?.(error);
     this.connectResolve = null;
     this.connectReject = null;

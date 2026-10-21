@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-21T20:17:38.426Z
+**Generated:** 2026-10-21T20:18:09.034Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,8 +9,8 @@
 |---|---:|
 | Workspace packages | 38 |
 | Production source files | 5200 |
-| Production source lines | 1131622 |
-| Test files | 4551 |
+| Production source lines | 1131627 |
+| Test files | 4552 |
 | Workspace dependency edges | 139 |
 | Relative module edges | 17098 |
 | Non-command slash imports | 0 |
@@ -32,7 +32,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/cli | 676 | 663 | @wrongstack/acp, @wrongstack/bench, @wrongstack/codebase-index-mcp, @wrongstack/core, @wrongstack/desktop, @wrongstack/kanban, @wrongstack/kanban-mcp, @wrongstack/mailbox-mcp, @wrongstack/mcp, @wrongstack/persistence, @wrongstack/plug-lsp, @wrongstack/plugins, @wrongstack/primitives, @wrongstack/providers, @wrongstack/requirement-intake, @wrongstack/requirement-intake-mcp, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sage-mcp, @wrongstack/sdd, @wrongstack/security-scanner, @wrongstack/simpleui, @wrongstack/techstack, @wrongstack/telegram, @wrongstack/tools, @wrongstack/tui, @wrongstack/vector-memory, @wrongstack/vibeui, @wrongstack/webui, @wrongstack/webui-hq, @wrongstack/webui-protocol, @wrongstack/webui-server, @wrongstack/wrongtrace |
 | @wrongstack/client | 7 | 3 | @wrongstack/webui-protocol |
 | @wrongstack/codebase-index-mcp | 6 | 5 | @wrongstack/core, @wrongstack/mcp, @wrongstack/tools |
-| @wrongstack/core | 1162 | 1002 | @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
+| @wrongstack/core | 1162 | 1003 | @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/desktop | 48 | 35 | @wrongstack/core, @wrongstack/webui, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/governance | 45 | 37 | @wrongstack/persistence |
 | @wrongstack/kanban | 109 | 84 | @wrongstack/persistence, @wrongstack/primitives |
@@ -111,6 +111,7 @@ None.
 | 694 | `packages/cli/src/slash-commands/fix-classifier.ts` |
 | 693 | `packages/core/src/coordination/agent-monitor.ts` |
 | 693 | `packages/simpleui/src/automation-workspace.tsx` |
+| 692 | `packages/core/src/chronicle/project-server-client.ts` |
 | 692 | `packages/tools/src/codebase-index/project-server.ts` |
 | 692 | `packages/webui/src/components/MailboxPanel.tsx` |
 | 691 | `packages/core/src/core/agent-response.ts` |
@@ -127,7 +128,6 @@ None.
 | 689 | `packages/core/src/storage/file-session-writer.ts` |
 | 688 | `packages/core/src/coordination/task-auctioneer.ts` |
 | 688 | `packages/core/src/execution/eternal-autonomy.ts` |
-| 687 | `packages/core/src/chronicle/project-server-client.ts` |
 | 687 | `packages/core/src/hq/commands.ts` |
 | 687 | `packages/core/src/storage/session-recovery.ts` |
 | 686 | `apps/desktop/src/main/runtime-manager.ts` |

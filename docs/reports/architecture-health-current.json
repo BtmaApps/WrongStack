@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-21T20:17:38.426Z",
+  "generatedAt": "2026-10-21T20:18:09.034Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 38,
     "sourceFiles": 5200,
-    "testFiles": 4551,
-    "sourceLines": 1131622,
+    "testFiles": 4552,
+    "sourceLines": 1131627,
     "workspaceEdges": 139,
     "moduleEdges": 17098,
     "nonCommandSlashImports": 0,
@@ -249,7 +249,7 @@
       "name": "@wrongstack/core",
       "dir": "packages/core",
       "sourceFiles": 1162,
-      "testFiles": 1002,
+      "testFiles": 1003,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -264,7 +264,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 1002
+          "testFiles": 1003
         }
       ]
     },
@@ -6561,6 +6561,12 @@
       },
       {
         "file": "packages/core/tests/chronicle/project-server-auth-gate.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/chronicle/project-server-client-close.test.ts",
         "projects": [
           "root-node"
         ]
@@ -28842,6 +28848,11 @@
       "relativeImports": 1
     },
     {
+      "file": "packages/core/src/chronicle/project-server-client.ts",
+      "lines": 692,
+      "relativeImports": 5
+    },
+    {
       "file": "packages/tools/src/codebase-index/project-server.ts",
       "lines": 692,
       "relativeImports": 13
@@ -28920,11 +28931,6 @@
       "file": "packages/core/src/execution/eternal-autonomy.ts",
       "lines": 688,
       "relativeImports": 13
-    },
-    {
-      "file": "packages/core/src/chronicle/project-server-client.ts",
-      "lines": 687,
-      "relativeImports": 5
     },
     {
       "file": "packages/core/src/hq/commands.ts",
