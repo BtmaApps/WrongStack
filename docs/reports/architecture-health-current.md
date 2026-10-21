@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-21T20:17:06.933Z
+**Generated:** 2026-10-21T20:17:38.426Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,8 +9,8 @@
 |---|---:|
 | Workspace packages | 38 |
 | Production source files | 5200 |
-| Production source lines | 1131610 |
-| Test files | 4550 |
+| Production source lines | 1131622 |
+| Test files | 4551 |
 | Workspace dependency edges | 139 |
 | Relative module edges | 17098 |
 | Non-command slash imports | 0 |
@@ -30,7 +30,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/acp | 52 | 60 | @wrongstack/core, @wrongstack/primitives |
 | @wrongstack/bench | 29 | 56 | @wrongstack/core |
 | @wrongstack/cli | 676 | 663 | @wrongstack/acp, @wrongstack/bench, @wrongstack/codebase-index-mcp, @wrongstack/core, @wrongstack/desktop, @wrongstack/kanban, @wrongstack/kanban-mcp, @wrongstack/mailbox-mcp, @wrongstack/mcp, @wrongstack/persistence, @wrongstack/plug-lsp, @wrongstack/plugins, @wrongstack/primitives, @wrongstack/providers, @wrongstack/requirement-intake, @wrongstack/requirement-intake-mcp, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sage-mcp, @wrongstack/sdd, @wrongstack/security-scanner, @wrongstack/simpleui, @wrongstack/techstack, @wrongstack/telegram, @wrongstack/tools, @wrongstack/tui, @wrongstack/vector-memory, @wrongstack/vibeui, @wrongstack/webui, @wrongstack/webui-hq, @wrongstack/webui-protocol, @wrongstack/webui-server, @wrongstack/wrongtrace |
-| @wrongstack/client | 7 | 2 | @wrongstack/webui-protocol |
+| @wrongstack/client | 7 | 3 | @wrongstack/webui-protocol |
 | @wrongstack/codebase-index-mcp | 6 | 5 | @wrongstack/core, @wrongstack/mcp, @wrongstack/tools |
 | @wrongstack/core | 1162 | 1002 | @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/desktop | 48 | 35 | @wrongstack/core, @wrongstack/webui, @wrongstack/webui-protocol, @wrongstack/webui-server |
@@ -97,6 +97,7 @@ None.
 | 703 | `packages/core/src/execution/auto-compaction-middleware.ts` |
 | 700 | `packages/core/src/chronicle/project-server.ts` |
 | 699 | `packages/cli/src/boot/tui-session-resume.ts` |
+| 699 | `packages/client/src/client.ts` |
 | 699 | `packages/governance/src/runtime-compatibility.ts` |
 | 698 | `packages/core/src/coordination/subagent-budget.ts` |
 | 697 | `packages/core/src/security/secret-vault.ts` |
@@ -126,7 +127,6 @@ None.
 | 689 | `packages/core/src/storage/file-session-writer.ts` |
 | 688 | `packages/core/src/coordination/task-auctioneer.ts` |
 | 688 | `packages/core/src/execution/eternal-autonomy.ts` |
-| 687 | `packages/client/src/client.ts` |
 | 687 | `packages/core/src/chronicle/project-server-client.ts` |
 | 687 | `packages/core/src/hq/commands.ts` |
 | 687 | `packages/core/src/storage/session-recovery.ts` |

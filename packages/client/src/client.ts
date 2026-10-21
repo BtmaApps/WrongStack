@@ -367,10 +367,13 @@ export class WrongStackClient {
    */
   private subscribe(sessionId: string, catchUp = false): void {
     const previous = this.subscribed;
-    this.subscribed = [sessionId, ...previous.filter((id) => id !== sessionId)].slice(
-      0,
-      MAX_SUBSCRIBED,
+    const ordered = [sessionId, ...previous.filter((id) => id !== sessionId)];
+    // Undeclared sessions get no frames: busy ones keep their slots, idle ones go first.
+    const busy = (id: string): boolean => id === sessionId || this.pendingRun(id) !== undefined;
+    const kept = new Set(
+      [...ordered.filter(busy), ...ordered.filter((id) => !busy(id))].slice(0, MAX_SUBSCRIBED),
     );
+    this.subscribed = ordered.filter((id) => kept.has(id));
     const cursors = catchUp ? this.frames.request(this.subscribed) : null;
     try {
       this.socket.send(
@@ -383,6 +386,15 @@ export class WrongStackClient {
       this.subscribed = previous;
       throw error;
     }
+    // More busy sessions than slots: a dropped session's run fails instead of hanging.
+    this.failRuns(
+      (pending) => !kept.has(pending.run.sessionId),
+      new WrongStackError({
+        kind: 'connection',
+        code: 'unsubscribed',
+        detail: `At most ${MAX_SUBSCRIBED} sessions per connection receive events; this run's session was dropped.`,
+      }),
+    );
   }
 
   /** A matching session refusal is an answer, not an unanswered request. */

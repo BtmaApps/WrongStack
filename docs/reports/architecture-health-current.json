@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-21T20:17:06.933Z",
+  "generatedAt": "2026-10-21T20:17:38.426Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 38,
     "sourceFiles": 5200,
-    "testFiles": 4550,
-    "sourceLines": 1131610,
+    "testFiles": 4551,
+    "sourceLines": 1131622,
     "workspaceEdges": 139,
     "moduleEdges": 17098,
     "nonCommandSlashImports": 0,
@@ -205,7 +205,7 @@
       "name": "@wrongstack/client",
       "dir": "packages/client",
       "sourceFiles": 7,
-      "testFiles": 2,
+      "testFiles": 3,
       "workspaceDependencies": [
         "@wrongstack/webui-protocol"
       ],
@@ -218,7 +218,7 @@
         {
           "path": "packages/client/tsconfig.test.json",
           "error": null,
-          "testFiles": 2
+          "testFiles": 3
         }
       ]
     },
@@ -6009,6 +6009,12 @@
       },
       {
         "file": "packages/client/tests/client.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/client/tests/subscription-eviction.test.ts",
         "projects": [
           "root-node"
         ]
@@ -28766,6 +28772,11 @@
       "relativeImports": 3
     },
     {
+      "file": "packages/client/src/client.ts",
+      "lines": 699,
+      "relativeImports": 5
+    },
+    {
       "file": "packages/governance/src/runtime-compatibility.ts",
       "lines": 699,
       "relativeImports": 12
@@ -28909,11 +28920,6 @@
       "file": "packages/core/src/execution/eternal-autonomy.ts",
       "lines": 688,
       "relativeImports": 13
-    },
-    {
-      "file": "packages/client/src/client.ts",
-      "lines": 687,
-      "relativeImports": 5
     },
     {
       "file": "packages/core/src/chronicle/project-server-client.ts",
