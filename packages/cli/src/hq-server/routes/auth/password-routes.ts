@@ -18,7 +18,7 @@ import {
   setHqSessionCookie,
 } from '../../auth.js';
 import { resolveClientAddress } from '../../client-address.js';
-import type { LoginAttemptStore } from '../../login-attempt-store.js';
+import { LoginAttemptStore } from '../../login-attempt-store.js';
 import type { HqRouterMutableAuth, HqSessionEntry } from '../../types.js';
 import { readRequestBody, writeInvalidBody } from '../../utils.js';
 import {
@@ -139,7 +139,21 @@ export async function handleApiLogin(
     return;
   }
 
+  // Charge the failure BEFORE the scrypt await, not after it: the check above
+  // and a post-verify record left a window in which a concurrent burst from
+  // one IP all passed the check, so every guess was verified and the backoff
+  // never applied. A correct password hands the prior entries back below.
+  const credKey = LoginAttemptStore.credentialKey(body.password);
+  const prevIpEntry = loginAttempts.get(clientIp);
+  const prevCredEntry = loginAttempts.get(credKey);
+  loginAttempts.recordFailure(clientIp, body.password);
   const ok = await verifyHqPassword(body.password, mutableAuth.passwordHash);
+  if (ok) {
+    if (prevIpEntry) loginAttempts.set(clientIp, prevIpEntry);
+    else loginAttempts.delete(clientIp);
+    if (prevCredEntry) loginAttempts.set(credKey, prevCredEntry);
+    else loginAttempts.delete(credKey);
+  }
   if (ok && hqPasswordNeedsUpgrade(mutableAuth.passwordHash)) {
     // Transparent KDF upgrade. The scrypt cost for new hashes was raised, and
     // the stored payload now carries its own parameters so an old hash still
@@ -160,7 +174,7 @@ export async function handleApiLogin(
     }
   }
   if (!ok || !mutableAuth.cookieSecret) {
-    loginAttempts.recordFailure(clientIp, body.password);
+    if (ok) loginAttempts.recordFailure(clientIp, body.password);
     res.writeHead(401, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ error: { code: 'INVALID_PASSWORD', message: 'Invalid password.' } }));
     return;
@@ -318,6 +332,10 @@ export async function handleApiPassword(
       return;
     }
 
+    // Charged before the awaits below, not after them: otherwise a concurrent
+    // burst all passes the check above and every guess is verified. A
+    // confirmed factor clears it (loginAttempts.delete below).
+    recordVerifyFailure(loginAttempts, clientIp);
     const currentPassword = typeof body.currentPassword === 'string' ? body.currentPassword : '';
     let confirmed =
       currentPassword.length > 0 &&
@@ -335,7 +353,6 @@ export async function handleApiPassword(
       replayed = outcome === 'replayed';
     }
     if (!confirmed) {
-      recordVerifyFailure(loginAttempts, clientIp);
       res.writeHead(403, { 'Content-Type': 'application/json' });
       res.end(
         JSON.stringify({

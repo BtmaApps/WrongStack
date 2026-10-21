@@ -99,6 +99,25 @@ export async function handleApiLoginVerify(
     return;
   }
 
+  // The caller decides when the body ends, so the throttle and the pending
+  // session checked above may be stale by now: a burst of requests holding
+  // their bodies open all passed them together. Re-check before any guess.
+  const recheck = loginAttempts.checkBlocked(clientIp);
+  if (recheck.blocked || !sessions.get(sessionId)?.pending2fa) {
+    res.writeHead(recheck.blocked ? 429 : 401, {
+      'Content-Type': 'application/json',
+      ...(recheck.blocked ? { 'Retry-After': String(recheck.retryAfter) } : {}),
+    });
+    res.end(
+      JSON.stringify({
+        error: recheck.blocked
+          ? { code: 'RATE_LIMITED', message: 'Too many attempts. Try again later.' }
+          : { code: 'NO_PENDING_SESSION', message: 'Session is not pending 2FA.' },
+      }),
+    );
+    return;
+  }
+
   if (typeof body.code === 'string' && body.code.length > 0) {
     if (!mutableAuth.totpSecret) {
       res.writeHead(400, { 'Content-Type': 'application/json' });
@@ -107,10 +126,13 @@ export async function handleApiLoginVerify(
       );
       return;
     }
+    // Charged before the await so a concurrent request sees it; a valid code
+    // clears it below (clearOnSuccess).
+    const failures = recordVerifyFailure(loginAttempts, clientIp);
     const outcome = await consumeTotpCode(body.code, mutableAuth, dataDir, applyAuthFile);
     const replayed = outcome === 'replayed';
     if (outcome !== 'ok') {
-      if (recordVerifyFailure(loginAttempts, clientIp) >= MAX_2FA_VERIFY_FAILURES) {
+      if (failures >= MAX_2FA_VERIFY_FAILURES) {
         sessions.delete(sessionId);
       }
       res.writeHead(401, { 'Content-Type': 'application/json' });
@@ -358,6 +380,18 @@ export async function handleApiTotpDisable(
 ): Promise<void> {
   if (!authorizeAuthAdmin(req, res, mutableAuth, sessions)) return;
 
+  let body: { password?: unknown; code?: unknown };
+  try {
+    body = JSON.parse(await readRequestBody(req)) as typeof body;
+  } catch {
+    res.writeHead(400, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: { code: 'BAD_REQUEST', message: 'Invalid JSON body.' } }));
+    return;
+  }
+
+  // Checked after the body (whose end the caller controls) and charged before
+  // the verify awaits, so a concurrent burst cannot all pass one check. A
+  // confirmed factor clears it (loginAttempts.delete below).
   const clientIp = resolveClientAddress(req, trustedProxyHops);
   const { blocked, retryAfter } = loginAttempts.checkBlocked(clientIp);
   if (blocked) {
@@ -370,15 +404,7 @@ export async function handleApiTotpDisable(
     return;
   }
 
-  let body: { password?: unknown; code?: unknown };
-  try {
-    body = JSON.parse(await readRequestBody(req)) as typeof body;
-  } catch {
-    res.writeHead(400, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: { code: 'BAD_REQUEST', message: 'Invalid JSON body.' } }));
-    return;
-  }
-
+  recordVerifyFailure(loginAttempts, clientIp);
   let confirmed = false;
   if (typeof body.password === 'string' && body.password.length > 0 && mutableAuth.passwordHash) {
     confirmed = await verifyHqPassword(body.password, mutableAuth.passwordHash);
@@ -392,7 +418,6 @@ export async function handleApiTotpDisable(
     replayed = outcome === 'replayed';
   }
   if (!confirmed) {
-    recordVerifyFailure(loginAttempts, clientIp);
     res.writeHead(403, { 'Content-Type': 'application/json' });
     res.end(
       JSON.stringify({

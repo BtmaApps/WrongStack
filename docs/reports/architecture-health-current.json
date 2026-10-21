@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-21T20:24:47.351Z",
+  "generatedAt": "2026-10-21T20:25:27.521Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 38,
     "sourceFiles": 5200,
-    "testFiles": 4559,
-    "sourceLines": 1131797,
+    "testFiles": 4560,
+    "sourceLines": 1131839,
     "workspaceEdges": 139,
     "moduleEdges": 17102,
     "nonCommandSlashImports": 0,
@@ -152,7 +152,7 @@
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
       "sourceFiles": 676,
-      "testFiles": 663,
+      "testFiles": 664,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -197,7 +197,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 663
+          "testFiles": 664
         }
       ]
     },
@@ -3411,6 +3411,12 @@
       },
       {
         "file": "packages/cli/tests/hq-login-attempt-flush.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/hq-login-verify-burst.test.ts",
         "projects": [
           "root-node"
         ]

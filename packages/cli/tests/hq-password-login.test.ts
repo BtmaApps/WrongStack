@@ -497,6 +497,41 @@ describe('HQ server — optional browser password login', () => {
     expect(afterExpiry.res.status).toBe(200);
   });
 
+  it('throttles a concurrent wrong-password burst like sequential guesses (F514)', async () => {
+    // The throttle used to be recorded only after the scrypt await, so every
+    // request of a burst passed the check and was verified against the hash.
+    handle = await startHqServer({ host: '127.0.0.1', port: 0, dataDir, password: 'secret123' });
+    const h = handle;
+    const statuses = await Promise.all(
+      Array.from({ length: 8 }, (_, i) => login(h, `guess-${i}`).then(({ res }) => res.status)),
+    );
+    expect(statuses.filter((s) => s === 401)).toHaveLength(1);
+    expect(statuses.filter((s) => s === 429)).toHaveLength(7);
+  });
+
+  it('throttles a concurrent current-password burst on rotation (F516)', async () => {
+    await seedAuthFile({ password: 'secret123' });
+    handle = await startHqServer({ host: '127.0.0.1', port: 0, dataDir });
+    const h = handle;
+    const statuses = await Promise.all(
+      Array.from({ length: 8 }, (_, i) =>
+        fetch(httpUrl(h, '/api/auth/password'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SEEDED_TOKEN}` },
+          body: JSON.stringify({ currentPassword: `guess-${i}`, newPassword: 'brand-new-pw-123' }),
+        }).then((r) => r.status),
+      ),
+    );
+    expect(statuses.filter((s) => s === 403)).toHaveLength(1);
+    expect(statuses.filter((s) => s === 429)).toHaveLength(7);
+  });
+
+  it('a correct password leaves no throttle reservation behind (F514)', async () => {
+    handle = await startHqServer({ host: '127.0.0.1', port: 0, dataDir, password: 'secret123' });
+    expect((await login(handle, 'secret123')).res.status).toBe(200);
+    expect((await login(handle, 'wrong')).res.status).toBe(401);
+  });
+
   it('keeps cred: entries in memory and does not persist password hashes to login-attempts.json (SEC-001)', async () => {
     await seedAuthFile({ password: 'secret123' });
     handle = await startHqServer({ host: '127.0.0.1', port: 0, dataDir });

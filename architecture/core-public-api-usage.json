@@ -154,9 +154,9 @@
       "runtimeOrMixed": 11
     },
     "@wrongstack/core/security": {
-      "files": 214,
+      "files": 215,
       "typeOnly": 30,
-      "runtimeOrMixed": 186
+      "runtimeOrMixed": 187
     },
     "@wrongstack/core/session-catalog": {
       "files": 13,
@@ -12099,6 +12099,12 @@
     {
       "specifier": "@wrongstack/core/security",
       "file": "packages/cli/tests/hq-auth-live-browser-smoke.mjs",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/cli/tests/hq-login-verify-burst.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
