@@ -265,6 +265,8 @@ export class StdioTransport implements AgentServerTransport {
    * read() has drained the queue and reported the end.
    */
   private handleClose(): void {
+    // A last frame without its newline is still a complete request at EOF.
+    if (this.buffer.trim()) this.onData('\n');
     this.inputEnded = true;
     this.stdin.off('data', this.onStdinData);
     this.stdin.off('end', this.onStdinEnd);

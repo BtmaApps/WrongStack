@@ -262,6 +262,16 @@ describe('StdioTransport', () => {
     expect(await p).toBeNull();
   });
 
+  it('stdin "end" reads a last request that has no trailing newline (F499)', async () => {
+    const t = new StdioTransport();
+    stdin.emit('data', '{"method":"initialize","id":1}\n{"method":"session/new","id":2}');
+    stdin.emit('end');
+    expect(await t.read()).toEqual({ method: 'initialize', id: 1 });
+    expect(await t.read()).toEqual({ method: 'session/new', id: 2 });
+    expect(await t.read()).toBeNull();
+    t.close();
+  });
+
   it('stdin "end" still reads and answers the requests that arrived before it', async () => {
     // A client that writes its requests and then closes stdin gets every reply.
     const t = new StdioTransport();
