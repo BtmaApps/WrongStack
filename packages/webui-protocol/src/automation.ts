@@ -137,8 +137,22 @@ export async function automationRequest<T>(
     },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
-  const value = (await response.json()) as T & { error?: string };
+  // Parse defensively: `response.json()` would reject with a bare SyntaxError
+  // on a non-JSON body (a reverse-proxy HTML error page, a truncated
+  // response) and defeat the status contract below just when it matters —
+  // transport-level failures. Read text, tolerate an unparseable body, and
+  // let the !response.ok branch report the status; only a SUCCESS response
+  // with a non-JSON body is an error, and it says so.
+  const text = await response.text();
+  let value: (T & { error?: string }) | undefined;
+  try {
+    value = text ? (JSON.parse(text) as T & { error?: string }) : undefined;
+  } catch {
+    value = undefined;
+  }
   if (!response.ok)
-    throw new Error(value.error ?? `Automation request failed (${response.status})`);
+    throw new Error(value?.error ?? `Automation request failed (${response.status})`);
+  if (value === undefined)
+    throw new Error(`Automation request failed (${response.status}): non-JSON response body`);
   return value;
 }

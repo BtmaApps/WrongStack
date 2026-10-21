@@ -110,4 +110,31 @@ describe('automation HTTP request contract', () => {
     stub(503, {});
     await expect(automationRequest('state')).rejects.toThrow('Automation request failed (503)');
   });
+  it('reports the status for a non-JSON failure body instead of a JSON parse error', async () => {
+    // A reverse-proxy HTML error page used to reject with a bare SyntaxError
+    // from response.json(), losing both the status and the server error.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn<typeof globalThis.fetch>().mockResolvedValue(
+        new Response('<html>Bad Gateway</html>', {
+          status: 502,
+          headers: { 'content-type': 'text/html' },
+        }),
+      ),
+    );
+    await expect(automationRequest('state')).rejects.toThrow('Automation request failed (502)');
+  });
+  it('rejects a non-JSON success body with the contract error, never SyntaxError', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn<typeof globalThis.fetch>().mockResolvedValue(new Response('', { status: 200 })),
+    );
+    const error = await automationRequest('state').then(
+      () => null,
+      (cause: unknown) => cause,
+    );
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).toContain('non-JSON response body');
+    expect(error).not.toBeInstanceOf(SyntaxError);
+  });
 });
