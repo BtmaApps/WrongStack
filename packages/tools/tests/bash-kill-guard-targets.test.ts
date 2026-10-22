@@ -111,9 +111,9 @@ describe('bash-kill-guard — POSIX targets', () => {
     'kill 111 222',
     'kill -- 111',
     'true; kill 111',
-    `echo "a; kill ${P}"`,
-    `echo 'x && kill ${P}'`,
-    `echo a\\; kill ${P}`,
+    'echo "a; kill 111"',
+    "echo 'x && kill 111'",
+    'echo a\\; kill 111',
     'ls 2>&1 && echo ok',
     'npm test &>out.log',
     '',
@@ -121,6 +121,20 @@ describe('bash-kill-guard — POSIX targets', () => {
     const { checkAndBlockKillCommand } = await loadGuard('linux');
     expect(await checkAndBlockKillCommand(command)).toEqual({ blocked: false });
   });
+
+  // Quoted separators are not split, so these are not parsed as kills. The
+  // fail-closed backstop still refuses them: they name a protected PID next to
+  // a kill word, and the guard cannot tell a harmless echo from an obfuscated
+  // kill by reading the line. That cost is deliberate.
+  it.each([`echo "a; kill ${P}"`, `echo 'x && kill ${P}'`, `echo a\\; kill ${P}`])(
+    'refuses %j through the protected-PID backstop',
+    async (command) => {
+      const { checkAndBlockKillCommand } = await loadGuard('linux');
+      const result = await checkAndBlockKillCommand(command);
+      expect(result.blocked).toBe(true);
+      expect(result.reason).toMatch(/protected WrongStack process/);
+    },
+  );
 
   it('keeps blocking a kill piped into another command as a whole', async () => {
     const { checkAndBlockKillCommand } = await loadGuard('linux');
@@ -166,13 +180,20 @@ describe('bash-kill-guard — Windows (Git Bash / PowerShell) targets', () => {
     expect((await checkAndBlockKillCommand(command)).blocked).toBe(true);
   });
 
-  it.each(['Stop-Process -Id 111', 'Get-Date; kill 111 222', `Write-Output "x; kill ${P}"`])(
+  it.each(['Stop-Process -Id 111', 'Get-Date; kill 111 222', 'Write-Output "x; kill 111"'])(
     'does not block %j',
     async (command) => {
       const { checkAndBlockKillCommand } = await loadGuard('win32');
       expect((await checkAndBlockKillCommand(command)).blocked).toBe(false);
     },
   );
+
+  it('refuses a quoted protected PID next to kill through the backstop (win32)', async () => {
+    const { checkAndBlockKillCommand } = await loadGuard('win32');
+    const result = await checkAndBlockKillCommand(`Write-Output "x; kill ${P}"`);
+    expect(result.blocked).toBe(true);
+    expect(result.reason).toMatch(/protected WrongStack process/);
+  });
 });
 
 describe('bash-kill-guard — launcher-wrapped verbs (win32)', () => {

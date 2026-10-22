@@ -229,7 +229,38 @@ describe('bash-kill-guard — unparsed POSIX kill operands', () => {
     expect(result.blocked).toBe(true);
   });
 
-  it.each(['kill -9 111 abc', 'ionice -c 3 make', `echo kill ${PROTECTED_PID}`])(
+  // The fail-closed backstop: a protected PID in any decoded word next to
+  // anything kill-shaped is refused, however the line is spelled — including
+  // the guard's own documented static-parse bypasses.
+  it.each([
+    `ki''ll -9 ${PROTECTED_PID}`,
+    `k"i"ll ${PROTECTED_PID}`,
+    `$(printf kill) -9 ${PROTECTED_PID}`,
+    `eval "ki""ll -9 ${PROTECTED_PID}"`,
+    `node -e "process.kill(${PROTECTED_PID})"`,
+    `python3 -c "import os; os.kill(${PROTECTED_PID}, 9)"`,
+    `sh -c '$0 "$1" $2' kill "'" ${PROTECTED_PID}`,
+    `echo kill ${PROTECTED_PID}`,
+    `kill -s SIGKILL $'\\x34\\x32\\x34\\x32\\x34\\x32'`,
+  ])('refuses %j through the protected-PID backstop', async (command) => {
+    const { checkAndBlockKillCommand } = await loadGuard();
+    const result = await checkAndBlockKillCommand(command);
+    expect(result.blocked).toBe(true);
+    expect(result.reason).toMatch(/protected WrongStack process/);
+  });
+
+  // Reading a protected process is not killing it.
+  it.each([
+    `ps -p ${PROTECTED_PID}`,
+    `cat /proc/${PROTECTED_PID}/status`,
+    `echo ${PROTECTED_PID}`,
+    `lsof -p ${PROTECTED_PID}`,
+  ])('allows %j: a protected PID without a kill', async (command) => {
+    const { checkAndBlockKillCommand } = await loadGuard();
+    expect((await checkAndBlockKillCommand(command)).blocked).toBe(false);
+  });
+
+  it.each(['kill -9 111 abc', 'ionice -c 3 make', 'echo kill 111'])(
     'still allows %j',
     async (command) => {
       const { checkAndBlockKillCommand } = await loadGuard();

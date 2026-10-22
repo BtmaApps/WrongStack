@@ -23,24 +23,29 @@
  * AND a block path in isKillRelatedCommand + parseKillCommand + isKillProtected.
  * Script-based kills are blocked conservatively (can't inspect script content).
  *
- * Known bypasses (NOT handled — this is a static regex parser, not a shell):
- * Static analysis of shell strings is inherently defeatable by obfuscation.
- * This guard is one defense-in-depth layer behind the permission policy and
- * the project-escape checks, not the sole gate. Treat a miss here as expected,
- * not as a hole to plug with ever-more-clever regexes. The patterns below are
- * known to evade detection:
- * - Base64 / decode pipes: `echo bCAtOSAxMjM0NQ== | base64 -d | sh`
- * - Variable indirection: `sig=-9; target=12345; kill $sig $target`
- * - Command substitution: `$(printf kill) -9 12345`
- * - String concatenation / quote-splitting: `ki''ll -9 12345`, `k"i"ll 12345`
- * - Aliases and functions: `alias x=kill; x -9 12345`
- * - eval / source: `eval "ki""ll -9 12345"`
- * - node -e eval: `node -e "process.kill(12345)"` (handled by exec-kill-guard.ts)
+ * Two layers:
+ * 1. Readings: the parsers above extract concrete targets and give precise
+ *    reasons. They read the line statically, which obfuscation defeats.
+ * 2. Fail-closed backstop (`protectedPidBackstop`): a line that names a
+ *    protected PID in any word — quotes, escapes and `$'…'` decoded — next to
+ *    anything kill-shaped (`kill`, `taskkill`, `Stop-Process`, `process.kill`,
+ *    `os.kill`, `SIGKILL` …) is refused, however it is spelled. This is what
+ *    holds against quote splitting (`ki''ll`), `eval`, `$(printf kill)`,
+ *    positional parameters and one-liners. Cost: a harmless
+ *    `echo "kill <protected pid>"` is refused too. Reading a protected process
+ *    (`ps -p <pid>`, `/proc/<pid>`) stays allowed: no kill word.
+ *
+ * Known bypasses — the PID is not in the text, so nothing static can see it:
+ * - Computed PIDs: `kill $((424241+1))`, `kill $(cat daemon.pid)`, `kill $PID`
+ * - Decode pipes: `echo bCAtOSAxMjM0NQ== | base64 -d | sh`
+ * - Name kills of a process the registry does not know by that name
  * - Scripts not named kill/terminate/stop*: `runkill.sh`, `/tmp/cleanup.bat`
  *
- * Mitigation: rely on the permission policy (confirm/deny gate) and YOLO
- * destructive detection as the primary controls; this guard is a best-effort
- * fast path for the common non-obfuscated forms.
+ * Review policy: a finding that obfuscates a LITERAL protected PID is a
+ * backstop bug — fix the backstop (its decoding or KILL_SHAPED_RE), not with
+ * another reading rule. A finding that computes the PID at run time is the
+ * known-bypass class above. No YOLO destructive kind covers kills, so under
+ * YOLO this guard is the only gate: keep the backstop fail-closed.
  */
 
 import * as os from 'node:os';
@@ -58,6 +63,7 @@ import {
   SCRIPT_KILL_FALLBACK_RE,
   SCRIPT_KILL_RE_POSIX,
   splitShellSequence,
+  splitShellWords,
   stripPowerShellLauncherHead,
   unquoteShellWord,
   unwrapKillCommandHead,
@@ -389,6 +395,57 @@ async function checkSingleCommand(
   command: string,
   depth = 0,
   work: ReadingWork = { left: READING_BUDGET, seen: new Set() },
+): Promise<KillCheckResult> {
+  const result = await checkReadings(command, depth, work);
+  if (result.blocked || depth > 0) return result;
+  return (await protectedPidBackstop(command)) ?? result;
+}
+
+/**
+ * Fail-closed backstop behind every parse. Reading a shell line statically is
+ * defeatable (quote splitting, `eval`, positional parameters, ANSI-C quoting
+ * …), and each new reading rule opened new differentials. The PIDs this guard
+ * protects are known, though: a line that names one of them — in any word,
+ * quotes and escapes decoded — next to anything kill-shaped is refused, however
+ * it is spelled. What stays out of reach is a PID computed at run time
+ * (`$((a+b))`, `$(cat pidfile)`, a variable), listed under Known bypasses.
+ * Cost: a harmless `echo "kill <protected pid>"` is refused too.
+ */
+async function protectedPidBackstop(command: string): Promise<KillCheckResult | undefined> {
+  const decoded = splitShellWords(command).map(unquoteShellWord).join(' ');
+  const text = `${command}\n${decoded}`;
+  if (!KILL_SHAPED_RE.test(text)) return undefined;
+  const pids = [...new Set((text.match(/\d+/g) ?? []).map(Number))]
+    .filter((pid) => pid > 1 && Number.isSafeInteger(pid))
+    .slice(0, 64);
+  for (const pid of pids) {
+    const protectedPid = await isKillProtected({
+      pid,
+      isGroupKill: false,
+      isAllKill: false,
+      originalCommand: command,
+    });
+    if (protectedPid) {
+      return {
+        blocked: true,
+        reason:
+          `Blocked: the command names PID ${pid}, a protected WrongStack process, next to ` +
+          'a kill command in a form the guard cannot verify. Name the target plainly, or ' +
+          'leave the protected process alone.',
+      };
+    }
+  }
+  return undefined;
+}
+
+/** Anything that can signal a process, in shell, PowerShell, cmd or a one-liner. */
+const KILL_SHAPED_RE =
+  /(?:^|[^a-z0-9_-])(?:kill|pkill|killall|xkill|taskkill|tskill|stop-process|spps|wmic)(?:\.exe)?(?![a-z0-9_-])|process\.kill|os\.kill|killpg|\bsig(?:kill|term|int|hup|quit|abrt|usr1|usr2|stop)\b|\bterminate\b/i;
+
+async function checkReadings(
+  command: string,
+  depth: number,
+  work: ReadingWork,
 ): Promise<KillCheckResult> {
   const counted = await checkOneReading(command);
   if (counted.blocked) return counted;
