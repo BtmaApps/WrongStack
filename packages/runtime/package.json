@@ -1,6 +1,6 @@
 {
   "name": "@wrongstack/runtime",
-  "version": "1.1.12",
+  "version": "1.1.13",
   "private": true,
   "license": "MIT",
   "description": "WrongStack default runtime implementations and host-level composition helpers built on @wrongstack/core.",
@@ -83,10 +83,10 @@
     "@wrongstack/tools": "workspace:*",
     "@wrongstack/vector-memory": "workspace:*",
     "@wrongstack/webui-protocol": "workspace:*",
-    "cron-parser": "^5.10.1"
+    "cron-parser": "^5.10.2"
   },
   "devDependencies": {
-    "@types/node": "^26.5.1",
+    "@types/node": "^26.6.5",
     "@wrongstack/wrongtrace": "workspace:*",
     "typescript": "^7.0.2"
   },

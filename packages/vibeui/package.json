@@ -1,6 +1,6 @@
 {
   "name": "@wrongstack/vibeui",
-  "version": "1.1.12",
+  "version": "1.1.13",
   "private": true,
   "description": "A focused WrongStack coding workspace built with Next.js and Radix UI.",
   "license": "MIT",
@@ -32,7 +32,7 @@
   "dependencies": {
     "@wrongstack/webui-protocol": "workspace:*",
     "@xyflow/react": "12.12.0",
-    "lucide-react": "1.45.0",
+    "lucide-react": "1.61.0",
     "lowlight": "3.3.0",
     "radix-ui": "1.8.1",
     "react": "19.3.1",

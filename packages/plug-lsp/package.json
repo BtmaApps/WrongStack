@@ -1,6 +1,6 @@
 {
   "name": "@wrongstack/plug-lsp",
-  "version": "1.1.12",
+  "version": "1.1.13",
   "private": true,
   "license": "MIT",
   "description": "WrongStack plugin that exposes Language Server Protocol tools.",
@@ -39,13 +39,13 @@
   },
   "dependencies": {
     "@wrongstack/tools": "workspace:*",
-    "vscode-languageserver-protocol": "^3.18.3"
+    "vscode-languageserver-protocol": "^3.18.4"
   },
   "peerDependencies": {
     "@wrongstack/core": "workspace:*"
   },
   "devDependencies": {
-    "@types/node": "^26.5.1",
+    "@types/node": "^26.6.5",
     "@wrongstack/core": "workspace:*",
     "typescript": "^7.0.2"
   },

@@ -1,6 +1,6 @@
 {
   "name": "@wrongstack/desktop",
-  "version": "1.1.12",
+  "version": "1.1.13",
   "private": true,
   "license": "MIT",
   "description": "WrongStack Desktop - Electron shell for managing multiple local WrongStack runtimes.",
@@ -52,21 +52,21 @@
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "ws": "^8.21.3",
-    "zod": "^4.6.2"
+    "zod": "^4.6.7"
   },
   "peerDependencies": {
-    "electron": "^44.3.0"
+    "electron": "^45.0.0"
   },
   "devDependencies": {
-    "@types/node": "^22.20.2",
+    "@types/node": "^22.20.5",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@types/ws": "^8.18.1",
-    "@vitejs/plugin-react": "^6.1.1",
-    "electron": "^44.3.0",
-    "electron-builder": "^26.15.3",
+    "@vitejs/plugin-react": "^6.1.2",
+    "electron": "^45.0.0",
+    "electron-builder": "^26.18.0",
     "typescript": "^7.0.2",
-    "vite": "^8.3.4"
+    "vite": "^8.3.5"
   },
   "publishConfig": {
     "access": "public"
