@@ -29,6 +29,18 @@ export interface GraphNodeData {
   subsystem?: string;
   /** `files.mtime_ms`, for recency shading. */
   lastModifiedMs?: number;
+  /** Number of active SAGE memories anchored to this node. */
+  memoryCount?: number;
+  /** Active SAGE institutional memories anchored to this node. */
+  memories?: Array<{ id: string; kind: string; text: string }>;
+  /** True when WrongTrace marks this file as fragile / high-churn. */
+  isFragile?: boolean;
+  /** Number of recent edit/revert thrashing cycles reported by WrongTrace. */
+  thrashingCount?: number;
+  /** WrongTrace file health score (0..100). */
+  healthScore?: number;
+  /** Active WrongTrace file lock owner when locked by an agent. */
+  lockOwner?: string;
 }
 
 export interface GraphEdgeData {
@@ -150,6 +162,488 @@ export function connectedNodeIds(graph: CodeMapGraphResponse, nodeId: string): S
     if (edge.target === nodeId) connected.add(edge.source);
   }
   return connected;
+}
+
+export interface ShortestPathResult {
+  nodes: GraphNodeData[];
+  edges: GraphEdgeData[];
+  nodeIds: Set<string>;
+  directed: boolean;
+}
+
+/**
+ * Find the shortest path between two graph nodes using BFS.
+ * Tries a directed walk (`source -> target`) first unless `directed === false`;
+ * when `mode === 'auto'` (the default), falls back to an undirected walk if no
+ * directed path exists.
+ */
+export function findShortestPathBetweenNodes(
+  graph: CodeMapGraphResponse,
+  fromId: string,
+  toId: string,
+  options: { mode?: 'auto' | 'directed' | 'undirected' } = {},
+): ShortestPathResult | null {
+  const byId = new Map(graph.nodes.map((node) => [node.id, node]));
+  const startNode = byId.get(fromId);
+  const endNode = byId.get(toId);
+  if (!startNode || !endNode) return null;
+  if (fromId === toId) {
+    return {
+      nodes: [startNode],
+      edges: [],
+      nodeIds: new Set([fromId]),
+      directed: true,
+    };
+  }
+
+  const runBfs = (directed: boolean): ShortestPathResult | null => {
+    const queue: string[] = [fromId];
+    const visited = new Set<string>([fromId]);
+    const parent = new Map<string, { prevId: string; edge: GraphEdgeData }>();
+
+    let cursor = 0;
+    while (cursor < queue.length) {
+      const current = queue[cursor++]!;
+      if (current === toId) break;
+
+      for (const edge of graph.edges) {
+        let nextId: string | undefined;
+        if (edge.source === current && byId.has(edge.target)) {
+          nextId = edge.target;
+        } else if (!directed && edge.target === current && byId.has(edge.source)) {
+          nextId = edge.source;
+        }
+        if (!nextId || visited.has(nextId)) continue;
+        visited.add(nextId);
+        parent.set(nextId, { prevId: current, edge });
+        queue.push(nextId);
+      }
+    }
+
+    if (!visited.has(toId)) return null;
+
+    const pathNodes: GraphNodeData[] = [];
+    const pathEdges: GraphEdgeData[] = [];
+    let curr: string | undefined = toId;
+    while (curr !== undefined) {
+      const node = byId.get(curr);
+      if (node) pathNodes.push(node);
+      const step = parent.get(curr);
+      if (!step) break;
+      pathEdges.push(step.edge);
+      curr = step.prevId;
+    }
+    pathNodes.reverse();
+    pathEdges.reverse();
+
+    return {
+      nodes: pathNodes,
+      edges: pathEdges,
+      nodeIds: new Set(pathNodes.map((n) => n.id)),
+      directed,
+    };
+  };
+
+  const mode = options.mode ?? 'auto';
+  if (mode === 'directed') return runBfs(true);
+  if (mode === 'undirected') return runBfs(false);
+  return runBfs(true) ?? runBfs(false);
+}
+
+/**
+ * Deterministic Louvain modularity clustering over a `CodeMapGraphResponse`.
+ * Returns `nodeId -> communityLabel` for graphs that lack explicit subsystem
+ * labels or collapse into a single band (e.g. file/symbol drill-down scopes).
+ */
+export function inferGraphCommunities(graph: CodeMapGraphResponse): Map<string, string> {
+  const result = new Map<string, string>();
+  const sortedNodes = [...graph.nodes].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  const n = sortedNodes.length;
+  if (n === 0) return result;
+
+  const indexById = new Map<string, number>();
+  for (let idx = 0; idx < sortedNodes.length; idx++) {
+    indexById.set(sortedNodes[idx]!.id, idx);
+  }
+
+  const adj: Array<Map<number, number>> = Array.from(
+    { length: n },
+    () => new Map<number, number>(),
+  );
+  const degree = new Float64Array(n);
+  let totalDoubleWeight = 0;
+
+  for (const edge of graph.edges) {
+    const u = indexById.get(edge.source);
+    const v = indexById.get(edge.target);
+    if (u === undefined || v === undefined || u === v) continue;
+    const w = edge.weight > 0 ? edge.weight : 1;
+    adj[u]!.set(v, (adj[u]!.get(v) ?? 0) + w);
+    adj[v]!.set(u, (adj[v]!.get(u) ?? 0) + w);
+    degree[u] = (degree[u] ?? 0) + w;
+    degree[v] = (degree[v] ?? 0) + w;
+    totalDoubleWeight += 2 * w;
+  }
+
+  if (totalDoubleWeight === 0) return result;
+
+  const comm = new Int32Array(n);
+  const sigmaTot = new Float64Array(n);
+  for (let i = 0; i < n; i++) {
+    comm[i] = i;
+    sigmaTot[i] = degree[i] ?? 0;
+  }
+
+  for (let pass = 0; pass < 10; pass++) {
+    let moved = false;
+    for (let i = 0; i < n; i++) {
+      const ki = degree[i] ?? 0;
+      if (ki === 0) continue;
+      const cur = comm[i]!;
+      sigmaTot[cur] = (sigmaTot[cur] ?? 0) - ki;
+
+      const weights = new Map<number, number>([[cur, 0]]);
+      for (const [nbr, w] of adj[i]!) {
+        const c = comm[nbr]!;
+        weights.set(c, (weights.get(c) ?? 0) + w);
+      }
+
+      let bestComm = cur;
+      let bestGain = (weights.get(cur) ?? 0) - ((sigmaTot[cur] ?? 0) * ki) / totalDoubleWeight;
+      for (const candidate of [...weights.keys()].sort((a, b) => a - b)) {
+        const gain =
+          (weights.get(candidate) ?? 0) - ((sigmaTot[candidate] ?? 0) * ki) / totalDoubleWeight;
+        if (gain > bestGain + 1e-12) {
+          bestGain = gain;
+          bestComm = candidate;
+        }
+      }
+
+      sigmaTot[bestComm] = (sigmaTot[bestComm] ?? 0) + ki;
+      if (bestComm !== cur) {
+        comm[i] = bestComm;
+        moved = true;
+      }
+    }
+    if (!moved) break;
+  }
+
+  const membersByComm = new Map<number, GraphNodeData[]>();
+  for (let i = 0; i < n; i++) {
+    const c = comm[i]!;
+    const list = membersByComm.get(c);
+    if (list) list.push(sortedNodes[i]!);
+    else membersByComm.set(c, [sortedNodes[i]!]);
+  }
+
+  for (const [, members] of membersByComm) {
+    if (members.length < 2) continue;
+    const hub = [...members].sort(
+      (a, b) =>
+        (b.rank ?? 0) - (a.rank ?? 0) ||
+        (degree[indexById.get(b.id)!] ?? 0) - (degree[indexById.get(a.id)!] ?? 0) ||
+        a.label.localeCompare(b.label),
+    )[0]!;
+    const label = `cluster:${hub.label}`;
+    for (const m of members) {
+      result.set(m.id, label);
+    }
+  }
+  return result;
+}
+
+export interface BlastRadiusOverlay {
+  /** 0-hop directly modified/selected node IDs. */
+  direct: Set<string>;
+  /** 1-hop incoming callers/dependents (`edge.target` in `direct`). */
+  firstHop: Set<string>;
+  /** 2-hop transitive callers/dependents (`edge.target` in `firstHop`). */
+  secondHop: Set<string>;
+  /** All impacted node IDs (`direct ∪ firstHop ∪ secondHop`). */
+  allImpacted: Set<string>;
+}
+
+/**
+ * Compute 0-hop, 1-hop, and 2-hop incoming blast-radius sets over a
+ * `CodeMapGraphResponse` for visual diff / impact highlighting.
+ */
+export function computeBlastRadiusOverlay(
+  graph: CodeMapGraphResponse,
+  seedNodeIds: Iterable<string>,
+): BlastRadiusOverlay {
+  const validIds = new Set(graph.nodes.map((n) => n.id));
+  const direct = new Set<string>();
+  for (const id of seedNodeIds) {
+    if (validIds.has(id)) direct.add(id);
+  }
+
+  const firstHop = new Set<string>();
+  for (const edge of graph.edges) {
+    if (direct.has(edge.target) && validIds.has(edge.source) && !direct.has(edge.source)) {
+      firstHop.add(edge.source);
+    }
+  }
+
+  const secondHop = new Set<string>();
+  for (const edge of graph.edges) {
+    if (
+      firstHop.has(edge.target) &&
+      validIds.has(edge.source) &&
+      !direct.has(edge.source) &&
+      !firstHop.has(edge.source)
+    ) {
+      secondHop.add(edge.source);
+    }
+  }
+
+  const allImpacted = new Set<string>([...direct, ...firstHop, ...secondHop]);
+  return { direct, firstHop, secondHop, allImpacted };
+}
+
+export type CanvasTourPersona = 'junior' | 'experienced' | 'non-technical';
+
+export interface CanvasTourStep {
+  order: number;
+  node: GraphNodeData;
+  stage: 'foundation' | 'hub' | 'entry';
+  inCount: number;
+  outCount: number;
+  explanation: string;
+}
+
+/**
+ * Build a dependency-ordered Guided Tour (`CanvasTourStep[]`) over the active
+ * `CodeMapGraphResponse`: foundational dependencies first (high incoming, low
+ * outgoing), followed by central hubs, and ending at top-level entry points.
+ */
+export function buildCanvasGuidedTour(
+  graph: CodeMapGraphResponse,
+  maxSteps = 8,
+  persona: CanvasTourPersona = 'experienced',
+): CanvasTourStep[] {
+  const localNodes = graph.nodes.filter((n) => !n.external);
+  const pool = localNodes.length > 0 ? localNodes : graph.nodes;
+  if (pool.length === 0) return [];
+
+  const inCounts = new Map<string, number>();
+  const outCounts = new Map<string, number>();
+  for (const edge of graph.edges) {
+    if (edge.source === edge.target) continue;
+    outCounts.set(edge.source, (outCounts.get(edge.source) ?? 0) + edge.weight);
+    inCounts.set(edge.target, (inCounts.get(edge.target) ?? 0) + edge.weight);
+  }
+
+  const scored = pool.map((node) => {
+    const inCount = inCounts.get(node.id) ?? 0;
+    const outCount = outCounts.get(node.id) ?? 0;
+    const importance = (node.rank ?? 0) * 10 + inCount + outCount;
+    return { node, inCount, outCount, importance };
+  });
+
+  // Pick the most important nodes up to maxSteps, then sort foundation-first
+  const top = [...scored]
+    .sort((a, b) => b.importance - a.importance || a.node.label.localeCompare(b.node.label))
+    .slice(0, Math.max(1, maxSteps));
+
+  top.sort((a, b) => {
+    const aFoundationRatio = (a.inCount + 1) / (a.outCount + 1);
+    const bFoundationRatio = (b.inCount + 1) / (b.outCount + 1);
+    return (
+      bFoundationRatio - aFoundationRatio ||
+      b.importance - a.importance ||
+      a.node.label.localeCompare(b.node.label)
+    );
+  });
+
+  return top.map((item, idx) => {
+    let stage: CanvasTourStep['stage'] = 'hub';
+    if (item.outCount === 0 || item.inCount >= item.outCount * 2) {
+      stage = 'foundation';
+    } else if (item.inCount === 0 && item.outCount > 0) {
+      stage = 'entry';
+    }
+    const conceptPart = item.node.concept ? `${item.node.concept} ` : '';
+    let explanation: string;
+    if (persona === 'non-technical') {
+      explanation = `${conceptPart}Serves ${item.inCount} upstream workflow(s) and coordinates ${item.outCount} downstream component(s).`;
+    } else if (persona === 'junior') {
+      const tip =
+        stage === 'foundation'
+          ? 'Start here (core building block).'
+          : stage === 'entry'
+            ? 'Top-level entry flow.'
+            : 'Central architectural bridge.';
+      explanation = `${conceptPart}${tip} (${item.inCount} in / ${item.outCount} out)`;
+    } else {
+      explanation =
+        `${conceptPart}${item.inCount} incoming / ${item.outCount} outgoing connection(s)` +
+        (item.node.rank !== undefined ? ` • rank ${item.node.rank.toFixed(2)}` : '');
+    }
+    return {
+      order: idx + 1,
+      node: item.node,
+      stage,
+      inCount: item.inCount,
+      outCount: item.outCount,
+      explanation,
+    };
+  });
+}
+
+/**
+ * Slice a forward execution flow (`ShortestPathResult`) starting from
+ * `startNodeId` by walking highest-weight outgoing edges up to `maxSteps`.
+ */
+export function sliceCanvasExecutionFlow(
+  graph: CodeMapGraphResponse,
+  startNodeId: string,
+  maxSteps = 6,
+): ShortestPathResult | null {
+  const byId = new Map(graph.nodes.map((n) => [n.id, n]));
+  const startNode = byId.get(startNodeId);
+  if (!startNode) return null;
+
+  const nodes: GraphNodeData[] = [startNode];
+  const edges: GraphEdgeData[] = [];
+  const visited = new Set<string>([startNodeId]);
+  let currentId = startNodeId;
+
+  while (nodes.length < maxSteps) {
+    const outgoing = graph.edges
+      .filter((e) => e.source === currentId && e.target !== currentId && !visited.has(e.target))
+      .sort((a, b) => b.weight - a.weight || a.target.localeCompare(b.target));
+    const best = outgoing[0];
+    if (!best) break;
+    const nextNode = byId.get(best.target);
+    if (!nextNode) break;
+    visited.add(best.target);
+    nodes.push(nextNode);
+    edges.push(best);
+    currentId = best.target;
+  }
+
+  return nodes.length >= 2
+    ? { nodes, edges, nodeIds: new Set(nodes.map((n) => n.id)), directed: true }
+    : null;
+}
+
+export interface GraphClusterSummary {
+  name: string;
+  count: number;
+  memberIds: string[];
+}
+
+/**
+ * Partition `graph.nodes` into named subsystem / Louvain community clusters.
+ * Used for both the `subsystems` layout and two-stage collapsible cluster
+ * containers.
+ */
+export function listGraphClusters(graph: CodeMapGraphResponse): GraphClusterSummary[] {
+  const byCluster = new Map<string, GraphNodeData[]>();
+  for (const node of graph.nodes) {
+    const band = subsystemOf(node);
+    const list = byCluster.get(band);
+    if (list) list.push(node);
+    else byCluster.set(band, [node]);
+  }
+
+  if (byCluster.size <= 1 && graph.nodes.length >= 4 && graph.edges.length > 0) {
+    const inferred = inferGraphCommunities(graph);
+    if (inferred.size >= 2) {
+      byCluster.clear();
+      for (const node of graph.nodes) {
+        const band = node.subsystem ?? inferred.get(node.id) ?? node.package ?? UNGROUPED_BAND;
+        const list = byCluster.get(band);
+        if (list) list.push(node);
+        else byCluster.set(band, [node]);
+      }
+    }
+  }
+
+  return [...byCluster.entries()]
+    .map(([name, members]) => ({
+      name,
+      count: members.length,
+      memberIds: members.map((m) => m.id),
+    }))
+    .sort((a, b) => {
+      if (a.name === UNGROUPED_BAND) return 1;
+      if (b.name === UNGROUPED_BAND) return -1;
+      return b.count - a.count || a.name.localeCompare(b.name);
+    });
+}
+
+/**
+ * Two-stage hierarchical container projection: collapse any cluster in
+ * `collapsedClusters` (with ≥ 2 members) into a single container `GraphNodeData`
+ * and aggregate all cross-cluster edges.
+ */
+export function collapseGraphClusters(
+  graph: CodeMapGraphResponse,
+  collapsedClusters: ReadonlySet<string>,
+): CodeMapGraphResponse {
+  if (collapsedClusters.size === 0 || graph.nodes.length === 0) return graph;
+
+  const clusters = listGraphClusters(graph);
+  const memberToContainerId = new Map<string, string>();
+  const containerNodes: GraphNodeData[] = [];
+  const byId = new Map(graph.nodes.map((n) => [n.id, n]));
+
+  for (const cluster of clusters) {
+    if (!collapsedClusters.has(cluster.name) || cluster.count < 2) continue;
+    const containerId = `cluster-container:${cluster.name}`;
+    let maxRank = 0;
+    let totalSyms = 0;
+    for (const id of cluster.memberIds) {
+      memberToContainerId.set(id, containerId);
+      const member = byId.get(id);
+      if (member) {
+        if ((member.rank ?? 0) > maxRank) maxRank = member.rank ?? 0;
+        totalSyms += member.symbolCount ?? (member.kind === 'symbol' ? 1 : 0);
+      }
+    }
+    containerNodes.push({
+      id: containerId,
+      label: cluster.name,
+      kind: 'package',
+      subsystem: cluster.name,
+      fileCount: cluster.count,
+      symbolCount: totalSyms,
+      rank: maxRank,
+      concept: `Collapsed cluster container (${cluster.count} members)`,
+    });
+  }
+
+  if (containerNodes.length === 0) return graph;
+
+  const nextNodes: GraphNodeData[] = [
+    ...containerNodes,
+    ...graph.nodes.filter((n) => !memberToContainerId.has(n.id)),
+  ];
+
+  const edgeMap = new Map<string, GraphEdgeData>();
+  for (const edge of graph.edges) {
+    const src = memberToContainerId.get(edge.source) ?? edge.source;
+    const tgt = memberToContainerId.get(edge.target) ?? edge.target;
+    if (src === tgt) continue;
+    const key = `${src}->${tgt}`;
+    const existing = edgeMap.get(key);
+    if (existing) {
+      existing.weight += edge.weight;
+    } else {
+      edgeMap.set(key, {
+        source: src,
+        target: tgt,
+        weight: edge.weight,
+        refType: edge.refType,
+      });
+    }
+  }
+
+  return {
+    nodes: nextNodes,
+    edges: [...edgeMap.values()],
+  };
 }
 
 function graphDegrees(graph: CodeMapGraphResponse, ids: Set<string>): Map<string, number> {
@@ -320,6 +814,22 @@ function subsystemLayout(graph: CodeMapGraphResponse): PositionedGraphNode[] {
     const bucket = bands.get(band);
     if (bucket === undefined) bands.set(band, [node]);
     else bucket.push(node);
+  }
+
+  // When all nodes lack explicit subsystem/package labels (or collapse into a
+  // single band inside a file/symbol scope), partition using deterministic
+  // Louvain community detection so coupled clusters form distinct visual bands.
+  if (bands.size <= 1 && graph.nodes.length >= 4 && graph.edges.length > 0) {
+    const inferred = inferGraphCommunities(graph);
+    if (inferred.size >= 2) {
+      bands.clear();
+      for (const node of graph.nodes) {
+        const band = node.subsystem ?? inferred.get(node.id) ?? node.package ?? UNGROUPED_BAND;
+        const bucket = bands.get(band);
+        if (bucket === undefined) bands.set(band, [node]);
+        else bucket.push(node);
+      }
+    }
   }
 
   const ordered = [...bands.entries()]

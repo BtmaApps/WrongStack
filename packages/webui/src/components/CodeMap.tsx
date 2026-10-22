@@ -46,6 +46,7 @@ import {
   type GraphRefType,
   normalizedPath,
   relativeFilePath,
+  type ShortestPathResult,
   scopeKey,
 } from './codemap-model';
 import { useCodeMapActivity } from './use-code-map-activity.js';
@@ -63,6 +64,9 @@ function CodeMapInner(): React.ReactElement {
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [expandedRelations, setExpandedRelations] = useState<Set<string>>(new Set());
+  const [collapsedClusters, setCollapsedClusters] = useState<Set<string>>(new Set());
+  const [blastOverlayMode, setBlastOverlayMode] = useState(false);
+  const [highlightedPath, setHighlightedPath] = useState<ShortestPathResult | null>(null);
   const [historyFile, setHistoryFile] = useState<string | null>(null);
   const [followLive, setFollowLive] = useState(false);
   const [agentTrailCount, setAgentTrailCount] = useState(0);
@@ -149,14 +153,37 @@ function CodeMapInner(): React.ReactElement {
     outgoing,
     edgeWeight,
     connectedNodeCount,
-  } = useCodeMapGraphView({ graph, edgeFilter, selectedId, canvasMode, layout, currentScopeKey });
+  } = useCodeMapGraphView({
+    graph,
+    edgeFilter,
+    selectedId,
+    canvasMode,
+    layout,
+    currentScopeKey,
+    collapsedClusters,
+  });
 
   const handleSelectNode = useCallback((node: GraphNodeData): void => {
     setSelectedId(node.id);
     setExpandedRelations(new Set());
   }, []);
+  const handleFocusNode = useCallback(
+    (node: GraphNodeData): void => {
+      void fitView({ nodes: [{ id: node.id }], duration: 240, padding: 0.45, maxZoom: 1.15 });
+    },
+    [fitView],
+  );
   const handleOpenNode = useCallback(
     (node: GraphNodeData): void => {
+      if (node.id.startsWith('cluster-container:')) {
+        const clusterName = node.id.slice('cluster-container:'.length);
+        setCollapsedClusters((prev) => {
+          const next = new Set(prev);
+          next.delete(clusterName);
+          return next;
+        });
+        return;
+      }
       if (node.kind === 'package')
         navigate({ level: 'files', package: node.package ?? node.label });
       if (node.kind === 'file' && node.file)
@@ -228,6 +255,8 @@ function CodeMapInner(): React.ReactElement {
     lastFitSignature,
     fitView,
     activityFlowKey,
+    highlightedPath,
+    blastOverlayMode,
   });
 
   // Expire activity pulses without requiring another WebSocket event.
@@ -362,9 +391,11 @@ function CodeMapInner(): React.ReactElement {
             edgeFilter={edgeFilter}
             canvasNodeCount={canvasGraph.nodes.length}
             graphNodeCount={graph.nodes.length}
+            blastOverlayMode={blastOverlayMode}
             onLayoutChange={setLayout}
             onCanvasModeChange={setCanvasMode}
             onEdgeFilterChange={setEdgeFilter}
+            onToggleBlastOverlay={() => setBlastOverlayMode((prev) => !prev)}
           />
 
           <LiveAgentsHud presences={agentPresences} onLocate={locateActivity} />
@@ -420,6 +451,17 @@ function CodeMapInner(): React.ReactElement {
             })
           }
           onSelectNode={handleSelectNode}
+          onFocusNode={handleFocusNode}
+          onHighlightPath={setHighlightedPath}
+          layout={layout}
+          collapsedClusters={collapsedClusters}
+          onToggleCluster={(clusterName) =>
+            setCollapsedClusters((current) => {
+              const next = new Set(current);
+              next.has(clusterName) ? next.delete(clusterName) : next.add(clusterName);
+              return next;
+            })
+          }
           footer={
             <CodeAssistPanel
               target={

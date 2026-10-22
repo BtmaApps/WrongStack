@@ -1,4 +1,4 @@
-import { Boxes, Layers, Orbit } from 'lucide-react';
+import { Boxes, Flame, Layers, Orbit } from 'lucide-react';
 import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
 import type { CodeMapLayout, GraphRefType } from './codemap-model';
@@ -9,18 +9,22 @@ export function CodeMapCanvasToolbar({
   edgeFilter,
   canvasNodeCount,
   graphNodeCount,
+  blastOverlayMode,
   onLayoutChange,
   onCanvasModeChange,
   onEdgeFilterChange,
+  onToggleBlastOverlay,
 }: {
   layout: CodeMapLayout;
   canvasMode: 'smart' | 'all';
   edgeFilter: 'all' | GraphRefType;
   canvasNodeCount: number;
   graphNodeCount: number;
+  blastOverlayMode?: boolean | undefined;
   onLayoutChange: (layout: CodeMapLayout) => void;
   onCanvasModeChange: (mode: 'smart' | 'all') => void;
   onEdgeFilterChange: (filter: 'all' | GraphRefType) => void;
+  onToggleBlastOverlay?: (() => void) | undefined;
 }) {
   const { t } = useAppTranslation();
   return (
@@ -94,6 +98,24 @@ export function CodeMapCanvasToolbar({
           {t('activity:codeMap.all')}
         </button>
       </div>
+      {onToggleBlastOverlay && (
+        <div className="pointer-events-auto flex border bg-card/95 shadow-md backdrop-blur">
+          <button
+            type="button"
+            className={cn(
+              'flex h-8 items-center gap-1.5 px-2.5 font-mono text-[9px] font-bold uppercase tracking-wider',
+              blastOverlayMode
+                ? 'bg-warning text-warning-foreground'
+                : 'text-muted-foreground hover:bg-muted',
+            )}
+            onClick={onToggleBlastOverlay}
+            aria-pressed={Boolean(blastOverlayMode)}
+            title="Highlight modified nodes and their 1-hop / 2-hop incoming blast radius"
+          >
+            <Flame className="h-3 w-3" /> BLAST
+          </button>
+        </div>
+      )}
       <div className="pointer-events-auto ml-auto flex max-w-[60%] overflow-x-auto border bg-card/95 shadow-md backdrop-blur">
         {(['all', 'import', 'call', 'type_ref', 'inherit', 'implement'] as const).map((filter) => (
           <button

@@ -111,6 +111,7 @@ export interface CodeMapNodeData extends Record<string, unknown> {
   graphNode: GraphNodeData;
   selected: boolean;
   dimmed: boolean;
+  blastHop?: 0 | 1 | 2;
   incoming: number;
   outgoing: number;
   isActive: boolean;
@@ -127,6 +128,7 @@ function CodeMapNodeView({ data }: { data: CodeMapNodeData }): React.ReactElemen
     graphNode,
     selected,
     dimmed,
+    blastHop,
     incoming,
     outgoing,
     isActive,
@@ -156,6 +158,8 @@ function CodeMapNodeView({ data }: { data: CodeMapNodeData }): React.ReactElemen
         rankAccentWidth(graphNode.rank),
         selected &&
           'border-primary bg-primary/5 shadow-[0_0_0_2px_hsl(var(--primary)/0.18),0_16px_36px_hsl(var(--shadow-color)/0.18)]',
+        !selected && blastHop === 1 && 'ring-1 ring-warning/60',
+        !selected && blastHop === 2 && 'ring-1 ring-info/45 opacity-80',
         graphNode.external && 'border-dashed bg-muted/75',
         dimmed && 'opacity-25 grayscale',
         isActive && activityType && ACTIVITY_GLOW[activityType],
@@ -228,6 +232,47 @@ function CodeMapNodeView({ data }: { data: CodeMapNodeData }): React.ReactElemen
               {graphNode.rank !== undefined && graphNode.rank >= HUB_RANK && (
                 <span className="border border-primary/40 bg-primary/10 px-1 py-0.5 text-[8px] text-foreground">
                   {t('activity:codeMap.hub')}
+                </span>
+              )}
+              {blastHop === 1 && (
+                <span className="border border-warning/50 bg-warning/10 px-1 py-0.5 font-mono text-[8px] text-warning">
+                  1-HOP
+                </span>
+              )}
+              {blastHop === 2 && (
+                <span className="border border-info/50 bg-info/10 px-1 py-0.5 font-mono text-[8px] text-info">
+                  2-HOP
+                </span>
+              )}
+              {(graphNode.memoryCount ?? graphNode.memories?.length ?? 0) > 0 && (
+                <span
+                  className="border border-success/50 bg-success/10 px-1 py-0.5 font-mono text-[8px] text-success"
+                  title={
+                    graphNode.memories?.[0]?.text ??
+                    `${graphNode.memoryCount ?? graphNode.memories?.length} SAGE memories`
+                  }
+                >
+                  SAGE ×{graphNode.memoryCount ?? graphNode.memories?.length}
+                </span>
+              )}
+              {graphNode.isFragile && (
+                <span
+                  className="border border-destructive/50 bg-destructive/10 px-1 py-0.5 font-mono text-[8px] text-destructive"
+                  title={`WrongTrace Fragile File${
+                    graphNode.healthScore !== undefined ? ` (score ${graphNode.healthScore})` : ''
+                  }${
+                    graphNode.thrashingCount ? ` · ${graphNode.thrashingCount} thrash cycles` : ''
+                  }`}
+                >
+                  FRAGILE
+                </span>
+              )}
+              {graphNode.lockOwner && (
+                <span
+                  className="border border-warning/50 bg-warning/10 px-1 py-0.5 font-mono text-[8px] text-warning"
+                  title={`Locked by ${graphNode.lockOwner}`}
+                >
+                  LOCK
                 </span>
               )}
               {graphNode.lang && (
@@ -337,6 +382,7 @@ export function sameCodeMapNodeData(left: CodeMapNodeData, right: CodeMapNodeDat
     left.graphNode === right.graphNode &&
     left.selected === right.selected &&
     left.dimmed === right.dimmed &&
+    left.blastHop === right.blastHop &&
     left.incoming === right.incoming &&
     left.outgoing === right.outgoing &&
     left.isActive === right.isActive &&

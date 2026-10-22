@@ -21,7 +21,11 @@ import { preserveFlowEdges, preserveFlowNodes } from './CodeMapFlowState';
 
 import { agentInitials, agentTrailColor, type CodeMapNodeData, EDGE_COLOR } from './CodeMapVisuals';
 
-import type { GraphNodeData } from './codemap-model';
+import {
+  computeBlastRadiusOverlay,
+  type GraphNodeData,
+  type ShortestPathResult,
+} from './codemap-model';
 export function useCodeMapFlow({
   positionedNodes,
   deferredActiveOperations,
@@ -44,6 +48,8 @@ export function useCodeMapFlow({
   lastFitSignature,
   fitView,
   activityFlowKey,
+  highlightedPath,
+  blastOverlayMode,
 }: {
   positionedNodes: ReturnType<typeof import('./codemap-model.js').layoutGraph>;
   deferredActiveOperations: import('../stores/codemap-activity-store.js').FileActivity[];
@@ -66,6 +72,8 @@ export function useCodeMapFlow({
   lastFitSignature: React.RefObject<string>;
   fitView: import('@xyflow/react').FitView<import('@xyflow/react').Node>;
   activityFlowKey: string;
+  highlightedPath?: ShortestPathResult | null | undefined;
+  blastOverlayMode?: boolean | undefined;
 }) {
   useEffect(() => {
     const rebuildFlow = (): void => {
@@ -73,10 +81,46 @@ export function useCodeMapFlow({
       const activeByNode = indexActivitiesByNode(nodes, deferredActiveOperations);
       const pulseByNode = indexActivitiesByNode(nodes, deferredPulseActivities);
       const activeNodeIds = new Set(activeByNode.keys());
+      const blastSeeds = new Set<string>();
+      if (selectedId) blastSeeds.add(selectedId);
+      if (blastOverlayMode) {
+        const writeOps = [...deferredActiveOperations, ...deferredRecentActivities].filter(
+          (a) => a.type === 'write' || a.type === 'edit' || a.type === 'delete',
+        );
+        for (const node of nodes) {
+          if (writeOps.some((a) => activityMatchesNode(a, node))) {
+            blastSeeds.add(node.id);
+          }
+        }
+        if (blastSeeds.size === 0 && nodes.length > 0) {
+          const newest = [...nodes]
+            .filter((n) => typeof n.lastModifiedMs === 'number')
+            .sort((a, b) => (b.lastModifiedMs ?? 0) - (a.lastModifiedMs ?? 0))[0];
+          if (newest) blastSeeds.add(newest.id);
+        }
+      }
+      const blastOverlay =
+        blastSeeds.size > 0 ? computeBlastRadiusOverlay(canvasGraph, blastSeeds) : null;
+      const pathEdgeKeys = new Set<string>();
+      if (highlightedPath) {
+        for (const e of highlightedPath.edges) {
+          pathEdgeKeys.add(`${e.source}->${e.target}`);
+          if (!highlightedPath.directed) {
+            pathEdgeKeys.add(`${e.target}->${e.source}`);
+          }
+        }
+      }
 
       const nextFlowNodes = positionedNodes.map(({ node, position }) => {
         const matchingActive = activeByNode.get(node.id) ?? [];
         const pulse = matchingActive[0] ?? pulseByNode.get(node.id)?.[0];
+        const blastHop: 0 | 1 | 2 | undefined = blastOverlay?.direct.has(node.id)
+          ? 0
+          : blastOverlay?.firstHop.has(node.id)
+            ? 1
+            : blastOverlay?.secondHop.has(node.id)
+              ? 2
+              : undefined;
         return {
           id: node.id,
           type: 'codemap',
@@ -85,7 +129,12 @@ export function useCodeMapFlow({
           data: {
             graphNode: node,
             selected: node.id === selectedId,
-            dimmed: Boolean(selectedId) && !connected.has(node.id),
+            dimmed:
+              (Boolean(selectedId) || Boolean(blastOverlay && blastOverlay.allImpacted.size > 0)) &&
+              !connected.has(node.id) &&
+              !blastOverlay?.allImpacted.has(node.id) &&
+              !highlightedPath?.nodeIds.has(node.id),
+            ...(blastHop !== undefined ? { blastHop } : {}),
             incoming: incomingCounts.get(node.id) ?? 0,
             outgoing: outgoingCounts.get(node.id) ?? 0,
             isActive: Boolean(pulse),
@@ -101,13 +150,17 @@ export function useCodeMapFlow({
 
       let animatedBudget = MAX_ANIMATED_EDGES;
       const codeEdges = canvasGraph.edges.map((edge, index) => {
+        const onPath = pathEdgeKeys.has(`${edge.source}->${edge.target}`);
         const focused =
-          Boolean(selectedId) && (edge.source === selectedId || edge.target === selectedId);
+          onPath ||
+          (Boolean(selectedId) && (edge.source === selectedId || edge.target === selectedId));
         const live = activeNodeIds.has(edge.source) || activeNodeIds.has(edge.target);
-        // Prefer animating focused live edges; otherwise spend a small budget.
-        const animate = live && (focused || animatedBudget > 0);
-        if (animate) animatedBudget -= 1;
-        const color = EDGE_COLOR[edge.refType] ?? 'hsl(var(--muted-foreground))';
+        // Prefer animating focused live edges or active shortest path; otherwise spend a small budget.
+        const animate = onPath || (live && (focused || animatedBudget > 0));
+        if (animate && !onPath) animatedBudget -= 1;
+        const color = onPath
+          ? 'hsl(var(--primary))'
+          : (EDGE_COLOR[edge.refType] ?? 'hsl(var(--muted-foreground))');
         // Dimmed edges use cheaper bezier; focused/live keep smoothstep readability.
         const edgeType = focused || live ? 'smoothstep' : 'default';
         return {
@@ -116,18 +169,22 @@ export function useCodeMapFlow({
           target: edge.target,
           type: edgeType,
           animated: animate,
-          label: focused
-            ? `${edge.refType}${edge.weight > 1 ? ` ×${edge.weight}` : ''}`
-            : undefined,
+          label: onPath
+            ? `PATH · ${edge.refType}`
+            : focused
+              ? `${edge.refType}${edge.weight > 1 ? ` ×${edge.weight}` : ''}`
+              : undefined,
           markerEnd: { type: MarkerType.ArrowClosed, color, width: 14, height: 14 },
           style: {
             stroke: color,
-            strokeWidth: live
-              ? Math.min(2.5 + Math.log2(edge.weight + 1) * 0.65, 5)
-              : focused
-                ? Math.min(1.25 + Math.log2(edge.weight + 1) * 0.65, 4)
-                : 1,
-            opacity: live ? 1 : selectedId ? (focused ? 0.88 : 0.08) : 0.52,
+            strokeWidth: onPath
+              ? 3.2
+              : live
+                ? Math.min(2.5 + Math.log2(edge.weight + 1) * 0.65, 5)
+                : focused
+                  ? Math.min(1.25 + Math.log2(edge.weight + 1) * 0.65, 4)
+                  : 1,
+            opacity: onPath ? 1 : live ? 1 : selectedId ? (focused ? 0.88 : 0.08) : 0.52,
           },
           labelStyle: {
             fontSize: scaledPx(9),
@@ -136,9 +193,9 @@ export function useCodeMapFlow({
           },
           labelBgStyle: { fill: 'hsl(var(--card))', fillOpacity: 0.92 },
           labelBgPadding: [4, 2] as [number, number],
-          zIndex: live ? 4 : focused ? 2 : 0,
+          zIndex: onPath ? 5 : live ? 4 : focused ? 2 : 0,
           data: {
-            renderKey: `${edge.refType}:${edge.weight}:${selectedId ? (focused ? 'focused' : 'dimmed') : 'idle'}:${live ? 'live' : 'still'}:${animate ? 'anim' : 'still'}:${edgeType}`,
+            renderKey: `${edge.refType}:${edge.weight}:${onPath ? 'path' : selectedId ? (focused ? 'focused' : 'dimmed') : 'idle'}:${live ? 'live' : 'still'}:${animate ? 'anim' : 'still'}:${edgeType}`,
           },
         } satisfies Edge;
       });
@@ -209,7 +266,8 @@ export function useCodeMapFlow({
       setFlowEdges((current) => preserveFlowEdges(current, [...codeEdges, ...trailEdges]));
     };
 
-    const structuralKey = fitSignature;
+    const pathKey = highlightedPath ? highlightedPath.nodes.map((n) => n.id).join('>') : '';
+    const structuralKey = `${fitSignature}|${pathKey}|${blastOverlayMode ? 'blast' : ''}`;
     const structuralChanged = lastFlowStructuralKey.current !== structuralKey;
     lastFlowStructuralKey.current = structuralKey;
 
@@ -247,6 +305,7 @@ export function useCodeMapFlow({
     };
   }, [
     activityFlowKey,
+    blastOverlayMode,
     canvasGraph,
     selectedId,
     deferredActiveOperations,
@@ -257,6 +316,7 @@ export function useCodeMapFlow({
     fitView,
     handleOpenNode,
     handleSelectNode,
+    highlightedPath,
     incomingCounts,
     outgoingCounts,
     positionedNodes,

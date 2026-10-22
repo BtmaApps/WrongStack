@@ -3,6 +3,7 @@ import { hashGraphStructure } from './CodeMapActivityHelpers';
 import {
   type CodeMapGraphResponse,
   type CodeMapLayout,
+  collapseGraphClusters,
   connectedNodeIds,
   type GraphNodeData,
   type GraphRefType,
@@ -38,6 +39,7 @@ export function useCodeMapGraphView({
   canvasMode,
   layout,
   currentScopeKey,
+  collapsedClusters,
 }: {
   graph: CodeMapGraphResponse;
   edgeFilter: 'all' | GraphRefType;
@@ -45,6 +47,7 @@ export function useCodeMapGraphView({
   canvasMode: 'smart' | 'all';
   layout: CodeMapLayout;
   currentScopeKey: string;
+  collapsedClusters?: ReadonlySet<string> | undefined;
 }): CodeMapGraphView {
   const filteredGraph = useMemo<CodeMapGraphResponse>(
     () => ({
@@ -57,10 +60,13 @@ export function useCodeMapGraphView({
     [graph, edgeFilter],
   );
   const selectedNode = graph.nodes.find((node) => node.id === selectedId);
-  const canvasGraph = useMemo(
-    () => smartCanvasGraph(filteredGraph, selectedId, canvasMode),
-    [canvasMode, filteredGraph, selectedId],
-  );
+  const canvasGraph = useMemo(() => {
+    const base =
+      layout === 'subsystems' && collapsedClusters && collapsedClusters.size > 0
+        ? collapseGraphClusters(filteredGraph, collapsedClusters)
+        : filteredGraph;
+    return smartCanvasGraph(base, selectedId, canvasMode);
+  }, [canvasMode, collapsedClusters, filteredGraph, layout, selectedId]);
   const connected = useMemo(
     () => (selectedId ? connectedNodeIds(filteredGraph, selectedId) : new Set<string>()),
     [filteredGraph, selectedId],

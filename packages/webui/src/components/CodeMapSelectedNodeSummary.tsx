@@ -65,6 +65,39 @@ export function CodeMapSelectedNodeSummary({
           {node.signature}
         </pre>
       )}
+      {(node.isFragile || node.lockOwner || (node.thrashingCount ?? 0) > 0) && (
+        <div className="mt-3 space-y-1 border border-destructive/40 bg-destructive/5 p-2">
+          <div className="font-mono text-[8px] font-bold uppercase tracking-wider text-destructive">
+            WrongTrace Telemetry Alert
+          </div>
+          {node.isFragile && (
+            <div className="text-[10px] leading-snug text-foreground">
+              <span className="font-mono font-semibold text-destructive">[FRAGILE]</span> Health
+              score: {node.healthScore ?? 'low'}
+              {node.thrashingCount ? ` · ${node.thrashingCount} thrashing cycle(s)` : ''}
+            </div>
+          )}
+          {node.lockOwner && (
+            <div className="text-[10px] leading-snug text-foreground">
+              <span className="font-mono font-semibold text-warning">[LOCKED]</span> Held by{' '}
+              {node.lockOwner}
+            </div>
+          )}
+        </div>
+      )}
+      {node.memories && node.memories.length > 0 && (
+        <div className="mt-3 space-y-1 border border-success/40 bg-success/5 p-2">
+          <div className="font-mono text-[8px] font-bold uppercase tracking-wider text-success">
+            SAGE Institutional Memories ({node.memories.length})
+          </div>
+          {node.memories.map((mem) => (
+            <div key={mem.id} className="text-[10px] leading-snug text-foreground">
+              <span className="font-mono font-semibold uppercase text-success">[{mem.kind}]</span>{' '}
+              {mem.text}
+            </div>
+          ))}
+        </div>
+      )}
       <div className="mt-3 grid grid-cols-3 border">
         <Metric
           value={incomingCount}
