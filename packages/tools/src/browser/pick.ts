@@ -1,3 +1,51 @@
+import type { BrowserElementSelection } from '@wrongstack/primitives';
+
+const STYLE_KEYS = [
+  'display',
+  'position',
+  'color',
+  'background-color',
+  'font-family',
+  'font-size',
+  'font-weight',
+  'padding',
+  'margin',
+  'border',
+  'border-radius',
+  'gap',
+  'align-items',
+  'justify-content',
+];
+
+/** The program runs in the page's main world, where the page can patch the builtins it
+ * uses: re-apply every bound and type here, in our own realm (F564). */
+export function boundBrowserSelection(
+  raw: unknown,
+): Omit<BrowserElementSelection, 'url' | 'title' | 'capturedAt' | 'image'> {
+  const field = (from: unknown, key: string) => (from as Record<string, unknown> | null)?.[key];
+  const text = (from: unknown, key: string, max: number) => {
+    const value = field(from, key);
+    return typeof value === 'string' ? value.slice(0, max) : '';
+  };
+  const box = <K extends string>(from: unknown, keys: K[]) =>
+    Object.fromEntries(
+      keys.map((key) => {
+        const value = field(from, key);
+        return [key, typeof value === 'number' && Number.isFinite(value) ? value : 0];
+      }),
+    ) as Record<K, number>;
+  const styles = field(raw, 'styles');
+  return {
+    selector: text(raw, 'selector', 2048),
+    tag: text(raw, 'tag', 100),
+    role: text(raw, 'role', 100),
+    text: text(raw, 'text', 1000),
+    styles: Object.fromEntries(STYLE_KEYS.map((key) => [key, text(styles, key, 200)])),
+    bounds: box(field(raw, 'bounds'), ['x', 'y', 'width', 'height']),
+    viewport: box(field(raw, 'viewport'), ['width', 'height']),
+  };
+}
+
 /** Fixed browser-side read program. Only validated numeric coordinates are inserted. */
 export function browserPointExpression(x: number, y: number): string {
   if (![x, y].every((value) => Number.isFinite(value) && value >= 0 && value <= 1))
@@ -36,7 +84,7 @@ const INSPECT_POINT = `({x,y}) => {
   const rect = element.getBoundingClientRect();
   const style = getComputedStyle(element);
   const styles = {};
-  for (const key of ['display','position','color','background-color','font-family','font-size','font-weight','padding','margin','border','border-radius','gap','align-items','justify-content'])
+  for (const key of ${JSON.stringify(STYLE_KEYS)})
     styles[key] = style.getPropertyValue(key).slice(0,200);
   const privateField = element.closest('input,textarea,[contenteditable]');
   return { selector:selectorFor(element).slice(0,2048), tag:element.localName,

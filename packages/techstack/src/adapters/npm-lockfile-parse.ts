@@ -38,19 +38,32 @@ function parsePnpmImporters(lockContent: string): Map<string, Map<string, string
   let currentImporter: string | undefined;
   let currentVersions: Map<string, string> | undefined;
   let currentPackage: string | undefined;
+  // pnpm 8 (lockfile v6) writes a single-project lockfile without `importers:`:
+  // the root's dependency sections are top-level keys, two levels shallower.
+  const rootSections = !/^importers:/m.test(lockContent);
+  let offset = 0;
 
   for (const raw of lines) {
     if (raw.trim() === '' || raw.trimStart().startsWith('#')) continue;
 
     // Top-level key ends the importers block.
     if (!/^\s/.test(raw)) {
-      if (inImporters) break;
+      if (inImporters && offset === 0) break;
       inImporters = raw.startsWith('importers:');
+      offset = 0;
+      if (rootSections && /^(?:dependencies|devDependencies|optionalDependencies):/.test(raw)) {
+        inImporters = true;
+        offset = 4;
+        currentImporter = '.';
+        currentVersions = importers.get('.') ?? new Map<string, string>();
+        importers.set('.', currentVersions);
+        currentPackage = undefined;
+      }
       continue;
     }
     if (!inImporters) continue;
 
-    const indent = raw.length - raw.trimStart().length;
+    const indent = raw.length - raw.trimStart().length + offset;
     const line = raw.trim();
 
     if (indent === 2) {
@@ -321,7 +334,8 @@ function parsePnpmAllVersions(lockContent: string): Map<string, string[]> {
     const trimmed = raw.trim();
     const separator = trimmed.indexOf(':');
     if (separator < 0) continue;
-    const key = unquote(trimmed.slice(0, separator));
+    // v6 keys carry a leading slash: `/react@18.2.0`.
+    const key = unquote(trimmed.slice(0, separator)).replace(/^\//, '');
     const clean = stripPeerSuffix(key);
     const splitAt = clean.lastIndexOf('@');
     if (splitAt <= 0) continue;

@@ -61,9 +61,21 @@ const GRADLE_CONFIGURATION_ALTERNATION = GRADLE_CONFIGURATIONS.join('|');
 function parseVersionCatalog(content: string): Map<string, string> {
   const versions = new Map<string, string>();
   const libraries = new Map<string, string>();
+  // `[bundles]` groups libraries (`ktor = ["ktor-core", "ktor-cio"]`, often a
+  // multi-line array) that a build uses at once via `libs.bundles.ktor`.
+  const bundles = new Map<string, string>();
+  let pendingBundle: { key: string; text: string } | undefined;
   let section = '';
   for (const raw of content.split('\n')) {
     const line = raw.replace(/#.*$/, '').trim();
+    if (pendingBundle) {
+      pendingBundle.text += ` ${line}`;
+      if (line.includes(']')) {
+        bundles.set(pendingBundle.key, pendingBundle.text);
+        pendingBundle = undefined;
+      }
+      continue;
+    }
     const header = /^\[([^\]]+)\]$/.exec(line);
     if (header) {
       section = header[1] ?? '';
@@ -77,6 +89,9 @@ function parseVersionCatalog(content: string): Map<string, string> {
     if (section === 'versions') {
       const version = /^["']([^"']+)["']/.exec(value)?.[1];
       if (version) versions.set(key, version);
+    } else if (section === 'bundles') {
+      if (value.includes(']')) bundles.set(key, value);
+      else pendingBundle = { key, text: value };
     } else if (section === 'libraries') {
       // String notation is the shortest valid form: `guava = "g:a:v"`.
       const notation = /^["']([^"':]+:[^"':]+(?::[^"']+)?)["']\s*$/.exec(value)?.[1];
@@ -101,6 +116,15 @@ function parseVersionCatalog(content: string): Map<string, string> {
         `${module}:${version ?? (ref ? (versions.get(ref) ?? '') : '')}`.replace(/:$/, ''),
       );
     }
+  }
+  // A bundle resolves to its members' coordinates, space-separated (a
+  // coordinate never contains whitespace).
+  for (const [key, text] of bundles) {
+    const members = [...text.matchAll(/["']([^"']+)["']/g)]
+      .map((member) => libraries.get((member[1] ?? '').replace(/[-_]/g, '.')))
+      .filter((coordinate): coordinate is string => coordinate !== undefined);
+    if (members.length > 0)
+      libraries.set(`bundles.${key.replace(/[-_]/g, '.')}`, members.join(' '));
   }
   return libraries;
 }
@@ -159,15 +183,18 @@ function parseGradleManifest(
     const configuration = match[1];
     const alias = match[2] ?? match[3];
     if (!configuration || !alias) continue;
-    const coordinate = catalog.get(alias);
-    if (!coordinate) continue;
-    const [group, artifact, version] = coordinate.split(':');
-    if (!group || !artifact) continue;
-    deps.push({
-      name: `${group}:${artifact}`,
-      requested: version,
-      scope: scopeForConfiguration(configuration),
-    });
+    const coordinates = catalog.get(alias);
+    if (!coordinates) continue;
+    // A bundle alias carries several coordinates.
+    for (const coordinate of coordinates.split(' ')) {
+      const [group, artifact, version] = coordinate.split(':');
+      if (!group || !artifact) continue;
+      deps.push({
+        name: `${group}:${artifact}`,
+        requested: version,
+        scope: scopeForConfiguration(configuration),
+      });
+    }
   }
   return deps;
 }

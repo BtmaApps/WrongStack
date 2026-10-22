@@ -242,7 +242,12 @@ export const installTool: Tool<InstallInput, InstallOutput> = {
     for (const pkg of pkgList) {
       // A spec starting with "." is a directory to npm/pnpm/yarn (`..` installs
       // the parent folder); no registry name starts with one.
-      if (!PKG_NAME_RE.test(pkg) || /^[-.]/.test(pkg) || pkg.length > 200) {
+      if (
+        !PKG_NAME_RE.test(pkg) ||
+        pkg.startsWith('-') ||
+        pkg.startsWith('.') ||
+        pkg.length > 200
+      ) {
         throw new ToolValidationError({
           message: `install: Invalid package name "${pkg}". Names must match ${PKG_NAME_RE} and not start with "-" or ".".`,
           field: 'packages',

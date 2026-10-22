@@ -13,7 +13,7 @@ import {
   withoutAnsi,
 } from './manager-support.js';
 import { BrowserNetworkGuardProxy } from './network-guard-proxy.js';
-import { browserPointExpression } from './pick.js';
+import { boundBrowserSelection, browserPointExpression } from './pick.js';
 import { launchBrowserRuntime } from './runtime.js';
 import { assertBrowserUrlAllowed, redactBrowserText, safeBrowserUrl } from './security.js';
 import type {
@@ -479,12 +479,9 @@ export class BrowserSessionManager {
     const url = safeBrowserUrl(session.page.url());
     if (url !== point.url)
       throw new Error('The browser navigated; wait for a current frame and select again');
-    const selected = (await this.evaluate(
-      id,
-      session.ownerId,
-      expression,
-      new AbortController().signal,
-    )) as Omit<BrowserElementSelection, 'url' | 'title' | 'capturedAt' | 'image'>;
+    const selected = boundBrowserSelection(
+      await this.evaluate(id, session.ownerId, expression, new AbortController().signal),
+    );
     const { bounds, viewport } = selected;
     const x = Math.max(0, bounds.x),
       y = Math.max(0, bounds.y);

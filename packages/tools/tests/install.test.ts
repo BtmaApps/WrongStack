@@ -227,12 +227,15 @@ describe('installTool', () => {
     }
   });
 
-  it('rejects an invalid package name (flag injection guard)', async () => {
-    const ctx = makeCtx();
-    await expect(
-      installTool.execute({ packages: '--ignore-scripts' }, ctx, makeOpts()),
-    ).rejects.toThrow('Invalid package name');
-  });
+  it.each(['--ignore-scripts', '--global', '-g', '.', '..'])(
+    'rejects flag or path package spec %s',
+    async (spec) => {
+      const ctx = makeCtx();
+      await expect(installTool.execute({ packages: spec }, ctx, makeOpts())).rejects.toThrow(
+        'Invalid package name',
+      );
+    },
+  );
 
   it('throws when the package manager exits non-zero (install did not happen)', async () => {
     spawnOutcome.override = {

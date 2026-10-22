@@ -296,9 +296,11 @@ function versionParts(version: string): bigint[] {
 function caretUpper(version: string): string {
   const parts = versionParts(version);
   const [major = 0n, minor = 0n, patch = 0n] = parts;
-  if (major > 0n || parts.length < 2) return `${major + 1n}.0.0`;
-  if (minor > 0n || parts.length < 3) return `0.${minor + 1n}.0`;
-  return `0.0.${patch + 1n}`;
+  // `-0` is the lowest prerelease: a bare `19.0.0` bound let `19.0.0-rc.1`
+  // (which sorts before it) satisfy `^18.2.0`.
+  if (major > 0n || parts.length < 2) return `${major + 1n}.0.0-0`;
+  if (minor > 0n || parts.length < 3) return `0.${minor + 1n}.0-0`;
+  return `0.0.${patch + 1n}-0`;
 }
 
 /**
@@ -320,8 +322,8 @@ function partialBounds(version: string): [lower: string, upper: string] | undefi
 function tildeUpper(version: string): string {
   const parts = versionParts(version);
   const [major = 0n, minor = 0n] = parts;
-  if (parts.length >= 2) return `${major}.${minor + 1n}.0`;
-  return `${major + 1n}.0.0`;
+  if (parts.length >= 2) return `${major}.${minor + 1n}.0-0`;
+  return `${major + 1n}.0.0-0`;
 }
 
 /**
