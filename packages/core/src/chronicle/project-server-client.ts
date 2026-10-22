@@ -417,7 +417,13 @@ export class ChronicleProjectServerClient {
       }, timeoutMs);
       timer.unref?.();
       this.pending.set(id, { resolve, reject, timer });
-      socket.write(encoded);
+      try {
+        socket.write(encoded);
+      } catch (error) {
+        clearTimeout(timer);
+        this.pending.delete(id);
+        reject(error);
+      }
     });
   }
 

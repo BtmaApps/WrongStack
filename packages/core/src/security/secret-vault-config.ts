@@ -22,9 +22,16 @@ export async function rewriteConfigEncrypted(
   let current: Record<string, unknown> = {};
   try {
     const raw = await fsp.readFile(configPath, 'utf8');
-    current = JSON.parse(raw) as Record<string, unknown>;
-  } catch {
-    // start from empty
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      throw new Error('Existing config must be a JSON object');
+    }
+    current = parsed as Record<string, unknown>;
+  } catch (error) {
+    // A genuinely missing config starts empty. Read failures and malformed
+    // JSON must remain visible: treating either as empty would replace the
+    // operator's existing config with only the credential patch below.
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
   }
   const merged = deepMerge(current, patch ?? {});
   const encrypted = encryptConfigSecrets(merged, vault);

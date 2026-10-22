@@ -1,4 +1,4 @@
-export const SHELL_OPERATORS = new Set(['&&', '||', '|', ';', '>', '>>', '<', '2>', '2>>']);
+export const SHELL_OPERATORS = new Set(['&&', '&', '||', '|', ';', '>', '>>', '<', '2>', '2>>']);
 
 /**
  * Shell quote/escape state for a character-by-character scan.

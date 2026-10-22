@@ -374,7 +374,7 @@ function coerceWalk(value: unknown, schema: JSONSchema, depth: number): Coercion
       const trimmed = value.trim();
       if (trimmed !== '' && /^-?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/.test(trimmed)) {
         const num = Number(trimmed);
-        if (Number.isFinite(num) && (type === 'number' || Number.isInteger(num))) {
+        if (Number.isFinite(num) && (type === 'number' || Number.isSafeInteger(num))) {
           return { value: num, changed: true };
         }
       }

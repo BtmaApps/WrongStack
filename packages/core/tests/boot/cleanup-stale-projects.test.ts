@@ -66,6 +66,17 @@ describe('cleanupStaleProjects', () => {
     expect(await exists(real)).toBe(true);
   });
 
+  it('removes a phantom whose root is the state namespace itself', async () => {
+    const phantom = await seedProject('proj-namespace', {
+      slug: 'proj-namespace',
+      root: projectsRoot,
+    });
+
+    await cleanupStaleProjects(pathsFor('proj-namespace'));
+
+    expect(await exists(phantom)).toBe(false);
+  });
+
   it('still removes a project whose root vanished', async () => {
     const gone = await seedProject('proj-gone', {
       root: path.join(globalRoot, 'no-such-working-copy'),

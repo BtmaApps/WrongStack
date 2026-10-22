@@ -82,4 +82,15 @@ describe('high_entropy_env key names', () => {
       'DB_PASSWORD=[REDACTED:high_entropy_env] GH_TOKEN=[REDACTED:high_entropy_env]\nMY_SECRET=[REDACTED:high_entropy_env]',
     );
   });
+
+  it.each([
+    [`export API_KEY=${value}; npm test`, 'export API_KEY=[REDACTED:high_entropy_env]; npm test'],
+    [
+      `TOKEN="${value}"&&curl https://example.test`,
+      'TOKEN=[REDACTED:high_entropy_env]&&curl https://example.test',
+    ],
+    [`PASSWORD=${value}|consume`, 'PASSWORD=[REDACTED:high_entropy_env]|consume'],
+  ])('redacts a credential before a shell command boundary: %s', (input, expected) => {
+    expect(s.scrub(input)).toBe(expected);
+  });
 });

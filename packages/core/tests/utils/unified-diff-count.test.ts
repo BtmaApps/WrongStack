@@ -96,6 +96,27 @@ describe('countUnifiedDiffLines', () => {
     ].join('\n');
     expect(countUnifiedDiffLines(patch)).toEqual({ added: 1, removed: 1 });
   });
+
+  // A hunk header may omit its line counts (`@@`, or `@@ <context>`). The
+  // body length is then UNKNOWN, not zero: the counters start at 0 because
+  // nothing was declared, which is not the same as "the declared lines were
+  // consumed". Every content line of such a body must still be counted.
+  it('counts the body of a hunk header that declares no line counts', () => {
+    const patch = ['@@', '-old', '+new', '+more'].join('\n');
+    expect(countUnifiedDiffLines(patch)).toEqual({ added: 2, removed: 1 });
+  });
+
+  it('counts the body of a hunk header that declares no counts but names a context', () => {
+    const patch = ['@@ class Foo', '-old', '+new'].join('\n');
+    expect(countUnifiedDiffLines(patch)).toEqual({ added: 1, removed: 1 });
+  });
+
+  // The mirror case: a header that DOES declare counts bounds its body, so a
+  // line after the declared extent is not content.
+  it('stops counting once a hunk header that declares counts is exhausted', () => {
+    const patch = ['@@ -1,1 +1,1 @@', '-old', '+new', '-not part of the hunk'].join('\n');
+    expect(countUnifiedDiffLines(patch)).toEqual({ added: 1, removed: 1 });
+  });
 });
 
 // `files=N` is a count of FILES, and `git diff` names each file twice

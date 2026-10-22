@@ -9,6 +9,13 @@
  * Hunk line counts distinguish that pair from adjacent content. Lines before the
  * first hunk (commit message, `git format-patch` preamble and its `---`
  * separator) are not counted either.
+ *
+ * A header that declares its line counts (`@@ -1,2 +1,3 @@`) also BOUNDS the
+ * body: once those lines are consumed the hunk is over, so a trailing line
+ * (a `git format-patch` signature trailer, a summary footer) is not content.
+ * A header that declares NO counts (`@@`, `@@ <context>`) leaves the body
+ * length unknown — its counters start at 0, which is not the same as "the
+ * body is exhausted" — so its content lines keep counting.
  */
 export function countUnifiedDiffLines(diff: string): { added: number; removed: number } {
   const lines = diff.split(/\r?\n/);
@@ -17,6 +24,12 @@ export function countUnifiedDiffLines(diff: string): { added: number; removed: n
   let sawHunk = false;
   let oldRemaining = 0;
   let newRemaining = 0;
+  // Whether the CURRENT hunk header declared its line counts (`@@ -1,2 +1,3 @@`).
+  // A header that declares none (`@@`, or `@@ <context>`) leaves the body
+  // extent UNKNOWN: its counters stay at 0, which is NOT the same as "the
+  // body is over". Only a declared extent can be exhausted, so only then does
+  // a following line fall outside the hunk.
+  let hunkCountsDeclared = false;
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index] ?? '';
     if (line.startsWith('@@')) {
@@ -24,11 +37,13 @@ export function countUnifiedDiffLines(diff: string): { added: number; removed: n
       const hunk = /^@@ -\d+(?:,(\d+))? \+\d+(?:,(\d+))? @@/.exec(line);
       oldRemaining = hunk ? Number(hunk[1] ?? 1) : 0;
       newRemaining = hunk ? Number(hunk[2] ?? 1) : 0;
+      hunkCountsDeclared = hunk !== null;
       continue;
     }
     if (line.startsWith('diff --git ')) {
       oldRemaining = 0;
       newRemaining = 0;
+      hunkCountsDeclared = false;
       continue;
     }
     if (!sawHunk) continue;
@@ -41,6 +56,10 @@ export function countUnifiedDiffLines(diff: string): { added: number; removed: n
       index += 1;
       continue;
     }
+    // The body is over only when the header declared its length. A counts-less
+    // header leaves the counters at 0 from the start, which is NOT the same as
+    // "the declared lines were consumed".
+    if (hunkCountsDeclared && oldRemaining <= 0 && newRemaining <= 0) continue;
     if (line.startsWith('+')) {
       added += 1;
       newRemaining -= 1;

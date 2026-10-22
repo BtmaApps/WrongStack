@@ -235,8 +235,7 @@ export async function cleanupStaleProjects(wpaths: WstackPaths): Promise<void> {
       // Canonical escape test: `..hidden` is a legal in-root first segment; a
       // bare startsWith('..') misread nested phantoms under such dirs as
       // legitimate and skipped their cleanup.
-      const nested =
-        rel !== '' && rel !== '..' && !rel.startsWith(`..${path.sep}`) && !path.isAbsolute(rel);
+      const nested = rel !== '..' && !rel.startsWith(`..${path.sep}`) && !path.isAbsolute(rel);
       if (nested) {
         // Phantom project registered from a state path — never legitimate.
         await fs.rm(projectPath, { recursive: true, force: true });
