@@ -13,7 +13,12 @@ import type { WSClientMessage, WSServerMessage, WSUserMessageImage } from '../ty
 import { streamCoalescer } from './stream-coalescer';
 import { installWsClientActionMethods, type WsClientActionMethods } from './ws-client-actions';
 import { ensureAuthCookie } from './ws-client-auth';
-import { bindSocketLifecycle, planReconnectHelper, retryNowHelper } from './ws-client-connection';
+import {
+  attemptReconnectHelper,
+  bindSocketLifecycle,
+  retryNowHelper,
+  type WsReconnectHost,
+} from './ws-client-connection';
 import type { WSSendOptions } from './ws-client-contracts';
 import {
   installWsClientDomainMethods,
@@ -33,6 +38,7 @@ import {
   matchesPendingSwap,
   rememberSeenSession,
   resolveSwapTarget,
+  SWAP_GUARD_MS,
   sweepExpiredPendingConfirmsHelper,
 } from './ws-client-swap';
 import {
@@ -107,6 +113,16 @@ class WrongStackWebSocketClientBase {
    */
   private pendingSwapTarget: string | null = null;
   /**
+   * When the outstanding swap was armed.
+   *
+   * The duplicate guard in `send()` exists to swallow a double-click, but an
+   * unanswered swap used to hold the guard forever: the request was dropped
+   * silently and the New Session button became a permanent no-op, with no way
+   * back except a page reload. The guard is therefore only a DOUBLE-CLICK
+   * guard — a fresh request supersedes an outstanding one that has gone stale.
+   */
+  private pendingSwapAt = 0;
+  /**
    * The session id of the `session.start` currently being dispatched, when it
    * is the answer to THIS client's swap request. Set in `handleMessage`
    * immediately before `emit`, read (and cleared) by `handleSessionStart` via
@@ -115,10 +131,16 @@ class WrongStackWebSocketClientBase {
    */
   private requestedSwitchSessionId: string | null = null;
   /**
-   * Session ids this client has already seen a `session.start` for. Used to
-   * recognise the answer to a `session.new`, whose id the client cannot know
-   * in advance: the answer is the first RESET announcement naming a session
-   * this client has never seen.
+   * Session ids this client has already seen a RESET `session.start` for.
+   *
+   * Used to recognise the answer to a `session.new`, whose id the client
+   * cannot know in advance: the answer is the first RESET announcement naming
+   * a session this client has never seen. ONLY RESET announcements are
+   * recorded — a plain re-announcement (a model switch, a mode change, another
+   * tab's session) says nothing about whether a session is new, and counting
+   * those made the answer unrecognisable: the server announces the session it
+   * just created once without `reset` and once with it, so the plain one
+   * poisoned the set and the authoritative answer could never be matched.
    */
   private readonly seenSessionIds = new Set<string>();
   /**
@@ -335,47 +357,11 @@ class WrongStackWebSocketClientBase {
   }
 
   private attemptReconnect() {
-    if (!this.shouldReconnect) {
-      this.connectionState = stopConnection(this.connectionState);
-      this.reconnectTimer = null;
-      this.setStatus({ state: 'closed', error: this.lastErrorText ?? 'Disconnected' });
-      return;
-    }
-    const reconnect = planReconnectHelper(
-      this.connectionState,
-      this.maxReconnectAttempts,
-      WrongStackWebSocketClientBase.MAX_QUEUED_MESSAGES,
-    );
-    this.connectionState = reconnect.state;
-    if (!reconnect.plan) {
-      this.reconnectTimer = null;
-      this.setStatus({ state: 'closed', error: this.lastErrorText ?? 'Disconnected' });
-      return;
-    }
-    this.setStatus({
-      state: 'reconnecting',
-      attempt: reconnect.plan.attempt,
-      nextRetryAt: reconnect.plan.retryAt,
-      lastError: this.lastErrorText,
+    attemptReconnectHelper(this as unknown as WsReconnectHost, {
+      queueLimit: WrongStackWebSocketClientBase.MAX_QUEUED_MESSAGES,
+      maxReconnectAttempts: this.maxReconnectAttempts,
+      shouldReconnect: () => this.shouldReconnect,
     });
-
-    this.reconnectTimer = setTimeout(async () => {
-      this.reconnectTimer = null;
-      if (this.shouldReconnect) {
-        try {
-          await this.connect();
-        } catch (err) {
-          console.error(
-            JSON.stringify({
-              level: 'error',
-              event: 'ws_client.reconnect_failed',
-              message: err instanceof Error ? err.message : String(err),
-              timestamp: new Date().toISOString(),
-            }),
-          );
-        }
-      }
-    }, reconnect.plan.delayMs);
   }
 
   /** Force an immediate reconnect attempt, bypassing the backoff timer. */
@@ -550,8 +536,19 @@ class WrongStackWebSocketClientBase {
     // A swap request names where the user wants to go.
     const swapTarget = resolveSwapTarget(message);
     if (swapTarget) {
-      if (this.pendingSwapTarget === swapTarget) return false;
+      // The duplicate guard swallows a DOUBLE-CLICK — two requests for the
+      // same swap in quick succession, which the server would otherwise
+      // process serially and answer with a second, mismatched session. It is
+      // deliberately not a permanent lock: an outstanding swap that was never
+      // answered (a dropped frame, a session the server refused to announce)
+      // used to hold the guard forever, and every later New Session click was
+      // dropped silently — the button looked broken and only a page reload
+      // brought it back. A fresh request supersedes a stale one.
+      const duplicateWithinGuard =
+        this.pendingSwapTarget === swapTarget && Date.now() - this.pendingSwapAt < SWAP_GUARD_MS;
+      if (duplicateWithinGuard) return false;
       this.pendingSwapTarget = swapTarget;
+      this.pendingSwapAt = Date.now();
     }
     if (message.type === 'context.clear') {
       streamCoalescer.dropAll();

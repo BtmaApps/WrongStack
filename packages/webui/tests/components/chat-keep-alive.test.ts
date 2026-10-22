@@ -62,6 +62,22 @@ describe('chat keep-alive', () => {
     expect(inspector).not.toContain("currentView === 'chat'");
   });
 
+  // The dock inspector is a non-modal overlay, so it must be anchored to the
+  // work surface — the positioned container the views live in — and not to
+  // the viewport. Viewport-level it spanned the full shell height, covered
+  // the session tab strip, and swallowed clicks on the rightmost tabs.
+  it('anchors the workspace dock inspector to the work surface, not the viewport', () => {
+    const src = read('App.tsx');
+    const routerIdx = src.indexOf('<ViewRouter');
+    const inspectorIdx = src.indexOf('<WorkspaceDockInspector');
+    const containerEnd = src.indexOf('</div>', routerIdx);
+
+    expect(routerIdx).toBeGreaterThan(-1);
+    expect(inspectorIdx).toBeGreaterThan(routerIdx);
+    // …and still inside the positioned container that wraps <ViewRouter>.
+    expect(inspectorIdx).toBeLessThan(containerEnd);
+  });
+
   it('binds the session surface to the active lane pointer, not nullable SessionInfo', () => {
     const src = read('App.tsx');
     const binding = src.slice(

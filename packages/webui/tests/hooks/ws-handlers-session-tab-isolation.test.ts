@@ -61,9 +61,8 @@ const { handleError, handleSessionStart } = await import(
 const { handleIterationStarted, handleTextDelta, handleThinkingDelta } = await import(
   '../../src/hooks/ws-handlers/chat-handlers'
 );
-const { handleProviderFallback, handleProviderResponse } = await import(
-  '../../src/hooks/ws-handlers/session-execution-handlers'
-);
+const { handleProviderFallback, handleProviderModelSwitched, handleProviderResponse } =
+  await import('../../src/hooks/ws-handlers/session-execution-handlers');
 const { handleBrainAnswer, handleBrainEvent } = await import(
   '../../src/hooks/ws-handlers/brain-handlers'
 );
@@ -651,5 +650,73 @@ describe('the four slots', () => {
     expect(useSessionTabStore.getState().openTabIds).not.toContain('s1');
     expect(readLane('s1').messages).toHaveLength(0);
     expect(readSessionLane('s1').session).toBeNull();
+  });
+});
+
+/**
+ * Switching the model is a UI event, not a turn of the conversation.
+ *
+ * Both the answer to the switch request (`model.switch_result`) and the
+ * broadcast that follows it (`provider.model_switched`) used to append a
+ * message to the lane's transcript. The user saw a "Model switched: X → Y"
+ * bubble appear in the middle of the chat, wedged between two real turns.
+ */
+describe('a model switch is reported, not spoken', () => {
+  it('does not post the switch result into the transcript', () => {
+    start('sess_a');
+    useChatStore.getState().addMessage({ role: 'user', content: 'a question' });
+
+    handleModelSwitchResult({
+      type: 'model.switch_result',
+      payload: {
+        success: true,
+        provider: 'prov-a',
+        model: 'model-a',
+        previousProvider: 'prov-old',
+        previousModel: 'model-old',
+        runActive: false,
+        sessionId: 'sess_a',
+      },
+    } as never);
+
+    expect(readLane('sess_a').messages.map((m) => m.content)).toEqual(['a question']);
+  });
+
+  it('does not post the broadcast switch into the transcript', () => {
+    start('sess_a');
+    useChatStore.getState().addMessage({ role: 'user', content: 'a question' });
+
+    handleProviderModelSwitched({
+      type: 'provider.model_switched',
+      payload: {
+        sessionId: 'sess_a',
+        from: { providerId: 'prov-old', model: 'model-old' },
+        to: { providerId: 'prov-a', model: 'model-a' },
+        timestamp: Date.now(),
+      },
+    } as never);
+
+    expect(readLane('sess_a').messages.map((m) => m.content)).toEqual(['a question']);
+  });
+
+  it('still records the new route on the lane that asked for it', () => {
+    start('sess_a');
+
+    handleModelSwitchResult({
+      type: 'model.switch_result',
+      payload: {
+        success: true,
+        provider: 'prov-a',
+        model: 'model-a',
+        runActive: false,
+        sessionId: 'sess_a',
+      },
+    } as never);
+
+    // Dropping the chat message must not drop the state the switch was FOR.
+    expect(readSessionLane('sess_a').session).toMatchObject({
+      provider: 'prov-a',
+      model: 'model-a',
+    });
   });
 });

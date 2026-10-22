@@ -90,7 +90,19 @@ export function routeInboundMessage(
     // tab the user actually clicked can still claim it.
     host.requestedSwitchSessionId = host.matchesPendingSwap(payload) ? payload.sessionId : null;
     if (host.requestedSwitchSessionId) host.pendingSwapTarget = null;
-    host.rememberSeenSession(payload.sessionId);
+    // Only a RESET announcement counts as "this session has been seen".
+    //
+    // The swap matcher recognises the answer to a `session.new` by "the first
+    // RESET announcement for a session this client has never seen", so every
+    // OTHER `session.start` must leave that set alone. The server announces
+    // the session it just created twice: once without `reset` (the model
+    // re-point that follows a session swap broadcasts a plain re-announcement)
+    // and once with `reset: true` (the authoritative answer). Counting the
+    // first one poisoned the set, the authoritative answer could no longer be
+    // recognised, the grant was never spent — and the new session never took
+    // the foreground, so the browser kept rendering the previous tab's
+    // transcript instead of the welcome screen.
+    if (payload.reset === true) host.rememberSeenSession(payload.sessionId);
     host.emit(msg);
     // Handlers have now bound and replayed this session's lane — the right
     // moment to replay a message the server refused with `session_not_ready`

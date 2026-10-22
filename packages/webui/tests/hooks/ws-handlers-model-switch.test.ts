@@ -22,7 +22,7 @@ describe('model switch ws handler', () => {
     useChatStore.getState().clearMessages();
   });
 
-  it('updates the visible identity and records the next-request boundary', () => {
+  it('updates the visible identity without posting anything into the conversation', () => {
     WS_HANDLERS['model.switch_result']?.({
       type: 'model.switch_result',
       payload: {
@@ -41,9 +41,10 @@ describe('model switch ws handler', () => {
       provider: 'anthropic',
       model: 'claude-new',
     });
-    expect(useChatStore.getState().messages.at(-1)).toMatchObject({
-      role: 'system',
-      content: expect.stringMatching(/next LLM request.*current run/i),
-    });
+    // Switching the model is a UI event. It used to append a system message
+    // to the transcript, which dropped a "Model switched: …" bubble into the
+    // middle of the conversation, where it read as something the agent had
+    // said. The switch is reported by a toast instead.
+    expect(useChatStore.getState().messages).toHaveLength(0);
   });
 });

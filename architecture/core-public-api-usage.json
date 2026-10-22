@@ -249,9 +249,9 @@
       "runtimeOrMixed": 1
     },
     "@wrongstack/core/utils/error": {
-      "files": 22,
+      "files": 23,
       "typeOnly": 0,
-      "runtimeOrMixed": 22
+      "runtimeOrMixed": 23
     },
     "@wrongstack/core/utils/expect-defined": {
       "files": 16,
@@ -29055,6 +29055,12 @@
     {
       "specifier": "@wrongstack/core/utils/error",
       "file": "packages/webui/src/i18n/index.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils/error",
+      "file": "packages/webui/src/lib/ws-client-connection.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

@@ -1,14 +1,15 @@
-import type { Page } from '@playwright/test';
-import { expect, test } from '@playwright/test';
 import type { Server } from 'node:child_process';
 import { execSync, spawn } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import * as path from 'node:path';
+import type { Page } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 // Use workspace package exports so the spec does not depend on untracked dist files.
 import { DefaultSessionStore } from '@wrongstack/core/storage';
 import { resolveWstackPaths } from '@wrongstack/core/utils';
+import { sidePanel } from './helpers/side-panel';
 
 /**
  * The four-tab LIVE-RUNS proof — the runtime counterpart of
@@ -494,8 +495,7 @@ async function openFixtureTab(page: Page, name: Name): Promise<void> {
     // strip turns every openTab into a silent tabs_full — so reclaim the
     // slots before each click, not only after the first open.
     await closeTabsNotIn(page, keep);
-    const entry = page
-      .getByRole('dialog', { name: 'Side panel' })
+    const entry = sidePanel(page)
       .getByRole('button', { name: new RegExp(`E2ELR ${name} fixture`) })
       .first();
     await entry.click({ timeout: 10_000 }).catch(() => {});

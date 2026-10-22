@@ -304,12 +304,10 @@ export function handleProviderModelSwitched(msg: WSServerMessage) {
     timestamp: number;
   };
   const to = `${payload.to.providerId}/${payload.to.model}`;
-  const from = payload.from ? `${payload.from.providerId}/${payload.from.model}` : '';
   recordRouteChange(chat, msg, payload.to);
-  chat.addMessage({
-    role: 'assistant',
-    content: from ? `Model switched: \`${from}\` → \`${to}\`` : `Model switched to \`${to}\``,
-  });
+  // Toast only — never a chat message. A model switch is a UI event; a
+  // bubble in the middle of the transcript made it look like the agent had
+  // said something it had not.
   toastIfForeground(chat, () => toast.info(`Model: ${to}`));
 }
 

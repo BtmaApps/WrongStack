@@ -1,4 +1,5 @@
 import { expect, type Page, test } from '@playwright/test';
+import { panelButton } from './helpers/side-panel';
 
 /**
  * SessionPanel quick actions — the two flows that own the tab topology:
@@ -61,9 +62,15 @@ function sessionParam(page: Page): string | null {
 const tabs = (page: Page) =>
   page.getByRole('tablist', { name: 'Open session tabs' }).getByRole('tab');
 
-/** Buttons inside the Session side panel (not the tab bar, not dialogs). */
-const panelButton = (page: Page, name: string) =>
-  page.getByRole('dialog', { name: 'Side panel' }).getByRole('button', { name, exact: true });
+/**
+ * Buttons inside the Session side panel (not the tab bar, not dialogs).
+ *
+ * Scoped by the PANEL ELEMENT, not by its role: the panel is an overlay
+ * dialog only below 768px (`isOverlay` in SidePanel/index.tsx) and a
+ * `role="complementary"` landmark on every wider viewport, so a
+ * `getByRole('dialog', …)` scope matched nothing on a desktop browser and
+ * every lookup in this spec timed out. See `e2e/helpers/side-panel.ts`.
+ */
 
 /** Index of the selected tab within the strip, or -1 before it renders. */
 async function selectedIndex(page: Page): Promise<number> {

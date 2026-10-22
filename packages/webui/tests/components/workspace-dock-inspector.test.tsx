@@ -36,4 +36,18 @@ describe('workspace dock inspector', () => {
     fireEvent.keyDown(window, { key: 'Escape' });
     await waitFor(() => expect(useUIStore.getState().dockSection).toBeNull());
   });
+
+  // The drawer is a NON-modal overlay: it has no backdrop and must never
+  // cover the app's top chrome. Anchored to the viewport it swallowed clicks
+  // on the rightmost session tabs (the strip sits at the very top of the
+  // shell, and the drawer spans the full viewport height). Anchored to the
+  // work surface it starts below the chrome, so the strip stays clickable.
+  it('is anchored to the work surface, not to the viewport', async () => {
+    useUIStore.getState().setDockSection('work');
+    render(<WorkspaceDockInspector sessionId="session-1" />);
+
+    const drawer = await screen.findByTestId('workspace-dock-inspector');
+    expect(drawer.className).toContain('absolute');
+    expect(drawer.className).not.toContain('fixed');
+  });
 });

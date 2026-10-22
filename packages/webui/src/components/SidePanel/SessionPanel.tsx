@@ -55,7 +55,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu';
 import { WorkspaceDock } from '../WorkspaceDock';
@@ -448,9 +447,15 @@ export function SessionPanel() {
   const historySection = (
     <SessionHistoryList historyEntries={historyEntries} fullChrome={fullChrome} />
   );
-  // Calm chrome: one primary action (New session, plus Abort while running);
-  // Export / Compact / Clear move into the row's "more" menu with the same
-  // handlers and the same disabled rules.
+  // Calm chrome: the actions the user reaches for stay on the row (New
+  // session, Clear, plus Abort while running); the occasional ones (Export,
+  // Compact) move into the row's "more" menu with the same handlers and the
+  // same disabled rules.
+  //
+  // Clear used to live in that menu only, which left the chat with a visible
+  // "New session" and a Clear that nobody could see without opening a menu —
+  // the same exposure New session had, and the reason the action was hard to
+  // find and to reach from the keyboard.
   const calmActionsSection = (
     <div className="flex items-center gap-1.5 bg-card/55 px-3 pb-2.5">
       <div className="grid flex-1">
@@ -460,6 +465,16 @@ export function SessionPanel() {
           onClick={handleNewSession}
           disabled={!wsConnected}
           title={t('activity:sessionPanel.actions.newSessionTitle')}
+        />
+      </div>
+      <div className="grid flex-1">
+        <ActionButton
+          icon={<Eraser className="h-3 w-3" />}
+          label={t('common:action.clear')}
+          tone="danger"
+          onClick={handleClear}
+          disabled={!wsConnected}
+          title={t('activity:sessionPanel.actions.clearTitle')}
         />
       </div>
       {isLoading && (
@@ -497,15 +512,6 @@ export function SessionPanel() {
           >
             <Shrink className="h-4 w-4" />
             {t('activity:sessionPanel.actions.compact')}
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            disabled={!wsConnected}
-            onSelect={handleClear}
-            className="gap-2 text-destructive focus:text-destructive"
-          >
-            <Eraser className="h-4 w-4" />
-            {t('common:action.clear')}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

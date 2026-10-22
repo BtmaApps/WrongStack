@@ -325,23 +325,29 @@ function AppInner() {
             so its virtualized transcript keeps measuring. */}
         <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
           <ViewRouter sessionId={sessionId ?? null} desktopShell={desktopShell} />
+          {/* The workspace dock inspector is anchored to THIS box, so it
+              overlays the work surface only. Fixed to the viewport it also
+              covered the top chrome — the session tab strip included — and
+              swallowed clicks on the rightmost tabs while a dock section was
+              open. */}
+          {currentView !== 'setup' && (
+            <ErrorBoundary level="panel" name={t('activity:panels.workspaceInspector')}>
+              {sessionId && (
+                <WorkspaceDockInspector sessionId={sessionId} />
+              )}
+            </ErrorBoundary>
+          )}
         </div>
       </main>
 
-      {/* Right-side inspectors overlay the work surface without shrinking it.
-          Workspace dock content owns the foreground while a dock section is
-          selected; the global Fleet/Agents/Audit inspector remains separate. */}
+      {/* The global Fleet/Agents/Audit inspector is a MODAL sheet and stays
+          viewport-level: it dims the shell and owns the foreground on purpose.
+          Workspace dock content owns the foreground only while a dock section
+          is selected, and is scoped to the work surface above. */}
       {currentView !== 'setup' && (
-        <>
-          <ErrorBoundary level="panel" name={t('activity:panels.inspector')}>
-            <InspectorPanel />
-          </ErrorBoundary>
-          {sessionId && (
-            <ErrorBoundary level="panel" name={t('activity:panels.workspaceInspector')}>
-              <WorkspaceDockInspector sessionId={sessionId} />
-            </ErrorBoundary>
-          )}
-        </>
+        <ErrorBoundary level="panel" name={t('activity:panels.inspector')}>
+          <InspectorPanel />
+        </ErrorBoundary>
       )}
 
       {/* Process Monitor overlay — triggered by /kill */}

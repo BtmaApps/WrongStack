@@ -473,7 +473,12 @@ export function WorkspaceDockInspector({ sessionId }: { sessionId: string }): Re
           : t('activity:dock.inspector')
       }
       className={cn(
-        'fixed inset-y-0 right-0 z-40 flex w-[calc(100vw-3rem)] max-w-none flex-col overflow-hidden border-l border-border/80 bg-card/96 shadow-[-24px_0_64px_-36px_hsl(var(--shadow-color)/0.65)] backdrop-blur-xl transition-transform duration-200 sm:w-[min(680px,48vw)] sm:max-w-[680px]',
+        // `absolute`, not `fixed`: the drawer is anchored to the WORK SURFACE
+        // (the positioned container in App.tsx), so it starts below the app's
+        // top chrome. Fixed to the viewport it covered the session tab strip
+        // and swallowed clicks on the rightmost tabs — the strip is the one
+        // control that must stay reachable while the drawer is open.
+        'absolute inset-y-0 right-0 z-40 flex w-[calc(100vw-3rem)] max-w-none flex-col overflow-hidden border-l border-border/80 bg-card/96 shadow-[-24px_0_64px_-36px_hsl(var(--shadow-color)/0.65)] backdrop-blur-xl transition-transform duration-200 sm:w-[min(680px,48vw)] sm:max-w-[680px]',
         stackedOffset,
         open ? 'translate-x-0' : 'pointer-events-none translate-x-full',
       )}

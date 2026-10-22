@@ -1,7 +1,8 @@
 import { execSync, spawn } from 'node:child_process';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
+import { sidePanel } from './helpers/side-panel';
 
 /**
  * Per-session worklist — the 2nd menu area (Work section: Todos / Plan) must
@@ -208,8 +209,7 @@ async function closeTabsNotIn(page: Page, keep: string[]): Promise<void> {
  * titled transcripts can be tens of MB and would stall the test.
  */
 async function reopenFromHistory(page: Page, wanted: string[]): Promise<void> {
-  const panel = page.getByRole('dialog', { name: 'Side panel' });
-  const entries = panel.getByRole('button', { name: /· 0 tok/ });
+  const entries = sidePanel(page).getByRole('button', { name: /· 0 tok/ });
   const deadline = Date.now() + 150_000;
   let idx = 0;
   while (Date.now() < deadline) {

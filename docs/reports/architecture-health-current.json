@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-22T10:44:56.070Z",
+  "generatedAt": "2026-10-22T10:45:25.510Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,10 +13,10 @@
   "summary": {
     "packages": 38,
     "sourceFiles": 5237,
-    "testFiles": 4604,
-    "sourceLines": 1139124,
+    "testFiles": 4607,
+    "sourceLines": 1139207,
     "workspaceEdges": 139,
-    "moduleEdges": 17219,
+    "moduleEdges": 17220,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -870,7 +870,7 @@
       "name": "@wrongstack/webui",
       "dir": "packages/webui",
       "sourceFiles": 764,
-      "testFiles": 502,
+      "testFiles": 505,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -893,7 +893,7 @@
         {
           "path": "packages/webui/tsconfig.test.json",
           "error": null,
-          "testFiles": 502
+          "testFiles": 505
         }
       ]
     },
@@ -25934,6 +25934,12 @@
         ]
       },
       {
+        "file": "packages/webui/tests/components/chat-view-new-session-welcome.test.tsx",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
         "file": "packages/webui/tests/components/chat-view-welcome-scroll.test.ts",
         "projects": [
           "webui-jsdom"
@@ -28160,7 +28166,19 @@
         ]
       },
       {
+        "file": "packages/webui/tests/lib/ws-client-log-redaction.test.ts",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
         "file": "packages/webui/tests/lib/ws-client-model-switch.test.ts",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
+        "file": "packages/webui/tests/lib/ws-client-new-session-grant.test.ts",
         "projects": [
           "webui-jsdom"
         ]
@@ -29190,11 +29208,6 @@
       "relativeImports": 25
     },
     {
-      "file": "packages/webui/src/lib/ws-client.ts",
-      "lines": 691,
-      "relativeImports": 14
-    },
-    {
       "file": "packages/cli/src/fleet/host-skill-companion.ts",
       "lines": 690,
       "relativeImports": 3
@@ -29238,6 +29251,11 @@
       "file": "packages/core/src/execution/eternal-autonomy.ts",
       "lines": 688,
       "relativeImports": 13
+    },
+    {
+      "file": "packages/webui/src/lib/ws-client.ts",
+      "lines": 688,
+      "relativeImports": 14
     },
     {
       "file": "packages/core/src/hq/commands.ts",

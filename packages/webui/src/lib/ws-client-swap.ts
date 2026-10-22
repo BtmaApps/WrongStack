@@ -11,6 +11,14 @@ export const NEW_SESSION_SWAP_TARGET = '#pending-new-session';
 /** Bound on `seenSessionIds`; four tabs plus a long tail of retired ones. */
 export const MAX_SEEN_SESSION_IDS = 64;
 
+/**
+ * How long a duplicate swap request is swallowed.
+ *
+ * Long enough to catch a double-click or a key repeat, short enough that a
+ * request whose answer never arrived does not lock the control out forever.
+ */
+export const SWAP_GUARD_MS = 1000;
+
 /** Minimum spacing between automatic `session_not_ready` retries for ONE session. */
 export const NOT_READY_RETRY_COOLDOWN_MS = 15_000;
 

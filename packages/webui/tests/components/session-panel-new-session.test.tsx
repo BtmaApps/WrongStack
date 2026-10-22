@@ -188,6 +188,28 @@ describe('SessionPanel quick actions', () => {
     expect(send).not.toHaveBeenCalled();
   });
 
+  it('calm chrome exposes Clear on the action row, not only inside the more menu', async () => {
+    useLocalPrefs.setState({ chromeLevel: 'calm' });
+    renderPanel();
+
+    // Clear used to live in the "more" menu only, while New session sat on
+    // the row — so the destructive action had a fraction of the exposure of
+    // the harmless one, and neither a mouse nor a keyboard could reach it
+    // without opening a menu first.
+    const clear = screen.getByRole('button', { name: 'Clear' });
+    expect(clear).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'New session' })).toBeTruthy();
+
+    // …and it is the same wired action, not a decorative duplicate.
+    await act(async () => {
+      fireEvent.click(clear);
+    });
+    expect(send).toHaveBeenCalledWith({
+      type: 'session.new',
+      payload: { replaceSessionId: 'sess-a' },
+    });
+  });
+
   it('calm chrome folds the session stats grid behind its heading', () => {
     useLocalPrefs.setState({ chromeLevel: 'calm', sessionStatsExpanded: false });
     renderPanel();
@@ -216,13 +238,15 @@ describe('SessionPanel quick actions', () => {
     useLocalPrefs.setState({ chromeLevel: 'calm' });
   });
 
-  it('calm chrome keeps New session loose and moves Export / Compact / Clear into a menu', () => {
+  it('calm chrome keeps New session and Clear loose and moves Export / Compact into a menu', () => {
     useLocalPrefs.setState({ chromeLevel: 'calm' });
     renderPanel();
 
     expect(screen.getByRole('button', { name: 'New session' })).toBeTruthy();
+    // Clear is a row action too: it retires the conversation, and hiding it
+    // behind a menu left it with a fraction of the exposure New session had.
+    expect(screen.getByRole('button', { name: 'Clear' })).toBeTruthy();
     expect(screen.getByTestId('session-actions-menu')).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Clear' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Export' })).toBeNull();
   });
 

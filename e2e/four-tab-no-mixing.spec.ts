@@ -4,6 +4,7 @@ import { expect, type Page, type WebSocket as PlaywrightWebSocket, test } from '
 // Use workspace package exports so the spec does not depend on untracked dist files.
 import { DefaultSessionStore } from '@wrongstack/core/storage';
 import { resolveWstackPaths } from '@wrongstack/core/utils';
+import { sidePanel } from './helpers/side-panel';
 
 /** Minimal local stand-ins for the core journal types (erased at transpile). */
 type SeededEvent = { type: 'user_input'; ts: string; content: string };
@@ -286,8 +287,7 @@ async function closeTabsNotIn(page: Page, keep: string[]): Promise<void> {
 }
 
 async function clickFixtureInSideHistory(page: Page, name: Name): Promise<boolean> {
-  const entry = page
-    .getByRole('dialog', { name: 'Side panel' })
+  const entry = sidePanel(page)
     .getByRole('button', { name: new RegExp(`E2E4T ${name} fixture`) })
     .first();
   if ((await entry.count()) === 0) return false;
@@ -298,8 +298,9 @@ async function clickFixtureInSideHistory(page: Page, name: Name): Promise<boolea
 async function clickFixtureInSessionsWorkspace(page: Page, name: Name): Promise<void> {
   const workspace = page.getByTestId('sessions-workspace');
   if ((await workspace.count()) === 0 || !(await workspace.isVisible().catch(() => false))) {
-    const sidePanel = page.getByRole('dialog', { name: 'Side panel' });
-    await sidePanel.getByRole('button', { name: /Open (sessions )?dashboard/i }).click();
+    await sidePanel(page)
+      .getByRole('button', { name: /Open (sessions )?dashboard/i })
+      .click();
   }
   await expect(workspace).toBeVisible({ timeout: 20_000 });
   const filter = workspace.getByPlaceholder(/filter/i);
@@ -413,7 +414,7 @@ test.describe('four-tab no-mixing', () => {
         head: listed.slice(0, 8).map((s) => ({ id: s.id, title: s.title, tok: s.tokenTotal })),
       }),
     );
-    const diagPanel = page.getByRole('dialog', { name: 'Side panel' });
+    const diagPanel = sidePanel(page);
     const panelText = await diagPanel.innerText({ timeout: 10_000 }).catch(() => 'PANEL_TEXT_ERR');
     console.log(
       JSON.stringify({

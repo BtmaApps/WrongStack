@@ -296,6 +296,9 @@ export function SessionTabBar() {
           type="button"
           onClick={handleNewSession}
           title={t('chat:newSession', 'New Session')}
+          // Icon-only control: `title` alone is a weak accessible name, so
+          // the name is stated outright for assistive technology.
+          aria-label={t('chat:newSession', 'New Session')}
           className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
         >
           <Plus className="h-3.5 w-3.5" />

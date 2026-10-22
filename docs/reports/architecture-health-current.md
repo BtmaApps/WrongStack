@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-22T10:44:56.070Z
+**Generated:** 2026-10-22T10:45:25.510Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,10 +9,10 @@
 |---|---:|
 | Workspace packages | 38 |
 | Production source files | 5237 |
-| Production source lines | 1139124 |
-| Test files | 4604 |
+| Production source lines | 1139207 |
+| Test files | 4607 |
 | Workspace dependency edges | 139 |
-| Relative module edges | 17219 |
+| Relative module edges | 17220 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 5 |
@@ -59,7 +59,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/tui | 496 | 428 | @wrongstack/core, @wrongstack/kanban, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/tools |
 | @wrongstack/vector-memory | 18 | 28 | @wrongstack/core, @wrongstack/persistence, @wrongstack/sage |
 | @wrongstack/vibeui | 53 | 14 | @wrongstack/webui-protocol |
-| @wrongstack/webui | 764 | 502 | @wrongstack/core, @wrongstack/kanban, @wrongstack/plugins, @wrongstack/providers, @wrongstack/tools, @wrongstack/webui-protocol |
+| @wrongstack/webui | 764 | 505 | @wrongstack/core, @wrongstack/kanban, @wrongstack/plugins, @wrongstack/providers, @wrongstack/tools, @wrongstack/webui-protocol |
 | @wrongstack/webui-hq | 127 | 55 | @wrongstack/core, @wrongstack/tools, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/webui-protocol | 29 | 15 | @wrongstack/core |
 | @wrongstack/webui-server | 304 | 303 | @wrongstack/core, @wrongstack/kanban, @wrongstack/mcp, @wrongstack/primitives, @wrongstack/providers, @wrongstack/requirement-intake, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/techstack, @wrongstack/tools, @wrongstack/vector-memory, @wrongstack/webui-protocol, @wrongstack/wrongtrace |
@@ -117,7 +117,6 @@ None.
 | 691 | `packages/sage/src/types.ts` |
 | 691 | `packages/tui/src/hooks/use-director-fleet-bridge.ts` |
 | 691 | `packages/webui/src/components/SettingsPanel/index.tsx` |
-| 691 | `packages/webui/src/lib/ws-client.ts` |
 | 690 | `packages/cli/src/fleet/host-skill-companion.ts` |
 | 690 | `packages/cli/src/slash-commands/kanban-task-subcommands.ts` |
 | 690 | `packages/core/src/coordination/autonomous-coordinator.ts` |
@@ -127,6 +126,7 @@ None.
 | 689 | `packages/core/src/storage/file-session-writer.ts` |
 | 688 | `packages/core/src/coordination/task-auctioneer.ts` |
 | 688 | `packages/core/src/execution/eternal-autonomy.ts` |
+| 688 | `packages/webui/src/lib/ws-client.ts` |
 | 687 | `packages/core/src/hq/commands.ts` |
 | 687 | `packages/core/src/storage/session-recovery.ts` |
 | 686 | `apps/desktop/src/main/runtime-manager.ts` |

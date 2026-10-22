@@ -1,5 +1,4 @@
 import { toast } from '@/components/Toaster';
-import { i18n } from '@/i18n';
 import { streamCoalescer } from '@/lib/stream-coalescer';
 import { getWSClient } from '@/lib/ws-client';
 import {
@@ -168,20 +167,10 @@ export function handleModelSwitchResult(msg: WSServerMessage) {
     useConfigStore.getState().setModel(p.model);
   }
 
-  const from =
-    p.previousProvider && p.previousModel
-      ? `${p.previousProvider} / ${p.previousModel}`
-      : i18n.t('settings:toast.previousModel');
-  const to = `${p.provider} / ${p.model}`;
-  chat.addMessage({
-    role: 'system',
-    content: i18n.t(
-      p.runActive
-        ? 'settings:toast.modelSwitchedRunActive'
-        : 'settings:toast.modelSwitchedNextRequest',
-      { from, to },
-    ),
-  });
+  // The switch is reported OUT OF BAND (a toast on the surface that asked for
+  // it) and never as a chat message. Posting it into the transcript dropped a
+  // "Model switched: X → Y" bubble in the middle of the conversation, where it
+  // reads as something the agent said rather than something the UI did.
 }
 
 export function handleContextCompacted(msg: WSServerMessage) {

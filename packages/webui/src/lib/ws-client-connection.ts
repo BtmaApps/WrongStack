@@ -1,11 +1,14 @@
+import { toErrorMessage } from '@wrongstack/core/utils/error';
 import {
   DEFAULT_SURFACE_CONNECTION_CONFIG,
   decodeProtocolFrame,
   planConnectionReconnect,
   resetConnection,
   type SurfaceConnectionState,
+  stopConnection,
 } from '@wrongstack/webui-protocol';
 import type { WSServerMessage } from '../types';
+import type { WsStatus } from './ws-client-utils';
 
 export interface SocketLifecycleCallbacks {
   isCurrentGeneration: () => boolean;
@@ -66,7 +69,7 @@ export function bindSocketLifecycle(
       JSON.stringify({
         level: 'error',
         event: 'ws_client.error',
-        message: error instanceof Error ? error.message : String(error),
+        message: toErrorMessage(error),
         timestamp: new Date().toISOString(),
       }),
     );
@@ -131,10 +134,66 @@ export function retryNowHelper(
       JSON.stringify({
         level: 'warn',
         event: 'ws_client.reconnect_failed',
-        message: err instanceof Error ? err.message : String(err),
+        message: toErrorMessage(err),
         timestamp: new Date().toISOString(),
       }),
     ),
   );
   return { reconnectTimer: null, connectionState: nextState };
+}
+
+export interface WsReconnectHost {
+  connectionState: SurfaceConnectionState;
+  reconnectTimer: ReturnType<typeof setTimeout> | null;
+  lastErrorText: string | undefined;
+  setStatus(status: WsStatus): void;
+  connect(): Promise<void>;
+}
+
+/** Reconnect against live host state, including a disconnect while waiting. */
+export function attemptReconnectHelper(
+  host: WsReconnectHost,
+  config: { queueLimit: number; maxReconnectAttempts: number; shouldReconnect: () => boolean },
+): void {
+  if (!config.shouldReconnect()) {
+    host.connectionState = stopConnection(host.connectionState);
+    host.reconnectTimer = null;
+    host.setStatus({ state: 'closed', error: host.lastErrorText ?? 'Disconnected' });
+    return;
+  }
+  const reconnect = planReconnectHelper(
+    host.connectionState,
+    config.maxReconnectAttempts,
+    config.queueLimit,
+  );
+  host.connectionState = reconnect.state;
+  if (!reconnect.plan) {
+    host.reconnectTimer = null;
+    host.setStatus({ state: 'closed', error: host.lastErrorText ?? 'Disconnected' });
+    return;
+  }
+  host.setStatus({
+    state: 'reconnecting',
+    attempt: reconnect.plan.attempt,
+    nextRetryAt: reconnect.plan.retryAt,
+    lastError: host.lastErrorText,
+  });
+
+  host.reconnectTimer = setTimeout(async () => {
+    host.reconnectTimer = null;
+    if (config.shouldReconnect()) {
+      try {
+        await host.connect();
+      } catch (err) {
+        console.error(
+          JSON.stringify({
+            level: 'error',
+            event: 'ws_client.reconnect_failed',
+            message: toErrorMessage(err),
+            timestamp: new Date().toISOString(),
+          }),
+        );
+      }
+    }
+  }, reconnect.plan.delayMs);
 }
