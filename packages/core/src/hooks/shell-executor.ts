@@ -3,6 +3,7 @@ import type { AnyHookOutcome, HookInput, HookOutcome } from '../types/hooks.js';
 import type { Logger } from '../types/logger.js';
 import { buildChildEnv } from '../utils/child-env.js';
 import { toErrorMessage } from '../utils/error.js';
+import { settleWin32Kill } from '../utils/tree-kill.js';
 import { buildWin32CmdShimInvocation } from '../utils/win32-cmd.js';
 
 const DEFAULT_TIMEOUT_MS = 5_000;
@@ -217,7 +218,16 @@ function killProcessTree(child: ReturnType<typeof spawn>): void {
           stdio: 'ignore',
           windowsHide: true,
         });
-        killer.unref();
+        // taskkill can exit without killing, stall, or report a failed spawn
+        // as an 'error' event: the hook already resolved, so its process would
+        // run on orphaned. Kill it directly once taskkill settles.
+        settleWin32Kill(killer, child, () => {
+          try {
+            child.kill('SIGKILL');
+          } catch {
+            /* already gone */
+          }
+        });
         return;
       } catch {
         // Fall through to direct kill.

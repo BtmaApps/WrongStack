@@ -199,6 +199,8 @@ export class ChronicleProjectServerClient {
   private connecting: Promise<void> | null = null;
   private connectResolve: (() => void) | null = null;
   private connectReject: ((error: unknown) => void) | null = null;
+  /** Bumped by close(); an election started before it stops retrying. */
+  private closeGeneration = 0;
   private nextId = 1;
   /** WS-027: read from the owner-only metadata file — see currentAuthToken. */
   private authToken: string | undefined;
@@ -254,6 +256,10 @@ export class ChronicleProjectServerClient {
   }
 
   async close(): Promise<void> {
+    // An election started before close() stops retrying: rejecting its
+    // handshake below was otherwise one more failed attempt, and the loop
+    // reconnected (and re-armed the daemon spawn) for a closed client.
+    this.closeGeneration++;
     const socket = this.socket;
     this.socket = null;
     this.info = null;
@@ -286,14 +292,15 @@ export class ChronicleProjectServerClient {
       Date.now() + (spawnIfMissing ? SERVER_START_TIMEOUT_MS : CONNECT_ATTEMPT_TIMEOUT_MS);
     let lastSpawnAt = 0;
     let lastError: unknown = new Error('Chronicle project server unavailable');
-    while (Date.now() < deadline) {
+    const generation = this.closeGeneration;
+    while (Date.now() < deadline && generation === this.closeGeneration) {
       try {
         await this.connectOnce();
         return;
       } catch (error) {
         lastError = error;
       }
-      if (!spawnIfMissing) break;
+      if (!spawnIfMissing || generation !== this.closeGeneration) break;
       const now = Date.now();
       if (now - lastSpawnAt >= SPAWN_RETRY_CADENCE_MS) {
         // A synchronous throw from the spawn path — the resolver transiently

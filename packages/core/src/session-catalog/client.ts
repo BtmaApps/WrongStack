@@ -138,6 +138,8 @@ export class SessionCatalogProjectClient {
   private readonly eventListeners = new Set<(event: SessionCatalogEvent) => void>();
   private reconnectTimer: ReturnType<typeof setTimeout> | undefined;
   private explicitlyClosed = false;
+  /** Bumped by close(); an election started before it stops retrying. */
+  private closeGeneration = 0;
 
   constructor(readonly options: SessionCatalogProjectClientOptions) {
     this.endpoint = sessionCatalogProjectServerEndpoint(options.projectDir);
@@ -228,6 +230,10 @@ export class SessionCatalogProjectClient {
 
   async close(): Promise<void> {
     this.explicitlyClosed = true;
+    // An election started before close() stops retrying: rejecting its
+    // handshake below was otherwise one more failed attempt, and the loop
+    // reconnected (and re-armed the daemon spawn) for a closed client.
+    this.closeGeneration++;
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
     this.reconnectTimer = undefined;
     const socket = this.socket;
@@ -267,7 +273,8 @@ export class SessionCatalogProjectClient {
     let spawned = false;
     let spawnedPid: number | undefined;
     let lastError: unknown = new Error('Session Catalog project server unavailable');
-    while (Date.now() < deadline) {
+    const generation = this.closeGeneration;
+    while (Date.now() < deadline && generation === this.closeGeneration) {
       try {
         await this.connectOnce();
         catalogDiag(
@@ -278,6 +285,7 @@ export class SessionCatalogProjectClient {
         lastError = error;
         catalogDiag(`CONNECT_FAIL: ${(error as Error).message} (spawnIfMissing=${spawnIfMissing})`);
       }
+      if (generation !== this.closeGeneration) break;
       if (spawnIfMissing) {
         // A daemon we started that has since exited, with no live owner left,
         // lost the election to one that was on its way out: a daemon still

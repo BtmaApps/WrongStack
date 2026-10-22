@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-22T10:42:24.091Z
+**Generated:** 2026-10-22T10:42:53.998Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,10 +9,10 @@
 |---|---:|
 | Workspace packages | 38 |
 | Production source files | 5217 |
-| Production source lines | 1135060 |
-| Test files | 4581 |
+| Production source lines | 1135108 |
+| Test files | 4584 |
 | Workspace dependency edges | 139 |
-| Relative module edges | 17141 |
+| Relative module edges | 17142 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 5 |
@@ -32,7 +32,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/cli | 676 | 669 | @wrongstack/acp, @wrongstack/bench, @wrongstack/codebase-index-mcp, @wrongstack/core, @wrongstack/desktop, @wrongstack/kanban, @wrongstack/kanban-mcp, @wrongstack/mailbox-mcp, @wrongstack/mcp, @wrongstack/persistence, @wrongstack/plug-lsp, @wrongstack/plugins, @wrongstack/primitives, @wrongstack/providers, @wrongstack/requirement-intake, @wrongstack/requirement-intake-mcp, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sage-mcp, @wrongstack/sdd, @wrongstack/security-scanner, @wrongstack/simpleui, @wrongstack/techstack, @wrongstack/telegram, @wrongstack/tools, @wrongstack/tui, @wrongstack/vector-memory, @wrongstack/vibeui, @wrongstack/webui, @wrongstack/webui-hq, @wrongstack/webui-protocol, @wrongstack/webui-server, @wrongstack/wrongtrace |
 | @wrongstack/client | 7 | 3 | @wrongstack/webui-protocol |
 | @wrongstack/codebase-index-mcp | 6 | 5 | @wrongstack/core, @wrongstack/mcp, @wrongstack/tools |
-| @wrongstack/core | 1163 | 1009 | @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
+| @wrongstack/core | 1163 | 1012 | @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/desktop | 48 | 35 | @wrongstack/core, @wrongstack/webui, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/governance | 45 | 37 | @wrongstack/persistence |
 | @wrongstack/kanban | 109 | 84 | @wrongstack/persistence, @wrongstack/primitives |
@@ -98,6 +98,7 @@ None.
 | 700 | `packages/core/src/chronicle/project-server.ts` |
 | 699 | `packages/cli/src/boot/tui-session-resume.ts` |
 | 699 | `packages/client/src/client.ts` |
+| 699 | `packages/core/src/chronicle/project-server-client.ts` |
 | 699 | `packages/governance/src/runtime-compatibility.ts` |
 | 698 | `packages/core/src/coordination/subagent-budget.ts` |
 | 698 | `packages/simpleui/src/automation-workspace.tsx` |
@@ -109,7 +110,6 @@ None.
 | 695 | `packages/core/src/storage/config-loader.ts` |
 | 694 | `packages/cli/src/slash-commands/fix-classifier.ts` |
 | 693 | `packages/core/src/coordination/agent-monitor.ts` |
-| 692 | `packages/core/src/chronicle/project-server-client.ts` |
 | 692 | `packages/tools/src/codebase-index/project-server.ts` |
 | 692 | `packages/webui/src/components/MailboxPanel.tsx` |
 | 691 | `packages/core/src/core/agent-response.ts` |
@@ -133,7 +133,7 @@ None.
 | 686 | `apps/desktop/src/main/runtime-manager.ts` |
 | 686 | `packages/core/src/coordination/provider-status-tracker.ts` |
 | 686 | `packages/webui-server/src/server/session-handler-helpers.ts` |
-| 685 | `packages/core/src/session-catalog/session-registry.ts` |
+| 685 | `packages/core/src/coordination/mailbox-project-server-client.ts` |
 
 ## Exports only tests reference
 

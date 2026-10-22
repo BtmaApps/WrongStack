@@ -461,9 +461,18 @@ async function awaitDelegateAttempt(
       offObserve();
       resolve(value);
     };
+    // Above 2^31-1 ms setTimeout fires after ~1 ms (Node and Bun), which
+    // terminated a worker given a very long timeoutMs: wait in capped steps.
+    let deadline = 0;
+    const wait = () => {
+      const remaining = deadline - Date.now();
+      if (remaining <= 0) return finish({ __timeout: true });
+      timer = setTimeout(wait, Math.min(remaining, 2_147_483_647));
+    };
     const arm = () => {
       if (timer) clearTimeout(timer);
-      timer = setTimeout(() => finish({ __timeout: true }), timeoutMs);
+      deadline = Date.now() + timeoutMs;
+      timer = setTimeout(wait, Math.min(timeoutMs, 2_147_483_647));
     };
     const bump = (event: { subagentId: string }) => {
       if (event.subagentId === subagentId) arm();

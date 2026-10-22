@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-22T10:42:24.091Z",
+  "generatedAt": "2026-10-22T10:42:53.998Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,10 +13,10 @@
   "summary": {
     "packages": 38,
     "sourceFiles": 5217,
-    "testFiles": 4581,
-    "sourceLines": 1135060,
+    "testFiles": 4584,
+    "sourceLines": 1135108,
     "workspaceEdges": 139,
-    "moduleEdges": 17141,
+    "moduleEdges": 17142,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -249,7 +249,7 @@
       "name": "@wrongstack/core",
       "dir": "packages/core",
       "sourceFiles": 1163,
-      "testFiles": 1009,
+      "testFiles": 1012,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -264,7 +264,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 1009
+          "testFiles": 1012
         }
       ]
     },
@@ -7016,6 +7016,12 @@
         ]
       },
       {
+        "file": "packages/core/tests/coordination/delegate-timeout-overflow.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/core/tests/coordination/delegate-timeout-preempt.test.ts",
         "projects": [
           "root-node"
@@ -7437,6 +7443,12 @@
       },
       {
         "file": "packages/core/tests/coordination/mailbox-project-server-auth-gate.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/coordination/mailbox-project-server-client-close-mid-connect.test.ts",
         "projects": [
           "root-node"
         ]
@@ -9963,6 +9975,12 @@
       },
       {
         "file": "packages/core/tests/plugins/sync-plugin.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/project-server-clients-close-mid-connect.test.ts",
         "projects": [
           "root-node"
         ]
@@ -28957,6 +28975,11 @@
       "relativeImports": 5
     },
     {
+      "file": "packages/core/src/chronicle/project-server-client.ts",
+      "lines": 699,
+      "relativeImports": 5
+    },
+    {
       "file": "packages/governance/src/runtime-compatibility.ts",
       "lines": 699,
       "relativeImports": 12
@@ -29010,11 +29033,6 @@
       "file": "packages/core/src/coordination/agent-monitor.ts",
       "lines": 693,
       "relativeImports": 4
-    },
-    {
-      "file": "packages/core/src/chronicle/project-server-client.ts",
-      "lines": 692,
-      "relativeImports": 5
     },
     {
       "file": "packages/tools/src/codebase-index/project-server.ts",
@@ -29132,9 +29150,9 @@
       "relativeImports": 5
     },
     {
-      "file": "packages/core/src/session-catalog/session-registry.ts",
+      "file": "packages/core/src/coordination/mailbox-project-server-client.ts",
       "lines": 685,
-      "relativeImports": 5
+      "relativeImports": 4
     }
   ],
   "testOnlyExports": [

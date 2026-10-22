@@ -100,6 +100,8 @@ export class InMemoryAgentBridge implements AgentBridge {
     }
     this.inflightGuards.add(correlationId);
 
+    // Above 2^31-1 ms setTimeout fires after ~1 ms (Node and Bun).
+    const delayMs = Math.min(timeout, 2_147_483_647);
     return new Promise((resolve, reject) => {
       // Declare timer first so we can reference it in the stopped-check below.
       const timer = setTimeout(() => {
@@ -112,7 +114,7 @@ export class InMemoryAgentBridge implements AgentBridge {
             context: { correlationId, timeoutMs: timeout },
           }),
         );
-      }, timeout);
+      }, delayMs);
 
       // Double-check stopped after setting up the pending entry, so stop()
       // can't miss a request that was enqueued before it acquired the lock.

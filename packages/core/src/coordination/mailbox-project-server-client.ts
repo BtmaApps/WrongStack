@@ -158,6 +158,8 @@ export class MailboxProjectServerConnection {
   private spawnedPid: number | undefined;
   private connectResolve: (() => void) | null = null;
   private connectReject: ((error: unknown) => void) | null = null;
+  /** Bumped by close(); an election started before it stops retrying. */
+  private closeGeneration = 0;
   private nextId = 1;
   /**
    * WS-027: read from the daemon's owner-only metadata file, never from the
@@ -279,12 +281,19 @@ export class MailboxProjectServerConnection {
   }
 
   close(): void {
+    // A close during an in-flight connect ends that election too. The socket's
+    // own 'close' no longer matches `this.socket`, so the handshake failed only
+    // at its timer — and the retry loop then reconnected (and could spawn a
+    // daemon) for a client its owner had closed.
+    this.closeGeneration++;
     this.stopHeartbeat();
     const socket = this.socket;
     this.socket = null;
     this.info = null;
     socket?.destroy();
-    this.rejectPending(new Error('Mailbox project server connection closed'));
+    const error = new Error('Mailbox project server connection closed');
+    this.connectReject?.(error);
+    this.rejectPending(error);
     this.transition('offline');
   }
 
@@ -329,14 +338,15 @@ export class MailboxProjectServerConnection {
       Date.now() + (spawnIfMissing ? SERVER_START_TIMEOUT_MS : CONNECT_ATTEMPT_TIMEOUT_MS);
     let lastSpawnAt = 0;
     let lastError: unknown = new Error('Mailbox project server unavailable');
-    while (Date.now() < deadline) {
+    const generation = this.closeGeneration;
+    while (Date.now() < deadline && generation === this.closeGeneration) {
       try {
         await this.connectOnce();
         return;
       } catch (error) {
         lastError = error;
       }
-      if (!spawnIfMissing) break;
+      if (!spawnIfMissing || generation !== this.closeGeneration) break;
       // Re-arm the spawn on SPAWN_RETRY_CADENCE_MS. A single spawn attempt made
       // a silently dead daemon (crash before bind, spawn-level error) fatal for
       // the whole window: every remaining retry hit `connect ENOENT` against a

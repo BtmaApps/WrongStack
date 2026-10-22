@@ -1624,14 +1624,14 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "focused repository or runtime subsystem",
       "sourceFiles": 51,
-      "sourceLines": 12671
+      "sourceLines": 12678
     },
     {
       "directory": "coordination",
       "classification": "coordination implementation",
       "intendedOwner": "Core subpath until physical extraction is justified",
       "sourceFiles": 243,
-      "sourceLines": 62505
+      "sourceLines": 62528
     },
     {
       "directory": "core",
@@ -1673,7 +1673,7 @@
       "classification": "product feature",
       "intendedOwner": "feature/plugin owner",
       "sourceFiles": 7,
-      "sourceLines": 1736
+      "sourceLines": 1746
     },
     {
       "directory": "hq",
@@ -1785,7 +1785,7 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "project-scoped ownership and catalog subsystem",
       "sourceFiles": 20,
-      "sourceLines": 5586
+      "sourceLines": 5594
     },
     {
       "directory": "skills",

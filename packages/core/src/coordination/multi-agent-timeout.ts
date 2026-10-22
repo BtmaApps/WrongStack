@@ -64,7 +64,9 @@ export async function executeSubagentWithTimeout({
     };
     const armFor = (ms: number) => {
       if (timer) clearTimeout(timer);
-      timer = setTimeout(onTick, Math.max(0, ms));
+      // A delay above 2^31-1 ms fires after ~1 ms (Node and Bun): a budget past
+      // ~24.8 days spun here. A capped tick re-checks and re-arms.
+      timer = setTimeout(onTick, Math.min(2_147_483_647, Math.max(0, ms)));
     };
     const scheduleNext = () => {
       if (settled) return;
