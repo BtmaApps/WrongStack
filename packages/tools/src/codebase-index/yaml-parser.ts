@@ -1,4 +1,5 @@
 import { expectDefined, truncate } from '@wrongstack/core/utils';
+import { parseInfraArtifact } from './infra-parser.js';
 import type { FileSymbols, Symbol as IndexSymbol, SymbolLang } from './schema.js';
 // ─── Public API ─────────────────────────────────────────────────────────────
 
@@ -193,7 +194,14 @@ function regexParse(opts: { file: string; content: string; lang: SymbolLang }): 
     );
   }
 
-  return { file, lang, symbols, mtimeMs: Date.now() };
+  const infra = parseInfraArtifact({ file, content, lang });
+  return {
+    file,
+    lang,
+    symbols,
+    ...(infra.refs.length > 0 ? { refs: infra.refs } : {}),
+    mtimeMs: Date.now(),
+  };
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────

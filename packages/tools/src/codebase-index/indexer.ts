@@ -14,7 +14,9 @@ export { shouldUseParserWorkerPool } from './indexer-symbol-ownership.js';
  * 5. Return index statistics
  */
 
+import { existsSync } from 'node:fs';
 import { availableParallelism } from 'node:os';
+import * as path from 'node:path';
 import type { Context } from '@wrongstack/core/agent';
 import { indexParallelBatchSize, isFrugalPerf } from '@wrongstack/core/utils';
 import { throwIfAborted, YIELD_EVERY_N, yieldEventLoop } from './index-scheduling.js';
@@ -129,6 +131,8 @@ async function runIndexerAtomic(store: IndexStore, opts: IndexerOptions): Promis
         existingMeta.set(meta.file, { ...meta, contentHash: '', gitBlob: '' });
     }
   }
+  const healSageAnchors =
+    !clearedAll && existsSync(path.join(projectRoot, '.wrongstack', 'memories'));
   const run: IndexRunState = {
     clearedAll,
     errors,
@@ -146,6 +150,12 @@ async function runIndexerAtomic(store: IndexStore, opts: IndexerOptions): Promis
     rewrittenHashes: new Map<string, string>(),
     failed: new Set<string>(),
     deferredRefNames: new Set<string>(),
+    ...(healSageAnchors
+      ? {
+          prevSymbolsForHeal: [],
+          nextSymbolsForHeal: [],
+        }
+      : {}),
   };
 
   // Per-file Git trust. A clean working copy only proves the file matches its

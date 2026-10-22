@@ -168,7 +168,10 @@ export function searchRankedWithStatement(
     total_count: number;
   }[];
 
-  if (bm25Rows.length === 0) return { results: [], total: 0 };
+  if (bm25Rows.length === 0) {
+    if (!vectorsAvailable) return { results: [], total: 0 };
+    return searchVectorFallbackWithStatement(stmtFn, query, filter, kinds, safeLimit);
+  }
   const total = Number(bm25Rows[0]?.total_count ?? 0);
 
   if (vectorsAvailable) {
@@ -224,6 +227,62 @@ export function searchRankedWithStatement(
       mapWriterSearchRow(row, filter?.lspKind, Math.max(0.0001, row.score), row.snippet),
     ),
     total,
+  };
+}
+
+function searchVectorFallbackWithStatement(
+  stmtFn: (sql: string) => {
+    all: (...args: (string | number)[]) => unknown[];
+  },
+  query: string,
+  filter: WriterSearchFilter | undefined,
+  kinds: readonly string[] | undefined,
+  safeLimit: number,
+): { results: SearchResult[]; total: number } {
+  const queryVec = embedText(query);
+  const conditions: string[] = [];
+  const values: (string | number)[] = [];
+  if (kinds !== undefined) {
+    conditions.push(`s.kind IN (${kinds.map(() => '?').join(', ')})`);
+    values.push(...kinds);
+  }
+  if (filter?.lang) {
+    conditions.push('s.lang = ?');
+    values.push(filter.lang);
+  }
+  if (filter?.file) {
+    conditions.push("replace(s.file, '\\', '/') LIKE ? ESCAPE '\\'");
+    values.push(`%${escapeLike(filter.file.replace(/\\/g, '/'))}%`);
+  }
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  const rows = stmtFn(
+    `SELECT s.id, s.lang, s.kind, s.name, s.file, s.line, s.col, s.signature, s.doc_comment, sv.vector
+     FROM symbol_vectors sv
+     JOIN symbols s ON s.id = sv.symbol_id
+     ${where}
+     LIMIT ?`,
+  ).all(...values, SEARCH_CANDIDATE_SCAN_CAP) as Array<WriterSearchRow & { vector: Buffer }>;
+
+  const scored: Array<{ row: WriterSearchRow; sim: number }> = [];
+  for (const row of rows) {
+    try {
+      const sim = cosineSimilarity(queryVec, decodeVector(row.vector));
+      if (sim >= 0.22) {
+        scored.push({ row, sim });
+      }
+    } catch {
+      /* skip corrupt vector */
+    }
+  }
+  if (scored.length === 0) return { results: [], total: 0 };
+  scored.sort((a, b) => b.sim - a.sim);
+  return {
+    results: scored
+      .slice(0, safeLimit)
+      .map(({ row, sim }) =>
+        mapWriterSearchRow(row, filter?.lspKind, sim, row.signature || row.name),
+      ),
+    total: scored.length,
   };
 }
 

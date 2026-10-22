@@ -42,12 +42,24 @@ export function repairMissingColumns(db: DatabaseSync): void {
       ],
     },
     {
+      table: 'symbols',
+      columns: [
+        ['end_line', 'INTEGER NOT NULL DEFAULT 0'],
+        ['is_exported', 'INTEGER NOT NULL DEFAULT 0'],
+        ['signature_hash', "TEXT NOT NULL DEFAULT ''"],
+      ],
+    },
+    {
       table: 'refs',
       columns: [
         ['lang', "TEXT NOT NULL DEFAULT ''"],
         ['module', 'TEXT'],
         ['to_file', 'TEXT'],
       ],
+    },
+    {
+      table: 'file_concepts',
+      columns: [['signature_hash', "TEXT NOT NULL DEFAULT ''"]],
     },
   ];
 
@@ -138,6 +150,7 @@ export function initIndexSchema(
   db.exec(RANK_TABLES_SQL);
   for (const sql of RANK_INDEX_SQL) db.exec(sql);
   db.exec(CONCEPT_TABLES_SQL);
+  repairMissingColumns(db);
   for (const sql of CONCEPT_INDEX_SQL) db.exec(sql);
   db.exec(FILE_VECTORS_TABLE_SQL);
 

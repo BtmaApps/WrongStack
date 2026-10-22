@@ -279,6 +279,141 @@ function extractName(node: Node, queries: NodeQueries): string | null {
 }
 
 /**
+ * Return the raw text of 1-based line `line1Based` using precomputed newline offsets.
+ */
+function lineSlice(content: string, nlOffsets: readonly number[], line1Based: number): string {
+  const start = line1Based <= 1 ? 0 : (nlOffsets[line1Based - 2] ?? -1) + 1;
+  const end =
+    line1Based - 1 < nlOffsets.length
+      ? (nlOffsets[line1Based - 1] ?? content.length)
+      : content.length;
+  return content.slice(start, end);
+}
+
+const C_PREPROC_RE =
+  /^#\s*(?:include|define|undef|if|ifdef|ifndef|elif|else|endif|pragma|error|line)\b/;
+const ATTR_OR_ANNOTATION_RE =
+  /^(?:@[A-Za-z_][\w.]*(?:\([^)]*\))?|#\[[^\]]*\]|\[[A-Za-z_][\w.,\s()="']*\])$/;
+
+/**
+ * Extract the first meaningful summary line of a doc comment or docstring
+ * attached to `node` (capped at 200 characters).
+ */
+function extractDocComment(
+  node: Node,
+  content: string,
+  nlOffsets: readonly number[],
+  line: number,
+  lang: SymbolLang,
+): string {
+  // 1. Python docstring inside function/class body (`def f(): """doc"""`)
+  if (lang === 'py') {
+    const body = node.childForFieldName('body');
+    const firstStmt = body?.namedChild(0);
+    const strNode =
+      firstStmt?.type === 'expression_statement'
+        ? firstStmt.namedChild(0)
+        : firstStmt?.type === 'string'
+          ? firstStmt
+          : null;
+    if (strNode && strNode.type === 'string') {
+      const inner = strNode.text
+        .replace(/^[rRuUfFbB]*(?:"""|'''|"|')/, '')
+        .replace(/(?:"""|'''|"|')$/, '');
+      const firstLine = inner
+        .split('\n')
+        .map((l) => l.trim())
+        .find((l) => l.length > 0);
+      if (firstLine) return firstLine.slice(0, 200);
+    }
+  }
+
+  // 2. Leading comments on lines immediately preceding `line`
+  const lineComments: string[] = [];
+  const minLine = Math.max(1, line - 35);
+  for (let cur = line - 1; cur >= minLine; cur--) {
+    const trimmed = lineSlice(content, nlOffsets, cur).trim();
+    if (!trimmed) break;
+
+    // Elixir `@doc` / `@moduledoc` attributes
+    if (lang === 'elixir') {
+      const singleDoc = trimmed.match(/^@(?:module)?doc\s+"([^"]+)"/);
+      if (singleDoc?.[1]) {
+        return singleDoc[1].trim().slice(0, 200);
+      }
+      if (trimmed === '"""') {
+        const heredocLines: string[] = [];
+        for (let h = cur - 1; h >= minLine; h--) {
+          const hTrim = lineSlice(content, nlOffsets, h).trim();
+          const openMatch = hTrim.match(/^@(?:module)?doc\s+"""(.*)$/);
+          if (openMatch) {
+            if (openMatch[1]?.trim()) heredocLines.unshift(openMatch[1].trim());
+            const first = heredocLines.find((l) => l.length > 0);
+            return first ? first.slice(0, 200) : '';
+          }
+          heredocLines.unshift(hTrim);
+        }
+        break;
+      }
+    }
+
+    // Skip annotations/attributes sitting directly between the doc comment and the symbol
+    if (lineComments.length === 0 && ATTR_OR_ANNOTATION_RE.test(trimmed)) {
+      continue;
+    }
+
+    // Single-line or multi-line C/Java/Kotlin/PHP/C#/Swift block comment ending with `*/`
+    if (trimmed.endsWith('*/') && lineComments.length === 0) {
+      if (trimmed.startsWith('/*')) {
+        const single = trimmed
+          .replace(/^\/\*+\s*/, '')
+          .replace(/\s*\*+\/$/, '')
+          .trim();
+        return single.slice(0, 200);
+      }
+      const blockLines: string[] = [];
+      for (let b = cur; b >= minLine; b--) {
+        const bTrim = lineSlice(content, nlOffsets, b).trim();
+        const hasOpen = bTrim.includes('/*');
+        const cleaned = bTrim
+          .replace(/^.*\/\*+\s*/, '')
+          .replace(/\s*\*+\/.*$/, '')
+          .replace(/^\*+\s?/, '')
+          .trim();
+        if (cleaned) blockLines.unshift(cleaned);
+        if (hasOpen) {
+          const first = blockLines.find((l) => l.length > 0 && !l.startsWith('@'));
+          return (first ?? blockLines[0] ?? '').slice(0, 200);
+        }
+      }
+      break;
+    }
+
+    // Line comments (`///`, `//!`, `//`, `#`)
+    if (trimmed.startsWith('//')) {
+      const cleaned = trimmed.replace(/^\/\/[/!]*\s?/, '').trim();
+      lineComments.unshift(cleaned);
+      continue;
+    }
+    if (
+      trimmed.startsWith('#') &&
+      !trimmed.startsWith('#!') &&
+      !trimmed.startsWith('#[') &&
+      !((lang === 'c' || lang === 'cpp') && C_PREPROC_RE.test(trimmed))
+    ) {
+      const cleaned = trimmed.replace(/^#+\s?/, '').trim();
+      lineComments.unshift(cleaned);
+      continue;
+    }
+
+    break;
+  }
+
+  const firstLineComment = lineComments.find((l) => l.length > 0);
+  return firstLineComment ? firstLineComment.slice(0, 200) : '';
+}
+
+/**
  * Build one {@link IndexSymbol} from a declaration node. Returns `null` when
  * no name could be extracted — the visitor treats that as "skip this node",
  * matching the regex extractor's anonymous-declaration contract.
@@ -305,13 +440,16 @@ function emitSymbol(
   // Signature: the declaration's slice of the source, whitespace-collapsed,
   // capped at 500 chars. Mirrors `ts-parser.ts#getSignature`.
   const end = Math.min(node.endIndex, content.length);
+  const { line: rawEndLine } = lineColAt(nlOffsets, Math.max(pos, end - 1));
+  const endLine = Math.max(line, rawEndLine);
   const signature = content.slice(pos, end).replace(/\s+/g, ' ').trim().slice(0, 500);
 
   // Scope is dot-joined. Top-level declarations get an empty string — the
   // empty-scope convention is what `ts-parser.ts` and the BFS reader expect.
   const scope = scopeStack.join('.');
 
-  const text = [name, signature].filter(Boolean).join(' | ').trim().slice(0, 1000);
+  const docComment = extractDocComment(node, content, nlOffsets, line, lang);
+  const text = [name, signature, docComment].filter(Boolean).join(' | ').trim().slice(0, 1000);
 
   return {
     id: 0, // caller assigns during bulk insertion
@@ -321,8 +459,9 @@ function emitSymbol(
     file,
     line,
     col,
+    endLine,
     signature,
-    docComment: '', // doc-comment extraction lands with ref emission on Day 4
+    docComment,
     scope,
     text,
   };

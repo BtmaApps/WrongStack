@@ -3,10 +3,12 @@
  * graph queries, rank tables, semantic file vectors and the concept layer.
  */
 
+import { computeFileStructuralFingerprintWithStatement } from './fingerprint.js';
 import type { FileRankRow, SymbolRankRow } from './graph-rank.js';
 import type { CallSite, CodeMapGraph, Ref, SymbolKind } from './schema.js';
 import type { ConceptCoverage, ConceptEdge, FileConcept, Subsystem } from './writer-concepts.js';
 import * as writerConcepts from './writer-concepts.js';
+import { decorateGraphNodesWithMemories } from './writer-graph-decorate.js';
 import * as writerGraphReader from './writer-graph-reader.js';
 import type { RankedFileRow } from './writer-rank.js';
 import * as writerRank from './writer-rank.js';
@@ -81,11 +83,21 @@ export abstract class IndexStoreDerivedLayers extends IndexStoreBase {
   }
 
   getFileGraph(packageFilter: string): CodeMapGraph {
-    return writerGraphReader.getFileGraphWithStatement((sql) => this.stmt(sql), packageFilter);
+    const graph = writerGraphReader.getFileGraphWithStatement(
+      (sql) => this.stmt(sql),
+      packageFilter,
+    );
+    decorateGraphNodesWithMemories(this.projectRoot, graph.nodes);
+    return graph;
   }
 
   getSymbolGraph(fileFilter: string): CodeMapGraph {
-    return writerGraphReader.getSymbolGraphWithStatement((sql) => this.stmt(sql), fileFilter);
+    const graph = writerGraphReader.getSymbolGraphWithStatement(
+      (sql) => this.stmt(sql),
+      fileFilter,
+    );
+    decorateGraphNodesWithMemories(this.projectRoot, graph.nodes);
+    return graph;
   }
 
   getAllSymbols(): Array<{
@@ -103,7 +115,15 @@ export abstract class IndexStoreDerivedLayers extends IndexStoreBase {
   getFileSymbols(
     file: string,
     limit: number,
-  ): Array<{ id: number; name: string; kind: string; line: number; signature: string }> {
+  ): Array<{
+    id: number;
+    name: string;
+    kind: string;
+    line: number;
+    endLine?: number | undefined;
+    isExported?: boolean | undefined;
+    signature: string;
+  }> {
     return writerSymbolQueries.getFileSymbols.call(this.writerSymbolQueriesHost(), file, limit);
   }
 
@@ -197,6 +217,10 @@ export abstract class IndexStoreDerivedLayers extends IndexStoreBase {
   }
 
   // ── Concept layer ────────────────────────────────────────────────────────
+
+  getFileStructuralFingerprint(file: string): string {
+    return computeFileStructuralFingerprintWithStatement((sql) => this.stmt(sql), file);
+  }
 
   upsertFileConcept(concept: FileConcept): void {
     this.runWriteTransaction(() => {

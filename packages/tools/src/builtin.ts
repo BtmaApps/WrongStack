@@ -6,11 +6,15 @@ import { browserTools } from './browser/tools.js';
 import { clarifyTool } from './clarify.js';
 import {
   codebaseAstReplaceTool,
+  codebaseAtlasTool,
   codebaseContextTool,
+  codebaseDiffImpactTool,
+  codebaseFlowTraceTool,
   codebaseImpactAnalysisTool,
   codebaseIncomingCallsTool,
   codebaseIndexTool,
   codebaseInvariantCheckTool,
+  codebaseOnboardTool,
   codebaseOutgoingCallsTool,
   codebaseReadSymbolTool,
   codebaseRepoMapTool,
@@ -147,6 +151,14 @@ export const BUILTIN_TOOL_DESCRIPTIONS: Readonly<Record<string, string>> = {
     'Generate a centrality-ranked, token-budgeted Repository Map within ~1200 tokens by default: package clusters with their hub file, the repo-wide hotspots, then the signatures of the most central files. Use at the beginning of complex tasks or when navigating unfamiliar repositories to get a bird-eye view of the architecture.',
   'codebase-impact-analysis':
     'Find likely callers, dependents, related tests, and change risk for a named symbol. Use it before changing a public or widely used declaration.',
+  'codebase-diff-impact':
+    'Analyze the blast radius of current git changes (working tree, staged diff, or commit/branch range): modified symbols, direct/transitive callers, AST contract invariant violations, and impacted test suites.',
+  'codebase-flow-trace':
+    'Discover architectural entry points (HTTP routes, CLI commands, tools, handlers, main orchestrators) and trace their forward execution flows step-by-step across the call graph.',
+  'codebase-onboard':
+    'Generate a dependency-ordered Guided Architectural Tour and Onboarding Guide combining PageRank hubs, Louvain community clusters, crux line spans, and primary execution flows.',
+  'codebase-atlas':
+    'Inspect or project the Codebase Atlas: PageRank hubs, subsystem summaries, concept coverage, Louvain file communities, and `.wrongstack/atlas/` freshness.',
   'codebase-targeted-test':
     'Discover and run tests that cover a specified symbol, source file, or explicit test files. Use it for focused regression validation after a change.',
   'security-ast-scan':
@@ -280,6 +292,7 @@ export const TIER1_TOOLS: Tool[] = [
   codebaseRepoMapTool,
   codebaseContextTool,
   codebaseImpactAnalysisTool,
+  codebaseDiffImpactTool,
   codebaseTargetedTestTool,
   securityAstScanTool,
   codebaseIncomingCallsTool,
@@ -344,7 +357,15 @@ export const TIER2_TOOLS: Tool[] = [
  * registered and executable, and the model reaches them through `tool_search`
  * / `tool_use` — which is why that pair lives in TIER1 rather than here.
  */
-export const TIER3_TOOLS: Tool[] = [outdatedTool, logsTool, deadCodeScanTool, deadCodeFixTool];
+export const TIER3_TOOLS: Tool[] = [
+  outdatedTool,
+  logsTool,
+  deadCodeScanTool,
+  deadCodeFixTool,
+  codebaseFlowTraceTool,
+  codebaseOnboardTool,
+  codebaseAtlasTool,
+];
 
 const rawBuiltinTools: Tool[] = [
   presentArtifactTool,
@@ -367,6 +388,10 @@ const rawBuiltinTools: Tool[] = [
   codebaseRepoMapTool,
   codebaseContextTool,
   codebaseImpactAnalysisTool,
+  codebaseDiffImpactTool,
+  codebaseFlowTraceTool,
+  codebaseOnboardTool,
+  codebaseAtlasTool,
   codebaseTargetedTestTool,
   securityAstScanTool,
   codebaseIncomingCallsTool,

@@ -7,7 +7,7 @@
  * Extracts: class, function, method, property, const, var, type
  */
 
-import { spawn, type ChildProcess } from 'node:child_process';
+import { type ChildProcess, spawn } from 'node:child_process';
 import { resolveWin32Command } from '../_win32-resolve.js';
 import { parseGeneric } from './generic-parser.js';
 import { parseParserOutput, toIndexSymbols } from './parser-output.js';

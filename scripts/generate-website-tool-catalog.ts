@@ -73,6 +73,10 @@ const newToolCategories: Readonly<Record<string, ToolCategory>> = {
   'dead-code-fix': 'Discovery & index',
   'codebase-read-symbol': 'Discovery & index',
   design_reference: 'Generation & design',
+  'codebase-atlas': 'Discovery & index',
+  'codebase-diff-impact': 'Discovery & index',
+  'codebase-flow-trace': 'Discovery & index',
+  'codebase-onboard': 'Discovery & index',
 };
 const newEntries = builtinTools
   .filter((tool) => !websiteNames.has(tool.name) && Object.hasOwn(newToolCategories, tool.name))

@@ -45,18 +45,130 @@ export const VECTOR_DIMENSIONS = 384;
  */
 const NGRAM_SIZE = 3;
 
+const SEMANTIC_CONCEPT_MAP: Readonly<Record<string, string>> = {
+  pay: '$concept:pay',
+  payment: '$concept:pay',
+  payments: '$concept:pay',
+  billing: '$concept:pay',
+  charge: '$concept:pay',
+  invoice: '$concept:pay',
+  stripe: '$concept:pay',
+  checkout: '$concept:pay',
+  auth: '$concept:auth',
+  authenticate: '$concept:auth',
+  authentication: '$concept:auth',
+  authorize: '$concept:auth',
+  authorization: '$concept:auth',
+  login: '$concept:auth',
+  session: '$concept:auth',
+  token: '$concept:auth',
+  jwt: '$concept:auth',
+  credential: '$concept:auth',
+  credentials: '$concept:auth',
+  permission: '$concept:auth',
+  permissions: '$concept:auth',
+  valid: '$concept:valid',
+  validate: '$concept:valid',
+  validation: '$concept:valid',
+  validator: '$concept:valid',
+  verify: '$concept:valid',
+  verification: '$concept:valid',
+  check: '$concept:valid',
+  assert: '$concept:valid',
+  db: '$concept:store',
+  database: '$concept:store',
+  sqlite: '$concept:store',
+  postgres: '$concept:store',
+  sql: '$concept:store',
+  persist: '$concept:store',
+  persistence: '$concept:store',
+  storage: '$concept:store',
+  repository: '$concept:store',
+  store: '$concept:store',
+  http: '$concept:http',
+  route: '$concept:http',
+  router: '$concept:http',
+  endpoint: '$concept:http',
+  request: '$concept:http',
+  response: '$concept:http',
+  handler: '$concept:http',
+  controller: '$concept:http',
+  err: '$concept:err',
+  error: '$concept:err',
+  errors: '$concept:err',
+  exception: '$concept:err',
+  failure: '$concept:err',
+  fault: '$concept:err',
+  fallback: '$concept:err',
+  recover: '$concept:err',
+  retry: '$concept:err',
+  cache: '$concept:cache',
+  cached: '$concept:cache',
+  caching: '$concept:cache',
+  memoize: '$concept:cache',
+  invalidate: '$concept:cache',
+  ttl: '$concept:cache',
+  queue: '$concept:job',
+  worker: '$concept:job',
+  cron: '$concept:job',
+  schedule: '$concept:job',
+  scheduler: '$concept:job',
+  job: '$concept:job',
+  task: '$concept:job',
+  parse: '$concept:parse',
+  parser: '$concept:parse',
+  ast: '$concept:parse',
+  lexer: '$concept:parse',
+  tokenize: '$concept:parse',
+  tokenizer: '$concept:parse',
+  graph: '$concept:graph',
+  node: '$concept:graph',
+  edge: '$concept:graph',
+  cluster: '$concept:graph',
+  community: '$concept:graph',
+  louvain: '$concept:graph',
+  pagerank: '$concept:graph',
+};
+
+function stemToken(word: string): string {
+  if (word.length <= 4) return word;
+  return word
+    .replace(/(?:ation|ition|ment|ness|able|ible|ance|ence)$/, '')
+    .replace(/(?:ing|ers|ies|ied|ate|ize|ise|ify|ous|ive|ors|or|er|ed|es|s)$/, '');
+}
+
+/**
+ * Extract identifier sub-words (camelCase / PascalCase / snake_case), stems,
+ * and domain concept tags from code or natural-language queries.
+ */
+export function extractSemanticFeatures(text: string): Array<{ feature: string; weight: number }> {
+  const splitCamel = text
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
+    .toLowerCase();
+  const words = splitCamel.split(/[^a-z0-9]+/).filter((w) => w.length >= 3);
+  const features: Array<{ feature: string; weight: number }> = [];
+  for (const word of words) {
+    features.push({ feature: `$word:${word}`, weight: 1.5 });
+    const stem = stemToken(word);
+    if (stem.length >= 3 && stem !== word) {
+      features.push({ feature: `$stem:${stem}`, weight: 1.5 });
+    }
+    const concept = SEMANTIC_CONCEPT_MAP[word] ?? SEMANTIC_CONCEPT_MAP[stem];
+    if (concept) {
+      features.push({ feature: concept, weight: 3.0 });
+    }
+  }
+  return features;
+}
+
 /**
  * Compute a fixed-dimensional embedding of a text string using character
- * n-gram hashing (the "hashing trick").
+ * n-gram hashing combined with CamelCase/snake_case identifier sub-word
+ * stemming and domain semantic concept projection.
  *
- * Each n-gram is hashed to a bucket in [0, VECTOR_DIMENSIONS). The bucket's
- * float32 value is incremented by the n-gram's term frequency. After all
- * n-grams are counted, the vector is L2-normalized so cosine similarity
- * reduces to a dot product.
- *
- * This is NOT a semantic embedding — it captures **lexical similarity**
- * (shared substrings). A real embedding model would be dropped in here
- * without changing the storage or fusion interface.
+ * Each feature is hashed to a bucket in [0, VECTOR_DIMENSIONS) and L2-normalized
+ * so cosine similarity reduces to a dot product.
  */
 export function embedText(text: string): Float32Array {
   const vec = new Float32Array(VECTOR_DIMENSIONS);
@@ -73,6 +185,11 @@ export function embedText(text: string): Float32Array {
     const ngram = target.slice(i, i + NGRAM_SIZE);
     const bucket = hashNgram(ngram) % VECTOR_DIMENSIONS;
     vec[bucket]! += 1;
+  }
+
+  for (const { feature, weight } of extractSemanticFeatures(text)) {
+    const bucket = hashNgram(feature) % VECTOR_DIMENSIONS;
+    vec[bucket]! += weight;
   }
 
   // L2-normalize so dot product = cosine similarity.

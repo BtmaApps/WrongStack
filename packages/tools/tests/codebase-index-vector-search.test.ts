@@ -315,5 +315,29 @@ describe('P4.11 vector gate (WRONGSTACK_INDEX_VECTORS)', () => {
         reopened.close();
       }
     });
+
+    it('matches domain concept synonyms via vector fallback when lexical FTS has 0 hits', () => {
+      const { store } = makeStore();
+      try {
+        store.insertSymbols([
+          symbolRow({
+            name: 'chargeCustomerInvoice',
+            signature: 'export function chargeCustomerInvoice(amount: number): Promise<void>',
+            docComment: 'Charges the customer card and settles the invoice.',
+          }),
+          symbolRow({
+            name: 'parseAstTree',
+            signature: 'export function parseAstTree(source: string): Node',
+          }),
+        ]);
+        // "billing" shares zero 3-char trigrams with "chargeCustomerInvoice",
+        // but both project onto $concept:pay in the vector layer.
+        const result = store.searchRanked('billing', undefined, 5);
+        expect(result.results.length).toBeGreaterThan(0);
+        expect(result.results[0]!.name).toBe('chargeCustomerInvoice');
+      } finally {
+        store.close();
+      }
+    });
   });
 });

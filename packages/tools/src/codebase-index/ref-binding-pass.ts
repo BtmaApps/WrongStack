@@ -43,11 +43,24 @@ import { allRowsAsArrays } from './sqlite-runtime.js';
 import { inListChunks, padToInBucket, placeholders } from './writer-helpers.js';
 
 /** Bump when binding rules change: every index rebinds once. */
-export const REF_BINDING_VERSION = '1';
+export const REF_BINDING_VERSION = '2';
 export const REF_BINDING_VERSION_KEY = 'ref_binding_version';
 
 /** Re-export hops followed from an importer before giving up. */
 const MAX_REEXPORT_HOPS = 4;
+
+/** Language families that do not participate in symbol reference binding. */
+const NON_BINDABLE_FAMILIES: ReadonlySet<string> = new Set(['data', 'web', 'other']);
+
+export function isJsFamilyFile(file: string): boolean {
+  const lang = detectLang(file);
+  return lang !== null && languageFamily(lang) === 'js';
+}
+
+export function isBindableFile(file: string): boolean {
+  const lang = detectLang(file);
+  return lang !== null && !NON_BINDABLE_FAMILIES.has(languageFamily(lang));
+}
 
 type Stmt = {
   all: (...args: never[]) => unknown[];
@@ -76,11 +89,6 @@ export interface RefBindingResult {
   bound: number;
   external: number;
   updated: number;
-}
-
-export function isJsFamilyFile(file: string): boolean {
-  const lang = detectLang(file);
-  return lang !== null && languageFamily(lang) === 'js';
 }
 
 interface RefRow {
@@ -182,28 +190,37 @@ export function bindRefsByImports(
 ): RefBindingResult {
   const result: RefBindingResult = { files: 0, refs: 0, bound: 0, external: 0, updated: 0 };
   const whole = scope === 'all';
-  const wholeFiles = whole ? [] : [...scope.files].filter(isJsFamilyFile);
+  const wholeFiles = whole ? [] : [...scope.files].filter(isBindableFile);
   const pairs = new Map<string, ReadonlySet<string>>();
   if (!whole) {
     for (const [file, names] of scope.names) {
-      if (!scope.files.has(file) && isJsFamilyFile(file)) pairs.set(file, names);
+      if (!scope.files.has(file) && isBindableFile(file)) pairs.set(file, names);
     }
     if (wholeFiles.length === 0 && pairs.size === 0) return result;
   }
 
   // ── The refs being rebound ────────────────────────────────────────────
   const refs: RefRow[] = [];
+  const bindableFile = new Map<string, boolean>();
   const jsFile = new Map<string, boolean>();
+  const isJs = (file: string): boolean => {
+    let v = jsFile.get(file);
+    if (v === undefined) {
+      v = isJsFamilyFile(file);
+      jsFile.set(file, v);
+    }
+    return v;
+  };
   const pushRows = (rows: unknown[][]) => {
     for (const [id, file, toName, toId, callType, module, toFile] of rows as Array<
       [number, string, string, number | null, string, string | null, string | null]
     >) {
-      let js = jsFile.get(file);
-      if (js === undefined) {
-        js = isJsFamilyFile(file);
-        jsFile.set(file, js);
+      let ok = bindableFile.get(file);
+      if (ok === undefined) {
+        ok = isBindableFile(file);
+        bindableFile.set(file, ok);
       }
-      if (!js) continue;
+      if (!ok) continue;
       refs.push({ id, file, toName, toId, callType, module, toFile });
     }
   };
@@ -242,12 +259,25 @@ export function bindRefsByImports(
     return f;
   };
   const declare = (map: Map<string, FileFacts>, rows: unknown[][]) => {
-    for (const [file, name, id] of rows as Array<[string, string, number]>) {
+    for (const [file, name, id] of rows as Array<[string, string, number | null]>) {
+      if (id === null) continue;
       factsIn(map, file).declared.set(name, id);
       fileOfSymbol.set(id, file);
     }
   };
-  const SYMBOL_COLUMNS = `SELECT file, name, MIN(id) FROM symbols WHERE scope = ''`;
+  // For JS-family files, only top-level (`scope = ''`) symbols are file-scope
+  // declarations. For non-JS languages (Python, Go, Rust, Java, C/C++, C#,
+  // PHP, Ruby, etc.), parsers qualify `scope` with the module/package/namespace
+  // name, so we include non-`mod` declarations while preferring top-level
+  // functions/types/classes over class methods/fields.
+  const SYMBOL_COLUMNS = `SELECT file, name,
+    COALESCE(
+      MIN(CASE WHEN kind NOT IN ('method', 'property', 'field', 'ctor', 'namespace') THEN id END),
+      MIN(id)
+    )
+    FROM symbols
+   WHERE kind != 'mod'
+     AND (scope = '' OR lang NOT IN ('ts', 'tsx', 'js', 'jsx', 'vue', 'svelte'))`;
   const IMPORT_COLUMNS = `SELECT s.file, r.to_name, r.module, r.to_file
          FROM refs r JOIN symbols s ON s.id = r.from_id
         WHERE +r.call_type = 'import'`;
@@ -304,10 +334,22 @@ export function bindRefsByImports(
         1,
       ),
     );
-    // Imports: the rebound refs already hold every one that can matter.
+    // Imports: the rebound refs hold every import for `wholeFiles`, and for
+    // non-JS `pairs` files a header/package import has a different `to_name`
+    // than the symbol called, so load all imports of `pairs` files too.
     for (const ref of refs) {
-      if (ref.callType === 'import') {
+      if (ref.callType === 'import' && !pairs.has(ref.file)) {
         factsIn(owners, ref.file).imports.push([ref.toName, ref.module, ref.toFile]);
+      }
+    }
+    const pairFiles = [...pairs.keys()];
+    if (pairFiles.length > 0) {
+      for (const [file, toName, module, toFile] of chunkedRows(
+        store,
+        pairFiles,
+        (ph) => `${IMPORT_COLUMNS} AND s.file IN (${ph})`,
+      ) as Array<[string, string, string | null, string | null]>) {
+        factsIn(owners, file).imports.push([toName, module, toFile]);
       }
     }
     // Direct import targets in one batch; deeper re-export hops load on demand.
@@ -375,10 +417,23 @@ export function bindRefsByImports(
     let map = bindingsOf.get(file);
     if (map !== undefined) return map;
     map = new Map();
+    const js = isJs(file);
+    const lang = detectLang(file);
     for (const [toName, module, toFile] of ownerFacts(file)?.imports ?? []) {
       if (module === null || toName === module) continue; // module-only ref binds no name
-      if (toFile) map.set(toName, { kind: 'file', file: toFile });
-      else if (!map.has(toName)) map.set(toName, { kind: 'external' });
+      if (toFile) {
+        map.set(toName, { kind: 'file', file: toFile });
+      } else if (!map.has(toName)) {
+        // In JS, any `import { X } from 'pkg'` with no resolved project file is
+        // an external binding. In Python, `from pkg import X` (where `toName`
+        // is the imported symbol, not the trailing segment of `import pkg.sub`)
+        // is likewise an explicit external symbol binding.
+        const isPyNamedImport =
+          lang === 'py' && !module.startsWith('.') && toName !== module.split('.').pop();
+        if (js || isPyNamedImport) {
+          map.set(toName, { kind: 'external' });
+        }
+      }
     }
     bindingsOf.set(file, map);
     return map;
@@ -388,13 +443,22 @@ export function bindRefsByImports(
   const updates: Array<[number | null, string | null, number]> = [];
   const needFallback: RefRow[] = [];
   for (const ref of refs) {
+    const js = isJs(ref.file);
     if (ref.callType === 'import') {
       if (ref.module === null || ref.toName === ref.module) continue;
-      let toId: number | null = null;
-      if (ref.toFile) toId = exportedId(ref.toFile, ref.toName) ?? null;
-      if (toId !== null) result.bound++;
-      else if (!ref.toFile) result.external++;
-      if (toId !== ref.toId) updates.push([toId, ref.toFile, ref.id]);
+      if (js) {
+        let toId: number | null = null;
+        if (ref.toFile) toId = exportedId(ref.toFile, ref.toName) ?? null;
+        if (toId !== null) result.bound++;
+        else if (!ref.toFile) result.external++;
+        if (toId !== ref.toId) updates.push([toId, ref.toFile, ref.id]);
+      } else if (ref.toFile) {
+        const id = exportedId(ref.toFile, ref.toName);
+        if (id !== undefined) {
+          result.bound++;
+          if (id !== ref.toId) updates.push([id, ref.toFile, ref.id]);
+        }
+      }
       continue;
     }
     const local = ownerFacts(ref.file)?.declared.get(ref.toName);
@@ -415,6 +479,21 @@ export function bindRefsByImports(
           toFile = fileOfSymbol.get(id) ?? binding.file;
         }
       }
+      // For non-JS languages (C/C++ `#include "b.h"`, Go `import "pkg/sub"`,
+      // Python `import mod`, Ruby `require_relative`, C# `using Ns`, Java),
+      // module/header/namespace imports resolve `toFile` on the import ref
+      // while calls reference symbols exported by that `toFile`.
+      if (toId === undefined && !js) {
+        for (const [, , impFile] of ownerFacts(ref.file)?.imports ?? []) {
+          if (!impFile) continue;
+          const id = exportedId(impFile, ref.toName);
+          if (id !== undefined) {
+            toId = id;
+            toFile = fileOfSymbol.get(id) ?? impFile;
+            break;
+          }
+        }
+      }
     }
     if (toId === undefined) {
       // No evidence: the name-based answer stands — unless this ref still
@@ -429,19 +508,32 @@ export function bindRefsByImports(
 
   // Refs that lost their binding go back to the family-wide name guess.
   if (needFallback.length > 0) {
-    const minByName = new Map<string, number>();
-    for (const [name, id] of chunkedRows(
-      store,
-      [...new Set(needFallback.map((ref) => ref.toName))],
-      (ph) => `SELECT sym.name, MIN(sym.id) FROM symbols sym
-             JOIN lang_family lf ON lf.lang = sym.lang
-            WHERE lf.family = 'js' AND sym.name IN (${ph})
-            GROUP BY sym.name`,
-    ) as Array<[string, number]>) {
-      minByName.set(name, id);
-    }
+    const byFamily = new Map<string, RefRow[]>();
     for (const ref of needFallback) {
-      updates.push([minByName.get(ref.toName) ?? null, null, ref.id]);
+      const lang = detectLang(ref.file);
+      const fam = lang ? languageFamily(lang) : 'other';
+      let list = byFamily.get(fam);
+      if (!list) {
+        list = [];
+        byFamily.set(fam, list);
+      }
+      list.push(ref);
+    }
+    for (const [fam, famRefs] of byFamily) {
+      const minByName = new Map<string, number>();
+      for (const [name, id] of chunkedRows(
+        store,
+        [...new Set(famRefs.map((ref) => ref.toName))],
+        (ph) => `SELECT sym.name, MIN(sym.id) FROM symbols sym
+               JOIN lang_family lf ON lf.lang = sym.lang
+              WHERE lf.family = '${fam}' AND sym.name IN (${ph})
+              GROUP BY sym.name`,
+      ) as Array<[string, number]>) {
+        minByName.set(name, id);
+      }
+      for (const ref of famRefs) {
+        updates.push([minByName.get(ref.toName) ?? null, null, ref.id]);
+      }
     }
   }
 

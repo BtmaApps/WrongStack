@@ -74,9 +74,44 @@ export {
   codebaseAstReplaceTool,
 } from './codebase-ast-replace-tool.js';
 export {
+  type CodebaseAtlasInput,
+  type CodebaseAtlasMode,
+  type CodebaseAtlasOutput,
+  codebaseAtlasTool,
+} from './codebase-atlas-tool.js';
+export {
+  ATLAS_DIFF_OVERLAY_JSON,
+  type CodebaseDiffImpactInput,
+  type CodebaseDiffImpactOutput,
+  codebaseDiffImpactTool,
+  type DiffAffectedSymbol,
+  type DiffChangedFileReport,
+  type DiffHunkRange,
+  matchSymbolsToDiffHunks,
+  type ParsedDiffFile,
+  parseUnifiedDiff,
+  writeDiffImpactOverlay,
+} from './codebase-diff-impact-tool.js';
+export {
+  ATLAS_FLOWS_JSON,
+  ATLAS_FLOWS_MD,
+  type CodebaseFlowTraceInput,
+  type CodebaseFlowTraceOutput,
+  codebaseFlowTraceTool,
+  type DiscoveredEntryPoint,
+  discoverEntryPoints,
+  type EntryPointKind,
+  type ExecutionFlow,
+  type ExecutionFlowStep,
+  renderExecutionFlowsMarkdown,
+  sliceExecutionFlow,
+  writeExecutionFlowsAtlas,
+} from './codebase-flow-trace-tool.js';
+export {
   type CodebaseImpactAnalysisInput,
   type CodebaseImpactAnalysisOutput,
   codebaseImpactAnalysisTool,
+  discoverConventionTestFiles,
   type ImpactAnalysisInput,
   type ImpactAnalysisOutput,
   type ImpactCallSite,
@@ -98,6 +133,18 @@ export {
   type CodebaseInvariantCheckOutput,
   codebaseInvariantCheckTool,
 } from './codebase-invariant-check-tool.js';
+export {
+  ATLAS_ONBOARDING,
+  buildArchitecturalTour,
+  type CodebaseOnboardInput,
+  type CodebaseOnboardOutput,
+  codebaseOnboardTool,
+  extractLanguagePatternNotes,
+  type OnboardingPersona,
+  type TourStage,
+  type TourStep,
+  writeOnboardingAtlas,
+} from './codebase-onboard-tool.js';
 export {
   type CodebaseOutgoingCallsInput,
   type CodebaseOutgoingCallsOutput,
@@ -151,6 +198,12 @@ export {
 // Indexer entry point + background coordinator (used by CLI auto-index wiring
 // and the file-watcher plugin's autoIndex path).
 export { runIndexer } from './indexer.js';
+export {
+  detectInfraArtifactKind,
+  type InfraArtifactKind,
+  type InfraParseResult,
+  parseInfraArtifact,
+} from './infra-parser.js';
 export { detectLang, INDEXABLE_EXTENSIONS, isIndexablePath } from './languages.js';
 export {
   internalKindToLspKind,
@@ -276,6 +329,7 @@ export {
   MAX_CRUX_LINES,
   MAX_SOURCE_CHARS,
   MAX_SUMMARY_CHARS,
+  recoverSubsystemConceptEdges,
   type SummarizeFileInput,
   type SummarizeFileResult,
   type SummarizerPort,
@@ -293,6 +347,22 @@ export {
   SEED_LIMIT,
 } from './context-retrieval.js';
 export {
+  type AnchoredFileHealth,
+  type AnchoredSageInsight,
+  detectMovedOrRenamedSymbols,
+  type EcosystemProviderHook,
+  type EcosystemQuery,
+  findAnchoredSageMemories,
+  findFileHealthAlerts,
+  type RemapSageMemoriesResult,
+  remapAnchoredSageMemories,
+  type SymbolMoveCandidate,
+  type SymbolSnapshotItem,
+  setEcosystemBridgeProvider,
+  setWrongTraceHealthProvider,
+  type WrongTraceHealthProviderHook,
+} from './ecosystem-bridge.js';
+export {
   DEFAULT_BATCH_SIZE,
   type EmbeddingPort,
   type EmbedIndexMissing,
@@ -302,6 +372,21 @@ export {
   embedProjectFiles,
   MAX_EMBED_CHARS,
 } from './embedding-pass.js';
+export {
+  classifyFileChange,
+  classifyIncrementalUpdateStrategy,
+  classifySymbolBodyDrift,
+  computeFileStructuralFingerprint,
+  computeFileStructuralFingerprintWithStatement,
+  computeStructuralFingerprint,
+  hasDynamicSymbolInjection,
+  type IncrementalUpdateStrategy,
+  type StructuralChangeKind,
+  type StructuralRefInput,
+  type StructuralSymbolInput,
+  type SymbolLossValidationResult,
+  validateIncrementalSymbolLoss,
+} from './fingerprint.js';
 export {
   clearWiringSnapshot,
   getWiringSnapshot,
@@ -333,6 +418,13 @@ export {
   shouldRefreshRanks,
 } from './graph-rank-pass.js';
 export {
+  detectFileCommunities,
+  detectStoreFileCommunities,
+  type FileCommunity,
+  type LouvainOptions,
+  type WeightedGraphEdge,
+} from './louvain.js';
+export {
   CONCEPT_RELATIONS,
   type ConceptCoverage,
   type ConceptEdge,
@@ -340,9 +432,15 @@ export {
   type ConceptState,
   type FileConcept,
   isConceptRelation,
+  normalizeConceptRelation,
+  normalizeSymbolKindAlias,
+  normalizeTestConceptEdge,
   type Subsystem,
 } from './writer-concepts.js';
-export { decorateGraphNodes } from './writer-graph-decorate.js';
+export {
+  decorateGraphNodes,
+  decorateGraphNodesWithMemories,
+} from './writer-graph-decorate.js';
 export type { RankedFileRow } from './writer-rank.js';
 export {
   FILE_VECTOR_PROVIDER_KEY,

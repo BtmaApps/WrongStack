@@ -222,6 +222,39 @@ describe('import-aware ref binding', () => {
       store.close();
     }
   });
+
+  it('binds Python cross-file imports and same-file declarations over lower-id homonyms', async () => {
+    await write('pyproject.toml', '[project]\nname = "demo"\n');
+    await write('src/demo/__init__.py', '');
+    await write('src/demo/a_other.py', 'def compute():\n    return 0\n');
+    await write('src/demo/impl.py', 'def compute():\n    return 1\n');
+    await write(
+      'src/demo/use.py',
+      'from demo.impl import compute\n\ndef run():\n    return compute()\n',
+    );
+    await write(
+      'src/demo/local.py',
+      'def compute():\n    return 2\n\ndef entry():\n    return compute()\n',
+    );
+    await index();
+
+    const impl = rel('src', 'demo', 'impl.py');
+    const local = rel('src', 'demo', 'local.py');
+    expect(bindingsOf('src/demo/use.py', 'compute')).toEqual([{ target: impl, toFile: impl }]);
+    expect(bindingsOf('src/demo/local.py', 'compute')).toEqual([{ target: local, toFile: local }]);
+  });
+
+  it('binds C header include declarations over lower-id homonyms', async () => {
+    await write('src/a_other.h', 'int init_engine(int x);\n');
+    await write('src/real.h', 'int init_engine(int x);\n');
+    await write('src/main.c', '#include "src/real.h"\nint main() { return init_engine(1); }\n');
+    await index();
+
+    const realHeader = rel('src', 'real.h');
+    expect(bindingsOf('src/main.c', 'init_engine')).toEqual([
+      { target: realHeader, toFile: realHeader },
+    ]);
+  });
 });
 
 describe('symbol-less files', () => {

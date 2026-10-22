@@ -33,7 +33,7 @@ export function buildCodebaseMapCommand(opts: SlashCommandContext): SlashCommand
     aliases: ['atlas'],
     description: 'Show the centrality-ranked repository map, or write/check the atlas projection.',
     argsHint:
-      '[--write | --check | --enrich | --embed | --export [path]] [--tokens N] [--max-files N]',
+      '[--write | --check | --enrich | --embed | --tour | --flows | --diff | --export [path]] [--tokens N] [--max-files N]',
     help: [
       'Usage:',
       '  /codebase-map                Print the ranked repository map.',
@@ -42,6 +42,9 @@ export function buildCodebaseMapCommand(opts: SlashCommandContext): SlashCommand
       '  /codebase-map --check        Report whether the written atlas has drifted.',
       '  /codebase-map --enrich       Summarise files with a model (concept layer).',
       '  /codebase-map --embed        Build semantic vectors from those summaries.',
+      '  /codebase-map --tour         Generate a dependency-ordered onboarding tour.',
+      '  /codebase-map --flows        Discover entry points and trace execution flows.',
+      '  /codebase-map --diff         Analyze git diff blast radius & contract invariants.',
       '  /codebase-map --export [path] Write a standalone HTML map (default: atlas.html).',
       '',
       'Ranking is PageRank over the index reference graph (calls, imports, type',
@@ -68,6 +71,9 @@ export function buildCodebaseMapCommand(opts: SlashCommandContext): SlashCommand
       const check = /(^|\s)--check(\s|$)/.test(text);
       const enrich = /(^|\s)--enrich(\s|$)/.test(text);
       const embed = /(^|\s)--embed(\s|$)/.test(text);
+      const tour = /(^|\s)--(?:tour|onboard)(\s|$)/.test(text);
+      const flows = /(^|\s)--flows(\s|$)/.test(text);
+      const diff = /(^|\s)--diff(\s|$)/.test(text);
       // The optional path must not start with `-`: `--export --tokens 2000`
       // used to write the HTML to a file literally named `--tokens`.
       const exportMatch = /(^|\s)--export(?:[= ]([^\s-][^\s]*))?(\s|$)/.exec(text);
@@ -142,6 +148,57 @@ export function buildCodebaseMapCommand(opts: SlashCommandContext): SlashCommand
               `${color.green('✓')} static map written to ${color.bold(target)} ` +
               color.dim(`— ${Math.round(html.length / 1024)} kB, opens with no server`),
           };
+        }
+
+        if (tour) {
+          const { codebaseOnboardTool } = await import('@wrongstack/tools/codebase-index');
+          const res = await codebaseOnboardTool.execute(
+            {},
+            {
+              cwd: projectRoot,
+              projectRoot,
+            } as never,
+            { signal: new AbortController().signal },
+          );
+          return { message: res.markdown };
+        }
+
+        if (flows) {
+          const { codebaseFlowTraceTool } = await import('@wrongstack/tools/codebase-index');
+          const res = await codebaseFlowTraceTool.execute(
+            {},
+            {
+              cwd: projectRoot,
+              projectRoot,
+            } as never,
+            { signal: new AbortController().signal },
+          );
+          const flowLines = [
+            `${color.bold(res.summary)}`,
+            ...res.flows.map(
+              (f) =>
+                `\n• ${color.bold(f.title)}\n` +
+                f.steps.map((s) => `  [${s.step}] ${s.symbol} (${s.file}:${s.line})`).join('\n'),
+            ),
+          ];
+          return { message: flowLines.join('\n') };
+        }
+
+        if (diff) {
+          const { codebaseDiffImpactTool } = await import('@wrongstack/tools/codebase-index');
+          const res = await codebaseDiffImpactTool.execute(
+            {},
+            {
+              cwd: projectRoot,
+              projectRoot,
+            } as never,
+            { signal: new AbortController().signal },
+          );
+          const diffLines = [
+            `${color.bold(res.summary)}`,
+            ...res.recommendedActionPlan.map((step) => `  • ${step}`),
+          ];
+          return { message: diffLines.join('\n') };
         }
 
         if (check) {

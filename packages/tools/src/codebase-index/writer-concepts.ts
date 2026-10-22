@@ -8,6 +8,8 @@
  */
 
 import type { DatabaseSync } from 'node:sqlite';
+import { computeFileStructuralFingerprintWithStatement } from './fingerprint.js';
+import type { SymbolKind } from './schema.js';
 import { ladderChunkSizes } from './writer-helpers.js';
 
 type Statement = ReturnType<DatabaseSync['prepare']>;
@@ -25,6 +27,8 @@ export type ConceptState = 'ready' | 'stale' | 'pending';
 export interface FileConcept {
   file: string;
   contentHash: string;
+  /** Structural fingerprint of the file's symbols and outgoing refs. */
+  signatureHash?: string | undefined;
   summary: string;
   /** 1-based inclusive line span of the file's load-bearing lines. */
   cruxStart: number | null;
@@ -64,6 +68,153 @@ export function isConceptRelation(value: string): value is ConceptRelation {
   return (CONCEPT_RELATIONS as readonly string[]).includes(value);
 }
 
+const CONCEPT_RELATION_SYNONYMS: Readonly<Record<string, ConceptRelation>> = {
+  uses: 'uses',
+  depends_on: 'uses',
+  calls: 'uses',
+  imports: 'uses',
+  invokes: 'uses',
+  consumes: 'uses',
+  configures: 'configures',
+  wires: 'configures',
+  provides: 'configures',
+  validates: 'validates',
+  verifies: 'validates',
+  checks: 'validates',
+  asserts: 'validates',
+  tests: 'validates',
+  tested_by: 'validates',
+  extends: 'extends',
+  inherits: 'extends',
+  implements: 'extends',
+  subclasses: 'extends',
+  persists: 'persists',
+  stores: 'persists',
+  queries: 'persists',
+  migrates: 'persists',
+  reads_from: 'persists',
+  writes_to: 'persists',
+  observes: 'observes',
+  monitors: 'observes',
+  traces: 'observes',
+  logs: 'observes',
+};
+
+/**
+ * Normalize common LLM relation synonyms (`depends_on`, `calls`, `queries`,
+ * `implements`, `monitors`, etc.) into the canonical {@link ConceptRelation}
+ * vocabulary, or return `null` when unknown.
+ */
+export function normalizeConceptRelation(value: string): ConceptRelation | null {
+  const key = value
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, '_');
+  return CONCEPT_RELATION_SYNONYMS[key] ?? null;
+}
+
+const SYMBOL_KIND_ALIASES: ReadonlyMap<string, SymbolKind> = new Map<string, SymbolKind>([
+  ['function', 'function'],
+  ['fn', 'function'],
+  ['func', 'function'],
+  ['def', 'function'],
+  ['hook', 'function'],
+  ['component', 'function'],
+  ['route', 'function'],
+  ['endpoint', 'function'],
+  ['handler', 'function'],
+  ['controller', 'function'],
+  ['middleware', 'function'],
+  ['task', 'function'],
+  ['job', 'function'],
+  ['pipeline', 'function'],
+  ['method', 'method'],
+  ['constructor', 'method'],
+  ['getter', 'method'],
+  ['setter', 'method'],
+  ['class', 'class'],
+  ['service', 'class'],
+  ['entity', 'class'],
+  ['model', 'class'],
+  ['repository', 'class'],
+  ['store', 'class'],
+  ['table', 'class'],
+  ['resource', 'class'],
+  ['deployment', 'class'],
+  ['container', 'class'],
+  ['interface', 'interface'],
+  ['protocol', 'interface'],
+  ['trait', 'interface'],
+  ['contract', 'interface'],
+  ['type', 'type'],
+  ['struct', 'type'],
+  ['record', 'type'],
+  ['dto', 'type'],
+  ['schema', 'type'],
+  ['union', 'type'],
+  ['alias', 'type'],
+  ['enum', 'enum'],
+  ['const', 'const'],
+  ['constant', 'const'],
+  ['env', 'const'],
+  ['config', 'const'],
+  ['variable', 'var'],
+  ['var', 'var'],
+  ['let', 'let'],
+  ['property', 'property'],
+  ['field', 'property'],
+  ['column', 'property'],
+  ['output', 'property'],
+  ['namespace', 'namespace'],
+  ['module', 'namespace'],
+  ['package', 'namespace'],
+  ['cluster', 'namespace'],
+  ['layer', 'namespace'],
+  ['domain', 'namespace'],
+  ['stage', 'namespace'],
+]);
+
+/**
+ * Normalize open-ended LLM or polyglot node kind labels (`hook`, `component`,
+ * `endpoint`, `service`, `table`, `dto`, `trait`, `cluster`, etc.) into the
+ * canonical {@link SymbolKind} vocabulary.
+ */
+export function normalizeSymbolKindAlias(value: string): SymbolKind | null {
+  const key = value
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, '_');
+  return SYMBOL_KIND_ALIASES.get(key) ?? null;
+}
+
+/**
+ * Normalize test-to-production concept edges so a test subsystem always points
+ * to the production subsystem it covers with the canonical `'validates'`
+ * relation (fixing inverted `prod -> test` edges emitted by LLMs).
+ */
+export function normalizeTestConceptEdge(
+  edge: ConceptEdge,
+  isTestSubsystem: (id: string) => boolean,
+): ConceptEdge {
+  const fromIsTest = isTestSubsystem(edge.fromId);
+  const toIsTest = isTestSubsystem(edge.toId);
+  if (!fromIsTest && toIsTest) {
+    return {
+      fromId: edge.toId,
+      toId: edge.fromId,
+      relation: 'validates',
+    };
+  }
+  if (fromIsTest && !toIsTest && edge.relation === 'uses') {
+    return {
+      fromId: edge.fromId,
+      toId: edge.toId,
+      relation: 'validates',
+    };
+  }
+  return edge;
+}
+
 export interface ConceptEdge {
   fromId: string;
   toId: string;
@@ -73,6 +224,7 @@ export interface ConceptEdge {
 interface ConceptRow {
   file: string;
   contentHash: string;
+  signatureHash: string;
   summary: string;
   cruxStart: number | null;
   cruxEnd: number | null;
@@ -82,13 +234,14 @@ interface ConceptRow {
 }
 
 const SELECT_CONCEPT =
-  'SELECT file, content_hash AS contentHash, summary, crux_start AS cruxStart, ' +
+  'SELECT file, content_hash AS contentHash, signature_hash AS signatureHash, summary, crux_start AS cruxStart, ' +
   'crux_end AS cruxEnd, state, model, updated_at AS updatedAt FROM file_concepts';
 
 function toConcept(row: ConceptRow): FileConcept {
   return {
     file: row.file,
     contentHash: row.contentHash,
+    signatureHash: row.signatureHash ?? '',
     summary: row.summary,
     cruxStart: row.cruxStart,
     cruxEnd: row.cruxEnd,
@@ -101,10 +254,11 @@ function toConcept(row: ConceptRow): FileConcept {
 /** Write (or replace) one file's concept. */
 export function upsertFileConceptWithStatement(stmt: PrepareStatement, concept: FileConcept): void {
   stmt(
-    `INSERT INTO file_concepts(file, content_hash, summary, crux_start, crux_end, state, model, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO file_concepts(file, content_hash, signature_hash, summary, crux_start, crux_end, state, model, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(file) DO UPDATE SET
        content_hash = excluded.content_hash,
+       signature_hash = excluded.signature_hash,
        summary = excluded.summary,
        crux_start = excluded.crux_start,
        crux_end = excluded.crux_end,
@@ -114,6 +268,7 @@ export function upsertFileConceptWithStatement(stmt: PrepareStatement, concept: 
   ).run(
     concept.file,
     concept.contentHash,
+    concept.signatureHash ?? '',
     concept.summary,
     concept.cruxStart,
     concept.cruxEnd,
@@ -183,13 +338,37 @@ export function getConceptCoverageWithStatement(stmt: PrepareStatement): Concept
  * one generation behind harms nothing until someone asks for it.
  */
 export function markStaleConceptsWithStatement(stmt: PrepareStatement): number {
-  const result = stmt(
-    `UPDATE file_concepts SET state = 'stale'
-     WHERE state = 'ready'
-       AND content_hash <> ''
-       AND content_hash <> COALESCE((SELECT f.content_hash FROM files f WHERE f.file = file_concepts.file), content_hash)`,
-  ).run();
-  return Number(result.changes ?? 0);
+  const drifted = stmt(
+    `SELECT fc.file AS file, fc.signature_hash AS signatureHash, f.content_hash AS currentContentHash
+     FROM file_concepts fc
+     JOIN files f ON f.file = fc.file
+     WHERE fc.state = 'ready'
+       AND fc.content_hash <> ''
+       AND fc.content_hash <> f.content_hash`,
+  ).all() as Array<{
+    file: string;
+    signatureHash: string;
+    currentContentHash: string;
+  }>;
+
+  if (drifted.length === 0) return 0;
+
+  let staleCount = 0;
+  const updateCosmetic = stmt('UPDATE file_concepts SET content_hash = ? WHERE file = ?');
+  const markStale = stmt("UPDATE file_concepts SET state = 'stale' WHERE file = ?");
+
+  for (const row of drifted) {
+    if (row.signatureHash !== '') {
+      const currentSig = computeFileStructuralFingerprintWithStatement(stmt, row.file);
+      if (currentSig !== '' && currentSig === row.signatureHash) {
+        updateCosmetic.run(row.currentContentHash, row.file);
+        continue;
+      }
+    }
+    markStale.run(row.file);
+    staleCount++;
+  }
+  return staleCount;
 }
 
 /** Drop concepts for files that are no longer indexed. */

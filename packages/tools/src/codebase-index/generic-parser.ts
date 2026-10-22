@@ -10,6 +10,7 @@
  * in the index than silently dropping whole packages from search/code-map.
  */
 
+import { parseInfraArtifact } from './infra-parser.js';
 import type { FileSymbols, Symbol as IndexSymbol, SymbolKind, SymbolLang } from './schema.js';
 
 interface ExtractPattern {
@@ -446,7 +447,22 @@ export function parseGeneric(opts: {
     if (symbols.length >= maxSymbols) break;
   }
 
-  return { file, lang, symbols, mtimeMs };
+  const infra = parseInfraArtifact({ file, content: bounded, lang });
+  for (const sym of infra.symbols) {
+    if (symbols.length >= maxSymbols) break;
+    const key = `${sym.name}\0${sym.line}\0${sym.kind}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    symbols.push(sym);
+  }
+
+  return {
+    file,
+    lang,
+    symbols,
+    ...(infra.refs.length > 0 ? { refs: infra.refs } : {}),
+    mtimeMs,
+  };
 }
 
 /** Async wrapper matching other parser entrypoints. */

@@ -5,121 +5,6 @@
 import type { ToolDetail } from './tool-detail-types';
 
 export const toolDetailsPart3: Record<string, ToolDetail> = {
-  json: {
-    longDescription:
-      'Read, query, validate, or merge JSON/JSON5/YAML files while preserving valid structure (read-only — does not write). Use it instead of raw text edits when reading or querying structured data.',
-    params: [
-      {
-        name: 'action',
-        type: "'parse' | 'query' | 'validate' | 'transform' | 'merge'",
-        description:
-          'Operation (default: parse). parse=read/pretty-print, query=JMESPath, validate=schema, transform=chained queries, merge=deep merge.',
-      },
-      {
-        name: 'file',
-        type: 'string',
-        description: 'Path to a JSON file (parse/query/validate/transform)',
-      },
-      {
-        name: 'data',
-        type: 'string',
-        description: 'JSON string (parse/query/validate/transform, alternative to file)',
-      },
-      {
-        name: 'format',
-        type: "'json' | 'json5' | 'yaml'",
-        description: 'Output format for parse/query/transform (default: json)',
-      },
-      {
-        name: 'query',
-        type: 'string',
-        description: 'JMESPath-like query expression (query action)',
-      },
-      {
-        name: 'transforms',
-        type: 'string[]',
-        description: 'Ordered JMESPath query strings (transform action)',
-      },
-      {
-        name: 'schema',
-        type: 'object',
-        description: 'JSON Schema to validate against (validate action)',
-      },
-      {
-        name: 'base',
-        type: 'unknown',
-        description: 'Base JSON object (merge action)',
-      },
-      {
-        name: 'patch',
-        type: 'unknown',
-        description: 'Patch JSON object to merge in (merge action)',
-      },
-      {
-        name: 'conflictResolution',
-        type: "'prefer-base' | 'prefer-patch'",
-        description: 'Merge conflict resolution (default: prefer-patch)',
-      },
-      {
-        name: 'validate',
-        type: 'boolean',
-        description: 'Validate syntax only, no output (parse action, default: false)',
-      },
-    ],
-    notes: [
-      '`action: "parse"` (default): read/pretty-print/convert JSON, JSON5, or YAML from `file` or `data`.',
-      '`action: "query"`: JMESPath-like query (`a.b[0].c`, `items[*].name`, filters, functions).',
-      '`action: "validate"`: validate data against a JSON Schema (`schema` param).',
-    ],
-  },
-  diff: {
-    longDescription:
-      'Show file content with line numbers, staged/working-tree diffs via git, or commit/branch diffs. A safer and more structured alternative to raw `git diff` via shell.',
-    params: [
-      {
-        name: 'path',
-        type: 'string',
-        description: 'Working directory for the diff operation (defaults to project root).',
-      },
-      {
-        name: 'files',
-        type: 'string',
-        description: 'Files or globs to diff (e.g. "src/**/*.ts" or comma-separated list).',
-      },
-      {
-        name: 'a',
-        type: 'string',
-        description: 'First ref/commit/branch for git diff (e.g. HEAD, main, a commit hash).',
-      },
-      {
-        name: 'b',
-        type: 'string',
-        description: 'Second ref/commit/branch for git diff.',
-      },
-      {
-        name: 'staged',
-        type: 'boolean',
-        description: 'If true, only show changes that are staged in git.',
-      },
-      {
-        name: 'mode',
-        type: "'unified' | 'side-by-side' | 'stat'",
-        description:
-          'Output format for the git-diff path. "unified" is default; "stat" shows a summary only; "side-by-side" is not supported and falls back to unified. The `files`-only dump path ignores this.',
-      },
-      {
-        name: 'context',
-        type: 'integer',
-        description:
-          'Number of context lines for git unified diffs (default: 3, passed as -U<n>). Ignored by the `files`-only dump path.',
-      },
-    ],
-    notes: [
-      '`files` + no `a`/`b` → show file content with line numbers (NOT a unified diff; no +/- prefixes).',
-      '`a` and/or `b` → git-style commit/branch diff (unified format, real +/- prefixes).',
-      '`staged: true` → only show staged changes.',
-    ],
-  },
   tree: {
     longDescription:
       'Render a bounded directory tree with depth, file, hidden-file, and ignore controls. Use it for repository orientation without reading every file.',
@@ -872,5 +757,113 @@ export const toolDetailsPart3: Record<string, ToolDetail> = {
       'Normal usage: call without arguments for fast incremental updates.',
       'Use `langs` to restrict to specific languages if you only care about certain parts of the project.',
     ],
+  },
+  'codebase-search': {
+    longDescription:
+      'Search indexed symbols, signatures, and documentation with optional language, kind, path, or LSP-kind filters. Use it for semantic discovery before broad text search.',
+    params: [
+      {
+        name: 'query',
+        type: 'string',
+        required: true,
+        description: 'Search query — searches symbol names, signatures, and doc comments',
+      },
+      {
+        name: 'kind',
+        type: "'class' | 'interface' | 'enum' | 'type' | 'function' | 'method' | 'var' | 'const' | 'let' | 'property' | 'parameter' | 'namespace' | 'object' | 'literal' | 'schema' | 'struct' | 'trait' | 'impl' | 'static' | 'mod'",
+        description: 'Filter by indexed symbol kind',
+      },
+      {
+        name: 'lang',
+        type: "'c' | 'cpp' | 'csharp' | 'css' | 'dart' | 'elixir' | 'go' | 'graphql' | 'haskell' | 'html' | 'java' | 'js' | 'json' | 'jsx' | 'kotlin' | 'lua' | 'md' | 'other' | 'php' | 'proto' | 'py' | 'r' | 'rs' | 'ruby' | 'scala' | 'shell' | 'sql' | 'svelte' | 'swift' | 'toml' | 'ts' | 'tsx' | 'vue' | 'yaml' | 'zig'",
+        description: 'Filter by indexed language',
+      },
+      {
+        name: 'lspKind',
+        type: 'integer',
+        description:
+          'Filter by LSP SymbolKind number (e.g. 5=Class, 12=Function, 11=Interface, 10=Enum)',
+      },
+      {
+        name: 'file',
+        type: 'string',
+        description: 'Filter to files matching this path substring',
+      },
+      {
+        name: 'limit',
+        type: 'integer',
+        description: 'Maximum results to return (default 20, max 100)',
+      },
+      {
+        name: 'preferLsp',
+        type: 'boolean',
+        description:
+          'Deprecated compatibility hint. This built-in remains index-only; use codebase-lsp-search for live LSP results.',
+      },
+    ],
+    notes: [
+      'Use when you need to find where something is defined or used by name.',
+      '`kind` filter is very useful (e.g. only functions or only interfaces).',
+      'Combine with `file` filter to scope to a specific directory or module.',
+    ],
+  },
+  'codebase-skeleton': {
+    longDescription:
+      'Extract a compact structural skeleton from a source file or directory, preserving declarations while omitting implementation detail. Use it to understand unfamiliar code quickly.',
+    params: [
+      {
+        name: 'path',
+        type: 'string',
+        required: true,
+        description: 'Relative or absolute file or directory path to extract skeleton for.',
+      },
+      {
+        name: 'includeDocs',
+        type: 'boolean',
+        description: 'Keep JSDoc / docstrings in the output skeleton (defaults to true).',
+      },
+      {
+        name: 'collapseImports',
+        type: 'boolean',
+        description: 'Collapse import blocks into a single summary comment (defaults to false).',
+      },
+      {
+        name: 'exportsOnly',
+        type: 'boolean',
+        description: 'Only include exported/public declarations (defaults to false).',
+      },
+      {
+        name: 'maxFiles',
+        type: 'integer',
+        description: 'Max files to include if path is a directory (defaults to 20, max 50).',
+      },
+      {
+        name: 'maxChars',
+        type: 'integer',
+        description:
+          'Character budget for a directory skeleton (defaults to 60000, max 200000). Files past it are listed, not cut.',
+      },
+    ],
+    notes: [
+      'Prefer before reading large files in full when only contracts and structure are needed.',
+    ],
+  },
+  'codebase-repo-map': {
+    longDescription:
+      'Generate a centrality-ranked, token-budgeted Repository Map within ~1200 tokens by default: package clusters with their hub file, the repo-wide hotspots, then the signatures of the most central files. Use at the beginning of complex tasks or when navigating unfamiliar repositories to get a bird-eye view of the architecture.',
+    params: [
+      {
+        name: 'maxTokens',
+        type: 'integer',
+        description:
+          'Maximum token budget (approximate) for the map. Defaults to 1200, range 100-20000.',
+      },
+      {
+        name: 'focusFiles',
+        type: 'string[]',
+        description: 'File paths to prioritize and ensure inclusion in the map.',
+      },
+    ],
+    notes: ['Useful at the start of unfamiliar or repository-wide work.'],
   },
 };

@@ -1,5 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { buildIndexableText } from './bm25.js';
+import { xxhash64String } from './content-hash.js';
 import type { FileMeta, Symbol as IndexSymbol, Ref, SymbolLang } from './schema.js';
 import { embedText, encodeVector } from './vector-search.js';
 import {
@@ -21,6 +22,39 @@ import {
 /** Identity of a declaration across a re-index of its file (ids change every time). */
 function rankKey(file: string, name: string, kind: string, scope: string): string {
   return `${file}\u0000${name}\u0000${kind}\u0000${scope}`;
+}
+
+function inferIsExportedFlag(s: IndexSymbol): number {
+  if (s.isExported !== undefined) return s.isExported ? 1 : 0;
+  if (/\b(export|pub|public)\b/.test(s.signature)) return 1;
+  if (s.scope === '' && s.lang === 'go' && /^[A-Z]/.test(s.name)) return 1;
+  if (s.scope === '' && s.lang === 'py' && !s.name.startsWith('_')) return 1;
+  return 0;
+}
+
+function computeSymbolSignatureHash(s: IndexSymbol): string {
+  if (s.signatureHash) return s.signatureHash;
+  const normSig = s.signature.trim().replace(/\s+/g, ' ');
+  return xxhash64String(`${s.kind}\u0000${s.scope}\u0000${s.name}\u0000${normSig}`);
+}
+
+function inferSymbolEndLines(symbols: readonly IndexSymbol[]): Map<IndexSymbol, number> {
+  const result = new Map<IndexSymbol, number>();
+  const sorted = [...symbols].sort((a, b) => a.line - b.line);
+  for (let i = 0; i < sorted.length; i++) {
+    const s = sorted[i]!;
+    if (typeof s.endLine === 'number' && s.endLine >= s.line) {
+      result.set(s, s.endLine);
+      continue;
+    }
+    const next = sorted[i + 1];
+    if (next && next.file === s.file && next.line > s.line) {
+      result.set(s, Math.max(s.line, next.line - 1));
+    } else {
+      result.set(s, s.line);
+    }
+  }
+  return result;
 }
 
 export function commitBatchWithStatement(
@@ -125,8 +159,12 @@ export function commitBatchWithStatement(
 
   for (const entry of entries) {
     const insertedForEntry: IndexSymbol[] = [];
+    const endLines = inferSymbolEndLines(entry.symbols);
     for (const s of entry.symbols) {
       const id = nextId++;
+      const endLine = endLines.get(s) ?? s.line;
+      const isExported = inferIsExportedFlag(s);
+      const signatureHash = computeSymbolSignatureHash(s);
       bulkSyms.push({
         id,
         lang: s.lang,
@@ -138,6 +176,9 @@ export function commitBatchWithStatement(
         signature: s.signature,
         docComment: s.docComment,
         scope: s.scope,
+        endLine,
+        isExported,
+        signatureHash,
       });
       if (ftsAvailable) {
         ftsRows.push({
@@ -272,8 +313,12 @@ export function insertSymbolsWithStatement(
   const ftsRows: Array<{ id: number; text: string }> = [];
   const vectorRows: BulkVectorRow[] = [];
 
+  const endLines = inferSymbolEndLines(symbols);
   for (const s of symbols) {
     const id = nextId++;
+    const endLine = endLines.get(s) ?? s.line;
+    const isExported = inferIsExportedFlag(s);
+    const signatureHash = computeSymbolSignatureHash(s);
     bulk.push({
       id,
       lang: s.lang,
@@ -285,6 +330,9 @@ export function insertSymbolsWithStatement(
       signature: s.signature,
       docComment: s.docComment,
       scope: s.scope,
+      endLine,
+      isExported,
+      signatureHash,
     });
     if (ftsAvailable) {
       ftsRows.push({ id, text: buildIndexableText(s.name, s.signature, s.docComment) });

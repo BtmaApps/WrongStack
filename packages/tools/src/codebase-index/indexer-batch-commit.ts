@@ -56,6 +56,17 @@ export function commitBatchResults(
         // `stat error: ENOENT` made every watcher-observed delete or rename
         // surface as "N error(s)" and count toward `failed`.
         if (existingMeta.has(file)) {
+          if (run.prevSymbolsForHeal) {
+            for (const sym of store.search('', { file })) {
+              run.prevSymbolsForHeal.push({
+                name: sym.name,
+                kind: sym.kind,
+                file: sym.file,
+                line: sym.line,
+                signature: sym.signature,
+              });
+            }
+          }
           store.deleteFile(file);
           deleted.add(file);
         }
@@ -146,6 +157,31 @@ export function commitBatchResults(
   }
 
   if (batchEntries.length > 0) {
+    if (!clearedAll && run.prevSymbolsForHeal && run.nextSymbolsForHeal) {
+      for (const file of deleteForFiles) {
+        if (!existingMeta.has(file)) continue;
+        for (const sym of store.search('', { file })) {
+          run.prevSymbolsForHeal.push({
+            name: sym.name,
+            kind: sym.kind,
+            file: sym.file,
+            line: sym.line,
+            signature: sym.signature,
+          });
+        }
+      }
+      for (const entry of batchEntries) {
+        for (const sym of entry.symbols) {
+          run.nextSymbolsForHeal.push({
+            name: sym.name,
+            kind: sym.kind,
+            file: sym.file,
+            line: sym.line,
+            signature: sym.signature,
+          });
+        }
+      }
+    }
     try {
       store.commitBatch(batchEntries, {
         // Nothing to replace after a clear (and no index to find it by).

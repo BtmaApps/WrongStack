@@ -5,114 +5,6 @@
 import type { ToolDetail } from './tool-detail-types';
 
 export const toolDetailsPart4: Record<string, ToolDetail> = {
-  'codebase-search': {
-    longDescription:
-      'Search indexed symbols, signatures, and documentation with optional language, kind, path, or LSP-kind filters. Use it for semantic discovery before broad text search.',
-    params: [
-      {
-        name: 'query',
-        type: 'string',
-        required: true,
-        description: 'Search query — searches symbol names, signatures, and doc comments',
-      },
-      {
-        name: 'kind',
-        type: "'class' | 'interface' | 'enum' | 'type' | 'function' | 'method' | 'var' | 'const' | 'let' | 'property' | 'parameter' | 'namespace' | 'object' | 'literal' | 'schema' | 'struct' | 'trait' | 'impl' | 'static' | 'mod'",
-        description: 'Filter by indexed symbol kind',
-      },
-      {
-        name: 'lang',
-        type: "'c' | 'cpp' | 'csharp' | 'css' | 'dart' | 'elixir' | 'go' | 'graphql' | 'haskell' | 'html' | 'java' | 'js' | 'json' | 'jsx' | 'kotlin' | 'lua' | 'md' | 'other' | 'php' | 'proto' | 'py' | 'r' | 'rs' | 'ruby' | 'scala' | 'shell' | 'sql' | 'svelte' | 'swift' | 'toml' | 'ts' | 'tsx' | 'vue' | 'yaml' | 'zig'",
-        description: 'Filter by indexed language',
-      },
-      {
-        name: 'lspKind',
-        type: 'integer',
-        description:
-          'Filter by LSP SymbolKind number (e.g. 5=Class, 12=Function, 11=Interface, 10=Enum)',
-      },
-      {
-        name: 'file',
-        type: 'string',
-        description: 'Filter to files matching this path substring',
-      },
-      {
-        name: 'limit',
-        type: 'integer',
-        description: 'Maximum results to return (default 20, max 100)',
-      },
-      {
-        name: 'preferLsp',
-        type: 'boolean',
-        description:
-          'Deprecated compatibility hint. This built-in remains index-only; use codebase-lsp-search for live LSP results.',
-      },
-    ],
-    notes: [
-      'Use when you need to find where something is defined or used by name.',
-      '`kind` filter is very useful (e.g. only functions or only interfaces).',
-      'Combine with `file` filter to scope to a specific directory or module.',
-    ],
-  },
-  'codebase-skeleton': {
-    longDescription:
-      'Extract a compact structural skeleton from a source file or directory, preserving declarations while omitting implementation detail. Use it to understand unfamiliar code quickly.',
-    params: [
-      {
-        name: 'path',
-        type: 'string',
-        required: true,
-        description: 'Relative or absolute file or directory path to extract skeleton for.',
-      },
-      {
-        name: 'includeDocs',
-        type: 'boolean',
-        description: 'Keep JSDoc / docstrings in the output skeleton (defaults to true).',
-      },
-      {
-        name: 'collapseImports',
-        type: 'boolean',
-        description: 'Collapse import blocks into a single summary comment (defaults to false).',
-      },
-      {
-        name: 'exportsOnly',
-        type: 'boolean',
-        description: 'Only include exported/public declarations (defaults to false).',
-      },
-      {
-        name: 'maxFiles',
-        type: 'integer',
-        description: 'Max files to include if path is a directory (defaults to 20, max 50).',
-      },
-      {
-        name: 'maxChars',
-        type: 'integer',
-        description:
-          'Character budget for a directory skeleton (defaults to 60000, max 200000). Files past it are listed, not cut.',
-      },
-    ],
-    notes: [
-      'Prefer before reading large files in full when only contracts and structure are needed.',
-    ],
-  },
-  'codebase-repo-map': {
-    longDescription:
-      'Generate a centrality-ranked, token-budgeted Repository Map within ~1200 tokens by default: package clusters with their hub file, the repo-wide hotspots, then the signatures of the most central files. Use at the beginning of complex tasks or when navigating unfamiliar repositories to get a bird-eye view of the architecture.',
-    params: [
-      {
-        name: 'maxTokens',
-        type: 'integer',
-        description:
-          'Maximum token budget (approximate) for the map. Defaults to 1200, range 100-20000.',
-      },
-      {
-        name: 'focusFiles',
-        type: 'string[]',
-        description: 'File paths to prioritize and ensure inclusion in the map.',
-      },
-    ],
-    notes: ['Useful at the start of unfamiliar or repository-wide work.'],
-  },
   'codebase-context': {
     longDescription:
       'Find the files and declarations a task touches from a plain-language description. Ranked symbol search seeds a personalised walk over the reference graph, so results include what the matches are structurally attached to, not just what matched by name. Start here for any task spanning more than one file.',
@@ -532,6 +424,118 @@ export const toolDetailsPart4: Record<string, ToolDetail> = {
         type: "'page' | 'app'",
         description:
           'inspect: "page" (marketing/content, default) or "app" (dense product screen — smaller body and more type sizes allowed).',
+      },
+    ],
+  },
+  'codebase-diff-impact': {
+    longDescription:
+      'Analyze the blast radius of current git changes (working tree, staged diff, or commit/branch range): modified symbols, direct/transitive callers, AST contract invariant violations, and impacted test suites.',
+    params: [
+      {
+        name: 'baseRef',
+        type: 'string',
+        description:
+          'Optional git ref or revision range (e.g. "HEAD", "HEAD~1", "main..HEAD"). Defaults to "HEAD".',
+      },
+      {
+        name: 'staged',
+        type: 'boolean',
+        description: 'When true, analyze only staged changes (`git diff --cached`).',
+      },
+      {
+        name: 'files',
+        type: 'string[]',
+        description: 'Optional list of project-relative file paths to scope the diff.',
+      },
+      {
+        name: 'transitive',
+        type: 'boolean',
+        description:
+          'Whether to include transitive callers (callers of callers). Defaults to true.',
+      },
+      {
+        name: 'persist',
+        type: 'boolean',
+        description:
+          'When true, persist `.wrongstack/atlas/diff-overlay.json` for visual CodeMap overlay.',
+      },
+    ],
+  },
+  'codebase-flow-trace': {
+    longDescription:
+      'Discover architectural entry points (HTTP routes, CLI commands, tools, handlers, main orchestrators) and trace their forward execution flows step-by-step across the call graph.',
+    params: [
+      {
+        name: 'symbol',
+        type: 'string',
+        description:
+          'Optional symbol name to start the execution flow trace from. Omit to auto-discover project entry points.',
+      },
+      {
+        name: 'file',
+        type: 'string',
+        description: 'Optional file path filter to disambiguate `symbol` or scope discovery.',
+      },
+      {
+        name: 'maxDepth',
+        type: 'number',
+        description: 'Maximum call depth to trace forward (1..10, default 4).',
+      },
+      {
+        name: 'maxFlows',
+        type: 'number',
+        description: 'Maximum number of execution flows to return (1..20, default 5).',
+      },
+      {
+        name: 'maxSteps',
+        type: 'number',
+        description: 'Maximum steps per execution flow (3..50, default 15).',
+      },
+      {
+        name: 'persist',
+        type: 'boolean',
+        description:
+          'When true, persist `.wrongstack/atlas/flows.json` and `.wrongstack/atlas/FLOWS.md`.',
+      },
+    ],
+  },
+  'codebase-onboard': {
+    longDescription:
+      'Generate a dependency-ordered Guided Architectural Tour and Onboarding Guide combining PageRank hubs, Louvain community clusters, crux line spans, and primary execution flows.',
+    params: [
+      {
+        name: 'focus',
+        type: 'string',
+        description:
+          'Optional package, directory, or topic substring to focus the onboarding tour.',
+      },
+      {
+        name: 'maxSteps',
+        type: 'number',
+        description: 'Maximum number of tour steps to generate (3..20, default 8).',
+      },
+      {
+        name: 'persona',
+        type: "'junior' | 'experienced' | 'architect' | 'non-technical'",
+        description:
+          'Target reader persona (default "experienced"). Adapts explanations and language pattern notes.',
+      },
+    ],
+  },
+  'codebase-atlas': {
+    longDescription:
+      'Inspect or project the Codebase Atlas: PageRank hubs, subsystem summaries, concept coverage, Louvain file communities, and `.wrongstack/atlas/` freshness.',
+    params: [
+      {
+        name: 'mode',
+        type: "'brief' | 'full' | 'communities' | 'freshness' | 'write'",
+        description:
+          'Operation mode: "brief" (default), "full", "communities", "freshness", or "write".',
+      },
+      {
+        name: 'maxCommunities',
+        type: 'number',
+        description: 'Maximum number of Louvain communities to include (default 15, max 50).',
       },
     ],
   },

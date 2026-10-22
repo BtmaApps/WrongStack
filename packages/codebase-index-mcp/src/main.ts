@@ -3,13 +3,41 @@ import * as path from 'node:path';
 import { serveHttp, serveStdio } from '@wrongstack/mcp';
 import {
   checkCodebaseIndexServerHealth,
+  type EmbeddingPort,
   ensureCodebaseIndexServer,
   resolveProjectIndexDaemonAvailability,
   runStartupIndex,
+  setContextQueryEmbedder,
   shutdownCodebaseIndexHost,
 } from '@wrongstack/tools/codebase-index';
 import { createCodebaseIndexMcpServer } from './adapter.js';
 import { SERVER_INFO } from './version.js';
+
+const EXPECTED_EMBEDDING_DIMENSIONS = 384;
+
+/**
+ * Best-effort host-side semantic embedding model wiring for `codebase_context`.
+ * Uses dynamic import so `@wrongstack/vector-memory` / `@huggingface/transformers`
+ * remain optional and never delay or fail MCP server startup.
+ */
+export async function tryConfigureMcpEmbeddingPort(): Promise<EmbeddingPort | undefined> {
+  try {
+    const vectorMemModule = '@wrongstack/vector-memory';
+    const mod = (await import(vectorMemModule)) as {
+      TransformersEmbeddingProvider?: new () => EmbeddingPort & {
+        isAvailable(): Promise<boolean>;
+      };
+    };
+    if (typeof mod.TransformersEmbeddingProvider !== 'function') return undefined;
+    const provider = new mod.TransformersEmbeddingProvider();
+    if (!(await provider.isAvailable())) return undefined;
+    if (provider.dimensions !== EXPECTED_EMBEDDING_DIMENSIONS) return undefined;
+    setContextQueryEmbedder(provider);
+    return provider;
+  } catch {
+    return undefined;
+  }
+}
 
 export interface ParsedArgs {
   projectRoot: string;
@@ -289,6 +317,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     writable: args.writable,
     ...(args.indexDir ? { indexDir: args.indexDir } : {}),
   });
+  void tryConfigureMcpEmbeddingPort();
   const policyText = `writable=${String(args.writable)} watch=${String(args.watch)}`;
 
   if (args.transport === 'http') {

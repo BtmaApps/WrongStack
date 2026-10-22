@@ -40,7 +40,10 @@ export const CORE_TABLES_SQL = `
     col INTEGER NOT NULL,
     signature TEXT NOT NULL DEFAULT '',
     doc_comment TEXT NOT NULL DEFAULT '',
-    scope TEXT NOT NULL DEFAULT ''
+    scope TEXT NOT NULL DEFAULT '',
+    end_line INTEGER NOT NULL DEFAULT 0,
+    is_exported INTEGER NOT NULL DEFAULT 0,
+    signature_hash TEXT NOT NULL DEFAULT ''
     );
 `;
 
@@ -159,6 +162,7 @@ export const CONCEPT_TABLES_SQL = `
   CREATE TABLE IF NOT EXISTS file_concepts (
     file TEXT PRIMARY KEY,
     content_hash TEXT NOT NULL DEFAULT '',
+    signature_hash TEXT NOT NULL DEFAULT '',
     summary TEXT NOT NULL DEFAULT '',
     crux_start INTEGER,
     crux_end INTEGER,

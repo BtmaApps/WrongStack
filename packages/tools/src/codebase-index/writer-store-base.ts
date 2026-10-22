@@ -37,6 +37,7 @@ export abstract class IndexStoreBase {
   protected db: DatabaseSync;
   protected atomicIndexUpdateActive = false;
   protected writeSavepointSequence = 0;
+  protected readonly projectRoot: string;
   protected readonly indexDir: string;
   protected ftsAvailable = false;
   protected vectorsAvailable = false;
@@ -51,6 +52,7 @@ export abstract class IndexStoreBase {
   }
 
   constructor(projectRoot: string, opts: { indexDir?: string | undefined } = {}) {
+    this.projectRoot = projectRoot;
     this.indexDir = resolveIndexDir(projectRoot, opts.indexDir);
     fs.mkdirSync(this.indexDir, { recursive: true });
     const Database = loadDatabaseSync();

@@ -16,6 +16,9 @@ export interface BulkSymbolRow {
   signature: string;
   docComment: string;
   scope: string;
+  endLine?: number | undefined;
+  isExported?: number | undefined;
+  signatureHash?: string | undefined;
 }
 
 const ROW_PLACEHOLDERS_CACHE = new Map<string, string>();
@@ -39,14 +42,17 @@ export function bulkInsertSymbolsWithStatement(
   // P4.12: ladder chunking (powers of two) keeps distinct SQL strings ≤
   // log2(max)+1 so the statement cache stabilizes. Read via cursor — never
   // mutate the caller's array.
-  const ladder = ladderChunkSizes(rows.length, Math.max(1, Math.floor(maxSqlVars / 12)));
+  const ladder = ladderChunkSizes(rows.length, Math.max(1, Math.floor(maxSqlVars / 14)));
   let cursor = 0;
   for (const take of ladder) {
     const chunk = rows.slice(cursor, cursor + take);
     cursor += take;
-    const placeholders = getRowPlaceholders('(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', chunk.length);
+    const placeholders = getRowPlaceholders(
+      '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      chunk.length,
+    );
     const insert = stmt(
-      `INSERT INTO symbols(id, lang, kind, name, file, line, col, signature, doc_comment, scope)
+      `INSERT INTO symbols(id, lang, kind, name, file, line, col, signature, doc_comment, scope, end_line, is_exported, signature_hash)
        VALUES ${placeholders}`,
     );
     const binds: (string | number)[] = [];
@@ -62,6 +68,9 @@ export function bulkInsertSymbolsWithStatement(
         r.signature,
         r.docComment,
         r.scope,
+        r.endLine ?? r.line,
+        r.isExported ?? 0,
+        r.signatureHash ?? '',
       );
     }
     insert.run(...binds);

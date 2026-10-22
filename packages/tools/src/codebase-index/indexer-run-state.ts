@@ -4,6 +4,7 @@
  * (indexer-finalize.ts).
  */
 
+import type { SymbolSnapshotItem } from './ecosystem-bridge.js';
 import type { FileMeta } from './schema.js';
 
 /**
@@ -54,6 +55,9 @@ export interface IndexRunState {
   // Ref names awaiting resolution, resolved once after the batch loop — or
   // not at all when the run ends with a whole-table resolution anyway.
   deferredRefNames: Set<string>;
+  /** Populated on incremental runs when `.wrongstack/memories` exists to heal SAGE anchors. */
+  prevSymbolsForHeal?: SymbolSnapshotItem[] | undefined;
+  nextSymbolsForHeal?: SymbolSnapshotItem[] | undefined;
 }
 
 export function noteRewritten(run: IndexRunState, file: string, contentHash: string): void {

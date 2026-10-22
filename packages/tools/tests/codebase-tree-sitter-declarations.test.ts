@@ -131,4 +131,48 @@ describe('tree-sitter declarations', () => {
       'function:ready?:Billing.Invoice',
     ]);
   });
+
+  it('extracts docComment across Java, C#, Ruby, and Elixir declarations', async () => {
+    const javaSyms = await symbolsOf('java', [
+      '/** Repository for user records. */',
+      'public class UserRepo {',
+      '  /**',
+      '   * Verifies a user token.',
+      '   * @param token JWT string',
+      '   */',
+      '  @Override',
+      '  public boolean verify(String token) { return true; }',
+      '}',
+    ]);
+    expect(javaSyms.map((s) => [s.name, s.docComment])).toEqual([
+      ['UserRepo', 'Repository for user records.'],
+      ['verify', 'Verifies a user token.'],
+    ]);
+
+    const csSyms = await symbolsOf('csharp', [
+      '/// Processes the next batch of jobs.',
+      '/// Returns the processed count.',
+      '[Obsolete]',
+      'public class BatchProcessor {}',
+    ]);
+    expect(csSyms[0]?.docComment).toBe('Processes the next batch of jobs.');
+
+    const rubySyms = await symbolsOf('ruby', [
+      '# Calculates invoice total with tax.',
+      'def calculate_total',
+      '  42',
+      'end',
+    ]);
+    expect(rubySyms[0]?.docComment).toBe('Calculates invoice total with tax.');
+
+    const elixirSyms = await symbolsOf('elixir', [
+      'defmodule Math do',
+      '  @doc "Adds two integers together."',
+      '  def add(a, b), do: a + b',
+      'end',
+    ]);
+    expect(elixirSyms.find((s) => s.name === 'add')?.docComment).toBe(
+      'Adds two integers together.',
+    );
+  });
 });

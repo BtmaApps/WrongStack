@@ -323,9 +323,17 @@ export async function parseSymbols(opts: ParseOptions): Promise<FileSymbols> {
         // `#private` members, `declare module 'x' {…}`, `'quoted'()` methods
         // and `const { a, b } = …`, dropping every ref inside them — callers
         // in a private method were invisible to incoming-calls.
+        const hostNode = docHostOf(node);
         const signature =
           nameNodes.length > 0 ? getSignature(node as TS.Declaration, sourceFile) : '';
-        const docComment = nameNodes.length > 0 ? getJsDoc(docHostOf(node), sourceFile) : '';
+        const docComment = nameNodes.length > 0 ? getJsDoc(hostNode, sourceFile) : '';
+        const endPos = Math.max(0, hostNode.getEnd() - 1);
+        const endLine =
+          nameNodes.length > 0 ? sourceFile.getLineAndCharacterOfPosition(endPos).line + 1 : 0;
+        const isExported =
+          /\bexport\b/.test(signature) ||
+          (ts.canHaveModifiers(hostNode) &&
+            (ts.getModifiers(hostNode) ?? []).some((m) => m.kind === ts.SyntaxKind.ExportKeyword));
         for (const nameNode of nameNodes) {
           const name = nameNode.text;
           const pos = nameNode.getStart(sourceFile);
@@ -341,6 +349,8 @@ export async function parseSymbols(opts: ParseOptions): Promise<FileSymbols> {
             file,
             line: line + 1,
             col: character,
+            endLine: Math.max(line + 1, endLine),
+            isExported,
             signature,
             docComment,
             scope,

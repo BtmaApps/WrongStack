@@ -21,6 +21,12 @@ describe('createCodebaseIndexMcpToolHost', () => {
       'codebase_skeleton',
       'codebase_impact_analysis',
       'codebase_repo_map',
+      'codebase_invariant_check',
+      'codebase_diff_impact',
+      'codebase_flow_trace',
+      'codebase_onboard',
+      'codebase_atlas',
+      'dead_code_scan',
     ]);
     const search = tools[1]!.inputSchema as { properties: Record<string, unknown> };
     expect(search.properties).not.toHaveProperty('preferLsp');
@@ -57,6 +63,12 @@ describe('createCodebaseIndexMcpToolHost', () => {
       ['codebase_skeleton', { path: 'src' }],
       ['codebase_impact_analysis', { symbol: 'run' }],
       ['codebase_repo_map', {}],
+      ['codebase_invariant_check', { originalCode: 'export const x = 1;', modifiedCode: '' }],
+      ['codebase_diff_impact', { staged: true }],
+      ['codebase_flow_trace', { maxFlows: 3 }],
+      ['codebase_onboard', { maxSteps: 5 }],
+      ['codebase_atlas', { mode: 'brief' }],
+      ['dead_code_scan', { limit: 10 }],
     ];
     for (const [name, args] of calls) {
       await expect(host.callTool(name, args)).resolves.toMatchObject({ isError: false });
@@ -66,6 +78,12 @@ describe('createCodebaseIndexMcpToolHost', () => {
       'codebase-skeleton',
       'codebase-impact-analysis',
       'codebase-repo-map',
+      'codebase-invariant-check',
+      'codebase-diff-impact',
+      'codebase-flow-trace',
+      'codebase-onboard',
+      'codebase-atlas',
+      'dead-code-scan',
     ]);
     // Required fields come from each tool's own schema.
     await expect(host.callTool('codebase_read_symbol', { file: 'src/a.ts' })).resolves.toEqual({
@@ -218,15 +236,30 @@ describe('createCodebaseIndexMcpToolHost', () => {
     });
   });
 
-  it('exposes the index writer in writable mode and converts failures to MCP errors', async () => {
+  it('exposes the index writer and mutation/test tools in writable mode and converts failures to MCP errors', async () => {
     const executeTool = vi.fn().mockRejectedValue(new Error('daemon failed'));
     const host = createCodebaseIndexMcpToolHost('C:/project', {
       writable: true,
       dependencies: { executeTool },
     });
-    expect((await host.listTools()).map((tool) => tool.name)).toContain('codebase_index');
+    const names = (await host.listTools()).map((tool) => tool.name);
+    expect(names).toEqual(
+      expect.arrayContaining([
+        'codebase_index',
+        'codebase_ast_replace',
+        'codebase_targeted_test',
+        'dead_code_fix',
+      ]),
+    );
     await expect(host.callTool('codebase_index', { force: false })).resolves.toEqual({
       content: 'daemon failed',
+      isError: true,
+    });
+    // Empty newBody is valid for codebase_ast_replace, but non-string is rejected.
+    await expect(
+      host.callTool('codebase_ast_replace', { file: 'src/a.ts', symbol: 'run' }),
+    ).resolves.toEqual({
+      content: 'codebase_ast_replace requires a string "newBody"',
       isError: true,
     });
   });

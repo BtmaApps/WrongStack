@@ -14,17 +14,36 @@ export function getFileSymbolsWithStatement(
   stmt: PrepareStatement,
   file: string,
   limit: number,
-): Array<{ id: number; name: string; kind: string; line: number; signature: string }> {
+): Array<{
+  id: number;
+  name: string;
+  kind: string;
+  line: number;
+  endLine?: number | undefined;
+  isExported?: boolean | undefined;
+  signature: string;
+}> {
   if (limit <= 0) return [];
-  return stmt(
-    'SELECT id, name, kind, line, signature FROM symbols WHERE file = ? ORDER BY line ASC, name ASC LIMIT ?',
+  const rows = stmt(
+    'SELECT id, name, kind, line, end_line, is_exported, signature FROM symbols WHERE file = ? ORDER BY line ASC, name ASC LIMIT ?',
   ).all(file, limit) as unknown as Array<{
     id: number;
     name: string;
     kind: string;
     line: number;
+    end_line?: number | null;
+    is_exported?: number | null;
     signature: string;
   }>;
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    kind: r.kind,
+    line: r.line,
+    ...(typeof r.end_line === 'number' && r.end_line > 0 ? { endLine: r.end_line } : {}),
+    ...(typeof r.is_exported === 'number' ? { isExported: r.is_exported === 1 } : {}),
+    signature: r.signature,
+  }));
 }
 
 /** Like chunkedIdQuery but returns a single scalar (COUNT, SUM, …). */

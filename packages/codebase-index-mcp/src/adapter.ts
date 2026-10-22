@@ -7,20 +7,28 @@ import {
   type MCPServerToolHost,
 } from '@wrongstack/mcp';
 import {
+  codebaseAstReplaceTool,
+  codebaseAtlasTool,
   codebaseContextTool,
+  codebaseDiffImpactTool,
+  codebaseFlowTraceTool,
   codebaseImpactAnalysisTool,
   codebaseIncomingCallsTool,
   codebaseIndexTool,
+  codebaseInvariantCheckTool,
+  codebaseOnboardTool,
   codebaseOutgoingCallsTool,
   codebaseReadSymbolTool,
   codebaseRepoMapTool,
   codebaseSearchTool,
   codebaseSkeletonTool,
   codebaseStatsTool,
+  codebaseTargetedTestTool,
   fileGraphService,
   packageGraphService,
   symbolGraphService,
 } from '@wrongstack/tools/codebase-index';
+import { deadCodeFixTool, deadCodeScanTool } from '@wrongstack/tools/dead-code';
 import {
   type CodebaseIndexMcpPolicyOptions,
   type CodebaseIndexMcpToolName,
@@ -112,8 +120,26 @@ const TOOL_DESCRIPTIONS: Record<CodebaseIndexMcpToolName, string> = {
     'Estimate what a change to a symbol affects: dependent symbols and files, optionally transitive.',
   codebase_repo_map:
     'A ranked overview of the repository: the most central files and their key symbols.',
+  codebase_invariant_check:
+    'Deterministically check AST backward-compatibility invariants (removed exports, mandatory parameters, interface breaks, return types) between original and candidate code.',
+  codebase_diff_impact:
+    'Analyze the blast radius of current git changes (working tree, staged diff, or commit/branch range): modified symbols, direct/transitive callers, AST contract invariant violations, and impacted test suites.',
+  codebase_flow_trace:
+    'Discover architectural entry points (HTTP routes, CLI commands, tools, handlers, main orchestrators) and trace their forward execution flows step-by-step across the call graph.',
+  codebase_onboard:
+    'Generate a dependency-ordered Guided Architectural Tour and Onboarding Guide combining PageRank hubs, Louvain community clusters, crux line spans, and primary execution flows.',
+  codebase_atlas:
+    'Inspect or project the Codebase Atlas: PageRank hubs, subsystem summaries, concept coverage, Louvain file communities, and `.wrongstack/atlas/` freshness.',
+  dead_code_scan:
+    'Find dead code in executable TS/JS sources: unreachable files, unused exports/re-exports, test-only code, and unused dependencies. Read-only; pass previewIds to preview cleanup diffs.',
   codebase_index:
     'Build or incrementally refresh the project Codebase Index. Hidden unless the server starts with --writable.',
+  codebase_ast_replace:
+    'Surgically replace a function, method, or class body/declaration via AST with automatic backward-compatibility invariant verification. Hidden unless the server starts with --writable.',
+  codebase_targeted_test:
+    'Discover and run only the test suites covering a changed symbol or file using call-graph references and conventions. Hidden unless the server starts with --writable.',
+  dead_code_fix:
+    'Remove dead code findings by id with automatic typecheck verification, rollback on failure, and undo backups. Hidden unless the server starts with --writable.',
 };
 
 const BUILTIN_TOOLS: Partial<Record<CodebaseIndexMcpToolName, Tool>> = {
@@ -126,7 +152,16 @@ const BUILTIN_TOOLS: Partial<Record<CodebaseIndexMcpToolName, Tool>> = {
   codebase_skeleton: codebaseSkeletonTool,
   codebase_impact_analysis: codebaseImpactAnalysisTool,
   codebase_repo_map: codebaseRepoMapTool,
+  codebase_invariant_check: codebaseInvariantCheckTool,
+  codebase_diff_impact: codebaseDiffImpactTool,
+  codebase_flow_trace: codebaseFlowTraceTool,
+  codebase_onboard: codebaseOnboardTool,
+  codebase_atlas: codebaseAtlasTool,
+  dead_code_scan: deadCodeScanTool,
   codebase_index: codebaseIndexTool,
+  codebase_ast_replace: codebaseAstReplaceTool,
+  codebase_targeted_test: codebaseTargetedTestTool,
+  dead_code_fix: deadCodeFixTool,
 };
 
 function cloneToolSchema(name: CodebaseIndexMcpToolName, tool: Tool): Record<string, unknown> {
@@ -201,6 +236,8 @@ function nonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0;
 }
 
+const ALLOW_EMPTY_STRING_FIELDS: ReadonlySet<string> = new Set(['modifiedCode', 'newBody']);
+
 function validateArgs(
   name: CodebaseIndexMcpToolName,
   args: Record<string, unknown>,
@@ -224,8 +261,14 @@ function validateArgs(
       properties?: Record<string, { type?: unknown }>;
     };
     for (const field of schema.required ?? []) {
-      if (schema.properties?.[field]?.type === 'string' && !nonEmptyString(args[field])) {
-        return `${name} requires a non-empty string "${field}"`;
+      if (schema.properties?.[field]?.type === 'string') {
+        if (ALLOW_EMPTY_STRING_FIELDS.has(field)) {
+          if (typeof args[field] !== 'string') {
+            return `${name} requires a string "${field}"`;
+          }
+        } else if (!nonEmptyString(args[field])) {
+          return `${name} requires a non-empty string "${field}"`;
+        }
       }
     }
   }

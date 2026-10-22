@@ -16,8 +16,11 @@
  * contain a `LIMIT` — there is no limit to express here.
  */
 
+import * as path from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
+import { findAnchoredSageMemories, findFileHealthAlerts } from './ecosystem-bridge.js';
 import type { GraphNode } from './schema.js';
+import { posixIndexPath } from './writer-helpers.js';
 
 type Statement = ReturnType<DatabaseSync['prepare']>;
 type PrepareStatement = (sql: string) => Statement;
@@ -186,4 +189,67 @@ export function decorateGraphNodes(
   }
 
   normaliseInPlace(nodes);
+}
+
+/**
+ * Attach active SAGE anchored memories (`memoryCount` and `memories`) to file
+ * and symbol `GraphNode`s in a single batched lookup.
+ */
+export function decorateGraphNodesWithMemories(projectRoot: string, nodes: GraphNode[]): void {
+  if (!projectRoot || nodes.length === 0) return;
+
+  const toRel = (f: string): string => {
+    const rel = path.isAbsolute(f) ? path.relative(projectRoot, f) : f;
+    return posixIndexPath(rel);
+  };
+
+  const files: string[] = [];
+  const symbols: string[] = [];
+  for (const node of nodes) {
+    if (node.file) files.push(toRel(node.file));
+    if (node.kind === 'symbol' && node.label) symbols.push(node.label);
+  }
+  if (files.length === 0 && symbols.length === 0) return;
+
+  const insights = findAnchoredSageMemories({
+    projectRoot,
+    files,
+    symbols,
+    limit: 20,
+  });
+  const healthAlerts = findFileHealthAlerts(projectRoot, files);
+  const healthByFile = new Map(healthAlerts.map((h) => [h.file, h]));
+
+  if (insights.length === 0 && healthByFile.size === 0) return;
+
+  for (const node of nodes) {
+    if (node.kind === 'package') continue;
+    const relFile = node.file ? toRel(node.file) : undefined;
+    if (relFile) {
+      const health = healthByFile.get(relFile);
+      if (health) {
+        if (health.isFragile) node.isFragile = true;
+        if (health.recentThrashingCount > 0) node.thrashingCount = health.recentThrashingCount;
+        node.healthScore = health.healthScore;
+        if (health.lockOwner) node.lockOwner = health.lockOwner;
+      }
+    }
+    const matched = insights.filter((m) => {
+      if (node.kind === 'symbol') {
+        if (m.anchorSymbol && m.anchorSymbol === node.label) {
+          return !m.anchorPath || !relFile || posixIndexPath(m.anchorPath) === relFile;
+        }
+        return false;
+      }
+      return Boolean(relFile && m.anchorPath && posixIndexPath(m.anchorPath) === relFile);
+    });
+    if (matched.length > 0) {
+      node.memoryCount = matched.length;
+      node.memories = matched.map((m) => ({
+        id: m.id,
+        kind: m.kind,
+        text: m.text,
+      }));
+    }
+  }
 }

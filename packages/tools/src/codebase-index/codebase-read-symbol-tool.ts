@@ -12,6 +12,7 @@
 import { type Tool, ToolValidationError } from '@wrongstack/core/types';
 import { safeResolveProjectPath } from '../_util.js';
 import { readSymbolInFile } from './ast-symbol-reader.js';
+import { type AnchoredSageInsight, findAnchoredSageMemories } from './ecosystem-bridge.js';
 
 export interface CodebaseReadSymbolInput {
   /** Target file path (relative to project root or absolute within project). */
@@ -36,6 +37,8 @@ export interface CodebaseReadSymbolOutput {
   totalLines: number;
   /** Numbered source code in standard `N→content` display format. */
   text: string;
+  /** Active SAGE memories anchored to this symbol or file, when present. */
+  relatedMemories?: AnchoredSageInsight[] | undefined;
 }
 
 export const codebaseReadSymbolTool: Tool<CodebaseReadSymbolInput, CodebaseReadSymbolOutput> = {
@@ -133,6 +136,13 @@ export const codebaseReadSymbolTool: Tool<CodebaseReadSymbolInput, CodebaseReadS
       projectRoot,
     );
 
+    const relatedMemories = findAnchoredSageMemories({
+      projectRoot,
+      files: [result.file],
+      symbols: [result.symbol],
+      limit: 5,
+    });
+
     // Keep the programmatic reader's raw source out of model-visible output.
     return {
       file: result.file,
@@ -142,6 +152,7 @@ export const codebaseReadSymbolTool: Tool<CodebaseReadSymbolInput, CodebaseReadS
       endLine: result.endLine,
       totalLines: result.totalLines,
       text: result.text,
+      ...(relatedMemories.length > 0 ? { relatedMemories } : {}),
     };
   },
 };

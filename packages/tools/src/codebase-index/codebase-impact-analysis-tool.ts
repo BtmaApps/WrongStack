@@ -8,11 +8,18 @@
  * })
  */
 
+import { existsSync } from 'node:fs';
 import * as path from 'node:path';
 import type { Tool } from '@wrongstack/core/types';
 import { ToolValidationError } from '@wrongstack/core/types';
 import { toErrorMessage } from '@wrongstack/core/utils';
 import { codebaseIndexStats, getIndexState, incomingCallsService } from './background-indexer.js';
+import {
+  type AnchoredFileHealth,
+  type AnchoredSageInsight,
+  findAnchoredSageMemories,
+  findFileHealthAlerts,
+} from './ecosystem-bridge.js';
 import type { CallSite } from './schema.js';
 import { codebaseIndexDirOverride } from './writer.js';
 
@@ -52,6 +59,10 @@ export interface ImpactAnalysisOutput {
   symbolFound?: boolean;
   /** True when a previous generation's cached answer was served during a refresh. */
   stale?: boolean | undefined;
+  /** Active SAGE memories anchored to this symbol or its affected files. */
+  relatedMemories?: AnchoredSageInsight[] | undefined;
+  /** WrongTrace file fragility / thrashing / lock alerts for affected files. */
+  fileHealthAlerts?: AnchoredFileHealth[] | undefined;
 }
 
 export type CodebaseImpactAnalysisOutput = ImpactAnalysisOutput;
@@ -69,6 +80,50 @@ const TEST_FILE_REGEX =
 /** Whether a project-relative path looks like a test, fixture, mock, or bench file. */
 export function isTestFilePath(relPath: string): boolean {
   return TEST_FILE_REGEX.test(relPath);
+}
+
+/**
+ * Discover companion test files by naming convention (`foo.test.ts`,
+ * `foo.spec.ts`, `__tests__/foo.test.ts`, `tests/foo.test.ts`, `foo_test.go`,
+ * `test_foo.py`) that exist on disk under `projectRoot`.
+ */
+export function discoverConventionTestFiles(
+  projectRoot: string,
+  prodRelFiles: readonly string[],
+): string[] {
+  const discovered = new Set<string>();
+  for (const rel of prodRelFiles) {
+    const norm = rel.replace(/\\/g, '/');
+    if (!norm || isTestFilePath(norm)) continue;
+    const ext = path.posix.extname(norm);
+    if (!ext) continue;
+    const dir = path.posix.dirname(norm);
+    const stem = path.posix.basename(norm, ext);
+    const candidates = [
+      path.posix.join(dir, `${stem}.test${ext}`),
+      path.posix.join(dir, `${stem}.spec${ext}`),
+      path.posix.join(dir, '__tests__', `${stem}.test${ext}`),
+      path.posix.join(dir, '__tests__', `${stem}.spec${ext}`),
+      path.posix.join('tests', `${stem}.test${ext}`),
+      path.posix.join('tests', `${stem}.spec${ext}`),
+      path.posix.join('test', `${stem}.test${ext}`),
+      ...(ext === '.go' ? [path.posix.join(dir, `${stem}_test.go`)] : []),
+      ...(ext === '.py'
+        ? [
+            path.posix.join(dir, `test_${stem}.py`),
+            path.posix.join(dir, `${stem}_test.py`),
+            path.posix.join('tests', `test_${stem}.py`),
+          ]
+        : []),
+    ];
+    for (const candidate of candidates) {
+      const clean = candidate.replace(/^\.\//, '');
+      if (existsSync(path.resolve(projectRoot, clean))) {
+        discovered.add(clean);
+      }
+    }
+  }
+  return [...discovered];
 }
 
 export const codebaseImpactAnalysisTool: Tool<ImpactAnalysisInput, ImpactAnalysisOutput> = {
@@ -234,6 +289,13 @@ export const codebaseImpactAnalysisTool: Tool<ImpactAnalysisInput, ImpactAnalysi
       });
     }
 
+    for (const convTest of discoverConventionTestFiles(projectRoot, [
+      ...(input.file ? [input.file] : []),
+      ...directProdFilesSet,
+    ])) {
+      testFilesSet.add(convTest);
+    }
+
     const prodFiles = [...prodFilesSet];
     const testFiles = [...testFilesSet];
     const directProdFiles = [...directProdFilesSet];
@@ -294,6 +356,35 @@ export const codebaseImpactAnalysisTool: Tool<ImpactAnalysisInput, ImpactAnalysi
       summary += ` Index refresh in progress; served from the previous generation — call sites in files being indexed may lag.`;
     }
 
+    const relatedMemories = findAnchoredSageMemories({
+      projectRoot,
+      files: [...(input.file ? [input.file] : []), ...directProdFiles.slice(0, 5)],
+      symbols: [input.symbol],
+      limit: 5,
+    });
+    if (relatedMemories.length > 0) {
+      recommendedActionPlan.push(
+        `Check ${relatedMemories.length} anchored SAGE memory insight(s): ${relatedMemories
+          .map((m) => `[${m.kind}] ${m.text}`)
+          .slice(0, 2)
+          .join(' | ')}`,
+      );
+    }
+
+    const fileHealthAlerts = findFileHealthAlerts(projectRoot, [
+      ...(input.file ? [input.file] : []),
+      ...directProdFiles.slice(0, 10),
+    ]);
+    if (fileHealthAlerts.some((h) => h.isFragile)) {
+      if (riskLevel === 'low') riskLevel = 'medium';
+      recommendedActionPlan.push(
+        `Caution: ${fileHealthAlerts.filter((h) => h.isFragile).length} affected file(s) are flagged FRAGILE by WrongTrace (${fileHealthAlerts
+          .map((h) => `${h.file} [score=${h.healthScore}, thrash=${h.recentThrashingCount}]`)
+          .slice(0, 3)
+          .join(', ')})`,
+      );
+    }
+
     return {
       status: 'ok',
       symbol: input.symbol,
@@ -306,6 +397,8 @@ export const codebaseImpactAnalysisTool: Tool<ImpactAnalysisInput, ImpactAnalysi
       recommendedActionPlan,
       symbolFound: true,
       ...(stale ? { stale: true } : {}),
+      ...(relatedMemories.length > 0 ? { relatedMemories } : {}),
+      ...(fileHealthAlerts.length > 0 ? { fileHealthAlerts } : {}),
     };
   },
 };

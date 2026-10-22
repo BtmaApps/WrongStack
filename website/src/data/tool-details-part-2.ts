@@ -5,35 +5,6 @@
 import type { ToolDetail } from './tool-detail-types';
 
 export const toolDetailsPart2: Record<string, ToolDetail> = {
-  e2e_plan: {
-    longDescription:
-      'Create an end-to-end test plan from a feature or user flow. Use it to identify scenarios and acceptance coverage; it plans tests rather than executing them.',
-    params: [
-      {
-        name: 'cwd',
-        type: 'string',
-        description: 'Directory inside the project to inspect.',
-      },
-      {
-        name: 'framework',
-        type: "'all' | 'playwright' | 'cypress'",
-        description: 'Optional framework filter; defaults to all.',
-      },
-      {
-        name: 'maxDepth',
-        type: 'integer',
-        description: 'Maximum workspace discovery depth; defaults to 5.',
-      },
-      {
-        name: 'includeSpecs',
-        type: 'boolean',
-        description: 'Count and sample specs; defaults to true.',
-      },
-    ],
-    notes: [
-      'Use before running browser E2E tests. The result identifies authoritative configs, package scripts, static server hints, specs, and exact argv.',
-    ],
-  },
   read: {
     longDescription:
       'Read a project file safely, with optional line ranges and binary-aware output. Use it to inspect source before editing; paths must stay within the project.',
@@ -1480,6 +1451,121 @@ export const toolDetailsPart2: Record<string, ToolDetail> = {
     notes: [
       'Use `dry_run: true` to see what would happen without modifying files.',
       'On failure it creates .rej and .orig files for manual review.',
+    ],
+  },
+  json: {
+    longDescription:
+      'Read, query, validate, or merge JSON/JSON5/YAML files while preserving valid structure (read-only — does not write). Use it instead of raw text edits when reading or querying structured data.',
+    params: [
+      {
+        name: 'action',
+        type: "'parse' | 'query' | 'validate' | 'transform' | 'merge'",
+        description:
+          'Operation (default: parse). parse=read/pretty-print, query=JMESPath, validate=schema, transform=chained queries, merge=deep merge.',
+      },
+      {
+        name: 'file',
+        type: 'string',
+        description: 'Path to a JSON file (parse/query/validate/transform)',
+      },
+      {
+        name: 'data',
+        type: 'string',
+        description: 'JSON string (parse/query/validate/transform, alternative to file)',
+      },
+      {
+        name: 'format',
+        type: "'json' | 'json5' | 'yaml'",
+        description: 'Output format for parse/query/transform (default: json)',
+      },
+      {
+        name: 'query',
+        type: 'string',
+        description: 'JMESPath-like query expression (query action)',
+      },
+      {
+        name: 'transforms',
+        type: 'string[]',
+        description: 'Ordered JMESPath query strings (transform action)',
+      },
+      {
+        name: 'schema',
+        type: 'object',
+        description: 'JSON Schema to validate against (validate action)',
+      },
+      {
+        name: 'base',
+        type: 'unknown',
+        description: 'Base JSON object (merge action)',
+      },
+      {
+        name: 'patch',
+        type: 'unknown',
+        description: 'Patch JSON object to merge in (merge action)',
+      },
+      {
+        name: 'conflictResolution',
+        type: "'prefer-base' | 'prefer-patch'",
+        description: 'Merge conflict resolution (default: prefer-patch)',
+      },
+      {
+        name: 'validate',
+        type: 'boolean',
+        description: 'Validate syntax only, no output (parse action, default: false)',
+      },
+    ],
+    notes: [
+      '`action: "parse"` (default): read/pretty-print/convert JSON, JSON5, or YAML from `file` or `data`.',
+      '`action: "query"`: JMESPath-like query (`a.b[0].c`, `items[*].name`, filters, functions).',
+      '`action: "validate"`: validate data against a JSON Schema (`schema` param).',
+    ],
+  },
+  diff: {
+    longDescription:
+      'Show file content with line numbers, staged/working-tree diffs via git, or commit/branch diffs. A safer and more structured alternative to raw `git diff` via shell.',
+    params: [
+      {
+        name: 'path',
+        type: 'string',
+        description: 'Working directory for the diff operation (defaults to project root).',
+      },
+      {
+        name: 'files',
+        type: 'string',
+        description: 'Files or globs to diff (e.g. "src/**/*.ts" or comma-separated list).',
+      },
+      {
+        name: 'a',
+        type: 'string',
+        description: 'First ref/commit/branch for git diff (e.g. HEAD, main, a commit hash).',
+      },
+      {
+        name: 'b',
+        type: 'string',
+        description: 'Second ref/commit/branch for git diff.',
+      },
+      {
+        name: 'staged',
+        type: 'boolean',
+        description: 'If true, only show changes that are staged in git.',
+      },
+      {
+        name: 'mode',
+        type: "'unified' | 'side-by-side' | 'stat'",
+        description:
+          'Output format for the git-diff path. "unified" is default; "stat" shows a summary only; "side-by-side" is not supported and falls back to unified. The `files`-only dump path ignores this.',
+      },
+      {
+        name: 'context',
+        type: 'integer',
+        description:
+          'Number of context lines for git unified diffs (default: 3, passed as -U<n>). Ignored by the `files`-only dump path.',
+      },
+    ],
+    notes: [
+      '`files` + no `a`/`b` → show file content with line numbers (NOT a unified diff; no +/- prefixes).',
+      '`a` and/or `b` → git-style commit/branch diff (unified format, real +/- prefixes).',
+      '`staged: true` → only show staged changes.',
     ],
   },
 };

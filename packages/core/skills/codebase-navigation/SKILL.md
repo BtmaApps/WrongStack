@@ -48,13 +48,15 @@ same moves work with glob, grep, and ranged reads.
 
 | Need | With the codebase index | Without it |
 |---|---|---|
-| Architecture at a glance | codebase-repo-map tool (hub files ranked by centrality) | Manifests, top-level directories, entry points |
+| Architecture at a glance | codebase-repo-map tool (hub files ranked by centrality) or codebase-onboard tool (dependency-ordered guided tour) | Manifests, top-level directories, entry points |
+| End-to-end execution flow | codebase-flow-trace tool (entry-point discovery + forward call slice) | Route table / CLI registry + manual 1-hop callee reads |
 | Code for a described behaviour | codebase-context tool | grep for domain words; glob for likely file names |
 | A symbol by name or kind | codebase-search tool | grep for the declaration |
 | A module's contract | codebase-skeleton tool | Read only exports and type definitions |
 | Specific declaration / implementation | codebase-read-symbol tool | Ranged read with offset and limit |
 | Who calls this, what it calls | codebase-incoming-calls and codebase-outgoing-calls tools | grep the name, read the call sites |
 | What breaks if it changes | codebase-impact-analysis tool | Callers plus the tests that import it |
+| Blast radius of a git diff / PR | codebase-diff-impact tool (modified symbols, callers, invariants, tests, SAGE memories) | git diff + manual caller and test inspection |
 | Whether the index is trustworthy | codebase-stats tool; codebase-index tool to build or refresh | — |
 | Exact strings and config keys | grep | grep |
 

@@ -3,6 +3,12 @@
  * relation and rank passes, Git blob trust stamps, and the result.
  */
 
+import * as path from 'node:path';
+import {
+  detectMovedOrRenamedSymbols,
+  remapAnchoredSageMemories,
+  type SymbolSnapshotItem,
+} from './ecosystem-bridge.js';
 import { runGraphRankPass, shouldRefreshRanks } from './graph-rank-pass.js';
 import {
   computeGitSnapshotKey,
@@ -73,6 +79,17 @@ export async function finalizeIndexRun(
   if (discoveredFiles && discoveryComplete && !clearedAll) {
     for (const [file_] of existingMeta) {
       if (!discoveredFiles.has(file_)) {
+        if (run.prevSymbolsForHeal) {
+          for (const sym of store.search('', { file: file_ })) {
+            run.prevSymbolsForHeal.push({
+              name: sym.name,
+              kind: sym.kind,
+              file: sym.file,
+              line: sym.line,
+              signature: sym.signature,
+            });
+          }
+        }
         store.deleteFile(file_);
         deleted.add(file_);
       }
@@ -174,6 +191,26 @@ export async function finalizeIndexRun(
     store.setMetadata(GRAPH_STAMP_KEY, `${Date.now()}:${changedFiles}`);
   }
   if (changedFiles > 0 || !opts.files) store.setLastIndexed(Date.now());
+  if (
+    run.prevSymbolsForHeal &&
+    run.nextSymbolsForHeal &&
+    run.prevSymbolsForHeal.length > 0 &&
+    run.nextSymbolsForHeal.length > 0
+  ) {
+    const toRel = (s: SymbolSnapshotItem): SymbolSnapshotItem => {
+      const rel = path.isAbsolute(s.file)
+        ? path.relative(projectRoot, s.file).replace(/\\/g, '/')
+        : s.file.replace(/\\/g, '/');
+      return { ...s, file: rel };
+    };
+    const moves = detectMovedOrRenamedSymbols(
+      run.prevSymbolsForHeal.map(toRel),
+      run.nextSymbolsForHeal.map(toRel),
+    );
+    if (moves.length > 0) {
+      remapAnchoredSageMemories(projectRoot, moves);
+    }
+  }
   const durationMs = Date.now() - startMs;
 
   return {

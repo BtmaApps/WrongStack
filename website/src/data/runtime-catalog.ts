@@ -604,6 +604,38 @@ export const toolCatalog = [
     mutating: true,
     category: 'Generation & design',
   },
+  {
+    name: 'codebase-diff-impact',
+    summary:
+      'Analyze the blast radius of current git changes (working tree, staged diff, or commit/branch range): modified symbols, direct/transitive callers, AST contract invariant violations, and impacted test suites.',
+    permission: 'auto',
+    mutating: false,
+    category: 'Discovery & index',
+  },
+  {
+    name: 'codebase-flow-trace',
+    summary:
+      'Discover architectural entry points (HTTP routes, CLI commands, tools, handlers, main orchestrators) and trace their forward execution flows step-by-step across the call graph.',
+    permission: 'auto',
+    mutating: false,
+    category: 'Discovery & index',
+  },
+  {
+    name: 'codebase-onboard',
+    summary:
+      'Generate a dependency-ordered Guided Architectural Tour and Onboarding Guide combining PageRank hubs, Louvain community clusters, crux line spans, and primary execution flows.',
+    permission: 'auto',
+    mutating: false,
+    category: 'Discovery & index',
+  },
+  {
+    name: 'codebase-atlas',
+    summary:
+      'Inspect or project the Codebase Atlas: PageRank hubs, subsystem summaries, concept coverage, Louvain file communities, and `.wrongstack/atlas/` freshness.',
+    permission: 'auto',
+    mutating: false,
+    category: 'Discovery & index',
+  },
 ] as const;
 
 export const pluginSources = ['Core', 'Suite', 'Bridge'] as const;
@@ -1424,9 +1456,9 @@ export const PLUGIN_COUNT = pluginCatalog.length;
  */
 // generated:tool-tier-counts
 export const TOOL_TIER_COUNTS = {
-  off: 74,
-  minimal: 29,
-  light: 29,
-  medium: 53,
-  aggressive: 29,
+  off: 78,
+  minimal: 30,
+  light: 30,
+  medium: 54,
+  aggressive: 30,
 } as const;

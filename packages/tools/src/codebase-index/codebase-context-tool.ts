@@ -21,6 +21,7 @@ import { ToolValidationError } from '@wrongstack/core/types';
 import { toErrorMessage } from '@wrongstack/core/utils';
 import { codebaseContext, codebaseVectorSearch } from './background-indexer.js';
 import type { ContextEntry } from './context-retrieval.js';
+import { type AnchoredSageInsight, findAnchoredSageMemories } from './ecosystem-bridge.js';
 import type { EmbeddingPort } from './embedding-pass.js';
 import { codebaseIndexDirOverride } from './writer.js';
 
@@ -52,6 +53,8 @@ export interface CodebaseContextOutput {
   indexStatus: 'ok' | 'no-matches' | 'unranked';
   /** True when a cached answer from a previous generation was served. */
   stale?: boolean | undefined;
+  /** Active SAGE memories anchored to the retrieved files or declarations. */
+  relatedMemories?: AnchoredSageInsight[] | undefined;
 }
 
 /** The host watchdog cancels at 30s; ask for slightly more so it wins. */
@@ -211,6 +214,13 @@ export const codebaseContextTool: Tool<CodebaseContextInput, CodebaseContextOutp
         'No codebase index data found. Run /codebase-reindex (or codebase-index), then retry codebase-context.',
       );
     }
+    const relatedMemories = findAnchoredSageMemories({
+      projectRoot,
+      files: result.entries.slice(0, 8).map((e) => e.file),
+      symbols: result.entries.slice(0, 6).flatMap((e) => e.symbols.slice(0, 3).map((s) => s.name)),
+      limit: 5,
+    });
+
     return {
       query: result.query,
       entries: result.entries,
@@ -221,6 +231,7 @@ export const codebaseContextTool: Tool<CodebaseContextInput, CodebaseContextOutp
       ...('stale' in result && (result as { stale?: boolean }).stale === true
         ? { stale: true }
         : {}),
+      ...(relatedMemories.length > 0 ? { relatedMemories } : {}),
     };
   },
 };

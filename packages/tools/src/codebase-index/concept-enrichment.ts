@@ -34,9 +34,21 @@
 import { existsSync } from 'node:fs';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
+import { isTestFilePath } from './codebase-impact-analysis-tool.js';
+import {
+  classifyIncrementalUpdateStrategy,
+  type IncrementalUpdateStrategy,
+} from './fingerprint.js';
 import { detectLang } from './languages.js';
+import { detectStoreFileCommunities } from './louvain.js';
 import { type IndexStore, indexStorePool } from './writer.js';
-import { type FileConcept, isConceptRelation } from './writer-concepts.js';
+import {
+  type ConceptEdge,
+  type FileConcept,
+  isConceptRelation,
+  normalizeConceptRelation,
+  normalizeTestConceptEdge,
+} from './writer-concepts.js';
 import { posixIndexPath, resolveIndexDir } from './writer-helpers.js';
 
 /** What the summariser is given about one file. */
@@ -52,6 +64,12 @@ export interface SummarizeFileInput {
   truncated: boolean;
   /** Declarations the index recorded, as orientation. */
   declarations: ReadonlyArray<{ name: string; kind: string; line: number }>;
+  /**
+   * 1-hop imported/referenced neighbor files and their top exported symbols,
+   * allowing the summariser to understand cross-file contracts without reading
+   * neighbor files from disk.
+   */
+  neighborExports?: ReadonlyArray<{ file: string; symbols: readonly string[] }> | undefined;
   /** A previous, now-outdated summary, when one exists. */
   staleSummary?: string | undefined;
   signal?: AbortSignal | undefined;
@@ -71,6 +89,8 @@ export interface SummarizeSubsystemInput {
   /** Package or directory label. */
   name: string;
   files: ReadonlyArray<{ file: string; summary: string; rank: number }>;
+  /** Known peer subsystem names so the model can emit valid target relations. */
+  neighborSubsystems?: readonly string[] | undefined;
   signal?: AbortSignal | undefined;
 }
 
@@ -136,6 +156,8 @@ export interface EnrichResult {
   /** Concepts dropped because their file left the index. */
   pruned: number;
   subsystems: number;
+  /** Incremental update strategy selected from the structural change volume. */
+  updateStrategy?: IncrementalUpdateStrategy | undefined;
   durationMs: number;
   errors: string[];
 }
@@ -222,6 +244,10 @@ export async function enrichConcepts(
     queue.push(file);
   }
 
+  const updateStrategy = classifyIncrementalUpdateStrategy(queue.length);
+  const neighborExportsByFile =
+    queue.length > 0 ? buildNeighborExportsMap(store, queue, relativeOf) : new Map();
+
   let summarised = 0;
   let failed = 0;
   let done = 0;
@@ -242,6 +268,7 @@ export async function enrichConcepts(
           file,
           hashByFile,
           existing,
+          neighborExportsByFile.get(file),
           signal,
         );
         if (result === 'skipped') failed++;
@@ -263,11 +290,14 @@ export async function enrichConcepts(
   await Promise.all(Array.from({ length: Math.min(concurrency, queue.length) }, () => worker()));
 
   let subsystems = 0;
-  if (
+  const shouldDeriveSubsystems =
     options.subsystems === true &&
     port.describeSubsystem !== undefined &&
-    signal?.aborted !== true
-  ) {
+    signal?.aborted !== true &&
+    (options.force === true ||
+      updateStrategy !== 'SKIP_COSMETIC' ||
+      store.getSubsystems().length === 0);
+  if (shouldDeriveSubsystems) {
     try {
       subsystems = await deriveSubsystems(store, port, relativeOf, signal);
     } catch (error) {
@@ -282,9 +312,67 @@ export async function enrichConcepts(
     markedStale,
     pruned,
     subsystems,
+    updateStrategy,
     durationMs: Date.now() - startedAt,
     errors,
   };
+}
+
+/**
+ * Precompute 1-hop outgoing neighbor files and their top exported declarations
+ * for every queued file so `describeFile` receives cross-file contracts without
+ * reading neighbor files from disk.
+ */
+function buildNeighborExportsMap(
+  store: IndexStore,
+  queuedFiles: readonly string[],
+  relativeOf: (file: string) => string,
+): Map<string, ReadonlyArray<{ file: string; symbols: readonly string[] }>> {
+  const result = new Map<string, ReadonlyArray<{ file: string; symbols: readonly string[] }>>();
+  const queuedSet = new Set(queuedFiles);
+  const neighborsByFrom = new Map<string, Set<string>>();
+
+  const fileBySymbolId = new Map<number, string>();
+  for (const sym of store.getAllSymbols()) {
+    fileBySymbolId.set(sym.id, sym.file);
+  }
+
+  for (const ref of store.getAllResolvedRefs()) {
+    const fromFile = fileBySymbolId.get(ref.fromId);
+    const toFile = fileBySymbolId.get(ref.toId);
+    if (!fromFile || !toFile || fromFile === toFile || !queuedSet.has(fromFile)) continue;
+    let set = neighborsByFrom.get(fromFile);
+    if (!set) {
+      set = new Set();
+      neighborsByFrom.set(fromFile, set);
+    }
+    if (set.size < 8) set.add(toFile);
+  }
+
+  const symbolCache = new Map<string, readonly string[]>();
+  for (const [fromFile, neighbors] of neighborsByFrom) {
+    const entries: Array<{ file: string; symbols: readonly string[] }> = [];
+    for (const neighborFile of neighbors) {
+      let syms = symbolCache.get(neighborFile);
+      if (!syms) {
+        const rawSyms = store.getFileSymbols(neighborFile, 16);
+        const exported = rawSyms.filter((s) => s.isExported === true);
+        syms = (exported.length > 0 ? exported : rawSyms)
+          .slice(0, 12)
+          .map((s) => s.name)
+          .filter(Boolean);
+        symbolCache.set(neighborFile, syms);
+      }
+      if (syms.length > 0) {
+        entries.push({ file: relativeOf(neighborFile), symbols: syms });
+      }
+    }
+    if (entries.length > 0) {
+      result.set(fromFile, entries);
+    }
+  }
+
+  return result;
 }
 
 /** Summarise one file and write it. Returns 'skipped' when nothing was stored. */
@@ -295,6 +383,7 @@ async function summariseOne(
   file: string,
   hashByFile: ReadonlyMap<string, string>,
   existing: ReadonlyMap<string, FileConcept>,
+  neighborExports: ReadonlyArray<{ file: string; symbols: readonly string[] }> | undefined,
   signal: AbortSignal | undefined,
 ): Promise<'stored' | 'skipped'> {
   let source: string;
@@ -319,6 +408,7 @@ async function summariseOne(
     source: truncated ? source.slice(0, MAX_SOURCE_CHARS) : source,
     truncated,
     declarations,
+    ...(neighborExports !== undefined && neighborExports.length > 0 ? { neighborExports } : {}),
     ...(stale !== undefined && stale.summary !== '' ? { staleSummary: stale.summary } : {}),
     signal,
   });
@@ -331,6 +421,7 @@ async function summariseOne(
   store.upsertFileConcept({
     file,
     contentHash: hashByFile.get(file) ?? '',
+    signatureHash: store.getFileStructuralFingerprint(file),
     summary: summary.slice(0, MAX_SUMMARY_CHARS),
     cruxStart: crux.start,
     cruxEnd: crux.end,
@@ -383,15 +474,50 @@ async function deriveSubsystems(
     else if (bucket.length < SUBSYSTEM_FILE_SAMPLE) bucket.push(entry);
   }
 
+  // When a single-package repository collapses all files into one coarse bucket
+  // (e.g. `src` or `(root)`), refine the partition using deterministic Louvain
+  // community clustering over the call/import graph so subsystems reflect true
+  // architectural modules.
+  if (byPackage.size <= 1 && ordered.length >= 4) {
+    const communities = detectStoreFileCommunities(store, relativeOf);
+    if (communities.length >= 2) {
+      const communityByRelFile = new Map<string, string>();
+      for (const comm of communities) {
+        for (const member of comm.files) {
+          communityByRelFile.set(member, comm.label);
+        }
+      }
+      byPackage.clear();
+      for (const file of ordered) {
+        const summary = summaries.get(file);
+        if (summary === undefined) continue;
+        const rel = relativeOf(file);
+        const name =
+          communityByRelFile.get(rel) || packageOf.get(file) || rel.split('/')[0] || '(root)';
+        const bucket = byPackage.get(name);
+        const entry = { file: rel, summary, rank: rankOf.get(file) ?? 0 };
+        if (bucket === undefined) byPackage.set(name, [entry]);
+        else if (bucket.length < SUBSYSTEM_FILE_SAMPLE) bucket.push(entry);
+      }
+    }
+  }
+
   const names = [...byPackage.keys()].sort();
   const known = new Set(names);
+  const isTestSub = (subId: string): boolean => {
+    const members = byPackage.get(subId);
+    if (!members || members.length === 0) return isTestFilePath(subId);
+    const testCount = members.filter((m) => isTestFilePath(m.file)).length;
+    return testCount > members.length / 2;
+  };
   const subsystems = [];
   const edges = [];
 
   for (const name of names) {
     if (signal?.aborted) break;
     const files = byPackage.get(name) ?? [];
-    const result = await describe({ name, files, signal });
+    const neighborSubsystems = names.filter((n) => n !== name);
+    const result = await describe({ name, files, neighborSubsystems, signal });
     const summary = result?.summary?.trim() ?? '';
     if (summary.length === 0) continue;
     subsystems.push({
@@ -404,15 +530,96 @@ async function deriveSubsystems(
     });
     for (const relation of result?.relations ?? []) {
       // Relations to subsystems we did not derive, and verbs outside the closed
-      // vocabulary, are dropped rather than stored as dangling edges.
+      // vocabulary (after synonym normalization), are dropped rather than stored
+      // as dangling edges.
       if (!known.has(relation.to) || relation.to === name) continue;
-      if (!isConceptRelation(relation.relation)) continue;
-      edges.push({ fromId: name, toId: relation.to, relation: relation.relation });
+      const canonical = isConceptRelation(relation.relation)
+        ? relation.relation
+        : normalizeConceptRelation(relation.relation);
+      if (!canonical) continue;
+      edges.push(
+        normalizeTestConceptEdge(
+          { fromId: name, toId: relation.to, relation: canonical },
+          isTestSub,
+        ),
+      );
     }
+  }
+
+  if (subsystems.length >= 2) {
+    const recovered = recoverSubsystemConceptEdges(store, byPackage, edges);
+    edges.push(...recovered);
   }
 
   store.replaceSubsystems(subsystems, edges);
   return subsystems.length;
+}
+
+/**
+ * Deterministic Import/Ref Recovery for subsystem concept edges:
+ * When two derived subsystems have concrete package-graph or file-graph
+ * references between them that the LLM summarizer omitted, recover a canonical
+ * `uses` edge so architectural dependencies are never lost.
+ */
+export function recoverSubsystemConceptEdges(
+  store: IndexStore,
+  bySubsystem: ReadonlyMap<string, ReadonlyArray<{ file: string }>>,
+  existingEdges: readonly ConceptEdge[],
+): ConceptEdge[] {
+  const known = new Set(bySubsystem.keys());
+  if (known.size < 2) return [];
+
+  const seenPairs = new Set<string>(existingEdges.map((e) => `${e.fromId}\u0000${e.toId}`));
+  const recovered: ConceptEdge[] = [];
+
+  for (const pkgEdge of store.getPackageGraph().edges) {
+    const fromId = pkgEdge.source.replace(/^pkg:/, '');
+    const toId = pkgEdge.target.replace(/^pkg:/, '');
+    if (fromId === toId || !known.has(fromId) || !known.has(toId)) continue;
+    const pairKey = `${fromId}\u0000${toId}`;
+    if (!seenPairs.has(pairKey)) {
+      seenPairs.add(pairKey);
+      recovered.push({ fromId, toId, relation: 'uses' });
+    }
+  }
+
+  // Also recover cross-subsystem edges from resolved file-level references
+  // (essential when subsystems are partitioned via Louvain communities in a
+  // single-package repository).
+  const subsystemByMemberPath = new Map<string, string>();
+  for (const [subName, members] of bySubsystem) {
+    for (const m of members) {
+      subsystemByMemberPath.set(m.file.replace(/\\/g, '/'), subName);
+    }
+  }
+  const matchSubsystem = (rawPath: string): string | undefined => {
+    const norm = rawPath.replace(/\\/g, '/');
+    const direct = subsystemByMemberPath.get(norm);
+    if (direct) return direct;
+    for (const [relFile, subName] of subsystemByMemberPath) {
+      if (norm.endsWith(`/${relFile}`)) return subName;
+    }
+    return undefined;
+  };
+  const fileBySymbolId = new Map<number, string>();
+  for (const sym of store.getAllSymbols()) {
+    fileBySymbolId.set(sym.id, sym.file);
+  }
+  for (const refEdge of store.getAllResolvedRefs()) {
+    const fromFile = fileBySymbolId.get(refEdge.fromId);
+    const toFile = fileBySymbolId.get(refEdge.toId);
+    if (!fromFile || !toFile) continue;
+    const fromSub = matchSubsystem(fromFile);
+    const toSub = matchSubsystem(toFile);
+    if (!fromSub || !toSub || fromSub === toSub) continue;
+    const pairKey = `${fromSub}\u0000${toSub}`;
+    if (!seenPairs.has(pairKey)) {
+      seenPairs.add(pairKey);
+      recovered.push({ fromId: fromSub, toId: toSub, relation: 'uses' });
+    }
+  }
+
+  return recovered;
 }
 
 /** Reported when a project has no index to enrich. */

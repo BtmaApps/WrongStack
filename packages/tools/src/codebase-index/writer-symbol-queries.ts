@@ -77,7 +77,15 @@ export function getFileSymbols(
   this: WriterSymbolQueriesHost,
   file: string,
   limit: number,
-): Array<{ id: number; name: string; kind: string; line: number; signature: string }> {
+): Array<{
+  id: number;
+  name: string;
+  kind: string;
+  line: number;
+  endLine?: number | undefined;
+  isExported?: boolean | undefined;
+  signature: string;
+}> {
   return getFileSymbolsWithStatement((sql) => this.stmt(sql), file, limit);
 }
 

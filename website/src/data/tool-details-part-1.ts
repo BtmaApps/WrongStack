@@ -387,4 +387,33 @@ export const toolDetailsPart1: Record<string, ToolDetail> = {
       },
     ],
   },
+  e2e_plan: {
+    longDescription:
+      'Create an end-to-end test plan from a feature or user flow. Use it to identify scenarios and acceptance coverage; it plans tests rather than executing them.',
+    params: [
+      {
+        name: 'cwd',
+        type: 'string',
+        description: 'Directory inside the project to inspect.',
+      },
+      {
+        name: 'framework',
+        type: "'all' | 'playwright' | 'cypress'",
+        description: 'Optional framework filter; defaults to all.',
+      },
+      {
+        name: 'maxDepth',
+        type: 'integer',
+        description: 'Maximum workspace discovery depth; defaults to 5.',
+      },
+      {
+        name: 'includeSpecs',
+        type: 'boolean',
+        description: 'Count and sample specs; defaults to true.',
+      },
+    ],
+    notes: [
+      'Use before running browser E2E tests. The result identifies authoritative configs, package scripts, static server hints, specs, and exact argv.',
+    ],
+  },
 };

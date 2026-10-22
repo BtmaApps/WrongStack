@@ -90,6 +90,8 @@ export const EXT_TO_LANG: Readonly<Record<string, SymbolLang>> = {
   '.proto': 'proto',
   '.graphql': 'graphql',
   '.gql': 'graphql',
+  '.tf': 'other',
+  '.tfvars': 'other',
 };
 
 /** Sorted unique extension list for discovery walks. */

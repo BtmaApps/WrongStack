@@ -90,6 +90,12 @@ export interface Symbol {
   docComment: string; // JSDoc / docstring first line
   scope: string; // e.g. "MyClass.method" or module-level ""
   text: string; // concatenated searchable text: name + signature + docComment
+  /** Optional 1-based inclusive end line of the symbol declaration. */
+  endLine?: number | undefined;
+  /** Whether the symbol is exported / publicly visible at module scope. */
+  isExported?: boolean | undefined;
+  /** Deterministic structural signature hash for fine-grained change classification. */
+  signatureHash?: string | undefined;
 }
 
 /** Extracted symbols and cross-references for one file. */
@@ -314,6 +320,18 @@ export interface GraphNode {
   subsystem?: string | undefined;
   /** `files.mtime_ms` — last modification, for recency shading. */
   lastModifiedMs?: number | undefined;
+  /** Number of active SAGE memories anchored to this node's file or symbol. */
+  memoryCount?: number | undefined;
+  /** Active SAGE institutional memories anchored to this node. */
+  memories?: Array<{ id: string; kind: string; text: string }> | undefined;
+  /** True when WrongTrace marks this file as fragile / high-churn. */
+  isFragile?: boolean | undefined;
+  /** Number of recent edit/revert thrashing cycles reported by WrongTrace. */
+  thrashingCount?: number | undefined;
+  /** WrongTrace file health score (0..100). */
+  healthScore?: number | undefined;
+  /** Active WrongTrace file lock owner when locked by an agent. */
+  lockOwner?: string | undefined;
 }
 
 /** A directed edge: source references / depends-on target. */
