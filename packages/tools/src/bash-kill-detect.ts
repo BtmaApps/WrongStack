@@ -93,7 +93,13 @@ const POWERSHELL_LAUNCHER_VALUE_FLAGS = new Set([
  * (-File/-EncodedCommand payloads are opaque; nothing left but launcher flags).
  */
 export function stripPowerShellLauncherHead(normalized: string): string | null {
-  const head = normalized.match(/^(?:.*[\\/])?(?:powershell|pwsh)(?:\.exe)?\s+(.+)$/i);
+  // The launcher must BE the first token (optionally `& `-invoked, quoted, or
+  // a path). An unanchored `.*[\\/]pwsh` matched a pwsh path anywhere, so
+  // `kill -9 1234 /usr/bin/pwsh -c x` was handed to the PowerShell parser,
+  // which found no kill: the POSIX kill of 1234 went unguarded.
+  const head = normalized.match(
+    /^(?:&\s*)?(?:"(?:[^"]*[\\/])?|'(?:[^']*[\\/])?|[^\s"']*[\\/])?(?:powershell|pwsh)(?:\.exe)?["']?\s+(.+)$/i,
+  );
   if (!head?.[1]) return null;
   const tokens = head[1].split(/\s+/);
   let expectsValue = false;
