@@ -386,26 +386,58 @@ function parseJunkOperandKill(command: string): KillCommand | null {
 async function checkSingleCommand(
   command: string,
   depth = 0,
-  budget = { left: READING_BUDGET },
+  work: ReadingWork = { left: READING_BUDGET, seen: new Set() },
 ): Promise<KillCheckResult> {
   const counted = await checkOneReading(command);
-  if (counted.blocked || depth >= MAX_READING_DEPTH) return counted;
+  if (counted.blocked) return counted;
   // Every other reading goes through the same sequencing split as the
   // top-level line: `nice --adjustment 5 sh -c 'true; kill <pid>'` and a bare
   // `sh -c 'true; kill <pid>'` hid the kill behind the payload's `;`.
-  for (const reading of alternativeReadings(command)) {
-    for (const segment of splitShellSequence(reading)) {
-      if (budget.left-- <= 0) return counted;
-      const result = await checkSingleCommand(segment, depth + 1, budget);
-      if (result.blocked) return result;
+  const segments = alternativeReadings(command)
+    .flatMap((reading) => splitShellSequence(reading))
+    .filter((segment) => !work.seen.has(segment));
+  for (let s = 0; s < segments.length; s++) {
+    const segment = segments[s]!;
+    if (work.seen.has(segment)) continue;
+    // Out of depth or work with readings left: a kill among them would go
+    // unchecked, so refuse it rather than allow it.
+    if (depth >= MAX_READING_DEPTH || work.left-- <= 0) {
+      return segments.slice(s).some(looksLikeKill) ? TOO_COMPLEX : counted;
     }
+    work.seen.add(segment);
+    const result = await checkSingleCommand(segment, depth + 1, work);
+    if (result.blocked) return result;
   }
   return counted;
 }
 
-/** Nested readings and checks per command; bounds a hostile `nice nice …` line. */
-const MAX_READING_DEPTH = 3;
-const READING_BUDGET = 64;
+/**
+ * Bounds on nested readings. A segment already checked in this call is not
+ * checked again, which keeps a hostile `nice nice …` chain linear.
+ */
+const MAX_READING_DEPTH = 6;
+const READING_BUDGET = 256;
+
+interface ReadingWork {
+  left: number;
+  seen: Set<string>;
+}
+
+const TOO_COMPLEX: KillCheckResult = {
+  blocked: true,
+  reason:
+    'Blocked: kill command too complex to verify against protected WrongStack processes — ' +
+    'simplify it (one kill, no nested shells or launcher chains).',
+};
+
+/** Cheap test for a segment that could still run a kill. */
+function looksLikeKill(segment: string): boolean {
+  return (
+    isKillRelatedCommand(segment) ||
+    isKillRelatedCommand(unwrapKillCommandHead(segment)) ||
+    extractKillCommand(segment) !== null
+  );
+}
 
 /**
  * Readings of a command other than the one `checkOneReading` takes: the

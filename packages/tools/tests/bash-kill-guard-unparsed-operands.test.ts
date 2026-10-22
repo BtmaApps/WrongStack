@@ -171,6 +171,35 @@ describe('bash-kill-guard — unparsed POSIX kill operands', () => {
     expect(unquoteShellWord("$'\\u00341'")).toBe('41');
   });
 
+  // The words after a -c payload are its $0, $1 …; measured in bash:
+  // `sh -c '$0 -9 $1' kill <pid>` kills <pid>.
+  it.each([
+    `sh -c '$0 -9 $1' kill ${PROTECTED_PID}`,
+    `sh -c '"$@"' x kill -9 ${PROTECTED_PID}`,
+    `bash -c '$1 -9 $2' _ kill ${PROTECTED_PID}`,
+    `sh -c '\${1} -9 \${2}' _ kill ${PROTECTED_PID}`,
+    `sh -c 'exec "$@"' sh kill -9 ${PROTECTED_PID}`,
+  ])('blocks %j through its positional arguments', async (command) => {
+    const { checkAndBlockKillCommand } = await loadGuard();
+    const result = await checkAndBlockKillCommand(command);
+    expect(result.blocked).toBe(true);
+    expect(result.reason).toContain(String(PROTECTED_PID));
+  });
+
+  it('refuses rather than allows a kill left unchecked when the work runs out', async () => {
+    const { checkAndBlockKillCommand } = await loadGuard();
+    const kill = `sh -c '${'true; '.repeat(300)}kill -9 ${PROTECTED_PID}'`;
+    expect((await checkAndBlockKillCommand(kill)).blocked).toBe(true);
+    const harmless = `sh -c '${'true; '.repeat(300)}echo done'`;
+    expect((await checkAndBlockKillCommand(harmless)).blocked).toBe(false);
+  });
+
+  it('allows a deep launcher chain ending in an unprotected kill', async () => {
+    const { checkAndBlockKillCommand } = await loadGuard();
+    const result = await checkAndBlockKillCommand('sudo nice timeout 5 nohup setsid kill 111');
+    expect(result).toEqual({ blocked: false });
+  });
+
   it('settles a long chain of launchers quickly', async () => {
     const { checkAndBlockKillCommand } = await loadGuard();
     const chain = `${'nice '.repeat(40)}kill -9 ${PROTECTED_PID}`;

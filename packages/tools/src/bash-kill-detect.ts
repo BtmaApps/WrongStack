@@ -52,7 +52,25 @@ export interface KillCheckResult {
  * `true; kill <pid>` is not kill-shaped as a whole line.
  */
 function payloadRunsKill(payload: string): boolean {
-  return splitShellSequence(payload).some((segment) => isKillRelatedCommand(segment));
+  return splitShellSequence(payload).some(
+    (segment) =>
+      isKillRelatedCommand(segment) || isKillRelatedCommand(unwrapKillCommandHead(segment)),
+  );
+}
+
+/**
+ * The payload with the shell's positional parameters filled in from the words
+ * after it: `sh -c '$0 -9 $1' kill 123` runs `kill -9 123`. `$0`–`$9`,
+ * `${N}`, `$@` and `$*` are expanded; anything else stays as written.
+ */
+function expandPositional(payload: string, args: readonly string[]): string {
+  return payload
+    .replace(/\$[@*]|\$\{[@*]\}/g, () => args.slice(1).join(' '))
+    .replace(
+      /\$\{(\d+)\}|\$(\d)/g,
+      (_m, braced: string | undefined, bare: string | undefined) =>
+        args[Number(braced ?? bare)] ?? '',
+    );
 }
 
 export function extractKillCommand(command: string): string | null {
@@ -68,6 +86,11 @@ export function extractKillCommand(command: string): string | null {
   const payloadWord = flag === -1 ? undefined : words[flag + 1];
   if (payloadWord !== undefined && /['"\\$]/.test(payloadWord)) {
     const inner = unquoteShellWord(payloadWord).replace(/\s+/g, ' ').trim();
+    // The words after the payload are its $0, $1 …
+    const args = words.slice(flag + 2).map(unquoteShellWord);
+    // Re-read word by word: `"$@"` and `"$1"` leave quotes around what they expand to.
+    const expanded = splitShellWords(expandPositional(inner, args)).map(unquoteShellWord).join(' ');
+    if (expanded !== inner && payloadRunsKill(expanded)) return expanded;
     if (payloadRunsKill(inner)) return inner;
   }
 
