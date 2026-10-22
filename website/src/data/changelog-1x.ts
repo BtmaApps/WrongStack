@@ -12,10 +12,23 @@ import type { ChangelogEntry } from './changelog-types';
 
 export const changelog1x: ChangelogEntry[] = [
   {
+    version: '1.1.14',
+    date: '2026-10-23',
+    tagline:
+      'Polyglot codebase intelligence, Louvain community clustering, execution flow slicing and WebUI CodeMap 2.0',
+    latest: true,
+    highlights: [
+      'Four new built-in and MCP codebase intelligence tools: codebase-atlas, codebase-diff-impact, codebase-flow-trace and codebase-onboard',
+      'Structural fingerprinting, >50% body-span drift gates, deterministic Louvain community clustering and 4-layer schema normalization for incremental concept enrichment',
+      'Polyglot infrastructure & schema graph parsing across Dockerfile, docker-compose, GitHub Actions, SQL, GraphQL, Protobuf, Terraform, Kubernetes, OpenAPI, Makefile, CMake, dotenv, Markdown WikiLinks and Shell scripts',
+      'Cross-system SAGE memory anchor healing (file moves and symbol renames) and WrongTrace error/latency health alerts surfaced in codebase impact and context tools',
+      'WebUI CodeMap 2.0 adds BFS shortest-path animation, 0/1/2-hop blast radius rings, collapsible Louvain subsystem clusters, persona-aware guided tours and one-click execution flow tracing',
+    ],
+  },
+  {
     version: '1.1.13',
     date: '2026-10-22',
     tagline: 'Durable MCP tasks, automation environments and refreshed runtimes',
-    latest: true,
     highlights: [
       'Durable MCP tasks support multi-round requests, a recovery journal and a WebUI tasks panel, with modern protocol probing and an explicit legacy mode',
       'Pick an element in the live browser view and add it to the prompt',

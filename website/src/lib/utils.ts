@@ -14,7 +14,7 @@ export function cn(...inputs: ClassValue[]) {
    ========================================================================= */
 
 export const META = {
-  version: '1.1.13',
+  version: '1.1.14',
   repo: 'https://github.com/WrongStack/WrongStack',
   license: 'MIT',
   domain: 'wrongstack.com',
@@ -86,6 +86,10 @@ export const toolGroups = [
       'codebase-skeleton',
       'codebase-read-symbol',
       'codebase-repo-map',
+      'codebase-atlas',
+      'codebase-diff-impact',
+      'codebase-flow-trace',
+      'codebase-onboard',
       'codebase-ast-replace',
       'codebase-invariant-check',
       'codebase-impact-analysis',
