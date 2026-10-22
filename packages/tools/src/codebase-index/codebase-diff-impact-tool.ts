@@ -249,28 +249,49 @@ const execGit = async (cwd: string, args: string[]): Promise<string> =>
     })
   ).stdout;
 
+const GIT_FILTER_COMMAND_RE = /^filter\..+\.(?:clean|smudge|process)$/;
+/** The user's own config. Anything else (`local`, `worktree`, a file it includes) is the repository's. */
+const TRUSTED_GIT_CONFIG_SCOPES: ReadonlySet<string> = new Set(['system', 'global']);
+
 /**
  * A `.gitattributes` filter runs its `clean`/`process` command when `diff`
  * reads the working tree, and the repository's config names that command.
- * Every configured filter is blanked for the call; an empty command is no
- * filter. Read per call: the config can change between calls.
+ * The filter commands the repository configures are blanked for the call; an
+ * empty command is no filter. The user's own (git-lfs) stay, or every LFS
+ * file reads as changed. Read per call: the config can change between calls.
+ * Mirrors core's `gitFilterIsolationArgs` (vcs/vcs-adapter.ts).
  */
 async function filterIsolationArgs(cwd: string): Promise<string[]> {
-  const keys = await execGit(cwd, [
-    'config',
-    '--null',
-    '--name-only',
-    '--get-regexp',
-    '^filter[.]',
-  ]).catch(() => ''); // exit 1: no filter configured
-  const names = new Set<string>();
-  for (const key of keys.split('\0')) {
-    const name = key.slice('filter.'.length, key.lastIndexOf('.'));
-    if (key.startsWith('filter.') && name) names.add(name);
+  const list = (scoped: boolean) =>
+    execGit(cwd, [
+      'config',
+      ...(scoped ? ['--show-scope'] : []),
+      '--null',
+      '--name-only',
+      '--get-regexp',
+      '^filter[.]',
+    ]);
+  const exitCode = (error: unknown) => (error as { code?: unknown }).code;
+  let scoped = true;
+  let stdout: string;
+  try {
+    stdout = await list(true);
+  } catch (error) {
+    // Exit 1 is "no filter configured". Git before 2.26 has no
+    // `--show-scope`: every filter command is blanked there.
+    if (exitCode(error) === 1) return [];
+    scoped = false;
+    stdout = await list(false).catch(() => '');
   }
-  return [...names].flatMap((name) =>
-    ['clean', 'smudge', 'process'].flatMap((cmd) => ['-c', `filter.${name}.${cmd}=`]),
-  );
+  const fields = stdout.split('\0');
+  const keys = new Set<string>();
+  for (let i = 0; i < fields.length; ) {
+    const scope = scoped ? fields[i++] : undefined;
+    const key = fields[i++];
+    if (!key || !GIT_FILTER_COMMAND_RE.test(key)) continue;
+    if (scope === undefined || !TRUSTED_GIT_CONFIG_SCOPES.has(scope)) keys.add(key);
+  }
+  return [...keys].flatMap((key) => ['-c', `${key}=`]);
 }
 
 async function runGit(cwd: string, args: string[]): Promise<string | null> {

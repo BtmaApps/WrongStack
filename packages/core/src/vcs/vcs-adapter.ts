@@ -75,6 +75,59 @@ export const HG_ISOLATED_ENV: Readonly<Record<string, string>> = Object.freeze({
  */
 export const GIT_ISOLATION_ARGS: readonly string[] = Object.freeze(['-c', 'core.fsmonitor=false']);
 
+const GIT_FILTER_COMMAND_RE = /^filter\..+\.(?:clean|smudge|process)$/;
+/** The user's own config. Anything else (`local`, `worktree`, a file they include) is the repository's. */
+const TRUSTED_GIT_CONFIG_SCOPES: ReadonlySet<string> = new Set(['system', 'global']);
+
+/**
+ * `-c` overrides that blank the filter commands the repository configures. A
+ * `.gitattributes` filter runs its `clean`/`process` command whenever
+ * status/diff reads a working-tree file, and the same untrusted `.git/config`
+ * names the command; an empty command is no filter. The user's own filters
+ * (git-lfs in the system or global config) stay: without them every LFS file
+ * reads as modified. Read per call, because the config can change between
+ * calls.
+ */
+export async function gitFilterIsolationArgs(
+  binary: string,
+  cwd: string,
+  timeoutMs?: number,
+): Promise<string[]> {
+  const list = (scoped: boolean) =>
+    runVcs(
+      binary,
+      [
+        ...GIT_ISOLATION_ARGS,
+        'config',
+        ...(scoped ? ['--show-scope'] : []),
+        '--null',
+        '--name-only',
+        '--get-regexp',
+        '^filter[.]',
+      ],
+      cwd,
+      { timeoutMs },
+    );
+  let scoped = true;
+  let result = await list(true);
+  // Exit 1 is "no filter configured". Git before 2.26 has no `--show-scope`:
+  // every filter command is blanked there.
+  if (result.code !== 0 && result.code !== 1) {
+    scoped = false;
+    result = await list(false);
+  }
+  if (result.code !== 0) return [];
+  const fields = result.stdout.split('\0');
+  const keys = new Set<string>();
+  for (let i = 0; i < fields.length; ) {
+    const scope = scoped ? fields[i++] : undefined;
+    const key = fields[i++];
+    if (!key || !GIT_FILTER_COMMAND_RE.test(key)) continue;
+    if (scope === undefined || !TRUSTED_GIT_CONFIG_SCOPES.has(scope)) keys.add(key);
+  }
+  return [...keys].flatMap((key) => ['-c', `${key}=`]);
+}
+
 /** Nearest repository first; at the same level git, then jj, then hg. */
 const MARKERS: ReadonlyArray<{ kind: VcsKind; marker: string }> = [
   // A colocated jj repository also has `.git`, and git answers correctly
@@ -119,7 +172,10 @@ export function vcsAdapter(kind: VcsKind, root: string, opts: VcsOptions = {}): 
   const lead = kind === 'git' ? GIT_ISOLATION_ARGS : [];
   const run: VcsRunner =
     opts.runner ??
-    ((bin, args, cwd) => runVcs(bin, [...lead, ...args], cwd, { env, timeoutMs: opts.timeoutMs }));
+    (async (bin, args, cwd) => {
+      const filters = kind === 'git' ? await gitFilterIsolationArgs(bin, cwd, opts.timeoutMs) : [];
+      return runVcs(bin, [...lead, ...filters, ...args], cwd, { env, timeoutMs: opts.timeoutMs });
+    });
   if (kind === 'git') return gitAdapter(resolvedRoot, binary, run);
   if (kind === 'jj') return jjAdapter(resolvedRoot, binary, run);
   return hgAdapter(resolvedRoot, binary, run);
