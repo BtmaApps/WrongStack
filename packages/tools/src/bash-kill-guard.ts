@@ -56,6 +56,7 @@ import {
   SCRIPT_KILL_RE_POSIX,
   splitShellSequence,
   stripPowerShellLauncherHead,
+  unquoteShellWord,
   unwrapKillCommandHead,
 } from './bash-kill-detect.js';
 import { parseWindowsKillCommand } from './bash-kill-parse-windows.js';
@@ -352,14 +353,23 @@ export async function checkAndBlockKillCommand(command: string): Promise<KillChe
   return { blocked: false };
 }
 
-/** Bare numeric operands of a POSIX `kill`, whatever else is on the line. */
-function posixKillOperandPids(command: string): number[] {
-  const tokens = command.split(' ');
-  if (tokens[0]?.toLowerCase() !== 'kill') return [];
-  return tokens
-    .slice(1)
-    .filter((t) => /^\d+$/.test(t))
-    .map((t) => Number.parseInt(t, 10));
+/**
+ * The POSIX `kill` the shell actually runs when some operands are junk: kill
+ * signals every numeric operand and only reports the rest. Keeps the signal
+ * spelling and every `--` / numeric operand (negative = process group, -1 =
+ * every process), drops the rest, and hands that to the strict parser, so the
+ * verdict is the one the plain form gets. Null when nothing was dropped.
+ */
+function parseJunkOperandKill(command: string): KillCommand | null {
+  const tokens = command.split(' ').map(unquoteShellWord);
+  if (tokens[0]?.toLowerCase() !== 'kill') return null;
+  const first = tokens[1] ?? '';
+  const head = /^-[sn]$/i.test(first) ? 3 : /^-[a-zA-Z]+[a-zA-Z0-9]*$/.test(first) ? 2 : 1;
+  const operands = tokens.slice(head).filter((t) => t === '--' || /^-?\d+$/.test(t));
+  if (head + operands.length === tokens.length || operands.every((t) => t === '--')) {
+    return null;
+  }
+  return parsePosixKillTargets([...tokens.slice(0, head), ...operands].join(' '), command);
 }
 
 async function checkSingleCommand(command: string): Promise<KillCheckResult> {
@@ -396,20 +406,12 @@ async function checkSingleCommand(command: string): Promise<KillCheckResult> {
     // POSIX `kill` signals every numeric operand and only reports the others
     // as errors, so `kill -9 <pid> junk` (or `… /usr/bin/pwsh -c …`) still
     // kills <pid> although the form does not parse.
-    const operandPids = posixKillOperandPids(killCmd);
-    if (
-      operandPids.length > 0 &&
-      (await isKillProtected({
-        pid: operandPids[0]!,
-        ...(operandPids.length > 1 ? { pids: operandPids } : {}),
-        isGroupKill: false,
-        isAllKill: false,
-        originalCommand: killCmd,
-      }))
-    ) {
+    const lenient = parseJunkOperandKill(killCmd);
+    if (lenient && (await isKillProtected(lenient))) {
+      const pids = lenient.pids ?? [lenient.pid];
       return {
         blocked: true,
-        reason: `Blocked: kill of PID ${operandPids.join(', ')} targets a protected WrongStack process.`,
+        reason: `Blocked: kill of PID ${pids.join(', ')}${lenient.isGroupKill ? ' (process group)' : ''} targets a protected WrongStack process.`,
       };
     }
     return { blocked: false };

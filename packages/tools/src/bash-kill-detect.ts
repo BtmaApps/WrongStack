@@ -202,8 +202,20 @@ export function isKillRelatedCommand(cmd: string): boolean {
  * fallbacks still run. The regexes this replaced anchored a single target at
  * the end, which let `kill 111 <protected>` and `kill -- <protected>` through.
  */
+/**
+ * One shell word as the shell passes it: surrounding quotes removed and
+ * backslash escapes resolved, so `"123"`, `'123'` and `\123` are the PID
+ * 123 they become, not tokens the parser rejects. `$PID` and `%1` stay as
+ * written: their values are not known here.
+ */
+export function unquoteShellWord(token: string): string {
+  const quoted = /^(["'])([\s\S]*)\1$/.exec(token);
+  if (quoted) return quoted[1] === "'" ? quoted[2]! : quoted[2]!.replace(/\\(.)/g, '$1');
+  return token.replace(/\\(.)/g, '$1');
+}
+
 export function parsePosixKillTargets(normalized: string, command: string): KillCommand | null {
-  const tokens = normalized.split(' ');
+  const tokens = normalized.split(' ').map(unquoteShellWord);
   if (tokens[0]?.toLowerCase() !== 'kill') return null;
   let i = 1;
   let signal = 'TERM';
@@ -255,6 +267,9 @@ const KILL_LAUNCHERS: Record<string, { values: ReadonlySet<string>; positionals?
   nice: { values: new Set(['-n']) },
   stdbuf: { values: new Set(['-i', '-o', '-e']) },
   timeout: { values: new Set(['-s', '-k']), positionals: 1 },
+  ionice: { values: new Set(['-c', '-n', '-t']) },
+  taskset: { values: new Set(), positionals: 1 },
+  chrt: { values: new Set(['-T', '-P', '-D']), positionals: 1 },
 };
 
 /**

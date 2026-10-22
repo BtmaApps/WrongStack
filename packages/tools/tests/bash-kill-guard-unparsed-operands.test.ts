@@ -66,6 +66,40 @@ describe('bash-kill-guard — unparsed POSIX kill operands', () => {
       expect((await checkAndBlockKillCommand(command)).blocked).toBe(false);
     },
   );
+
+  // The junk form must get the plain form's verdict: process groups and -1
+  // included, and a PID the shell unquotes.
+  it.each([
+    [`kill -9 -${PROTECTED_PID}`, `kill -9 -${PROTECTED_PID} abc`],
+    ['kill -9 -1', 'kill -9 -1 abc'],
+    ['kill -- -1', 'kill -- -1 abc'],
+    [`kill -9 ${PROTECTED_PID}`, `kill -9 "${PROTECTED_PID}" abc`],
+    [`kill -9 ${PROTECTED_PID}`, `kill -9 '${PROTECTED_PID}' abc`],
+    [`kill -9 ${PROTECTED_PID}`, `kill -9 \\${PROTECTED_PID} abc`],
+  ])('%j and %j get one verdict', async (plain, junk) => {
+    const { checkAndBlockKillCommand } = await loadGuard();
+    const expected = (await checkAndBlockKillCommand(plain)).blocked;
+    expect((await checkAndBlockKillCommand(junk)).blocked).toBe(expected);
+  });
+
+  it.each([`kill -9 "${PROTECTED_PID}"`, `kill '${PROTECTED_PID}'`, `kill \\${PROTECTED_PID}`])(
+    'blocks the quoted PID %j',
+    async (command) => {
+      const { checkAndBlockKillCommand } = await loadGuard();
+      expect((await checkAndBlockKillCommand(command)).blocked).toBe(true);
+    },
+  );
+
+  it.each([
+    `ionice /usr/bin/pwsh -c Stop-Process -Id ${PROTECTED_PID}`,
+    `ionice -c 3 pwsh -c Stop-Process -Id ${PROTECTED_PID}`,
+    `taskset 1 /usr/bin/pwsh -c Stop-Process -Id ${PROTECTED_PID}`,
+    `chrt 1 /usr/bin/pwsh -c Stop-Process -Id ${PROTECTED_PID}`,
+    `taskset 0x3 kill -9 ${PROTECTED_PID}`,
+  ])('blocks a kill behind a scheduling wrapper: %j', async (command) => {
+    const { checkAndBlockKillCommand } = await loadGuard();
+    expect((await checkAndBlockKillCommand(command)).blocked).toBe(true);
+  });
 });
 
 describe('stripPowerShellLauncherHead — the launcher is the first token', () => {
