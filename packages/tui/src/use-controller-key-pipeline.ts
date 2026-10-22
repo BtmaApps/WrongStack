@@ -5,6 +5,7 @@ import { useAppPickerKeys } from './hooks/use-app-picker-keys.js';
 import { buildAppPipelineArgs } from './hooks/use-app-pipeline-builders.js';
 
 import { useInterruptLadder } from './hooks/use-interrupt-ladder.js';
+import type { useStdout } from './ink.js';
 
 export function useControllerKeyPipeline({
   sessionGenerationRef,
@@ -299,7 +300,7 @@ export function useControllerKeyPipeline({
   mouseMode: boolean;
   nativeMouse: boolean;
   termRows: number;
-  stdout: NodeJS.WriteStream;
+  stdout: ReturnType<typeof useStdout>['stdout'];
   sidebarLayout: import('./app-ui-state.js').SidebarLayoutState;
   statusBarWrapRef: React.RefObject<import('ink').DOMElement | null>;
   belowStatusBarRef: React.RefObject<import('ink').DOMElement | null>;

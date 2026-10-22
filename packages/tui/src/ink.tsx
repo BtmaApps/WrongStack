@@ -13,7 +13,7 @@
 // one import line without losing hooks.
 
 import { isAsciiMode, toAscii } from '@wrongstack/core/utils';
-import { type DOMElement, Box as InkBox, Text as InkText } from 'ink';
+import { type DOMElement, Box as InkBox, Text as InkText, useStdout as useInkStdout } from 'ink';
 import {
   type ComponentProps,
   type ForwardRefExoticComponent,
@@ -52,8 +52,17 @@ export {
   useApp,
   useInput,
   useStdin,
-  useStdout,
 } from 'ink';
+
+// Ink 8 accepts generic writable streams. Terminal dimensions are optional on
+// pipes and injected renderers; callers retain their existing non-TTY defaults.
+type TerminalOutput = NodeJS.WritableStream & Partial<Pick<NodeJS.WriteStream, 'columns' | 'rows'>>;
+
+export function useStdout(): Omit<ReturnType<typeof useInkStdout>, 'stdout'> & {
+  stdout: TerminalOutput;
+} {
+  return useInkStdout();
+}
 
 // `exactOptionalPropertyTypes` forbids passing `color={undefined}`, so we only
 // attach a color prop when it actually resolves to a value.

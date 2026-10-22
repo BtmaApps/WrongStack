@@ -63,6 +63,11 @@ describe('acp barrels', () => {
     expect(sdk.createHttpStream).toBeDefined();
     expect(sdk.createWebSocketStream).toBeDefined();
 
+    const unstable = await import('../src/sdk-unstable.js');
+    expect(unstable.PROTOCOL_VERSION).toBe(1);
+    expect(unstable.client).toBeTypeOf('function');
+    expect(unstable.AcpServer).toBe(sdk.AcpServer);
+
     const legacy = await import('../src/legacy.js');
     expect(legacy.LEGACY_ACP_CONTRACT_VERSION).toBe('pre-v1-draft');
   });

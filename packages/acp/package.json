@@ -1,6 +1,6 @@
 {
   "name": "@wrongstack/acp",
-  "version": "1.1.12",
+  "version": "1.1.13",
   "private": true,
   "license": "MIT",
   "description": "ACP (Agent Client Protocol) integration for WrongStack — client + agent support",
@@ -45,6 +45,10 @@
     "./legacy": {
       "import": "./dist/legacy.js",
       "types": "./dist/legacy.d.ts"
+    },
+    "./sdk/unstable": {
+      "import": "./dist/sdk-unstable.js",
+      "types": "./dist/sdk-unstable.d.ts"
     }
   },
   "files": [
@@ -60,12 +64,12 @@
     "smoke": "bun run build && bun ../../scripts/acp-smoke-test.mts"
   },
   "dependencies": {
-    "@agentclientprotocol/sdk": "^1.4.0",
+    "@agentclientprotocol/sdk": "^2.0.0",
     "@wrongstack/core": "workspace:*",
     "@wrongstack/primitives": "workspace:*"
   },
   "devDependencies": {
-    "@types/node": "^26.5.1",
+    "@types/node": "^26.6.5",
     "typescript": "^7.0.2",
     "vitest": "^5.0.5"
   },

@@ -4,6 +4,7 @@ import React, { useEffect, useRef } from 'react';
 import type { Action } from '../app-action-type.js';
 import type { AppProps } from '../app-props.js';
 import type { State } from '../app-state.js';
+import type { useStdout } from '../ink.js';
 import { resolveAppSidebarLayout } from '../app-ui-state.js';
 import { useActiveTheme } from './use-active-theme.js';
 import type { AppRefSpine } from './use-app-ref-spine.js';
@@ -76,7 +77,7 @@ export interface AppEnvironmentDeps
   builderRef: AppRefSpine['builderRef'];
   eternalLoopRunningRef: AppRefSpine['eternalLoopRunningRef'];
   parallelLoopRunningRef: AppRefSpine['parallelLoopRunningRef'];
-  stdout: NodeJS.WriteStream;
+  stdout: ReturnType<typeof useStdout>['stdout'];
 }
 
 /**

@@ -223,6 +223,7 @@ const profiles = {
       client: 'src/client/index.ts',
       agent: 'src/agent/index.ts',
       sdk: 'src/sdk.ts',
+      'sdk-unstable': 'src/sdk-unstable.ts',
       v1: 'src/v1.ts',
       legacy: 'src/legacy.ts',
       'wrongstack-acp-agent': 'src/agent/wrongstack-acp-agent.ts',
@@ -465,8 +466,7 @@ const profiles = {
     // ink + react-reconciler next to that copy and nested react@19.3.0 under
     // @wrongstack/tui, so `useState` read a null dispatcher and the TUI never
     // drew. One bundle is one React, whatever else is installed. It also
-    // ships patches/ink@7.1.1.patch (bounded text caches) to npm/bun installs,
-    // which a registry-resolved ink never had.
+    // includes Ink 8's bounded text caches in the standalone bundle.
     ...standard(),
     workspaceExternal: true,
     // ink loads `./devtools.js` (static `ws` + `react-devtools-core` imports)

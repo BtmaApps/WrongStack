@@ -8,4 +8,4 @@ bun = true
 auto = "disable"
 linker = "isolated"
 minimumReleaseAge = 86400
-minimumReleaseAgeExcludes = ["@agentclientprotocol/sdk@1.4.0","@datadog/pprof@5.18.1","dompurify@3.4.16"]
+minimumReleaseAgeExcludes = ["dompurify@3.4.16"]

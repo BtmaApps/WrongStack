@@ -91,7 +91,7 @@ describe('standalone binary browser provisioning', () => {
         expect(output.browsers).toEqual([{ fixture: true }, { fixture: true }]);
         expect(output.calls).toHaveLength(2);
         expect(output.calls[0]).toEqual(
-          expect.arrayContaining(['--ignore-scripts', '@playwright/test@1.63.0']),
+          expect.arrayContaining(['--ignore-scripts', '@playwright/test@1.64.1']),
         );
         expect(output.calls[1]).toEqual([expect.stringMatching(/cli\.js$/), 'install', 'chromium']);
       } finally {

@@ -1,7 +1,7 @@
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { type AnyMessage, client, agent as sdkAgent } from '@agentclientprotocol/sdk';
+import { type AnyMessage, client, agent as sdkAgent } from '../src/sdk-unstable.js';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ACPProtocolHandler, type ProtocolHandlerOptions } from '../src/agent/protocol-handler.js';
 import { serverAgentTurnCoverage } from '../src/agent/server-agent-turn.js';

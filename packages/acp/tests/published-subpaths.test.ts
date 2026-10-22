@@ -15,6 +15,7 @@ describe('@wrongstack/acp published subpaths', () => {
       './client',
       './legacy',
       './sdk',
+      './sdk/unstable',
       './v1',
     ]);
   });
@@ -34,11 +35,15 @@ describe('@wrongstack/acp published subpaths', () => {
     const root = await import('@wrongstack/acp');
     const v1 = await import('@wrongstack/acp/v1');
     const sdk = await import('@wrongstack/acp/sdk');
+    const unstable = await import('@wrongstack/acp/sdk/unstable');
     const legacy = await import('@wrongstack/acp/legacy');
 
     expect(root.ACP_PROTOCOL_VERSION).toBe(1);
     expect(v1.ACP_PROTOCOL_VERSION).toBe(1);
     expect(sdk.AcpServer).toBeDefined();
+    expect(unstable.PROTOCOL_VERSION).toBe(1);
+    expect(unstable.client).toBeTypeOf('function');
+    expect(unstable.createWebSocketStream).toBe(sdk.createWebSocketStream);
     expect(legacy.LEGACY_ACP_CONTRACT_VERSION).toBe('pre-v1-draft');
   });
 });

@@ -14,6 +14,7 @@ function Probe({ shrinkOnMount = false }: { shrinkOnMount?: boolean }) {
   useLayoutEffect(() => {
     if (shrinkOnMount) {
       // Reproduce a resize before passive subscriptions are installed.
+      if (stdout.rows === undefined) throw new Error('TTY fixture must expose its row count');
       stdout.rows -= 2;
       stdout.emit('resize');
     }

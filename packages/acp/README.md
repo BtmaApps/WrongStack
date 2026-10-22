@@ -17,7 +17,8 @@ surface and current limitations.
 | `@wrongstack/acp/client` | Client-only implementation surface |
 | `@wrongstack/acp/agent` | Server/agent-only implementation surface |
 | `@wrongstack/acp/v1` | WrongStack-owned stable v1 protocol contracts only |
-| `@wrongstack/acp/sdk` | Official `@agentclientprotocol/sdk` APIs and experimental transport helpers |
+| `@wrongstack/acp/sdk` | Official stable ACP v1 SDK APIs and experimental transport helpers |
+| `@wrongstack/acp/sdk/unstable` | Official ACP v1 SDK with upstream unstable methods and transport helpers |
 | `@wrongstack/acp/legacy` | Deprecated pre-v1 draft envelope types; compatibility only |
 
 New code must not import legacy draft contracts from the package root. Use `/v1`
@@ -94,6 +95,10 @@ import {
 The `/sdk` entry point re-exports the official SDK's public high-level APIs, method
 constants, and experimental HTTP/Node/WebSocket helpers. WrongStack's `ACPSession`
 is intentionally available from the package root or `/client`, not from `/sdk`.
+
+SDK 2 keeps the ACP wire protocol at version 1. Its default entry point exposes
+only stable methods. Import `client` or `agent` from `@wrongstack/acp/sdk/unstable`
+when using upstream extensions such as `session/resume` or `session/fork`.
 
 ## Architecture
 
