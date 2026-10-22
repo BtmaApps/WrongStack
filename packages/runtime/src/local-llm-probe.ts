@@ -124,7 +124,7 @@ export async function probeLocalLlm(opts: ProbeOptions): Promise<ProbeResult> {
     let bodySlice = '';
     try {
       const txt = await res.text();
-      bodySlice = txt.slice(0, 200);
+      bodySlice = scrubber.scrub(txt).slice(0, 200);
     } catch {
       // ignore
     }
@@ -133,7 +133,7 @@ export async function probeLocalLlm(opts: ProbeOptions): Promise<ProbeResult> {
       status: 'http_error',
       httpStatus: res.status,
       elapsedMs: elapsed,
-      detail: scrubber.scrub(bodySlice) || undefined,
+      detail: bodySlice || undefined,
     };
   }
 

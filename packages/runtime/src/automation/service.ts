@@ -296,6 +296,7 @@ export class AutomationService {
     }
   }
   async cancel(id: string): Promise<void> {
+    if (!this.active.has(id) && this.ticking) await this.tickDone;
     const active = this.active.get(id);
     if (active) {
       active.abort.abort();

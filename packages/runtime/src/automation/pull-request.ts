@@ -468,7 +468,11 @@ export class AutomationPullRequests {
           )
             throw new Error('CI status collection is incomplete');
           for (const status of response.statuses) {
-            if (typeof status.context !== 'string' || typeof status.state !== 'string')
+            if (
+              status.sha !== receipt.commit ||
+              typeof status.context !== 'string' ||
+              typeof status.state !== 'string'
+            )
               throw new Error('CI status is invalid');
             ci.checks.push({
               name: status.context.slice(0, 256).replace(/[\x00-\x1f\x7f]/g, ' '),

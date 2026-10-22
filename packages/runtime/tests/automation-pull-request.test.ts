@@ -330,10 +330,11 @@ describe('verified automation to draft PR', () => {
       { name: 'tests', status: 'completed', conclusion: 'success', head_sha: remote.commit },
     ];
     expect((await f.requests.check(f.run.id)).ci?.status).toBe('passed');
-    remote.statuses = [{ context: 'legacy lint', state: 'pending' }];
+    remote.statuses = [{ context: 'legacy lint', state: 'pending', sha: remote.commit }];
     expect((await f.requests.check(f.run.id)).ci?.status).toBe('pending');
-    remote.statuses = [{ context: 'legacy lint', state: 'failure' }];
+    remote.statuses = [{ context: 'legacy lint', state: 'failure', sha: remote.commit }];
     expect((await f.requests.check(f.run.id)).ci?.status).toBe('failed');
+    remote.statuses = [];
     remote.checkHead = 'f'.repeat(40);
     expect((await f.requests.check(f.run.id)).ci?.status).toBe('stale');
   });

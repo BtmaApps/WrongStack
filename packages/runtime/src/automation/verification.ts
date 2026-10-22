@@ -186,6 +186,7 @@ export async function verifyAutomationPatch(
     } else if (
       checked.exitCode !== 0 ||
       checked.failure ||
+      checked.cleanup !== 'removed' ||
       !checked.sourceTree ||
       !checked.inputTree ||
       !checked.outputTree ||

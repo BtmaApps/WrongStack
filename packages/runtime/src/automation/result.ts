@@ -51,7 +51,22 @@ export function buildAutomationResult(
   const number = (value: unknown) =>
     typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
   const files = new Set<string>();
+  let oldLines = 0;
+  let newLines = 0;
   for (const line of (patch ?? '').split('\n')) {
+    if (line.startsWith('diff --git ')) oldLines = newLines = 0;
+    const hunk = /^@@ -\d+(?:,(\d+))? \+\d+(?:,(\d+))? @@/.exec(line);
+    if (hunk) {
+      oldLines = Number(hunk[1] ?? 1);
+      newLines = Number(hunk[2] ?? 1);
+      continue;
+    }
+    // Hunk text can itself start with +++/---; only file headers name paths.
+    if (oldLines > 0 || newLines > 0) {
+      if (line.startsWith('-') || line.startsWith(' ')) oldLines--;
+      if (line.startsWith('+') || line.startsWith(' ')) newLines--;
+      continue;
+    }
     if (!line.startsWith('+++ ') && !line.startsWith('--- ')) continue;
     // Git ends the header with a TAB when the name contains a space (GNU diff
     // convention); left in place, the control-character filter below dropped

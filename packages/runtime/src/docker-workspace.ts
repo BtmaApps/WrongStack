@@ -544,16 +544,16 @@ export async function runDockerWorkspace(
             throw error;
           }
           if (hadPrior) {
-            await removeOwnedTemporary(backupDir, captureParent, '.wrongstack-conversation-');
+            if (
+              !(await removeOwnedTemporary(backupDir, captureParent, '.wrongstack-conversation-'))
+            )
+              temporaryCleanupFailed = true;
           }
         } else if (!/Could not find|no such|not found/i.test(copied.stderr))
           throw new Error('Conversation checkpoint export failed');
       } finally {
-        temporaryCleanupFailed = !(await removeOwnedTemporary(
-          staged,
-          captureParent,
-          '.wrongstack-conversation-',
-        ));
+        if (!(await removeOwnedTemporary(staged, captureParent, '.wrongstack-conversation-')))
+          temporaryCleanupFailed = true;
       }
     }
     result = {
