@@ -88,4 +88,19 @@ describe('codebase-diff-impact: the repository git config cannot run programs', 
       rmSync(join(repo, '.gitattributes'));
     }
   });
+
+  it('ignores a filter whose name holds "=" (`-c` splits at the first one)', async () => {
+    const marker = join(repo, 'process-ran.txt');
+    writeFileSync(join(repo, '.gitattributes'), '*.ts filter=a=b\n');
+    git('config', 'filter.a=b.process', 'sh -c "echo ran > process-ran.txt"');
+    writeFileSync(join(repo, 'a.ts'), 'export function a() { return 5; }\n');
+    try {
+      const out = (await run({})) as { status: string; changedFiles: unknown[] };
+      expect(out.changedFiles.length).toBeGreaterThan(0);
+      expect(existsSync(marker)).toBe(false);
+    } finally {
+      git('config', '--remove-section', 'filter.a=b');
+      rmSync(join(repo, '.gitattributes'));
+    }
+  });
 });

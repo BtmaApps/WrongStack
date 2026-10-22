@@ -240,12 +240,17 @@ export function matchSymbolsToDiffHunks<
  */
 const GIT_ISOLATION_ARGS = ['-c', 'core.fsmonitor=false'];
 
-const execGit = async (cwd: string, args: string[]): Promise<string> =>
+const execGit = async (
+  cwd: string,
+  args: string[],
+  env?: Record<string, string>,
+): Promise<string> =>
   (
     await execFileAsync('git', [...GIT_ISOLATION_ARGS, ...args], {
       cwd,
       maxBuffer: 10 * 1024 * 1024,
       windowsHide: true,
+      ...(env ? { env: { ...process.env, ...env } } : {}),
     })
   ).stdout;
 
@@ -259,9 +264,14 @@ const TRUSTED_GIT_CONFIG_SCOPES: ReadonlySet<string> = new Set(['system', 'globa
  * The filter commands the repository configures are blanked for the call; an
  * empty command is no filter. The user's own (git-lfs) stay, or every LFS
  * file reads as changed. Read per call: the config can change between calls.
- * Mirrors core's `gitFilterIsolationArgs` (vcs/vcs-adapter.ts).
+ *
+ * `GIT_CONFIG_KEY_<n>`/`GIT_CONFIG_VALUE_<n>`, not `-c key=`: `-c` splits at
+ * the first `=`, and a filter named `a=b` turned `filter.a=b.clean=` into the
+ * unrelated key `filter.a`. Throws when the config cannot be listed, so git
+ * never runs with the filters unblanked. Mirrors core's
+ * `gitFilterIsolationEnv` (vcs/vcs-adapter.ts).
  */
-async function filterIsolationArgs(cwd: string): Promise<string[]> {
+async function filterIsolationEnv(cwd: string): Promise<Record<string, string>> {
   const list = (scoped: boolean) =>
     execGit(cwd, [
       'config',
@@ -271,32 +281,43 @@ async function filterIsolationArgs(cwd: string): Promise<string[]> {
       '--get-regexp',
       '^filter[.]',
     ]);
-  const exitCode = (error: unknown) => (error as { code?: unknown }).code;
+  // Exit 1 is "no filter configured".
+  const noFilters = (error: unknown) => {
+    if ((error as { code?: unknown }).code === 1) return '';
+    throw error;
+  };
   let scoped = true;
   let stdout: string;
   try {
     stdout = await list(true);
   } catch (error) {
-    // Exit 1 is "no filter configured". Git before 2.26 has no
-    // `--show-scope`: every filter command is blanked there.
-    if (exitCode(error) === 1) return [];
+    noFilters(error);
+    // Git before 2.26 has no `--show-scope`: every filter command is blanked.
     scoped = false;
-    stdout = await list(false).catch(() => '');
+    stdout = await list(false).catch(noFilters);
   }
   const fields = stdout.split('\0');
-  const keys = new Set<string>();
+  const env: Record<string, string> = {};
+  const base = Number(process.env['GIT_CONFIG_COUNT'] ?? 0);
+  let n = Number.isSafeInteger(base) && base > 0 ? base : 0;
+  const seen = new Set<string>();
   for (let i = 0; i < fields.length; ) {
     const scope = scoped ? fields[i++] : undefined;
     const key = fields[i++];
-    if (!key || !GIT_FILTER_COMMAND_RE.test(key)) continue;
-    if (scope === undefined || !TRUSTED_GIT_CONFIG_SCOPES.has(scope)) keys.add(key);
+    if (!key || !GIT_FILTER_COMMAND_RE.test(key) || seen.has(key)) continue;
+    if (scope !== undefined && TRUSTED_GIT_CONFIG_SCOPES.has(scope)) continue;
+    seen.add(key);
+    env[`GIT_CONFIG_KEY_${n}`] = key;
+    env[`GIT_CONFIG_VALUE_${n}`] = '';
+    n++;
   }
-  return [...keys].flatMap((key) => ['-c', `${key}=`]);
+  if (seen.size > 0) env['GIT_CONFIG_COUNT'] = String(n);
+  return env;
 }
 
 async function runGit(cwd: string, args: string[]): Promise<string | null> {
   try {
-    return await execGit(cwd, [...(await filterIsolationArgs(cwd)), ...args]);
+    return await execGit(cwd, args, await filterIsolationEnv(cwd));
   } catch {
     return null;
   }

@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { buildChildEnv } from '../utils/child-env.js';
-import { GIT_ISOLATION_ARGS, gitFilterIsolationArgs, vcsAdapter } from '../vcs/vcs-adapter.js';
+import { GIT_ISOLATION_ARGS, gitFilterIsolationEnv, vcsAdapter } from '../vcs/vcs-adapter.js';
 
 /**
  * Ceiling on the in-flight partial line while folding `git status` output.
@@ -12,7 +12,9 @@ const MAX_LINE_CHARS = 64 * 1024;
 
 export async function gitStatus(root: string): Promise<string> {
   // Before the 10 s ceiling below: it bounds `status`, this has its own.
-  const filters = await gitFilterIsolationArgs('git', root, 5_000);
+  const filterEnv = await gitFilterIsolationEnv('git', root, 5_000);
+  // Unlisted filters are unblanked ones; `status` would run them.
+  if (!filterEnv) return 'git error';
   return new Promise((resolve) => {
     let settled = false;
     const finish = (s: string): void => {
@@ -34,16 +36,12 @@ export async function gitStatus(root: string): Promise<string> {
       finish('git timeout');
     }, 10_000);
     try {
-      proc = spawn(
-        'git',
-        [...GIT_ISOLATION_ARGS, ...filters, 'status', '--porcelain=v1', '--branch'],
-        {
-          cwd: root,
-          env: buildChildEnv(),
-          stdio: ['ignore', 'pipe', 'ignore'],
-          windowsHide: true,
-        },
-      );
+      proc = spawn('git', [...GIT_ISOLATION_ARGS, 'status', '--porcelain=v1', '--branch'], {
+        cwd: root,
+        env: { ...buildChildEnv(), ...filterEnv },
+        stdio: ['ignore', 'pipe', 'ignore'],
+        windowsHide: true,
+      });
       // Folded as it streams rather than buffered. `--porcelain` output is
       // unbounded in the size of the working tree — a repo with a large
       // unignored subtree emits tens of megabytes — and this runs on every

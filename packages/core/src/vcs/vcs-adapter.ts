@@ -14,6 +14,7 @@
  */
 import * as fsp from 'node:fs/promises';
 import * as path from 'node:path';
+import { buildChildEnv } from '../utils/child-env.js';
 import { runVcs, type VcsRunner, type VcsRunResult } from './vcs-runner.js';
 
 export type VcsKind = 'git' | 'jj' | 'hg';
@@ -80,19 +81,26 @@ const GIT_FILTER_COMMAND_RE = /^filter\..+\.(?:clean|smudge|process)$/;
 const TRUSTED_GIT_CONFIG_SCOPES: ReadonlySet<string> = new Set(['system', 'global']);
 
 /**
- * `-c` overrides that blank the filter commands the repository configures. A
+ * Environment that blanks the filter commands the repository configures. A
  * `.gitattributes` filter runs its `clean`/`process` command whenever
  * status/diff reads a working-tree file, and the same untrusted `.git/config`
  * names the command; an empty command is no filter. The user's own filters
  * (git-lfs in the system or global config) stay: without them every LFS file
  * reads as modified. Read per call, because the config can change between
  * calls.
+ *
+ * `GIT_CONFIG_KEY_<n>`/`GIT_CONFIG_VALUE_<n>`, not `-c key=`: `-c` splits at
+ * the first `=`, and a filter named `a=b` turned `filter.a=b.clean=` into the
+ * unrelated key `filter.a`. They go after any the caller's environment holds.
+ *
+ * Undefined when the config could not be listed: the caller must not run git
+ * then, since nothing is blanked.
  */
-export async function gitFilterIsolationArgs(
+export async function gitFilterIsolationEnv(
   binary: string,
   cwd: string,
   timeoutMs?: number,
-): Promise<string[]> {
+): Promise<Record<string, string> | undefined> {
   const list = (scoped: boolean) =>
     runVcs(
       binary,
@@ -116,7 +124,8 @@ export async function gitFilterIsolationArgs(
     scoped = false;
     result = await list(false);
   }
-  if (result.code !== 0) return [];
+  if (result.code === 1 && !result.stdout) return {};
+  if (result.code !== 0 || result.stdoutTruncated) return undefined;
   const fields = result.stdout.split('\0');
   const keys = new Set<string>();
   for (let i = 0; i < fields.length; ) {
@@ -125,7 +134,22 @@ export async function gitFilterIsolationArgs(
     if (!key || !GIT_FILTER_COMMAND_RE.test(key)) continue;
     if (scope === undefined || !TRUSTED_GIT_CONFIG_SCOPES.has(scope)) keys.add(key);
   }
-  return [...keys].flatMap((key) => ['-c', `${key}=`]);
+  return gitConfigEnv([...keys], buildChildEnv()['GIT_CONFIG_COUNT']);
+}
+
+/** `GIT_CONFIG_*` entries setting each key to empty, after `baseCount` existing ones. */
+export function gitConfigEnv(keys: readonly string[], baseCount?: string): Record<string, string> {
+  if (keys.length === 0) return {};
+  const parsed = Number(baseCount ?? 0);
+  let n = Number.isSafeInteger(parsed) && parsed > 0 ? parsed : 0;
+  const env: Record<string, string> = {};
+  for (const key of keys) {
+    env[`GIT_CONFIG_KEY_${n}`] = key;
+    env[`GIT_CONFIG_VALUE_${n}`] = '';
+    n++;
+  }
+  env['GIT_CONFIG_COUNT'] = String(n);
+  return env;
 }
 
 /** Nearest repository first; at the same level git, then jj, then hg. */
@@ -173,8 +197,16 @@ export function vcsAdapter(kind: VcsKind, root: string, opts: VcsOptions = {}): 
   const run: VcsRunner =
     opts.runner ??
     (async (bin, args, cwd) => {
-      const filters = kind === 'git' ? await gitFilterIsolationArgs(bin, cwd, opts.timeoutMs) : [];
-      return runVcs(bin, [...lead, ...filters, ...args], cwd, { env, timeoutMs: opts.timeoutMs });
+      const gitEnv =
+        kind === 'git' ? await gitFilterIsolationEnv(bin, cwd, opts.timeoutMs) : undefined;
+      // Unlisted filters are unblanked ones: answer as a failed command.
+      if (kind === 'git' && !gitEnv) {
+        return { code: -1, stdout: '', stderr: 'git config could not be listed' };
+      }
+      return runVcs(bin, [...lead, ...args], cwd, {
+        env: gitEnv ?? env,
+        timeoutMs: opts.timeoutMs,
+      });
     });
   if (kind === 'git') return gitAdapter(resolvedRoot, binary, run);
   if (kind === 'jj') return jjAdapter(resolvedRoot, binary, run);
