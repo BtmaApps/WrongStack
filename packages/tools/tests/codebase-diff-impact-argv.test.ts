@@ -72,4 +72,20 @@ describe('codebase-diff-impact: the repository git config cannot run programs', 
       git('config', '--unset', 'core.fsmonitor');
     }
   });
+
+  it('ignores .gitattributes filters', async () => {
+    const markers = ['clean-ran.txt', 'process-ran.txt'].map((name) => join(repo, name));
+    writeFileSync(join(repo, '.gitattributes'), '*.ts filter=evil\n');
+    git('config', 'filter.evil.clean', 'echo ran > clean-ran.txt; cat');
+    git('config', 'filter.evil.process', 'sh -c "echo ran > process-ran.txt"');
+    writeFileSync(join(repo, 'a.ts'), 'export function a() { return 4; }\n');
+    try {
+      const out = (await run({})) as { status: string; changedFiles: unknown[] };
+      expect(out.changedFiles.length).toBeGreaterThan(0);
+      for (const marker of markers) expect(existsSync(marker)).toBe(false);
+    } finally {
+      git('config', '--remove-section', 'filter.evil');
+      rmSync(join(repo, '.gitattributes'));
+    }
+  });
 });

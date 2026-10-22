@@ -240,14 +240,42 @@ export function matchSymbolsToDiffHunks<
  */
 const GIT_ISOLATION_ARGS = ['-c', 'core.fsmonitor=false'];
 
-async function runGit(cwd: string, args: string[]): Promise<string | null> {
-  try {
-    const { stdout } = await execFileAsync('git', [...GIT_ISOLATION_ARGS, ...args], {
+const execGit = async (cwd: string, args: string[]): Promise<string> =>
+  (
+    await execFileAsync('git', [...GIT_ISOLATION_ARGS, ...args], {
       cwd,
       maxBuffer: 10 * 1024 * 1024,
       windowsHide: true,
-    });
-    return stdout;
+    })
+  ).stdout;
+
+/**
+ * A `.gitattributes` filter runs its `clean`/`process` command when `diff`
+ * reads the working tree, and the repository's config names that command.
+ * Every configured filter is blanked for the call; an empty command is no
+ * filter. Read per call: the config can change between calls.
+ */
+async function filterIsolationArgs(cwd: string): Promise<string[]> {
+  const keys = await execGit(cwd, [
+    'config',
+    '--null',
+    '--name-only',
+    '--get-regexp',
+    '^filter[.]',
+  ]).catch(() => ''); // exit 1: no filter configured
+  const names = new Set<string>();
+  for (const key of keys.split('\0')) {
+    const name = key.slice('filter.'.length, key.lastIndexOf('.'));
+    if (key.startsWith('filter.') && name) names.add(name);
+  }
+  return [...names].flatMap((name) =>
+    ['clean', 'smudge', 'process'].flatMap((cmd) => ['-c', `filter.${name}.${cmd}=`]),
+  );
+}
+
+async function runGit(cwd: string, args: string[]): Promise<string | null> {
+  try {
+    return await execGit(cwd, [...(await filterIsolationArgs(cwd)), ...args]);
   } catch {
     return null;
   }
