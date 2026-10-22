@@ -188,6 +188,30 @@ describe('exec-kill-guard', () => {
       ])('still allows taskkill %j', async (...args) => {
         expect((await checkExecKillCommand('taskkill', args)).blocked).toBe(false);
       });
+
+      // `taskkill /FI "PID <ne|gt|ge|lt|le> <n>"` names a PID SET, not one PID,
+      // so it never reached the /PID check: `taskkill /F /FI "PID ge 1"` walked
+      // past this guard while the `eq` spelling was blocked.
+      describe('taskkill /FI "PID <op> <n>" range filters', () => {
+        const self = process.pid;
+        it.each([
+          ['/F', '/FI', `PID ge ${self - 1}`],
+          ['/F', '/FI', `PID gt ${self - 1}`],
+          ['/F', '/FI', `PID le ${self}`],
+          ['/F', '/FI', `PID lt ${self + 1}`],
+          ['/F', '/FI', `PID ne ${self + 1}`],
+        ])('blocks taskkill %j when the range selects this runtime', async (...args) => {
+          expect((await checkExecKillCommand('taskkill', args)).blocked).toBe(true);
+        });
+
+        it.each([
+          ['/F', '/FI', 'PID lt 1'],
+          ['/F', '/FI', `PID gt ${2_147_483_646}`],
+          ['/F', '/FI', `PID eq ${2_147_483_646}`],
+        ])('still allows taskkill %j', async (...args) => {
+          expect((await checkExecKillCommand('taskkill', args)).blocked).toBe(false);
+        });
+      });
     });
     it('still checks other /PID args when /IM does not match', async () => {
       // /IM with a non-node name should still check /PID later
@@ -353,6 +377,108 @@ describe('exec-kill-guard', () => {
       const result = await checkExecKillCommand('wmic', ['process', 'delete']);
       expect(result.blocked).toBe(true);
       expect(result.reason).toMatch(/protected WrongStack/i);
+    });
+
+    // `... call terminate` is the WMIC method spelling of `... delete`: both
+    // terminate the matched process. Only `delete` was inspected, so the method
+    // spelling skipped every target check.
+    it.each([
+      ['process', 'where', `processid=${process.pid}`, 'call', 'terminate'],
+      ['process', 'where', "name='wrongstack.exe'", 'call', 'terminate'],
+      ['process', 'where', `processid=${process.pid}`, 'Call', 'Terminate'],
+    ])('blocks wmic process %j call terminate', async (...args) => {
+      expect((await checkExecKillCommand('wmic', args)).blocked).toBe(true);
+    });
+
+    it('keeps the wmic method spelling and delete spelling in agreement', async () => {
+      for (const filter of [`processid=${process.pid}`, "name='notepad.exe'", 'processid=424242']) {
+        const viaDelete = await checkExecKillCommand('wmic', [
+          'process',
+          'where',
+          filter,
+          'delete',
+        ]);
+        const viaMethod = await checkExecKillCommand('wmic', [
+          'process',
+          'where',
+          filter,
+          'call',
+          'terminate',
+        ]);
+        expect({ filter, method: viaMethod.blocked, del: viaDelete.blocked }).toEqual({
+          filter,
+          method: viaDelete.blocked,
+          del: viaDelete.blocked,
+        });
+      }
+      // Non-terminating wmic invocations stay allowed.
+      expect((await checkExecKillCommand('wmic', ['os', 'get', 'caption'])).blocked).toBe(false);
+    });
+
+    // A launcher payload is one argv entry, so the wrapper used to recurse on its
+    // FIRST command only and pass the rest through as that command's arguments:
+    // `cmd /c "echo hi && taskkill …"` ran the kill unseen.
+    describe('launcher payload sequencing', () => {
+      it.each<[string, string[]]>([
+        ['cmd', ['/c', 'echo hi && taskkill /F /IM wrongstack.exe']],
+        ['cmd', ['/c', 'echo hi & taskkill /F /IM wrongstack.exe']],
+        ['cmd', ['/c', 'echo hi || taskkill /F /IM wrongstack.exe']],
+        ['cmd', ['/k', 'echo hi && taskkill /F /IM wrongstack.exe']],
+        ['cmd', ['/c', '"echo hi && taskkill /F /IM wrongstack.exe"']],
+        ['powershell', ['-NoProfile', '-Command', 'echo hi; Stop-Process -Name wrongstack']],
+      ])('blocks %s %j', async (cmd, args) => {
+        expect((await checkExecKillCommand(cmd, args)).blocked).toBe(true);
+      });
+
+      it.each<[string, string[]]>([
+        ['cmd', ['/c', 'echo hi && echo bye']],
+        ['cmd', ['/c', 'echo hi && taskkill /F /IM notepad.exe']],
+        ['powershell', ['-Command', 'echo hi; Get-Process']],
+      ])('still allows %s %j', async (cmd, args) => {
+        expect((await checkExecKillCommand(cmd, args)).blocked).toBe(false);
+      });
+    });
+
+    // `%ComSpec%` expands to cmd's own path, so a nested `cmd /c %ComSpec% /c …`
+    // runs the kill in another interpreter; the recursion stopped at the
+    // variable name and allowed it.
+    describe('%ComSpec% interpreter alias', () => {
+      it.each<[string, string[]]>([
+        ['cmd', ['/c', '%ComSpec%', '/c', 'taskkill', '/F', '/IM', 'wrongstack.exe']],
+        ['%ComSpec%', ['/c', 'taskkill', '/F', '/IM', 'wrongstack.exe']],
+        ['cmd', ['/c', '%ComSpec% /c taskkill /F /IM wrongstack.exe']],
+      ])('blocks %s %j', async (cmd, args) => {
+        expect((await checkExecKillCommand(cmd, args)).blocked).toBe(true);
+      });
+
+      it.each<[string, string[]]>([
+        ['%ComSpec%', ['/c', 'echo', 'hi']],
+        ['cmd', ['/c', '%ComSpec% /c taskkill /F /IM notepad.exe']],
+      ])('still allows %s %j', async (cmd, args) => {
+        expect((await checkExecKillCommand(cmd, args)).blocked).toBe(false);
+      });
+    });
+
+    // PowerShell binds a quoted string to a numeric parameter: `-Id:'1234'` and
+    // `-Id "1234"` terminate 1234 exactly like `-Id 1234` (live-verified). The
+    // quote pair hid the digits from the target parser, so the kill was allowed.
+    describe('quoted parameter values', () => {
+      const self = process.pid;
+      it.each<string[]>([
+        [`-Id:'${self}'`],
+        [`-Id:"${self}"`],
+        ['-Id', `'${self}'`],
+        ['-Id', `"${self}"`],
+      ])('blocks stop-process %j', async (...args) => {
+        expect((await checkExecKillCommand('stop-process', args)).blocked).toBe(true);
+      });
+
+      it.each<string[]>([[`-Id:'2147483646'`], ["-Id:'notanumber'"]])(
+        'still allows stop-process %j',
+        async (...args) => {
+          expect((await checkExecKillCommand('stop-process', args)).blocked).toBe(false);
+        },
+      );
     });
 
     it('blocks node -e process.kill()', async () => {

@@ -44,6 +44,41 @@ describe('parseKillCommand', () => {
     expect(result!.name).toBe('node.exe');
   });
 
+  // A redirection only discards output; it does not name a different process.
+  // The simple-taskkill gate rejected any `<`/`>`, so the target was never
+  // parsed and `taskkill /F /IM x > nul` was allowed while the same command
+  // without redirection was blocked. Parsed directly so this runs everywhere.
+  describe('taskkill with IO redirection names the same target', () => {
+    const parse = (line: string) => parseWindowsKillCommand(line, line.replace(/\s+/g, ' ').trim());
+
+    it.each([
+      'taskkill /F /IM node.exe > nul',
+      'taskkill /F /IM node.exe 2>nul',
+      'taskkill /F /IM node.exe >nul 2>&1',
+      'taskkill /F /IM node.exe >> log.txt',
+      'taskkill /F /IM node.exe < nul',
+    ])('%s → name node.exe', (line) => {
+      const r = parse(line);
+      expect(r).not.toBeNull();
+      expect(r!.name).toBe('node.exe');
+    });
+
+    it.each([
+      ['taskkill /F /PID 4242 > nul', 4242],
+      ['taskkill /F /PID 4242 2>nul', 4242],
+      ['taskkill /F /FI "PID eq 4242" > nul', 4242],
+    ])('%s → pid %i', (line, pid) => {
+      const r = parse(line);
+      expect(r).not.toBeNull();
+      expect(r!.pid).toBe(pid);
+    });
+
+    it('leaves sequencing and pipelines on the conservative path', () => {
+      expect(parse('taskkill /F /IM node.exe | findstr x')).toBeNull();
+      expect(parse('taskkill /F /IM node.exe & echo hi')).toBeNull();
+    });
+  });
+
   // ── tskill ─────────────────────────────────────────────────────────────
 
   // tskill is Windows-only
@@ -88,6 +123,38 @@ describe('parseKillCommand', () => {
     const result = parseKillCommand('Stop-Process -Name:chrome -Force');
     expect(result).not.toBeNull();
     expect(result!.name).toBe('chrome');
+  });
+
+  // PowerShell binds a QUOTED string to a typed parameter: `-Id:'1234'`,
+  // `-Id "1234"` and `-Name:'node'` terminate exactly like the bare forms
+  // (live-verified against a sacrificial process). The parsers matched only
+  // bare values, so the quoted spelling produced no target and was allowed.
+  // Tested on the Windows parser directly so it runs on every host.
+  describe('quoted Stop-Process parameter values', () => {
+    const parse = (line: string) => parseWindowsKillCommand(line, line.replace(/\s+/g, ' ').trim());
+
+    it.each([
+      "Stop-Process -Id:'4242'",
+      'Stop-Process -Id:"4242"',
+      "Stop-Process -Id '4242'",
+      'Stop-Process -Id "4242"',
+      "Stop-Process -Id:'4242' -Force",
+    ])('%s → pid 4242', (line) => {
+      const r = parse(line);
+      expect(r).not.toBeNull();
+      expect(r!.pid).toBe(4242);
+    });
+
+    it.each([
+      "Stop-Process -Name:'node.exe'",
+      'Stop-Process -Name:"node.exe"',
+      "spps -Name:'node'",
+      'kill -Name:"node"',
+    ])('%s → name node', (line) => {
+      const r = parse(line);
+      expect(r).not.toBeNull();
+      expect(r!.name).toMatch(/^node(?:\.exe)?$/);
+    });
   });
 
   // Stop-Process is Windows-only
@@ -243,6 +310,30 @@ describe('parseKillCommand', () => {
     expect(result!.pid).toBe(1234);
   });
 
+  // ── wmic `call terminate` (platform-independent parser) ────────────────
+  // `... call terminate` is the WMIC method spelling of `... delete`: both
+  // terminate the matched process. The detector gated on `delete` alone, so
+  // the method spelling never reached any of the target branches below.
+  describe('wmic call terminate names the same target as delete', () => {
+    const parse = (line: string) => parseWindowsKillCommand(line, line.replace(/\s+/g, ' ').trim());
+
+    it.each([
+      ['wmic process where processid=4242 call terminate', 4242],
+      ['wmic process where ProcessId=4242 Call Terminate', 4242],
+      ['wmic process where "ProcessId=4242" call terminate', 4242],
+    ])('%s → pid %i', (line, pid) => {
+      const r = parse(line);
+      expect(r).not.toBeNull();
+      expect(r!.pid).toBe(pid);
+      expect(r!.signal).toBe('FORCE');
+    });
+
+    it('reads the name filter in the method spelling', () => {
+      expect(parse("wmic process where name='node.exe' call terminate")?.name).toBe('node.exe');
+      expect(parse('wmic process where "name=\'node.exe\'" Call Terminate')?.name).toBe('node.exe');
+    });
+  });
+
   // ── taskkill /FI "PID eq <n>" (platform-independent parser) ────────────
   // `taskkill /FI "PID eq <n>"` terminates <n> like `/PID <n>` (live-verified),
   // but only the IMAGENAME filter was parsed, so the bash guard saw no target at
@@ -281,6 +372,47 @@ describe('parseKillCommand', () => {
     it('still reads the IMAGENAME filter and the plain /PID form', () => {
       expect(parse('taskkill /F /FI "IMAGENAME eq node.exe"')?.name).toBe('node.exe');
       expect(parse('taskkill /F /PID 4242')?.pid).toBe(4242);
+    });
+  });
+
+  // ── taskkill /FI "PID <op> <n>" range filters (platform-independent) ───
+  // `taskkill /F /FI "PID ge 1"` force-kills a PID SET. Only `eq` was read,
+  // so every inequality spelling parsed to no target at all and the guard
+  // allowed a kill that reaches this runtime.
+  describe('taskkill /FI "PID <op> <n>" names a PID set', () => {
+    const parse = (line: string) => parseWindowsKillCommand(line, line.replace(/\s+/g, ' ').trim());
+
+    it.each([
+      ['taskkill /F /FI "PID ge 1"', 'ge'],
+      ['taskkill /F /FI "PID gt 1"', 'gt'],
+      ['taskkill /F /FI "PID le 1"', 'le'],
+      ['taskkill /F /FI "PID lt 1"', 'lt'],
+      ['taskkill /F /FI "PID ne 1"', 'ne'],
+      ['taskkill /F /FI "pid NE 1"', 'ne'],
+      ['taskkill /FI "PID  ge  1" /F', 'ge'],
+    ])('%s → %s filter, no single PID', (line, op) => {
+      const r = parse(line);
+      expect(r).not.toBeNull();
+      expect(r!.pid).toBeUndefined();
+      expect(r!.pids).toBeUndefined();
+      expect(r!.pidFilters).toEqual([{ op, value: 1 }]);
+      expect(r!.signal).toBe(/\/F\b/i.test(line) ? 'FORCE' : 'TERM');
+    });
+
+    it('keeps an eq filter a single PID, not a range', () => {
+      const r = parse('taskkill /F /FI "PID eq 4242"');
+      expect(r!.pid).toBe(4242);
+      expect(r!.pidFilters).toBeUndefined();
+    });
+
+    it('carries a /PID flag and range clauses together', () => {
+      const r = parse('taskkill /PID 111 /FI "PID ge 5" /FI "PID lt 9"');
+      expect(r!.pid).toBe(111);
+      expect(r!.pids).toBeUndefined();
+      expect(r!.pidFilters).toEqual([
+        { op: 'ge', value: 5 },
+        { op: 'lt', value: 9 },
+      ]);
     });
   });
 

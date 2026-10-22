@@ -3,11 +3,30 @@
 import {
   type KillCommand,
   parsePosixKillTargets,
+  parseTaskkillPidFilters,
   SCRIPT_KILL_RE,
   stripPowerShellLauncherHead,
 } from './bash-kill-detect.js';
 
 /** Parse a Windows (or Git Bash / WSL `kill`) command; null when it names no target. */
+/**
+ * taskkill with IO redirections removed. Redirection does not change which
+ * process is killed — `> nul`, `2>nul`, `>> log`, `2>&1` and `< nul` all leave
+ * the same target — but the `<`/`>` characters made `isSimpleTaskkill` reject
+ * the line, so no target was parsed and the guard allowed a kill that the same
+ * line without redirection blocked. `|` and `&` stay in place: those sequence
+ * commands and remain on the conservative path.
+ */
+function withoutRedirections(normalized: string): string {
+  return normalized
+    .replace(/\d?>&\d/g, ' ') // 2>&1, >&2
+    .replace(/&>>?\s*[^\s|&]+/g, ' ') // &>log, &>>log
+    .replace(/\d?>>?\s*[^\s|&]+/g, ' ') // >nul, 2>nul, >>log
+    .replace(/<\s*[^\s|&]+/g, ' ') // <in
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 export function parseWindowsKillCommand(command: string, input: string): KillCommand | null {
   let normalized = input;
   // PowerShell binds the first positional argument as -Command (documented
@@ -17,32 +36,43 @@ export function parseWindowsKillCommand(command: string, input: string): KillCom
   const strippedLauncher = stripPowerShellLauncherHead(normalized);
   if (strippedLauncher !== null) normalized = strippedLauncher;
   const hasTaskkillForce = /(?:^|\s)\/F(?=\s|$)/i.test(normalized);
+  // Redirections are not command separators, so they must not stop the target
+  // from being read; the gate below still rejects `|` and `&`.
+  const taskkillText = withoutRedirections(normalized);
 
   // ── taskkill /PID 1234 or taskkill /F /PID 1234 ──────────────────
   // Locate the target independently of flag order/arguments (`/T`, `/FI ...`).
   // Shell control operators stay unparsed so the conservative pipeline path runs.
-  const isSimpleTaskkill = /^taskkill\s+/i.test(normalized) && !/[|&<>]/.test(normalized);
+  const isSimpleTaskkill = /^taskkill\s+/i.test(taskkillText) && !/[|&]/.test(taskkillText);
   // `/PID:1234` (colon-attached) binds identically to `/PID 1234`.
   // taskkill accepts `/PID` more than once and kills every one; reading only
   // the first let `taskkill /PID <other> /PID <protected>` through.
   // `/FI "PID eq <n>"` is the filter spelling of the same kill (live-verified:
   // "SUCCESS: The process with PID <n> has been terminated"), so it names a PID
   // exactly like `/PID <n>` and must reach the same protected-PID check.
-  const taskkillPids = isSimpleTaskkill
-    ? [
-        ...[...normalized.matchAll(/(?:^|\s)\/PID(?::(\d+)|\s+(\d+))(?=\s|$)/gi)].map((m) =>
-          parseInt(m[1] ?? m[2] ?? '', 10),
-        ),
-        ...[...normalized.matchAll(/(?:^|\s)\/FI\s+"\s*PID\s+eq\s+(\d+)\s*"(?=\s|$)/gi)].map((m) =>
-          parseInt(m[1] ?? '', 10),
-        ),
-      ]
+  // `/FI "PID <ne|gt|ge|lt|le> <n>"` selects a PID SET instead, so it is carried
+  // as `pidFilters` for the guard's protected-PID evaluation.
+  const taskkillPidFilters = isSimpleTaskkill ? parseTaskkillPidFilters(taskkillText) : [];
+  const taskkillPidFlags = isSimpleTaskkill
+    ? [...taskkillText.matchAll(/(?:^|\s)\/PID(?::(\d+)|\s+(\d+))(?=\s|$)/gi)].map((m) =>
+        parseInt(m[1] ?? m[2] ?? '', 10),
+      )
     : [];
+  const taskkillPids = [
+    ...taskkillPidFlags,
+    ...taskkillPidFilters.filter((filter) => filter.op === 'eq').map((filter) => filter.value),
+  ];
+  const taskkillRangeFilters = taskkillPidFilters.filter((filter) => filter.op !== 'eq');
   const firstTaskkillPid = taskkillPids[0];
-  if (firstTaskkillPid !== undefined) {
+  if (firstTaskkillPid !== undefined || taskkillRangeFilters.length > 0) {
     return {
-      pid: firstTaskkillPid,
-      ...(taskkillPids.length > 1 ? { pids: taskkillPids } : {}),
+      ...(firstTaskkillPid !== undefined
+        ? {
+            pid: firstTaskkillPid,
+            ...(taskkillPids.length > 1 ? { pids: taskkillPids } : {}),
+          }
+        : {}),
+      ...(taskkillRangeFilters.length > 0 ? { pidFilters: taskkillRangeFilters } : {}),
       signal: hasTaskkillForce ? 'FORCE' : 'TERM',
       isGroupKill: false,
       isAllKill: false,
@@ -56,7 +86,7 @@ export function parseWindowsKillCommand(command: string, input: string): KillCom
   // lookup performed), so both spellings are extracted, mirroring the
   // Stop-Process -Id:<pid> handling below.
   const taskkillImMatch = isSimpleTaskkill
-    ? normalized.match(/(?:^|\s)\/IM(?::([^\s/]+)|\s+([^\s/]+))(?=\s|$)/i)
+    ? taskkillText.match(/(?:^|\s)\/IM(?::([^\s/]+)|\s+([^\s/]+))(?=\s|$)/i)
     : null;
   const taskkillImName = taskkillImMatch?.[1] ?? taskkillImMatch?.[2];
   if (taskkillImName) {
@@ -73,7 +103,7 @@ export function parseWindowsKillCommand(command: string, input: string): KillCom
   // /FI uses a quoted filter string instead of /IM. Extract the process
   // name after the `IMAGENAME eq` clause — the most common taskkill filter.
   const taskkillFiMatch = isSimpleTaskkill
-    ? normalized.match(/(?:^|\s)\/FI\s+"IMAGENAME\s+eq\s+([^"]+)"(?=\s|$)/i)
+    ? taskkillText.match(/(?:^|\s)\/FI\s+"IMAGENAME\s+eq\s+([^"]+)"(?=\s|$)/i)
     : null;
   if (taskkillFiMatch?.[1]) {
     return {
@@ -124,11 +154,16 @@ export function parseWindowsKillCommand(command: string, input: string): KillCom
   // form `-Id:1234` identically (live-verified kill, round
   // r-20260922-exec-killguard-colon-attached), so both the shape and the
   // value extraction accept `:<digits>` as well as the space form.
+  // A quoted value binds identically too (`-Id:'1234'`, `-Id "1234"` are
+  // live-verified kills): PowerShell converts the string to Int32, so the
+  // quote pair is part of the value, not of the parameter.
   const isStopProcIdCommand =
-    /^(?:stop-process|kill|spps)(?:\s+-(?:id|pid)(?:\s+\d+|:\d+)|\s+-[a-zA-Z]+(?::[^\s]+)?)+$/i.test(
+    /^(?:stop-process|kill|spps)(?:\s+-(?:id|pid)(?:\s+['"]?\d+['"]?|:\s*['"]?\d+['"]?)|\s+-[a-zA-Z]+(?::[^\s]+)?)+$/i.test(
       normalized,
     );
-  const stopProcIdMatch = normalized.match(/(?:^|\s)-(?:id|pid)(?::(\d+)|\s+(\d+))(?=\s|$)/i);
+  const stopProcIdMatch = normalized.match(
+    /(?:^|\s)-(?:id|pid)(?::\s*['"]?(\d+)['"]?|\s+['"]?(\d+)['"]?)(?=\s|$)/i,
+  );
   const stopProcId = stopProcIdMatch?.[1] ?? stopProcIdMatch?.[2];
   if (isStopProcIdCommand && stopProcId) {
     return {
@@ -168,12 +203,13 @@ export function parseWindowsKillCommand(command: string, input: string): KillCom
 
   // ── PowerShell Stop-Process -Name "node" (multi-char name) ─────────
   // Uses greedier capture with end anchor to grab the full name. Also
-  // accepts the colon-attached form `-Name:node`, which PowerShell binds
+  // accepts the colon-attached form `-Name:node` and a quoted value after
+  // the colon (`-Name:'node'`, `-Name:"node"`), which PowerShell binds
   // identically to the space form.
   // `*`, `?`, `[`/`]` are PowerShell wildcards (`-Name nod*`); excluding
   // them left a wildcard kill unparsed and therefore unblocked.
   const stopProcNameMatch = normalized.match(
-    /^(?:stop-process|kill|spps)\s+-(?:name|nam|na|n)(?::([a-zA-Z0-9_.*?[\]-]+)|\s+(?:['"]([a-zA-Z0-9_.*?[\]-]+)['"]|([a-zA-Z0-9_.*?[\]-]+)))(?:\s|$)/i,
+    /^(?:stop-process|kill|spps)\s+-(?:name|nam|na|n)(?::\s*['"]?([a-zA-Z0-9_.*?[\]-]+)['"]?|\s+(?:['"]([a-zA-Z0-9_.*?[\]-]+)['"]|([a-zA-Z0-9_.*?[\]-]+)))(?:\s|$)/i,
   );
   const stopProcName = stopProcNameMatch?.[1] ?? stopProcNameMatch?.[2] ?? stopProcNameMatch?.[3];
   if (stopProcName) {

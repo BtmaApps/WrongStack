@@ -114,6 +114,168 @@ describe('bash-kill-guard — protects the running runtime image (empty registry
     expect(result.blocked).toBe(true);
   });
 
+  // `taskkill /FI "PID <op> <n>"` selects a PID SET, so it never names a single
+  // PID: every inequality spelling parsed to no target and the guard allowed
+  // `taskkill /F /FI "PID ge 1"`, which force-kills this runtime.
+  it.each([
+    ['ge', (pid: number) => pid - 1],
+    ['gt', (pid: number) => pid - 1],
+    ['le', (pid: number) => pid],
+    ['lt', (pid: number) => pid + 1],
+    ['ne', (pid: number) => pid + 1],
+  ])('blocks taskkill /FI "PID %s <n>" when the range selects this runtime', async (op, value) => {
+    const { checkAndBlockKillCommand } = await loadGuard('win32');
+    const command = `taskkill /F /FI "PID ${op} ${value(process.pid)}"`;
+    expect((await checkAndBlockKillCommand(command)).blocked, command).toBe(true);
+  });
+
+  it.each([
+    'taskkill /F /FI "PID lt 1"',
+    'taskkill /F /FI "PID eq 2147483646"',
+    'taskkill /F /FI "PID gt 2147483646"',
+  ])('still allows %s', async (command) => {
+    const { checkAndBlockKillCommand } = await loadGuard('win32');
+    expect((await checkAndBlockKillCommand(command)).blocked).toBe(false);
+  });
+
+  // `... call terminate` is the WMIC method spelling of `... delete`: both
+  // terminate the matched process. The detector gated on `delete` alone, so the
+  // method spelling was never parsed and the guard allowed it outright.
+  it('blocks wmic call terminate, the method spelling of delete', async () => {
+    const { checkAndBlockKillCommand } = await loadGuard('win32');
+    const self = process.pid;
+    for (const command of [
+      `wmic process where processid=${self} call terminate`,
+      "wmic process where name='wrongstack.exe' call terminate",
+    ]) {
+      expect((await checkAndBlockKillCommand(command)).blocked, command).toBe(true);
+    }
+    // This layer is precise for PIDs: an unprotected target stays allowed in
+    // both verb spellings (no blanket block on the method spelling).
+    const viaDelete = await checkAndBlockKillCommand('wmic process where "ProcessId=4242" delete');
+    const viaMethod = await checkAndBlockKillCommand(
+      'wmic process where "ProcessId=4242" Call Terminate',
+    );
+    expect(viaDelete.blocked).toBe(false);
+    expect(viaMethod.blocked).toBe(viaDelete.blocked);
+  });
+
+  it('keeps the wmic method spelling precise: unrelated filters stay allowed', async () => {
+    const { checkAndBlockKillCommand } = await loadGuard('win32');
+    for (const command of [
+      "wmic process where name='notepad.exe' call terminate",
+      'wmic os get caption',
+    ]) {
+      expect((await checkAndBlockKillCommand(command)).blocked, command).toBe(false);
+    }
+  });
+
+  // A launcher binds its payload as one token, so separators inside its quotes
+  // are invisible to a split of the raw line — the kill sequenced after them
+  // ran uninspected.
+  it('blocks a kill sequenced inside a launcher payload', async () => {
+    const { checkAndBlockKillCommand } = await loadGuard('win32');
+    for (const command of [
+      'cmd /c "echo hi && taskkill /F /IM bun.exe"',
+      'cmd /c "echo hi & taskkill /F /IM bun.exe"',
+      'cmd /c "echo hi || taskkill /F /IM bun.exe"',
+      'cmd /c "taskkill /F /IM bun.exe && exit"',
+      'cmd /k "echo hi && taskkill /F /IM bun.exe"',
+      'powershell -NoProfile -Command "echo hi; Stop-Process -Name bun"',
+    ]) {
+      expect((await checkAndBlockKillCommand(command)).blocked, command).toBe(true);
+    }
+  });
+
+  it('keeps launcher-payload sequencing precise for unprotected targets', async () => {
+    const { checkAndBlockKillCommand } = await loadGuard('win32');
+    for (const command of [
+      'cmd /c "echo hi && echo bye"',
+      'cmd /c "echo hi && taskkill /F /IM notepad.exe"',
+      'cmd /c "echo hi && taskkill /F /PID 2147483646"',
+      'powershell -Command "echo hi; Get-Process"',
+    ]) {
+      expect((await checkAndBlockKillCommand(command)).blocked, command).toBe(false);
+    }
+  });
+
+  // PowerShell binds a quoted string to a typed parameter and the value is what
+  // it binds: `-Id:'<pid>'`, `-Id "<pid>"` and `-Name:'wrongstack'` all kill
+  // (live-verified for the colon+quoted PID form). The parser matched only bare
+  // values, so the quoted spelling produced no target and was allowed.
+  it('blocks quoted Stop-Process parameter values', async () => {
+    const { checkAndBlockKillCommand } = await loadGuard('win32');
+    const self = process.pid;
+    for (const command of [
+      `Stop-Process -Id:'${self}'`,
+      `Stop-Process -Id:"${self}"`,
+      `Stop-Process -Id '${self}'`,
+      `Stop-Process -Id "${self}"`,
+      "Stop-Process -Name:'wrongstack'",
+      'Stop-Process -Name:"wrongstack"',
+      "spps -Name:'wrongstack'",
+      `powershell -Command "Stop-Process -Id:'${self}'"`,
+    ]) {
+      expect((await checkAndBlockKillCommand(command)).blocked, command).toBe(true);
+    }
+    for (const command of ["Stop-Process -Id:'2147483646'", "Stop-Process -Name:'notepad.exe'"]) {
+      expect((await checkAndBlockKillCommand(command)).blocked, command).toBe(false);
+    }
+  });
+
+  // Redirection only discards output; it names no different process. The
+  // simple-taskkill gate rejected any `<`/`>`, so the same kill with `> nul`,
+  // `2>nul`, `>> log`, `2>&1` or `< nul` was allowed while the bare command
+  // was blocked.
+  it('blocks taskkill with IO redirection', async () => {
+    const { checkAndBlockKillCommand } = await loadGuard('win32');
+    const self = process.pid;
+    for (const command of [
+      'taskkill /F /IM wrongstack.exe > nul',
+      'taskkill /F /IM wrongstack.exe 2>nul',
+      `taskkill /F /PID ${self} >nul`,
+      'taskkill /F /IM wrongstack.exe >nul 2>&1',
+      'taskkill /F /IM wrongstack.exe >> log.txt',
+      'taskkill /F /IM wrongstack.exe < nul',
+      `taskkill /F /FI "PID eq ${self}" > nul`,
+      'cmd /c taskkill /F /IM wrongstack.exe > nul',
+    ]) {
+      expect((await checkAndBlockKillCommand(command)).blocked, command).toBe(true);
+    }
+    for (const command of [
+      'taskkill /F /IM notepad.exe > nul',
+      'taskkill /F /PID 2147483646 > nul',
+      'echo hi > nul',
+    ]) {
+      expect((await checkAndBlockKillCommand(command)).blocked, command).toBe(false);
+    }
+  });
+
+  // `%ComSpec%` is cmd's own path, so `cmd /c %ComSpec% /c taskkill …` runs the
+  // kill in a nested interpreter. Recognising only the literal `cmd` head left
+  // the payload uninspected while `cmd /c taskkill …` was blocked.
+  it('blocks a kill through the %ComSpec% interpreter alias', async () => {
+    const { checkAndBlockKillCommand } = await loadGuard('win32');
+    const self = process.pid;
+    for (const command of [
+      'cmd /c %ComSpec% /c taskkill /F /IM wrongstack.exe',
+      '%ComSpec% /c taskkill /F /IM wrongstack.exe',
+      `cmd.exe /c %COMSPEC% /c taskkill /F /PID ${self}`,
+      'cmd /c "%ComSpec% /c taskkill /F /IM wrongstack.exe"',
+      'cmd /c %ComSpec% /c "taskkill /F /IM wrongstack.exe"',
+    ]) {
+      expect((await checkAndBlockKillCommand(command)).blocked, command).toBe(true);
+    }
+    for (const command of [
+      '%ComSpec% /c echo hi',
+      'cmd /c %ComSpec% /c echo hi',
+      'cmd /c %ComSpec% /c taskkill /F /IM notepad.exe',
+      'echo %ComSpec%',
+    ]) {
+      expect((await checkAndBlockKillCommand(command)).blocked, command).toBe(false);
+    }
+  });
+
   it.each(['pkill bun', 'pkill -9 bun', 'killall bun', 'true && pkill bun'])(
     'blocks POSIX %s',
     async (command) => {
@@ -156,6 +318,7 @@ describe('bash-kill-guard — protects the running runtime image (empty registry
     const { checkExecKillCommand } = await import('../src/exec-kill-guard.js');
     for (const [cmd, args] of [
       ['taskkill', ['/F', '/IM', 'bun.exe']],
+      ['taskkill', ['/F', '/IM', 'bun.exe', '>', 'nul']],
       ['Stop-Process', ['-Name', 'bun']],
       ['tskill', ['bun']],
     ] as const) {

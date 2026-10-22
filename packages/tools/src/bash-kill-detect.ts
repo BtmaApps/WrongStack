@@ -20,16 +20,76 @@ export const SCRIPT_KILL_RE_POSIX = /^(?:\.\/)?(?:kill|terminate|stop)\S*\.sh(?:
  */
 export const SCRIPT_KILL_FALLBACK_RE = /^\S*(?:kill|terminate|stop)\S*\.(?:ps1|bat|cmd|sh)\b/i;
 
+/**
+ * WMIC termination verbs. `... delete` and the `... call terminate` method
+ * both terminate the matched process; gating on `delete` alone left the
+ * method spelling (and every target check behind it) uninspected.
+ */
+const WMIC_TERMINATE_RE = /\b(?:delete|call\s+terminate)\b/i;
+
+/** taskkill `/FI "PID <op> <n>"` comparison operators. */
+export type PidComparison = 'eq' | 'ne' | 'gt' | 'ge' | 'lt' | 'le';
+
+/** One taskkill PID filter clause. Unlike `/PID`, it selects a PID SET. */
+export interface PidFilter {
+  op: PidComparison;
+  value: number;
+}
+
 export interface KillCommand {
   /** First PID target (kept for single-target callers). */
   pid?: number;
   /** Every PID target when the command names more than one (`kill 1 2 3`). */
   pids?: number[];
+  /**
+   * `/FI "PID <op> <n>"` clauses with a comparisons operator (`ne`/`gt`/`ge`/
+   * `lt`/`le`). They name no single PID, so the guard evaluates each clause
+   * against the processes it protects instead of a `pid`/`pids` lookup.
+   */
+  pidFilters?: PidFilter[];
   name?: string;
   signal?: string;
   isGroupKill: boolean;
   isAllKill: boolean;
   originalCommand: string;
+}
+
+/** The quoted `/FI` value for a PID comparison (`PID ge 1234`). */
+const PID_FILTER_VALUE_RE = /^\s*['"]?\s*PID\s+(eq|ne|gt|ge|lt|le)\s+(\d+)\s*['"]?\s*$/i;
+
+/** Parse one `/FI` filter body, or null when it does not name a PID comparison. */
+export function parsePidFilterValue(value: string): PidFilter | null {
+  const match = PID_FILTER_VALUE_RE.exec(value);
+  if (!match?.[1] || !match[2]) return null;
+  return { op: match[1].toLowerCase() as PidComparison, value: Number.parseInt(match[2], 10) };
+}
+
+/** Every `/FI "PID <op> <n>"` clause of a taskkill command line, in order. */
+export function parseTaskkillPidFilters(normalized: string): PidFilter[] {
+  const filters: PidFilter[] = [];
+  for (const match of normalized.matchAll(/(?:^|\s)\/FI\s+"([^"]*)"(?=\s|$)/gi)) {
+    const filter = parsePidFilterValue(match[1] ?? '');
+    if (filter) filters.push(filter);
+  }
+  return filters;
+}
+
+/** True when `pid` satisfies the filter, using taskkill's comparison semantics. */
+export function pidFilterMatches(filter: PidFilter, pid: number): boolean {
+  switch (filter.op) {
+    case 'eq':
+      return pid === filter.value;
+    case 'ne':
+      return pid !== filter.value;
+    case 'gt':
+      return pid > filter.value;
+    case 'ge':
+      return pid >= filter.value;
+    case 'lt':
+      return pid < filter.value;
+    case 'le':
+      return pid <= filter.value;
+  }
 }
 
 export interface KillCheckResult {
@@ -229,8 +289,8 @@ export function isKillRelatedCommand(cmd: string): boolean {
     if (/^taskkill\s/i.test(normalized)) return true;
     // Windows tskill
     if (/^tskill\s/i.test(normalized)) return true;
-    // WMIC process termination: wmic process where ... delete
-    if (/^wmic\s+process\s/i.test(normalized) && /\bdelete\b/i.test(normalized)) return true;
+    // WMIC process termination: `... delete` and `... call terminate` both kill
+    if (/^wmic\s+process\s/i.test(normalized) && WMIC_TERMINATE_RE.test(normalized)) return true;
     // Scripts named kill*, terminate*, stop* .ps1, .bat, .cmd, .sh (with or without args)
     if (SCRIPT_KILL_RE.test(normalized)) return true;
 
@@ -244,7 +304,7 @@ export function isKillRelatedCommand(cmd: string): boolean {
       if (/^taskkill\s/i.test(strippedLauncher)) return true;
       if (/^tskill\s/i.test(strippedLauncher)) return true;
       if (/^(stop-process|kill|stop|spps)\s/i.test(strippedLauncher)) return true;
-      if (/^wmic\s+process\s/i.test(strippedLauncher) && /\bdelete\b/i.test(strippedLauncher)) {
+      if (/^wmic\s+process\s/i.test(strippedLauncher) && WMIC_TERMINATE_RE.test(strippedLauncher)) {
         return true;
       }
       if (SCRIPT_KILL_RE.test(strippedLauncher)) return true;
@@ -528,7 +588,11 @@ export function unwrapKillCommandHead(normalized: string): string {
     const subshell = /^\$?\(\s*([\s\S]*?)\s*\)$/.exec(current);
     if (subshell) current = subshell[1] ?? '';
     const cmd =
-      /^(?:\S*[\\/])?cmd(?:\.exe)?(?:\s+\/[a-z](?::\S*)?){0,4}?\s+\/[ck]\s+([\s\S]+)$/i.exec(
+      // `%ComSpec%` (and PowerShell's `$env:ComSpec`) is cmd's own path, so a
+      // nested `cmd /c %ComSpec% /c taskkill …` runs the kill in a fresh
+      // interpreter. Recognizing only the literal `cmd` head left the payload
+      // uninspected; strip this alias exactly like `cmd /c`.
+      /^(?:\S*[\\/])?(?:cmd(?:\.exe)?|%comspec%|\$env:comspec|\$\{env:comspec\}|\$comspec)(?:\s+\/[a-z](?::\S*)?){0,4}?\s+\/[ck]\s+([\s\S]+)$/i.exec(
         current,
       );
     if (cmd) {

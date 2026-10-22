@@ -8,7 +8,7 @@
  * - taskkill /F /PID 1234 (PID-based)
  * - Stop-Process -Name "node" -Force (PowerShell cmdlet)
  * - kill -9 12345 / pkill node (POSIX via allowlisted commands)
- * - wmic process where "name='node.exe'" delete
+ * - wmic process where "name='node.exe'" delete|call terminate
  * - node -e "process.kill(12345)" (eval-based kill)
  * - Any script that contains kill commands (exec'd via shell interpreters)
  *
@@ -20,6 +20,7 @@
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { compileUserRegex } from './_regex.js';
+import { parsePidFilterValue, pidFilterMatches, splitShellSequence } from './bash-kill-detect.js';
 import { wildcardNameMatches } from './bash-kill-guard.js';
 import { getPersistentProcessRegistry } from './process-registry-persistent.js';
 
@@ -50,6 +51,13 @@ export async function checkExecKillCommand(
     .replace(/^.*[\\/]/, '')
     .replace(/\.exe$/, '');
   const fullCommand = [cmdLower, ...args].join(' ').replace(/\s+/g, ' ').trim();
+  // cmd expands %ComSpec% to its own path (PowerShell does the same for
+  // $env:ComSpec), so `cmd /c %ComSpec% /c taskkill …` runs the kill in a
+  // nested interpreter of the same kind. Treat the variable as the launcher it
+  // names; otherwise the recursion below stops at `%ComSpec%` and allows it.
+  const shellCommand = /^(?:%comspec%|\$env:comspec|\$\{env:comspec\}|\$comspec)$/i.test(cmdLower)
+    ? 'cmd'
+    : cmdLower;
 
   // node -e "process.kill(12345)" — eval-based kill
   if (cmdLower === 'node' || cmdLower === 'bun') {
@@ -117,15 +125,27 @@ export async function checkExecKillCommand(
         if (a.toUpperCase() === '/FI' || a.toUpperCase() === '-FI') {
           const filterArg = args[i + 1];
           if (filterArg) {
-            // `/FI "PID eq <n>"` kills <n> exactly like `/PID <n>`.
-            const pidFilter = /^\s*PID\s+eq\s+(\d+)\s*$/i.exec(filterArg)?.[1];
-            if (pidFilter) {
+            // `/FI "PID eq <n>"` kills <n> exactly like `/PID <n>`. An
+            // inequality (`ne`/`gt`/`ge`/`lt`/`le`) selects a PID SET instead,
+            // so it must be checked against every process this guard protects
+            // — `taskkill /F /FI "PID ge 1"` force-kills this runtime.
+            const pidFilter = parsePidFilterValue(filterArg);
+            if (pidFilter?.op === 'eq') {
               const result = await checkKillTarget({
-                pid: parseInt(pidFilter, 10),
+                pid: pidFilter.value,
                 signal,
                 cmd: fullCommand,
               });
               if (result.blocked) return result;
+            } else if (pidFilter) {
+              const protectedPids = await getPersistentProcessRegistry().getAllProtectedPids();
+              const guarded = [process.pid, process.ppid, ...protectedPids];
+              if (guarded.some((pid) => pidFilterMatches(pidFilter, pid))) {
+                return {
+                  blocked: true,
+                  reason: `Blocked: taskkill /FI "PID ${pidFilter.op} ${pidFilter.value}" can select protected WrongStack processes (${fullCommand.slice(0, 80)}).`,
+                };
+              }
             }
             const nameMatch = filterArg.match(/IMAGENAME\s+eq\s+"?([^"\s]+)/i);
             if (nameMatch?.[1]) {
@@ -148,21 +168,22 @@ export async function checkExecKillCommand(
     // -Command/-c. Recurse through this guard rather than passing the wrapper
     // string to bash-kill-guard, which cannot parse a leading `cmd /c`.
     if (
-      cmdLower === 'powershell' ||
-      cmdLower === 'powershell.exe' ||
-      cmdLower === 'pwsh' ||
-      cmdLower === 'pwsh.exe' ||
-      cmdLower === 'cmd' ||
-      cmdLower === 'cmd.exe'
+      shellCommand === 'powershell' ||
+      shellCommand === 'powershell.exe' ||
+      shellCommand === 'pwsh' ||
+      shellCommand === 'pwsh.exe' ||
+      shellCommand === 'cmd' ||
+      shellCommand === 'cmd.exe'
     ) {
       const shellFlagIndex = args.findIndex((arg) => {
         const lower = arg.toLowerCase();
         return lower === '-c' || lower === '-command' || lower === '/c' || lower === '/k';
       });
       if (shellFlagIndex >= 0) {
-        const innerTokens = tokenizeShellCommand(args.slice(shellFlagIndex + 1).join(' '));
-        const innerCommand = innerTokens[0];
-        if (innerCommand) {
+        for (const segment of shellPayloadSegments(args.slice(shellFlagIndex + 1).join(' '))) {
+          const innerTokens = tokenizeShellCommand(segment);
+          const innerCommand = innerTokens[0];
+          if (!innerCommand) continue;
           const result = await checkExecKillCommand(innerCommand, innerTokens.slice(1));
           if (result.blocked) return result;
         }
@@ -176,9 +197,10 @@ export async function checkExecKillCommand(
         // PowerShell joins its positional arguments into one command string,
         // so `powershell "Stop-Process -Id 123"` (a single argv entry) runs
         // the cmdlet too — tokenize the joined text like the -Command branch.
-        const innerTokens = tokenizeShellCommand(argsAfterLauncherFlags(args).join(' '));
-        const innerCommand = innerTokens[0];
-        if (innerCommand) {
+        for (const segment of shellPayloadSegments(argsAfterLauncherFlags(args).join(' '))) {
+          const innerTokens = tokenizeShellCommand(segment);
+          const innerCommand = innerTokens[0];
+          if (!innerCommand) continue;
           const result = await checkExecKillCommand(innerCommand, innerTokens.slice(1));
           if (result.blocked) return result;
         }
@@ -218,7 +240,11 @@ export async function checkExecKillCommand(
         }
         // -Id 1234, -PID 1234, or -Id:1234
         if (flag === '-id' || flag === '-pid') {
-          const pidArg = attachedValue ?? args[i + 1];
+          // PowerShell binds a quoted string to a numeric parameter:
+          // `-Id:'1234'` and `-Id "1234"` terminate 1234 exactly like `-Id 1234`
+          // (live-verified). The quote pair is part of the value, so leaving it
+          // on made the digit test fail and the target unparsed.
+          const pidArg = (attachedValue ?? args[i + 1])?.replace(/^['"]|['"]$/g, '');
           if (pidArg && /^\d+$/.test(pidArg)) {
             const result = await checkKillTarget({
               pid: parseInt(pidArg, 10),
@@ -280,10 +306,10 @@ export async function checkExecKillCommand(
       }
     }
 
-    // WMIC process ... delete
+    // WMIC process termination: `... delete` and `... call terminate` both kill
     if (cmdLower === 'wmic' || cmdLower === 'wmic.exe') {
       const joined = args.join(' ').toLowerCase();
-      if (/\bprocess\b/.test(joined) && /\bdelete\b/.test(joined)) {
+      if (/\bprocess\b/.test(joined) && /\b(?:delete|call\s+terminate)\b/.test(joined)) {
         // Extract the name filter
         const nameMatch = joined.match(/name\s*=\s*['"]?([^'"]+)/);
         if (nameMatch?.[1]) {
@@ -294,11 +320,11 @@ export async function checkExecKillCommand(
           });
           if (result.blocked) return result;
         }
-        // No name filter — block conservatively (wmic process delete is broad)
+        // No name filter — block conservatively (wmic process termination is broad)
         return {
           blocked: true,
           reason:
-            'Blocked: wmic process delete targets all matched processes — would include protected WrongStack processes.',
+            'Blocked: wmic process termination targets every matched process — would include protected WrongStack processes.',
         };
       }
     }
@@ -366,6 +392,18 @@ const POWERSHELL_LAUNCHER_VALUE_FLAGS = new Set([
   '-configurationname',
   '-settings',
 ]);
+
+/**
+ * Every command in a launcher payload, with one surrounding quote pair removed.
+ * A payload is a single argument (`cmd /c "echo hi && taskkill …"`), so the
+ * wrapper used to inspect only its first command and pass the rest through as
+ * that command's arguments — the kill after `&&`, `&`, `||` or `;` ran unseen.
+ */
+function shellPayloadSegments(text: string): string[] {
+  const trimmed = text.trim();
+  const unquoted = /^(['"])([\s\S]*)\1$/.exec(trimmed)?.[2] ?? trimmed;
+  return splitShellSequence(unquoted);
+}
 
 /**
  * Args after the PowerShell launcher's own flags: powershell/pwsh treat the

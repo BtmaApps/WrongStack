@@ -16,7 +16,8 @@
  * - Windows equivalents: taskkill, tskill
  * - PowerShell Stop-Process / kill alias: Stop-Process -Name node, kill -Id 12345
  * - WMIC process termination: wmic process where "name='node.exe'" delete
- *   or wmic process where "ProcessId=1234" delete
+ *   or wmic process where "ProcessId=1234" delete, plus the `call terminate`
+ *   method spelling of either form (same effect, previously uninspected)
  * - Script-based kill (script is named kill*.sh, kill*.ps1, kill*.bat)
  *
  * Security contract: every "Handles" bullet must map to both a detector
@@ -59,6 +60,7 @@ import {
   type KillCommand,
   launcherSkipReadings,
   parsePosixKillTargets,
+  pidFilterMatches,
   positionalPayloadReading,
   SCRIPT_KILL_FALLBACK_RE,
   SCRIPT_KILL_RE_POSIX,
@@ -284,6 +286,19 @@ async function isKillProtected(kill: KillCommand): Promise<boolean> {
     return true;
   }
 
+  // `taskkill /FI "PID <ne|gt|ge|lt|le> <n>"` names a PID SET, so it never
+  // becomes `pid`/`pids`. Evaluate each clause against the processes this guard
+  // protects: the runtime and its parent terminal (the same rule as the PID
+  // branch below) plus the live protected PIDs. `taskkill /F /FI "PID ge 1"`
+  // force-kills this process otherwise.
+  if (kill.pidFilters?.length) {
+    const protectedPids = await registry.getAllProtectedPids();
+    const guarded = [process.pid, process.ppid, ...protectedPids];
+    if (kill.pidFilters.some((filter) => guarded.some((pid) => pidFilterMatches(filter, pid)))) {
+      return true;
+    }
+  }
+
   // For name-based kills, check if any protected process matches the name
   if (kill.name) {
     const entries = await getProtectedEntries();
@@ -342,21 +357,50 @@ async function isKillProtected(kill: KillCommand): Promise<boolean> {
 }
 
 /**
+ * Launcher payloads of a command line, outermost first. `cmd /c "a && b"` and
+ * `powershell -Command "a; b"` both bind their payload as one token, so the
+ * sequence inside it is invisible to a split of the raw line.
+ */
+function launcherPayloads(normalized: string): string[] {
+  const payloads: string[] = [];
+  let current = normalized;
+  for (let pass = 0; pass < 3; pass++) {
+    const cmdPayload = unwrapKillCommandHead(current);
+    if (cmdPayload !== current) {
+      payloads.push(cmdPayload);
+      current = cmdPayload;
+      continue;
+    }
+    const powerShellPayload = stripPowerShellLauncherHead(current);
+    if (powerShellPayload !== null && powerShellPayload !== current) {
+      payloads.push(powerShellPayload);
+      current = powerShellPayload;
+      continue;
+    }
+    break;
+  }
+  return payloads;
+}
+
+/**
  * Main entry point: Check if a bash command contains a kill operation targeting protected PIDs.
  * Returns a result indicating whether to block and why.
  */
 export async function checkAndBlockKillCommand(command: string): Promise<KillCheckResult> {
-  // The whole command first: shell -c extraction and the pipeline fallback
-  // both need to see it unsplit.
-  const whole = await checkSingleCommand(command);
-  if (whole.blocked) return whole;
-  // Then every sequenced segment, so `true; kill <pid>` cannot hide the kill
-  // behind a harmless leading command.
-  const segments = splitShellSequence(command);
-  if (segments.length > 1) {
-    for (const segment of segments) {
-      const result = await checkSingleCommand(segment);
-      if (result.blocked) return result;
+  const normalized = command.replace(/\s+/g, ' ').trim();
+  // The whole command first, then every sequenced segment, so `true; kill <pid>`
+  // cannot hide the kill behind a harmless leading command. A launcher payload
+  // is checked the same way: its quotes hide its separators from a split of the
+  // raw line, so `cmd /c "echo hi && taskkill …"` ran uninspected.
+  for (const candidate of [command, ...launcherPayloads(normalized)]) {
+    const whole = await checkSingleCommand(candidate);
+    if (whole.blocked) return whole;
+    const segments = splitShellSequence(candidate);
+    if (segments.length > 1) {
+      for (const segment of segments) {
+        const result = await checkSingleCommand(segment);
+        if (result.blocked) return result;
+      }
     }
   }
   return { blocked: false };
@@ -602,6 +646,10 @@ async function checkOneReading(command: string): Promise<KillCheckResult> {
       target = `PIDs ${parsed.pids.join(', ')}`;
     } else if (parsed.pid !== undefined) {
       target = `PID ${parsed.pid}`;
+    } else if (parsed.pidFilters?.length) {
+      target = `PIDs matching ${parsed.pidFilters
+        .map((filter) => `PID ${filter.op} ${filter.value}`)
+        .join(' / ')}`;
     } else {
       target = '(unknown target)';
     }
