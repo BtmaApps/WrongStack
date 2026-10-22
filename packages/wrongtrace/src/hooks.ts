@@ -207,6 +207,33 @@ function claimedOwnerSetFor(counters: Map<string, number>): Map<string, string> 
   return map;
 }
 
+// Pre-hook claims still running, keyed like the counters. A host timeout can
+// abandon a pre hook whose daemon claim then lands after the tool ran.
+const pendingByCounters = new WeakMap<Map<string, number>, Map<string, Promise<unknown>>>();
+
+function pendingFor(counters: Map<string, number>): Map<string, Promise<unknown>> {
+  let map = pendingByCounters.get(counters);
+  if (!map) {
+    map = new Map<string, Promise<unknown>>();
+    pendingByCounters.set(counters, map);
+  }
+  return map;
+}
+
+/** How long a post hook waits for an in-flight claim before leaving it to the TTL. */
+const CLAIM_SETTLE_MS = 10_000;
+
+async function settleWithin(work: Promise<unknown>, ms: number): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  await Promise.race([
+    work.catch(() => undefined),
+    new Promise<void>((resolve) => {
+      timer = setTimeout(resolve, ms);
+    }),
+  ]);
+  if (timer !== undefined) clearTimeout(timer);
+}
+
 /**
  * A claim belongs to the session that took it: another session's skipped
  * PostToolUse on the same path must not release it.
@@ -253,61 +280,75 @@ export function createWrongTraceHookPair(
       const owner = `wrongstack:${input.sessionId || sessionId()}`;
       const key = claimKey(input, path);
 
+      // The host may stop waiting for this hook (its timeout) while the daemon
+      // claim below still lands. The post hook then waits for it instead of
+      // finding no claim and leaving the lock to the TTL.
+      const pending = pendingFor(counters);
+      const work = claim();
+      pending.set(key, work);
       try {
-        // Self-owner exemption: OUR OWN held lock (leaked by an interrupted
-        // earlier edit) must not deny this session's retry. lock_owner from
-        // the daemon's file-health response is compared against this pair's
-        // owner identity by preflightFileEdit.
-        const verdict = await preflightFileEdit(path, owner);
-        if (verdict.kind === 'blocked') {
-          const owner = verdict.risk.reasons.join('; ');
-          emitSafe(emit, { kind: 'deny', path, reason: `WrongTrace lock: ${owner}` });
-          return { action: 'deny', reason: `WrongTrace lock: ${owner}` };
-        }
+        return await work;
+      } finally {
+        if (pending.get(key) === work) pending.delete(key);
+      }
 
-        // Allow — and claim the lock so peers see this edit in flight.
-        const wt = await getWrongTrace();
-        if (wt.isAvailable) {
-          const res = await wt.lockFile(path, 'WrongStack edit in progress', {
-            owner,
-            ttlSeconds: 900,
-          });
-          if (res?.ok === true) {
-            acquireLock(counters, key);
-            // Remember the identity this claim was actually acquired with —
-            // the release-side owner-guard needs it (legacy post hooks are
-            // built with an empty session identity and cannot re-derive it).
-            claimedOwnerSetFor(counters).set(key, owner);
-            emitSafe(emit, { kind: 'lock-acquired', path, owner });
-          } else {
-            // Peer grabbed it between the pre-flight and the claim (or our
-            // own earlier leak still holds it — the exemption let us through).
-            // Either way the file is being edited by someone: we proceed
-            // without re-claiming; coordination stays advisory. The edit is
-            // STILL an in-flight participant on this path, so count it —
-            // otherwise this racer's postToolUse would decrement a sibling's
-            // claim and release the daemon lock mid-edit (the refcount
-            // contract: only the LAST finisher releases).
-            acquireLock(counters, key);
-            if (!claimedOwnerSetFor(counters).has(key)) {
-              claimedOwnerSetFor(counters).set(key, owner);
-            }
-            racedSetFor(counters).add(key);
-            emitSafe(emit, { kind: 'lock-conflict-race', path });
+      async function claim(): Promise<WrongTracePreToolUseOutcome | undefined> {
+        try {
+          // Self-owner exemption: OUR OWN held lock (leaked by an interrupted
+          // earlier edit) must not deny this session's retry. lock_owner from
+          // the daemon's file-health response is compared against this pair's
+          // owner identity by preflightFileEdit.
+          const verdict = await preflightFileEdit(path, owner);
+          if (verdict.kind === 'blocked') {
+            const owner = verdict.risk.reasons.join('; ');
+            emitSafe(emit, { kind: 'deny', path, reason: `WrongTrace lock: ${owner}` });
+            return { action: 'deny', reason: `WrongTrace lock: ${owner}` };
           }
-        }
 
-        if (verdict.risk && verdict.risk.band === 'fragile') {
-          emitSafe(emit, { kind: 'allow-fragile', path, reasons: verdict.risk.reasons });
-          return {
-            action: 'allow',
-            additionalContext: `WrongTrace: ${path} is fragile (${verdict.risk.reasons.join('; ')}). Prefer surgical AST diffs over rewrites.`,
-          };
+          // Allow — and claim the lock so peers see this edit in flight.
+          const wt = await getWrongTrace();
+          if (wt.isAvailable) {
+            const res = await wt.lockFile(path, 'WrongStack edit in progress', {
+              owner,
+              ttlSeconds: 900,
+            });
+            if (res?.ok === true) {
+              acquireLock(counters, key);
+              // Remember the identity this claim was actually acquired with —
+              // the release-side owner-guard needs it (legacy post hooks are
+              // built with an empty session identity and cannot re-derive it).
+              claimedOwnerSetFor(counters).set(key, owner);
+              emitSafe(emit, { kind: 'lock-acquired', path, owner });
+            } else {
+              // Peer grabbed it between the pre-flight and the claim (or our
+              // own earlier leak still holds it — the exemption let us through).
+              // Either way the file is being edited by someone: we proceed
+              // without re-claiming; coordination stays advisory. The edit is
+              // STILL an in-flight participant on this path, so count it —
+              // otherwise this racer's postToolUse would decrement a sibling's
+              // claim and release the daemon lock mid-edit (the refcount
+              // contract: only the LAST finisher releases).
+              acquireLock(counters, key);
+              if (!claimedOwnerSetFor(counters).has(key)) {
+                claimedOwnerSetFor(counters).set(key, owner);
+              }
+              racedSetFor(counters).add(key);
+              emitSafe(emit, { kind: 'lock-conflict-race', path });
+            }
+          }
+
+          if (verdict.risk && verdict.risk.band === 'fragile') {
+            emitSafe(emit, { kind: 'allow-fragile', path, reasons: verdict.risk.reasons });
+            return {
+              action: 'allow',
+              additionalContext: `WrongTrace: ${path} is fragile (${verdict.risk.reasons.join('; ')}). Prefer surgical AST diffs over rewrites.`,
+            };
+          }
+          return { action: 'allow' };
+        } catch {
+          // Fail-open: coordination must never break the edit path.
+          return undefined;
         }
-        return { action: 'allow' };
-      } catch {
-        // Fail-open: coordination must never break the edit path.
-        return undefined;
       }
     },
 
@@ -320,6 +361,8 @@ export function createWrongTraceHookPair(
       // the daemon unlock happens only when the LAST sibling release lands.
       if (!path) return;
       const key = claimKey(input, path);
+      const inFlight = pendingFor(counters).get(key);
+      if (inFlight) await settleWithin(inFlight, CLAIM_SETTLE_MS);
       if (!counters.has(key)) return;
       let shouldUnlock = false;
       releaseLock(counters, key, () => {

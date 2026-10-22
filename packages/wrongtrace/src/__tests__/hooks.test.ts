@@ -544,3 +544,55 @@ describe('createWrongTraceHookPair lock keys', () => {
     ]);
   });
 });
+
+describe('createWrongTraceHookPair abandoned pre hook', () => {
+  let originalFetch: typeof fetch | undefined;
+
+  beforeEach(() => {
+    originalFetch = globalThis.fetch;
+    resetWrongTraceGate();
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch as typeof fetch;
+  });
+
+  it('releases a claim that landed after the host stopped waiting for the pre hook', async () => {
+    let landLock: (() => void) | undefined;
+    const lockLanded = new Promise<void>((resolve) => {
+      landLock = resolve;
+    });
+    let lockRequested: (() => void) | undefined;
+    const lockAsked = new Promise<void>((resolve) => {
+      lockRequested = resolve;
+    });
+    const unlocked: unknown[] = [];
+    globalThis.fetch = makeFetch(async (url, init) => {
+      const u = new URL(url);
+      if (u.pathname === '/api/health') return healthyHealth();
+      if (u.pathname === '/api/file/health') return healthyFileHealth();
+      const body = init?.body ? JSON.parse(String(init.body)) : {};
+      if (u.pathname === '/api/guardrail/lock') {
+        lockRequested?.();
+        await lockLanded; // the daemon answers after the host's hook timeout
+        return jsonResponse({ ok: true, path: body.path, status: 'locked' });
+      }
+      if (u.pathname === '/api/guardrail/unlock') {
+        unlocked.push(body.path);
+        return jsonResponse({ ok: true, path: body.path, status: 'unlocked' });
+      }
+      return jsonResponse({});
+    });
+
+    const pair = createWrongTraceHookPair(() => 'sess-slow', { baseDir: () => resolve('proj') });
+    const write = { toolName: 'write', toolInput: { path: 'index.html' } };
+    // The host gave up on this pre hook and ran the tool anyway.
+    void pair.preToolUse(write);
+    await lockAsked;
+    const post = pair.postToolUse(write);
+    landLock?.();
+    await post;
+
+    expect(unlocked).toEqual([resolve('proj', 'index.html')]);
+  });
+});
