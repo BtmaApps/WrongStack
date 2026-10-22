@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.13] — 2026-10-22
+
+Durable MCP tasks, browser element selection, automation environments and
+independent verification, with refreshed provider, terminal and Desktop runtimes.
+
+### Added
+
+- **Durable MCP tasks.** Long-running MCP tasks support multi-round requests, a recovery journal and a WebUI tasks panel. Connections probe the modern MCP protocol first, with an explicit legacy mode.
+- **Browser element selection.** Pick an element in the live browser view and add it to the prompt.
+- **Automation environments and verification.** Docker runs support environment profiles with a live environment panel in WebUI and SimpleUI. Automation adds independent verification checks and reviewed draft pull-request publication.
+
+### Changed
+
+- **Provider and ACP integrations.** Provider dependencies move together to compatible AI SDK releases. ACP SDK 2 keeps stable v1 APIs separate from the explicit `sdk/unstable` entry point for experimental methods.
+- **Terminal and Desktop.** The terminal moves to Ink 8 with bounded text measurement and wrapping caches. Desktop moves to Electron 45 and Electron Builder 26.18.
+- **Code indexing and browser tools.** Tree-sitter and all thirteen bundled language grammars are refreshed, along with browser automation, editor, virtualization and animation dependencies.
+
+### Fixed
+
+- **Session interfaces.** WebUI new-session swaps and tab switching remain reliable, and the dock stays below the tab strip. SimpleUI and VibeUI keep an active run going when an unrelated request returns an error.
+- **Configuration and concurrent writers.** UTF-8 BOM configuration files are accepted, unreadable configuration is reported instead of overwritten, and project registration, configuration and lock writers serialize concurrent updates. Stale-lock recovery preserves a fresh replacement lock.
+- **CLI and transport boundaries.** Value-less numeric flags, bare authentication flags and blank project roots are rejected. ACP consumes a final stdio request without a trailing newline and remembers persistent REPL permission answers.
+- **Security and lifecycle.** Cookie and URL-userinfo credentials are redacted, YOLO shell scanning is hardened, Kanban paths and tool arguments are validated, and HQ login failures count before verification. Oversized timers, orphaned hook processes, closed-client reconnects and requests waiting on disconnected project servers are bounded or terminated.
+
 ## [1.1.11] — 2026-10-20
 
 Updates move to the standalone release binary, the leader routes work to its

@@ -55,24 +55,24 @@ suite. Memory, tools, providers, permissions, and the multi-agent runtime are al
 first-party and work together, on your machine, with no upstream agent to phone
 home to.
 
-### What's new in 1.1.11
+### What's new in 1.1.13
 
-- **Standalone-binary updates:** `wstack update` moves a package-manager
-  install to the release binary from GitHub Releases and removes the old
-  global packages.
-- **Smarter delegation:** `delegate` routes a task to the right roster
-  specialist on its own, the leader sees the whole roster and a live
-  worker-model menu, a chosen `tier` now picks the worker's model, and
-  `skills` asks for specific skills.
-- **Skills that follow the work:** roster workers rank their full skill pool
-  by the task instead of always loading the same three, and skills can
-  declare `paths` globs the Skill Companion matches without a model call.
-- **Fleet fixes:** `work_complete` no longer blocks spawning for the rest of
-  the session, and `/fleet routing` shows whether routed workers succeeded
-  and what they cost.
+- **Durable MCP tasks:** multi-round requests, a recovery journal and a
+  WebUI tasks panel, with modern protocol probing and an explicit legacy mode.
+- **Browser element selection:** pick an element in the live browser view
+  and add it to the prompt.
+- **Automation environments and verification:** Docker environment profiles
+  appear in WebUI and SimpleUI, with independent verification checks and
+  reviewed draft pull-request publication.
+- **Updated runtimes:** compatible provider SDK updates, ACP SDK 2, Ink 8,
+  Electron 45 and refreshed Tree-sitter language grammars.
+- **Session and reliability fixes:** stable WebUI session swaps and tab
+  switching, safer concurrent configuration writes, stricter CLI arguments
+  and credential redaction.
 
-1.1.10 added a measured design layer, DESIGN.md interchange and prompt detail
-levels; 1.1.9 added the SAGE doctor, daemon-owned memory maintenance and AST
+1.1.11 added standalone-binary updates, smarter delegation and skills that
+follow the work; 1.1.10 added a measured design layer, DESIGN.md interchange
+and prompt detail levels; 1.1.9 added the SAGE doctor, daemon-owned memory maintenance and AST
 security profiles for twelve more languages; 1.1.8 was a hardening release
 across the daemon, MCP, security gates, VibeUI and Desktop.
 
@@ -433,7 +433,7 @@ Full walk-through: [`docs/architecture.md`](docs/architecture.md).
 
 ## Status
 
-- **v1.1.11** — current repository version; semver from 1.0.0 onward
+- **v1.1.13** — current repository version; semver from 1.0.0 onward
 - Distribution: GitHub Releases only (standalone `wstack` binaries + Desktop); npm publishing is retired and the existing npm versions are frozen
 - Full release verification: `bun run release:check` before pushing the `vX.Y.Z` release tag
 - Coverage thresholds (root Vitest): ≥76% lines / ≥75% functions / ≥66% branches / ≥75% statements

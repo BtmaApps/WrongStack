@@ -5,7 +5,7 @@
 // the 1.0.38 bump, which was never published.
 // The 1.1.5 entry summarizes the commits in v1.1.4..v1.1.5, the 1.1.6 entry
 // those in v1.1.5..v1.1.6, and the 1.1.7 entry those in v1.1.6..v1.1.7.
-// The current workspace entry records the verified dependency refresh.
+// The 1.1.13 entry summarizes v1.1.12..HEAD, including the dependency refresh.
 // Split out of src/lib/utils.ts.
 
 import type { ChangelogEntry } from './changelog-types';
@@ -14,15 +14,15 @@ export const changelog1x: ChangelogEntry[] = [
   {
     version: '1.1.13',
     date: '2026-10-22',
-    tagline: 'Updated providers, terminal rendering and desktop runtimes',
+    tagline: 'Durable MCP tasks, automation environments and refreshed runtimes',
     latest: true,
     highlights: [
-      'Provider integrations move together to the current compatible AI SDK releases',
-      'The terminal moves to Ink 8, including bounded text measurement and wrapping caches',
-      'Desktop moves to Electron 45 and Electron Builder 26.18 with packaging and file containment fixes',
-      'Codebase indexing updates the Tree-sitter runtime and all thirteen bundled language grammars',
-      'ACP SDK 2 keeps stable v1 APIs separate from the explicit sdk/unstable entry point for upstream experimental methods',
-      'Browser automation, editor components, virtualization and web animation dependencies are refreshed',
+      'Durable MCP tasks support multi-round requests, a recovery journal and a WebUI tasks panel, with modern protocol probing and an explicit legacy mode',
+      'Pick an element in the live browser view and add it to the prompt',
+      'Docker automation gains environment profiles and a live environment panel in WebUI and SimpleUI, with independent verification checks and reviewed draft PR publication',
+      'Provider SDKs, ACP SDK 2, Ink 8, Electron 45, Electron Builder 26.18 and all thirteen Tree-sitter language grammars are refreshed',
+      'WebUI session swaps and tab switching stay reliable, the dock stays below the tab strip, and unrelated request errors no longer end runs in SimpleUI or VibeUI',
+      'Configuration and lock writers serialize concurrent updates, unreadable config is preserved, and CLI argument validation, credential redaction and process cleanup are tightened',
     ],
   },
   {
