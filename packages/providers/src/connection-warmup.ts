@@ -59,7 +59,7 @@ export function warmConnection(
   if (last !== undefined && now - last < WARM_INTERVAL_MS) return Promise.resolve();
 
   if (lastWarmAt.size >= MAX_TRACKED_ORIGINS) lastWarmAt.clear();
-  const warm = (async () => {
+  const warm = Promise.resolve().then(async () => {
     let succeeded = false;
     try {
       // `manual`: a redirect would only warm some other origin.
@@ -94,7 +94,7 @@ export function warmConnection(
       inFlight.delete(origin);
       if (!succeeded) lastWarmAt.delete(origin);
     }
-  })();
+  });
   inFlight.set(origin, warm);
   return warm;
 }

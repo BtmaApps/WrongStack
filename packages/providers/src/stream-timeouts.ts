@@ -32,7 +32,7 @@ let defaults: StreamTimeoutDefaults = {
 /** A non-negative finite millisecond count, else undefined (keep the default). */
 function sanitize(value: unknown): number | undefined {
   if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) return undefined;
-  return Math.floor(value);
+  return Math.min(Math.floor(value), 2_147_483_647);
 }
 
 /**

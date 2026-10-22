@@ -296,27 +296,30 @@ export class OAuthRefreshCoordinator<TTokens, TPayload> {
     const leader = flight === undefined;
     if (!flight) {
       const exchangedKey = refreshKey;
-      flight = this.hooks.refreshFn(exchangedKey, signal).finally(() => {
-        if (sharedInFlight.get(key) === flight) sharedInFlight.delete(key);
-      });
+      flight = this.hooks.refreshFn(exchangedKey, signal);
       void flight.catch(() => {});
       sharedInFlight.set(key, flight);
     }
-    const tokens = await flight;
-    const derived = this.hooks.projectTokens(tokens);
-    if (leader && derived.refreshKey && derived.refreshKey !== refreshKey) {
-      recordRotation(key, {
-        nextKey: derived.refreshKey,
-        tokens,
-        expiresAt: derived.expiresAt,
-      });
+    try {
+      const tokens = await flight;
+      const derived = this.hooks.projectTokens(tokens);
+      if (leader && derived.refreshKey && derived.refreshKey !== refreshKey) {
+        recordRotation(key, {
+          nextKey: derived.refreshKey,
+          tokens,
+          expiresAt: derived.expiresAt,
+        });
+      }
+      this.expiresAt = derived.expiresAt;
+      if (derived.refreshKey) this.refreshKey = derived.refreshKey;
+      this.hooks.applyTokens(derived, tokens);
+      // Only the instance that ran the exchange persists it; joiners received
+      // the very same tokens.
+      if (leader) this.hooks.onRefresh?.(this.hooks.formatPayload(tokens, derived));
+      return tokens;
+    } finally {
+      // Publish the rotation before releasing the flight to new siblings.
+      if (leader && sharedInFlight.get(key) === flight) sharedInFlight.delete(key);
     }
-    this.expiresAt = derived.expiresAt;
-    if (derived.refreshKey) this.refreshKey = derived.refreshKey;
-    this.hooks.applyTokens(derived, tokens);
-    // Only the instance that ran the exchange persists it; joiners received
-    // the very same tokens.
-    if (leader) this.hooks.onRefresh?.(this.hooks.formatPayload(tokens, derived));
-    return tokens;
   }
 }

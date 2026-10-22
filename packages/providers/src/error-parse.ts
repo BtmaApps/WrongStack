@@ -360,13 +360,14 @@ export function retryAfterMsFromBody(body: ProviderErrorBody): number | undefine
   //    is honouring the provider's own instruction, and pattern 3 should keep
   //    winning that case.
   const compoundRe =
-    /(?:reset|resets|renew|renews|available)\s*(?:after|in)\s*(?=\d)(\d+h)?(\d+m)?(\d+s)?/i;
+    /(?:reset|resets|renew|renews|available)\s*(?:after|in)\s*(?=\d)(\d+h)?(\d+m(?!s))?(\d+s)?(\d+ms)?/i;
   const compoundMatch = compoundRe.exec(text);
   if (compoundMatch) {
     const hours = Number.parseInt(compoundMatch[1] ?? '0', 10) || 0;
     const minutes = Number.parseInt(compoundMatch[2] ?? '0', 10) || 0;
     const seconds = Number.parseInt(compoundMatch[3] ?? '0', 10) || 0;
-    const total = hours * 3_600_000 + minutes * 60_000 + seconds * 1_000;
+    const milliseconds = Number.parseInt(compoundMatch[4] ?? '0', 10) || 0;
+    const total = hours * 3_600_000 + minutes * 60_000 + seconds * 1_000 + milliseconds;
     // A stated reset of zero is a burst/RPM throttle, not a plan window. It is
     // real information — but the right response is the retry policy's own short
     // backoff, so report "no hint" rather than a 0ms wait that would read as

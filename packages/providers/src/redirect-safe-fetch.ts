@@ -166,6 +166,14 @@ function checkAborted(signal?: AbortSignal): void {
   }
 }
 
+function cancelRedirectBody(response: Response): void {
+  try {
+    void response.body?.cancel().catch(() => undefined);
+  } catch {
+    // Cleanup must preserve the redirect validation error.
+  }
+}
+
 export interface RedirectSafeFetchInit {
   method?: string | undefined;
   headers: Record<string, string>;
@@ -222,6 +230,7 @@ export async function redirectSafeFetch(
     }
 
     if (nextUrlParsed.protocol !== 'http:' && nextUrlParsed.protocol !== 'https:') {
+      cancelRedirectBody(res);
       throw new Error(
         `Redirect to non-HTTP(S) protocol: ${nextUrlParsed.protocol} (${nextUrlParsed.toString()})`,
       );
@@ -234,7 +243,12 @@ export async function redirectSafeFetch(
     // This runs on same-origin hops too — a compromised CDN
     // that points a single-origin endpoint at a private address is
     // the same hazard at a smaller blast radius.
-    assertNotPrivateRedirectHost(nextUrlParsed, new URL(currentUrl));
+    try {
+      assertNotPrivateRedirectHost(nextUrlParsed, new URL(currentUrl));
+    } catch (error) {
+      cancelRedirectBody(res);
+      throw error;
+    }
 
     // 301/302 after a POST, and 303 after any method except HEAD, become GET
     // without a body — the same normalisation fetch performs internally.
