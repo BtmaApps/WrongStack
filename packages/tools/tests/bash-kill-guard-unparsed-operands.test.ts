@@ -145,6 +145,41 @@ describe('bash-kill-guard — unparsed POSIX kill operands', () => {
     expect(result.reason).toContain(String(PROTECTED_PID));
   });
 
+  // The -c payload is one shell word however it is quoted, and a sequenced
+  // payload is read command by command — behind a launcher or not.
+  it.each([
+    `sh -c 'kill -9 '"${PROTECTED_PID}"`,
+    `sh -c 'kill -9 '${PROTECTED_PID}`,
+    `sh -c kill\\ -9\\ ${PROTECTED_PID}`,
+    `sh -c $'kill -9 ${PROTECTED_PID}'`,
+    `sh -c "kill -9 ${PROTECTED_PID}"'' x`,
+    `bash -lc 'kill -9 ${PROTECTED_PID}'`,
+    `sh -c 'true; kill -9 ${PROTECTED_PID}'`,
+    `nice --adjustment 5 sh -c 'true; kill -9 ${PROTECTED_PID}'`,
+    `timeout --signal KILL 5 bash -c 'echo; kill -9 ${PROTECTED_PID}'`,
+    `nice --adjustment 5 true; kill -9 ${PROTECTED_PID}`,
+    `kill -9 $'\\u0034'24242`,
+  ])('blocks %j naming the protected PID (-c words and sequences)', async (command) => {
+    const { checkAndBlockKillCommand } = await loadGuard();
+    const result = await checkAndBlockKillCommand(command);
+    expect(result.blocked).toBe(true);
+    expect(result.reason).toContain(String(PROTECTED_PID));
+  });
+
+  it('decodes \\u with at most four hex digits, as bash does', async () => {
+    const { unquoteShellWord } = await import('../src/bash-kill-detect.js');
+    expect(unquoteShellWord("$'\\u00341'")).toBe('41');
+  });
+
+  it('settles a long chain of launchers quickly', async () => {
+    const { checkAndBlockKillCommand } = await loadGuard();
+    const chain = `${'nice '.repeat(40)}kill -9 ${PROTECTED_PID}`;
+    const started = Date.now();
+    expect((await checkAndBlockKillCommand(chain)).blocked).toBe(true);
+    expect((await checkAndBlockKillCommand(`${'nice '.repeat(40)}make`)).blocked).toBe(false);
+    expect(Date.now() - started).toBeLessThan(2000);
+  });
+
   it('reads a negative operand after a junk word as a process group', async () => {
     const { checkAndBlockKillCommand } = await loadGuard();
     const result = await checkAndBlockKillCommand(`kill abc -${PROTECTED_PID} 1`);

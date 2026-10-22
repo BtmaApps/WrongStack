@@ -383,15 +383,46 @@ function parseJunkOperandKill(command: string): KillCommand | null {
  * The counted reading of the command, then every other reading of a launcher
  * line whose option count may be wrong (see `launcherSkipReadings`).
  */
-async function checkSingleCommand(command: string): Promise<KillCheckResult> {
+async function checkSingleCommand(
+  command: string,
+  depth = 0,
+  budget = { left: READING_BUDGET },
+): Promise<KillCheckResult> {
   const counted = await checkOneReading(command);
-  if (counted.blocked) return counted;
-  const normalized = command.replace(/\s+/g, ' ').trim();
-  for (const reading of launcherSkipReadings(normalized)) {
-    const result = await checkOneReading(reading);
-    if (result.blocked) return result;
+  if (counted.blocked || depth >= MAX_READING_DEPTH) return counted;
+  // Every other reading goes through the same sequencing split as the
+  // top-level line: `nice --adjustment 5 sh -c 'true; kill <pid>'` and a bare
+  // `sh -c 'true; kill <pid>'` hid the kill behind the payload's `;`.
+  for (const reading of alternativeReadings(command)) {
+    for (const segment of splitShellSequence(reading)) {
+      if (budget.left-- <= 0) return counted;
+      const result = await checkSingleCommand(segment, depth + 1, budget);
+      if (result.blocked) return result;
+    }
   }
   return counted;
+}
+
+/** Nested readings and checks per command; bounds a hostile `nice nice …` line. */
+const MAX_READING_DEPTH = 3;
+const READING_BUDGET = 64;
+
+/**
+ * Readings of a command other than the one `checkOneReading` takes: the
+ * launcher-unwrapped line, a `-c` payload, and the launcher skip readings
+ * (see `launcherSkipReadings`).
+ */
+function alternativeReadings(command: string): string[] {
+  const normalized = command.replace(/\s+/g, ' ').trim();
+  const unwrapped = unwrapKillCommandHead(normalized);
+  const readings = new Set<string>([unwrapped]);
+  for (const line of [normalized, unwrapped]) {
+    const payload = extractKillCommand(line);
+    if (payload) readings.add(payload);
+    for (const reading of launcherSkipReadings(line)) readings.add(reading);
+  }
+  readings.delete(normalized);
+  return [...readings].slice(0, 12);
 }
 
 async function checkOneReading(command: string): Promise<KillCheckResult> {

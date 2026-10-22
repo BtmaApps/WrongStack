@@ -47,8 +47,29 @@ export interface KillCheckResult {
  * bash at `/usr/local/bin/bash`, `/opt/homebrew/bin/bash`, or invoke it via
  * `/usr/bin/env bash`. Previously these bypassed the guard entirely.
  */
+/**
+ * A `-c` payload runs a kill when any command in its sequence does:
+ * `true; kill <pid>` is not kill-shaped as a whole line.
+ */
+function payloadRunsKill(payload: string): boolean {
+  return splitShellSequence(payload).some((segment) => isKillRelatedCommand(segment));
+}
+
 export function extractKillCommand(command: string): string | null {
   const normalized = command.replace(/\s+/g, ' ').trim();
+
+  // The `-c` payload is one shell WORD, however it is quoted: `'kill -9 '"1"`,
+  // `$'kill -9 1'`, `kill\ -9\ 1`, and a cluster like `-lc`. Split the line
+  // into words, decode the word after the flag, and read that. A bare word
+  // (`bash -c kill -9 1`) keeps the patterns below: they read the whole rest
+  // of the line, more than the shell runs, which only blocks more.
+  const words = splitShellWords(normalized);
+  const flag = words.findIndex((w, k) => k > 0 && /^-[a-zA-Z]*c[a-zA-Z]*$/.test(w));
+  const payloadWord = flag === -1 ? undefined : words[flag + 1];
+  if (payloadWord !== undefined && /['"\\$]/.test(payloadWord)) {
+    const inner = unquoteShellWord(payloadWord).replace(/\s+/g, ' ').trim();
+    if (payloadRunsKill(inner)) return inner;
+  }
 
   // Pattern: <any executable path or name> -c "kill ..." or 'kill ...'
   // Matches /bin/bash, /usr/local/bin/bash, /opt/homebrew/bin/bash,
@@ -64,7 +85,7 @@ export function extractKillCommand(command: string): string | null {
   if (shellCMatch?.[2]) {
     const inner = shellCMatch[2].trim();
     // Recursively check the inner command
-    return isKillRelatedCommand(inner) ? inner : null;
+    return payloadRunsKill(inner) ? inner : null;
   }
 
   // Pattern: <executable> -c kill -9 12345 (without quotes)
@@ -207,6 +228,52 @@ export function isKillRelatedCommand(cmd: string): boolean {
  * fallbacks still run. The regexes this replaced anchored a single target at
  * the end, which let `kill 111 <protected>` and `kill -- <protected>` through.
  */
+/**
+ * Split a command line into shell words. Each word keeps its quoting (for
+ * `unquoteShellWord`): quotes and `$'…'` group spaces into one word and a
+ * backslash keeps the next character in the word.
+ */
+export function splitShellWords(line: string): string[] {
+  const words: string[] = [];
+  let word = '';
+  let inWord = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i]!;
+    if (/\s/.test(c)) {
+      if (inWord) words.push(word);
+      word = '';
+      inWord = false;
+      continue;
+    }
+    inWord = true;
+    if (c === '\\' && i + 1 < line.length) {
+      word += c + line[++i];
+      continue;
+    }
+    const ansi = c === '$' && line[i + 1] === "'";
+    if (c === "'" || c === '"' || ansi) {
+      const close = ansi ? "'" : c;
+      word += ansi ? "$'" : c;
+      i += ansi ? 2 : 1;
+      while (i < line.length && line[i] !== close) {
+        // Backslash escapes the closing quote in "…" and $'…', not in '…'.
+        if (line[i] === '\\' && (close === '"' || ansi)) {
+          word += line[i]! + (line[i + 1] ?? '');
+          i += 2;
+          continue;
+        }
+        word += line[i];
+        i++;
+      }
+      if (i < line.length) word += close;
+      continue;
+    }
+    word += c;
+  }
+  if (inWord) words.push(word);
+  return words;
+}
+
 const ANSI_C_SIMPLE: Record<string, string> = {
   a: '\x07',
   b: '\b',
@@ -235,7 +302,13 @@ function decodeAnsiCQuote(token: string, start: number): { text: string; end: nu
     }
     const e = token[++i]!;
     const hex = e === 'x' ? /^[0-9a-fA-F]{1,2}/.exec(token.slice(i + 1)) : null;
-    const uni = e === 'u' || e === 'U' ? /^[0-9a-fA-F]{1,8}/.exec(token.slice(i + 1)) : null;
+    // bash: `\u` takes up to four hex digits, `\U` up to eight.
+    const uni =
+      e === 'u'
+        ? /^[0-9a-fA-F]{1,4}/.exec(token.slice(i + 1))
+        : e === 'U'
+          ? /^[0-9a-fA-F]{1,8}/.exec(token.slice(i + 1))
+          : null;
     const oct = /[0-7]/.test(e) ? /^[0-7]{1,3}/.exec(token.slice(i)) : null;
     if (hex) {
       text += String.fromCharCode(Number.parseInt(hex[0], 16));
@@ -377,11 +450,16 @@ export function launcherSkipReadings(normalized: string): string[] {
   const tokens = normalized.trim().split(' ');
   const head = (tokens[0] ?? '').replace(/^.*[\\/]/, '').toLowerCase();
   if (!KILL_LAUNCHERS[head]) return [];
-  const readings: string[] = [];
-  for (let k = 1; k < tokens.length && readings.length < 8; k++) {
-    if (LAUNCHED_COMMAND_RE.test(tokens[k] ?? '')) readings.push(tokens.slice(k).join(' '));
-  }
-  return readings;
+  // Kill verbs and shells first: with launchers first, a chain of nine `nice`
+  // used up the cap (and the unwrap passes) before the kill behind it.
+  const starts = tokens
+    .map((_t, k) => k)
+    .filter((k) => k > 0 && LAUNCHED_COMMAND_RE.test(tokens[k] ?? ''));
+  const direct = starts.filter(
+    (k) => !KILL_LAUNCHERS[(tokens[k] ?? '').replace(/^.*[\\/]/, '').toLowerCase()],
+  );
+  const launchers = starts.filter((k) => !direct.includes(k));
+  return [...direct, ...launchers].slice(0, 8).map((k) => tokens.slice(k).join(' '));
 }
 
 /**
