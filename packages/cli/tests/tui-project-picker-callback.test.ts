@@ -15,6 +15,14 @@ vi.mock('../src/project-picker.js', () => ({
 vi.mock('../src/services/project-manifest.js', () => ({
   loadManifest: mocks.loadManifest,
   saveManifest: mocks.saveManifest,
+  // The real helper: re-load under the manifest lock, mutate, save when changed.
+  updateManifest: async (
+    file: string,
+    mutate: (manifest: { projects: ProjectEntry[] }) => boolean,
+  ) => {
+    const manifest = await mocks.loadManifest(file);
+    if (mutate(manifest)) await mocks.saveManifest(manifest, file);
+  },
 }));
 
 afterEach(() => {
@@ -81,7 +89,10 @@ describe('TUI project picker callbacks', () => {
       root: path.join(process.cwd(), 'next'),
       name: 'Next',
     };
-    mocks.loadManifest.mockResolvedValueOnce({ projects: [project] });
+    // Once to pick the project, once more for the locked lastSeen update.
+    mocks.loadManifest
+      .mockResolvedValueOnce({ projects: [project] })
+      .mockResolvedValueOnce({ projects: [project] });
     const ctx = context({
       director: {
         status: () => ({
@@ -107,9 +118,8 @@ describe('TUI project picker callbacks', () => {
     const ctx = context({
       switchProjectInPlace: vi.fn().mockResolvedValue('cannot switch'),
     });
-    mocks.loadManifest.mockResolvedValueOnce({
-      projects: [{ slug: 'next', root: 'D:/next', name: 'Next' }],
-    });
+    const manifest = { projects: [{ slug: 'next', root: 'D:/next', name: 'Next' }] };
+    mocks.loadManifest.mockResolvedValueOnce(manifest).mockResolvedValueOnce(manifest);
     await expect(onProjectSelect(ctx as never, 'next', 'project')).resolves.toBe('cannot switch');
     expect(ctx.renderer.write).toHaveBeenCalledWith(expect.stringContaining('cannot switch'));
 

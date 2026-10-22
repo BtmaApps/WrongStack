@@ -51,8 +51,19 @@ export function lockOwnerStamp(): string {
  * the same foreign-lease logic that enabled it.
  */
 export async function maybeUnlinkOwnedLock(lockPath: string): Promise<void> {
-  const owner = await fs.readFile(lockPath, 'utf8').catch(() => null);
-  if (owner === null || owner.trim() !== lockOwnerStamp()) return;
+  // A breaker that captured this live lock links it back two fs calls later; a
+  // release in that window reads ENOENT and would orphan the lock. Look again.
+  let owner: string | null | undefined;
+  for (let look = 0; look < 5; look++) {
+    owner = await fs
+      .readFile(lockPath, 'utf8')
+      .catch((error: unknown) =>
+        (error as NodeJS.ErrnoException).code === 'ENOENT' ? undefined : null,
+      );
+    if (owner !== undefined) break;
+    if (look < 4) await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  if (!owner || owner.trim() !== lockOwnerStamp()) return;
   // Bounded retry: Windows can transiently hold a freshly-written lock file
   // (AV scan, indexing); a one-shot swallow would leave our live lock behind
   // and double the recovery window for every waiter.
@@ -95,13 +106,13 @@ export async function breakStaleLock(lockPath: string): Promise<boolean> {
       // mtime lease cap.
       const barePid = Number.parseInt(trimmed, 10);
       if (Number.isInteger(barePid) && barePid > 0 && !isPidAlive(barePid)) {
-        return await breakStaleLockVerified(lockPath, async () => {
-          const reread = await fs.readFile(lockPath, 'utf8').catch(() => '');
+        return await breakStaleLockVerified(lockPath, async (file) => {
+          const reread = await fs.readFile(file, 'utf8').catch(() => '');
           return reread.trim() === trimmed;
         });
       }
-      return await breakStaleLockVerified(lockPath, async () => {
-        const st = await fs.stat(lockPath);
+      return await breakStaleLockVerified(lockPath, async (file) => {
+        const st = await fs.stat(file);
         return Date.now() - st.mtimeMs > STALE_LOCK_MS;
       });
     }
@@ -111,21 +122,21 @@ export async function breakStaleLock(lockPath: string): Promise<boolean> {
       if (isPidAlive(ownerPid)) {
         const stat = await fs.stat(lockPath);
         if (Date.now() - stat.mtimeMs > SAME_HOST_STALE_MS) {
-          return await breakStaleLockVerified(lockPath, async () => {
-            const st = await fs.stat(lockPath);
+          return await breakStaleLockVerified(lockPath, async (file) => {
+            const st = await fs.stat(file);
             return Date.now() - st.mtimeMs > SAME_HOST_STALE_MS;
           });
         }
         return false;
       }
-      return await breakStaleLockVerified(lockPath, async () => {
-        const reread = await fs.readFile(lockPath, 'utf8').catch(() => '');
+      return await breakStaleLockVerified(lockPath, async (file) => {
+        const reread = await fs.readFile(file, 'utf8').catch(() => '');
         return reread.trim() === trimmed;
       });
     }
     // Foreign-host host:pid lock — pid not interpretable here; mtime lease only.
-    return await breakStaleLockVerified(lockPath, async () => {
-      const st = await fs.stat(lockPath);
+    return await breakStaleLockVerified(lockPath, async (file) => {
+      const st = await fs.stat(file);
       return Date.now() - st.mtimeMs > STALE_LOCK_MS;
     });
   } catch {
@@ -143,10 +154,10 @@ export async function breakStaleLock(lockPath: string): Promise<boolean> {
  */
 async function breakStaleLockVerified(
   lockPath: string,
-  verify: () => Promise<boolean>,
+  isStale: (file: string) => Promise<boolean>,
 ): Promise<boolean> {
-  if (!(await verify())) return false;
-  return (await breakLockAtomically(lockPath)) === true;
+  if (!(await isStale(lockPath))) return false;
+  return (await breakLockAtomically(lockPath, isStale)) === true;
 }
 
 /**
@@ -156,7 +167,10 @@ async function breakStaleLockVerified(
  * section (POSIX). Rename wins for exactly one waiter; losers get ENOENT and
  * simply keep waiting on the winner's fresh lock.
  */
-async function breakLockAtomically(lockPath: string): Promise<boolean> {
+async function breakLockAtomically(
+  lockPath: string,
+  isStale: (file: string) => Promise<boolean>,
+): Promise<boolean> {
   // `.tmp` suffix so pruneStaleTempFiles (session-registry) — or any future
   // store pruner — can reclaim a tombstone left by a breaker that died before
   // its fire-and-forget cleanup ran.
@@ -167,9 +181,15 @@ async function breakLockAtomically(lockPath: string): Promise<boolean> {
     // EPERM (AV), ENOENT (already broken), or a lost race — not ours to break.
     return false;
   }
+  // The rename captured whatever held the path at that instant: a waiter that
+  // broke the same stale lock first may already have created and stamped a
+  // fresh one. Judge the captured file again and link a live lock back (the
+  // breakStaleLock contract of withFileLock in @wrongstack/persistence).
+  const stillStale = await isStale(tombstone).catch(() => false);
+  if (!stillStale) await fs.link(tombstone, lockPath).catch(() => undefined);
   // The tombstone is ours alone — remove it right away.
   void fs.unlink(tombstone).catch(() => undefined);
-  return true;
+  return stillStale;
 }
 
 export async function writeAtomicFile(

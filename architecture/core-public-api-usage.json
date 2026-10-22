@@ -74,8 +74,8 @@
       "runtimeOrMixed": 11
     },
     "@wrongstack/core/hq": {
-      "files": 168,
-      "typeOnly": 103,
+      "files": 169,
+      "typeOnly": 104,
       "runtimeOrMixed": 98
     },
     "@wrongstack/core/hq/protocol": {
@@ -154,9 +154,9 @@
       "runtimeOrMixed": 11
     },
     "@wrongstack/core/security": {
-      "files": 216,
+      "files": 217,
       "typeOnly": 30,
-      "runtimeOrMixed": 188
+      "runtimeOrMixed": 189
     },
     "@wrongstack/core/session-catalog": {
       "files": 13,
@@ -239,9 +239,9 @@
       "runtimeOrMixed": 20
     },
     "@wrongstack/core/utils": {
-      "files": 836,
+      "files": 837,
       "typeOnly": 72,
-      "runtimeOrMixed": 793
+      "runtimeOrMixed": 794
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -6335,6 +6335,12 @@
       "file": "packages/cli/tests/hq-welcome.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/hq",
+      "file": "packages/cli/tests/kanban-hq-sync-old-board-delete.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
     },
     {
       "specifier": "@wrongstack/core/hq",
@@ -12761,6 +12767,12 @@
       "file": "packages/webui-server/tests/codebase-index-server-control.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/webui-server/tests/config-doctor-concurrent-write.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/security",
@@ -26151,6 +26163,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/tests/slash-tasks.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/tests/slash-tuneup-config-lock.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

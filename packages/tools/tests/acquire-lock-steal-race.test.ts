@@ -25,6 +25,14 @@ const mockStore = new Map<string, string>();
 // stale read that happened before another actor changed the lockfile.
 let queuedObservations: Array<string | undefined> = [];
 
+// d0faa184d (2026-10-21) redefined the stale break: instead of unlinking the
+// judged lock, `breakStaleLock` renames it aside, re-reads the captured
+// content, and links it back when that content differs from the observation —
+// a plain unlink deleted a live lock taken in between. The fixture must model
+// `rename` and `link` over the store: with the old four-function mock the
+// rename call is `undefined`, breakStaleLock swallows the TypeError and
+// returns without removing anything, and every stale steal runs out the
+// acquire timeout (the 2026-09-17 parity tests then fail at ~5.0s).
 vi.mock('node:fs/promises', () => ({
   mkdir: vi.fn(async () => undefined),
   writeFile: vi.fn(async (filePath: string, content: string) => {
@@ -48,6 +56,25 @@ vi.mock('node:fs/promises', () => ({
   }),
   unlink: vi.fn(async (filePath: string) => {
     mockStore.delete(filePath);
+  }),
+  rename: vi.fn(async (from: string, to: string) => {
+    const content = mockStore.get(from);
+    if (content === undefined) {
+      const err = new Error('ENOENT: no such file') as NodeJS.ErrnoException;
+      err.code = 'ENOENT';
+      throw err;
+    }
+    mockStore.delete(from);
+    mockStore.set(to, content);
+  }),
+  link: vi.fn(async (existingPath: string, newPath: string) => {
+    const content = mockStore.get(existingPath);
+    if (content === undefined) {
+      const err = new Error('ENOENT: no such file') as NodeJS.ErrnoException;
+      err.code = 'ENOENT';
+      throw err;
+    }
+    mockStore.set(newPath, content);
   }),
 }));
 

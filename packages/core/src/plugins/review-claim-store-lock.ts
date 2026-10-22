@@ -79,10 +79,10 @@ export function warnFallbackOnce(message: string): void {
  */
 async function breakStaleLockVerified(
   lockPath: string,
-  verify: () => Promise<boolean>,
+  isStale: (file: string) => Promise<boolean>,
 ): Promise<boolean> {
-  if (!(await verify())) return false;
-  return (await breakLockAtomically(lockPath)) === true;
+  if (!(await isStale(lockPath))) return false;
+  return (await breakLockAtomically(lockPath, isStale)) === true;
 }
 
 export async function breakStaleLock(lockPath: string): Promise<boolean> {
@@ -95,23 +95,23 @@ export async function breakStaleLock(lockPath: string): Promise<boolean> {
         if (isPidAlive(ownerPid)) {
           const st = await fsp.stat(lockPath);
           if (Date.now() - st.mtimeMs > SAME_HOST_STALE_MS) {
-            return await breakStaleLockVerified(lockPath, async () => {
-              const st2 = await fsp.stat(lockPath);
+            return await breakStaleLockVerified(lockPath, async (file) => {
+              const st2 = await fsp.stat(file);
               return Date.now() - st2.mtimeMs > SAME_HOST_STALE_MS;
             });
           }
           return false;
         }
-        return await breakStaleLockVerified(lockPath, async () => {
-          const content = await fsp.readFile(lockPath, 'utf8').catch(() => '');
+        return await breakStaleLockVerified(lockPath, async (file) => {
+          const content = await fsp.readFile(file, 'utf8').catch(() => '');
           return content.trim() === ownerRaw.trim();
         });
       }
     }
     const st = await fsp.stat(lockPath);
     if (Date.now() - st.mtimeMs > LOCK_STALE_MS) {
-      return await breakStaleLockVerified(lockPath, async () => {
-        const st2 = await fsp.stat(lockPath);
+      return await breakStaleLockVerified(lockPath, async (file) => {
+        const st2 = await fsp.stat(file);
         return Date.now() - st2.mtimeMs > LOCK_STALE_MS;
       });
     }
@@ -128,7 +128,10 @@ export async function breakStaleLock(lockPath: string): Promise<boolean> {
  * section (POSIX). Rename wins for exactly one waiter; losers get ENOENT and
  * simply keep waiting on the winner's fresh lock.
  */
-async function breakLockAtomically(lockPath: string): Promise<boolean> {
+async function breakLockAtomically(
+  lockPath: string,
+  isStale: (file: string) => Promise<boolean>,
+): Promise<boolean> {
   // `.tmp` suffix so any store-level tmp pruner can reclaim a tombstone left
   // by a breaker that died before its fire-and-forget cleanup ran.
   const tombstone = `${lockPath}.stale-${randomUUID()}.tmp`;
@@ -138,9 +141,15 @@ async function breakLockAtomically(lockPath: string): Promise<boolean> {
     // EPERM (AV), ENOENT (already broken), or a lost race — not ours to break.
     return false;
   }
+  // The rename captured whatever held the path at that instant: a waiter that
+  // broke the same stale lock first may already have created and stamped a
+  // fresh one. Judge the captured file again and link a live lock back (the
+  // breakStaleLock contract of withFileLock in @wrongstack/persistence).
+  const stillStale = await isStale(tombstone).catch(() => false);
+  if (!stillStale) await fsp.link(tombstone, lockPath).catch(() => undefined);
   // The tombstone is ours alone — remove it right away.
   void fsp.unlink(tombstone).catch(() => undefined);
-  return true;
+  return stillStale;
 }
 
 /**
@@ -199,9 +208,23 @@ export async function withStoreLock<T>(
           // case the resumed holder must NOT remove the new owner's lock. An
           // EMPTY read is never ours to unlink — it may be the new owner's
           // lock in its open-to-stamp gap; that lock is mtime-bounded instead.
-          const owner = await fsp.readFile(lockPath, 'utf8').catch(() => null);
-          if (owner !== null && owner.trim() === lockOwnerStamp()) {
-            await fsp.unlink(lockPath).catch(() => undefined);
+          // A breaker that captured this live lock links it back two fs calls
+          // later; a release in that window reads ENOENT and would orphan the
+          // lock until the same-host cap. Look again.
+          for (let look = 0; look < 5; look++) {
+            const owner = await fsp
+              .readFile(lockPath, 'utf8')
+              .catch((error: unknown) =>
+                (error as NodeJS.ErrnoException).code === 'ENOENT' ? undefined : null,
+              );
+            if (owner === undefined && look < 4) {
+              await new Promise((resolve) => setTimeout(resolve, 10));
+              continue;
+            }
+            if (owner && owner.trim() === lockOwnerStamp()) {
+              await fsp.unlink(lockPath).catch(() => undefined);
+            }
+            break;
           }
         }
       }

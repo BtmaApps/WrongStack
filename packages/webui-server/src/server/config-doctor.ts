@@ -28,7 +28,8 @@ async function readConfig(
   vault: SecretVault,
 ): Promise<{ raw: string; decrypted: Record<string, unknown> }> {
   const raw = await fs.readFile(file, 'utf8');
-  const parsed = JSON.parse(raw) as unknown;
+  // Parse past a UTF-8 BOM (as the config loader does); `raw` stays exact for the backup.
+  const parsed = JSON.parse(raw.charCodeAt(0) === 0xfeff ? raw.slice(1) : raw) as unknown;
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
     throw new Error('Active profile config must contain a JSON object.');
   }
@@ -59,11 +60,16 @@ export async function handleConfigDoctor(
       const backupSuffix = `.last-${nextBackupStamp()}`;
       const backupPath = `${deps.profileConfigPath}${backupSuffix}`;
       await atomicWrite(backupPath, current.raw, { mode: 0o600 });
+      // Repair the config the writer just read under its lock, not the
+      // snapshot above: replacing the file with that stale snapshot erased any
+      // write (a TUI key add, a prefs toggle) that landed in between.
+      let applied = report.fixed;
       await deps.updateConfig((config) => {
+        applied = repairConfigDefaults(config).fixed;
         for (const key of Object.keys(config)) delete config[key];
-        Object.assign(config, report.fixed);
+        Object.assign(config, applied);
       }, 'config.doctor');
-      deps.applyRuntimeConfig(report.fixed as unknown as Config);
+      deps.applyRuntimeConfig(applied as unknown as Config);
 
       send(ws, {
         type: 'config.doctor.result',

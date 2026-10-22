@@ -91,6 +91,23 @@ export async function saveManifest(
   await atomicWrite(file, JSON.stringify(manifest, null, 2), { encoding: 'utf8' });
 }
 
+/**
+ * Load, change and save projects.json under the manifest lock that boot
+ * registration and {@link touchProjectInManifest} hold. A snapshot loaded
+ * earlier and saved later erased projects other sessions registered in
+ * between. `mutate` returns whether it changed anything; nothing is written
+ * when it did not.
+ */
+export async function updateManifest(
+  globalConfigPath: string | undefined,
+  mutate: (manifest: ProjectsManifest) => boolean,
+): Promise<void> {
+  await withFileLock(projectsJsonPath(globalConfigPath), async () => {
+    const manifest = await loadManifest(globalConfigPath);
+    if (mutate(manifest)) await saveManifest(manifest, globalConfigPath);
+  });
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────
 
 /**

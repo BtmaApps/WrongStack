@@ -1,7 +1,7 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import type { EventBus } from './kernel/events.js';
-import { atomicWrite } from './utils/atomic-write.js';
+import { atomicWrite, withFileLock } from './utils/atomic-write.js';
 import { toErrorMessage } from './utils/error.js';
 import type { WstackPaths } from './utils/wstack-paths.js';
 
@@ -94,7 +94,7 @@ export async function registerProjectInManifest(
       durationMs: Date.now() - t0,
     });
     try {
-      JSON.parse(raw); // validate
+      JSON.parse(raw.charCodeAt(0) === 0xfeff ? raw.slice(1) : raw); // validate
     } catch {
       // treat malformed JSON as empty manifest — will be overwritten
     }
@@ -109,63 +109,72 @@ export async function registerProjectInManifest(
     });
   }
 
-  // Write updated manifest
+  // Write updated manifest. Under the manifest lock: every boot rewrites this
+  // file, and two sessions starting at once each dropped the other's project.
   try {
-    let manifest: {
-      projects: Array<{
-        name: string;
-        root: string;
-        slug: string;
-        projectId?: string;
-        lastSeen?: string;
-        createdAt?: string;
-        lastWorkingDir?: string;
-      }>;
-    };
-    let raw: string | undefined;
-    try {
-      raw = await fs.readFile(manifestPath, 'utf8');
-    } catch (err) {
-      // Only a missing manifest starts empty: on any other read error the
-      // write below would erase every other registered project.
-      if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
-    }
-    try {
-      manifest = raw === undefined ? { projects: [] } : JSON.parse(raw);
-    } catch {
-      manifest = { projects: [] };
-    }
-
-    const now = new Date().toISOString();
-    const existing = manifest.projects.find((p) => p.root === projectRoot);
-    if (existing) {
-      existing.lastSeen = now;
-      if (projectId) existing.projectId = projectId;
-      if (workingDir) existing.lastWorkingDir = workingDir;
-    } else {
-      const slug = paths.projectSlug;
-      const name = path.basename(projectRoot);
-      const entry: Record<string, string | undefined> = {
-        name,
-        root: projectRoot,
-        slug,
-        projectId,
-        lastSeen: now,
-        createdAt: now,
+    await withFileLock(manifestPath, async () => {
+      let manifest: {
+        projects: Array<{
+          name: string;
+          root: string;
+          slug: string;
+          projectId?: string;
+          lastSeen?: string;
+          createdAt?: string;
+          lastWorkingDir?: string;
+        }>;
       };
-      if (workingDir) entry.lastWorkingDir = workingDir;
-      manifest.projects.push(entry as (typeof manifest.projects)[0]);
-    }
+      let raw: string | undefined;
+      try {
+        raw = await fs.readFile(manifestPath, 'utf8');
+      } catch (err) {
+        // Only a missing manifest starts empty: on any other read error the
+        // write below would erase every other registered project.
+        if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
+      }
+      try {
+        // An editor's UTF-8 BOM is not corruption: the /project picker reads it
+        // fine, and treating it as malformed rewrote the manifest with only this
+        // project, erasing every other registered one on the next boot.
+        manifest =
+          raw === undefined
+            ? { projects: [] }
+            : JSON.parse(raw.charCodeAt(0) === 0xfeff ? raw.slice(1) : raw);
+      } catch {
+        manifest = { projects: [] };
+      }
 
-    const writeT0 = Date.now();
-    await atomicWrite(manifestPath, JSON.stringify(manifest, null, 2));
-    events?.emit('storage.write', {
-      sessionId: '~boot~',
-      store: 'project',
-      filePath: manifestPath,
-      operation: 'manifest_write',
-      outcome: 'success',
-      durationMs: Date.now() - writeT0,
+      const now = new Date().toISOString();
+      const existing = manifest.projects.find((p) => p.root === projectRoot);
+      if (existing) {
+        existing.lastSeen = now;
+        if (projectId) existing.projectId = projectId;
+        if (workingDir) existing.lastWorkingDir = workingDir;
+      } else {
+        const slug = paths.projectSlug;
+        const name = path.basename(projectRoot);
+        const entry: Record<string, string | undefined> = {
+          name,
+          root: projectRoot,
+          slug,
+          projectId,
+          lastSeen: now,
+          createdAt: now,
+        };
+        if (workingDir) entry.lastWorkingDir = workingDir;
+        manifest.projects.push(entry as (typeof manifest.projects)[0]);
+      }
+
+      const writeT0 = Date.now();
+      await atomicWrite(manifestPath, JSON.stringify(manifest, null, 2));
+      events?.emit('storage.write', {
+        sessionId: '~boot~',
+        store: 'project',
+        filePath: manifestPath,
+        operation: 'manifest_write',
+        outcome: 'success',
+        durationMs: Date.now() - writeT0,
+      });
     });
   } catch (err) {
     events?.emit('storage.error', {

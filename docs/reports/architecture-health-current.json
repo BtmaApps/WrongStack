@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-22T10:41:53.589Z",
+  "generatedAt": "2026-10-22T10:42:24.091Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 38,
     "sourceFiles": 5217,
-    "testFiles": 4572,
-    "sourceLines": 1134898,
+    "testFiles": 4581,
+    "sourceLines": 1135060,
     "workspaceEdges": 139,
     "moduleEdges": 17141,
     "nonCommandSlashImports": 0,
@@ -152,7 +152,7 @@
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
       "sourceFiles": 676,
-      "testFiles": 665,
+      "testFiles": 669,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -197,7 +197,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 665
+          "testFiles": 669
         }
       ]
     },
@@ -249,7 +249,7 @@
       "name": "@wrongstack/core",
       "dir": "packages/core",
       "sourceFiles": 1163,
-      "testFiles": 1005,
+      "testFiles": 1009,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -264,7 +264,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 1005
+          "testFiles": 1009
         }
       ]
     },
@@ -946,7 +946,7 @@
       "name": "@wrongstack/webui-server",
       "dir": "packages/webui-server",
       "sourceFiles": 301,
-      "testFiles": 300,
+      "testFiles": 301,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -972,7 +972,7 @@
         {
           "path": "packages/webui-server/tsconfig.test.json",
           "error": null,
-          "testFiles": 300
+          "testFiles": 301
         }
       ]
     },
@@ -3776,6 +3776,12 @@
         ]
       },
       {
+        "file": "packages/cli/tests/kanban-hq-sync-old-board-delete.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/cli/tests/kanban-hq-sync.test.ts",
         "projects": [
           "root-node"
@@ -4143,6 +4149,12 @@
       },
       {
         "file": "packages/cli/tests/profile-config-path.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/project-add-concurrent-registration.test.ts",
         "projects": [
           "root-node"
         ]
@@ -5162,6 +5174,12 @@
         ]
       },
       {
+        "file": "packages/cli/tests/slash-tuneup-config-lock.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/cli/tests/slash-tuneup.test.ts",
         "projects": [
           "root-node"
@@ -5187,6 +5205,12 @@
       },
       {
         "file": "packages/cli/tests/sprint2-reliable-queue.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/standalone-auto-update-lock-race.test.ts",
         "projects": [
           "root-node"
         ]
@@ -6405,6 +6429,18 @@
       },
       {
         "file": "packages/core/tests/boot-flags.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/boot-project-registration-bom.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/boot-project-registration-race.test.ts",
         "projects": [
           "root-node"
         ]
@@ -9836,6 +9872,12 @@
         ]
       },
       {
+        "file": "packages/core/tests/plugins/review-claim-store-lock-race.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/core/tests/plugins/review-context-builder.test.ts",
         "projects": [
           "root-node"
@@ -11103,6 +11145,12 @@
       },
       {
         "file": "packages/core/tests/storage/session-registry-lock-faults.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/storage/session-registry-lock-race.test.ts",
         "projects": [
           "root-node"
         ]
@@ -23907,6 +23955,12 @@
       },
       {
         "file": "packages/webui-server/tests/completion-handlers.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/webui-server/tests/config-doctor-concurrent-write.test.ts",
         "projects": [
           "root-node"
         ]

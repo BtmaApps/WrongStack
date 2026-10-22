@@ -63,7 +63,7 @@ export async function onProjectSelect(
       return null;
     }
 
-    const { loadManifest, saveManifest } = await import('../services/project-manifest.js');
+    const { loadManifest, updateManifest } = await import('../services/project-manifest.js');
     const manifest = await loadManifest(state.wpaths.globalConfig);
     const project = manifest.projects.find((p) => p.slug === slug);
     if (!project) return `Project not found: ${slug}`;
@@ -92,8 +92,12 @@ export async function onProjectSelect(
       renderer.write(`\n${parts.join('\n')}\n`);
     }
 
-    project.lastSeen = new Date().toISOString();
-    await saveManifest(manifest, state.wpaths.globalConfig);
+    await updateManifest(state.wpaths.globalConfig, (current) => {
+      const entry = current.projects.find((p) => p.slug === slug);
+      if (!entry) return false;
+      entry.lastSeen = new Date().toISOString();
+      return true;
+    });
 
     const err = await switchProjectInPlace(targetRoot, project.name);
     if (err) renderer.write(color.red(`Project switch failed: ${err}\n`));

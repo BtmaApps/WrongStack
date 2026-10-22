@@ -6,7 +6,12 @@ import type { Context } from '@wrongstack/core/agent';
 import { cliSpawnArgs, color } from '@wrongstack/core/utils';
 import { runProjectPicker } from '../project-picker.js';
 import type { SlashCommandContext } from './command-context.js';
-import { ensureProjectDataDir, generateSlug, loadManifest, saveManifest } from './project-utils.js';
+import {
+  ensureProjectDataDir,
+  generateSlug,
+  loadManifest,
+  updateManifest,
+} from './project-utils.js';
 
 // ── Interactive Switch ────────────────────────────────────────────────────
 
@@ -163,18 +168,25 @@ async function spawnInProject(
   }
 
   // Update the manifest with the new lastSeen before spawning
-  const manifest = await loadManifest(opts.paths?.globalConfig);
-  const existing = manifest.projects.find((p) => p.root === root);
-  if (existing) {
-    existing.lastSeen = new Date().toISOString();
-  } else {
+  let registeredSlug: string | undefined;
+  await updateManifest(opts.paths?.globalConfig, (manifest) => {
+    const existing = manifest.projects.find((p) => p.root === root);
+    if (existing) {
+      existing.lastSeen = new Date().toISOString();
+      return true;
+    }
     // Auto-register if not in manifest
     const name = projectName || path.basename(root);
-    const slug = generateSlug(root);
-    manifest.projects.push({ name, root, slug, lastSeen: new Date().toISOString() });
-    await ensureProjectDataDir(slug, opts.paths?.globalConfig);
-  }
-  await saveManifest(manifest, opts.paths?.globalConfig);
+    registeredSlug = generateSlug(root);
+    manifest.projects.push({
+      name,
+      root,
+      slug: registeredSlug,
+      lastSeen: new Date().toISOString(),
+    });
+    return true;
+  });
+  if (registeredSlug) await ensureProjectDataDir(registeredSlug, opts.paths?.globalConfig);
 
   const nodeExe = process.execPath;
   const child = spawn(nodeExe, cliSpawnArgs(cliPath, ['--no-interactive']), {

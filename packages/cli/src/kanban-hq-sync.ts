@@ -259,11 +259,11 @@ export function createKanbanHqSync(
     }
     if (fullScan) {
       for (const [boardId, known] of Object.entries(state.boards)) {
-        if (
-          present.has(boardId) ||
-          state.tombstones[boardId] !== undefined ||
-          isExpiredVersion(known.updatedAt, Date.now())
-        ) {
+        // A board's age is not a tombstone's age: skipping boards last updated
+        // 30+ days ago meant deleting one never reached HQ, and HQ's next
+        // snapshot wrote it back. Retention is applied to the tombstone itself
+        // (pruneExpiredTombstones), counted from the deletion.
+        if (present.has(boardId) || state.tombstones[boardId] !== undefined) {
           continue;
         }
         const tombstone = {
@@ -343,6 +343,18 @@ export function createKanbanHqSync(
             remote.revision,
             remote.updatedAt,
           ) >= 0
+        ) {
+          continue;
+        }
+        // Our own deletion outranks a board that is not newer than it: a
+        // snapshot HQ built before merging the tombstone still carries the
+        // pre-deletion revision and would otherwise write the board back.
+        const deleted = state.tombstones[remote.boardId];
+        if (
+          local === null &&
+          deleted !== undefined &&
+          compareVersions(deleted.revision, deleted.deletedAt, remote.revision, remote.updatedAt) >=
+            0
         ) {
           continue;
         }

@@ -1736,7 +1736,7 @@
       "classification": "product feature",
       "intendedOwner": "@wrongstack/plugins",
       "sourceFiles": 30,
-      "sourceLines": 9757
+      "sourceLines": 9780
     },
     {
       "directory": "prompts",
@@ -1785,7 +1785,7 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "project-scoped ownership and catalog subsystem",
       "sourceFiles": 20,
-      "sourceLines": 5566
+      "sourceLines": 5586
     },
     {
       "directory": "skills",

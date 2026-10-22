@@ -2,7 +2,7 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import type { SlashCommand } from '@wrongstack/core/types';
-import { atomicWrite, color } from '@wrongstack/core/utils';
+import { atomicWrite, color, withFileLock } from '@wrongstack/core/utils';
 import { diagnoseConfig } from '../config-doctor.js';
 import { appendHistory } from '../config-history.js';
 import { activeProfileConfigPath } from '../profile-config-path.js';
@@ -307,10 +307,21 @@ async function applyActions(
   actions: TuneupAction[],
   opts: SlashCommandContext,
 ): Promise<ApplyResult> {
-  const messages: string[] = [];
-  if (actions.length === 0 || !opts.paths) return { messages, changed: false };
+  if (actions.length === 0 || !opts.paths) return { messages: [], changed: false };
 
   const file = activeProfileConfigPath(opts.paths, opts.configStore.get());
+  // Hold the profile lock every other config writer holds: a locked write
+  // landing between this read and the write below (a WebUI key add, a prefs
+  // toggle) was otherwise replaced by the stale snapshot.
+  return withFileLock(file, () => applyActionsToFile(actions, opts, file));
+}
+
+async function applyActionsToFile(
+  actions: TuneupAction[],
+  opts: SlashCommandContext,
+  file: string,
+): Promise<ApplyResult> {
+  const messages: string[] = [];
   let raw = '{}';
   try {
     raw = await fs.readFile(file, 'utf8');

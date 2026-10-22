@@ -20,7 +20,7 @@ import {
   findProject,
   generateSlug,
   loadManifest,
-  saveManifest,
+  updateManifest,
 } from './project-utils.js';
 
 // ── Helpers ─────────────────────────────────────────────────────────────
@@ -288,23 +288,24 @@ async function addProjectCommand(
     return { message: color.red(`Not a directory: ${resolved}`) };
   }
 
-  const manifest = await loadManifest(opts.paths?.globalConfig);
-  const existing = manifest.projects.find((p) => p.root === resolved);
+  const name = displayName?.trim() || path.basename(resolved);
+  const slug = generateSlug(resolved);
+  const now = new Date().toISOString();
+  let existing: { name: string; slug: string } | undefined;
+  await updateManifest(opts.paths?.globalConfig, (manifest) => {
+    existing = manifest.projects.find((p) => p.root === resolved);
+    if (existing) return false;
+    manifest.projects.push({ name, root: resolved, slug, lastSeen: now, createdAt: now });
+    return true;
+  });
   if (existing) {
     return {
       message: color.yellow(`Project already registered: "${existing.name}" (${existing.slug})`),
     };
   }
 
-  const name = displayName?.trim() || path.basename(resolved);
-  const slug = generateSlug(resolved);
-  const now = new Date().toISOString();
-
   // Ensure the per-project data directory exists
   await ensureProjectDataDir(slug, opts.paths?.globalConfig);
-
-  manifest.projects.push({ name, root: resolved, slug, lastSeen: now, createdAt: now });
-  await saveManifest(manifest, opts.paths?.globalConfig);
 
   return {
     message: [
@@ -325,9 +326,15 @@ async function renameProjectCommand(
   slugOrName: string,
   newName: string,
 ) {
-  const manifest = await loadManifest(opts.paths?.globalConfig);
-  const project = findProject(manifest, slugOrName);
-  if (!project) {
+  let renamed: { oldName: string; slug: string } | undefined;
+  await updateManifest(opts.paths?.globalConfig, (manifest) => {
+    const project = findProject(manifest, slugOrName);
+    if (!project) return false;
+    renamed = { oldName: project.name, slug: project.slug };
+    project.name = newName;
+    return true;
+  });
+  if (!renamed) {
     return {
       message: color.red(
         `Project not found: "${slugOrName}". Use /project list to see available projects.`,
@@ -335,11 +342,9 @@ async function renameProjectCommand(
     };
   }
 
-  const oldName = project.name;
-  project.name = newName;
-  await saveManifest(manifest, opts.paths?.globalConfig);
-
-  return { message: color.green(`Renamed: "${oldName}" → "${newName}" (${project.slug})`) };
+  return {
+    message: color.green(`Renamed: "${renamed.oldName}" → "${newName}" (${renamed.slug})`),
+  };
 }
 
 // ── Remove ──────────────────────────────────────────────────────────────
@@ -349,21 +354,22 @@ async function removeProjectCommand(
   _ctx: Context | undefined,
   slugOrName: string,
 ) {
-  const manifest = await loadManifest(opts.paths?.globalConfig);
-  const idx = manifest.projects.findIndex(
-    (p) => p.slug === slugOrName || p.name.toLowerCase() === slugOrName.toLowerCase(),
-  );
-  if (idx === -1) {
+  let removed: { name: string; root: string; slug: string } | undefined;
+  await updateManifest(opts.paths?.globalConfig, (manifest) => {
+    const idx = manifest.projects.findIndex(
+      (p) => p.slug === slugOrName || p.name.toLowerCase() === slugOrName.toLowerCase(),
+    );
+    if (idx === -1) return false;
+    removed = manifest.projects.splice(idx, 1)[0];
+    return true;
+  });
+  if (!removed) {
     return {
       message: color.red(
         `Project not found: "${slugOrName}". Use /project list to see available projects.`,
       ),
     };
   }
-
-  const removed = manifest.projects.at(idx)!;
-  manifest.projects.splice(idx, 1);
-  await saveManifest(manifest, opts.paths?.globalConfig);
 
   return {
     message: color.dim(
@@ -412,18 +418,25 @@ async function switchProjectCommand(
   }
 
   // Update the manifest with the new lastSeen before spawning
-  const manifest = await loadManifest(opts.paths?.globalConfig);
-  const existing = manifest.projects.find((p) => p.root === resolved);
-  if (existing) {
-    existing.lastSeen = new Date().toISOString();
-  } else {
+  let registeredSlug: string | undefined;
+  await updateManifest(opts.paths?.globalConfig, (manifest) => {
+    const existing = manifest.projects.find((p) => p.root === resolved);
+    if (existing) {
+      existing.lastSeen = new Date().toISOString();
+      return true;
+    }
     // Auto-register if not in manifest
     const name = displayName?.trim() || path.basename(resolved);
-    const slug = generateSlug(resolved);
-    manifest.projects.push({ name, root: resolved, slug, lastSeen: new Date().toISOString() });
-    await ensureProjectDataDir(slug, opts.paths?.globalConfig);
-  }
-  await saveManifest(manifest, opts.paths?.globalConfig);
+    registeredSlug = generateSlug(resolved);
+    manifest.projects.push({
+      name,
+      root: resolved,
+      slug: registeredSlug,
+      lastSeen: new Date().toISOString(),
+    });
+    return true;
+  });
+  if (registeredSlug) await ensureProjectDataDir(registeredSlug, opts.paths?.globalConfig);
 
   // Confirm before switching if agents are running
   const targetName = displayName?.trim() || path.basename(resolved);

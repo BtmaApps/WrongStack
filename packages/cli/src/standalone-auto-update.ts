@@ -114,41 +114,76 @@ function pidAlive(pid: number): boolean {
   }
 }
 
+/** Whether the lock in `file` has a live holder; undefined when the file is gone. */
+function lockHeld(file: string): boolean | undefined {
+  let owner: { pid?: unknown; at?: unknown } | null;
+  try {
+    owner = JSON.parse(fs.readFileSync(file, 'utf8')) as typeof owner;
+  } catch (readErr) {
+    const code = (readErr as NodeJS.ErrnoException).code;
+    if (code === 'ENOENT') return undefined;
+    // Unreadable right now (EBUSY/EPERM): someone holds it.
+    if (code !== undefined) return true;
+    // Unparsable: a holder between its `wx` create and the write, or one
+    // that crashed there. Only the latter, after a grace, is abandoned.
+    try {
+      return Date.now() - fs.statSync(file).mtimeMs < LOCK_TORN_GRACE_MS;
+    } catch {
+      return undefined;
+    }
+  }
+  return (
+    typeof owner?.pid === 'number' &&
+    pidAlive(owner.pid) &&
+    typeof owner.at === 'number' &&
+    Date.now() - owner.at < LOCK_STALE_MS
+  );
+}
+
 /** One download or swap at a time across every session. Returns a release, or undefined when busy. */
 function acquireLock(dir: string): (() => void) | undefined {
   const lock = path.join(dir, LOCK_FILE);
   for (let attempt = 0; attempt < 2; attempt++) {
+    const stamp = JSON.stringify({
+      pid: process.pid,
+      at: Date.now(),
+      token: randomBytes(9).toString('hex'),
+    });
     try {
-      fs.writeFileSync(lock, JSON.stringify({ pid: process.pid, at: Date.now() }), { flag: 'wx' });
-      return () => fs.rmSync(lock, { force: true });
+      fs.writeFileSync(lock, stamp, { flag: 'wx' });
+      // Only our own lock: a stale-break may have replaced it meanwhile.
+      return () => {
+        try {
+          if (fs.readFileSync(lock, 'utf8') === stamp) fs.rmSync(lock, { force: true });
+        } catch {
+          // Gone already.
+        }
+      };
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code !== 'EEXIST') throw err;
-      let owner: { pid?: unknown; at?: unknown } = {};
+      const held = lockHeld(lock);
+      // Released meanwhile: try the exclusive create again.
+      if (held === undefined) continue;
+      if (held) return undefined;
+      // Break by rename and judge what was captured: another session may have
+      // broken the same stale lock and taken its own since the read above, and
+      // deleting the path then deleted that live lock (d0faa184d).
+      const tombstone = `${lock}.${randomBytes(6).toString('hex')}.stale`;
       try {
-        owner = JSON.parse(fs.readFileSync(lock, 'utf8')) as typeof owner;
-      } catch (readErr) {
-        const code = (readErr as NodeJS.ErrnoException).code;
-        // Released meanwhile: try the exclusive create again.
-        if (code === 'ENOENT') continue;
-        // Unreadable right now (EBUSY/EPERM): someone holds it.
-        if (code !== undefined) return undefined;
-        // Unparsable: a holder between its `wx` create and the write, or one
-        // that crashed there. Only the latter, after a grace, is abandoned.
-        let ageMs: number;
-        try {
-          ageMs = Date.now() - fs.statSync(lock).mtimeMs;
-        } catch {
-          continue;
-        }
-        if (ageMs < LOCK_TORN_GRACE_MS) return undefined;
+        fs.renameSync(lock, tombstone);
+      } catch {
+        continue;
       }
-      const fresh =
-        typeof owner.pid === 'number' &&
-        pidAlive(owner.pid) &&
-        typeof owner.at === 'number' &&
-        Date.now() - owner.at < LOCK_STALE_MS;
-      if (fresh) return undefined;
-      fs.rmSync(lock, { force: true });
+      if (lockHeld(tombstone)) {
+        try {
+          fs.linkSync(tombstone, lock);
+        } catch {
+          // A newer lock took the path; it decides.
+        }
+        fs.rmSync(tombstone, { force: true });
+        return undefined;
+      }
+      fs.rmSync(tombstone, { force: true });
     }
   }
   return undefined;
