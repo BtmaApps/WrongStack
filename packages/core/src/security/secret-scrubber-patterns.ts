@@ -250,6 +250,16 @@ export const PATTERNS: Pattern[] = [
     anchor: 'Bearer',
   },
   {
+    type: 'basic_auth',
+    // `Authorization: Basic <base64(user:password)>` — `curl -v` echoes it, HTTP
+    // logs carry it, and the base64 decodes straight to the password. Bearer
+    // was covered and this was not. Tied to the header name (any case) so the
+    // English word "basic" never matches; the JSON form is json_credential_key.
+    regex:
+      /[Aa][Uu][Tt][Hh][Oo][Rr][Ii][Zz][Aa][Tt][Ii][Oo][Nn]\s*:\s*[Bb][Aa][Ss][Ii][Cc]\s+[A-Za-z0-9+/]{8,512}={0,2}(?=$|[^A-Za-z0-9+/=])/g,
+    anchor: ['uthorization', 'UTHORIZATION'],
+  },
+  {
     type: 'high_entropy_env',
     // Anchored with alternation instead of lookbehind to avoid backtracking.
     // Value bounded at 512 chars.

@@ -1724,9 +1724,6 @@
     "packages/webui-server/src/server/handlers/worklist-handlers.ts": [
       "handlePlanGet"
     ],
-    "packages/webui-server/src/server/pref-config-write.ts": [
-      "writeGlobalConfigFile"
-    ],
     "packages/webui-server/src/server/provider-config-standalone.ts": [
       "vaultKeyFileForConfigPath"
     ],

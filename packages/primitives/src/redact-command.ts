@@ -126,11 +126,27 @@ const HIGH_ENTROPY_FLAG_PATTERN =
  */
 const AUTHORIZATION_HEADER_PATTERN = /\bAuthorization\s*:\s*(?:[A-Za-z]+\s+)?[^\s"',]+/gi;
 /**
+ * Shared: a session cookie is the other everyday credential on a curl line —
+ * the `Cookie:` header (every `name=value; …` pair) and curl's `--cookie`
+ * value. `--cookie-jar <file>` names a file, not a secret, and stays.
+ */
+const COOKIE_HEADER_PATTERN = /\bCookie\s*:\s*[^\s"';]+(?:;\s*[^\s"';]+)*/gi;
+const COOKIE_FLAG_PATTERN = /--cookie(?![\w-])[=\s]+(?:"[^"\n]*"|'[^'\n]*'|[^\s]+)/g;
+/**
  * Shared: the password in URL userinfo (`https://user:TOKEN@host`,
  * `postgres://app:PW@db`). Look-arounds keep `scheme://` and `@host` out of the
  * match, so it renders as `user:[REDACTED]` and the URL stays readable.
  */
 const URL_USERINFO_PASSWORD_PATTERN = /(?<=:\/\/)[^\s/:@]+:[^\s/@]+(?=@)/g;
+/**
+ * Shared: a token used ALONE as URL userinfo (`git clone https://ghp_…@github.com/…`,
+ * GitLab `glpat-…`) — no `:` so the pattern above never sees it. Known token
+ * prefixes, or a 32+ character token-like run; a user name (`alice@`) stays.
+ * The match starts at `//`, which no flag name can read, so both profiles wipe
+ * the token (`https://[REDACTED]@host` / `https:**redacted**@host`).
+ */
+const URL_USERINFO_TOKEN_PATTERN =
+  /\/\/(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_\w{20,}|glpat-[\w-]{20,}|[\w-]{32,})(?=@)/g;
 /**
  * Shared: curl-style basic-auth credentials — `-u user:pass`, glued
  * `-uuser:pass`, `--user user:pass`, `--proxy-user user:pass`. Only a value
@@ -190,7 +206,10 @@ const COMMAND_PATTERNS: readonly RegExp[] = [
   /(?:TOKEN|API[-_]?KEY|API[-_]?SECRET|AUTH_TOKEN|GITHUB_TOKEN|GH_TOKEN|BEARER|JWT|OAUTH|CREDENTIAL|SECRET|SECRET_KEY|ACCESS_KEY|PRIVATE_KEY|PASSWORD|PASSWD|PASSPHRASE)\s*[=:]\s*(?:"[^"\n]*"|'[^'\n]*'|[^\s,]+)/gi,
   HIGH_ENTROPY_FLAG_PATTERN,
   AUTHORIZATION_HEADER_PATTERN,
+  COOKIE_HEADER_PATTERN,
+  COOKIE_FLAG_PATTERN,
   URL_USERINFO_PASSWORD_PATTERN,
+  URL_USERINFO_TOKEN_PATTERN,
   USER_CREDENTIAL_PATTERN,
   JSON_SECRET_FIELD_PATTERN,
 ];
@@ -218,7 +237,10 @@ const OUTBOUND_PATTERNS: readonly RegExp[] = [
   /(?:TOKEN|API[-_]?KEY|API[-_]?SECRET|AUTH_TOKEN|GITHUB_TOKEN|GH_TOKEN|BEARER|JWT|OAUTH|CREDENTIAL|SECRET|SECRET_KEY|ACCESS_KEY|PRIVATE_KEY|PASSWORD|PASSWD|PASSPHRASE|DATABASE_URL|CONNECTION_STRING)\s*[=:]\s*(?:"[^"\n]*"|'[^'\n]*'|[^\s,]+)/gi,
   HIGH_ENTROPY_FLAG_PATTERN,
   AUTHORIZATION_HEADER_PATTERN,
+  COOKIE_HEADER_PATTERN,
+  COOKIE_FLAG_PATTERN,
   URL_USERINFO_PASSWORD_PATTERN,
+  URL_USERINFO_TOKEN_PATTERN,
   USER_CREDENTIAL_PATTERN,
   JSON_SECRET_FIELD_PATTERN,
 ];

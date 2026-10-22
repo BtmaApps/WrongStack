@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-22T10:37:55.547Z",
+  "generatedAt": "2026-10-22T10:41:22.964Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,17 +12,17 @@
   },
   "summary": {
     "packages": 38,
-    "sourceFiles": 5237,
-    "testFiles": 4607,
-    "sourceLines": 1139207,
+    "sourceFiles": 5217,
+    "testFiles": 4568,
+    "sourceLines": 1134827,
     "workspaceEdges": 139,
-    "moduleEdges": 17220,
+    "moduleEdges": 17142,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
-    "testOnlyExports": 967
+    "testOnlyExports": 966
   },
   "errors": [],
   "packageCycles": [],
@@ -152,7 +152,7 @@
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
       "sourceFiles": 676,
-      "testFiles": 669,
+      "testFiles": 664,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -197,7 +197,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 669
+          "testFiles": 664
         }
       ]
     },
@@ -249,7 +249,7 @@
       "name": "@wrongstack/core",
       "dir": "packages/core",
       "sourceFiles": 1163,
-      "testFiles": 1012,
+      "testFiles": 1004,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -264,7 +264,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 1012
+          "testFiles": 1004
         }
       ]
     },
@@ -385,8 +385,8 @@
     {
       "name": "@wrongstack/mcp",
       "dir": "packages/mcp",
-      "sourceFiles": 74,
-      "testFiles": 94,
+      "sourceFiles": 65,
+      "testFiles": 80,
       "workspaceDependencies": [
         "@wrongstack/core"
       ],
@@ -399,7 +399,7 @@
         {
           "path": "packages/mcp/tsconfig.test.json",
           "error": null,
-          "testFiles": 94
+          "testFiles": 80
         }
       ]
     },
@@ -577,8 +577,8 @@
     {
       "name": "@wrongstack/runtime",
       "dir": "packages/runtime",
-      "sourceFiles": 35,
-      "testFiles": 28,
+      "sourceFiles": 33,
+      "testFiles": 27,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/governance",
@@ -598,7 +598,7 @@
         {
           "path": "packages/runtime/tsconfig.test.json",
           "error": null,
-          "testFiles": 28
+          "testFiles": 27
         }
       ]
     },
@@ -696,8 +696,8 @@
     {
       "name": "@wrongstack/simpleui",
       "dir": "packages/simpleui",
-      "sourceFiles": 131,
-      "testFiles": 100,
+      "sourceFiles": 130,
+      "testFiles": 99,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/tools",
@@ -718,7 +718,7 @@
         {
           "path": "packages/simpleui/tsconfig.test.json",
           "error": null,
-          "testFiles": 100
+          "testFiles": 99
         }
       ]
     },
@@ -869,8 +869,8 @@
     {
       "name": "@wrongstack/webui",
       "dir": "packages/webui",
-      "sourceFiles": 764,
-      "testFiles": 505,
+      "sourceFiles": 761,
+      "testFiles": 501,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -893,7 +893,7 @@
         {
           "path": "packages/webui/tsconfig.test.json",
           "error": null,
-          "testFiles": 505
+          "testFiles": 501
         }
       ]
     },
@@ -924,8 +924,8 @@
     {
       "name": "@wrongstack/webui-protocol",
       "dir": "packages/webui-protocol",
-      "sourceFiles": 29,
-      "testFiles": 15,
+      "sourceFiles": 27,
+      "testFiles": 14,
       "workspaceDependencies": [
         "@wrongstack/core"
       ],
@@ -938,15 +938,15 @@
         {
           "path": "packages/webui-protocol/tsconfig.test.json",
           "error": null,
-          "testFiles": 15
+          "testFiles": 14
         }
       ]
     },
     {
       "name": "@wrongstack/webui-server",
       "dir": "packages/webui-server",
-      "sourceFiles": 304,
-      "testFiles": 303,
+      "sourceFiles": 301,
+      "testFiles": 298,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -972,7 +972,7 @@
         {
           "path": "packages/webui-server/tsconfig.test.json",
           "error": null,
-          "testFiles": 303
+          "testFiles": 298
         }
       ]
     },
@@ -2714,12 +2714,6 @@
         ]
       },
       {
-        "file": "packages/cli/tests/config-history-restore-bom.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
         "file": "packages/cli/tests/config-history.test.ts",
         "projects": [
           "root-node"
@@ -3776,12 +3770,6 @@
         ]
       },
       {
-        "file": "packages/cli/tests/kanban-hq-sync-old-board-delete.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
         "file": "packages/cli/tests/kanban-hq-sync.test.ts",
         "projects": [
           "root-node"
@@ -4149,12 +4137,6 @@
       },
       {
         "file": "packages/cli/tests/profile-config-path.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/cli/tests/project-add-concurrent-registration.test.ts",
         "projects": [
           "root-node"
         ]
@@ -5174,12 +5156,6 @@
         ]
       },
       {
-        "file": "packages/cli/tests/slash-tuneup-config-lock.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
         "file": "packages/cli/tests/slash-tuneup.test.ts",
         "projects": [
           "root-node"
@@ -5205,12 +5181,6 @@
       },
       {
         "file": "packages/cli/tests/sprint2-reliable-queue.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/cli/tests/standalone-auto-update-lock-race.test.ts",
         "projects": [
           "root-node"
         ]
@@ -6434,18 +6404,6 @@
         ]
       },
       {
-        "file": "packages/core/tests/boot-project-registration-bom.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/boot-project-registration-race.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
         "file": "packages/core/tests/boot-state-dir-guard.test.ts",
         "projects": [
           "root-node"
@@ -7016,12 +6974,6 @@
         ]
       },
       {
-        "file": "packages/core/tests/coordination/delegate-timeout-overflow.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
         "file": "packages/core/tests/coordination/delegate-timeout-preempt.test.ts",
         "projects": [
           "root-node"
@@ -7443,12 +7395,6 @@
       },
       {
         "file": "packages/core/tests/coordination/mailbox-project-server-auth-gate.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/mailbox-project-server-client-close-mid-connect.test.ts",
         "projects": [
           "root-node"
         ]
@@ -9824,12 +9770,6 @@
         ]
       },
       {
-        "file": "packages/core/tests/plugins/cloud-config-sync-plugin-read-error.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
         "file": "packages/core/tests/plugins/cloud-config-sync-plugin.test.ts",
         "projects": [
           "root-node"
@@ -9879,12 +9819,6 @@
       },
       {
         "file": "packages/core/tests/plugins/review-claim-registry.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/plugins/review-claim-store-lock-race.test.ts",
         "projects": [
           "root-node"
         ]
@@ -9975,12 +9909,6 @@
       },
       {
         "file": "packages/core/tests/plugins/sync-plugin.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/project-server-clients-close-mid-connect.test.ts",
         "projects": [
           "root-node"
         ]
@@ -11163,12 +11091,6 @@
       },
       {
         "file": "packages/core/tests/storage/session-registry-lock-faults.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/storage/session-registry-lock-race.test.ts",
         "projects": [
           "root-node"
         ]
@@ -13106,30 +13028,6 @@
         ]
       },
       {
-        "file": "packages/mcp/tests/modern-mrtr-controls.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/mcp/tests/modern-mrtr-http-wire.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/mcp/tests/modern-mrtr-registry.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/mcp/tests/modern-mrtr.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
         "file": "packages/mcp/tests/modern-protocol.test.ts",
         "projects": [
           "root-node"
@@ -13353,66 +13251,6 @@
       },
       {
         "file": "packages/mcp/tests/structured-output.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/mcp/tests/task-changes.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/mcp/tests/task-input-recovery.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/mcp/tests/task-journal-conversation.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/mcp/tests/task-journal-recovery.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/mcp/tests/task-journal.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/mcp/tests/task-management.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/mcp/tests/tasks-controls.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/mcp/tests/tasks-http.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/mcp/tests/tasks-registry.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/mcp/tests/tasks-stdio.test.ts",
         "projects": [
           "root-node"
         ]
@@ -15824,12 +15662,6 @@
         ]
       },
       {
-        "file": "packages/runtime/tests/docker-environment.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
         "file": "packages/runtime/tests/docker-workspace-environment.test.ts",
         "projects": [
           "root-node"
@@ -17367,12 +17199,6 @@
       },
       {
         "file": "packages/simpleui/tests/auth-panel.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/automation-workspace.test.tsx",
         "projects": [
           "root-node"
         ]
@@ -23798,12 +23624,6 @@
         ]
       },
       {
-        "file": "packages/webui-protocol/tests/environment-profile.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
         "file": "packages/webui-protocol/tests/frame-resume-invalid-payload.test.ts",
         "projects": [
           "root-node"
@@ -24075,12 +23895,6 @@
       },
       {
         "file": "packages/webui-server/tests/completion-handlers.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/webui-server/tests/config-doctor-concurrent-write.test.ts",
         "projects": [
           "root-node"
         ]
@@ -24578,18 +24392,6 @@
         ]
       },
       {
-        "file": "packages/webui-server/tests/mcp-task-handlers.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/webui-server/tests/mcp-task-subscriptions.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
         "file": "packages/webui-server/tests/memory-candidate-resolve.test.ts",
         "projects": [
           "root-node"
@@ -24764,12 +24566,6 @@
         ]
       },
       {
-        "file": "packages/webui-server/tests/pref-config-write-read-error.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
         "file": "packages/webui-server/tests/pref-helpers.test.ts",
         "projects": [
           "root-node"
@@ -24849,12 +24645,6 @@
       },
       {
         "file": "packages/webui-server/tests/project-watcher.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/webui-server/tests/projects-manifest-bom.test.ts",
         "projects": [
           "root-node"
         ]
@@ -25934,12 +25724,6 @@
         ]
       },
       {
-        "file": "packages/webui/tests/components/chat-view-new-session-welcome.test.tsx",
-        "projects": [
-          "webui-jsdom"
-        ]
-      },
-      {
         "file": "packages/webui/tests/components/chat-view-welcome-scroll.test.ts",
         "projects": [
           "webui-jsdom"
@@ -26397,12 +26181,6 @@
       },
       {
         "file": "packages/webui/tests/components/mcp-section-edit.test.tsx",
-        "projects": [
-          "webui-jsdom"
-        ]
-      },
-      {
-        "file": "packages/webui/tests/components/mcp-tasks-panel.test.tsx",
         "projects": [
           "webui-jsdom"
         ]
@@ -28166,19 +27944,7 @@
         ]
       },
       {
-        "file": "packages/webui/tests/lib/ws-client-log-redaction.test.ts",
-        "projects": [
-          "webui-jsdom"
-        ]
-      },
-      {
         "file": "packages/webui/tests/lib/ws-client-model-switch.test.ts",
-        "projects": [
-          "webui-jsdom"
-        ]
-      },
-      {
-        "file": "packages/webui/tests/lib/ws-client-new-session-grant.test.ts",
         "projects": [
           "webui-jsdom"
         ]
@@ -29113,11 +28879,6 @@
       "relativeImports": 5
     },
     {
-      "file": "packages/core/src/chronicle/project-server-client.ts",
-      "lines": 699,
-      "relativeImports": 5
-    },
-    {
       "file": "packages/governance/src/runtime-compatibility.ts",
       "lines": 699,
       "relativeImports": 12
@@ -29126,6 +28887,11 @@
       "file": "packages/core/src/coordination/subagent-budget.ts",
       "lines": 698,
       "relativeImports": 6
+    },
+    {
+      "file": "packages/simpleui/src/automation-workspace.tsx",
+      "lines": 698,
+      "relativeImports": 3
     },
     {
       "file": "packages/core/src/coordination/autonomous-brain.ts",
@@ -29168,9 +28934,9 @@
       "relativeImports": 4
     },
     {
-      "file": "packages/simpleui/src/automation-workspace.tsx",
+      "file": "packages/core/src/chronicle/project-server-client.ts",
       "lines": 692,
-      "relativeImports": 4
+      "relativeImports": 5
     },
     {
       "file": "packages/tools/src/codebase-index/project-server.ts",
@@ -29206,6 +28972,11 @@
       "file": "packages/webui/src/components/SettingsPanel/index.tsx",
       "lines": 691,
       "relativeImports": 25
+    },
+    {
+      "file": "packages/webui/src/lib/ws-client.ts",
+      "lines": 691,
+      "relativeImports": 14
     },
     {
       "file": "packages/cli/src/fleet/host-skill-companion.ts",
@@ -29253,9 +29024,9 @@
       "relativeImports": 13
     },
     {
-      "file": "packages/webui/src/lib/ws-client.ts",
+      "file": "packages/webui/src/components/AutomationView.tsx",
       "lines": 688,
-      "relativeImports": 14
+      "relativeImports": 4
     },
     {
       "file": "packages/core/src/hq/commands.ts",
@@ -29281,11 +29052,6 @@
       "file": "packages/webui-server/src/server/session-handler-helpers.ts",
       "lines": 686,
       "relativeImports": 5
-    },
-    {
-      "file": "packages/core/src/coordination/mailbox-project-server-client.ts",
-      "lines": 685,
-      "relativeImports": 4
     },
     {
       "file": "packages/core/src/session-catalog/session-registry.ts",
@@ -32489,10 +32255,6 @@
     {
       "file": "packages/webui-server/src/server/handlers/worklist-handlers.ts",
       "name": "handlePlanGet"
-    },
-    {
-      "file": "packages/webui-server/src/server/pref-config-write.ts",
-      "name": "writeGlobalConfigFile"
     },
     {
       "file": "packages/webui-server/src/server/provider-config-standalone.ts",

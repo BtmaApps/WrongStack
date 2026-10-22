@@ -144,6 +144,41 @@ describe('isClearlyDestructiveBashCommand — destructive detection (P2 #12)', (
     });
   });
 
+  // The command-string flag is not always the token IMMEDIATELY after the
+  // launcher. Shells parse options left to right, so `bash -x -c '…'`,
+  // `bash --norc -c '…'`, `pwsh -NoProfile -Command '…'` and `cmd /d /c "…"`
+  // hand the payload to the launcher exactly like the adjacent spellings above.
+  // Reading only tokens[i+1] abandoned the launcher on the first other option
+  // and left the payload ONE opaque token: the token-exact rules saw nothing,
+  // the coarse inline-payload substring heuristic labeled `rm -rf ~/data` as
+  // the WRONG kind ('bulk-delete' — un-gating bulk-delete then ran a
+  // home-directory delete), and the pwsh/cmd shapes were not classified at all
+  // (YOLO never asked).
+  describe('a command-string flag behind other launcher options still expands', () => {
+    it.each([
+      ["bash -x -c 'rm -rf ~/data'", 'delete-outside'],
+      ["bash --norc -c 'rm -rf ~/data'", 'delete-outside'],
+      ["bash --rcfile f -c 'rm -rf ~/data'", 'delete-outside'],
+      ["pwsh -NoProfile -Command 'rm -rf ~/data'", 'delete-outside'],
+      ['cmd /d /c "rmdir /s C:\\Users"', 'delete-outside'],
+      // The scan may cross a plain word but never a shell operator: the -c in
+      // the segment after ';' belongs to that segment, and nothing here runs
+      // the quoted delete.
+      ["bash -x ; -c 'rm -rf ~/data'", undefined],
+      // The payload still decides: an innocent command string stays ungated.
+      ["bash -x -c 'echo hello'", undefined],
+      ["pwsh -NoProfile -Command 'echo ok' ; rm -rf ~/data", 'delete-outside'],
+      // Nesting behind an interleaved flag is expanded at depth too.
+      ['bash -x -c \'bash -c "rm -rf ~/data"\'', 'delete-outside'],
+      // Fail-closed boundary: positional args that literally spell flag +
+      // payload are gated even though a shell would hand the string to the
+      // script — the same tolerance as the positional `sh -c rm -rf ~/data`.
+      ["bash script.sh -c 'rm -rf ~/data'", 'delete-outside'],
+    ])('%j → kind=%j', (cmd, kind) => {
+      expect(classifyDestructiveCommand(cmd, ROOT)).toBe(kind);
+    });
+  });
+
   describe('high-impact dev operations are gated', () => {
     it.each([
       ['git clean -xdf', true],

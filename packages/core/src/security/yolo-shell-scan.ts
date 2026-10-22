@@ -187,39 +187,78 @@ function expandCommandStrings(tokens: readonly string[], depth: number): string[
     out.push(token);
     const flags = COMMAND_STRING_FLAGS.get(normalizeCommandToken(token));
     if (flags === undefined) continue;
-    const flagToken = tokens[i + 1];
-    if (flagToken === undefined || SHELL_OPERATORS.has(flagToken)) continue;
+    const found = findCommandStringFlag(tokens, i, flags);
+    if (found === undefined) continue;
+    const flagToken = tokens[found.index] ?? '';
     const lower = flagToken.toLowerCase();
-    // POSIX shells take options as a cluster: `bash -lc "<cmd>"`, `sh -ec`,
-    // `zsh -xc` carry -c inside the cluster and the NEXT word is the command
-    // string — never a glued value. `bash -lc` is the usual login-shell
-    // spelling, and reading only the exact `-c` left its payload an inert
-    // token while `bash -c` was gated.
-    const clustered =
-      POSIX_SHELLS.has(normalizeCommandToken(token)) && /^-[a-z]*c[a-z]*$/.test(lower);
-    const flag = clustered
-      ? lower
-      : flags.find((candidate) => lower === candidate || lower.startsWith(candidate));
-    if (flag === undefined) continue;
+    const flag = found.flag;
     let value: string | undefined;
-    let consumed = 1;
     if (lower.length > flag.length) {
       // `-c<cmd>` / `--split-string=<cmd>`: the value rides the flag token.
       value = flagToken.slice(flag.length + (flagToken.charAt(flag.length) === '=' ? 1 : 0));
     } else {
-      value = tokens[i + 2];
-      consumed = 2;
+      value = tokens[found.index + 1];
     }
     if (value === undefined || value.length === 0) continue;
-    i += consumed;
+    // Options that sit between the launcher and its flag (`bash -x -c`) stay in
+    // the stream, then the payload is spliced behind the `;` boundary.
+    for (let k = i + 1; k <= found.index; k += 1) out.push(tokens[k] ?? '');
     out.push(';');
     const inner = flatShellTokens(value);
     // Past the bound the words still become visible; only deeper nesting stops.
     out.push(
       ...(depth + 1 >= MAX_COMMAND_STRING_DEPTH ? inner : expandCommandStrings(inner, depth + 1)),
     );
+    // Resume past the flag (value rode on it) or past flag + value, exactly as
+    // the previous adjacent-only form did.
+    i = lower.length > flag.length ? found.index : found.index + 1;
   }
   return out;
+}
+
+/**
+ * Locate the command-string flag in a launcher's option run.
+ *
+ * Shells parse options left to right until the first non-option argument, so
+ * the flag is not always the token IMMEDIATELY after the launcher:
+ * `bash -x -c 'rm -rf ~/data'`, `bash --norc -c '…'`, `pwsh -NoProfile -Command
+ * '…'` and `cmd /d /c "…"` hand the payload to the launcher exactly like the
+ * adjacent spellings. Reading only tokens[i+1] abandoned the launcher on the
+ * first other option, left the payload ONE opaque token, and hid it from every
+ * token-exact rule — `rm -rf ~/data` was then classified by the coarse
+ * inline-payload substring heuristic (wrong kind: 'bulk-delete') or not at all
+ * (`pwsh -NoProfile -Command`, `cmd /d /c`: unclassified, YOLO never asked).
+ *
+ * The scan stops at a shell operator: the payload belongs to this segment, and
+ * `bash -c ; rm x` has no command string before the `;`. It does NOT stop at
+ * plain words — bash's own option/value grammar (`--rcfile f`, `-O autocd`)
+ * would need a per-launcher option-value table, which this module deliberately
+ * does not grow (see the calibration note in yolo-payload-risk.ts). The
+ * tolerance this buys is fail-closed: a launcher whose POSITIONAL arguments
+ * literally spell the flag and a gated payload (`bash script.sh -c 'rm -rf
+ * ~/data'`, where a real shell would hand the string to the script) is gated
+ * without being executed as a command string. Adjacent-flag behavior is
+ * unchanged: the scan returns `launcherIndex + 1` first whenever the adjacent
+ * token matches, which is the only position the previous form ever read.
+ */
+function findCommandStringFlag(
+  tokens: readonly string[],
+  launcherIndex: number,
+  flags: readonly string[],
+): { index: number; flag: string } | undefined {
+  const posix = POSIX_SHELLS.has(normalizeCommandToken(tokens[launcherIndex] ?? ''));
+  for (let j = launcherIndex + 1; j < tokens.length; j += 1) {
+    const candidate = tokens[j];
+    if (candidate === undefined || SHELL_OPERATORS.has(candidate)) break;
+    const lower = candidate.toLowerCase();
+    // POSIX shells take options as a cluster: `bash -lc "<cmd>"`, `sh -ec`,
+    // `zsh -xc` carry -c inside the cluster and the NEXT word is the command
+    // string — never a glued value.
+    if (posix && /^-[a-z]*c[a-z]*$/.test(lower)) return { index: j, flag: lower };
+    const flag = flags.find((entry) => lower === entry || lower.startsWith(entry));
+    if (flag !== undefined) return { index: j, flag };
+  }
+  return undefined;
 }
 
 export function tokenizeShell(command: string): string[] {

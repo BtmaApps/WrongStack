@@ -92,4 +92,16 @@ describe('DefaultSecretScrubber — credential shapes', () => {
     expect(scrubber.scrub('pip install pypi-package-name')).toBe('pip install pypi-package-name');
     expect(scrubber.scrub(`rk_live_${'a'.repeat(23)}`)).toBe(`rk_live_${'a'.repeat(23)}`);
   });
+
+  it('redacts a Basic Authorization header (F524) but not the word "basic"', () => {
+    const b64 = Buffer.from('deploy:hunter2-Pr0d!').toString('base64');
+    expect(scrubber.scrub(`> Authorization: Basic ${b64}`)).toBe('> [REDACTED:basic_auth]');
+    expect(scrubber.scrub(`authorization: basic ${b64}`)).not.toContain(b64);
+    for (const text of [
+      'Use basic authentication for the admin panel',
+      'WWW-Authenticate: Basic realm="internal"',
+    ]) {
+      expect(scrubber.scrub(text)).toBe(text);
+    }
+  });
 });
