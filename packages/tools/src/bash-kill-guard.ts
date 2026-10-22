@@ -412,33 +412,62 @@ async function checkSingleCommand(
  * Cost: a harmless `echo "kill <protected pid>"` is refused too.
  */
 async function protectedPidBackstop(command: string): Promise<KillCheckResult | undefined> {
-  const decoded = splitShellWords(command).map(unquoteShellWord).join(' ');
-  const text = `${command}\n${decoded}`;
-  if (!KILL_SHAPED_RE.test(text)) return undefined;
-  const pids = [...new Set((text.match(/\d+/g) ?? []).map(Number))]
-    .filter((pid) => pid > 1 && Number.isSafeInteger(pid))
-    .slice(0, 64);
-  for (const pid of pids) {
-    const protectedPid = await isKillProtected({
-      pid,
-      isGroupKill: false,
-      isAllKill: false,
-      originalCommand: command,
-    });
-    if (protectedPid) {
-      return {
-        blocked: true,
-        reason:
-          `Blocked: the command names PID ${pid}, a protected WrongStack process, next to ` +
-          'a kill command in a form the guard cannot verify. Name the target plainly, or ' +
-          'leave the protected process alone.',
-      };
+  const words = splitShellWords(command).map(unquoteShellWord);
+  const text = `${command}\n${words.join(' ')}`;
+  const killShaped = KILL_SHAPED_RE.test(text);
+
+  // 1. Re-read from every kill verb with the words decoded, so `ki''ll -9 -1`
+  //    (every process), `k"i"ll -- -<pgid>` and `pk''ill wrongstack` get the
+  //    group, all and name rules of isKillProtected, not just literal PIDs.
+  if (killShaped) {
+    let verbs = 0;
+    for (let k = 0; k < words.length && verbs < 16; k++) {
+      if (!KILL_VERB_WORD_RE.test(words[k] ?? '')) continue;
+      verbs++;
+      for (const segment of splitShellSequence(words.slice(k).join(' '))) {
+        const parsed = parseKillCommand(unwrapKillCommandHead(segment));
+        if (parsed && (await isKillProtected(parsed))) {
+          return {
+            blocked: true,
+            reason:
+              'Blocked: read with its quoting removed, the command kills a protected ' +
+              `WrongStack process ("${segment.slice(0, 60)}").`,
+          };
+        }
+      }
     }
   }
-  return undefined;
+
+  // 2. A literal protected PID anywhere in the line, raw or decoded. The
+  //    protected set is small, so intersect with every number: no cap a
+  //    padded line could exhaust.
+  const guarded = new Set([
+    ...(await getPersistentProcessRegistry().getAllProtectedPids()),
+    process.pid,
+    process.ppid,
+  ]);
+  const named = (text.match(/\d+/g) ?? []).map(Number).find((n) => guarded.has(n));
+  if (named === undefined) return undefined;
+  // Next to a kill word — or next to anything that builds a command at run
+  // time, which can spell the kill without the word (`$(printf '\153…')`).
+  if (!killShaped && !DYNAMIC_COMMAND_RE.test(text)) return undefined;
+  return {
+    blocked: true,
+    reason:
+      `Blocked: the command names PID ${named}, a protected WrongStack process, next to ` +
+      `${killShaped ? 'a kill command' : 'a command built at run time'} in a form the guard ` +
+      'cannot verify. Name the target plainly, or leave the protected process alone.',
+  };
 }
 
-/** Anything that can signal a process, in shell, PowerShell, cmd or a one-liner. */
+/** A word that is itself a kill verb (path and .exe allowed). */
+const KILL_VERB_WORD_RE =
+  /^(?:\S*[\\/])?(?:kill|pkill|killall|taskkill|tskill|stop-process|spps)(?:\.exe)?$/i;
+
+/** Constructs that assemble or run a command at run time. */
+const DYNAMIC_COMMAND_RE =
+  /\$\(|`|\$\{|\$'|(?:^|[\s;&|(])(?:eval|exec|source|xargs|command|builtin|env)(?=\s|$)|\|\s*(?:\S*[\\/])?(?:ba|z|da|k|c)?sh\b|(?:^|[;&|]\s*)\$\w+(?=\s)/i;
+
 const KILL_SHAPED_RE =
   /(?:^|[^a-z0-9_-])(?:kill|pkill|killall|xkill|taskkill|tskill|stop-process|spps|wmic)(?:\.exe)?(?![a-z0-9_-])|process\.kill|os\.kill|killpg|\bsig(?:kill|term|int|hup|quit|abrt|usr1|usr2|stop)\b|\bterminate\b/i;
 

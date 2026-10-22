@@ -249,6 +249,44 @@ describe('bash-kill-guard — unparsed POSIX kill operands', () => {
     expect(result.reason).toMatch(/protected WrongStack process/);
   });
 
+  // The backstop re-reads from each kill verb with quoting removed (group, all
+  // and name rules apply), checks every number with no cap, and treats a
+  // command built at run time like a kill word.
+  it('finds the protected PID behind any number of other numbers', async () => {
+    const { checkAndBlockKillCommand } = await loadGuard();
+    const pad = Array.from({ length: 70 }, (_, i) => String(1000 + i)).join(' ');
+    const result = await checkAndBlockKillCommand(`ki''ll -9 ${pad} ${PROTECTED_PID}`);
+    expect(result.blocked).toBe(true);
+    expect(result.reason).toMatch(/protected WrongStack process/);
+  });
+
+  it.each([
+    `ki''ll -9 -1`,
+    `ki''ll -- -1`,
+    `k"i"ll -9 -${PROTECTED_PID}`,
+    `pk''ill wrongstack`,
+    `ki''llall node`,
+    `$(printf '\\153\\151\\154\\154') -9 ${PROTECTED_PID}`,
+    `\`printf kil\`l -9 ${PROTECTED_PID}`,
+    `echo -9 ${PROTECTED_PID} | xargs $(echo k)ill`,
+  ])('refuses %j (group/all/name kills, commands built at run time)', async (command) => {
+    const { checkAndBlockKillCommand } = await loadGuard();
+    const result = await checkAndBlockKillCommand(command);
+    expect(result.blocked).toBe(true);
+    expect(result.reason).toMatch(/protected WrongStack process/);
+  });
+
+  it.each([
+    'kill -9 123',
+    'kill -1 123',
+    'echo $(date) done',
+    'pkill -f my-dev-server',
+    `sh -c 'echo ${PROTECTED_PID}'`,
+  ])('allows %j', async (command) => {
+    const { checkAndBlockKillCommand } = await loadGuard();
+    expect((await checkAndBlockKillCommand(command)).blocked).toBe(false);
+  });
+
   // Reading a protected process is not killing it.
   it.each([
     `ps -p ${PROTECTED_PID}`,
