@@ -10,6 +10,7 @@
  * "green ≠ live" rule documented in docs/wrongtrace.md §8.
  */
 
+import { resolve } from 'node:path';
 import { HookRegistry, HookRunner } from '@wrongstack/core/hooks';
 import {
   createWrongTraceHookPair,
@@ -19,6 +20,13 @@ import {
 import { afterAll, describe, expect, it } from 'vitest';
 
 const PROBE = `__webui_gate_probe_${Date.now()}__`;
+// The hooks lock the file in the session's directory, not the relative name
+// (a machine-wide daemon would otherwise share one lock across projects).
+const PROBE_KEY = resolve(PROBE);
+// The daemon lists an absolute path in its own canonical spelling (on Windows
+// `d:/codebox/...`), so compare spellings, not strings.
+const canonicalLockPath = (p: string) => p.replace(/\\/g, '/').toLowerCase();
+const sameLockPath = (a: string, b: string) => canonicalLockPath(a) === canonicalLockPath(b);
 const SESSION = 'webui-gate-focused-test';
 
 /**
@@ -72,14 +80,14 @@ describe.skipIf(!DAEMON_UP)('standalone WebUI WrongTrace gate (executor-path con
       return;
     }
 
-    await wt.lockFile(PROBE, 'held by peer', { owner: 'peer-agent', ttlSeconds: 60 });
+    await wt.lockFile(PROBE_KEY, 'held by peer', { owner: 'peer-agent', ttlSeconds: 60 });
     try {
       const r = await runner.preToolUse('edit', { path: PROBE }, env, { mutating: true });
       expect(r.block).toBe(true);
       expect(r.reason).toContain('peer-agent');
       expect(r.reason).toContain('WrongTrace lock');
     } finally {
-      await wt.unlockFile(PROBE);
+      await wt.unlockFile(PROBE_KEY);
     }
   });
 
@@ -95,7 +103,7 @@ describe.skipIf(!DAEMON_UP)('standalone WebUI WrongTrace gate (executor-path con
       if (!wt.isAvailable) return;
 
       const locks = await wt.listLocks();
-      const held = locks.find((l) => l.path === PROBE);
+      const held = locks.find((l) => sameLockPath(l.path, PROBE_KEY));
       // The lock must actually be claimed; `if (held)` let a missing claim pass.
       expect(held?.owner).toBe(`wrongstack:${SESSION}`);
     } finally {
@@ -106,7 +114,7 @@ describe.skipIf(!DAEMON_UP)('standalone WebUI WrongTrace gate (executor-path con
       await runner.postToolUse('edit', { path: PROBE }, { content: '', isError: false }, env);
     }
 
-    const after = (await wt.listLocks()).filter((l) => l.path === PROBE);
+    const after = (await wt.listLocks()).filter((l) => sameLockPath(l.path, PROBE_KEY));
     expect(after).toHaveLength(0);
   });
 });

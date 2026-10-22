@@ -11,6 +11,7 @@
 
 import * as http from 'node:http';
 import type { AddressInfo } from 'node:net';
+import { resolve } from 'node:path';
 import { HookRegistry, HookRunner } from '@wrongstack/core/hooks';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { getWrongTrace, resetWrongTraceGate } from '../src/wiring/wrongtrace-gate.js';
@@ -20,6 +21,13 @@ import {
 } from '../src/wiring/wrongtrace-hooks.js';
 
 const PROBE = `__hook_probe_${Date.now()}__`;
+// The hooks lock the file in the session's directory, not the relative name
+// (a machine-wide daemon would otherwise share one lock across projects).
+const PROBE_KEY = resolve(PROBE);
+// The daemon lists an absolute path in its own canonical spelling (on Windows
+// `d:/codebox/...`), so compare spellings, not strings.
+const canonicalLockPath = (p: string) => p.replace(/\\/g, '/').toLowerCase();
+const sameLockPath = (a: string, b: string) => canonicalLockPath(a) === canonicalLockPath(b);
 const SESSION = 'hook-focused-test';
 
 function buildRunner(emit?: (event: WrongTraceGateDecisionEvent) => void): HookRunner {
@@ -189,7 +197,7 @@ let stub: Awaited<ReturnType<typeof startStubDaemon>>;
 const FRAGILE_PATH = `${PROBE}-fragile.ts`;
 beforeEach(async () => {
   previousUrl = process.env.WRONGTRACE_URL;
-  stub = await startStubDaemon(FRAGILE_PATH);
+  stub = await startStubDaemon(resolve(FRAGILE_PATH));
   process.env.WRONGTRACE_URL = stub.url;
   resetWrongTraceGate();
   expect((await getWrongTrace()).isAvailable).toBe(true);
@@ -207,14 +215,14 @@ describe('WrongTrace hooks on the real HookRunner (executor path)', () => {
     const runner = buildRunner();
     const env = { cwd: process.cwd() };
 
-    await wt.lockFile(PROBE, 'held by peer', { owner: 'peer-agent', ttlSeconds: 60 });
+    await wt.lockFile(PROBE_KEY, 'held by peer', { owner: 'peer-agent', ttlSeconds: 60 });
     try {
       const r = await runner.preToolUse('edit', { path: PROBE }, env, { mutating: true });
       expect(r.block).toBe(true);
       expect(r.reason).toContain('peer-agent');
       expect(r.reason).toContain('WrongTrace lock');
     } finally {
-      await wt.unlockFile(PROBE);
+      await wt.unlockFile(PROBE_KEY);
     }
   });
 
@@ -226,11 +234,11 @@ describe('WrongTrace hooks on the real HookRunner (executor path)', () => {
     const pre = await runner.preToolUse('edit', { path: PROBE }, env, { mutating: true });
     expect(pre.block).toBeFalsy();
 
-    const held = (await wt.listLocks()).find((l) => l.path === PROBE);
+    const held = (await wt.listLocks()).find((l) => sameLockPath(l.path, PROBE_KEY));
     expect(held?.owner).toBe(`wrongstack:${SESSION}`);
 
     await runner.postToolUse('edit', { path: PROBE }, { content: '', isError: false }, env);
-    const after = (await wt.listLocks()).filter((l) => l.path === PROBE);
+    const after = (await wt.listLocks()).filter((l) => sameLockPath(l.path, PROBE_KEY));
     expect(after).toHaveLength(0);
   });
 
@@ -252,15 +260,15 @@ describe('WrongTrace hooks on the real HookRunner (executor path)', () => {
     const env = { cwd: process.cwd() };
 
     // Foreign lock → deny event with the owner in the reason.
-    await wt.lockFile(PROBE, 'held by peer', { owner: 'peer-agent', ttlSeconds: 60 });
+    await wt.lockFile(PROBE_KEY, 'held by peer', { owner: 'peer-agent', ttlSeconds: 60 });
     try {
       await runner.preToolUse('edit', { path: PROBE }, env, { mutating: true });
       const deny = emitted.find((e) => e.kind === 'deny');
       expect(deny).toBeDefined();
-      expect(deny?.path).toBe(PROBE);
+      expect(deny?.path).toBe(PROBE_KEY);
       expect(deny?.kind === 'deny' ? deny.reason : '').toContain('peer-agent');
     } finally {
-      await wt.unlockFile(PROBE);
+      await wt.unlockFile(PROBE_KEY);
     }
 
     // Unlocked edit → lock-acquired on claim, lock-released on postToolUse.
@@ -269,7 +277,7 @@ describe('WrongTrace hooks on the real HookRunner (executor path)', () => {
     expect(emitted.some((e) => e.kind === 'lock-acquired')).toBe(true);
     await runner.postToolUse('edit', { path: PROBE }, { content: '', isError: false }, env);
     expect(emitted.some((e) => e.kind === 'lock-released')).toBe(true);
-    const after = (await wt.listLocks()).filter((l) => l.path === PROBE);
+    const after = (await wt.listLocks()).filter((l) => sameLockPath(l.path, PROBE_KEY));
     expect(after).toHaveLength(0);
   });
 
@@ -280,7 +288,7 @@ describe('WrongTrace hooks on the real HookRunner (executor path)', () => {
     const r = await runner.preToolUse('edit', { path: FRAGILE_PATH }, env, { mutating: true });
     expect(r.block).toBeFalsy();
     expect(r.additionalContext).toContain('fragile');
-    expect(stub.lockOwners()).toEqual([{ path: FRAGILE_PATH, owner: `wrongstack:${SESSION}` }]);
+    expect(stub.lockOwners()).toEqual([{ path: resolve(FRAGILE_PATH), owner: `wrongstack:${SESSION}` }]);
     await runner.postToolUse('edit', { path: FRAGILE_PATH }, { content: '', isError: false }, env);
     expect(stub.lockOwners()).toHaveLength(0);
     expect(emitted.some((e) => e.kind === 'allow-fragile')).toBe(true);
