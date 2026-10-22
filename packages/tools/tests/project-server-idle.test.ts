@@ -1,4 +1,4 @@
-import { type ChildProcess, spawn } from 'node:child_process';
+import { type ChildProcess, spawn, spawnSync } from 'node:child_process';
 import * as fsSync from 'node:fs';
 import * as fs from 'node:fs/promises';
 import * as net from 'node:net';
@@ -13,6 +13,31 @@ const distServer = fileURLToPath(
 );
 const coreDist = fileURLToPath(new URL('../../core/dist/index.js', import.meta.url));
 const distReady = fsSync.existsSync(distServer) && fsSync.existsSync(coreDist);
+
+/**
+ * The daemon and its heartbeat fixture must run on the product runtime (Bun).
+ * Using `process.execPath` coupled them to whoever runs Vitest: under a Node
+ * runner (`bunx vitest`, `npx vitest`) the fixture's TypeScript import died with
+ * ERR_MODULE_NOT_FOUND before it could print WAITING, so the test timed out
+ * without ever exercising the daemon. Resolved lazily, so a file skipped for a
+ * missing dist build never requires Bun.
+ */
+let cachedProductRuntime: string | undefined;
+function productRuntime(): string {
+  if (cachedProductRuntime) return cachedProductRuntime;
+  if (typeof (process.versions as { bun?: string }).bun === 'string') {
+    cachedProductRuntime = process.execPath;
+    return cachedProductRuntime;
+  }
+  const probe = spawnSync('bun', ['--version'], { encoding: 'utf8', windowsHide: true });
+  if (probe.status === 0) {
+    cachedProductRuntime = 'bun';
+    return cachedProductRuntime;
+  }
+  throw new Error(
+    'project-server-idle tests require Bun on PATH: the heartbeat fixture imports TypeScript source.',
+  );
+}
 
 async function waitUntil(check: () => boolean, timeoutMs = 5_000): Promise<void> {
   const deadline = Date.now() + timeoutMs;
@@ -68,7 +93,7 @@ describe.skipIf(!distReady)('project index server idle lifecycle', () => {
     const stderrLogPath = path.join(projectRoot, 'daemon-stderr.log');
     const stderrFd = fsSync.openSync(stderrLogPath, 'w');
     const child = spawn(
-      process.execPath,
+      productRuntime(),
       [distServer, '--project-root', projectRoot, '--index-dir', indexDir],
       {
         env: {
@@ -111,7 +136,7 @@ describe.skipIf(!distReady)('project index server idle lifecycle', () => {
     const stderrLogPath = path.join(projectRoot, 'daemon-stderr.log');
     const stderrFd = fsSync.openSync(stderrLogPath, 'w');
     const child = spawn(
-      process.execPath,
+      productRuntime(),
       [distServer, '--project-root', projectRoot, '--index-dir', indexDir],
       {
         env: {
@@ -164,7 +189,7 @@ describe.skipIf(!distReady)('project index server idle lifecycle', () => {
     const stderrLogPath = path.join(projectRoot, 'daemon-stderr.log');
     const stderrFd = fsSync.openSync(stderrLogPath, 'w');
     const heartbeatClient = spawn(
-      process.execPath,
+      productRuntime(),
       [
         fileURLToPath(new URL('./fixtures/project-server-heartbeat.mjs', import.meta.url)),
         endpoint,
@@ -185,7 +210,7 @@ describe.skipIf(!distReady)('project index server idle lifecycle', () => {
     try {
       await waitUntil(() => clientOutput.includes('WAITING'));
       child = spawn(
-        process.execPath,
+        productRuntime(),
         [distServer, '--project-root', projectRoot, '--index-dir', indexDir],
         {
           env: {

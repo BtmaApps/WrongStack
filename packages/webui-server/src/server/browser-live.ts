@@ -85,9 +85,9 @@ function stamp(sessionId: string | undefined) {
   return sessionId ? { sessionId } : {};
 }
 
-async function tabSessions(projectRoot: string, sessionId: string | undefined) {
+async function tabSessions(projectRoot: string, sessionId: string) {
   const sessions = await liveBrowser.sessions(projectRoot);
-  return sessions.filter((s) => !sessionId || s.conversationId === sessionId);
+  return sessions.filter((s) => s.conversationId === sessionId);
 }
 
 export async function handleBrowserLiveList(
@@ -96,6 +96,10 @@ export async function handleBrowserLiveList(
   projectRoot: string,
 ): Promise<void> {
   const sessionId = messageSessionId(message);
+  if (!sessionId) {
+    send(ws, { type: 'browser.live.list', payload: { sessions: [] } });
+    return;
+  }
   const sessions = await tabSessions(projectRoot, sessionId).catch(() => []);
   send(ws, {
     type: 'browser.live.list',
@@ -127,8 +131,14 @@ export async function handleBrowserLiveWatch(
   const sessionId = messageSessionId(message);
   const payload = message.payload as { id?: unknown } | undefined;
   const id = typeof payload?.id === 'string' ? payload.id : undefined;
-  if (!id) {
-    sendResult(ws, false, 'browser.live.watch payload.id must be a browser session id');
+  if (!sessionId || !id) {
+    sendResult(
+      ws,
+      false,
+      !sessionId
+        ? 'browser.live.watch requires an owning session id'
+        : 'browser.live.watch payload.id must be a browser session id',
+    );
     return;
   }
   await handleBrowserLiveUnwatch(ws);

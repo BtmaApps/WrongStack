@@ -364,10 +364,14 @@ export function createSessionPromptQueue(deps: SessionPromptQueueDeps): SessionP
       const items = await load(sessionId);
       const front = items[0];
       if (!front || deps.isBusy(sessionId)) return;
-      items.shift();
+      const removeFront = (): void => {
+        const index = items.indexOf(front);
+        if (index !== -1) items.splice(index, 1);
+      };
       let started = false;
       try {
         started = await deps.startTurn(sessionId, front, () => {
+          removeFront();
           // Pages add the user bubble from this, ahead of the run's own events.
           deps.broadcast({
             type: 'queue.drained',
@@ -381,13 +385,10 @@ export function createSessionPromptQueue(deps: SessionPromptQueueDeps): SessionP
       if (!started) {
         // Lost the lock (another turn got there first) or the session is not
         // open yet: the prompt keeps its place and runs after that turn.
-        // The shift above was already visible to a concurrent add's publish
-        // and persist, so republish and rewrite the file with the prompt back
-        // in place — pages stay truthful and a restart still finds it.
-        items.unshift(front);
         await changed(sessionId);
         return;
       }
+      removeFront();
       await persist(sessionId);
     } catch (err) {
       // A queue read failure must not escape this function: QueueStore.read()

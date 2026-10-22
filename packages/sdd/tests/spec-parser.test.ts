@@ -150,6 +150,60 @@ Another requirement`);
       expect(spec.requirements).toHaveLength(2);
     });
 
+    it('skips HTML comment lines in requirements', () => {
+      const parser = new SpecParser();
+      const spec = parser.parse(`# Title
+
+## Requirements
+
+<!-- TODO: clarify the refresh-token rules -->
+
+[functional] Users can log in`);
+
+      expect(spec.requirements.map((r) => r.description)).toEqual(['Users can log in']);
+    });
+
+    it('skips the HTML comment placeholder the spec template emits', () => {
+      // `templateToMarkdown` writes `_<!-- <type> section content -->_` as the
+      // body of every generated section (packages/sdd/src/spec-templates.ts:182).
+      const parser = new SpecParser();
+      const spec = parser.parse(`# Title
+
+## Requirements
+
+_<!-- requirements section content -->_
+
+[functional] Users can log in`);
+
+      expect(spec.requirements.map((r) => r.description)).toEqual(['Users can log in']);
+    });
+
+    it('skips a multi-line HTML comment in requirements', () => {
+      const parser = new SpecParser();
+      const spec = parser.parse(`# Title
+
+## Requirements
+
+<!--
+TODO: clarify the refresh-token rules
+-->
+
+[functional] Users can log in`);
+
+      expect(spec.requirements.map((r) => r.description)).toEqual(['Users can log in']);
+    });
+
+    it('keeps the requirement text of a line that also carries an HTML comment', () => {
+      const parser = new SpecParser();
+      const spec = parser.parse(`# Title
+
+## Requirements
+
+[functional] Users can log in <!-- TODO: rename the field -->`);
+
+      expect(spec.requirements.map((r) => r.description)).toEqual(['Users can log in']);
+    });
+
     it('generates sequential IDs for requirements', () => {
       const parser = new SpecParser();
       const spec = parser.parse(`# Title
@@ -431,6 +485,50 @@ Req 3`);
         'Acceptance Criteria',
       ]);
       for (const section of parsed.sections) expect(section.content).not.toContain('\r');
+    });
+
+    it('ignores a heading inside a fenced code block when reading the title', () => {
+      const parser = new SpecParser();
+      const parsed = parser.parse(
+        [
+          '```bash',
+          '# Install dependencies',
+          'npm install',
+          '```',
+          '',
+          '# Real Title',
+          '',
+          '## Overview',
+          'Some overview.',
+        ].join('\n'),
+      );
+      expect(parsed.title).toBe('Real Title');
+    });
+
+    it('ignores a Version line inside a fenced code block when reading the version', () => {
+      const parser = new SpecParser();
+      const parsed = parser.parse(
+        ['```txt', 'Version: 9.9.9', '```', '', '# Real Title', '', 'Version: 2.0.0'].join('\n'),
+      );
+      expect(parsed.version).toBe('2.0.0');
+    });
+
+    it('still reads the title and version from outside a fenced code block', () => {
+      const parser = new SpecParser();
+      const parsed = parser.parse(
+        [
+          '# Real Title',
+          '',
+          'Version: 2.0.0',
+          '',
+          '## Overview',
+          '```ts',
+          '# install step',
+          '```',
+        ].join('\n'),
+      );
+      expect(parsed.title).toBe('Real Title');
+      expect(parsed.version).toBe('2.0.0');
     });
   });
 });

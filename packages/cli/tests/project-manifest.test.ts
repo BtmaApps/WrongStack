@@ -84,6 +84,15 @@ describe('loadManifest / saveManifest', () => {
       name: 'ConfigError',
       code: 'CONFIG_PARSE_FAILED',
     } satisfies Partial<InstanceType<typeof ConfigError>>);
+
+    await fs.writeFile(
+      path.join(dir, 'projects.json'),
+      JSON.stringify({ projects: [{ name: 'Broken', root: 42, slug: 'broken' }] }),
+    );
+    await expect(loadManifest(cfgPath)).rejects.toMatchObject({
+      name: 'ConfigError',
+      code: 'CONFIG_PARSE_FAILED',
+    } satisfies Partial<InstanceType<typeof ConfigError>>);
   });
 
   it('round-trips a manifest', async () => {

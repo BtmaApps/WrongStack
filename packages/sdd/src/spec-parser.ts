@@ -30,7 +30,16 @@ export class SpecParser {
   }
 
   private extractTitle(lines: string[]): string {
+    let fence: string | undefined;
+
     for (const line of lines) {
+      // A fenced code block is verbatim content, not document structure: a `#`
+      // comment inside a snippet is not the spec's title.
+      const nextFence = this.updateFence(line, fence);
+      const inFence = fence !== undefined || nextFence !== undefined;
+      fence = nextFence;
+      if (inFence) continue;
+
       const m = /^#\s+(.+)/.exec(line.trim());
       if (m?.[1]) return m[1];
     }
@@ -38,7 +47,16 @@ export class SpecParser {
   }
 
   private extractVersion(lines: string[]): string {
+    let fence: string | undefined;
+
     for (const line of lines) {
+      // Same rule as the title: a `Version:` line inside a fenced block is
+      // sample content, not the spec's version.
+      const nextFence = this.updateFence(line, fence);
+      const inFence = fence !== undefined || nextFence !== undefined;
+      fence = nextFence;
+      if (inFence) continue;
+
       const m = /version[:\s]+(\d+\.\d+\.\d+)/i.exec(line.trim());
       if (m?.[1]) return m[1];
     }
@@ -145,25 +163,52 @@ export class SpecParser {
     let inRequirements = false;
     let idCounter = 0;
     let fence: string | undefined;
+    let inComment = false;
 
     for (const line of lines) {
-      const marker = /^ {0,3}(`{3,}|~{3,})(.*)$/.exec(line);
-      const markerRun = marker?.[1];
-      if (fence) {
-        if (
-          markerRun &&
-          markerRun[0] === fence[0] &&
-          markerRun.length >= fence.length &&
-          !marker?.[2]?.trim()
-        ) {
-          fence = undefined;
+      let visible = line;
+      let hadComment = false;
+
+      if (inComment) {
+        // Every line of an HTML comment is comment content: nothing in it can
+        // be a requirement, and a fence marker inside it does not open a code
+        // block. Only the text after the comment's closing marker is visible.
+        const comment = this.stripHtmlComments(line, true);
+        inComment = comment.inComment;
+        if (inComment) continue;
+        visible = comment.visible;
+        hadComment = true;
+      } else {
+        const marker = /^ {0,3}(`{3,}|~{3,})(.*)$/.exec(line);
+        const markerRun = marker?.[1];
+        if (fence) {
+          if (
+            markerRun &&
+            markerRun[0] === fence[0] &&
+            markerRun.length >= fence.length &&
+            !marker?.[2]?.trim()
+          ) {
+            fence = undefined;
+          }
+          continue;
         }
-        continue;
+        if (marker) {
+          fence = marker[1];
+          continue;
+        }
+
+        // An HTML comment is invisible content, not document structure: a
+        // comment line is not a requirement, and a comment inside a requirement
+        // line is not part of its description.
+        const comment = this.stripHtmlComments(line, false);
+        inComment = comment.inComment;
+        visible = comment.visible;
+        hadComment = comment.hadComment;
       }
-      if (marker) {
-        fence = marker[1];
-        continue;
-      }
+
+      // The heading match keeps the ORIGINAL line, so a heading that is only
+      // partly commented out is not newly promoted to document structure;
+      // only the requirement text itself is read from `visible`.
       if (/^##\s+Requirements/i.test(line.trim())) {
         inRequirements = true;
         continue;
@@ -171,7 +216,11 @@ export class SpecParser {
       if (inRequirements && /^##\s+/.test(line.trim())) break;
 
       if (inRequirements) {
-        const req = this.parseRequirementLine(line, `REQ-${idCounter + 1}`);
+        // A line that carried only a comment — the `<!-- ... -->` form, or
+        // the `_<!-- ... -->_` placeholder `templateToMarkdown` emits — holds
+        // no requirement text and is skipped.
+        if (hadComment && !/[\p{L}\p{N}]/u.test(visible)) continue;
+        const req = this.parseRequirementLine(visible, `REQ-${idCounter + 1}`);
         if (req) {
           idCounter += 1;
           requirements.push(req);
@@ -180,6 +229,46 @@ export class SpecParser {
     }
 
     return requirements;
+  }
+
+  /**
+   * Split a line into the text visible outside HTML comments and the comment
+   * state that carries into the next line.
+   *
+   * `<!--` opens a comment and `-->` closes it; the closing marker need not
+   * be on the opening line, so the state spans lines. `hadComment` is true
+   * when the line contained any part of a comment region.
+   */
+  private stripHtmlComments(
+    line: string,
+    inComment: boolean,
+  ): { visible: string; inComment: boolean; hadComment: boolean } {
+    let visible = '';
+    let rest = line;
+    let open = inComment;
+    let hadComment = inComment;
+
+    while (rest.length > 0) {
+      if (open) {
+        const end = rest.indexOf('-->');
+        if (end === -1) return { visible, inComment: true, hadComment: true };
+        rest = rest.slice(end + 3);
+        open = false;
+        hadComment = true;
+        continue;
+      }
+      const start = rest.indexOf('<!--');
+      if (start === -1) {
+        visible += rest;
+        break;
+      }
+      hadComment = true;
+      visible += rest.slice(0, start);
+      rest = rest.slice(start + 4);
+      open = true;
+    }
+
+    return { visible, inComment: open, hadComment };
   }
 
   private parseRequirementLine(line: string, id: string): SpecRequirement | null {

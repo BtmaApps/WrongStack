@@ -32,6 +32,24 @@ export interface ProjectsManifest {
   projects: ProjectEntry[];
 }
 
+function isOptionalString(value: unknown): boolean {
+  return value === undefined || typeof value === 'string';
+}
+
+function isProjectEntry(value: unknown): value is ProjectEntry {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const entry = value as Record<string, unknown>;
+  return (
+    typeof entry['name'] === 'string' &&
+    typeof entry['root'] === 'string' &&
+    typeof entry['slug'] === 'string' &&
+    isOptionalString(entry['projectId']) &&
+    isOptionalString(entry['lastSeen']) &&
+    isOptionalString(entry['createdAt']) &&
+    isOptionalString(entry['lastWorkingDir'])
+  );
+}
+
 // ── Path resolution ───────────────────────────────────────────────────
 
 function projectsJsonPath(globalConfigPath?: string | undefined): string {
@@ -68,7 +86,8 @@ export async function loadManifest(
     if (
       !parsed ||
       typeof parsed !== 'object' ||
-      !Array.isArray((parsed as ProjectsManifest).projects)
+      !Array.isArray((parsed as ProjectsManifest).projects) ||
+      !(parsed as ProjectsManifest).projects.every(isProjectEntry)
     ) {
       throw new Error('projects must be an array');
     }

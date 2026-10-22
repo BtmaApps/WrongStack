@@ -130,7 +130,8 @@ const AUTHORIZATION_HEADER_PATTERN = /\bAuthorization\s*:\s*(?:[A-Za-z]+\s+)?[^\
  * the `Cookie:` header (every `name=value; …` pair) and curl's `--cookie`
  * value. `--cookie-jar <file>` names a file, not a secret, and stays.
  */
-const COOKIE_HEADER_PATTERN = /\bCookie\s*:\s*[^\s"';]+(?:;\s*[^\s"';]+)*/gi;
+const COOKIE_HEADER_PATTERN =
+  /\bCookie\s*:\s*[^\s=;"']+\s*=\s*(?:"[^"\n]*"|'[^'\n]*'|[^\s"';]*)(?:;\s*[^\s=;"']+\s*=\s*(?:"[^"\n]*"|'[^'\n]*'|[^\s"';]*))*/gi;
 const COOKIE_FLAG_PATTERN = /--cookie(?![\w-])[=\s]+(?:"[^"\n]*"|'[^'\n]*'|[^\s]+)/g;
 /**
  * Shared: the password in URL userinfo (`https://user:TOKEN@host`,

@@ -62,6 +62,31 @@ export { normalizeContextLoad } from './context-load.js';
 export type { MessageHandlerDeps } from './message-handler-deps.js';
 export { delegationNoticeText } from './message-handler-notices.js';
 
+/** Frames broadcast project-wide whose visible state belongs to one active session. */
+const ACTIVE_SESSION_MESSAGE_TYPES = new Set<string>([
+  'provider.thinking_delta',
+  'provider.text_delta',
+  'provider.response',
+  'provider.retry',
+  'provider.fallback',
+  'provider.model_switched',
+  'provider.fallback_pending',
+  'iteration.started',
+  'tool.started',
+  'tool.progress',
+  'tool.executed',
+  'run.result',
+  'error',
+  'context.compacted',
+  'tool.loop_detected',
+  'ctx.pct',
+  'ctx.max_context',
+  'tool.confirm_needed',
+  'tool.confirm_resolved',
+  'user.input_requested',
+  'user.input_resolved',
+]);
+
 // ── Factory ─────────────────────────────────────────────────────────
 
 export interface ServerMessageHandler {
@@ -188,6 +213,13 @@ export function createMessageHandler(deps: MessageHandlerDeps): ServerMessageHan
     if (message.type !== 'provider.text_delta') flushPendingDelta();
     const payload = message.payload ?? {};
     worklists.applyMessage(message);
+    if (
+      ACTIVE_SESSION_MESSAGE_TYPES.has(message.type) &&
+      typeof payload['sessionId'] === 'string' &&
+      payload['sessionId'] !== sessionIdRef.current
+    ) {
+      return;
+    }
     const projectedNotice = projectStatusNotice(message);
     if (projectedNotice) {
       setNotice({ ...projectedNotice, id: messageId('notice') });

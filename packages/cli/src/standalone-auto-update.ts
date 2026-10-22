@@ -256,6 +256,10 @@ async function stageLatest(
   const release = await findStandaloneRelease(install.target, signal);
   if (!isNewer(release.version, install.current)) return undefined;
   const already = readPendingUpdate(dir);
+  // The update directory can be shared by multiple standalone installs. A
+  // pending record is owned by its recorded executable; only that install may
+  // replace or clear it, matching applyPending() and StandaloneUpdater.clear().
+  if (already && already.executable !== install.executable) return undefined;
   if (
     already?.version === release.version &&
     already.target === install.target &&

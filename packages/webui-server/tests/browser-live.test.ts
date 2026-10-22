@@ -139,6 +139,19 @@ describe('browser live view', () => {
     });
   });
 
+  it('fails closed when list and watch omit the owning session', async () => {
+    const ws = createWs();
+    await handleBrowserLiveList(ws, msg('browser.live.list', {}), '/p');
+    await handleBrowserLiveWatch(ws, msg('browser.live.watch', { id: 'b2' }), '/p');
+    expect(ws.sent[0]).toEqual({ type: 'browser.live.list', payload: { sessions: [] } });
+    expect(ws.sent[1]).toMatchObject({
+      type: 'key.operation_result',
+      payload: { success: false, message: expect.stringContaining('owning session') },
+    });
+    expect(live.sessions).not.toHaveBeenCalled();
+    expect(live.watch).not.toHaveBeenCalled();
+  });
+
   it("refuses to watch another tab's browser", async () => {
     const ws = createWs();
     await handleBrowserLiveWatch(

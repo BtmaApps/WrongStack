@@ -262,6 +262,20 @@ describe('staging the latest release', () => {
     expect(fetchMock.mock.calls.length).toBe(calls + 1); // only the release lookup
   });
 
+  it("does not replace another install's pending build", async () => {
+    const fetchMock = fakeGitHub({ attested: true });
+    const foreignExecutable = elsewhere();
+    const foreignFile = stage('1.0.26', 'foreign verified build', {
+      executable: foreignExecutable,
+    });
+
+    await expect(run()).resolves.toBeUndefined();
+
+    expect(pendingIn(foreignExecutable)?.executable).toBe(foreignExecutable);
+    expect(fs.readFileSync(foreignFile, 'utf8')).toBe('foreign verified build');
+    expect(fetchMock).toHaveBeenCalledTimes(1); // release lookup only
+  });
+
   it('stages nothing without a release attestation', async () => {
     fakeGitHub({ attested: false });
     await expect(run()).rejects.toThrow('no build attestation exists');

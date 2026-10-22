@@ -498,6 +498,7 @@ export class BrowserSessionManager {
       if (bytes.byteLength <= 1024 * 1024)
         image = { data: bytes.toString('base64'), mimeType: 'image/jpeg', width, height };
     }
+    const title = redactBrowserText((await session.page.title()).slice(0, 300));
     if (safeBrowserUrl(session.page.url()) !== url)
       throw new Error('The browser navigated during inspection; select again');
     return {
@@ -507,7 +508,7 @@ export class BrowserSessionManager {
       text: redactBrowserText(selected.text),
       selector: selected.selector,
       url,
-      title: redactBrowserText((await session.page.title()).slice(0, 300)),
+      title,
       capturedAt: new Date().toISOString(),
       ...(image ? { image } : {}),
     };
