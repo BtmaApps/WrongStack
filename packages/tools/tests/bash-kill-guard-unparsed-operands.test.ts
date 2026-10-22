@@ -125,6 +125,26 @@ describe('bash-kill-guard — unparsed POSIX kill operands', () => {
     expect(result.reason).toContain(String(PROTECTED_PID));
   });
 
+  // A shell runs the words after a quoted -c payload as $0, $1 …; a launcher
+  // reading that stops on the wrong word must not hide the payload either.
+  it.each([
+    `sh -c 'kill -9 ${PROTECTED_PID}' kill`,
+    `nice sh -c 'kill -9 ${PROTECTED_PID}' kill`,
+    `nice bash -c "kill -9 ${PROTECTED_PID}" kill`,
+    `timeout 5 sh -c 'kill -9 ${PROTECTED_PID}' name arg`,
+    `kill -9 +${PROTECTED_PID}`,
+    `kill -9 +${PROTECTED_PID} abc`,
+    `kill -9 $'${PROTECTED_PID}'`,
+    `kill -9 $'\\x34\\x32\\x34\\x32\\x34\\x32'`,
+    `kill -9 $'\\064\\062\\064\\062\\064\\062'`,
+    `kill -9 $"${PROTECTED_PID}"`,
+  ])('blocks %j naming the protected PID (shell payloads and numbers)', async (command) => {
+    const { checkAndBlockKillCommand } = await loadGuard();
+    const result = await checkAndBlockKillCommand(command);
+    expect(result.blocked).toBe(true);
+    expect(result.reason).toContain(String(PROTECTED_PID));
+  });
+
   it('reads a negative operand after a junk word as a process group', async () => {
     const { checkAndBlockKillCommand } = await loadGuard();
     const result = await checkAndBlockKillCommand(`kill abc -${PROTECTED_PID} 1`);

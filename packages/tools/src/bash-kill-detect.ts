@@ -55,7 +55,12 @@ export function extractKillCommand(command: string): string | null {
   // /usr/bin/env bash, plain bash/sh/zsh, etc. The executable is any run of
   // non-whitespace, optionally followed by a space and a second token (for
   // the `/usr/bin/env bash` form) before `-c`.
-  const shellCMatch = normalized.match(/^.+?\s+-c\s+(['"])([\s\S]+)\1$/);
+  // The shell hands the words after the payload to it as $0, $1 …, so
+  // `sh -c '<kill>' name` runs the kill too. Whole-line payload first (it may
+  // contain its own quote character), then the payload up to its closing quote.
+  const shellCMatch =
+    normalized.match(/^.+?\s+-c\s+(['"])([\s\S]+)\1$/) ??
+    normalized.match(/^.+?\s+-c\s+(['"])((?:(?!\1)[\s\S])+)\1\s/);
   if (shellCMatch?.[2]) {
     const inner = shellCMatch[2].trim();
     // Recursively check the inner command
@@ -202,17 +207,73 @@ export function isKillRelatedCommand(cmd: string): boolean {
  * fallbacks still run. The regexes this replaced anchored a single target at
  * the end, which let `kill 111 <protected>` and `kill -- <protected>` through.
  */
+const ANSI_C_SIMPLE: Record<string, string> = {
+  a: '\x07',
+  b: '\b',
+  e: '\x1b',
+  E: '\x1b',
+  f: '\f',
+  n: '\n',
+  r: '\r',
+  t: '\t',
+  v: '\v',
+  '\\': '\\',
+  "'": "'",
+  '"': '"',
+  '?': '?',
+};
+
+/** Body of `$'…'` from `start` to its closing quote, escapes decoded; undefined if unclosed. */
+function decodeAnsiCQuote(token: string, start: number): { text: string; end: number } | undefined {
+  let text = '';
+  for (let i = start; i < token.length; i++) {
+    const c = token[i]!;
+    if (c === "'") return { text, end: i };
+    if (c !== '\\' || i + 1 >= token.length) {
+      text += c;
+      continue;
+    }
+    const e = token[++i]!;
+    const hex = e === 'x' ? /^[0-9a-fA-F]{1,2}/.exec(token.slice(i + 1)) : null;
+    const uni = e === 'u' || e === 'U' ? /^[0-9a-fA-F]{1,8}/.exec(token.slice(i + 1)) : null;
+    const oct = /[0-7]/.test(e) ? /^[0-7]{1,3}/.exec(token.slice(i)) : null;
+    if (hex) {
+      text += String.fromCharCode(Number.parseInt(hex[0], 16));
+      i += hex[0].length;
+    } else if (uni) {
+      text += String.fromCodePoint(Number.parseInt(uni[0], 16) % 0x110000);
+      i += uni[0].length;
+    } else if (oct) {
+      text += String.fromCharCode(Number.parseInt(oct[0], 8) & 0xff);
+      i += oct[0].length - 1;
+    } else {
+      text += ANSI_C_SIMPLE[e] ?? `\\${e}`;
+    }
+  }
+  return undefined;
+}
+
 /**
  * One shell word as the shell passes it: every quoted piece unquoted and
  * backslash escapes resolved, so `"123"`, `4"56"`, `'1'"2"3` and `\123`
- * are the numbers they become, not tokens the parser rejects. An unbalanced
- * quote is returned as written. `$PID` and `%1` stay as written: their
- * values are not known here.
+ * are the numbers they become, not tokens the parser rejects. `$'…'` is
+ * ANSI-C quoting (`\x34`, `\064`, `\u0034` …) and `$"…"` reads like `"…"`.
+ * An unbalanced quote is returned as written. `$PID` and `%1` stay as
+ * written: their values are not known here.
  */
 export function unquoteShellWord(token: string): string {
   let out = '';
   for (let i = 0; i < token.length; i++) {
     const c = token[i]!;
+    if (c === '$' && token[i + 1] === "'") {
+      const decoded = decodeAnsiCQuote(token, i + 2);
+      if (!decoded) return token;
+      out += decoded.text;
+      i = decoded.end;
+      continue;
+    }
+    // `$"…"` is locale translation of a double-quoted string: same bytes here.
+    if (c === '$' && token[i + 1] === '"') continue;
     if (c === "'") {
       const end = token.indexOf("'", i + 1);
       if (end === -1) return token;
@@ -259,8 +320,9 @@ export function parsePosixKillTargets(normalized: string, command: string): Kill
   }
   if (tokens[i] === '--') i += 1;
   const targets = tokens.slice(i);
-  if (targets.length === 0 || !targets.every((t) => /^-?\d+$/.test(t))) return null;
-  const pids = targets.map((t) => Number.parseInt(t.replace(/^-/, ''), 10));
+  // kill accepts a sign: `+123` is PID 123, `-123` the process group.
+  if (targets.length === 0 || !targets.every((t) => /^[+-]?\d+$/.test(t))) return null;
+  const pids = targets.map((t) => Number.parseInt(t.replace(/^[+-]/, ''), 10));
   return {
     pid: pids[0]!,
     ...(pids.length > 1 ? { pids } : {}),
@@ -298,9 +360,29 @@ const KILL_LAUNCHERS: Record<string, { values: ReadonlySet<string>; positionals?
   },
 };
 
-/** A word that starts a command the guard reads: a kill verb or another launcher. */
+/** A word that starts a command the guard reads: a kill verb, a shell or a launcher. */
 const LAUNCHED_COMMAND_RE =
-  /^(?:\S*[\\/])?(?:kill|pkill|killall|taskkill|tskill|wmic|stop-process|spps|pwsh|powershell|cmd|sudo|doas|env|nohup|command|exec|time|setsid|nice|stdbuf|timeout|ionice|taskset|chrt)(?:\.exe)?$/i;
+  /^(?:\S*[\\/])?(?:kill|pkill|killall|taskkill|tskill|wmic|stop-process|spps|pwsh|powershell|cmd|bash|sh|zsh|dash|ksh|sudo|doas|env|nohup|command|exec|time|setsid|nice|stdbuf|timeout|ionice|taskset|chrt)(?:\.exe)?$/i;
+
+/**
+ * Further readings of a launcher line whose option count may be wrong. An
+ * option table cannot know every flag (`nice --adjustment 5`, `timeout
+ * --signal KILL 5`, `ionice -t`), and one miscounted value skips the command
+ * word itself. Returns the line from each later word that starts a command
+ * the guard reads. These are checked IN ADDITION to the counted reading of
+ * `unwrapKillCommandHead`, never instead of it: replacing it let a trailing
+ * `kill` hide `nice sh -c '<kill>' kill`.
+ */
+export function launcherSkipReadings(normalized: string): string[] {
+  const tokens = normalized.trim().split(' ');
+  const head = (tokens[0] ?? '').replace(/^.*[\\/]/, '').toLowerCase();
+  if (!KILL_LAUNCHERS[head]) return [];
+  const readings: string[] = [];
+  for (let k = 1; k < tokens.length && readings.length < 8; k++) {
+    if (LAUNCHED_COMMAND_RE.test(tokens[k] ?? '')) readings.push(tokens.slice(k).join(' '));
+  }
+  return readings;
+}
 
 /**
  * Reduce a command to the kill verb it runs. The guard's parsers anchor the
@@ -345,15 +427,6 @@ export function unwrapKillCommandHead(normalized: string): string {
         i += launcher.values.has(token) ? 2 : 1;
       }
       i += launcher.positionals ?? 0;
-      // An option table cannot know every flag (`nice --adjustment 5`,
-      // `timeout --signal KILL 5`, `ionice -t`): one miscounted value used
-      // to skip the kill itself, so the guard read `-9 <pid>` and allowed
-      // it. When the word reached is not a command the guard reads but an
-      // earlier or later one is, inspect from that word instead.
-      if (!LAUNCHED_COMMAND_RE.test(tokens[i] ?? '')) {
-        const j = tokens.findIndex((t, k) => k > 0 && LAUNCHED_COMMAND_RE.test(t));
-        if (j !== -1) i = j;
-      }
       current = tokens.slice(i).join(' ');
     }
     current = current.replace(

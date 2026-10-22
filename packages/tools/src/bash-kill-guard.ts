@@ -51,6 +51,7 @@ import {
   isKillRelatedCommand,
   type KillCheckResult,
   type KillCommand,
+  launcherSkipReadings,
   parsePosixKillTargets,
   SCRIPT_KILL_FALLBACK_RE,
   SCRIPT_KILL_RE_POSIX,
@@ -373,12 +374,27 @@ function parseJunkOperandKill(command: string): KillCommand | null {
       ? 2
       : 1;
   const rest = tokens.slice(head);
-  const targets = (rest[0] === '--' ? rest.slice(1) : rest).filter((t) => /^-?\d+$/.test(t));
+  const targets = (rest[0] === '--' ? rest.slice(1) : rest).filter((t) => /^[+-]?\d+$/.test(t));
   if (targets.length === 0) return null;
   return parsePosixKillTargets([...tokens.slice(0, head), '--', ...targets].join(' '), command);
 }
 
+/**
+ * The counted reading of the command, then every other reading of a launcher
+ * line whose option count may be wrong (see `launcherSkipReadings`).
+ */
 async function checkSingleCommand(command: string): Promise<KillCheckResult> {
+  const counted = await checkOneReading(command);
+  if (counted.blocked) return counted;
+  const normalized = command.replace(/\s+/g, ' ').trim();
+  for (const reading of launcherSkipReadings(normalized)) {
+    const result = await checkOneReading(reading);
+    if (result.blocked) return result;
+  }
+  return counted;
+}
+
+async function checkOneReading(command: string): Promise<KillCheckResult> {
   const normalized = unwrapKillCommandHead(command.replace(/\s+/g, ' ').trim());
 
   // First, extract any kill command from shell-wrapped commands
