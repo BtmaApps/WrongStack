@@ -96,6 +96,12 @@ export async function replayBrainLedger(
   write: (line: string) => void,
 ): Promise<number> {
   const flags = deps.flags ?? {};
+  // A value-less flag parses as `true`, and Number(true) is 1: a bare --limit
+  // replayed one decision per kind.
+  if (typeof flags['limit'] === 'boolean') {
+    write(`${color.red('✗')} --limit needs a number.`);
+    return 2;
+  }
   const account = resolveTypeSafeAccount({ config: deps.config, restGate: null });
   if (account.status !== 'ready') {
     write(`${color.red('✗')} ${account.reason}. Run \`wstack typesafe login\`.`);

@@ -56,9 +56,16 @@ export async function runSandboxCommand(
     renderer.write('sandbox: network must be bridge or none\n');
     return 2;
   }
-  const timeoutMs = Number(flags['timeout'] ?? 600) * 1000;
+  // A flag given no value parses as boolean `true`, and Number(true) is 1: a
+  // bare `--timeout` silently became a one-second limit.
+  const timeoutMs =
+    typeof flags['timeout'] === 'boolean' ? Number.NaN : Number(flags['timeout'] ?? 600) * 1000;
   if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1000 || timeoutMs > 86_400_000) {
     renderer.write('sandbox: timeout must be 1 to 86400 seconds\n');
+    return 2;
+  }
+  if (typeof flags['max-iterations'] === 'boolean') {
+    renderer.write('sandbox: --max-iterations needs a number\n');
     return 2;
   }
   const envNames =

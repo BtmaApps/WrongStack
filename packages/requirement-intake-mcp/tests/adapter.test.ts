@@ -215,6 +215,25 @@ describe('createRequirementIntakeMcpToolHost', () => {
     }
   });
 
+  it('refuses an off-schema status filter instead of answering it (F525)', async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'intake-mcp-bad-status-'));
+    try {
+      const service = new RequirementIntakeService({
+        store: new RequirementIntakeStore({ baseDir: dir }),
+        authorizer: new AllowAllIntakeAuthorizer(),
+      });
+      const host = createRequirementIntakeMcpToolHost('C:/project', {
+        dependencies: { service, resolveProjectId: async () => 'proj_alpha' },
+      });
+      for (const statuses of [['submited'], 'draft', null]) {
+        const result = await host.callTool('requirement_intake_list', { statuses });
+        expect(result.isError, JSON.stringify(statuses)).toBe(true);
+      }
+    } finally {
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+
   it('reports a missing project identity for listing', async () => {
     const host = createRequirementIntakeMcpToolHost('C:/project', {
       dependencies: {

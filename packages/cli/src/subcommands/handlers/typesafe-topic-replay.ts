@@ -124,6 +124,14 @@ export async function replayTopicShift(
 ): Promise<number> {
   const flags = deps.flags ?? {};
   const json = flags['json'] === true;
+  // A value-less flag parses as `true`, and Number(true) is 1: a bare
+  // --max-context replayed every prompt against a 1-token window.
+  for (const name of ['limit', 'max-context']) {
+    if (typeof flags[name] === 'boolean') {
+      write(`${color.red('✗')} --${name} needs a number.`);
+      return 2;
+    }
+  }
   const account = resolveTypeSafeAccount({ config: deps.config, restGate: null });
   if (account.status !== 'ready') {
     write(`${color.red('✗')} ${account.reason}. Run \`wstack typesafe login\`.`);

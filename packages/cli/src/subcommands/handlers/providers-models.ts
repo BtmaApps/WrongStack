@@ -103,6 +103,11 @@ export const modelsCmd: SubcommandHandler = async (args, deps) => {
 
   const flags = subcommandFlags(args, deps);
   const search = typeof flags['search'] === 'string' ? flags['search'].toLowerCase() : '';
+  // A value-less flag parses as `true`, and Number(true) is 1 — one row a page.
+  if (flags['per-page'] === true) {
+    deps.renderer.writeError('--per-page needs a number.\n');
+    return 1;
+  }
   const perPage = Number(flags['per-page']) > 0 ? Number(flags['per-page']) : DEFAULT_PER_PAGE;
   const page = Math.max(1, Number(flags['page']) || 1);
 

@@ -287,11 +287,25 @@ export function createRequirementIntakeMcpToolHost(
   }
 }
 
+/**
+ * Unknown entries beside a valid one are dropped (lenient). But a filter left
+ * with NO valid status, or a non-array value, is refused: the first turned a
+ * typo into "0 intakes" and the second returned every status — both read as
+ * real answers.
+ */
 function filterStatuses(value: unknown): IntakeStatus[] | undefined {
-  if (!Array.isArray(value)) return undefined;
-  return value.filter((item): item is IntakeStatus =>
-    (INTAKE_STATUSES as readonly string[]).includes(String(item)),
+  if (value === undefined) return undefined;
+  const known = INTAKE_STATUSES as readonly string[];
+  if (!Array.isArray(value)) {
+    throw new Error(`"statuses" must be an array of: ${known.join(', ')}`);
+  }
+  const statuses = value.filter(
+    (item): item is IntakeStatus => typeof item === 'string' && known.includes(item),
   );
+  if (value.length > 0 && statuses.length === 0) {
+    throw new Error(`No known status in ${JSON.stringify(value)} — expected: ${known.join(', ')}`);
+  }
+  return statuses;
 }
 
 export function createRequirementIntakeMcpServer(

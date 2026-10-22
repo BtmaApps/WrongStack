@@ -98,6 +98,14 @@ export async function serveProjectMcp(
   deps: SubcommandDeps,
 ): Promise<number> {
   const args = normalizeSwitches(restoreFlags(rawArgs, deps, SERVER_FLAGS));
+  // A blank root (a launcher's `${workspaceFolder}` that expanded to nothing)
+  // is not "absent": `?? deps.projectRoot` kept it, and "" resolves to the
+  // client's cwd — a different project's daemon.
+  const explicitRoot = optionValue(args, 'project-root');
+  if (explicitRoot !== undefined && explicitRoot.trim() === '') {
+    process.stderr.write('wstack mcp serve: --project-root expects a non-blank path.\n');
+    return 2;
+  }
   if (server === 'sage') {
     const { serveAttachedSageMcpStdio } = await import('@wrongstack/sage-mcp');
     await serveAttachedSageMcpStdio({

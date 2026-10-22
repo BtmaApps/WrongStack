@@ -10,6 +10,8 @@ export interface ParsedArgs {
   httpPort: number;
   httpHost: string;
   httpToken?: string | undefined;
+  /** `--token` given with no value: refused instead of serving without auth. */
+  tokenMissing?: boolean | undefined;
   writable: boolean;
   actor?: string | undefined;
   help: boolean;
@@ -110,6 +112,7 @@ export function parseArgs(
       case '--token': {
         const next = value(true);
         if (next !== undefined) parsed.httpToken = next;
+        else parsed.tokenMissing = true;
         break;
       }
       case '--actor': {
@@ -143,6 +146,15 @@ export function parseArgs(
 
 export async function main(argv = process.argv.slice(2)): Promise<number> {
   const args = parseArgs(argv);
+  // A trailing `--token` with no value used to be ignored, binding HTTP with
+  // no auth at all although the operator asked for one (as 50b70bd64 refuses
+  // for `wstack mcp serve`).
+  if (args.tokenMissing) {
+    process.stderr.write(
+      `${SERVER_INFO.name}: --token requires a value (or set ${HTTP_TOKEN_ENV}).\n`,
+    );
+    return 2;
+  }
   if (args.help) {
     printHelp(process.stdout);
     return 0;

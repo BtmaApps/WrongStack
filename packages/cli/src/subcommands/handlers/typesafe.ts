@@ -369,6 +369,13 @@ async function lintConventions(
   write: (line: string) => void,
 ): Promise<number> {
   const flags = deps.flags ?? {};
+  // A flag given no value parses as `true`, and Number(true) is 1 — inside the
+  // accepted range, so a bare `--threshold` ran the gate at 1.0 and cleared
+  // every finding.
+  if (typeof flags['threshold'] === 'boolean') {
+    write(`${color.red('✗')} --threshold needs a number between 0 and 1.`);
+    return 2;
+  }
   const judge = resolveTypeSafeJudge({ config: deps.config, feature: 'semanticLint' });
   if (!judge) {
     const account = resolveTypeSafeAccount({ config: deps.config });
