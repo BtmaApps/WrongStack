@@ -44,6 +44,7 @@
  * never add latency surprises to the edit path.
  */
 
+import { isAbsolute, resolve } from 'node:path';
 import { getWrongTrace, preflightFileEdit } from './gate.js';
 
 /**
@@ -141,6 +142,20 @@ export interface WrongTraceHookPair {
 export interface WrongTraceHookOptions {
   /** Typed gate-decision event sink (host maps it onto its EventBus). */
   emit?: (event: WrongTraceGateDecisionEvent) => void;
+  /**
+   * Directory a relative tool path is resolved against (the session's cwd).
+   * Defaults to `process.cwd()`.
+   */
+  baseDir?: () => string | undefined;
+}
+
+/**
+ * The lock key the daemon sees. The daemon is machine-wide, so a relative
+ * path is not a file: every project's `index.html` would share one lock and
+ * block each other for the TTL. Resolve it against the session's directory.
+ */
+function absoluteTarget(path: string, opts: WrongTraceHookOptions): string {
+  return isAbsolute(path) ? path : resolve(opts.baseDir?.() || process.cwd(), path);
 }
 
 /**
@@ -232,8 +247,9 @@ export function createWrongTraceHookPair(
   return {
     async preToolUse(input, _runtime) {
       if (!EDIT_TOOLS.has(input.toolName ?? '')) return undefined;
-      const path = targetPathOf(input.toolInput);
-      if (!path) return undefined;
+      const target = targetPathOf(input.toolInput);
+      if (!target) return undefined;
+      const path = absoluteTarget(target, opts);
       const owner = `wrongstack:${input.sessionId || sessionId()}`;
       const key = claimKey(input, path);
 
@@ -297,7 +313,8 @@ export function createWrongTraceHookPair(
 
     async postToolUse(input) {
       if (!EDIT_TOOLS.has(input.toolName ?? '')) return;
-      const path = targetPathOf(input.toolInput);
+      const target = targetPathOf(input.toolInput);
+      const path = target ? absoluteTarget(target, opts) : undefined;
       // Only release a lock THIS pair claimed — a shared (module-level) map
       // would let one executor free another's active lock. Reference counts:
       // the daemon unlock happens only when the LAST sibling release lands.

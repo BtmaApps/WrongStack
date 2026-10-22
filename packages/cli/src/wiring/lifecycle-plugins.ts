@@ -1,5 +1,6 @@
 import * as path from 'node:path';
 import { getSharedProjectMailbox, type RemoteMailbox } from '@wrongstack/core/coordination';
+import { installDesignTurnGate } from '@wrongstack/core/design';
 import { CouncilOrchestrator, OneShotOrchestrator } from '@wrongstack/core/execution';
 import {
   bridgeLifecycleHooks,
@@ -66,7 +67,6 @@ import {
 } from '../hooks-wiring.js';
 import { makeConfirmAwaiter } from '../permission-prompt.js';
 import { installVibeProtocol } from '../vibe-protocol-wiring.js';
-import { installDesignTurnGate } from '@wrongstack/core/design';
 import { installDesignStudio } from './design-studio.js';
 import type { HqPublisherRef } from './hq-telemetry.js';
 import { registerMcpObservability } from './metrics.js';
@@ -239,7 +239,9 @@ export async function setupLifecycleAndPlugins(
         recordGateDecision(event);
         events.emit('wrongtrace.gate.decision', event);
       };
-      return { emit };
+      // Relative tool paths resolve against the session's cwd, not a
+      // machine-wide string every project shares.
+      return { emit, baseDir: () => context.cwd };
     })(),
   );
   hookRegistry.registerInProcess(

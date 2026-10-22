@@ -300,6 +300,7 @@ export async function createAgentServices(input: AgentServicesInput): Promise<Ag
   // concurrency note). Owner identity = THIS process's active session id —
   // startWebUI is its own process, never a copied CLI-leader closure.
   const wrongTraceHooks = createWrongTraceHookPair(() => context.session.id, {
+    baseDir: () => context.cwd,
     emit: (event) => {
       events.emit('wrongtrace.gate.decision', event);
       // Shared counters contract (see adapter gate-counters.ts): this

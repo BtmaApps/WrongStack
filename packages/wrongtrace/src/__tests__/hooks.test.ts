@@ -1,3 +1,4 @@
+import { resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { resetWrongTraceGate } from '../gate.js';
 import {
@@ -174,7 +175,7 @@ describe('createWrongTraceHookPair gate events', () => {
 
     // Pre-seeded refcount 2: one sibling is still editing — this release
     // must only decrement, never hit the daemon, never emit.
-    const counters = new Map<string, number>([['src/foo.ts', 2]]);
+    const counters = new Map<string, number>([[resolve('src/foo.ts'), 2]]);
     const events: string[] = [];
     const pair = createWrongTraceHookPair(
       () => 'sess-test',
@@ -186,7 +187,7 @@ describe('createWrongTraceHookPair gate events', () => {
 
     expect(unlockCalls).toBe(0);
     expect(events).not.toContain('lock-released');
-    expect(counters.get('src/foo.ts')).toBe(1);
+    expect(counters.get(resolve('src/foo.ts'))).toBe(1);
   });
 
   it("does NOT let a lock-conflict-race release a sibling's active claim (refcount participant)", async () => {
@@ -374,9 +375,9 @@ describe('createWrongTraceHookPair gate events', () => {
     // The denied call's skipped PostToolUse must leave tab-1's claim alone.
     await pair.postToolUse(call('tab-2'));
     await pair.postToolUse({ toolName: 'edit', toolInput: {}, sessionId: 'tab-1' });
-    expect(locks.get('src/foo.ts')).toBe('wrongstack:tab-1');
+    expect(locks.get(resolve('src/foo.ts'))).toBe('wrongstack:tab-1');
     await pair.postToolUse(call('tab-1'));
-    expect(locks.has('src/foo.ts')).toBe(false);
+    expect(locks.has(resolve('src/foo.ts'))).toBe(false);
   });
 
   it('withFileLock unlocks only when lockFile succeeded and gate-counters persists and reloads total counts', async () => {
@@ -491,5 +492,55 @@ describe('createWrongTraceHookPair gate events', () => {
     expect(unlockCalls).toBe(0);
     await pair.postToolUse({ toolName: 'edit', toolInput });
     expect(unlockCalls).toBe(1);
+  });
+});
+
+describe('createWrongTraceHookPair lock keys', () => {
+  let originalFetch: typeof fetch | undefined;
+
+  beforeEach(() => {
+    originalFetch = globalThis.fetch;
+    resetWrongTraceGate();
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch as typeof fetch;
+  });
+
+  it('locks a relative path as the file in the session directory, not a shared string', async () => {
+    const calls: { op: string; path: unknown }[] = [];
+    globalThis.fetch = makeFetch(async (url, init) => {
+      const u = new URL(url);
+      if (u.pathname === '/api/health') return healthyHealth();
+      if (u.pathname === '/api/file/health') return healthyFileHealth();
+      const body = init?.body ? JSON.parse(String(init.body)) : {};
+      if (u.pathname === '/api/guardrail/lock') {
+        calls.push({ op: 'lock', path: body.path });
+        return jsonResponse({ ok: true, path: body.path, status: 'locked' });
+      }
+      if (u.pathname === '/api/guardrail/unlock') {
+        calls.push({ op: 'unlock', path: body.path });
+        return jsonResponse({ ok: true, path: body.path, status: 'unlocked' });
+      }
+      return jsonResponse({});
+    });
+
+    const a = resolve('projects', 'pricing');
+    const b = resolve('projects', 'booking');
+    const pairA = createWrongTraceHookPair(() => 'sess-a', { baseDir: () => a });
+    const pairB = createWrongTraceHookPair(() => 'sess-b', { baseDir: () => b });
+    const write = { toolName: 'write', toolInput: { path: 'index.html' } };
+
+    await pairA.preToolUse(write);
+    await pairB.preToolUse(write);
+    await pairA.postToolUse(write);
+    await pairB.postToolUse(write);
+
+    expect(calls).toEqual([
+      { op: 'lock', path: resolve(a, 'index.html') },
+      { op: 'lock', path: resolve(b, 'index.html') },
+      { op: 'unlock', path: resolve(a, 'index.html') },
+      { op: 'unlock', path: resolve(b, 'index.html') },
+    ]);
   });
 });
