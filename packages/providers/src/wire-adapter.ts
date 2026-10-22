@@ -13,6 +13,7 @@ import { type HeadersLike, parseProviderHttpError } from './error-parse.js';
 import type { BuildBodyContext } from './model-output-limits.js';
 import { redirectSafeFetch } from './redirect-safe-fetch.js';
 import { isDebugStreamEnabled } from './stream-debug-state.js';
+import { streamBudget } from './stream-timeout-floors.js';
 import { streamTimeoutDefaults } from './stream-timeouts.js';
 import { filterToolsByMaxCount } from './tool-priority.js';
 import { wrapDebugStream, wrapWithHangDetection } from './wire-stream-wrappers.js';
@@ -120,8 +121,23 @@ export abstract class WireAdapter implements Provider {
   abstract readonly capabilities: Capabilities;
 
   protected readonly debugStream: boolean;
-  protected readonly streamHangTimeoutMs: number;
-  protected readonly headersTimeoutMs: number;
+  private readonly hangBudget: { value: number; explicit: boolean };
+  private readonly headersBudget: { value: number; explicit: boolean };
+
+  /**
+   * Resolved at construction, but the slow-backend floor needs `id`, which a
+   * subclass field sets only after this constructor returns — so it applies
+   * on read.
+   */
+  protected get streamHangTimeoutMs(): number {
+    const { value, explicit } = this.hangBudget;
+    return streamBudget('hang', value, explicit, this.id, this.baseUrl);
+  }
+
+  protected get headersTimeoutMs(): number {
+    const { value, explicit } = this.headersBudget;
+    return streamBudget('headers', value, explicit, this.id, this.baseUrl);
+  }
 
   /**
    * Provider-imposed tool-count limit (0 or undefined = no limit). When > 0,
@@ -168,8 +184,14 @@ export abstract class WireAdapter implements Provider {
     // (stream-timeouts.ts), which fall back to 60s/60s.
     const hostDefaults = streamTimeoutDefaults();
     this.debugStream = streamOpts.debugStream ?? false;
-    this.streamHangTimeoutMs = streamOpts.streamHangTimeoutMs ?? hostDefaults.hangTimeoutMs;
-    this.headersTimeoutMs = streamOpts.headersTimeoutMs ?? hostDefaults.headersTimeoutMs;
+    this.hangBudget = {
+      value: streamOpts.streamHangTimeoutMs ?? hostDefaults.hangTimeoutMs,
+      explicit: streamOpts.streamHangTimeoutMs !== undefined,
+    };
+    this.headersBudget = {
+      value: streamOpts.headersTimeoutMs ?? hostDefaults.headersTimeoutMs,
+      explicit: streamOpts.headersTimeoutMs !== undefined,
+    };
   }
 
   // Module-scoped state keyed by provider id so warning suppression and

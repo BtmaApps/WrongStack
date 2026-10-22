@@ -62,9 +62,9 @@ export interface ModelRuntimeConfig {
  * next launch.
  */
 export interface ModelRuntimeStreamingConfig {
-  /** Max gap between body chunks, ms. Default 60000; `0` disables. */
+  /** Max gap between body chunks, ms. Default 60000 (240000 for MiniMax and Z.AI); `0` disables. */
   hangTimeoutMs?: number | undefined;
-  /** Max wait for response headers, ms. Default 60000; `0` disables. */
+  /** Max wait for response headers, ms. Default 60000 (180000 for MiniMax and Z.AI); `0` disables. */
   headersTimeoutMs?: number | undefined;
 }
 
