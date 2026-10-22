@@ -15,6 +15,7 @@ export interface AutomationJobSpec {
   timeoutMs: number;
   maxIterations?: number | undefined;
   verification?: import('@wrongstack/webui-protocol').AutomationVerificationSpec | undefined;
+  environment?: import('@wrongstack/webui-protocol').EnvironmentProfile | undefined;
   github?:
     | {
         repository: string;
@@ -66,6 +67,7 @@ export function validateJobSpec(spec: AutomationJobSpec): void {
   const fields = new Set([
     'maxIterations',
     'verification',
+    'environment',
     'template',
     'name',
     'projectRoot',
@@ -89,6 +91,8 @@ export function validateJobSpec(spec: AutomationJobSpec): void {
   if (Object.keys(spec).some((key) => !fields.has(key)))
     throw new Error('Unknown automation definition field');
   if (spec.verification !== undefined) validateAutomationVerification(spec.verification);
+  if (spec.environment !== undefined)
+    validateWorkspaceEnvironment(spec.environment, spec.image, 'candidate');
   for (const [field, limit] of [
     ['name', 128],
     ['projectRoot', 4096],
@@ -211,3 +215,4 @@ import { isCredentialEnvName } from '../credential-reference.js';
 import { type GitHubFilters, validateGitHubFilters } from './github-filters.js';
 import { type CronSchedule, validateCronSchedule } from './schedule.js';
 import { validateAutomationVerification } from './verification.js';
+import { validateWorkspaceEnvironment } from '../docker-environment.js';

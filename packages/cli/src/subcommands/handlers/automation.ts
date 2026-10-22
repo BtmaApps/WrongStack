@@ -21,6 +21,8 @@ import {
   importAutomationJob,
   parseAutomationCommands,
   VERSIONED_AUTOMATION_TEMPLATES,
+  parseEnvironmentProfile,
+  exportEnvironmentProfile,
 } from '@wrongstack/webui-protocol';
 import type { SubcommandHandler } from '../contracts.js';
 import { resolveAutomationCredentialBundle } from './automation-credentials.js';
@@ -39,6 +41,8 @@ add --name <name> --image <trusted-image> --prompt <task>
     [--mention @wrongstack] [--label agent] [--branch main]
     [--conclusion failure] [--exclude-bots] [--exclude-drafts]
     [--verify <newline-separated argv commands>] [--verify-timeout <seconds>]
+    [--environment-file <json>] Reusable setup, services, caches and local preview ports
+environment-template --image <trusted-image> Print a portable environment profile to customize
 preview               Same options as add; validate without writing or executing
     [--event-file <json>] Preview GitHub conditions against a sample payload
 templates             List versioned templates and required setup
@@ -98,6 +102,12 @@ export const automationCmd: SubcommandHandler = async (args, deps) => {
   const directory = path.resolve(value('data-dir') ?? path.join(wstackGlobalRoot(), 'automation'));
   const store = new AutomationStore(directory);
   try {
+    if (action === 'environment-template') {
+      deps.renderer.write(
+        `${exportEnvironmentProfile({ version: 1, name: 'project', image: value('image') ?? '', setupCommands: [], setupTimeoutMs: 300_000, services: [], caches: [], ports: [] })}\n`,
+      );
+      return 0;
+    }
     if (['pr-prepare', 'pr-publish', 'pr-check', 'pr-view', 'pr-follow-up'].includes(action)) {
       const id = args[1];
       if (!id) throw new Error('Automation run ID is required');
@@ -123,6 +133,13 @@ export const automationCmd: SubcommandHandler = async (args, deps) => {
       return 0;
     }
     if (action === 'add' || action === 'preview') {
+      if (Object.hasOwn(flags, 'environment-file') && !value('environment-file')?.trim())
+        throw new Error('--environment-file requires a file');
+      const environment = value('environment-file')
+        ? parseEnvironmentProfile(
+            await readFile(path.resolve(deps.cwd, value('environment-file')!), 'utf8'),
+          )
+        : undefined;
       const template = value('template')
         ? VERSIONED_AUTOMATION_TEMPLATES.find((item) => item.id === value('template'))
         : undefined;
@@ -150,7 +167,8 @@ export const automationCmd: SubcommandHandler = async (args, deps) => {
       const spec = {
         name: value('name') ?? template?.name ?? '',
         projectRoot: deps.projectRoot,
-        image: value('image') ?? '',
+        image: value('image') ?? environment?.image ?? '',
+        environment,
         prompt: value('prompt') ?? template?.prompt ?? '',
         template: template ? { id: template.id, version: template.version } : undefined,
         provider: value('provider'),
@@ -199,7 +217,12 @@ export const automationCmd: SubcommandHandler = async (args, deps) => {
       };
       const plan = createHeadlessLaunchPlan(spec);
       if (action === 'preview' || flags['dry-run'] === true) {
-        const missing: string[] = spec.envNames.filter((name) => !process.env[name]);
+        const missing: string[] = [
+          ...new Set([
+            ...spec.envNames,
+            ...(environment?.services.flatMap((service) => service.envNames) ?? []),
+          ]),
+        ].filter((name) => !process.env[name]);
         for (const ref of spec.credentials ?? []) {
           try {
             const profile = JSON.parse(

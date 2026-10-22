@@ -300,3 +300,49 @@ API contracts: [GitHub pull requests](https://docs.github.com/en/rest/pulls/pull
 [check runs](https://docs.github.com/en/rest/checks/runs) and
 [commit statuses](https://docs.github.com/en/rest/commits/statuses).
 Atomic expected-head updates follow [GitHub's `updateRefs` contract](https://docs.github.com/en/graphql/reference/git#updaterefs).
+## Reusable environment profiles
+
+Create a profile document, then attach it to an automation definition:
+
+```sh
+wstack automation environment-template --image your-trusted-toolchain:stable > environment.json
+wstack automation preview --name review --prompt "Review the parser" --environment-file environment.json
+wstack automation add --name review --prompt "Review the parser" --environment-file environment.json
+```
+
+The image must already contain the intended CLI/toolchain, `sh`, and `git`. The profile supplies the job image; an explicitly different `--image` is refused. Preview validates references without starting Docker or a model. Both management screens can import, review, edit and download the same JSON document. Importing a complete job continues to disable dispatch and unattended tools until local review.
+
+```json
+{
+  "type": "wrongstack.environment",
+  "version": 1,
+  "profile": {
+    "version": 1,
+    "name": "bun-project",
+    "image": "your-trusted-toolchain:stable",
+    "setupCommands": [["bun", "install", "--frozen-lockfile"]],
+    "setupTimeoutMs": 300000,
+    "services": [
+      {
+        "name": "db",
+        "image": "your-trusted-redis-image:stable",
+        "command": [],
+        "healthCommand": ["redis-cli", "ping"],
+        "envNames": []
+      }
+    ],
+    "caches": [{ "name": "bun", "target": "/home/node/.bun/install/cache" }],
+    "ports": [{ "name": "preview", "port": 3000, "protocol": "http" }]
+  }
+}
+```
+
+Profiles are frozen into queued runs. Setup commands are direct argument arrays; use an explicit shell command only when shell syntax is intended. Setup and service readiness share one bounded deadline. A failed setup prevents agent execution and retains partial workspace contents for recovery. Setup changes to tracked files remain part of the returned patch and verification tree checks.
+
+Services run in separate containers on a generated per-run bridge network, addressed by their profile names (`db` in the example). Each requires an explicit health command. Service environment references resolve only the listed host variable names; agent/provider credentials are not automatically forwarded to sidecars. Profiles cannot select host mounts, privileged execution, host network names, environment values, or Docker socket access.
+
+Caches are Docker-managed local volumes scoped to the canonical project and complete profile. Supported targets are `/home/node/.cache/<name>` and `/home/node/.bun/install/cache`. Candidate caches persist across runs; they are never source-directory or credential-home mounts. Independent verification recreates services with their captured immutable image IDs, reruns setup, uses fresh cache volumes and publishes no ports. Verification checks remain separate from setup steps.
+
+Preview ports use an ephemeral host port bound to `127.0.0.1`. The image/application must listen on the configured container port. Open **Environment status** in run history to inspect the current receipt, setup results and active local preview links. These links belong to the Docker worker machine and last only while the run is active. Historical ports become inactive after cleanup. Receipts are available as the project/session-scoped `environment.json` artifact; service images and the profile fingerprint are recorded without credential values.
+
+Normal completion removes owned service containers and the generated network, retaining reusable caches. Failed/interrupted work stops owned services and preserves partial resources for recovery. Unknown ownership or Docker liveness never authorizes deletion or redispatch. Pruning run history does not remove reusable Docker cache volumes.

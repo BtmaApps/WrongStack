@@ -134,3 +134,69 @@ describe('headless dry run commands', () => {
     });
   });
 });
+import { exportEnvironmentProfile } from '@wrongstack/webui-protocol';
+describe('environment profile CLI', () => {
+  it('loads a reusable profile without starting Docker or persisting preview state', async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), 'wrongstack-preview-'));
+    directories.push(dir);
+    const file = path.join(dir, 'environment.json');
+    const environment = {
+      version: 1 as const,
+      name: 'team',
+      image: 'trusted:1',
+      setupCommands: [['bun', 'install']],
+      setupTimeoutMs: 30_000,
+      services: [
+        {
+          name: 'db',
+          image: 'db:1',
+          command: [],
+          healthCommand: ['check-db'],
+          envNames: ['WRONGSTACK_MISSING_ENV_PROFILE_TEST'],
+        },
+      ],
+      caches: [],
+      ports: [],
+    };
+    await writeFile(file, exportEnvironmentProfile(environment));
+    const write = vi.fn();
+    const deps = {
+      renderer: { write },
+      cwd: dir,
+      projectRoot: dir,
+      flags: {
+        name: 'profile job',
+        prompt: 'Review',
+        'environment-file': file,
+        'data-dir': path.join(dir, 'state'),
+      },
+    } as unknown as SubcommandDeps;
+    expect(await automationCmd(['preview'], deps)).toBe(0);
+    const result = JSON.parse(write.mock.calls[0]![0]);
+    expect(result.environment).toEqual(environment);
+    expect(result.image).toBe('trusted:1');
+    expect(result.missingReferences).toContain('WRONGSTACK_MISSING_ENV_PROFILE_TEST');
+    await expect(readFile(path.join(dir, 'state', 'jobs.json'))).rejects.toMatchObject({
+      code: 'ENOENT',
+    });
+    deps.flags = { ...deps.flags, image: 'other:1' };
+    expect(await automationCmd(['add'], deps)).toBe(1);
+    expect(write.mock.calls.flat().join('')).toContain('must match');
+  });
+  it('prints a valid environment template and rejects a valueless profile flag', async () => {
+    const write = vi.fn();
+    const deps = {
+      renderer: { write },
+      flags: { image: 'trusted:1' },
+    } as unknown as SubcommandDeps;
+    expect(await automationCmd(['environment-template'], deps)).toBe(0);
+    expect(JSON.parse(write.mock.calls[0]![0])).toMatchObject({
+      type: 'wrongstack.environment',
+      version: 1,
+      profile: { image: 'trusted:1' },
+    });
+    deps.flags = { 'environment-file': true };
+    expect(await automationCmd(['preview'], deps)).toBe(1);
+    expect(write.mock.calls.flat().join('')).toContain('--environment-file requires a file');
+  });
+});

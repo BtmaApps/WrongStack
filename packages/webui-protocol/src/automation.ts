@@ -44,6 +44,7 @@ export interface AutomationJobInput {
   timeoutMs: number;
   maxIterations?: number | undefined;
   verification?: AutomationVerificationSpec | undefined;
+  environment?: import('./environment-profile.js').EnvironmentProfile | undefined;
   intervalMs?: number | undefined;
   schedule?: { type: 'cron'; expression: string; timezone: string } | undefined;
   github?:
@@ -86,6 +87,9 @@ export interface AutomationJobRecord extends AutomationJobInput {
   nextRunAt: number | null;
 }
 export interface AutomationRunRecord {
+  job?:
+    | { environment?: import('./environment-profile.js').EnvironmentProfile | undefined }
+    | undefined;
   continuationRunId?: string | undefined;
   id: string;
   jobId: string;
@@ -141,6 +145,7 @@ export function editableAutomationJob(job: AutomationJobInput): AutomationJobInp
     timeoutMs,
     maxIterations,
     verification,
+    environment,
     intervalMs,
     schedule,
     github,
@@ -159,6 +164,7 @@ export function editableAutomationJob(job: AutomationJobInput): AutomationJobInp
     timeoutMs,
     maxIterations,
     verification: structuredClone(verification),
+    environment: structuredClone(environment),
     intervalMs,
     schedule: structuredClone(schedule),
     github: structuredClone(github),

@@ -131,6 +131,7 @@ export type {
   WSUserMessageImage,
 } from './conversation-core.js';
 export { decodeProtocolFrame, decodeProtocolMessage } from './decoder.js';
+export * from './environment-profile.js';
 export type { WrongStackErrorKind, WrongStackErrorModel } from './error-model.js';
 export { FrameResume } from './frame-resume.js';
 export type {

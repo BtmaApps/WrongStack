@@ -44,6 +44,56 @@ function completed(options: DockerWorkspaceOptions) {
   };
 }
 describe('persistent automation', () => {
+  it('freezes the queued environment and persists ready/final receipts as private run artifacts', async () => {
+    const { dir, store, spec } = await fixture();
+    const environment = {
+      version: 1 as const,
+      name: 'team',
+      image: spec.image,
+      setupCommands: [['bun', 'install']],
+      setupTimeoutMs: 30_000,
+      services: [],
+      caches: [],
+      ports: [],
+    };
+    const job = await store.add({ ...spec, environment });
+    const queued = await store.enqueue(job.id);
+    environment.setupCommands[0]!.push('changed');
+    const execute = vi.fn(async (options: DockerWorkspaceOptions) => {
+      expect(options.environment?.setupCommands).toEqual([['bun', 'install']]);
+      const receipt = {
+        version: 1 as const,
+        name: 'team',
+        fingerprint: 'f'.repeat(64),
+        phase: 'candidate' as const,
+        status: 'ready' as const,
+        network: null,
+        services: [],
+        caches: [],
+        ports: [],
+        setup: [],
+      };
+      await options.onEnvironmentUpdate?.(receipt);
+      expect(
+        JSON.parse(
+          await readFile(path.join(dir, 'state', 'runs', queued.id, 'environment.json'), 'utf8'),
+        ).status,
+      ).toBe('ready');
+      await options.onEnvironmentUpdate?.({ ...receipt, status: 'removed' });
+      return { ...completed(options), environment: { ...receipt, status: 'removed' as const } };
+    });
+    const service = new AutomationService(store, execute);
+    await service.tick();
+    await service.idle();
+    const { readAutomationArtifact } = await import('../src/automation/artifact.js');
+    expect(
+      JSON.parse(await readAutomationArtifact(store, queued.id, 'environment.json')).status,
+    ).toBe('removed');
+    expect((await store.snapshot()).runs.find((run) => run.id === queued.id)?.status).toBe(
+      'completed',
+    );
+    await service.stop();
+  });
   it('persists independently checked patch evidence with the frozen job plan', async () => {
     const { store, spec } = await fixture();
     const job = await store.add({

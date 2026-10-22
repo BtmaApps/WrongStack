@@ -16,6 +16,7 @@ export async function readAutomationArtifact(
       'verification.log',
       'pull-request.json',
       'ci.json',
+      'environment.json',
     ].includes(name)
   )
     throw new Error('Artifact not available');

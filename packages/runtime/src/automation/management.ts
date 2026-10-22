@@ -242,7 +242,12 @@ export async function handleAutomationManagement(
         throw new Error('Record fields are not editable');
       const plan = createHeadlessLaunchPlan(spec);
       if (route === '/v1/preview') {
-        const missingReferences: string[] = spec.envNames.filter((name) => !process.env[name]);
+        const missingReferences: string[] = [
+          ...new Set([
+            ...spec.envNames,
+            ...(spec.environment?.services.flatMap((service) => service.envNames) ?? []),
+          ]),
+        ].filter((name) => !process.env[name]);
         for (const ref of spec.credentials ?? []) {
           try {
             const profile = JSON.parse(await readFile(profileConfig(ref.profile), 'utf8'));

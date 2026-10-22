@@ -6,6 +6,8 @@ import { AutomationPanel } from '../../../simpleui/src/automation-panel.js';
 import { AutomationWorkspace as SimpleWorkspace } from '../../../simpleui/src/automation-workspace.js';
 import { dispatchSimplePanel } from '../../../simpleui/src/lib/panel-events.js';
 import { AutomationWorkspace as WebWorkspace } from '../../src/components/AutomationView.js';
+import { AutomationEnvironmentRun as WebEnvironment } from '../../src/components/AutomationEnvironment.js';
+import { AutomationEnvironmentRun as SimpleEnvironment } from '../../../simpleui/src/automation-environment.js';
 
 const { request } = vi.hoisted(() => ({ request: vi.fn() }));
 vi.mock('@wrongstack/webui-protocol', async (original) => ({
@@ -24,9 +26,102 @@ beforeEach(() => {
 afterEach(() => cleanup());
 
 describe.each([
+  ['WebUI', WebEnvironment],
+  ['SimpleUI', SimpleEnvironment],
+] as const)('%s environment receipt', (_name, EnvironmentRun) => {
+  it('binds receipt reads to the session and removes stale preview links after a failed refresh', async () => {
+    vi.useFakeTimers();
+    try {
+      request.mockResolvedValue({
+        content: JSON.stringify({
+          version: 1,
+          name: 'team',
+          fingerprint: 'f'.repeat(64),
+          phase: 'candidate',
+          status: 'ready',
+          network: null,
+          services: [],
+          caches: [],
+          setup: [],
+          ports: [{ name: 'preview', port: 3000, protocol: 'http', hostPort: 43123 }],
+        }),
+      });
+      const { container } = render(<EnvironmentRun runId="run" sessionId="session" running />);
+      await act(async () => {
+        const details = container.querySelector('details')!;
+        details.open = true;
+        fireEvent(details, new Event('toggle'));
+      });
+      expect(screen.getByRole('link', { name: 'Open local preview' }).getAttribute('href')).toBe(
+        'http://127.0.0.1:43123',
+      );
+      expect(request).toHaveBeenCalledWith(
+        'runs/run/artifact?name=environment.json',
+        'GET',
+        undefined,
+        expect.any(AbortSignal),
+        'session',
+      );
+      request.mockRejectedValue(new Error('worker offline'));
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(5000);
+      });
+      expect(screen.queryByRole('link', { name: 'Open local preview' })).toBeNull();
+      expect(screen.getByText('Environment receipt is not available yet.')).toBeTruthy();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe.each([
   ['WebUI', WebWorkspace],
   ['SimpleUI', SimpleWorkspace],
 ] as const)('%s automation management', (_name, Workspace) => {
+  it('loads and saves a reviewed environment profile, keeping raw JSON behind details', async () => {
+    render(<Workspace />);
+    await screen.findByText('No jobs in this project.');
+    const environment = {
+      version: 1,
+      name: 'team',
+      image: 'trusted:1',
+      setupCommands: [['bun', 'install', '--frozen-lockfile']],
+      setupTimeoutMs: 30_000,
+      services: [],
+      caches: [{ name: 'bun', target: '/home/node/.bun/install/cache' }],
+      ports: [{ name: 'preview', port: 3000, protocol: 'http' }],
+    };
+    fireEvent.change(screen.getByLabelText('Environment profile JSON'), {
+      target: {
+        value: JSON.stringify({ type: 'wrongstack.environment', version: 1, profile: environment }),
+      },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Load environment for review' }));
+    expect(screen.getByLabelText('Runtime image')).toHaveProperty('value', 'trusted:1');
+    expect(screen.getByText(/1 setup commands/)).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Download environment JSON' })).toBeTruthy();
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Profile job' } });
+    fireEvent.change(screen.getByLabelText('Task'), { target: { value: 'Fix parser' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create job' }));
+    await waitFor(() => expect(request.mock.calls.some(([route]) => route === 'jobs')).toBe(true));
+    expect(request.mock.calls.find(([route]) => route === 'jobs')![2].spec.environment).toEqual(
+      environment,
+    );
+  });
+  it('keeps invalid environment documents out of the saved job', async () => {
+    render(<Workspace />);
+    await screen.findByText('No jobs in this project.');
+    fireEvent.change(screen.getByLabelText('Environment profile JSON'), {
+      target: {
+        value: '{"type":"wrongstack.environment","version":1,"profile":{"mounts":["/:/host"]}}',
+      },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Load environment for review' }));
+    expect(screen.getByRole('alert').textContent).toContain(
+      'Unsupported environment profile field',
+    );
+    expect(request.mock.calls.some(([route]) => route === 'jobs')).toBe(false);
+  });
   it('saves independently authored verification commands', async () => {
     render(<Workspace />);
     await screen.findByText('No jobs in this project.');

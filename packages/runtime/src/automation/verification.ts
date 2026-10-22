@@ -4,7 +4,12 @@ import {
   createVerificationCheckBinding,
   type VerificationCheckDescriptor,
 } from '@wrongstack/governance';
-import type { AutomationValidation, AutomationVerificationSpec } from '@wrongstack/webui-protocol';
+import type {
+  AutomationValidation,
+  AutomationVerificationSpec,
+  EnvironmentProfile,
+} from '@wrongstack/webui-protocol';
+import { environmentFingerprint } from '../docker-environment.js';
 import {
   type DockerWorkspaceOptions,
   type DockerWorkspaceResult,
@@ -48,6 +53,7 @@ export async function verifyAutomationPatch(
     projectRoot: string;
     image: string;
     verification?: AutomationVerificationSpec | undefined;
+    environment?: EnvironmentProfile | undefined;
   },
   candidate: DockerWorkspaceResult,
   signal: AbortSignal,
@@ -57,6 +63,24 @@ export async function verifyAutomationPatch(
   const spec = job.verification;
   if (!spec) return { validation, output: '' };
   validateAutomationVerification(spec);
+  const environment = job.environment;
+  const fingerprint = environment ? environmentFingerprint(environment) : undefined;
+  if (
+    environment &&
+    (candidate.environment?.status !== 'removed' ||
+      candidate.environment.phase !== 'candidate' ||
+      candidate.environment.fingerprint !== fingerprint ||
+      candidate.environment.imageId !== candidate.imageId ||
+      environment.services.some(
+        (service) =>
+          !candidate.environment?.services.some(
+            (item) => item.name === service.name && /^sha256:[a-f0-9]{64}$/.test(item.imageId),
+          ),
+      ))
+  ) {
+    validation.reason = 'Captured, cleaned environment and service image identities are required.';
+    return { validation, output: '' };
+  }
   if (
     candidate.exitCode !== 0 ||
     candidate.patch === null ||
@@ -73,7 +97,22 @@ export async function verifyAutomationPatch(
   const descriptors: VerificationCheckDescriptor[] = commands.map((argv, index) => ({
     id: `automation.check-${index + 1}`,
     evidenceKind: 'static_analysis',
-    handlerVersion: `v1-${createHash('sha256').update(JSON.stringify(argv)).digest('hex')}`,
+    handlerVersion: `v1-${createHash('sha256')
+      .update(
+        JSON.stringify(
+          fingerprint
+            ? {
+                argv,
+                environment: fingerprint,
+                images: candidate.environment?.services.map((service) => [
+                  service.name,
+                  service.imageId,
+                ]),
+              }
+            : argv,
+        ),
+      )
+      .digest('hex')}`,
     executionClass: 'trusted_deterministic',
   }));
   const planFingerprint = calculateVerificationCheckRegistryFingerprint(descriptors);
@@ -88,6 +127,16 @@ export async function verifyAutomationPatch(
       ownerToken: candidate.ownerToken,
       projectRoot: job.projectRoot,
       image: candidate.imageId,
+      environment: environment ? structuredClone(environment) : undefined,
+      environmentPhase: environment ? 'verification' : undefined,
+      environmentImages: environment
+        ? {
+            workspace: candidate.imageId,
+            services: Object.fromEntries(
+              candidate.environment!.services.map((service) => [service.name, service.imageId]),
+            ),
+          }
+        : undefined,
       command: first![0]!,
       args: first!.slice(1),
       followupCommands: rest,
@@ -111,6 +160,22 @@ export async function verifyAutomationPatch(
         ) as NonNullable<AutomationValidation['checks']>[number]['binding'],
       }));
     if (
+      (environment &&
+        (checked.environment?.fingerprint !== fingerprint ||
+          checked.environment?.phase !== 'verification' ||
+          checked.environment?.status !== 'removed' ||
+          checked.cleanup !== 'removed' ||
+          environment.services.some(
+            (service) =>
+              !checked.environment?.services.some(
+                (item) =>
+                  item.name === service.name &&
+                  item.imageId ===
+                    candidate.environment?.services.find(
+                      (previous) => previous.name === service.name,
+                    )?.imageId,
+              ),
+          ))) ||
       (checked.sourceTree !== undefined && checked.sourceTree !== candidate.sourceTree) ||
       (checked.imageId !== undefined && checked.imageId !== candidate.imageId) ||
       (checked.inputTree !== undefined && checked.inputTree !== candidate.outputTree) ||

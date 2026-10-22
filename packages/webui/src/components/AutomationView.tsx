@@ -18,6 +18,7 @@ import { useAppTranslation } from '@/i18n';
 import { useActiveSessionId, useSessionStore } from '@/stores';
 import './automation.css';
 import { AutomationPullRequestPanel } from './AutomationPullRequestPanel';
+import { AutomationJobFields, AutomationEnvironmentRun } from './AutomationEnvironment';
 import { AutomationPreviewPanel, AutomationRunResult } from './AutomationRunParts';
 import { ToolDiffView } from './DiffView';
 
@@ -297,33 +298,19 @@ export function AutomationWorkspace({ sessionId }: { sessionId?: string | undefi
               .
             </p>
           )}
-          <label>
-            Name
-            <input
-              required
-              maxLength={128}
-              value={spec.name}
-              onChange={(event) => change('name', event.target.value)}
-            />
-          </label>
-          <label>
-            Runtime image
-            <input
-              required
-              placeholder="wrongstack-sandbox"
-              value={spec.image}
-              onChange={(event) => change('image', event.target.value)}
-            />
-          </label>
-          <label>
-            Task
-            <textarea
-              required
-              rows={4}
-              value={spec.prompt}
-              onChange={(event) => change('prompt', event.target.value)}
-            />
-          </label>
+          <AutomationJobFields
+            spec={spec}
+            onChange={change}
+            onEnvironmentChange={(environment) => {
+              previewSequence.current++;
+              setPreview(null);
+              setSpec((current) => ({
+                ...current,
+                environment,
+                image: environment?.image ?? current.image,
+              }));
+            }}
+          />
           <div className="automation-fields">
             <label>
               Provider
@@ -602,6 +589,13 @@ export function AutomationWorkspace({ sessionId }: { sessionId?: string | undefi
               {run.status} · {run.subjectKey} · {new Date(run.createdAt).toLocaleString()}
               {run.error && <p>{run.error}</p>}
               {run.result && <AutomationRunResult result={run.result} />}
+              {run.job?.environment && (
+                <AutomationEnvironmentRun
+                  runId={run.id}
+                  sessionId={sessionId}
+                  running={run.status === 'running'}
+                />
+              )}
               {run.status === 'completed' && run.result?.validation.status === 'passed' && (
                 <AutomationPullRequestPanel runId={run.id} sessionId={sessionId} />
               )}

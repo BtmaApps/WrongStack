@@ -5,7 +5,16 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import type { ProviderConfig } from '@wrongstack/core/types';
 import { buildChildEnv } from '@wrongstack/core/utils';
+import type {
+  EnvironmentImages,
+  EnvironmentProfile,
+  EnvironmentReceipt,
+} from '@wrongstack/webui-protocol';
 import { isCredentialEnvName } from './credential-reference.js';
+import type { DockerCommandResult, DockerCommandRunner } from './docker-command-types.js';
+import { DockerEnvironment, validateWorkspaceEnvironment } from './docker-environment.js';
+
+export type { DockerCommandResult, DockerCommandRunner } from './docker-command-types.js';
 
 const OWNER_LABEL = 'dev.wrongstack.workspace-owner';
 const MAX_OUTPUT = 16 * 1024 * 1024;
@@ -49,21 +58,6 @@ const EXCLUDED = new Set([
   '.next',
   '.cache',
 ]);
-
-export interface DockerCommandResult {
-  code: number;
-  stdout: string;
-  stderr: string;
-}
-export type DockerCommandRunner = (
-  args: string[],
-  options: {
-    signal?: AbortSignal | undefined;
-    timeoutMs: number;
-    onOutput?: ((text: string) => void) | undefined;
-    env?: Readonly<Record<string, string>> | undefined;
-  },
-) => Promise<DockerCommandResult>;
 
 /** Direct argv execution: neither Docker options nor tool arguments are shell-interpolated. */
 export const systemDocker: DockerCommandRunner = (args, options) =>
@@ -157,8 +151,13 @@ export interface DockerWorkspaceOptions {
   /** Operator-authored verification sequence; each command is direct argv. */
   followupCommands?: readonly (readonly string[])[] | undefined;
   captureTreeIdentity?: boolean | undefined;
+  environment?: EnvironmentProfile | undefined;
+  environmentPhase?: 'candidate' | 'verification' | undefined;
+  environmentImages?: EnvironmentImages | undefined;
+  onEnvironmentUpdate?: ((receipt: EnvironmentReceipt) => Promise<void>) | undefined;
 }
 export interface DockerWorkspaceResult {
+  environment?: EnvironmentReceipt | undefined;
   id: string;
   ownerToken: string;
   exitCode: number;
@@ -230,6 +229,19 @@ export async function runDockerWorkspace(
   };
   if (options.network !== undefined && options.network !== 'bridge' && options.network !== 'none')
     throw new Error('Unsupported Docker network');
+  if (options.environment) {
+    validateWorkspaceEnvironment(
+      options.environment,
+      options.image,
+      options.environmentPhase ?? 'candidate',
+      options.environmentImages,
+    );
+    if (
+      options.network === 'none' &&
+      (options.environment.services.length || options.environment.ports.length)
+    )
+      throw new Error('Services and preview ports require networking');
+  }
   options.signal?.throwIfAborted();
   const root = await realpath(options.projectRoot);
   if (
@@ -270,6 +282,19 @@ export async function runDockerWorkspace(
   let outputTree: string | undefined;
   let imageId: string | undefined;
   const stepResults: NonNullable<DockerWorkspaceResult['stepResults']> = [];
+  const environment = options.environment
+    ? new DockerEnvironment(
+        structuredClone(options.environment),
+        root,
+        id,
+        ownerToken,
+        runner,
+        options.environmentPhase ?? 'candidate',
+        options.signal,
+        options.environmentImages,
+      )
+    : undefined;
+  let cleanupState: DockerWorkspaceResult['cleanup'] = 'removed';
   let execution: DockerCommandResult = { code: 0, stdout: '', stderr: '' };
   let temporaryCleanupFailed = false;
   try {
@@ -290,16 +315,19 @@ export async function runDockerWorkspace(
       },
     });
     options.signal?.throwIfAborted();
+    if (environment) await options.onEnvironmentUpdate?.(structuredClone(environment.receipt));
+    const environmentArgs = environment ? await environment.provision() : [];
     // Mark the attempt before awaiting: Docker may create it just before a cancellation.
     created = true;
+    cleanupState = 'unverified';
     const creation = await run([
       'create',
       '--name',
       name,
       '--label',
       `${OWNER_LABEL}=${ownerToken}`,
-      '--network',
-      options.network ?? 'bridge',
+      ...environmentArgs,
+      ...(environment?.receipt.network ? [] : ['--network', options.network ?? 'bridge']),
       '--cap-drop',
       'ALL',
       '--cap-add',
@@ -330,7 +358,7 @@ export async function runDockerWorkspace(
     if (!/^[a-f0-9]{64}$/.test(creation.stdout.trim()))
       throw new Error('Docker create did not return an immutable container identity');
     name = creation.stdout.trim();
-    if (options.captureTreeIdentity) {
+    if (options.captureTreeIdentity || environment) {
       const image = await run(['inspect', '--format', '{{.Image}}', name]);
       imageId = image.stdout.trim();
       if (!/^sha256:[a-f0-9]{64}$/.test(imageId))
@@ -446,6 +474,10 @@ export async function runDockerWorkspace(
       ]);
     }
     if (options.captureTreeIdentity) inputTree = await readTree();
+    if (environment) {
+      await environment.setup(name, imageId!);
+      await options.onEnvironmentUpdate?.(structuredClone(environment.receipt));
+    }
     const executionStarted = performance.now();
     for (const argv of [
       [options.command, ...(options.args ?? [])],
@@ -537,6 +569,9 @@ export async function runDockerWorkspace(
       cleanup: 'unverified',
     };
   } catch (error) {
+    if (environment)
+      environment.receipt.failure =
+        error instanceof Error ? error.message.slice(0, 2000) : 'Environment failed';
     if (!snapshotRevision) throw error;
     result = {
       id,
@@ -571,10 +606,22 @@ export async function runDockerWorkspace(
               : ['rm', '--force', '--volumes', probedId!],
             { timeoutMs: 15_000 },
           );
-          if (result && cleaned.code === 0) result.cleanup = retained ? 'retained' : 'removed';
+          if (cleaned.code === 0) {
+            cleanupState = retained ? 'retained' : 'removed';
+            if (result) result.cleanup = cleanupState;
+          }
         }
       } catch {
         /* Preserve unverified runtime state instead of deleting by guesswork. */
+      }
+    }
+    if (environment) {
+      if (!(await environment.cleanup(cleanupState)) && result) result.cleanup = 'unverified';
+      if (result) result.environment = structuredClone(environment.receipt);
+      try {
+        await options.onEnvironmentUpdate?.(structuredClone(environment.receipt));
+      } catch {
+        if (result) result.cleanup = 'unverified';
       }
     }
     if (!(await removeOwnedTemporary(snapshot, tempBase, 'wrongstack-docker-')))

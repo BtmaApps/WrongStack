@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-22T10:44:27.096Z",
+  "generatedAt": "2026-10-22T10:44:56.070Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 38,
-    "sourceFiles": 5232,
-    "testFiles": 4601,
-    "sourceLines": 1137770,
+    "sourceFiles": 5237,
+    "testFiles": 4604,
+    "sourceLines": 1139124,
     "workspaceEdges": 139,
-    "moduleEdges": 17206,
+    "moduleEdges": 17219,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -577,8 +577,8 @@
     {
       "name": "@wrongstack/runtime",
       "dir": "packages/runtime",
-      "sourceFiles": 33,
-      "testFiles": 27,
+      "sourceFiles": 35,
+      "testFiles": 28,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/governance",
@@ -598,7 +598,7 @@
         {
           "path": "packages/runtime/tsconfig.test.json",
           "error": null,
-          "testFiles": 27
+          "testFiles": 28
         }
       ]
     },
@@ -696,8 +696,8 @@
     {
       "name": "@wrongstack/simpleui",
       "dir": "packages/simpleui",
-      "sourceFiles": 130,
-      "testFiles": 99,
+      "sourceFiles": 131,
+      "testFiles": 100,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/tools",
@@ -718,7 +718,7 @@
         {
           "path": "packages/simpleui/tsconfig.test.json",
           "error": null,
-          "testFiles": 99
+          "testFiles": 100
         }
       ]
     },
@@ -869,7 +869,7 @@
     {
       "name": "@wrongstack/webui",
       "dir": "packages/webui",
-      "sourceFiles": 763,
+      "sourceFiles": 764,
       "testFiles": 502,
       "workspaceDependencies": [
         "@wrongstack/core",
@@ -924,8 +924,8 @@
     {
       "name": "@wrongstack/webui-protocol",
       "dir": "packages/webui-protocol",
-      "sourceFiles": 28,
-      "testFiles": 14,
+      "sourceFiles": 29,
+      "testFiles": 15,
       "workspaceDependencies": [
         "@wrongstack/core"
       ],
@@ -938,7 +938,7 @@
         {
           "path": "packages/webui-protocol/tsconfig.test.json",
           "error": null,
-          "testFiles": 14
+          "testFiles": 15
         }
       ]
     },
@@ -15824,6 +15824,12 @@
         ]
       },
       {
+        "file": "packages/runtime/tests/docker-environment.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/runtime/tests/docker-workspace-environment.test.ts",
         "projects": [
           "root-node"
@@ -17361,6 +17367,12 @@
       },
       {
         "file": "packages/simpleui/tests/auth-panel.test.tsx",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/simpleui/tests/automation-workspace.test.tsx",
         "projects": [
           "root-node"
         ]
@@ -23786,6 +23798,12 @@
         ]
       },
       {
+        "file": "packages/webui-protocol/tests/environment-profile.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/webui-protocol/tests/frame-resume-invalid-payload.test.ts",
         "projects": [
           "root-node"
@@ -29092,11 +29110,6 @@
       "relativeImports": 6
     },
     {
-      "file": "packages/simpleui/src/automation-workspace.tsx",
-      "lines": 698,
-      "relativeImports": 3
-    },
-    {
       "file": "packages/core/src/coordination/autonomous-brain.ts",
       "lines": 696,
       "relativeImports": 3
@@ -29134,6 +29147,11 @@
     {
       "file": "packages/core/src/coordination/agent-monitor.ts",
       "lines": 693,
+      "relativeImports": 4
+    },
+    {
+      "file": "packages/simpleui/src/automation-workspace.tsx",
+      "lines": 692,
       "relativeImports": 4
     },
     {
@@ -29222,11 +29240,6 @@
       "relativeImports": 13
     },
     {
-      "file": "packages/webui/src/components/AutomationView.tsx",
-      "lines": 688,
-      "relativeImports": 4
-    },
-    {
       "file": "packages/core/src/hq/commands.ts",
       "lines": 687,
       "relativeImports": 2
@@ -29255,6 +29268,11 @@
       "file": "packages/core/src/coordination/mailbox-project-server-client.ts",
       "lines": 685,
       "relativeImports": 4
+    },
+    {
+      "file": "packages/core/src/session-catalog/session-registry.ts",
+      "lines": 685,
+      "relativeImports": 5
     }
   ],
   "testOnlyExports": [

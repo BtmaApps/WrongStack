@@ -22,6 +22,8 @@ import { AutomationWorkspace } from '/src/components/AutomationView.tsx';
 import { AutomationWorkspace as SimpleWorkspace } from '/@fs/${simplePath}/automation-workspace.tsx';
 import { AutomationPullRequestPanel as WebPR } from '/src/components/AutomationPullRequestPanel.tsx';
 import { AutomationPullRequestPanel as SimplePR } from '/@fs/${simplePath}/automation-pull-request.tsx';
+import { AutomationEnvironmentRun as WebEnvironment } from '/src/components/AutomationEnvironment.tsx';
+import { AutomationEnvironmentRun as SimpleEnvironment } from '/@fs/${simplePath}/automation-environment.tsx';
 import { BrowserElementSelection } from '/src/components/BrowserElementSelection.tsx';
 import { BrowserLivePane } from '/src/components/BrowserLivePane.tsx';
 import { ChatInput } from '/src/components/ChatInput.tsx';
@@ -29,7 +31,7 @@ import { useConfigStore, useSessionStore, useUIStore } from '/src/stores/index.t
 import { getWSClient } from '/src/lib/ws-client.ts';
 import { setActiveSessionLane } from '/src/stores/session-lanes.ts';
 const mode = new URLSearchParams(location.search).get('mode');
-if (mode === 'simple' || mode === 'pr-simple' || mode === 'repair-simple') await import('/@fs/${simplePath}/styles.css');
+if (mode === 'simple' || mode === 'pr-simple' || mode === 'repair-simple' || mode === 'env-simple') await import('/@fs/${simplePath}/styles.css');
 await i18n.changeLanguage('en');
 await i18n.loadNamespaces(['activity','chat','common','settings','setup']);
 const sent=[];
@@ -62,7 +64,7 @@ setActiveSessionLane('fixture'); useUIStore.getState().bindSessionChrome('fixtur
 useSessionStore.getState().setEnv({projectName:'Fixture',cwd:'/fixture'});
 useConfigStore.setState({provider:'WrongForge',model:'workspace-model',wsConnected:true,wsStatus:{state:'open'}});
 createRoot(document.getElementById('root')).render(<ThemeProvider><main className="mx-auto max-w-4xl space-y-4 p-4">
-{mode === 'pr-web' || mode === 'repair-web' ? <section className="automation-workspace"><article><WebPR runId="fixture-run" sessionId="fixture"/></article></section> : mode === 'pr-simple' || mode === 'repair-simple' ? <section className="automation-workspace"><article><SimplePR runId="fixture-run" sessionId="fixture"/></article></section> : mode === 'picker' ? <><BrowserLivePane/><ChatInput/></> : mode === 'selection' ? <><BrowserElementSelection selection={selection}/><ChatInput/></> : mode === 'simple' ? <SimpleWorkspace sessionId="fixture"/> : <AutomationWorkspace sessionId="fixture"/>}
+{mode === 'env-web' ? <section className="automation-workspace"><WebEnvironment runId="fixture-run" sessionId="fixture" running/></section> : mode === 'env-simple' ? <section className="automation-workspace"><SimpleEnvironment runId="fixture-run" sessionId="fixture" running/></section> : mode === 'pr-web' || mode === 'repair-web' ? <section className="automation-workspace"><article><WebPR runId="fixture-run" sessionId="fixture"/></article></section> : mode === 'pr-simple' || mode === 'repair-simple' ? <section className="automation-workspace"><article><SimplePR runId="fixture-run" sessionId="fixture"/></article></section> : mode === 'picker' ? <><BrowserLivePane/><ChatInput/></> : mode === 'selection' ? <><BrowserElementSelection selection={selection}/><ChatInput/></> : mode === 'simple' ? <SimpleWorkspace sessionId="fixture"/> : <AutomationWorkspace sessionId="fixture"/>}
 </main></ThemeProvider>);
 `;
 const server = await createServer({
@@ -114,6 +116,8 @@ try {
     'pr-simple',
     'repair-web',
     'repair-simple',
+    'env-web',
+    'env-simple',
   ])
     for (const width of [1440, 390]) {
       const page = await browser.newPage({ viewport: { width, height: 1000 } });
@@ -124,10 +128,63 @@ try {
       let job;
       const prRequests = [];
       const prView = { plan: null, receipt: null, ci: null };
+      const environment = {
+        version: 1,
+        name: 'team',
+        image: 'trusted:local',
+        setupCommands: [['bun', 'install', '--frozen-lockfile']],
+        setupTimeoutMs: 300000,
+        services: [
+          {
+            name: 'db',
+            image: 'redis:7-alpine',
+            command: [],
+            healthCommand: ['redis-cli', 'ping'],
+            envNames: [],
+          },
+        ],
+        caches: [{ name: 'bun', target: '/home/node/.bun/install/cache' }],
+        ports: [{ name: 'preview', port: 3000, protocol: 'http' }],
+      };
+      const environmentReceipt = {
+        version: 1,
+        name: 'team',
+        fingerprint: 'f'.repeat(64),
+        phase: 'candidate',
+        status: 'ready',
+        network: 'wrongstack-env-fixture',
+        services: [
+          { name: 'db', imageId: `sha256:${'a'.repeat(64)}`, containerId: 'b'.repeat(64) },
+        ],
+        caches: [
+          {
+            name: 'bun',
+            target: '/home/node/.bun/install/cache',
+            volume: 'owned-cache',
+            persistent: true,
+          },
+        ],
+        ports: [{ name: 'preview', port: 3000, protocol: 'http', hostPort: 43123 }],
+        setup: [
+          {
+            argv: ['bun', 'install', '--frozen-lockfile'],
+            exitCode: 0,
+            durationMs: 50,
+            output: 'Setup complete',
+            outputSha256: 'e'.repeat(64),
+          },
+        ],
+      };
       await page.route('**/api/automation/**', async (route) => {
         const request = route.request();
         const url = new URL(request.url());
-        if (url.pathname.includes('/runs/fixture-run/pr')) {
+        if (
+          url.pathname.includes('/runs/fixture-run/artifact') &&
+          url.searchParams.get('name') === 'environment.json'
+        ) {
+          assert.equal(url.searchParams.get('sessionId'), 'fixture');
+          await route.fulfill({ json: { content: JSON.stringify(environmentReceipt) } });
+        } else if (url.pathname.includes('/runs/fixture-run/pr')) {
           prRequests.push(url.pathname);
           assert.equal(url.searchParams.get('sessionId'), 'fixture');
           if (mode.startsWith('repair-'))
@@ -203,7 +260,23 @@ try {
       await page.goto(
         `http://127.0.0.1:${server.httpServer.address().port}/__competitive?mode=${mode}`,
       );
-      if (mode.startsWith('pr-') || mode.startsWith('repair-')) {
+      if (mode.startsWith('env-')) {
+        await page.getByText('Environment status', { exact: true }).click();
+        await expect(
+          page.getByRole('link', { name: 'Open local preview', exact: true }),
+        ).toHaveAttribute('href', 'http://127.0.0.1:43123');
+        await page.screenshot({
+          path: path.join(output, `${mode}-active-${width}.png`),
+          fullPage: true,
+        });
+        environmentReceipt.status = 'removed';
+        await page.reload();
+        await page.getByText('Environment status', { exact: true }).click();
+        await expect(page.getByText('team · removed · candidate', { exact: true })).toBeVisible();
+        await expect(
+          page.getByRole('link', { name: 'Open local preview', exact: true }),
+        ).toHaveCount(0);
+      } else if (mode.startsWith('pr-') || mode.startsWith('repair-')) {
         await page.getByRole('button', { name: 'Review draft PR', exact: true }).click();
         if (mode.startsWith('repair-'))
           await expect(page.getByLabel('PR repository', { exact: true })).toHaveValue('owner/repo');
@@ -284,6 +357,19 @@ try {
         await page.getByLabel('Name', { exact: true }).fill('Verified review');
         await page.getByLabel('Runtime image').fill('trusted:local');
         await page.getByLabel('Task', { exact: true }).fill('Fix the parser');
+        await page.getByText('Import, edit or export environment JSON', { exact: true }).click();
+        await page
+          .getByLabel('Environment profile JSON', { exact: true })
+          .fill(
+            JSON.stringify({ type: 'wrongstack.environment', version: 1, profile: environment }),
+          );
+        await page
+          .getByRole('button', { name: 'Load environment for review', exact: true })
+          .click();
+        await expect(
+          page.getByRole('link', { name: 'Download environment JSON', exact: true }),
+        ).toBeVisible();
+        await page.getByText('Import, edit or export environment JSON', { exact: true }).click();
         await page.getByText('Credentials and execution limits', { exact: true }).click();
         await page
           .getByLabel('Verification commands')
@@ -297,6 +383,7 @@ try {
           ],
           timeoutMs: 300000,
         });
+        assert.deepEqual(job.environment, environment);
       }
       assert(
         await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
@@ -307,7 +394,7 @@ try {
     }
   assert.deepEqual(errors, []);
   process.stdout.write(
-    'PASS: WebUI/SimpleUI verification and draft PR/CI flows plus browser context/image drafts at 1440px and 390px; no browser errors\n',
+    'PASS: 20 WebUI/SimpleUI environment, verification, draft PR/CI and browser context scenarios at 1440px and 390px; no browser errors\n',
   );
 } finally {
   await browser?.close();

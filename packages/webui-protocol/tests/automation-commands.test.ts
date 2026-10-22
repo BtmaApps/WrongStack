@@ -17,4 +17,7 @@ describe('automation command authoring', () => {
     expect(() => parseAutomationCommands('bun "unfinished')).toThrow('unclosed quote');
     expect(() => parseAutomationCommands('bun trailing\\')).toThrow('unfinished escape');
   });
+  it('ignores leading, repeated and trailing whitespace without adding empty argv entries', () => {
+    expect(parseAutomationCommands('  bun   run test  \n\t\n')).toEqual([['bun', 'run', 'test']]);
+  });
 });

@@ -162,3 +162,14 @@
   text-decoration: underline;
   text-underline-offset: 0.2rem;
 }
+.automation-environment {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 0.6rem;
+  padding: 0.85rem;
+  overflow-wrap: anywhere;
+}
+.automation-environment code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

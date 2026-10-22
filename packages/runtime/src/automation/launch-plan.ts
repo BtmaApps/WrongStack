@@ -35,6 +35,7 @@ export function createHeadlessLaunchPlan(
     envNames: [...spec.envNames],
     credentials: structuredClone(spec.credentials ?? []),
     ...(spec.verification ? { verification: structuredClone(spec.verification) } : {}),
+    ...(spec.environment ? { environment: structuredClone(spec.environment) } : {}),
     nextRunTimes: previewSchedule(spec, now),
     credentialResolution: 'read-at-use' as const,
   };

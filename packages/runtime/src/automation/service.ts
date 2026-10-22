@@ -4,6 +4,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { atomicWrite } from '@wrongstack/core/utils';
 import type { CredentialReference, ResolvedCredentialBundle } from '../credential-reference.js';
+import { stopEnvironmentServices } from '../docker-environment.js';
 import {
   type DockerWorkspaceOptions,
   type DockerWorkspaceResult,
@@ -151,6 +152,16 @@ export class AutomationService {
         ownerToken: leaseId,
         projectRoot: run.job.projectRoot,
         image: run.job.image,
+        environment: run.job.environment,
+        onEnvironmentUpdate: run.job.environment
+          ? async (receipt) => {
+              await atomicWrite(
+                path.join(directory, 'environment.json'),
+                `${JSON.stringify(receipt, null, 2)}\n`,
+                { mode: 0o600 },
+              );
+            }
+          : undefined,
         command: 'wstack',
         args,
         envNames: run.job.envNames,
@@ -264,6 +275,11 @@ export class AutomationService {
           });
           if (stop.code !== 0) continue;
         }
+        if (
+          run.job.environment &&
+          !(await stopEnvironmentServices(run.job.environment, run.id, run.leaseId, systemDocker))
+        )
+          continue;
         await this.store.finish(
           run.id,
           run.leaseId,
