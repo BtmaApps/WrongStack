@@ -9,6 +9,7 @@ optional-capabilities: [web.research, browser.interact, verification.run]
 trigger: "Design or substantially improve user-facing interfaces with a product-specific visual direction, content hierarchy, and rendered critique. Use for new screens, landing pages, redesigns, typography/layout work, or UI that feels generic or AI-generated. For small fixes, preserve the existing design without starting a new brief."
 metadata:
   routing-group: design
+paths: [".design/brief.md"]
 ---
 
 # Design Craft — WrongStack

@@ -1,13 +1,14 @@
 ---
 name: design-system
 description: "Create and maintain coherent visual tokens, themes and shared component states using the existing project system or WrongStack Design Studio. Use when designing or substantially restyling interfaces, palettes, typography or themes; small UI fixes should extend the existing system without a kit migration."
-version: 2.4.0
+version: 2.5.0
 required-capabilities: [filesystem.read, filesystem.write]
 required-tools: []
 optional-capabilities: [verification.run, web.research]
 trigger: "designing or substantially restyling interfaces, palettes, typography or themes; small UI fixes should extend the existing system without a kit migration."
 metadata:
   routing-group: design
+paths: ["DESIGN.md", "design-tokens.*", "design_tokens.dart"]
 ---
 
 # Design System Engine — WrongStack
@@ -22,7 +23,11 @@ metadata:
 Build from a real token source and verify the rendered result. Latest web target
 checked 2026-10-09: Tailwind CSS 4.3.3 with CSS-first theme variables.
 An existing theme is a valid source; Design Studio is a useful system generator,
-not a requirement to replace an established design.
+not a requirement to replace an established design. When `DESIGN.md` or a
+conventional token file (`src/index.css`, `src/theme/theme.ts`,
+`lib/theme/theme.dart` and similar) declares at least four colors, Design Studio
+names that system instead of dealing kits and checks frontend writes against
+it; run capture only for a token source kept at another path.
 
 ## Rules
 

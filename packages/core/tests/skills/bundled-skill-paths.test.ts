@@ -43,6 +43,10 @@ describe('bundled skill paths', () => {
     ['tsconfig.build.json', ['typescript-strict']],
     ['deploy/nginx/sites/app.conf', ['reverse-proxy-tls']],
     ['shaders/water.wgsl', ['threejs-3d']],
+    ['DESIGN.md', ['design-system']],
+    ['src/styles/design-tokens.css', ['design-system']],
+    ['lib/theme/design_tokens.dart', ['design-system', 'flutter-mobile']],
+    ['.design/brief.md', ['design-craft']],
   ])('%s → %j', (file, expected) => {
     expect(claimants(file)).toEqual(expect.arrayContaining(expected));
     expect(claimants(file)).toHaveLength(expected.length);
@@ -56,6 +60,8 @@ describe('bundled skill paths', () => {
     'packages/core/src/index.ts',
     'tests/app.test.ts',
     'config.yaml',
+    'src/index.css',
+    'docs/brief.md',
   ])('claims no everyday file: %s', (file) => {
     expect(claimants(file)).toEqual([]);
   });

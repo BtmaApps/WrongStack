@@ -16,7 +16,7 @@ import {
   makeDesignVerifyToolCallMiddleware,
   setActiveKit,
 } from '../../src/execution/design-detect.js';
-import { saveCapturedTokens } from '../../src/execution/design-project-store.js';
+import { recordKitChoice, saveCapturedTokens } from '../../src/execution/design-project-store.js';
 import type { DesignKitLoader } from '../../src/types/design-kit.js';
 import type { Request } from '../../src/types/provider.js';
 
@@ -452,6 +452,140 @@ describe('installDesignStudioMiddleware', () => {
     } finally {
       if (prev === undefined) delete process.env['WRONGSTACK_DESIGN_STUDIO'];
       else process.env['WRONGSTACK_DESIGN_STUDIO'] = prev;
+    }
+  });
+});
+
+describe('a project with its own design system', () => {
+  const SYSTEM_CSS = [
+    ':root {',
+    '  --bg: #ffffff;',
+    '  --fg: #111827;',
+    '  --primary: #2563eb;',
+    '  --muted: #6b7280;',
+    '}',
+    '.dark {',
+    '  --bg: #0b0f19;',
+    '}',
+    '',
+  ].join('\n');
+
+  async function withProject(css: string | undefined, run: (root: string) => Promise<void>) {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'design-established-'));
+    try {
+      if (css !== undefined) {
+        await fs.mkdir(path.join(root, 'src'), { recursive: true });
+        await fs.writeFile(path.join(root, 'src', 'index.css'), css);
+      }
+      await run(root);
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
+  }
+
+  const req = (): Request =>
+    ({ model: 'm', system: [{ type: 'text', text: 'BASE' }], messages: [] }) as Request;
+
+  it('points at the project system instead of dealing kits', async () => {
+    await withProject(SYSTEM_CSS, async (root) => {
+      const ctx = { meta: {}, projectRoot: root } as unknown as Context;
+      activateDesign(ctx, ['intent:ui'], 'web');
+      const mw = makeDesignStudioRequestMiddleware({ ctx, loader: fakeLoader });
+      const injected = (await mw.handler(req(), async (r) => r)).system?.[1]?.text ?? '';
+      expect(injected).toContain('already has a design system: src/index.css');
+      expect(injected).toContain('primary');
+      expect(injected).not.toContain('minimal-clarity');
+      expect(injected).toMatch(/WCAG/);
+    });
+  });
+
+  it('still offers kits when the stylesheet is too small to be a system', async () => {
+    await withProject(':root {\n  --bg: #ffffff;\n  --fg: #111111;\n}\n', async (root) => {
+      const ctx = { meta: {}, projectRoot: root } as unknown as Context;
+      activateDesign(ctx, ['intent:ui'], 'web');
+      const mw = makeDesignStudioRequestMiddleware({ ctx, loader: fakeLoader });
+      const injected = (await mw.handler(req(), async (r) => r)).system?.[1]?.text ?? '';
+      expect(injected).toContain('minimal-clarity');
+      expect(injected).not.toContain('already has a design system');
+    });
+  });
+
+  it('checks an unpinned frontend write against the declared tokens without a capture', async () => {
+    await withProject(SYSTEM_CSS, async (root) => {
+      await fs.writeFile(path.join(root, 'app.css'), '.x { color: #123123; }\n');
+      const ctx = { meta: {}, projectRoot: root } as unknown as Context;
+      const out = (await makeDesignVerifyToolCallMiddleware().handler(
+        {
+          toolUse: { type: 'tool_use', id: 'w', name: 'write', input: { path: 'app.css' } },
+          result: { type: 'tool_result', tool_use_id: 'w', content: '' },
+          ctx,
+        } as never,
+        async (p) => p,
+      )) as { result: { content: string } };
+      expect(out.result.content).toContain('project tokens in src/index.css');
+      expect(out.result.content).toContain('#123123');
+      expect(out.result.content).not.toContain('NOT being design-checked');
+    });
+  });
+});
+
+describe('activation lifetime', () => {
+  const userTurn = (ctx: Context, text: string) =>
+    makeDesignDetectUserInputMiddleware().handler({ text, ctx } as never, async (p) => p);
+  const toolUse = (ctx: Context, name: string, input: Record<string, unknown>) =>
+    makeDesignDetectToolCallMiddleware().handler(
+      { toolUse: { type: 'tool_use', id: 't', name, input }, ctx } as never,
+      async (p) => p,
+    );
+
+  it('sleeps after three user turns without a design signal and wakes on the next one', async () => {
+    const ctx = { meta: {}, projectRoot: os.tmpdir() } as unknown as Context;
+    await userTurn(ctx, 'build a pricing page in React');
+    expect(getDesignState(ctx)?.active).toBe(true);
+    await userTurn(ctx, 'now fix the failing database migration');
+    await userTurn(ctx, 'add retries to the queue worker');
+    expect(getDesignState(ctx)?.active).toBe(true);
+    await userTurn(ctx, 'bump the lockfile');
+    expect(getDesignState(ctx)?.active).toBe(false);
+
+    const mw = makeDesignStudioRequestMiddleware({ ctx, loader: fakeLoader });
+    expect(
+      (await mw.handler({ model: 'm', system: [], messages: [] } as Request, async (r) => r))
+        .system,
+    ).toEqual([]);
+
+    await toolUse(ctx, 'edit', { path: 'src/Pricing.tsx' });
+    expect(getDesignState(ctx)?.active).toBe(true);
+  });
+
+  it('counts a frontend write or a design tool call as activity', async () => {
+    const ctx = { meta: {}, projectRoot: os.tmpdir() } as unknown as Context;
+    await userTurn(ctx, 'build a settings screen');
+    await userTurn(ctx, 'continue');
+    await toolUse(ctx, 'write', { path: 'src/Settings.tsx' });
+    await userTurn(ctx, 'continue');
+    await userTurn(ctx, 'continue');
+    expect(getDesignState(ctx)?.active).toBe(true);
+    await toolUse(ctx, 'design', { action: 'verify' });
+    await userTurn(ctx, 'continue');
+    await userTurn(ctx, 'continue');
+    expect(getDesignState(ctx)?.active).toBe(true);
+  });
+
+  it('restores a pinned kit without switching the per-turn block on', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'design-restore-'));
+    try {
+      await recordKitChoice(root, 'minimal-clarity', 'web', 'test', '2026-10-22T00:00:00Z');
+      const ctx = { meta: {}, projectRoot: root } as unknown as Context;
+      const slot = { prepend: () => {} };
+      installDesignStudioMiddleware({
+        pipelines: { userInput: slot, toolCall: slot, request: slot } as never,
+        ctx,
+      });
+      await expect.poll(() => getDesignState(ctx)?.activeKit).toBe('minimal-clarity');
+      expect(getDesignState(ctx)?.active).toBe(false);
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
     }
   });
 });

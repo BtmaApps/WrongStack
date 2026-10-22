@@ -18,7 +18,7 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import type { DesignKitTokens } from '../types/design-kit.js';
-import { colorToHex } from './design-color.js';
+import { classifyTokenValue, colorToHex } from './design-color.js';
 import { designMdToTokens, parseDesignMd } from './design-md.js';
 
 export interface CaptureResult {
@@ -429,4 +429,92 @@ export async function captureProjectTokens(
   if (Object.keys(dark).length > 0 || tokens.light) tokens.dark = mergedDark;
 
   return { stack, files: used, tokens, palettes, skipped, notes };
+}
+
+// ── established-system detection (no write) ──────────────────────────────────
+
+/**
+ * A token system the project already declares at a conventional path, found
+ * without anyone running `design capture`. The Design Studio uses it to stop
+ * offering new kits to a project that has its own system, and to check
+ * frontend writes against it.
+ */
+export interface EstablishedDesignSystem {
+  stack: CaptureResult['stack'];
+  files: string[];
+  tokens: DesignKitTokens;
+  /** Color token names, light theme first; the evidence the system is real. */
+  colorNames: string[];
+}
+
+/**
+ * Below this many color tokens a stylesheet is a reset or a one-off variable,
+ * not a system; offering a kit stays the right move.
+ */
+const ESTABLISHED_MIN_COLORS = 4;
+
+/** Semantic roles lead the summary; chart and brand ramps follow in source order. */
+const ROLE_NAME_RE =
+  /^(?:bg|background|fg|foreground|surface|raised|card|popover|primary|secondary|accent|muted|border|input|ring|destructive|danger|success|warning|info)(?:-foreground|-fg)?$/;
+
+function roleRank(name: string): number {
+  return ROLE_NAME_RE.test(name) ? 0 : 1;
+}
+
+const ALL_CANDIDATES = [
+  'DESIGN.md',
+  'docs/DESIGN.md',
+  ...CSS_CANDIDATES,
+  ...TS_CANDIDATES,
+  ...DART_CANDIDATES,
+];
+
+/** Keyed by project root; reused while every candidate's mtime is unchanged. */
+const establishedMemo = new Map<
+  string,
+  { signature: string; result: EstablishedDesignSystem | undefined }
+>();
+
+/**
+ * The project's own design system at the conventional token paths, or
+ * undefined when there is none worth calling a system. Read-only: unlike
+ * `design capture`, nothing is persisted. Runs on every UI turn, so the parse
+ * is reused until a candidate file changes.
+ */
+export async function detectEstablishedDesignSystem(
+  projectRoot: string | undefined,
+): Promise<EstablishedDesignSystem | undefined> {
+  if (!projectRoot) return undefined;
+  const stamps = await Promise.all(
+    ALL_CANDIDATES.map((rel) =>
+      fs.stat(path.join(projectRoot, rel)).then(
+        (s) => `${rel}:${s.mtimeMs}:${s.size}`,
+        () => '',
+      ),
+    ),
+  );
+  const signature = stamps.filter(Boolean).join('|');
+  const cached = establishedMemo.get(projectRoot);
+  if (cached && cached.signature === signature) return cached.result;
+
+  let result: EstablishedDesignSystem | undefined;
+  if (signature) {
+    const captured = await captureProjectTokens(projectRoot).catch(() => undefined);
+    const names = new Set<string>();
+    for (const theme of [captured?.tokens.light, captured?.tokens.dark]) {
+      for (const [name, value] of Object.entries(theme ?? {})) {
+        if (classifyTokenValue(value) === 'color') names.add(name);
+      }
+    }
+    if (captured && names.size >= ESTABLISHED_MIN_COLORS) {
+      result = {
+        stack: captured.stack,
+        files: captured.files,
+        tokens: captured.tokens,
+        colorNames: [...names].sort((a, b) => roleRank(a) - roleRank(b)),
+      };
+    }
+  }
+  establishedMemo.set(projectRoot, { signature, result });
+  return result;
 }

@@ -34,6 +34,8 @@ import type {
 } from '../types/design-kit.js';
 import { isDesignStack } from '../types/design-kit.js';
 import type { Request } from '../types/provider.js';
+import { detectEstablishedDesignSystem, type EstablishedDesignSystem } from './design-capture.js';
+import { classifyTokenValue } from './design-color.js';
 import { ensureDesignDeal, renderDesignDeal } from './design-deal.js';
 import { getDesignKitLoader } from './design-kit-loader.js';
 import {
@@ -53,6 +55,17 @@ const META_KEY = 'designStudio';
  * transport bookkeeping, not design state.
  */
 const UNPINNED_NOTICE_KEY = 'designStudioUnpinnedNotice';
+
+/**
+ * Consecutive user turns without a design signal. Kept beside the state for
+ * the same reason as the notice flag. After `IDLE_TURNS_BEFORE_SLEEP` of them
+ * the per-turn block stops riding every request; the next signal wakes it.
+ */
+const IDLE_TURNS_KEY = 'designStudioIdleTurns';
+const IDLE_TURNS_BEFORE_SLEEP = 3;
+
+/** Tools whose use is itself a design signal. */
+const DESIGN_TOOLS = new Set(['design', 'design_reference']);
 
 export function getDesignState(ctx: {
   meta: Record<string, unknown>;
@@ -234,7 +247,22 @@ export function makeDesignDetectUserInputMiddleware(): Middleware<UserInputPaylo
     owner: 'core',
     async handler(payload, next) {
       const hit = detectFrontendIntent(payload.text);
-      if (hit) activateDesign(payload.ctx, hit.signals, hit.stack);
+      if (hit) {
+        activateDesign(payload.ctx, hit.signals, hit.stack);
+        payload.ctx.meta[IDLE_TURNS_KEY] = 0;
+      } else {
+        // A session that moved on from UI work stops paying for the block on
+        // every request. The pinned kit, overrides and signals stay.
+        const state = getDesignState(payload.ctx);
+        if (state?.active) {
+          const idle = Number(payload.ctx.meta[IDLE_TURNS_KEY] ?? 0) + 1;
+          payload.ctx.meta[IDLE_TURNS_KEY] = idle;
+          if (idle >= IDLE_TURNS_BEFORE_SLEEP) {
+            state.active = false;
+            payload.ctx.meta[IDLE_TURNS_KEY] = 0;
+          }
+        }
+      }
       return next(payload);
     },
   };
@@ -251,7 +279,13 @@ export function makeDesignDetectToolCallMiddleware(): Middleware<ToolCallPipelin
         const input = payload.toolUse.input as { path?: unknown } | undefined;
         const p = typeof input?.path === 'string' ? input.path : '';
         const hit = detectFrontendFile(p, payload.ctx.projectRoot);
-        if (hit) activateDesign(payload.ctx, [`file:${p}`], hit.stack);
+        if (hit) {
+          activateDesign(payload.ctx, [`file:${p}`], hit.stack);
+          payload.ctx.meta[IDLE_TURNS_KEY] = 0;
+        }
+      } else if (name && DESIGN_TOOLS.has(name)) {
+        activateDesign(payload.ctx, [`tool:${name}`]);
+        payload.ctx.meta[IDLE_TURNS_KEY] = 0;
       }
       return next(payload);
     },
@@ -293,12 +327,19 @@ export function makeDesignVerifyToolCallMiddleware(): Middleware<ToolCallPipelin
           tokens = applyTokenOverrides(rawTokens, persisted?.overrides ?? state.overrides);
           basis = `kit "${state.activeKit}"`;
         } else {
-          // No kit pinned — fall back to the project's OWN captured tokens
-          // (`design capture`). Without those either, this write goes out
+          // No kit pinned — fall back to the project's OWN tokens: a
+          // `design capture` snapshot, else the system it declares at a
+          // conventional path. Without either, this write goes out
           // unchecked; returning silently is the dangerous shape: zero
           // findings reads exactly like a clean pass. Say it once per session.
           const captured = await loadCapturedTokens(ctx.projectRoot).catch(() => undefined);
-          if (!captured) {
+          const established = captured
+            ? undefined
+            : await detectEstablishedDesignSystem(ctx.projectRoot).catch(() => undefined);
+          if (established) {
+            tokens = established.tokens;
+            basis = `project tokens in ${established.files.join(', ')}`;
+          } else if (!captured) {
             if (!out.ctx.meta[UNPINNED_NOTICE_KEY]) {
               out.ctx.meta[UNPINNED_NOTICE_KEY] = true;
               out.result.content +=
@@ -309,9 +350,10 @@ export function makeDesignVerifyToolCallMiddleware(): Middleware<ToolCallPipelin
                 'established system merely to obtain a scanner score.';
             }
             return out;
+          } else {
+            tokens = captured.tokens;
+            basis = 'captured project tokens';
           }
-          tokens = captured.tokens;
-          basis = 'captured project tokens';
         }
 
         const fs = await import('node:fs/promises');
@@ -372,6 +414,57 @@ const CRAFT_GUIDANCE = [
     'exercise keyboard and loading/empty/error/overflow states. Fix the highest-impact problems ' +
     'and recheck. Report observed evidence and unverified states; a source scan cannot certify visual quality.',
 ].join('\n');
+
+/**
+ * The project's own system: a `design capture` snapshot (an explicit choice,
+ * so it wins), else what it declares at a conventional path.
+ */
+async function projectDesignSystem(
+  projectRoot: string | undefined,
+): Promise<EstablishedDesignSystem | undefined> {
+  if (!projectRoot) return undefined;
+  const captured = await loadCapturedTokens(projectRoot).catch(() => undefined);
+  if (captured) {
+    const names = new Set<string>();
+    for (const theme of [captured.tokens.light, captured.tokens.dark]) {
+      for (const [name, value] of Object.entries(theme ?? {})) {
+        if (classifyTokenValue(value) === 'color') names.add(name);
+      }
+    }
+    return {
+      stack:
+        captured.stack === 'react-native' || captured.stack === 'flutter' ? captured.stack : 'web',
+      files: captured.files.length > 0 ? captured.files : ['.design/captured-tokens.json'],
+      tokens: captured.tokens,
+      colorNames: [...names],
+    };
+  }
+  return detectEstablishedDesignSystem(projectRoot).catch(() => undefined);
+}
+
+/** The no-kit block for a project that already has its own token system. */
+function renderEstablishedSystem(
+  system: EstablishedDesignSystem,
+  stack: DesignStack | undefined,
+): string {
+  const shown = system.colorNames.slice(0, 16);
+  const more =
+    system.colorNames.length > shown.length
+      ? `, … (${system.colorNames.length - shown.length} more)`
+      : '';
+  return [
+    `## Design Studio — UI work detected${stack ? ` (detected stack: ${stack})` : ''}`,
+    `This project already has a design system: ${system.files.join(', ')} — ` +
+      `${system.colorNames.length} color tokens (${shown.join(', ')}${more}).`,
+    'Extend it: use these tokens and the components that already consume them; read the ' +
+      'source file before adding a value. Do not pin a kit, add a parallel palette or restyle ' +
+      'unrelated screens. Only if the user asks for a new visual direction, offer `design deal`.',
+    'Frontend writes are checked against these tokens. Add a missing role to the source ' +
+      'file rather than hardcoding a value; `design capture` snapshots a token source kept elsewhere.',
+    '',
+    BASELINE,
+  ].join('\n');
+}
 
 /** First `limit` characters of a project file as a titled block; '' when absent. */
 async function readExcerpt(
@@ -437,6 +530,7 @@ export function makeDesignStudioRequestMiddleware(deps: {
       const state = getDesignState(ctx);
       if (!state?.active) return next(req);
 
+      const established = state.activeKit ? undefined : await projectDesignSystem(ctx.projectRoot);
       let text: string;
       if (state.activeKit) {
         const ov =
@@ -450,6 +544,10 @@ export function makeDesignStudioRequestMiddleware(deps: {
           `Adhere strictly to its tokens, components, and patterns. Keep light/dark + ` +
           `responsive + WCAG AA. Re-load the full spec with \`design use ${state.activeKit}\` if unsure.` +
           `${ov}`;
+      } else if (established) {
+        // The project declares its own system: dealing kits to it invites the
+        // redesign nobody asked for. Point at the system instead.
+        text = renderEstablishedSystem(established, state.stack);
       } else {
         // Shown the whole catalogue, models converge on the same few kits; a
         // seeded deal of three (recent choices left out) replaces the menu once
@@ -529,10 +627,16 @@ export function installDesignStudioMiddleware(deps: {
   // simply leaves Design Studio idle until detection or an explicit pick.
   void loadActiveKit(deps.ctx.projectRoot)
     .then((persisted) => {
-      if (persisted && !getDesignState(deps.ctx)?.activeKit) {
+      const current = getDesignState(deps.ctx);
+      if (persisted && !current?.activeKit) {
         const stack =
           persisted.stack && isDesignStack(persisted.stack) ? persisted.stack : undefined;
+        const wasActive = current?.active ?? false;
         setActiveKit(deps.ctx, persisted.kit, stack, persisted.overrides);
+        // Restoring the pin is not UI work: the reminder waits for a signal,
+        // so a backend session in a designed project pays nothing per turn.
+        const restored = getDesignState(deps.ctx);
+        if (restored) restored.active = wasActive;
       }
     })
     .catch(() => {
