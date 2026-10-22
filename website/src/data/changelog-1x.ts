@@ -22,7 +22,7 @@ export const changelog1x: ChangelogEntry[] = [
       'Docker automation gains environment profiles and a live environment panel in WebUI and SimpleUI, with independent verification checks and reviewed draft PR publication',
       'Provider SDKs, ACP SDK 2, Ink 8, Electron 45, Electron Builder 26.18 and all thirteen Tree-sitter language grammars are refreshed',
       'WebUI session swaps and tab switching stay reliable, the dock stays below the tab strip, and unrelated request errors no longer end runs in SimpleUI or VibeUI',
-      'Configuration and lock writers serialize concurrent updates, unreadable config is preserved, and CLI argument validation, credential redaction and process cleanup are tightened',
+      'Configuration and lock writers serialize concurrent updates, unreadable config is preserved, and CLI validation, credential redaction and process cleanup are tightened; PowerShell process guards protect Linux and macOS sessions too',
     ],
   },
   {

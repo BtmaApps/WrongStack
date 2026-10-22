@@ -132,6 +132,11 @@ export function stripPowerShellLauncherHead(normalized: string): string | null {
 export function isKillRelatedCommand(cmd: string): boolean {
   const normalized = cmd.toLowerCase().replace(/\s+/g, ' ').trim();
 
+  // pwsh runs on POSIX too. Detect its process cmdlets before filtering
+  // native Windows commands, including an inspectable launcher payload.
+  const powerShellCommand = stripPowerShellLauncherHead(normalized) ?? normalized;
+  if (/^(stop-process|kill|stop|spps)\s/i.test(powerShellCommand)) return true;
+
   // P3 #25 (before-release.md): filter by platform so each platform only
   // checks the kill commands it can actually encounter. On Windows, POSIX
   // kill/pkill/killall are dead code (they don't exist on cmd.exe/pwsh); on
@@ -142,9 +147,6 @@ export function isKillRelatedCommand(cmd: string): boolean {
     if (/^taskkill\s/i.test(normalized)) return true;
     // Windows tskill
     if (/^tskill\s/i.test(normalized)) return true;
-    // PowerShell Stop-Process and its aliases (kill, stop, spps — the
-    // built-in alias; missing it let `spps -Id <pid>` through)
-    if (/^(stop-process|kill|stop|spps)\s/i.test(normalized)) return true;
     // WMIC process termination: wmic process where ... delete
     if (/^wmic\s+process\s/i.test(normalized) && /\bdelete\b/i.test(normalized)) return true;
     // Scripts named kill*, terminate*, stop* .ps1, .bat, .cmd, .sh (with or without args)

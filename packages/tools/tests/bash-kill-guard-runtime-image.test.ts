@@ -27,7 +27,7 @@ vi.mock('../src/process-registry-persistent.js', () => ({
 
 const realExecPath = process.execPath;
 
-async function loadGuard(platform: 'linux' | 'win32') {
+async function loadGuard(platform: 'linux' | 'darwin' | 'win32') {
   vi.resetModules();
   vi.doMock('node:os', async (importOriginal) => {
     const actual = await importOriginal<typeof import('node:os')>();
@@ -56,6 +56,42 @@ afterEach(() => {
 });
 
 describe('bash-kill-guard — protects the running runtime image (empty registry)', () => {
+  it.each(['linux', 'darwin'] as const)(
+    'protects PowerShell targets on %s without launching a kill command',
+    async (platform) => {
+      const { checkAndBlockKillCommand } = await loadGuard(platform);
+      for (const command of [
+        `Stop-Process -Id ${process.pid}`,
+        `Stop-Process -Id:${process.ppid} -Force`,
+        `spps ${process.pid} -Force`,
+        `kill -Id ${process.pid}`,
+        `pwsh -NoProfile -Command "Stop-Process -Id ${process.pid}"`,
+        `pwsh -Command "kill ${process.pid}"`,
+        'Stop-Process -Name bun',
+        'spps -Name bun',
+        'pwsh -Command "Stop-Process -Name bun"',
+      ]) {
+        expect((await checkAndBlockKillCommand(command)).blocked, command).toBe(true);
+      }
+    },
+  );
+
+  it.each(['linux', 'darwin'] as const)(
+    'preserves unrelated targets and POSIX protection on %s',
+    async (platform) => {
+      const { checkAndBlockKillCommand } = await loadGuard(platform);
+      expect((await checkAndBlockKillCommand(`kill -9 ${process.pid}`)).blocked).toBe(true);
+      for (const command of [
+        'Stop-Process -Id 2147483646',
+        'Stop-Process -Name unrelated-test-image',
+        'kill -9 2147483646',
+        'Write-Output hello',
+      ]) {
+        expect((await checkAndBlockKillCommand(command)).blocked, command).toBe(false);
+      }
+    },
+  );
+
   it.each([
     'taskkill /F /IM bun.exe',
     'taskkill /F /IM bun',

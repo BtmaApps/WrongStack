@@ -55,6 +55,7 @@ import {
   SCRIPT_KILL_FALLBACK_RE,
   SCRIPT_KILL_RE_POSIX,
   splitShellSequence,
+  stripPowerShellLauncherHead,
   unwrapKillCommandHead,
 } from './bash-kill-detect.js';
 import { parseWindowsKillCommand } from './bash-kill-parse-windows.js';
@@ -150,10 +151,14 @@ function namePatternMayHitProtected(kill: KillCommand, entries: PersistentProces
 export function parseKillCommand(command: string): KillCommand | null {
   const normalized = command.replace(/\s+/g, ' ').trim();
 
-  // P3 #25 (before-release.md): skip platform-specific commands that cannot
-  // run here. Windows still accepts the common POSIX `kill` forms because
-  // Git Bash/WSL can invoke them; only pkill/killall/pgrep remain POSIX-only.
-  if (isWin) {
+  // PowerShell cmdlets and launcher payloads run on POSIX as well. Keep
+  // native POSIX kill syntax on its existing path; -Id/-Name spellings
+  // unambiguously select PowerShell rather than a POSIX signal option.
+  const powerShellCommand = stripPowerShellLauncherHead(normalized);
+  const powerShellKill = /^(?:stop-process|spps)\s|^kill\s+-(?:id|pid|name|nam|na)(?=[:\s])/i.test(
+    normalized,
+  );
+  if (isWin || powerShellCommand !== null || powerShellKill) {
     return parseWindowsKillCommand(command, normalized);
   }
 

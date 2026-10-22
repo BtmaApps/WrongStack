@@ -28,6 +28,7 @@ independent verification, with refreshed provider, terminal and Desktop runtimes
 - **Configuration and concurrent writers.** UTF-8 BOM configuration files are accepted, unreadable configuration is reported instead of overwritten, and project registration, configuration and lock writers serialize concurrent updates. Stale-lock recovery preserves a fresh replacement lock.
 - **CLI and transport boundaries.** Value-less numeric flags, bare authentication flags and blank project roots are rejected. ACP consumes a final stdio request without a trailing newline and remembers persistent REPL permission answers.
 - **Security and lifecycle.** Cookie and URL-userinfo credentials are redacted, YOLO shell scanning is hardened, Kanban paths and tool arguments are validated, and HQ login failures count before verification. Oversized timers, orphaned hook processes, closed-client reconnects and requests waiting on disconnected project servers are bounded or terminated.
+- **PowerShell process protection.** `Stop-Process`, its aliases and inspectable `pwsh` launcher commands protect WrongStack's own process and parent on Linux and macOS as well as Windows.
 
 ## [1.1.11] — 2026-10-20
 
