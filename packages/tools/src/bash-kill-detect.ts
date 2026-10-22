@@ -52,10 +52,14 @@ export interface KillCheckResult {
  * `true; kill <pid>` is not kill-shaped as a whole line.
  */
 function payloadRunsKill(payload: string): boolean {
-  return splitShellSequence(payload).some(
-    (segment) =>
-      isKillRelatedCommand(segment) || isKillRelatedCommand(unwrapKillCommandHead(segment)),
-  );
+  return splitShellSequence(payload).some((segment) => {
+    const body = evalBodyReading(segment);
+    return (
+      isKillRelatedCommand(segment) ||
+      isKillRelatedCommand(unwrapKillCommandHead(segment)) ||
+      (body !== null && isKillRelatedCommand(body))
+    );
+  });
 }
 
 /**
@@ -64,13 +68,40 @@ function payloadRunsKill(payload: string): boolean {
  * `${N}`, `$@` and `$*` are expanded; anything else stays as written.
  */
 function expandPositional(payload: string, args: readonly string[]): string {
+  const all = args.slice(1).join(' ');
+  const nth = (braced: string | undefined, bare: string | undefined) =>
+    args[Number(braced ?? bare)] ?? '';
+  // A double-quoted parameter (`"$@"`, `"$1"`) becomes its bare value; the
+  // rest of the payload keeps its own quoting.
   return payload
-    .replace(/\$[@*]|\$\{[@*]\}/g, () => args.slice(1).join(' '))
-    .replace(
-      /\$\{(\d+)\}|\$(\d)/g,
-      (_m, braced: string | undefined, bare: string | undefined) =>
-        args[Number(braced ?? bare)] ?? '',
-    );
+    .replace(/"\$(?:[@*]|\{[@*]\})"/g, () => all)
+    .replace(/"\$(?:\{(\d+)\}|(\d))"/g, (_m, braced, bare) => nth(braced, bare))
+    .replace(/\$[@*]|\$\{[@*]\}/g, () => all)
+    .replace(/\$\{(\d+)\}|\$(\d)/g, (_m, braced, bare) => nth(braced, bare));
+}
+
+/**
+ * The `-c` payload with its positional parameters filled in from the words
+ * after it, or null when nothing changes. Checked IN ADDITION to the payload
+ * `extractKillCommand` returns: replacing it lost a nested `sh -c '<kill>'`
+ * whose quotes the re-reading removed.
+ */
+export function positionalPayloadReading(command: string): string | null {
+  const words = splitShellWords(command.replace(/\s+/g, ' ').trim());
+  const flag = words.findIndex((w, k) => k > 0 && /^-[a-zA-Z]*c[a-zA-Z]*$/.test(w));
+  const payloadWord = flag === -1 ? undefined : words[flag + 1];
+  if (payloadWord === undefined) return null;
+  const inner = unquoteShellWord(payloadWord).replace(/\s+/g, ' ').trim();
+  const args = words.slice(flag + 2).map(unquoteShellWord);
+  const expanded = expandPositional(inner, args).replace(/\s+/g, ' ').trim();
+  return expanded !== inner ? expanded : null;
+}
+
+/** `eval` runs its arguments joined as shell code: those words, unquoted. Null otherwise. */
+export function evalBodyReading(command: string): string | null {
+  const words = splitShellWords(command.replace(/\s+/g, ' ').trim());
+  if (words.length < 2 || (words[0] ?? '').replace(/^.*[\\/]/, '') !== 'eval') return null;
+  return words.slice(1).map(unquoteShellWord).join(' ');
 }
 
 export function extractKillCommand(command: string): string | null {
@@ -86,12 +117,8 @@ export function extractKillCommand(command: string): string | null {
   const payloadWord = flag === -1 ? undefined : words[flag + 1];
   if (payloadWord !== undefined && /['"\\$]/.test(payloadWord)) {
     const inner = unquoteShellWord(payloadWord).replace(/\s+/g, ' ').trim();
-    // The words after the payload are its $0, $1 …
-    const args = words.slice(flag + 2).map(unquoteShellWord);
-    // Re-read word by word: `"$@"` and `"$1"` leave quotes around what they expand to.
-    const expanded = splitShellWords(expandPositional(inner, args)).map(unquoteShellWord).join(' ');
-    if (expanded !== inner && payloadRunsKill(expanded)) return expanded;
-    if (payloadRunsKill(inner)) return inner;
+    // The payload as written; `positionalPayloadReading` adds its expansion.
+    if (payloadRunsKill(inner) || positionalPayloadReading(normalized) !== null) return inner;
   }
 
   // Pattern: <any executable path or name> -c "kill ..." or 'kill ...'

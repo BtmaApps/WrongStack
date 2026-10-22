@@ -186,6 +186,20 @@ describe('bash-kill-guard — unparsed POSIX kill operands', () => {
     expect(result.reason).toContain(String(PROTECTED_PID));
   });
 
+  // The expanded payload is an extra reading: replacing the payload with it
+  // unquoted a nested `sh -c '<kill>'` into a bare word that hid the kill.
+  it.each([
+    `sh -c "sh -c 'kill -9 ${PROTECTED_PID}' \\$1" _ x`,
+    `sh -c "sh -c 'kill -9 ${PROTECTED_PID}'; echo \\$1" _ x`,
+    `bash -c "eval 'kill -9 ${PROTECTED_PID}' \\$0" y`,
+    `eval 'kill -9 ${PROTECTED_PID}'`,
+  ])('blocks %j (payload kept beside its expansion; eval bodies)', async (command) => {
+    const { checkAndBlockKillCommand } = await loadGuard();
+    const result = await checkAndBlockKillCommand(command);
+    expect(result.blocked).toBe(true);
+    expect(result.reason).toContain(String(PROTECTED_PID));
+  });
+
   it('refuses rather than allows a kill left unchecked when the work runs out', async () => {
     const { checkAndBlockKillCommand } = await loadGuard();
     const kill = `sh -c '${'true; '.repeat(300)}kill -9 ${PROTECTED_PID}'`;

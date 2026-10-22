@@ -47,12 +47,14 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { compileUserRegex } from './_regex.js';
 import {
+  evalBodyReading,
   extractKillCommand,
   isKillRelatedCommand,
   type KillCheckResult,
   type KillCommand,
   launcherSkipReadings,
   parsePosixKillTargets,
+  positionalPayloadReading,
   SCRIPT_KILL_FALLBACK_RE,
   SCRIPT_KILL_RE_POSIX,
   splitShellSequence,
@@ -451,6 +453,10 @@ function alternativeReadings(command: string): string[] {
   for (const line of [normalized, unwrapped]) {
     const payload = extractKillCommand(line);
     if (payload) readings.add(payload);
+    const expanded = positionalPayloadReading(line);
+    if (expanded) readings.add(expanded);
+    const evalBody = evalBodyReading(line);
+    if (evalBody) readings.add(evalBody);
     for (const reading of launcherSkipReadings(line)) readings.add(reading);
   }
   readings.delete(normalized);
