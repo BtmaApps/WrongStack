@@ -151,6 +151,9 @@ export class MCPTaskRecovery {
       owner && metadata?.protocolVersion === MODERN_PROTOCOL_VERSION && supportsTasks(metadata)
         ? await taskBinding(client.opts)
         : undefined;
+    if (this.closed) throw new Error('MCP task recovery host is closed');
+    if (owner && !sameTaskOwner(owner, taskOwner(context)))
+      throw new Error('MCP task owner changed');
     if (!owner || !binding)
       return client.callTool(tool.name, input, { requester: context, signal });
     const token = randomUUID(),

@@ -52,7 +52,7 @@ export async function readBodyCapped(
       if (!value) continue;
       total += value.byteLength;
       if (total > safeCap) {
-        await reader.cancel().catch(() => undefined);
+        void reader.cancel().catch(() => undefined);
         throw new ToolError({
           message: `MCP response body exceeded ${safeCap} bytes — refusing to buffer`,
           code: 'TOOL_EXECUTION_FAILED',

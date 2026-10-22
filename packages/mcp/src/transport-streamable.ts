@@ -1,7 +1,5 @@
-import { assertSupportedServerProtocolVersion, MCP_CONSTANTS } from './constants.js';
 import type { MCPRequestOptions } from './client-types.js';
-import { modernRequest } from './task-request.js';
-import { supportsTasks, taskCapabilities } from './task-protocol.js';
+import { assertSupportedServerProtocolVersion, MCP_CONSTANTS } from './constants.js';
 import type { JsonRpcResponse, ToolCallResult } from './contracts.js';
 import { modernRequestHeaders, toolHeaderBindings } from './modern-http-headers.js';
 import {
@@ -17,6 +15,8 @@ import {
   resourceUpdatedUri,
 } from './protocol.js';
 import { MAX_MCP_HTTP_BODY_BYTES, readBodyCapped } from './read-body.js';
+import { supportsTasks, taskCapabilities } from './task-protocol.js';
+import { modernRequest } from './task-request.js';
 import { listAllTools, toToolCallResult } from './tool-schema.js';
 import {
   BaseHTTPTransport,
@@ -141,11 +141,11 @@ export class StreamableHTTPTransport extends BaseHTTPTransport {
   }
 
   private sessionHeaders(): Record<string, string> {
-    return {
-      Accept: 'application/json, text/event-stream',
-      ...(this.sessionId ? { 'Mcp-Session-Id': this.sessionId } : {}),
-      ...this.headers,
-    };
+    const headers = new Headers(this.headers);
+    headers.set('Accept', 'application/json, text/event-stream');
+    headers.delete('Mcp-Session-Id');
+    if (this.sessionId) headers.set('Mcp-Session-Id', this.sessionId);
+    return Object.fromEntries(headers.entries());
   }
 
   private handleNotification(method: string, params?: unknown): void {
@@ -216,12 +216,10 @@ export class StreamableHTTPTransport extends BaseHTTPTransport {
         ? this.tools.find((tool) => tool.name === (params as { name?: unknown } | undefined)?.name)
             ?.inputSchema
         : undefined;
-    const headers = {
-      'Content-Type': 'application/json',
-      ...this.sessionHeaders(),
-    };
-    if (this.protocolVersion !== MODERN_PROTOCOL_VERSION) return headers;
-    const canonical = new Headers(headers);
+    const canonical = new Headers(this.sessionHeaders());
+    canonical.set('Content-Type', 'application/json');
+    if (this.protocolVersion !== MODERN_PROTOCOL_VERSION)
+      return Object.fromEntries(canonical.entries());
     for (const name of [...canonical.keys()]) {
       if (/^mcp-(?:protocol-version|method|name|session-id)$|^mcp-param-/i.test(name))
         canonical.delete(name);
@@ -297,11 +295,7 @@ export class StreamableHTTPTransport extends BaseHTTPTransport {
         const initializeId = this.genId();
         const initFetchOpts: RequestInit = {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json, text/event-stream',
-            ...this.headers,
-          },
+          headers: this.requestHeaders('initialize', undefined),
           body: JSON.stringify({
             jsonrpc: '2.0',
             id: initializeId,
