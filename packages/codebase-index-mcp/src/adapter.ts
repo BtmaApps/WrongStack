@@ -32,6 +32,7 @@ import { deadCodeFixTool, deadCodeScanTool } from '@wrongstack/tools/dead-code';
 import {
   type CodebaseIndexMcpPolicyOptions,
   type CodebaseIndexMcpToolName,
+  codebaseIndexMcpWriteVariant,
   selectCodebaseIndexMcpTools,
 } from './policy.js';
 import { SERVER_INFO } from './version.js';
@@ -326,6 +327,10 @@ export function createCodebaseIndexMcpToolHost(
       const toolName = name as CodebaseIndexMcpToolName;
       const validationError = validateArgs(toolName, args);
       if (validationError) return { content: validationError, isError: true };
+      if (opts.writable !== true) {
+        const writeVariant = codebaseIndexMcpWriteVariant(toolName, args);
+        if (writeVariant) return { content: writeVariant, isError: true };
+      }
       const signal = callOptions?.signal ?? new AbortController().signal;
 
       try {

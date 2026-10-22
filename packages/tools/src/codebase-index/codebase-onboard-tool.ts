@@ -9,10 +9,10 @@
  */
 
 import { existsSync } from 'node:fs';
-import * as fsPromises from 'node:fs/promises';
+
 import * as path from 'node:path';
 import type { Tool } from '@wrongstack/core/types';
-import { ATLAS_DIR } from './atlas-projection.js';
+import { ATLAS_DIR, ensureAtlasDir, writeAtlasFile } from './atlas-projection.js';
 import {
   discoverEntryPoints,
   type ExecutionFlow,
@@ -351,12 +351,10 @@ export async function writeOnboardingAtlas(
   opts: CodebaseOnboardInput = {},
 ): Promise<{ path: string; tour: Omit<CodebaseOnboardOutput, 'status'> }> {
   const tour = buildArchitecturalTour(store, projectRoot, opts);
-  const atlasDir = path.join(projectRoot, ATLAS_DIR);
-  await fsPromises.mkdir(atlasDir, { recursive: true });
-  const targetPath = path.join(atlasDir, ATLAS_ONBOARDING);
-  await fsPromises.writeFile(targetPath, tour.markdown, 'utf8');
+  const atlasDir = await ensureAtlasDir(projectRoot);
+  await writeAtlasFile(atlasDir, ATLAS_ONBOARDING, tour.markdown);
   return {
-    path: posixIndexPath(path.relative(projectRoot, targetPath)),
+    path: posixIndexPath(path.join(ATLAS_DIR, ATLAS_ONBOARDING)),
     tour,
   };
 }

@@ -349,11 +349,42 @@ export interface WrittenAtlas {
   packageCount: number;
 }
 
+/**
+ * `<projectRoot>/.wrongstack/atlas/`, created, and proven to be a real
+ * directory inside the project. Both components can arrive with the
+ * repository: a symlink at either sent every atlas write outside it.
+ */
+export async function ensureAtlasDir(projectRoot: string): Promise<string> {
+  let dir = await fs.realpath(projectRoot);
+  for (const part of ATLAS_DIR.split(path.sep)) {
+    dir = path.join(dir, part);
+    await fs.mkdir(dir).catch((error: NodeJS.ErrnoException) => {
+      if (error.code !== 'EEXIST') throw error;
+    });
+    const stat = await fs.lstat(dir);
+    if (stat.isSymbolicLink() || !stat.isDirectory()) {
+      throw new Error(
+        `Refusing to write the codebase atlas: ${posixIndexPath(ATLAS_DIR)} must be a real directory inside the project.`,
+      );
+    }
+  }
+  return dir;
+}
+
+/** Write one file of `ensureAtlasDir`'s directory; an existing symlink there is refused. */
+export async function writeAtlasFile(dir: string, name: string, body: string): Promise<void> {
+  const target = path.join(dir, name);
+  const existing = await fs.lstat(target).catch(() => undefined);
+  if (existing?.isSymbolicLink()) {
+    throw new Error(`Refusing to write the codebase atlas through the symlink ${name}.`);
+  }
+  await fs.writeFile(target, body, 'utf8');
+}
+
 /** Write the projection into `<projectRoot>/.wrongstack/atlas/`. */
 export async function writeAtlas(store: IndexStore, projectRoot: string): Promise<WrittenAtlas> {
   const projection = buildAtlas(store, projectRoot);
-  const dir = path.join(projectRoot, ATLAS_DIR);
-  await fs.mkdir(dir, { recursive: true });
+  const dir = await ensureAtlasDir(projectRoot);
 
   const written: Array<[string, string]> = [
     [ATLAS_JSON, stableJson(projection.document)],
@@ -361,7 +392,7 @@ export async function writeAtlas(store: IndexStore, projectRoot: string): Promis
     [ATLAS_MARKDOWN, projection.markdown],
   ];
   for (const [name, body] of written) {
-    await fs.writeFile(path.join(dir, name), body, 'utf8');
+    await writeAtlasFile(dir, name, body);
   }
 
   return {

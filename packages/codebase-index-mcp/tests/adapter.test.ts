@@ -478,3 +478,43 @@ function skeletonOutput(dir: string, skeleton: string) {
     maxChars: 60_000,
   };
 }
+
+describe('read-only server refuses the write variants of read tools', () => {
+  const writeCalls: Array<[string, Record<string, unknown>]> = [
+    ['codebase_atlas', { mode: 'write' }],
+    ['codebase_flow_trace', { persist: true }],
+    ['codebase_diff_impact', { persist: true }],
+  ];
+
+  it.each(writeCalls)('%s %j without --writable', async (name, args) => {
+    const executeTool = vi.fn();
+    const host = createCodebaseIndexMcpToolHost('C:/project', { dependencies: { executeTool } });
+    await expect(host.callTool(name, args)).resolves.toMatchObject({
+      content: expect.stringContaining('--writable'),
+      isError: true,
+    });
+    expect(executeTool).not.toHaveBeenCalled();
+  });
+
+  it.each(writeCalls)('%s %j runs with --writable', async (name, args) => {
+    const executeTool = vi.fn().mockResolvedValue({ ok: true });
+    const host = createCodebaseIndexMcpToolHost('C:/project', {
+      writable: true,
+      dependencies: { executeTool },
+    });
+    await expect(host.callTool(name, args)).resolves.toMatchObject({ isError: false });
+    expect(executeTool).toHaveBeenCalledTimes(1);
+  });
+
+  it('still serves the read variants', async () => {
+    const executeTool = vi.fn().mockResolvedValue({ ok: true });
+    const host = createCodebaseIndexMcpToolHost('C:/project', { dependencies: { executeTool } });
+    for (const [name, args] of [
+      ['codebase_atlas', { mode: 'brief' }],
+      ['codebase_flow_trace', { persist: false }],
+      ['codebase_diff_impact', {}],
+    ] as const) {
+      await expect(host.callTool(name, args)).resolves.toMatchObject({ isError: false });
+    }
+  });
+});

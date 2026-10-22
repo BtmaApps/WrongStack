@@ -11,6 +11,7 @@ import * as path from 'node:path';
 import { promisify } from 'node:util';
 import { type Tool, ToolValidationError } from '@wrongstack/core/types';
 import { type InvariantViolation, polyglotInvariantEngine } from './ast-invariant-engine.js';
+import { ensureAtlasDir, writeAtlasFile } from './atlas-projection.js';
 import {
   discoverConventionTestFiles,
   type ImpactCallSite,
@@ -102,7 +103,6 @@ export async function writeDiffImpactOverlay(
   projectRoot: string,
   report: CodebaseDiffImpactOutput,
 ): Promise<{ path: string; bytes: number }> {
-  const absPath = path.join(projectRoot, ATLAS_DIFF_OVERLAY_JSON);
   const payload = `${JSON.stringify(
     {
       schema: 1,
@@ -120,8 +120,8 @@ export async function writeDiffImpactOverlay(
     null,
     2,
   )}\n`;
-  await fs.mkdir(path.dirname(absPath), { recursive: true });
-  await fs.writeFile(absPath, payload, 'utf8');
+  const dir = await ensureAtlasDir(projectRoot);
+  await writeAtlasFile(dir, path.basename(ATLAS_DIFF_OVERLAY_JSON), payload);
   return {
     path: ATLAS_DIFF_OVERLAY_JSON,
     bytes: Buffer.byteLength(payload, 'utf8'),
@@ -234,9 +234,15 @@ export function matchSymbolsToDiffHunks<
   return matched;
 }
 
+/**
+ * The repository's own `.git/config` is untrusted: `core.fsmonitor` names a
+ * program git runs on `diff`. Same isolation as core's `GIT_ISOLATION_ARGS`.
+ */
+const GIT_ISOLATION_ARGS = ['-c', 'core.fsmonitor=false'];
+
 async function runGit(cwd: string, args: string[]): Promise<string | null> {
   try {
-    const { stdout } = await execFileAsync('git', args, {
+    const { stdout } = await execFileAsync('git', [...GIT_ISOLATION_ARGS, ...args], {
       cwd,
       maxBuffer: 10 * 1024 * 1024,
       windowsHide: true,
@@ -409,7 +415,12 @@ export const codebaseDiffImpactTool: Tool<CodebaseDiffImpactInput, CodebaseDiffI
         let changeKind: StructuralChangeKind = 'STRUCTURAL';
         if (diffFile.status === 'modified') {
           const [oldSource, newSource] = await Promise.all([
-            runGit(projectRoot, ['show', '--end-of-options', `${baseCommit}:${diffFile.file}`]),
+            runGit(projectRoot, [
+              'show',
+              '--no-textconv',
+              '--end-of-options',
+              `${baseCommit}:${diffFile.file}`,
+            ]),
             fs.readFile(absPath, 'utf8').catch(() => null),
           ]);
           if (oldSource !== null && newSource !== null) {

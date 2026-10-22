@@ -6,6 +6,10 @@
       "lines": 707,
       "relativeImports": 23
     },
+    "packages/core/src/chronicle/project-server-client.ts": {
+      "lines": 705,
+      "relativeImports": 5
+    },
     "packages/core/src/coordination/multi-agent-coordinator.ts": {
       "lines": 712,
       "relativeImports": 15
@@ -17,6 +21,10 @@
     "packages/plugins/src/audit/index.ts": {
       "lines": 715,
       "relativeImports": 0
+    },
+    "packages/tools/src/codebase-index/infra-parser.ts": {
+      "lines": 889,
+      "relativeImports": 2
     },
     "packages/vibeui/src/components/provider-manager.tsx": {
       "lines": 733,
@@ -33,6 +41,10 @@
     "packages/vibeui/src/lib/use-session.ts": {
       "lines": 708,
       "relativeImports": 6
+    },
+    "packages/webui/src/components/codemap-model.ts": {
+      "lines": 1098,
+      "relativeImports": 0
     },
     "packages/webui/src/components/MemoryManager/useMemoryManagerState.ts": {
       "lines": 720,

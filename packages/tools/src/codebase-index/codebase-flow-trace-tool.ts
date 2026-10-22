@@ -9,9 +9,9 @@
  */
 
 import { existsSync } from 'node:fs';
-import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import type { Tool } from '@wrongstack/core/types';
+import { ensureAtlasDir, writeAtlasFile } from './atlas-projection.js';
 import { isTestFilePath } from './codebase-impact-analysis-tool.js';
 import {
   codebaseIndexDirOverride,
@@ -378,14 +378,14 @@ export async function writeExecutionFlowsAtlas(
   projectRoot: string,
   output: CodebaseFlowTraceOutput,
 ): Promise<{ jsonPath: string; markdownPath: string; markdown: string }> {
-  const jsonAbs = path.join(projectRoot, ATLAS_FLOWS_JSON);
-  const mdAbs = path.join(projectRoot, ATLAS_FLOWS_MD);
   const markdown = renderExecutionFlowsMarkdown(output);
-  await fs.mkdir(path.dirname(jsonAbs), { recursive: true });
-  await Promise.all([
-    fs.writeFile(jsonAbs, `${JSON.stringify(output, null, 2)}\n`, 'utf8'),
-    fs.writeFile(mdAbs, markdown, 'utf8'),
-  ]);
+  const dir = await ensureAtlasDir(projectRoot);
+  await writeAtlasFile(
+    dir,
+    path.basename(ATLAS_FLOWS_JSON),
+    `${JSON.stringify(output, null, 2)}\n`,
+  );
+  await writeAtlasFile(dir, path.basename(ATLAS_FLOWS_MD), markdown);
   return {
     jsonPath: ATLAS_FLOWS_JSON,
     markdownPath: ATLAS_FLOWS_MD,

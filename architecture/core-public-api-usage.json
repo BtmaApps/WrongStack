@@ -154,9 +154,9 @@
       "runtimeOrMixed": 12
     },
     "@wrongstack/core/security": {
-      "files": 218,
+      "files": 219,
       "typeOnly": 31,
-      "runtimeOrMixed": 189
+      "runtimeOrMixed": 190
     },
     "@wrongstack/core/session-catalog": {
       "files": 13,
@@ -194,9 +194,9 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1471,
-      "typeOnly": 1296,
-      "runtimeOrMixed": 432
+      "files": 1477,
+      "typeOnly": 1301,
+      "runtimeOrMixed": 434
     },
     "@wrongstack/core/types/limits": {
       "files": 1,
@@ -12506,6 +12506,12 @@
     },
     {
       "specifier": "@wrongstack/core/security",
+      "file": "packages/runtime/tests/local-llm-probe-redaction.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
       "file": "packages/runtime/tests/runtime-100-coverage.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -19538,6 +19544,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/providers/tests/helpers/stream-timeout-overflow.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/providers/tests/local-llm-presets.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -19715,6 +19727,12 @@
       "file": "packages/providers/tests/stream-failure-modes.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/providers/tests/stream-timeout-floors.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -20822,9 +20840,27 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/tools/src/codebase-index/codebase-atlas-tool.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/tools/src/codebase-index/codebase-context-tool.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/tools/src/codebase-index/codebase-diff-impact-tool.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/tools/src/codebase-index/codebase-flow-trace-tool.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -20849,6 +20885,12 @@
       "file": "packages/tools/src/codebase-index/codebase-invariant-check-tool.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/tools/src/codebase-index/codebase-onboard-tool.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
     },
     {
       "specifier": "@wrongstack/core/types",

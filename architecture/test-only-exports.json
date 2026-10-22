@@ -1016,6 +1016,10 @@
       "refusedReasoningEchoField",
       "resetReasoningEchoSupport"
     ],
+    "packages/providers/src/stream-timeout-floors.ts": [
+      "SLOW_BACKEND_HANG_TIMEOUT_MS",
+      "SLOW_BACKEND_HEADERS_TIMEOUT_MS"
+    ],
     "packages/requirement-intake/src/service-helpers.ts": [
       "ANSWER_FIELD_MAPPING",
       "appendItems"
@@ -1760,6 +1764,7 @@
     "packages/webui/src/components/codemap-model.ts": [
       "_clearNormalizedPathCacheForTests",
       "_normalizedPathCacheSizeForTests",
+      "inferGraphCommunities",
       "SMART_CANVAS_EDGE_LIMIT",
       "SMART_CANVAS_NODE_LIMIT"
     ],

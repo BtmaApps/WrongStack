@@ -60,3 +60,16 @@ describe('codebase-diff-impact: baseRef cannot smuggle git options', () => {
     expect(out.changedFiles.length).toBeGreaterThan(0);
   });
 });
+
+describe('codebase-diff-impact: the repository git config cannot run programs', () => {
+  it('ignores core.fsmonitor', async () => {
+    const marker = join(repo, 'fsmonitor-ran.txt');
+    git('config', 'core.fsmonitor', 'echo ran > fsmonitor-ran.txt; false');
+    try {
+      await run({});
+      expect(existsSync(marker)).toBe(false);
+    } finally {
+      git('config', '--unset', 'core.fsmonitor');
+    }
+  });
+});

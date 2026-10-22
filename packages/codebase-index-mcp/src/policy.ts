@@ -41,3 +41,25 @@ export function selectCodebaseIndexMcpTools(
     ? [...CODEBASE_INDEX_READ_TOOLS, ...CODEBASE_INDEX_WRITE_TOOLS]
     : [...CODEBASE_INDEX_READ_TOOLS];
 }
+
+/**
+ * Read tools whose arguments can make them write `.wrongstack/atlas/`. Listing
+ * them as read tools exposed those writes on a server started without
+ * `--writable`; the variant is refused there instead.
+ */
+const READ_TOOL_WRITE_VARIANTS: Partial<
+  Record<CodebaseIndexMcpReadToolName, (args: Record<string, unknown>) => string | null>
+> = {
+  codebase_atlas: (args) => (args['mode'] === 'write' ? 'mode "write"' : null),
+  codebase_flow_trace: (args) => (args['persist'] === true ? '"persist": true' : null),
+  codebase_diff_impact: (args) => (args['persist'] === true ? '"persist": true' : null),
+};
+
+/** Why this call writes and needs `--writable`, or null when it only reads. */
+export function codebaseIndexMcpWriteVariant(
+  name: CodebaseIndexMcpToolName,
+  args: Record<string, unknown>,
+): string | null {
+  const variant = READ_TOOL_WRITE_VARIANTS[name as CodebaseIndexMcpReadToolName]?.(args);
+  return variant ? `${name} ${variant} writes files; start the server with --writable` : null;
+}

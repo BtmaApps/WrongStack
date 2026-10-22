@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "package": "@wrongstack/core",
-  "packageVersion": "1.1.13",
+  "packageVersion": "1.1.14",
   "policy": "Root is compatibility-only; new imports use owned domain subpaths.",
   "subpaths": [
     {
@@ -1624,14 +1624,14 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "focused repository or runtime subsystem",
       "sourceFiles": 51,
-      "sourceLines": 12678
+      "sourceLines": 12684
     },
     {
       "directory": "coordination",
       "classification": "coordination implementation",
       "intendedOwner": "Core subpath until physical extraction is justified",
       "sourceFiles": 243,
-      "sourceLines": 62528
+      "sourceLines": 62534
     },
     {
       "directory": "core",
@@ -1778,7 +1778,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime security subsystem",
       "sourceFiles": 40,
-      "sourceLines": 11036
+      "sourceLines": 11043
     },
     {
       "directory": "session-catalog",
@@ -1841,7 +1841,7 @@
       "classification": "kernel primitive",
       "intendedOwner": "split dependency-free primitives from concrete helpers",
       "sourceFiles": 92,
-      "sourceLines": 15490
+      "sourceLines": 15509
     },
     {
       "directory": "vcs",

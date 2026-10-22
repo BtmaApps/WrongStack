@@ -1,4 +1,4 @@
-import { DefaultSecretScrubber } from '@wrongstack/core';
+import { DefaultSecretScrubber } from '@wrongstack/core/security';
 import { describe, expect, it } from 'vitest';
 import { probeLocalLlm } from '../src/local-llm-probe.js';
 
