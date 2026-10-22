@@ -100,6 +100,44 @@ describe('bash-kill-guard — unparsed POSIX kill operands', () => {
     const { checkAndBlockKillCommand } = await loadGuard();
     expect((await checkAndBlockKillCommand(command)).blocked).toBe(true);
   });
+
+  // The reason must name the protected PID: an earlier version blocked some of
+  // these for a wrong reason (reading `-9` as process group 9).
+  it.each([
+    `kill -9 4"24242"`,
+    `kill -9 "424"242`,
+    `kill -9 '42'"42"42`,
+    `kill -9 4\\24242`,
+    `kill -9 4"24242" abc`,
+    `kill -9 ${PROTECTED_PID} abc --`,
+    `kill -9 abc -- ${PROTECTED_PID}`,
+    `kill abc -9 ${PROTECTED_PID}`,
+    `ionice -t kill -9 ${PROTECTED_PID}`,
+    `ionice --class 3 kill -9 ${PROTECTED_PID}`,
+    `ionice --class=3 kill -9 ${PROTECTED_PID}`,
+    `chrt --sched-runtime 5 1 kill -9 ${PROTECTED_PID}`,
+    `nice --adjustment 5 kill -9 ${PROTECTED_PID}`,
+    `timeout --signal KILL 5 kill -9 ${PROTECTED_PID}`,
+  ])('blocks %j naming the protected PID', async (command) => {
+    const { checkAndBlockKillCommand } = await loadGuard();
+    const result = await checkAndBlockKillCommand(command);
+    expect(result.blocked).toBe(true);
+    expect(result.reason).toContain(String(PROTECTED_PID));
+  });
+
+  it('reads a negative operand after a junk word as a process group', async () => {
+    const { checkAndBlockKillCommand } = await loadGuard();
+    const result = await checkAndBlockKillCommand(`kill abc -${PROTECTED_PID} 1`);
+    expect(result.blocked).toBe(true);
+  });
+
+  it.each(['kill -9 111 abc', 'ionice -c 3 make', `echo kill ${PROTECTED_PID}`])(
+    'still allows %j',
+    async (command) => {
+      const { checkAndBlockKillCommand } = await loadGuard();
+      expect((await checkAndBlockKillCommand(command)).blocked).toBe(false);
+    },
+  );
 });
 
 describe('stripPowerShellLauncherHead — the launcher is the first token', () => {

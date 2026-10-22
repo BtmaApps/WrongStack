@@ -356,20 +356,26 @@ export async function checkAndBlockKillCommand(command: string): Promise<KillChe
 /**
  * The POSIX `kill` the shell actually runs when some operands are junk: kill
  * signals every numeric operand and only reports the rest. Keeps the signal
- * spelling and every `--` / numeric operand (negative = process group, -1 =
- * every process), drops the rest, and hands that to the strict parser, so the
- * verdict is the one the plain form gets. Null when nothing was dropped.
+ * spelling, then passes every numeric operand (negative = process group,
+ * -1 = every process) to the strict parser behind an explicit `--`, so no
+ * operand is re-read as a signal and no later `--` becomes a target. Null
+ * when no numeric operand is left.
  */
 function parseJunkOperandKill(command: string): KillCommand | null {
   const tokens = command.split(' ').map(unquoteShellWord);
   if (tokens[0]?.toLowerCase() !== 'kill') return null;
   const first = tokens[1] ?? '';
-  const head = /^-[sn]$/i.test(first) ? 3 : /^-[a-zA-Z]+[a-zA-Z0-9]*$/.test(first) ? 2 : 1;
-  const operands = tokens.slice(head).filter((t) => t === '--' || /^-?\d+$/.test(t));
-  if (head + operands.length === tokens.length || operands.every((t) => t === '--')) {
-    return null;
-  }
-  return parsePosixKillTargets([...tokens.slice(0, head), ...operands].join(' '), command);
+  // Same rule as the strict parser: `-s SIG` / `-n NUM`, or one option-shaped
+  // word (`-9`, `-KILL`) that something follows.
+  const head = /^-[sn]$/i.test(first)
+    ? 3
+    : first !== '--' && /^-[a-zA-Z0-9]+$/.test(first) && tokens.length > 2
+      ? 2
+      : 1;
+  const rest = tokens.slice(head);
+  const targets = (rest[0] === '--' ? rest.slice(1) : rest).filter((t) => /^-?\d+$/.test(t));
+  if (targets.length === 0) return null;
+  return parsePosixKillTargets([...tokens.slice(0, head), '--', ...targets].join(' '), command);
 }
 
 async function checkSingleCommand(command: string): Promise<KillCheckResult> {

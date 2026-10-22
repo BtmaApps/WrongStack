@@ -203,15 +203,38 @@ export function isKillRelatedCommand(cmd: string): boolean {
  * the end, which let `kill 111 <protected>` and `kill -- <protected>` through.
  */
 /**
- * One shell word as the shell passes it: surrounding quotes removed and
- * backslash escapes resolved, so `"123"`, `'123'` and `\123` are the PID
- * 123 they become, not tokens the parser rejects. `$PID` and `%1` stay as
- * written: their values are not known here.
+ * One shell word as the shell passes it: every quoted piece unquoted and
+ * backslash escapes resolved, so `"123"`, `4"56"`, `'1'"2"3` and `\123`
+ * are the numbers they become, not tokens the parser rejects. An unbalanced
+ * quote is returned as written. `$PID` and `%1` stay as written: their
+ * values are not known here.
  */
 export function unquoteShellWord(token: string): string {
-  const quoted = /^(["'])([\s\S]*)\1$/.exec(token);
-  if (quoted) return quoted[1] === "'" ? quoted[2]! : quoted[2]!.replace(/\\(.)/g, '$1');
-  return token.replace(/\\(.)/g, '$1');
+  let out = '';
+  for (let i = 0; i < token.length; i++) {
+    const c = token[i]!;
+    if (c === "'") {
+      const end = token.indexOf("'", i + 1);
+      if (end === -1) return token;
+      out += token.slice(i + 1, end);
+      i = end;
+    } else if (c === '"') {
+      let j = i + 1;
+      for (; j < token.length && token[j] !== '"'; j++) {
+        // Inside double quotes a backslash escapes only " \ $ and `.
+        const next = token[j + 1];
+        if (token[j] === '\\' && next !== undefined && '"\\$`'.includes(next)) out += token[++j];
+        else out += token[j];
+      }
+      if (j >= token.length) return token;
+      i = j;
+    } else if (c === '\\' && i + 1 < token.length) {
+      out += token[++i];
+    } else {
+      out += c;
+    }
+  }
+  return out;
 }
 
 export function parsePosixKillTargets(normalized: string, command: string): KillCommand | null {
@@ -267,10 +290,17 @@ const KILL_LAUNCHERS: Record<string, { values: ReadonlySet<string>; positionals?
   nice: { values: new Set(['-n']) },
   stdbuf: { values: new Set(['-i', '-o', '-e']) },
   timeout: { values: new Set(['-s', '-k']), positionals: 1 },
-  ionice: { values: new Set(['-c', '-n', '-t']) },
+  ionice: { values: new Set(['-c', '-n', '--class', '--classdata']) },
   taskset: { values: new Set(), positionals: 1 },
-  chrt: { values: new Set(['-T', '-P', '-D']), positionals: 1 },
+  chrt: {
+    values: new Set(['-T', '-P', '-D', '--sched-runtime', '--sched-period', '--sched-deadline']),
+    positionals: 1,
+  },
 };
+
+/** A word that starts a command the guard reads: a kill verb or another launcher. */
+const LAUNCHED_COMMAND_RE =
+  /^(?:\S*[\\/])?(?:kill|pkill|killall|taskkill|tskill|wmic|stop-process|spps|pwsh|powershell|cmd|sudo|doas|env|nohup|command|exec|time|setsid|nice|stdbuf|timeout|ionice|taskset|chrt)(?:\.exe)?$/i;
 
 /**
  * Reduce a command to the kill verb it runs. The guard's parsers anchor the
@@ -315,6 +345,15 @@ export function unwrapKillCommandHead(normalized: string): string {
         i += launcher.values.has(token) ? 2 : 1;
       }
       i += launcher.positionals ?? 0;
+      // An option table cannot know every flag (`nice --adjustment 5`,
+      // `timeout --signal KILL 5`, `ionice -t`): one miscounted value used
+      // to skip the kill itself, so the guard read `-9 <pid>` and allowed
+      // it. When the word reached is not a command the guard reads but an
+      // earlier or later one is, inspect from that word instead.
+      if (!LAUNCHED_COMMAND_RE.test(tokens[i] ?? '')) {
+        const j = tokens.findIndex((t, k) => k > 0 && LAUNCHED_COMMAND_RE.test(t));
+        if (j !== -1) i = j;
+      }
       current = tokens.slice(i).join(' ');
     }
     current = current.replace(
