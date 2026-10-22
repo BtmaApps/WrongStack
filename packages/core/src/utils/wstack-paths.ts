@@ -288,7 +288,10 @@ export function safeProfileName(name: string | undefined): string {
  */
 export function bootstrapProfileName(globalRoot: string): string {
   try {
-    const parsed = JSON.parse(fs.readFileSync(path.join(globalRoot, 'config.json'), 'utf8')) as {
+    const raw = fs.readFileSync(path.join(globalRoot, 'config.json'), 'utf8');
+    // The config loader drops a UTF-8 BOM (PowerShell 5.1 writes one); failing
+    // here instead answered "default" while the settings came from the real profile.
+    const parsed = JSON.parse(raw.charCodeAt(0) === 0xfeff ? raw.slice(1) : raw) as {
       activeProfile?: unknown;
     };
     return safeProfileName(

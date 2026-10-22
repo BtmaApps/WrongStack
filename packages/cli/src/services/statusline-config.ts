@@ -206,7 +206,9 @@ function needsRewrite(value: unknown): boolean {
 export async function loadStatuslineConfig(): Promise<StatuslineDocument> {
   try {
     const raw = await fs.readFile(resolveConfigPath(), 'utf8');
-    return parseDocument(JSON.parse(raw));
+    // Same BOM rule as ensureStatuslineConfig: an empty document here was
+    // written back by the next `/statusline` toggle (full replace).
+    return parseDocument(JSON.parse(raw.replace(/^﻿/, '')));
   } catch {
     return emptyDocument();
   }

@@ -183,7 +183,8 @@ function loadPins(filePath: string): { pins: Pin[]; nextId: number; unreadable?:
     return { pins: [], nextId: 1, unreadable: err instanceof Error ? err.message : String(err) };
   }
   try {
-    const raw = JSON.parse(text) as {
+    // An editor's UTF-8 BOM is not corruption.
+    const raw = JSON.parse(text.charCodeAt(0) === 0xfeff ? text.slice(1) : text) as {
       pins?: unknown;
       nextId?: unknown;
     };
@@ -203,8 +204,10 @@ function loadPins(filePath: string): { pins: Pin[]; nextId: number; unreadable?:
     const nextId =
       typeof raw.nextId === 'number' && raw.nextId > maxExistingId ? raw.nextId : maxExistingId + 1;
     return { pins, nextId };
-  } catch {
-    return { pins: [], nextId: 1 };
+  } catch (err) {
+    // Unparseable is unreadable too: loading it as "no pins" let the next
+    // pin_add write [newPin] over the file and delete every stored pin.
+    return { pins: [], nextId: 1, unreadable: err instanceof Error ? err.message : String(err) };
   }
 }
 

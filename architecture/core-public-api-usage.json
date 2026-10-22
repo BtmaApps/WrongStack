@@ -154,9 +154,9 @@
       "runtimeOrMixed": 11
     },
     "@wrongstack/core/security": {
-      "files": 215,
+      "files": 216,
       "typeOnly": 30,
-      "runtimeOrMixed": 187
+      "runtimeOrMixed": 188
     },
     "@wrongstack/core/session-catalog": {
       "files": 13,
@@ -12773,6 +12773,12 @@
       "file": "packages/webui-server/tests/connections-health-route.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/webui-server/tests/pref-config-write-read-error.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/security",

@@ -189,7 +189,8 @@ function makeIdentity(projectId: string): ProjectIdentityFile {
 function parseProjectIdentity(raw: string, filePath: string): ProjectIdentityFile {
   let value: unknown;
   try {
-    value = JSON.parse(raw);
+    // A teammate's Windows editor may re-save this committed file with a UTF-8 BOM.
+    value = JSON.parse(raw.replace(/^﻿/, ''));
   } catch {
     throw new Error(`Invalid JSON in WrongStack project identity file: ${filePath}`);
   }

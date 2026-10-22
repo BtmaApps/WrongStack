@@ -1736,14 +1736,14 @@
       "classification": "product feature",
       "intendedOwner": "@wrongstack/plugins",
       "sourceFiles": 30,
-      "sourceLines": 9736
+      "sourceLines": 9757
     },
     {
       "directory": "prompts",
       "classification": "product feature",
       "intendedOwner": "plugin/runtime implementation",
       "sourceFiles": 4,
-      "sourceLines": 658
+      "sourceLines": 664
     },
     {
       "directory": "quota",
@@ -1778,7 +1778,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime security subsystem",
       "sourceFiles": 40,
-      "sourceLines": 11034
+      "sourceLines": 11036
     },
     {
       "directory": "session-catalog",
@@ -1834,14 +1834,14 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime or focused TypeSafe integration",
       "sourceFiles": 14,
-      "sourceLines": 2388
+      "sourceLines": 2390
     },
     {
       "directory": "utils",
       "classification": "kernel primitive",
       "intendedOwner": "split dependency-free primitives from concrete helpers",
       "sourceFiles": 92,
-      "sourceLines": 15486
+      "sourceLines": 15490
     },
     {
       "directory": "vcs",

@@ -203,7 +203,9 @@ export async function saveJevSettings(
   await withFileLock(file, async () => {
     let raw: Partial<Config>;
     try {
-      raw = JSON.parse(await readFile(file, 'utf8'));
+      const text = await readFile(file, 'utf8');
+      // A UTF-8 BOM (PowerShell 5.1 writes one) is dropped, as the config loader does.
+      raw = JSON.parse(text.charCodeAt(0) === 0xfeff ? text.slice(1) : text);
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT')
         throw new Error('Cannot read profile configuration');

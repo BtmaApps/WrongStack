@@ -36,13 +36,17 @@ export async function loadManifest(
 ): Promise<ProjectsManifest> {
   try {
     const raw = await fs.readFile(projectsJsonPath(globalConfigPath), 'utf8');
-    const parsed = JSON.parse(raw) as ProjectsManifest;
+    // An editor's UTF-8 BOM is not corruption (the CLI and boot readers strip it).
+    const parsed = JSON.parse(
+      raw.charCodeAt(0) === 0xfeff ? raw.slice(1) : raw,
+    ) as ProjectsManifest;
     return { projects: parsed.projects ?? [] };
   } catch (error) {
     // A caller that writes the manifest back must not treat "unreadable right
     // now" as empty: the write would erase every other registered project.
+    // That includes a parse failure, which carries no errno `code`.
     const code = (error as NodeJS.ErrnoException).code;
-    if (opts.forWrite && code !== undefined && code !== 'ENOENT') throw error;
+    if (opts.forWrite && code !== 'ENOENT') throw error;
     return { projects: [] };
   }
 }

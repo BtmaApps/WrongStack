@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-22T10:41:22.964Z",
+  "generatedAt": "2026-10-22T10:41:53.589Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,16 +13,16 @@
   "summary": {
     "packages": 38,
     "sourceFiles": 5217,
-    "testFiles": 4568,
-    "sourceLines": 1134827,
+    "testFiles": 4572,
+    "sourceLines": 1134898,
     "workspaceEdges": 139,
-    "moduleEdges": 17142,
+    "moduleEdges": 17141,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
-    "testOnlyExports": 966
+    "testOnlyExports": 967
   },
   "errors": [],
   "packageCycles": [],
@@ -152,7 +152,7 @@
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
       "sourceFiles": 676,
-      "testFiles": 664,
+      "testFiles": 665,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -197,7 +197,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 664
+          "testFiles": 665
         }
       ]
     },
@@ -249,7 +249,7 @@
       "name": "@wrongstack/core",
       "dir": "packages/core",
       "sourceFiles": 1163,
-      "testFiles": 1004,
+      "testFiles": 1005,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -264,7 +264,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 1004
+          "testFiles": 1005
         }
       ]
     },
@@ -946,7 +946,7 @@
       "name": "@wrongstack/webui-server",
       "dir": "packages/webui-server",
       "sourceFiles": 301,
-      "testFiles": 298,
+      "testFiles": 300,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -972,7 +972,7 @@
         {
           "path": "packages/webui-server/tsconfig.test.json",
           "error": null,
-          "testFiles": 298
+          "testFiles": 300
         }
       ]
     },
@@ -2709,6 +2709,12 @@
       },
       {
         "file": "packages/cli/tests/config-history-impl.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/config-history-restore-bom.test.ts",
         "projects": [
           "root-node"
         ]
@@ -9765,6 +9771,12 @@
       },
       {
         "file": "packages/core/tests/plugins/chimera-plugin.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/plugins/cloud-config-sync-plugin-read-error.test.ts",
         "projects": [
           "root-node"
         ]
@@ -24566,6 +24578,12 @@
         ]
       },
       {
+        "file": "packages/webui-server/tests/pref-config-write-read-error.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/webui-server/tests/pref-helpers.test.ts",
         "projects": [
           "root-node"
@@ -24645,6 +24663,12 @@
       },
       {
         "file": "packages/webui-server/tests/project-watcher.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/webui-server/tests/projects-manifest-bom.test.ts",
         "projects": [
           "root-node"
         ]
@@ -32255,6 +32279,10 @@
     {
       "file": "packages/webui-server/src/server/handlers/worklist-handlers.ts",
       "name": "handlePlanGet"
+    },
+    {
+      "file": "packages/webui-server/src/server/pref-config-write.ts",
+      "name": "writeGlobalConfigFile"
     },
     {
       "file": "packages/webui-server/src/server/provider-config-standalone.ts",

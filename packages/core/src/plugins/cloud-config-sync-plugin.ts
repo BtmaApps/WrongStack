@@ -1,3 +1,4 @@
+import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 // Types come from their source modules, not '../index.js' — the barrel would put this
 // file into the ARCH-CYCLE-TYPE-14 module cycle.
@@ -14,7 +15,6 @@ import type { SecretVault } from '../types/secret-vault.js';
 import type { SlashCommand } from '../types/slash-command.js';
 import { atomicWrite, withFileLock } from '../utils/atomic-write.js';
 import { backupConfigFile } from '../utils/config-backup.js';
-import { readJsonObjectFile } from '../utils/config-json.js';
 import { toErrorMessage } from '../utils/error.js';
 import type { WstackPaths } from '../utils/wstack-paths.js';
 
@@ -71,8 +71,8 @@ export function createCloudConfigSyncPlugin(opts?: CloudConfigSyncPluginOptions)
       const warn = (msg: string) => api.log.warn(msg);
 
       const readLocalConfig = async (): Promise<Record<string, unknown>> => {
-        const raw = await readJsonObjectFile(profileConfigPath).catch(() => ({}));
-        return decryptConfigSecrets(raw as Record<string, unknown>, vault, { warn });
+        const raw = await readProfileConfigStrict(profileConfigPath);
+        return decryptConfigSecrets(raw, vault, { warn });
       };
 
       const writeLocalConfig = async (
@@ -81,8 +81,8 @@ export function createCloudConfigSyncPlugin(opts?: CloudConfigSyncPluginOptions)
         await withFileLock(profileConfigPath, async () => {
           // Rewrite variant: a field this vault cannot decrypt keeps its
           // ciphertext instead of being written back as ''.
-          const raw = await readJsonObjectFile(profileConfigPath).catch(() => ({}));
-          const current = decryptConfigSecretsForRewrite(raw as Record<string, unknown>, vault, {
+          const raw = await readProfileConfigStrict(profileConfigPath);
+          const current = decryptConfigSecretsForRewrite(raw, vault, {
             warn,
           });
           const next = mutator(current);
@@ -286,4 +286,25 @@ function buildCloudSyncCommand(
       }
     },
   };
+}
+
+/**
+ * The profile config for a read-modify-write or a dirty check. Only a missing
+ * file is `{}`: `readJsonObjectFile` maps EVERY failure (EBUSY/EPERM/EIO, bad
+ * JSON) to `{}`, so a write made during a transient read error replaced every
+ * provider and key, and a push pass saw each synced namespace as cleared.
+ */
+async function readProfileConfigStrict(filePath: string): Promise<Record<string, unknown>> {
+  let text: string;
+  try {
+    text = await fs.readFile(filePath, 'utf8');
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return {};
+    throw err;
+  }
+  const parsed: unknown = JSON.parse(text.charCodeAt(0) === 0xfeff ? text.slice(1) : text);
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error(`Config at ${filePath} is not a JSON object; refusing to sync it`);
+  }
+  return parsed as Record<string, unknown>;
 }

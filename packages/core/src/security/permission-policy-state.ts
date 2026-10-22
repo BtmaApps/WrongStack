@@ -307,7 +307,8 @@ export abstract class PermissionPolicyState {
     this.policyInvalid = false;
     try {
       const raw = await fs.readFile(this.trustFile, 'utf8');
-      const parsed = safeParse<unknown>(raw);
+      // A hand-edited trust.json may carry a UTF-8 BOM; it is valid JSON.
+      const parsed = safeParse<unknown>(raw.replace(/^﻿/, ''));
       if (!parsed.ok) {
         this.policy = {};
         this.policyInvalid = true;

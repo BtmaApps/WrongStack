@@ -302,7 +302,8 @@ export class AutoApprovePermissionPolicy implements PermissionPolicy {
         reason: `leader trust policy unreadable (${err instanceof Error ? err.message : String(err)}); subagent tool execution refused until it is repaired`,
       };
     }
-    const parsed = safeParse<unknown>(raw);
+    // Same BOM rule as the leader's own policy reader.
+    const parsed = safeParse<unknown>(raw.replace(/^﻿/, ''));
     if (!parsed.ok) {
       return {
         permission: 'deny',

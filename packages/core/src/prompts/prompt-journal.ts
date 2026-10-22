@@ -19,7 +19,7 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { DefaultSecretScrubber } from '../security/secret-scrubber.js';
-import { withFileLock } from '../utils/atomic-write.js';
+import { atomicWrite, withFileLock } from '../utils/atomic-write.js';
 
 /**
  * Module-level scrubber instance (SEC-004). One per process is enough — the
@@ -341,8 +341,13 @@ async function updateRootCatalog(
   let catalog: PromptJournalIndex;
   try {
     const raw = await fs.readFile(indexJsonFile, 'utf8');
-    catalog = JSON.parse(raw) as PromptJournalIndex;
-  } catch {
+    catalog = JSON.parse(raw.charCodeAt(0) === 0xfeff ? raw.slice(1) : raw) as PromptJournalIndex;
+  } catch (err) {
+    // Only a missing or unparseable catalog starts over. A transient read
+    // error (EBUSY from an AV scan, EPERM, EIO) used to reset it too, and the
+    // write below replaced the whole prompt history index with one prompt.
+    const code = (err as NodeJS.ErrnoException).code;
+    if (code !== 'ENOENT' && !(err instanceof SyntaxError)) throw err;
     catalog = {
       updatedAt: entry.timestamp,
       totalPrompts: 0,
@@ -391,7 +396,8 @@ async function updateRootCatalog(
   });
 
   try {
-    await fs.writeFile(indexJsonFile, JSON.stringify(catalog, null, 2), 'utf8');
+    // Atomic: a torn index.json reads as unparseable and starts the catalog over.
+    await atomicWrite(indexJsonFile, JSON.stringify(catalog, null, 2));
 
     // Generate clean root index.md
     let md = `# 🗂️ Prompt Journal Navigation Index\n\n`;

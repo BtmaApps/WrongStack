@@ -60,7 +60,11 @@ export async function saveToGlobalConfig(
       let existing: Record<string, unknown> = {};
       try {
         const raw = await fs.readFile(configPath, 'utf8');
-        existing = JSON.parse(raw) as Record<string, unknown>;
+        // A UTF-8 BOM (PowerShell 5.1 writes one) is dropped, as the config loader does.
+        existing = JSON.parse(raw.charCodeAt(0) === 0xfeff ? raw.slice(1) : raw) as Record<
+          string,
+          unknown
+        >;
       } catch (err) {
         if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
       }

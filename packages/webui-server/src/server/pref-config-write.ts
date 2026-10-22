@@ -73,7 +73,15 @@ export async function writeGlobalConfigFile(
     let raw: string;
     try {
       raw = await fs.readFile(filePath, 'utf8');
-    } catch {
+    } catch (err) {
+      // Only a missing file starts empty. A transient read error (EBUSY from an
+      // AV scan, EPERM, EIO) used to as well, and the write below replaced every
+      // provider and key with the one changed preference.
+      if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+        throw new Error(`${errorLabel}: cannot read config at ${filePath}; not overwriting it`, {
+          cause: err,
+        });
+      }
       raw = '{}';
     }
     let parsed: Record<string, unknown>;

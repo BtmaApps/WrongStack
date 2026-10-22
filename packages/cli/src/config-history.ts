@@ -416,12 +416,22 @@ export async function restoreFromHistory(
   return withFileLock(cfg, async () => {
     await backupCurrent(homeFn, targetConfigPath);
 
+    // The live config is where the snapshot's masked secrets are revived from.
+    // Only a missing file may read as `{}`: an unreadable one (an editor BOM
+    // used to land here) revived nothing, and the restore wrote a config with
+    // every API key deleted while reporting success.
     let oldCfg: Record<string, unknown> = {};
     try {
       const raw = await fs.readFile(cfg, 'utf8');
-      oldCfg = JSON.parse(raw);
-    } catch {
-      // No config to restore from
+      oldCfg = JSON.parse(raw.charCodeAt(0) === 0xfeff ? raw.slice(1) : raw);
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+        return {
+          ok: false,
+          backupId: null,
+          error: `Cannot read the current config to carry its secrets over: ${toErrorMessage(err)}`,
+        };
+      }
     }
 
     // Carry live credentials across the restore — see `reviveSecrets`. Written
@@ -459,7 +469,8 @@ export async function restoreLast(
   let lastCfg: Record<string, unknown> = {};
   try {
     const raw = await fs.readFile(last, 'utf8');
-    lastCfg = JSON.parse(raw);
+    // `.last` is a byte copy of the live config, editor BOM included.
+    lastCfg = JSON.parse(raw.charCodeAt(0) === 0xfeff ? raw.slice(1) : raw);
   } catch {
     return { ok: false, error: 'No prior backup found' };
   }

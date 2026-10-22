@@ -29,7 +29,11 @@ export interface ProjectPermissionOptions {
 function loadDirectoryPolicy(projectRoot: string): DirectoryPolicy {
   const file = path.join(projectRoot, '.wrongstack', 'directory-rules.json');
   try {
-    const validation = validateDirectoryPolicy(JSON.parse(fs.readFileSync(file, 'utf8')));
+    const raw = fs.readFileSync(file, 'utf8');
+    // A Windows editor saves the file with a UTF-8 BOM, which JSON.parse rejects.
+    const validation = validateDirectoryPolicy(
+      JSON.parse(raw.charCodeAt(0) === 0xfeff ? raw.slice(1) : raw),
+    );
     if (!validation.ok) {
       throw new Error(validation.diagnostics.map((d) => `${d.path}: ${d.message}`).join('; '));
     }
