@@ -506,6 +506,8 @@ export async function setupLifecycleAndPlugins(
     log: logger,
     lazyMode: normalizeTokenSavingTier(config.features.tokenSavingMode) !== 'off',
     cacheDir: wpaths.cacheDir,
+    taskJournalDir: path.join(wpaths.projectDir, 'mcp-tasks'),
+    taskRecoveryContext: () => context,
     // Presets say `--project-root .`; resolve it against the project, not
     // wherever this process happens to be running.
     cwd: wpaths.projectRoot,

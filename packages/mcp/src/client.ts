@@ -40,6 +40,8 @@ import type {
 import type { ConnectionState, JsonRpcResponse, MCPTool, ToolCallResult } from './contracts.js';
 import { ServerRequestResponder, type UrlElicitation } from './elicitation.js';
 import { MODERN_PROTOCOL_VERSION } from './modern-protocol.js';
+import { modernRequest, taskAcknowledgement, waitForTask } from './task-request.js';
+import { type MCPTask, parseTask, supportsTasks, validateTaskId } from './task-protocol.js';
 import {
   type MCPCompletionReference,
   type MCPCompletionResult,
@@ -126,6 +128,7 @@ export class MCPClient {
   private readonly disconnectListeners = new Set<() => void>();
   /** Answers server→client requests (ping, elicitation) on every transport. */
   private readonly serverRequests: ServerRequestResponder;
+  private modernRequests = new AbortController();
 
   constructor(public readonly opts: MCPClientOptions) {
     this.serverRequests = new ServerRequestResponder(opts.elicitation);
@@ -198,6 +201,8 @@ export class MCPClient {
   }
 
   private async connectInner(): Promise<void> {
+    this.modernRequests.abort();
+    this.modernRequests = new AbortController();
     this.toolCatalogVersion++;
     this.state = 'connecting';
     this._serverMetadata = undefined;
@@ -231,11 +236,7 @@ export class MCPClient {
     return delegateConnectStreamableHTTP(buildClientHttpConnectionHost(this.internals()));
   }
 
-  async callTool(
-    name: string,
-    input: unknown,
-    opts?: { signal?: AbortSignal | undefined },
-  ): Promise<ToolCallResult> {
+  async callTool(name: string, input: unknown, opts?: MCPRequestOptions): Promise<ToolCallResult> {
     if (this.state !== 'connected') {
       throw new Error(`MCP client "${this.opts.name}" not connected (state=${this.state})`);
     }
@@ -257,6 +258,47 @@ export class MCPClient {
       opts,
     );
     return toToolCallResult(res, this._serverMetadata?.protocolVersion !== MODERN_PROTOCOL_VERSION);
+  }
+
+  private requireTasks(taskId: string): void {
+    validateTaskId(taskId);
+    if (
+      this.state !== 'connected' ||
+      this._serverMetadata?.protocolVersion !== MODERN_PROTOCOL_VERSION ||
+      !supportsTasks(this._serverMetadata)
+    )
+      throw new Error(
+        'MCP Tasks requires a connected modern server advertising the Tasks extension',
+      );
+  }
+
+  /** Read a known task from this server. Never invokes its original tool. */
+  async getTask(taskId: string, opts?: MCPRequestOptions): Promise<MCPTask> {
+    this.requireTasks(taskId);
+    const response = await this.request('tasks/get', { taskId }, undefined, opts);
+    if (response.error) throw new Error(response.error.message);
+    return parseTask(response.result, taskId, true);
+  }
+
+  /** Cooperative cancellation: acknowledgement does not prove the work stopped. */
+  async cancelTask(taskId: string, opts?: MCPRequestOptions): Promise<void> {
+    this.requireTasks(taskId);
+    taskAcknowledgement(await this.request('tasks/cancel', { taskId }, undefined, opts), taskId);
+  }
+
+  /** Resume observation using a task ID saved by the host for this server/account. */
+  async waitForTask(taskId: string, opts?: MCPRequestOptions): Promise<ToolCallResult> {
+    this.requireTasks(taskId);
+    const result = await waitForTask(
+      taskId,
+      (method, params, timeoutMs, signal) =>
+        this.request(method, params, timeoutMs, { ...opts, signal }),
+      this.serverRequests,
+      resolveRequestTimeoutMs(this.opts.requestTimeoutMs, undefined),
+      this.modernRequests.signal,
+      opts,
+    );
+    return toToolCallResult({ result }, false);
   }
 
   /**
@@ -353,6 +395,7 @@ export class MCPClient {
   }
 
   private async closeInner(): Promise<void> {
+    this.modernRequests.abort();
     return closeClient(this.internals());
   }
 
@@ -370,7 +413,7 @@ export class MCPClient {
     method: string,
     params: unknown,
     timeoutMs?: number | undefined,
-    opts?: { signal?: AbortSignal | undefined },
+    opts?: MCPRequestOptions,
   ): Promise<JsonRpcResponse> {
     const effectiveTimeoutMs = resolveRequestTimeoutMs(this.opts.requestTimeoutMs, timeoutMs);
 
@@ -383,6 +426,18 @@ export class MCPClient {
       return this.httpTransport.request(method, params, effectiveTimeoutMs, opts);
 
     // stdio path
+    if (this._serverMetadata?.protocolVersion === MODERN_PROTOCOL_VERSION)
+      return modernRequest(
+        method,
+        params,
+        (nextMethod, next, remaining, signal) =>
+          sendStdioRequest(this.internals(), nextMethod, next, remaining, { ...opts, signal }),
+        this.serverRequests,
+        effectiveTimeoutMs,
+        this.modernRequests.signal,
+        opts,
+        supportsTasks(this._serverMetadata),
+      );
     return sendStdioRequest(this.internals(), method, params, effectiveTimeoutMs, opts);
   }
 
@@ -392,6 +447,7 @@ export class MCPClient {
    * killed stdio child or a closed transport would hang indefinitely.
    */
   protected failPending(reason: string): void {
+    this.modernRequests.abort(new Error(reason));
     failPendingRequests(this.pending, reason);
   }
 

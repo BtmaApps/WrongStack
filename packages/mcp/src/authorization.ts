@@ -104,6 +104,8 @@ export interface MCPTokenRefreshOptions {
  */
 export interface MCPAuthorizationProvider {
   getAccessToken(context: MCPAuthorizationContext): Promise<MCPAccessToken | undefined>;
+  /** Stable authorization-grant identity for durable task binding; changes on a new login. */
+  getTaskIdentity?(): Promise<string | undefined>;
   /** Refresh/discover/reauthorize. Return true to retry the HTTP request once. */
   handleUnauthorized?(
     challenge: MCPAuthorizationChallenge,

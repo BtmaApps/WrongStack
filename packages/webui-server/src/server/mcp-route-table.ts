@@ -18,6 +18,7 @@ import {
   handleMcpWake,
 } from './mcp-handlers.js';
 import type { McpRouteHandlers } from './mcp-routes.js';
+import { createMcpTaskHandlers, resolveMcpTaskContext } from './mcp-task-handlers.js';
 import type { WebuiDeps } from './route-contracts.js';
 
 // ---- MCP route (handleMcpRoute) ----
@@ -29,6 +30,11 @@ import type { WebuiDeps } from './route-contracts.js';
 // sibling in the chain.
 export function createMcpRouteTable(deps: WebuiDeps): McpRouteHandlers {
   return {
+    ...createMcpTaskHandlers({
+      registry: deps.mcpRegistry,
+      context: (id) => resolveMcpTaskContext(deps.context, deps.peekAgent, id),
+      trustBoundary: deps.trustBoundary,
+    }),
     list: (ws, msg) => handleMcpList(ws, msg, deps.profileConfigPath, deps.mcpRegistry),
     // add/update are the spawn-capable pair — they take a `command`/`args`
     // from the wire and start it. They go past the trust boundary (M1).

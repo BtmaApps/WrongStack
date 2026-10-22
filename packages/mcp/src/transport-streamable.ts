@@ -1,8 +1,10 @@
 import { assertSupportedServerProtocolVersion, MCP_CONSTANTS } from './constants.js';
+import type { MCPRequestOptions } from './client-types.js';
+import { modernRequest } from './task-request.js';
+import { supportsTasks, taskCapabilities } from './task-protocol.js';
 import type { JsonRpcResponse, ToolCallResult } from './contracts.js';
 import { modernRequestHeaders, toolHeaderBindings } from './modern-http-headers.js';
 import {
-  assertCompleteResult,
   isModernError,
   MODERN_PROTOCOL_VERSION,
   modernParams,
@@ -235,7 +237,7 @@ export class StreamableHTTPTransport extends BaseHTTPTransport {
     this.protocolVersion = MODERN_PROTOCOL_VERSION;
     this.sessionId = undefined;
     const id = this.genId();
-    const params = modernParams({});
+    const params = modernParams({}, this.serverRequests.capabilities());
     const options: RequestInit = {
       method: 'POST',
       headers: this.requestHeaders('server/discover', params),
@@ -375,19 +377,54 @@ export class StreamableHTTPTransport extends BaseHTTPTransport {
   private async postRaw(
     method: string,
     params: unknown,
-    opts?: { signal?: AbortSignal | undefined },
+    opts?: MCPRequestOptions,
+    timeoutMs = this.requestTimeout,
+  ): Promise<JsonRpcResult> {
+    if (this.protocolVersion !== MODERN_PROTOCOL_VERSION)
+      return this.postOnce(method, params, opts, timeoutMs);
+    return modernRequest(
+      method,
+      params,
+      (nextMethod, next, remaining, signal) =>
+        this.postOnce(nextMethod, next, { ...opts, signal }, remaining),
+      this.serverRequests,
+      timeoutMs,
+      this.abortController?.signal,
+      opts,
+      supportsTasks(this.serverMetadata),
+    );
+  }
+
+  private async postOnce(
+    method: string,
+    params: unknown,
+    opts?: MCPRequestOptions,
     timeoutMs = this.requestTimeout,
   ): Promise<JsonRpcResult> {
     const id = this.genId();
     const modern = this.protocolVersion === MODERN_PROTOCOL_VERSION;
-    const body = encodeJsonRpcMessage(id, method, modern ? modernParams(params) : params);
+    const body = encodeJsonRpcMessage(
+      id,
+      method,
+      modern
+        ? modernParams(
+            params,
+            taskCapabilities(
+              this.serverRequests.capabilities(),
+              method,
+              this.serverMetadata,
+              opts?.tasks !== false,
+            ),
+          )
+        : params,
+    );
 
     const external = opts?.signal;
     const parent =
       external && this.abortController
         ? AbortSignal.any([this.abortController.signal, external])
         : (external ?? this.abortController?.signal);
-    const timeoutSignal = this.requestTimeoutSignal(parent, timeoutMs);
+    const timeoutSignal = this.requestTimeoutSignal(parent, timeoutMs, !modern);
     const fetchOpts: RequestInit = {
       method: 'POST',
       headers: this.requestHeaders(method, params),
@@ -425,7 +462,6 @@ export class StreamableHTTPTransport extends BaseHTTPTransport {
       const match = await this.readResponse(res, id);
       if (match) {
         const matched = assertMatchingJsonRpcResult(match, id, method);
-        if (modern) assertCompleteResult(matched);
         return matched;
       }
       throw new Error('Could not parse response as JSON-RPC');
@@ -451,17 +487,13 @@ export class StreamableHTTPTransport extends BaseHTTPTransport {
     method: string,
     params: unknown,
     timeoutMs?: number,
-    opts?: { signal?: AbortSignal | undefined },
+    opts?: MCPRequestOptions,
   ): Promise<JsonRpcResponse> {
     if (opts?.signal?.aborted) throw makeAbortError(method);
     return this.postRaw(method, params, opts, timeoutMs ?? this.requestTimeout);
   }
 
-  async callTool(
-    name: string,
-    input: unknown,
-    opts?: { signal?: AbortSignal | undefined },
-  ): Promise<ToolCallResult> {
+  async callTool(name: string, input: unknown, opts?: MCPRequestOptions): Promise<ToolCallResult> {
     if (this.state !== 'connected') {
       throw new Error(`streamable-http transport not connected (state=${this.state})`);
     }

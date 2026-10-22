@@ -18,6 +18,7 @@ export function buildRegistryConnectContext(self: MCPRegistryInternals): Registr
     cwd: self.cwd,
     authorizationProviderFactory: self.authorizationProviderFactory,
     elicitationHandler: self.elicitationHandler,
+    taskRecovery: self.taskRecovery,
     operationListeners: self.operationListeners,
     ensureConnected: (name) => self.ensureConnected(name),
     recordOperation: (slot, kind, reason, failureKind, durationMs, retain) =>

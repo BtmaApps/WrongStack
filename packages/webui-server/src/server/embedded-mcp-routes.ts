@@ -19,11 +19,17 @@ import {
   handleMcpWake,
 } from './mcp-handlers.js';
 import type { McpRouteHandlers } from './mcp-routes.js';
+import { createMcpTaskHandlers, resolveMcpTaskContext } from './mcp-task-handlers.js';
 
 export function createEmbeddedMcpRoutes(deps: EmbeddedMessageRouterDeps) {
   const { opts } = deps;
 
   const mcp: McpRouteHandlers = {
+    ...createMcpTaskHandlers({
+      registry: opts.mcpRegistry,
+      context: (id) => resolveMcpTaskContext(opts.agent.ctx, deps.sessionCtx.peekAgent, id),
+      trustBoundary: deps.trustBoundary,
+    }),
     list: (ws, msg) => handleMcpList(ws, msg, opts.profileConfigPath, opts.mcpRegistry),
     // add/update are the spawn-capable pair — they take a `command`/`args`
     // from the wire and start it. They go past the trust boundary (M1).

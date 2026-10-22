@@ -1,5 +1,27 @@
 export type WSMcpServerMessage =
   | {
+      type: 'mcp.tasks.list';
+      payload: {
+        sessionId: string;
+        requestId: string;
+        tasks: import('@wrongstack/webui-protocol').MCPTaskView[];
+        streaming?: boolean;
+      };
+    }
+  | {
+      type: 'mcp.tasks.changed';
+      payload: {
+        sessionId: string;
+        requestId: string;
+        revision: number;
+        tasks: import('@wrongstack/webui-protocol').MCPTaskView[];
+      };
+    }
+  | {
+      type: 'mcp.tasks.result';
+      payload: { sessionId: string; requestId: string; success: boolean; message: string };
+    }
+  | {
       type: 'browser.policy.result';
       payload: { message: string; ok: boolean; sessionId?: string; requestId?: string };
     }

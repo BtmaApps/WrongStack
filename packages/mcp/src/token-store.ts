@@ -1,4 +1,5 @@
 import * as fs from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
 import type { MCPServerConfig, SecretVault } from '@wrongstack/core/types';
 import { atomicWrite, withFileLock } from '@wrongstack/core/utils';
 import {
@@ -20,6 +21,8 @@ const MAX_ENTRIES = 256;
 const DEFAULT_REFRESH_SKEW_MS = 60_000;
 
 export interface MCPStoredAuthorization {
+  /** Non-secret login generation. Refreshes retain it; a new authorization receives a new ID. */
+  grantId?: string | undefined;
   serverName: string;
   resource: string;
   clientId: string;
@@ -31,6 +34,7 @@ export interface MCPStoredAuthorization {
 }
 
 interface EncryptedAuthorizationEntry {
+  grantId?: string | undefined;
   serverName: string;
   resource: string;
   clientId: string;
@@ -89,12 +93,20 @@ export class MCPVaultTokenStore {
         (candidate) =>
           candidate.serverName === serverName && candidate.resource === canonicalResource,
       );
-      return entry ? this.decryptEntry(entry) : undefined;
+      const value = entry ? this.decryptEntry(entry) : undefined;
+      if (entry && !entry.grantId) {
+        entry.grantId = randomUUID();
+        await this.writeFile(file.entries);
+      }
+      return value && entry ? { ...value, grantId: entry.grantId } : undefined;
     });
   }
 
   async save(value: MCPStoredAuthorization): Promise<void> {
-    const normalized = normalizeStoredAuthorization(value);
+    const normalized = normalizeStoredAuthorization({
+      ...value,
+      grantId: value.grantId ?? randomUUID(),
+    });
     await withFileLock(this.filePath, async () => {
       const file = await this.readFile();
       const next = file.entries.filter(
@@ -118,6 +130,27 @@ export class MCPVaultTokenStore {
       if (next.length === file.entries.length) return false;
       await this.writeFile(next);
       return true;
+    });
+  }
+
+  /** Commit a refresh only while the login that requested it still owns the grant. */
+  async saveRefreshed(
+    value: MCPStoredAuthorization,
+    expectedGrantId: string | undefined,
+  ): Promise<MCPStoredAuthorization | undefined> {
+    const normalized = normalizeStoredAuthorization(value);
+    return withFileLock(this.filePath, async () => {
+      const file = await this.readFile();
+      const index = file.entries.findIndex(
+        (entry) =>
+          entry.serverName === normalized.serverName && entry.resource === normalized.resource,
+      );
+      const current = file.entries[index];
+      if (!current || current.grantId !== expectedGrantId)
+        return current ? this.decryptEntry(current) : undefined;
+      file.entries[index] = this.encryptEntry(normalized);
+      await this.writeFile(file.entries);
+      return normalized;
     });
   }
 
@@ -163,6 +196,7 @@ export class MCPVaultTokenStore {
       throw new Error('MCP token store requires an encrypting SecretVault');
     }
     return {
+      grantId: value.grantId,
       serverName: value.serverName,
       resource: value.resource,
       clientId: value.clientId,
@@ -186,6 +220,7 @@ export class MCPVaultTokenStore {
       throw new Error('MCP token store contains an unencrypted token');
     }
     const value: MCPStoredAuthorization = {
+      grantId: entry.grantId,
       serverName: entry.serverName,
       resource: entry.resource,
       clientId: entry.clientId,
@@ -217,6 +252,13 @@ export class MCPRefreshingAuthorizationProvider implements MCPAuthorizationProvi
   constructor(private readonly options: MCPRefreshingAuthorizationProviderOptions) {
     this.resource = canonicalMcpResource(options.resource);
     this.refreshSkewMs = options.refreshSkewMs ?? DEFAULT_REFRESH_SKEW_MS;
+  }
+
+  async getTaskIdentity(): Promise<string> {
+    return (
+      (await this.options.store.load(this.options.serverName, this.resource))?.grantId ??
+      'anonymous'
+    );
   }
 
   async getAccessToken(context: MCPAuthorizationContext): Promise<MCPTokenSet | undefined> {
@@ -321,9 +363,9 @@ export class MCPRefreshingAuthorizationProvider implements MCPAuthorizationProvi
       tokenSet,
       updatedAt: new Date().toISOString(),
     });
-    await this.options.store.save(next);
-    this.emit('refreshed', next);
-    return next;
+    const saved = await this.options.store.saveRefreshed(next, state.grantId);
+    if (saved && saved.grantId === state.grantId) this.emit('refreshed', saved);
+    return saved;
   }
 
   private assertContext(context: MCPAuthorizationContext): void {
@@ -411,6 +453,9 @@ function validateEncryptedEntry(value: unknown): EncryptedAuthorizationEntry {
     throw new Error('MCP token store expiresAt must be a finite number');
   }
   return {
+    ...(value['grantId'] === undefined
+      ? {}
+      : { grantId: boundedString(value['grantId'], 'grantId', 128) }),
     serverName: boundedString(value['serverName'], 'serverName', 256),
     resource,
     clientId: boundedString(value['clientId'], 'clientId', 4_096),
@@ -451,6 +496,9 @@ function normalizeStoredAuthorization(value: MCPStoredAuthorization): MCPStoredA
   };
   authorizationHeaderForToken({ ...tokenSet, expiresAt: undefined }, resource);
   return {
+    ...(value.grantId === undefined
+      ? {}
+      : { grantId: boundedString(value.grantId, 'grantId', 128) }),
     serverName,
     resource,
     clientId: boundedString(value.clientId, 'clientId', 4_096),

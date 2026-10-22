@@ -29,6 +29,42 @@ afterEach(async () => {
 });
 
 describe('MCP vault token store', () => {
+  it('retains the grant identity during refresh and replaces it for a new login', async () => {
+    const fixture = await createFixture();
+    const value = storedAuthorization('alpha', 'https://mcp.example.com/team');
+    await fixture.store.save(value);
+    const first = (await fixture.store.load(value.serverName, value.resource))!;
+    const provider = new MCPRefreshingAuthorizationProvider({
+      serverName: value.serverName,
+      resource: value.resource,
+      store: fixture.store,
+    });
+    expect(await provider.getTaskIdentity()).toBe(first.grantId);
+    await fixture.store.save({
+      ...first,
+      tokenSet: { ...first.tokenSet, accessToken: 'refreshed-access' },
+    });
+    expect(await provider.getTaskIdentity()).toBe(first.grantId);
+    await fixture.store.save({
+      ...value,
+      tokenSet: { ...value.tokenSet, accessToken: 'another-account' },
+    });
+    expect(await provider.getTaskIdentity()).not.toBe(first.grantId);
+  });
+
+  it('migrates an old encrypted grant once and keeps its identity across store instances', async () => {
+    const fixture = await createFixture();
+    const value = storedAuthorization('alpha', 'https://mcp.example.com/team');
+    await fixture.store.save(value);
+    const raw = JSON.parse(await fs.readFile(fixture.storePath, 'utf8'));
+    delete raw.entries[0].grantId;
+    await fs.writeFile(fixture.storePath, JSON.stringify(raw));
+    const first = (await fixture.store.load(value.serverName, value.resource))!;
+    const other = new MCPVaultTokenStore(fixture.storePath, fixture.vault);
+    expect(first.grantId).toEqual(expect.any(String));
+    expect((await other.load(value.serverName, value.resource))?.grantId).toBe(first.grantId);
+  });
+
   it('persists only encrypted token material and restores the authorization state', async () => {
     const fixture = await createFixture();
     const value = storedAuthorization('alpha', 'https://mcp.example.com/team', {
@@ -42,7 +78,10 @@ describe('MCP vault token store', () => {
     expect(raw).not.toContain('access-secret');
     expect(raw).not.toContain('refresh-secret');
     expect(raw).toContain('enc:v1:');
-    await expect(fixture.store.load(value.serverName, value.resource)).resolves.toEqual(value);
+    await expect(fixture.store.load(value.serverName, value.resource)).resolves.toEqual({
+      ...value,
+      grantId: expect.any(String),
+    });
   });
 
   it('serializes concurrent cross-surface updates without losing entries', async () => {
@@ -53,8 +92,14 @@ describe('MCP vault token store', () => {
 
     await Promise.all([fixture.store.save(first), secondStore.save(second)]);
 
-    await expect(fixture.store.load(first.serverName, first.resource)).resolves.toEqual(first);
-    await expect(fixture.store.load(second.serverName, second.resource)).resolves.toEqual(second);
+    await expect(fixture.store.load(first.serverName, first.resource)).resolves.toEqual({
+      ...first,
+      grantId: expect.any(String),
+    });
+    await expect(fixture.store.load(second.serverName, second.resource)).resolves.toEqual({
+      ...second,
+      grantId: expect.any(String),
+    });
   });
 
   it('rejects plaintext token material on disk and a non-encrypting vault', async () => {
@@ -100,7 +145,10 @@ describe('MCP vault token store', () => {
 
     await expect(fixture.store.remove(first.serverName, first.resource)).resolves.toBe(true);
     await expect(fixture.store.load(first.serverName, first.resource)).resolves.toBeUndefined();
-    await expect(fixture.store.load(second.serverName, second.resource)).resolves.toEqual(second);
+    await expect(fixture.store.load(second.serverName, second.resource)).resolves.toEqual({
+      ...second,
+      grantId: expect.any(String),
+    });
   });
 
   it('returns empty results for a missing store and missing binding', async () => {
@@ -288,6 +336,75 @@ describe('MCP vault token store', () => {
 });
 
 describe('MCP refreshing authorization provider', () => {
+  it('does not replace a newer login with an older refresh response', async () => {
+    const fixture = await createFixture();
+    let respond!: () => void, seen!: () => void;
+    const requested = new Promise<void>((resolve) => {
+      seen = resolve;
+    });
+    const server = http.createServer((req, res) => {
+      req.resume();
+      req.on('end', () => {
+        respond = () => {
+          if (res.writableEnded) return;
+          res.setHeader('content-type', 'application/json');
+          res.end(
+            JSON.stringify({
+              access_token: 'old-refreshed',
+              refresh_token: 'old-refresh-next',
+              token_type: 'Bearer',
+              expires_in: 3600,
+            }),
+          );
+        };
+        seen();
+      });
+    });
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const address = server.address();
+    if (!address || typeof address === 'string') throw new Error('No test port');
+    const origin = `http://127.0.0.1:${address.port}`;
+    const value = storedAuthorization('alpha', `${origin}/mcp`, {
+      accessToken: 'old-access',
+      refreshToken: 'old-refresh',
+      expiresAt: Date.now() + 100,
+      authorizationServer: {
+        issuer: `${origin}/auth`,
+        authorizationEndpoint: `${origin}/authorize`,
+        tokenEndpoint: `${origin}/token`,
+        scopesSupported: [],
+      },
+    });
+    const provider = new MCPRefreshingAuthorizationProvider({
+      serverName: value.serverName,
+      resource: value.resource,
+      store: fixture.store,
+    });
+    let pending: ReturnType<typeof provider.getAccessToken> | undefined;
+    try {
+      await fixture.store.save(value);
+      pending = provider.getAccessToken({ serverName: value.serverName, resource: value.resource });
+      await requested;
+      await fixture.store.save({
+        ...value,
+        tokenSet: {
+          ...value.tokenSet,
+          accessToken: 'new-account',
+          refreshToken: 'new-account-refresh',
+          expiresAt: Date.now() + 3600_000,
+        },
+      });
+      const identity = await provider.getTaskIdentity();
+      respond();
+      expect((await pending)?.accessToken).toBe('new-account');
+      expect(await provider.getTaskIdentity()).toBe(identity);
+    } finally {
+      respond?.();
+      await pending?.catch(() => undefined);
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
+  });
+
   it('single-flights proactive refresh and persists rotated tokens', async () => {
     const fixture = await createFixture();
     let refreshCalls = 0;

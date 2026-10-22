@@ -1,4 +1,5 @@
 import { MODERN_PROTOCOL_VERSION, objectRecord, requestVersion } from './modern-protocol.js';
+import { TASK_METHODS } from './task-protocol.js';
 
 interface Binding {
   name: string;
@@ -103,8 +104,9 @@ export function modernRequestHeaders(
     'MCP-Protocol-Version': MODERN_PROTOCOL_VERSION,
     'Mcp-Method': method,
   };
-  const name =
-    method === 'resources/read'
+  const name = TASK_METHODS.has(method)
+    ? input?.['taskId']
+    : method === 'resources/read'
       ? input?.['uri']
       : ['tools/call', 'prompts/get'].includes(method)
         ? input?.['name']
@@ -129,7 +131,11 @@ export function validateModernHeaders(
   if (typeof version !== 'string') throw new Error('Missing protocol version metadata');
   expected['MCP-Protocol-Version'] = version;
   // Name is required for these methods even when the body is malformed.
-  if (['tools/call', 'resources/read', 'prompts/get'].includes(method) && !expected['Mcp-Name'])
+  if (
+    (TASK_METHODS.has(method) ||
+      ['tools/call', 'resources/read', 'prompts/get'].includes(method)) &&
+    !expected['Mcp-Name']
+  )
     throw new Error('Missing MCP name or URI');
   for (const [name, value] of Object.entries(expected)) {
     const actual = headers.get(name);

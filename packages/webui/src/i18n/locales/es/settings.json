@@ -245,6 +245,28 @@
     "filterPlaceholder": "Filtrar modelos…"
   },
   "mcp": {
+    "tasks": {
+      "title": "Tareas MCP",
+      "description": "Tareas guardadas para esta sesión. La recuperación reanuda el seguimiento sin ejecutar de nuevo la herramienta.",
+      "noSession": "Abre una sesión para ver sus tareas.",
+      "disconnected": "Vuelve a conectarte para gestionar las tareas.",
+      "empty": "No hay tareas guardadas en esta sesión.",
+      "timeout": "Sin respuesta. Actualiza para volver a intentarlo.",
+      "actionTimeout": "No se recibió confirmación. Actualiza el estado antes de volver a intentarlo.",
+      "delivered": "Resultado obtenido",
+      "observing": "Seguimiento de la tarea en curso",
+      "waiting": "Esperando para reanudar el seguimiento",
+      "retry": "Reintentar recuperación",
+      "cancel": "Cancelar tarea",
+      "cancelRequested": "Cancelación solicitada",
+      "status": {
+        "working": "En curso",
+        "input_required": "Esperando entrada",
+        "completed": "Completada",
+        "cancelled": "Cancelada",
+        "failed": "Fallida"
+      }
+    },
     "status": {
       "connected": "Conectado",
       "connecting": "Conectando",

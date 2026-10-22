@@ -19,6 +19,7 @@ import { collectCatalogPages } from './registry-catalog.js';
 import type { ServerSlot } from './registry-slots.js';
 import type { MCPRegistryOptions } from './registry-types.js';
 import { wrapMCPTool } from './wrap-tool.js';
+import type { MCPTaskRecovery } from './task-recovery.js';
 
 export interface RegistryConnectContext {
   servers: Map<string, ServerSlot>;
@@ -30,6 +31,7 @@ export interface RegistryConnectContext {
   cwd?: string | undefined;
   authorizationProviderFactory?: MCPRegistryOptions['authorizationProviderFactory'] | undefined;
   elicitationHandler?: MCPRegistryOptions['elicitationHandler'] | undefined;
+  taskRecovery?: MCPTaskRecovery | undefined;
   operationListeners: Set<MCPOperationListener>;
   ensureConnected: (name: string) => Promise<MCPClient>;
   recordOperation: (
@@ -118,6 +120,7 @@ export function applySlotTools(
           }
         },
       },
+      ctx.taskRecovery ? (...args) => ctx.taskRecovery!.execute(...args) : undefined,
     ),
   );
   slot.lazyTools = wrapped;
@@ -423,5 +426,9 @@ function slotElicitation(
   const handler = ctx.elicitationHandler;
   if (!handler) return undefined;
   return (form) =>
-    handler({ ...form, server: slot.cfg.name, requester: slot.activeCallers?.at(-1) });
+    handler({
+      ...form,
+      server: slot.cfg.name,
+      requester: Object.hasOwn(form, 'requester') ? form.requester : slot.activeCallers?.at(-1),
+    });
 }

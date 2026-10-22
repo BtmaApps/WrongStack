@@ -39,6 +39,11 @@ export interface McpRouteHandlers {
   authStatus: (ws: WebSocket, msg: WSClientMessage) => Promise<void>;
   authLogin: (ws: WebSocket, msg: WSClientMessage) => Promise<void>;
   authLogout: (ws: WebSocket, msg: WSClientMessage) => Promise<void>;
+  tasksList: (ws: WebSocket, msg: WSClientMessage) => Promise<void>;
+  tasksRetry: (ws: WebSocket, msg: WSClientMessage) => Promise<void>;
+  tasksCancel: (ws: WebSocket, msg: WSClientMessage) => Promise<void>;
+  tasksSubscribe: (ws: WebSocket, msg: WSClientMessage) => Promise<void>;
+  tasksUnsubscribe: (ws: WebSocket, msg: WSClientMessage) => Promise<void>;
 }
 
 /**
@@ -69,6 +74,21 @@ export async function handleMcpRoute(
   handlers: McpRouteHandlers,
 ): Promise<boolean> {
   switch (msg.type) {
+    case 'mcp.tasks.subscribe':
+      await handlers.tasksSubscribe(ws, msg);
+      return true;
+    case 'mcp.tasks.unsubscribe':
+      await handlers.tasksUnsubscribe(ws, msg);
+      return true;
+    case 'mcp.tasks.list':
+      await handlers.tasksList(ws, msg);
+      return true;
+    case 'mcp.tasks.retry':
+      await handlers.tasksRetry(ws, msg);
+      return true;
+    case 'mcp.tasks.cancel':
+      await handlers.tasksCancel(ws, msg);
+      return true;
     case 'mcp.list':
       await handlers.list(ws, msg);
       return true;

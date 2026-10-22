@@ -1,21 +1,21 @@
 # MCP protocol conformance
 
-**Modern transport work checked against the published spec: 2026-10-21.**
+**Modern transport work checked against the published spec: 2026-10-22.**
 Source of truth: <https://modelcontextprotocol.io/specification/latest> and the
 [deprecated features registry](https://modelcontextprotocol.io/specification/2026-07-28/deprecated).
 The modern versioning, discovery, stdio and Streamable HTTP contracts were
 refreshed on that date. Historical feature notes below retain their own dates.
-Implementation and gaps are described here; the plan lives in
-`competitive-roadmap-2026-2027/09-mcp-authentication-and-sampling.md`.
+Implemented capabilities and remaining gaps are described below.
 
 ## Short answer
 
 The client and server now implement modern `2026-07-28` core request flows over
 stdio and Streamable HTTP, alongside the existing `2024-11-05` handshake path.
 This is not a claim of full conformance or support for every optional extension.
-Modern clients advertise empty client capabilities: MRTR elicitation, sampling,
-MCP Apps and Tasks are not advertised or silently executed. An `input_required`
-result produces an actionable unsupported-interaction error.
+Modern clients advertise form/URL elicitation only when a host handler is installed.
+MRTR interactions use the existing user-input surface and the originating call's
+requester. Modern tool calls can also follow Tasks from servers advertising that
+extension. Sampling, roots and MCP Apps are not advertised or silently executed.
 
 `SUPPORTED_PROTOCOL_VERSIONS` in `constants.ts` describes handshake revisions
 only. `MODERN_PROTOCOL_VERSION` and the per-request envelope live separately in
@@ -103,8 +103,137 @@ The server's claimed revision remains visible via `getServerMetadata()` for diag
 | Feature | Introduced | Note |
 | --- | --- | --- |
 | Exported-server argument completion handlers | Legacy | The client API already exists |
-| Modern MRTR and subscription-listen host flow | `2026-07-28` | Not advertised; there is no modern live catalog subscription |
-| Extensions: Tasks, MCP Apps, Skills over MCP | `2026-07-28` | Opt-in by design; skipping is fine |
+| Modern subscription-listen host flow | `2026-07-28` | Not advertised; there is no modern live catalog subscription |
+| Tasks: exported-server task execution and task notifications | `2026-07-28` | Client polling/input/cancellation, durable receipts and attached-session recovery exist |
+| Extensions: MCP Apps, Skills over MCP | `2026-07-28` | Opt-in by design; skipping is fine |
+
+## Modern multi round-trip requests
+
+The client implements the published [MRTR contract](https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/mrtr)
+for `tools/call`, `resources/read` and `prompts/get` over stdio and Streamable HTTP.
+When a server returns `input_required`, form and URL requests pass through the
+same schema validation, consent and user-input adapter used by legacy elicitation.
+No URL is opened by the protocol driver. An unattended host without an elicitation
+handler advertises no elicitation capability and refuses such an interaction.
+
+Each retry has a fresh JSON-RPC ID, preserves the original method/arguments, and
+returns only that round's responses and exact opaque `requestState`. State and
+answers never enter another parallel call. The registry binds tool interactions
+to the originating run rather than a different run that happened to call the same
+server more recently. An undefined origin cannot fall back to a concurrent caller.
+
+A logical call allows at most eight interaction rounds and eight input requests
+per round, with 256 KiB bounds on each input-required result and response map.
+Network time uses one cumulative request budget; user typing does not consume it.
+Each form waits at most ten minutes; the overall ceiling is the network budget
+plus ten minutes. Cancellation/connection close releases the form even when the
+host callback ignores its signal. A user cancel
+stops the call without another RPC. A decline can be returned once, but cannot
+cause another automatic prompt. Unsupported methods, malformed batches and
+unadvertised sampling/root requests are refused before any form is shown.
+
+Standalone server-to-client requests remain ignored on modern connections.
+This is client-side MRTR support; the exported MCP server does not supply
+interactive tool handlers. Legacy behavior remains
+covered separately. Durable wire/control tests live in
+`packages/mcp/tests/modern-mrtr*.test.ts` and exercise a real stdio child and an
+independent HTTP peer in addition to deterministic cancellation/loop controls.
+
+## Modern Tasks (client)
+
+The client implements the [2026-07-28 Tasks extension](https://modelcontextprotocol.github.io/ext-tasks/specification/2026-07-28/tasks.html)
+over stdio and Streamable HTTP. A server must advertise
+`capabilities.extensions["io.modelcontextprotocol/tasks"]`. Only then do
+`tools/call` and the task methods opt into the extension in per-request client
+capabilities. `MCPRequestOptions.tasks: false` requires a synchronous result.
+Resources and prompts never opt into task creation. Legacy connections retain
+their existing behavior; our exported server does not advertise task execution.
+
+Normal registry tools automatically wait for a task's final tool result. MRTR
+can finish before task creation; after creation the original tool is never
+replayed. The client polls `tasks/get`, honors the suggested polling interval
+(with a 100 ms floor; 1 second when absent), and sends form/URL responses through
+`tasks/update`. Input uses the same validation, consent and originating-run
+binding as MRTR. Already answered keys are deduplicated across stale polls;
+reusing a key for different input is rejected. Limits are eight inputs per
+snapshot, 64 inputs per wait, and 256 KiB per input/response map. Sampling and
+roots requests remain refused before displaying any form.
+
+Task observation has its own 30 minute total deadline, including user interaction,
+independent of the per-RPC network timeout. Callers may set `tasks.timeoutMs`
+between 1 ms and 24 hours. Abort, user cancel and deadline expiry make a bounded,
+best-effort `tasks/cancel` request. An acknowledgement only records cancellation
+intent; it does not claim the remote work stopped. Closing a connection releases
+the local wait without sending a request on that closed connection. Task IDs
+are mirrored into HTTP `Mcp-Name` for get, update and cancel.
+
+`MCPClient.getTask(taskId)` inspects a known task; `cancelTask(taskId)` requests
+cancellation; `waitForTask(taskId, options)` resumes observation and returns the
+final tool result without invoking the tool. An optional `tasks.onStatus` hook
+runs before the first poll and on subsequent status reads. Hosts can save the
+task ID there, bound to the exact configured server and authorized account, and
+resume after reconnecting. Nonterminal wait errors retain `MCPTaskError.taskId`.
+The CLI and standalone WebUI now persist project-local receipts under
+`mcp-tasks/journal.json` in the project's WrongStack state directory. Receipts
+contain task/server/tool identifiers, session and agent ownership, a connection
+and authorization-grant digest, status metadata, and fingerprints of acknowledged
+input keys. They never contain tool arguments, form answers, tokens, result
+payloads or status messages. Files use atomic writes and the cross-process file
+lock, are bounded to 1 MiB/256 receipts, and reject corrupt/linked journals.
+
+Recovery runs when the owning session is attached (checked every five seconds),
+with at most four recovery observations per pass. It preserves the server and
+current tool allowlist/deny/sandbox policy. A changed account, connection,
+project directory, session or agent cannot inherit the task. OAuth refresh keeps
+the grant identity; a new login changes it. An older refresh response cannot
+replace a newer login. Custom authorization providers must implement
+`getTaskIdentity()` to enable durable task tracking; their existing calls still
+work without it.
+
+Each observer holds a 90 second lease with a 20 second heartbeat. Graceful
+shutdown releases it; after a crash another process waits for it to expire.
+Host shutdown/session detachment pauses local observation without requesting
+remote cancellation. Explicit user abort retains the cooperative cancellation
+behavior. Acknowledged input fingerprints survive restart so stale input polls
+do not prompt again. A crash between a server acknowledgement and the local
+fingerprint write is not an exactly-once delivery guarantee. Recovered output
+is bounded to 16,000 characters and appended only to the owning conversation as
+runtime-origin, untrusted remote data. The conversation writer is flushed before
+delivery is acknowledged; a replayed receipt marker prevents duplicate recovery
+messages after a crash in that acknowledgement window. A task may already have expired or its
+server may not preserve work across its own restart. Missing/expired tasks are
+reported without retrying the original tool. `isError` in a completed tool
+result remains distinct from a task's `failed` protocol error.
+
+Embedders opt in with `MCPRegistryOptions.taskJournalDir` and a
+`taskRecoveryContext` getter, or call `setTaskRecoveryContext()` after constructing
+their session host. `listTasks(context)`, `recoverTasks(context)`,
+`retryTask(context, receiptId)` and `cancelTask(context, receiptId)` are scoped
+to that actual context. Retry requests bypass the transient retry delay, never
+take over a live observer lease, and never replay `tools/call`. Cancellation
+uses the current server policy, sandbox gate and account binding; an acknowledgement
+does not mark a task cancelled.
+
+WebUI **Settings > MCP Servers > MCP tasks** lists the open session's saved
+tasks and offers recovery and cooperative cancellation. Both standalone and
+CLI-embedded hosts push task status and result-collection updates over the existing
+WebSocket connection. `subscribeTasks(context, changed, closed)` observes committed
+journal changes, including atomic replacements by another process, with a bounded
+30-second resync if filesystem notifications fail. The browser receives fresh
+snapshots with subscription IDs and increasing revisions; hidden panels detach,
+and reconnecting panels request a new snapshot. Legacy hosts and interrupted
+streams fall back to five-second refreshes while visible.
+Only a safe task projection reaches the browser; remote IDs, account bindings,
+input hashes and observer tokens stay on the host. All seven UI locales are
+covered. The panel rejects stale session/request replies and never queues actions across
+a disconnect. Socket close, unsubscription and host shutdown release observers.
+The host stream never invokes a tool or resumes remote observation by itself.
+
+Remote MCP task notifications/subscriptions are not advertised; the WebUI stream
+is host-local. Wire tests in
+`packages/mcp/tests/tasks-*.test.ts` exercise independent HTTP and stdio peers,
+the registry/user-input path with concurrent runs, and a new client resuming a
+saved ID. These are local protocol proofs, not third-party service certification.
 
 ## Not implemented — and that is correct
 

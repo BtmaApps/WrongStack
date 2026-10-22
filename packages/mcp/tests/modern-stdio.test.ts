@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import { expect, it, vi } from 'vitest';
 import { MCPClient } from '../src/client.js';
 
-it('uses modern stdio wire metadata and refuses unadvertised server interactions', async () => {
+it('uses modern stdio metadata and refuses standalone or malformed server interactions', async () => {
   const base = await realpath(os.tmpdir());
   const directory = await mkdtemp(path.join(base, 'wrongstack-modern-stdio-'));
   if (
@@ -25,7 +25,7 @@ readline.createInterface({ input: process.stdin }).on('line', (line) => {
   const meta = message.params?._meta;
   if (meta?.['io.modelcontextprotocol/protocolVersion'] !== '2026-07-28' ||
       meta?.['io.modelcontextprotocol/clientInfo']?.name !== 'wrongstack' ||
-      JSON.stringify(meta?.['io.modelcontextprotocol/clientCapabilities']) !== '{}')
+      JSON.stringify(meta?.['io.modelcontextprotocol/clientCapabilities']) !== '{"elicitation":{"form":{},"url":{}}}')
     throw new Error('Required modern metadata missing');
   let result;
   if (message.method === 'server/discover') result = { resultType:'complete', supportedVersions:['2026-07-28'], capabilities:{tools:{}} };
@@ -54,7 +54,9 @@ readline.createInterface({ input: process.stdin }).on('line', (line) => {
     await client.connect();
     expect(client.getServerMetadata()?.protocolVersion).toBe('2026-07-28');
     expect(client.listTools().map((tool) => tool.name)).toEqual(['ask']);
-    await expect(client.callTool('ask', {})).rejects.toThrow('unsupported multi-round-trip');
+    await expect(client.callTool('ask', {})).rejects.toThrow(
+      'Malformed or oversized MCP input_required',
+    );
     expect((await client.callTool('url', {})).urlElicitations).toBeUndefined();
     expect(elicitation).not.toHaveBeenCalled();
   } finally {

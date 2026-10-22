@@ -1,8 +1,9 @@
 import type { MCPClientInternals, PendingStdioRequest } from './client-internals.js';
-import type { JsonRpcRequest } from './client-types.js';
+import type { JsonRpcRequest, MCPRequestOptions } from './client-types.js';
 import { MCP_CONSTANTS } from './constants.js';
 import type { JsonRpcResponse } from './contracts.js';
-import { assertCompleteResult, MODERN_PROTOCOL_VERSION, modernParams } from './modern-protocol.js';
+import { MODERN_PROTOCOL_VERSION, modernParams } from './modern-protocol.js';
+import { taskCapabilities } from './task-protocol.js';
 import { nextJsonRpcId } from './transport-base.js';
 
 /**
@@ -36,7 +37,7 @@ export function sendStdioRequest(
   method: string,
   params: unknown,
   effectiveTimeoutMs: number,
-  opts?: { signal?: AbortSignal | undefined },
+  opts?: MCPRequestOptions,
 ): Promise<JsonRpcResponse> {
   const signal = opts?.signal;
   if (signal?.aborted) {
@@ -51,7 +52,18 @@ export function sendStdioRequest(
     jsonrpc: '2.0',
     id,
     method,
-    params: modern || method === 'server/discover' ? modernParams(params) : params,
+    params:
+      modern || method === 'server/discover'
+        ? modernParams(
+            params,
+            taskCapabilities(
+              self.serverRequests.capabilities(),
+              method,
+              self._serverMetadata,
+              opts?.tasks !== false,
+            ),
+          )
+        : params,
   };
   return new Promise((resolve, reject) => {
     // Abort support: drop the pending entry, notify the server per the MCP
@@ -63,14 +75,15 @@ export function sendStdioRequest(
           const pending = self.pending.get(id);
           self.pending.delete(id);
           if (pending) clearTimeout(pending.timer);
-          void self
-            .notify('notifications/cancelled', {
-              requestId: id,
-              reason: 'client aborted',
-            })
-            .catch(() => {
-              /* best-effort — the child may already be gone */
-            });
+          if (!modern)
+            void self
+              .notify('notifications/cancelled', {
+                requestId: id,
+                reason: 'client aborted',
+              })
+              .catch(() => {
+                /* best-effort — the child may already be gone */
+              });
           const err = new Error(`MCP "${self.opts.name}" request "${method}" aborted by client`);
           err.name = 'AbortError';
           reject(err);
@@ -82,7 +95,7 @@ export function sendStdioRequest(
     };
     const onTimeout = () => {
       // A server waiting on the user's elicitation answer is not stalled.
-      if (self.serverRequests.awaitingUser) {
+      if (!modern && self.serverRequests.awaitingUser) {
         entry.timer = setTimeout(onTimeout, effectiveTimeoutMs);
         return;
       }
@@ -98,11 +111,7 @@ export function sendStdioRequest(
       resolve: (res: JsonRpcResponse) => {
         clearTimeout(entry.timer);
         detach();
-        try {
-          resolve(modern && method !== 'server/discover' ? assertCompleteResult(res) : res);
-        } catch (error) {
-          reject(error);
-        }
+        resolve(res);
       },
       reject: (err: Error) => {
         clearTimeout(entry.timer);

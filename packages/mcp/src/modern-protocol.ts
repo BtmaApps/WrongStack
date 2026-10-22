@@ -14,7 +14,10 @@ export function objectRecord(value: unknown): Record<string, unknown> | undefine
     : undefined;
 }
 
-export function modernParams(params: unknown): Record<string, unknown> {
+export function modernParams(
+  params: unknown,
+  capabilities: Record<string, unknown> = {},
+): Record<string, unknown> {
   const input = objectRecord(params) ?? {};
   return {
     ...input,
@@ -22,8 +25,8 @@ export function modernParams(params: unknown): Record<string, unknown> {
       ...objectRecord(input['_meta']),
       [VERSION_META]: MODERN_PROTOCOL_VERSION,
       [INFO_META]: MCP_CONSTANTS.CLIENT_INFO,
-      // MRTR and optional extensions are not advertised until their host flows exist.
-      [CAPABILITIES_META]: {},
+      // Only capabilities with a host handler are advertised. Optional extensions stay opt-in.
+      [CAPABILITIES_META]: capabilities,
     },
   };
 }

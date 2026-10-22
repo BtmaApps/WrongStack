@@ -9,6 +9,7 @@ import type { RegistryCatalogOperationsHost } from './registry-catalog-operation
 import type { RegistryServerLifecycleHost } from './registry-server-lifecycle.js';
 import type { ServerSlot } from './registry-slots.js';
 import type { MCPRegistryOptions } from './registry-types.js';
+import type { MCPTaskRecovery } from './task-recovery.js';
 
 /**
  * The private state and private members of `MCPRegistry`, as seen by the
@@ -31,6 +32,7 @@ export interface MCPRegistryInternals
   readonly idleTimeoutMs: number;
   readonly authorizationProviderFactory: MCPRegistryOptions['authorizationProviderFactory'];
   readonly elicitationHandler: MCPRegistryOptions['elicitationHandler'];
+  readonly taskRecovery: MCPTaskRecovery | undefined;
   readonly operationListeners: Set<MCPOperationListener>;
   readonly onToolsChanged: (name: string, _tools: { name: string }[]) => void;
   readonly onResourcesChanged: (name: string) => void;

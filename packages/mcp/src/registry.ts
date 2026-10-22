@@ -58,6 +58,7 @@ import {
   stop as stopFromHost,
 } from './registry-server-lifecycle.js';
 import type { MCPRegistryCatalog } from './registry-types.js';
+import type { MCPTaskContext as AgentContext } from './task-identity.js';
 
 export type { MCPDescribedTool } from './registry-describe.js';
 export type { MCPRegistryCatalog, MCPRegistryOptions } from './registry-types.js';
@@ -178,6 +179,7 @@ export class MCPRegistry extends MCPRegistryRuntime {
   }
 
   async stop(name: string): Promise<void> {
+    this.taskRecovery?.pauseServer(name);
     return stopFromHost(this.internals(), name);
   }
 
@@ -295,6 +297,7 @@ export class MCPRegistry extends MCPRegistryRuntime {
   }
 
   async stopAll(): Promise<void> {
+    this.taskRecovery?.dispose();
     if (this.idleTimer) {
       clearInterval(this.idleTimer);
       this.idleTimer = undefined;
@@ -310,6 +313,32 @@ export class MCPRegistry extends MCPRegistryRuntime {
       }),
     );
     this.disabledServers.clear();
+    await this.taskRecovery?.drain();
+  }
+
+  setTaskRecoveryContext(provider: (() => AgentContext | undefined) | undefined): void {
+    this.taskRecovery?.setContextProvider(provider);
+  }
+  async recoverTasks(context: AgentContext) {
+    return this.taskRecovery?.recover(context) ?? [];
+  }
+  async listTasks(context: AgentContext) {
+    return this.taskRecovery?.list(context) ?? [];
+  }
+  async subscribeTasks(
+    context: AgentContext,
+    changed: () => void,
+    closed: () => void = () => {},
+  ): Promise<() => void> {
+    if (!this.taskRecovery) throw new Error('MCP task journal is not available');
+    return this.taskRecovery.subscribe(context, changed, closed);
+  }
+  async retryTask(context: AgentContext, id: string) {
+    return this.taskRecovery?.retry(context, id) ?? 'unavailable';
+  }
+  async cancelTask(context: AgentContext, id: string): Promise<void> {
+    if (!this.taskRecovery) throw new Error('MCP task journal is not available');
+    await this.taskRecovery.cancel(context, id);
   }
 
   /**

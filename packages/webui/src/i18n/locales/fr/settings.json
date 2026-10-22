@@ -245,6 +245,28 @@
     "filterPlaceholder": "Filtrer les modèles…"
   },
   "mcp": {
+    "tasks": {
+      "title": "Tâches MCP",
+      "description": "Tâches enregistrées pour cette session. La récupération reprend le suivi sans relancer l’outil.",
+      "noSession": "Ouvrez une session pour afficher ses tâches.",
+      "disconnected": "Reconnectez-vous pour gérer les tâches.",
+      "empty": "Aucune tâche enregistrée dans cette session.",
+      "timeout": "Aucune réponse. Actualisez pour réessayer.",
+      "actionTimeout": "Aucune confirmation reçue. Actualisez le statut avant de réessayer.",
+      "delivered": "Résultat récupéré",
+      "observing": "Suivi de la tâche en cours",
+      "waiting": "En attente de reprise du suivi",
+      "retry": "Réessayer la récupération",
+      "cancel": "Annuler la tâche",
+      "cancelRequested": "Annulation demandée",
+      "status": {
+        "working": "En cours",
+        "input_required": "En attente de saisie",
+        "completed": "Terminée",
+        "cancelled": "Annulée",
+        "failed": "Échec"
+      }
+    },
     "status": {
       "connected": "Connecté",
       "connecting": "Connexion",

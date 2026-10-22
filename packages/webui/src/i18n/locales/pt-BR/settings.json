@@ -245,6 +245,28 @@
     "filterPlaceholder": "Filtrar modelos…"
   },
   "mcp": {
+    "tasks": {
+      "title": "Tarefas MCP",
+      "description": "Tarefas salvas para esta sessão. A recuperação retoma o acompanhamento sem executar a ferramenta novamente.",
+      "noSession": "Abra uma sessão para ver suas tarefas.",
+      "disconnected": "Reconecte-se para gerenciar as tarefas.",
+      "empty": "Nenhuma tarefa salva nesta sessão.",
+      "timeout": "Sem resposta. Atualize para tentar novamente.",
+      "actionTimeout": "Nenhuma confirmação recebida. Atualize o status antes de tentar novamente.",
+      "delivered": "Resultado obtido",
+      "observing": "Acompanhando a tarefa",
+      "waiting": "Aguardando para retomar o acompanhamento",
+      "retry": "Tentar recuperar novamente",
+      "cancel": "Cancelar tarefa",
+      "cancelRequested": "Cancelamento solicitado",
+      "status": {
+        "working": "Em andamento",
+        "input_required": "Aguardando entrada",
+        "completed": "Concluída",
+        "cancelled": "Cancelada",
+        "failed": "Falhou"
+      }
+    },
     "status": {
       "connected": "Conectado",
       "connecting": "Conectando",

@@ -112,14 +112,18 @@ describe('wrapMCPTool', () => {
     expect(out).toBe('');
   });
 
-  it('forwards the executor abort signal to client.callTool', async () => {
+  it('forwards the executor abort signal and originating caller to client.callTool', async () => {
     const callTool = vi.fn(async () => ({ content: 'ok', isError: false }));
     const client = { callTool } as never as MCPClient;
     const wrapped = wrapMCPTool('s', { name: 'fetch', inputSchema: { type: 'object' } }, client);
     const ctrl = new AbortController();
     const ctx = {} as Parameters<typeof wrapped.execute>[1];
     await wrapped.execute({ q: 1 }, ctx, { signal: ctrl.signal });
-    expect(callTool).toHaveBeenCalledWith('fetch', { q: 1 }, { signal: ctrl.signal });
+    expect(callTool).toHaveBeenCalledWith(
+      'fetch',
+      { q: 1 },
+      { signal: ctrl.signal, requester: ctx },
+    );
   });
 
   it('reports call saturation and outcomes without exposing tool input', async () => {

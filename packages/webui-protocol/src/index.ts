@@ -4,6 +4,7 @@ export type {
   AutomationPullRequestReceipt,
   AutomationPullRequestView,
 } from './automation-pull-request.js';
+export type { MCPTaskView } from './mcp-tasks.js';
 // The two core types the projector's input names. Re-exported for the same
 // reason as the projector itself: SimpleUI reaches core only through this
 // package.

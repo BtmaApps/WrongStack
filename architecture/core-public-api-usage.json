@@ -4,9 +4,9 @@
   "rootImportFiles": 0,
   "bySpecifier": {
     "@wrongstack/core/agent": {
-      "files": 403,
-      "typeOnly": 313,
-      "runtimeOrMixed": 110
+      "files": 408,
+      "typeOnly": 317,
+      "runtimeOrMixed": 111
     },
     "@wrongstack/core/agent-catalog": {
       "files": 23,
@@ -84,14 +84,14 @@
       "runtimeOrMixed": 5
     },
     "@wrongstack/core/infrastructure": {
-      "files": 60,
+      "files": 61,
       "typeOnly": 7,
-      "runtimeOrMixed": 57
+      "runtimeOrMixed": 58
     },
     "@wrongstack/core/kernel": {
-      "files": 380,
+      "files": 386,
       "typeOnly": 164,
-      "runtimeOrMixed": 236
+      "runtimeOrMixed": 242
     },
     "@wrongstack/core/kernel/events.js": {
       "files": 6,
@@ -134,9 +134,9 @@
       "runtimeOrMixed": 58
     },
     "@wrongstack/core/registry": {
-      "files": 167,
+      "files": 173,
       "typeOnly": 70,
-      "runtimeOrMixed": 100
+      "runtimeOrMixed": 106
     },
     "@wrongstack/core/replay": {
       "files": 3,
@@ -149,13 +149,13 @@
       "runtimeOrMixed": 2
     },
     "@wrongstack/core/sandbox": {
-      "files": 11,
+      "files": 12,
       "typeOnly": 0,
-      "runtimeOrMixed": 11
+      "runtimeOrMixed": 12
     },
     "@wrongstack/core/security": {
-      "files": 217,
-      "typeOnly": 30,
+      "files": 218,
+      "typeOnly": 31,
       "runtimeOrMixed": 189
     },
     "@wrongstack/core/session-catalog": {
@@ -179,9 +179,9 @@
       "runtimeOrMixed": 30
     },
     "@wrongstack/core/storage": {
-      "files": 151,
+      "files": 152,
       "typeOnly": 40,
-      "runtimeOrMixed": 141
+      "runtimeOrMixed": 142
     },
     "@wrongstack/core/tasking": {
       "files": 33,
@@ -194,8 +194,8 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1464,
-      "typeOnly": 1289,
+      "files": 1471,
+      "typeOnly": 1296,
       "runtimeOrMixed": 432
     },
     "@wrongstack/core/types/limits": {
@@ -239,9 +239,9 @@
       "runtimeOrMixed": 20
     },
     "@wrongstack/core/utils": {
-      "files": 837,
+      "files": 838,
       "typeOnly": 72,
-      "runtimeOrMixed": 794
+      "runtimeOrMixed": 795
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -249,9 +249,9 @@
       "runtimeOrMixed": 1
     },
     "@wrongstack/core/utils/error": {
-      "files": 20,
+      "files": 22,
       "typeOnly": 0,
-      "runtimeOrMixed": 20
+      "runtimeOrMixed": 22
     },
     "@wrongstack/core/utils/expect-defined": {
       "files": 16,
@@ -1259,6 +1259,12 @@
       "file": "packages/kanban-mcp/src/adapter.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/mcp/tests/task-journal-conversation.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/agent",
@@ -2492,6 +2498,18 @@
     },
     {
       "specifier": "@wrongstack/core/agent",
+      "file": "packages/webui-server/src/server/mcp-task-handlers.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/webui-server/src/server/mcp-task-subscriptions.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
       "file": "packages/webui-server/src/server/mode-handlers.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -2685,6 +2703,18 @@
     {
       "specifier": "@wrongstack/core/agent",
       "file": "packages/webui-server/tests/kanban-source-integrity.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/webui-server/tests/mcp-task-handlers.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/webui-server/tests/mcp-task-subscriptions.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -7100,6 +7130,12 @@
     },
     {
       "specifier": "@wrongstack/core/infrastructure",
+      "file": "packages/mcp/tests/task-journal-conversation.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/infrastructure",
       "file": "packages/providers/tests/factories.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -8348,6 +8384,12 @@
     },
     {
       "specifier": "@wrongstack/core/kernel",
+      "file": "packages/mcp/tests/modern-mrtr-registry.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
       "file": "packages/mcp/tests/progress-log-transports.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -8433,6 +8475,30 @@
     {
       "specifier": "@wrongstack/core/kernel",
       "file": "packages/mcp/tests/structured-output.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
+      "file": "packages/mcp/tests/task-journal-conversation.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
+      "file": "packages/mcp/tests/task-journal-recovery.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
+      "file": "packages/mcp/tests/task-management.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
+      "file": "packages/mcp/tests/tasks-registry.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -9459,6 +9525,12 @@
     {
       "specifier": "@wrongstack/core/kernel",
       "file": "packages/webui/tests/hooks/sdd-brain-chat-routing.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
+      "file": "packages/webui/tests/mcp-tasks-browser-smoke.mjs",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -11066,6 +11138,12 @@
     },
     {
       "specifier": "@wrongstack/core/registry",
+      "file": "packages/mcp/tests/modern-mrtr-registry.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/registry",
       "file": "packages/mcp/tests/progress-log-transports.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -11139,6 +11217,30 @@
     {
       "specifier": "@wrongstack/core/registry",
       "file": "packages/mcp/tests/structured-output.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/registry",
+      "file": "packages/mcp/tests/task-journal-conversation.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/registry",
+      "file": "packages/mcp/tests/task-journal-recovery.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/registry",
+      "file": "packages/mcp/tests/task-management.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/registry",
+      "file": "packages/mcp/tests/tasks-registry.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -11461,6 +11563,12 @@
       "runtimeOrMixed": 0
     },
     {
+      "specifier": "@wrongstack/core/registry",
+      "file": "packages/webui/tests/mcp-tasks-browser-smoke.mjs",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
       "specifier": "@wrongstack/core/replay",
       "file": "packages/cli/src/wiring/replay.ts",
       "typeOnly": 0,
@@ -11505,6 +11613,12 @@
     {
       "specifier": "@wrongstack/core/sandbox",
       "file": "packages/cli/src/slash-commands/sandbox.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/sandbox",
+      "file": "packages/mcp/src/task-recovery.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -12617,6 +12731,12 @@
       "file": "packages/webui-server/src/server/mcp-server-view.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/webui-server/src/server/mcp-task-handlers.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
     },
     {
       "specifier": "@wrongstack/core/security",
@@ -13767,6 +13887,12 @@
     {
       "specifier": "@wrongstack/core/storage",
       "file": "packages/cli/tests/wiring-provider-runtime-setup.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/storage",
+      "file": "packages/mcp/tests/task-journal-conversation.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -17768,6 +17894,18 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/mcp/src/task-identity.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/mcp/src/task-recovery.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/mcp/src/token-store.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -17829,6 +17967,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/mcp/tests/manage.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/mcp/tests/modern-mrtr-registry.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -17919,6 +18063,30 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/mcp/tests/structured-output.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/mcp/tests/task-journal-conversation.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/mcp/tests/task-journal-recovery.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/mcp/tests/task-management.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/mcp/tests/tasks-registry.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -26366,6 +26534,12 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
+      "file": "packages/mcp/src/task-journal.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
       "file": "packages/mcp/src/token-store.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -28779,6 +28953,18 @@
     {
       "specifier": "@wrongstack/core/utils/error",
       "file": "packages/cli/src/webui-server-lifecycle.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils/error",
+      "file": "packages/mcp/src/manage.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils/error",
+      "file": "packages/mcp/src/task-request.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

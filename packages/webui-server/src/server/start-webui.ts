@@ -155,6 +155,7 @@ export async function startWebUI(
     });
   const { peekAgent, toolExecutor, permissionPolicy, brain, updateAutoCompactionMaxContext } =
     agentServices;
+  preContext.mcpRegistry.setTaskRecoveryContext?.(() => peekAgent?.(session.id)?.ctx ?? context);
   if (typeof context.meta['yolo'] === 'boolean') {
     permissionPolicy.setYolo?.(context.meta['yolo']);
   }

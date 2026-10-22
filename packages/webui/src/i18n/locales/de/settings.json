@@ -245,6 +245,28 @@
     "filterPlaceholder": "Modelle filtern…"
   },
   "mcp": {
+    "tasks": {
+      "title": "MCP-Aufgaben",
+      "description": "Gespeicherte Aufgaben dieser Sitzung. Die Wiederherstellung setzt die Beobachtung fort, ohne das Werkzeug erneut auszuführen.",
+      "noSession": "Öffnen Sie eine Sitzung, um ihre Aufgaben anzuzeigen.",
+      "disconnected": "Stellen Sie die Verbindung wieder her, um Aufgaben zu verwalten.",
+      "empty": "Keine gespeicherten Aufgaben in dieser Sitzung.",
+      "timeout": "Keine Antwort. Aktualisieren Sie die Ansicht und versuchen Sie es erneut.",
+      "actionTimeout": "Keine Bestätigung erhalten. Aktualisieren Sie den Status vor einem erneuten Versuch.",
+      "delivered": "Ergebnis abgerufen",
+      "observing": "Aufgabe wird beobachtet",
+      "waiting": "Wartet auf Fortsetzung der Beobachtung",
+      "retry": "Wiederherstellung erneut versuchen",
+      "cancel": "Aufgabe abbrechen",
+      "cancelRequested": "Abbruch angefordert",
+      "status": {
+        "working": "In Bearbeitung",
+        "input_required": "Wartet auf Eingabe",
+        "completed": "Abgeschlossen",
+        "cancelled": "Abgebrochen",
+        "failed": "Fehlgeschlagen"
+      }
+    },
     "status": {
       "connected": "Verbunden",
       "connecting": "Verbinden",

@@ -95,7 +95,10 @@ export type MCPElicitationHandler = (
 
 /** The per-connection slice of {@link MCPElicitationHandler} a client is given. */
 export type MCPClientElicitationHandler = (
-  request: ElicitationPrompt & { signal: AbortSignal },
+  request: ElicitationPrompt & {
+    signal: AbortSignal;
+    requester?: ElicitationRequester | undefined;
+  },
 ) => Promise<MCPElicitationResult>;
 
 /**
@@ -294,7 +297,7 @@ export function parseUrlElicitation(params: unknown): Parsed<UrlElicitation> {
 }
 
 /** Parse `elicitation/create` params into a form or a page, or say why they are invalid. */
-function parseElicitationParams(params: unknown): Parsed<ElicitationPrompt> {
+export function parseElicitationParams(params: unknown): Parsed<ElicitationPrompt> {
   if (!isRecord(params)) return { ok: false, error: 'params must be an object' };
   const message = params['message'];
   if (typeof message !== 'string' || !message.trim()) {
@@ -439,7 +442,7 @@ export class ServerRequestResponder {
 
   constructor(private readonly elicitation?: MCPClientElicitationHandler | undefined) {}
 
-  /** Client capabilities to declare in `initialize` — only what can be answered. */
+  /** Capabilities for legacy initialize and modern request metadata: only installed handlers. */
   capabilities(): Record<string, unknown> {
     return this.elicitation ? { elicitation: { form: {}, url: {} } } : {};
   }
@@ -449,7 +452,10 @@ export class ServerRequestResponder {
     return this.pending.size > 0;
   }
 
-  async answer(request: ServerRequest): Promise<ServerResponse> {
+  async answer(
+    request: ServerRequest,
+    scope?: { signal: AbortSignal; requester?: ElicitationRequester | undefined },
+  ): Promise<ServerResponse> {
     const { id, method } = request;
     const error = (code: number, message: string): ServerResponse => ({
       jsonrpc: '2.0',
@@ -478,6 +484,9 @@ export class ServerRequestResponder {
       );
     }
     const controller = new AbortController();
+    const abort = () => controller.abort(scope?.signal.reason);
+    scope?.signal.addEventListener('abort', abort, { once: true });
+    if (scope?.signal.aborted) abort();
     this.pending.set(id, controller);
     const deadline = setTimeout(
       () => controller.abort(new Error('elicitation timed out')),
@@ -486,7 +495,26 @@ export class ServerRequestResponder {
     deadline.unref?.();
     try {
       const prompt = form.value;
-      const result = await this.elicitation({ ...prompt, signal: controller.signal });
+      let detach = () => {};
+      const result = await new Promise<MCPElicitationResult>((resolve, reject) => {
+        const cancelled = () => resolve({ action: 'cancel' });
+        controller.signal.addEventListener('abort', cancelled, { once: true });
+        detach = () => controller.signal.removeEventListener('abort', cancelled);
+        if (controller.signal.aborted) {
+          cancelled();
+          return;
+        }
+        Promise.resolve()
+          .then(() => {
+            controller.signal.throwIfAborted();
+            return this.elicitation!({
+              ...prompt,
+              signal: controller.signal,
+              ...(scope ? { requester: scope.requester } : {}),
+            });
+          })
+          .then(resolve, reject);
+      }).finally(() => detach());
       if (controller.signal.aborted) return { jsonrpc: '2.0', id, result: { action: 'cancel' } };
       if (result.action !== 'accept')
         return { jsonrpc: '2.0', id, result: { action: result.action } };
@@ -502,6 +530,7 @@ export class ServerRequestResponder {
       return { jsonrpc: '2.0', id, result: { action: 'cancel' } };
     } finally {
       clearTimeout(deadline);
+      scope?.signal.removeEventListener('abort', abort);
       // dispose/reconnect may reuse an id before the previous surface settles.
       if (this.pending.get(id) === controller) this.pending.delete(id);
     }

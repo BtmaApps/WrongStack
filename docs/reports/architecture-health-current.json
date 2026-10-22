@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-22T10:43:50.552Z",
+  "generatedAt": "2026-10-22T10:44:27.096Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 38,
-    "sourceFiles": 5217,
-    "testFiles": 4584,
-    "sourceLines": 1135338,
+    "sourceFiles": 5232,
+    "testFiles": 4601,
+    "sourceLines": 1137770,
     "workspaceEdges": 139,
-    "moduleEdges": 17142,
+    "moduleEdges": 17206,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -385,8 +385,8 @@
     {
       "name": "@wrongstack/mcp",
       "dir": "packages/mcp",
-      "sourceFiles": 65,
-      "testFiles": 80,
+      "sourceFiles": 74,
+      "testFiles": 94,
       "workspaceDependencies": [
         "@wrongstack/core"
       ],
@@ -399,7 +399,7 @@
         {
           "path": "packages/mcp/tsconfig.test.json",
           "error": null,
-          "testFiles": 80
+          "testFiles": 94
         }
       ]
     },
@@ -869,8 +869,8 @@
     {
       "name": "@wrongstack/webui",
       "dir": "packages/webui",
-      "sourceFiles": 761,
-      "testFiles": 501,
+      "sourceFiles": 763,
+      "testFiles": 502,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -893,7 +893,7 @@
         {
           "path": "packages/webui/tsconfig.test.json",
           "error": null,
-          "testFiles": 501
+          "testFiles": 502
         }
       ]
     },
@@ -924,7 +924,7 @@
     {
       "name": "@wrongstack/webui-protocol",
       "dir": "packages/webui-protocol",
-      "sourceFiles": 27,
+      "sourceFiles": 28,
       "testFiles": 14,
       "workspaceDependencies": [
         "@wrongstack/core"
@@ -945,8 +945,8 @@
     {
       "name": "@wrongstack/webui-server",
       "dir": "packages/webui-server",
-      "sourceFiles": 301,
-      "testFiles": 301,
+      "sourceFiles": 304,
+      "testFiles": 303,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -972,7 +972,7 @@
         {
           "path": "packages/webui-server/tsconfig.test.json",
           "error": null,
-          "testFiles": 301
+          "testFiles": 303
         }
       ]
     },
@@ -13106,6 +13106,30 @@
         ]
       },
       {
+        "file": "packages/mcp/tests/modern-mrtr-controls.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/mcp/tests/modern-mrtr-http-wire.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/mcp/tests/modern-mrtr-registry.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/mcp/tests/modern-mrtr.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/mcp/tests/modern-protocol.test.ts",
         "projects": [
           "root-node"
@@ -13329,6 +13353,66 @@
       },
       {
         "file": "packages/mcp/tests/structured-output.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/mcp/tests/task-changes.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/mcp/tests/task-input-recovery.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/mcp/tests/task-journal-conversation.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/mcp/tests/task-journal-recovery.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/mcp/tests/task-journal.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/mcp/tests/task-management.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/mcp/tests/tasks-controls.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/mcp/tests/tasks-http.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/mcp/tests/tasks-registry.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/mcp/tests/tasks-stdio.test.ts",
         "projects": [
           "root-node"
         ]
@@ -24476,6 +24560,18 @@
         ]
       },
       {
+        "file": "packages/webui-server/tests/mcp-task-handlers.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/webui-server/tests/mcp-task-subscriptions.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/webui-server/tests/memory-candidate-resolve.test.ts",
         "projects": [
           "root-node"
@@ -26277,6 +26373,12 @@
       },
       {
         "file": "packages/webui/tests/components/mcp-section-edit.test.tsx",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
+        "file": "packages/webui/tests/components/mcp-tasks-panel.test.tsx",
         "projects": [
           "webui-jsdom"
         ]

@@ -1,9 +1,10 @@
 import { createSandboxMcpGate } from '@wrongstack/core/sandbox';
 import { ToolCapabilities } from '@wrongstack/core/security';
 import type { Permission, Tool } from '@wrongstack/core/types';
+import type { MCPTaskContext as AgentContext } from './task-identity.js';
 import { mcpQualifiedToolName } from '@wrongstack/core/utils';
 import type { MCPClient } from './client.js';
-import type { MCPTool } from './contracts.js';
+import type { MCPTool, ToolCallResult } from './contracts.js';
 import type { ElicitationRequester } from './elicitation.js';
 import { renderStructuredResult } from './structured-result.js';
 
@@ -52,6 +53,15 @@ export function wrapMCPTool(
   permission: Permission = 'confirm',
   sandboxTrust = false,
   observer?: MCPToolCallObserver | undefined,
+  taskRunner?:
+    | ((
+        client: MCPClient,
+        tool: MCPTool,
+        input: unknown,
+        context: AgentContext,
+        signal?: AbortSignal,
+      ) => Promise<ToolCallResult>)
+    | undefined,
 ): Tool {
   // Sandbox gate (plan 28): MCP tool calls are DENIED under enforced tiers —
   // their effects run in the server process and cannot be routed (SDD
@@ -79,11 +89,15 @@ export function wrapMCPTool(
         // For a dormant lazy server this spawns the process + handshakes before
         // the first call; for an eager server it resolves to the fixed client.
         const live = typeof client === 'function' ? await client() : client;
-        // Propagate the run's abort signal: on Ctrl+C the JSON-RPC request is
-        // dropped AND the server is told via `notifications/cancelled` to stop
-        // the in-flight work, instead of it running to completion server-side.
+        // Propagate the run's abort signal. Modern Tasks use cooperative
+        // tasks/cancel; legacy requests use notifications/cancelled.
         const signal = opts?.signal ?? ctx?.signal;
-        const res = await live.callTool(mcpTool.name, input, signal ? { signal } : undefined);
+        const res = taskRunner
+          ? await taskRunner(live, mcpTool, input, ctx, signal)
+          : await live.callTool(mcpTool.name, input, {
+              ...(signal ? { signal } : {}),
+              requester: ctx,
+            });
         if (res.urlElicitations && res.urlElicitations.length > 0) {
           // Still inside the call, so the pages go to this run's user.
           const outcomes = await live.presentUrlElicitations(
@@ -97,18 +111,22 @@ export function wrapMCPTool(
           throw new Error(errText || `MCP tool "${qualifiedName}" failed`);
         }
         ok = true;
-        return renderStructuredResult(
-          stringify(res.content),
-          res.content,
-          res.structuredContent,
-          mcpTool.outputSchema,
-        );
+        return renderMcpToolResult(mcpTool, res);
       } finally {
         observer?.onFinish({ durationMs: Date.now() - startedAt, ok }, ctx);
       }
     },
   };
   return sandboxGate(tool);
+}
+
+export function renderMcpToolResult(tool: MCPTool, result: ToolCallResult): string {
+  return renderStructuredResult(
+    stringify(result.content),
+    result.content,
+    result.structuredContent,
+    tool.outputSchema,
+  );
 }
 
 /** What the model is told after a `-32042`: which pages, what the user chose, whether to retry. */

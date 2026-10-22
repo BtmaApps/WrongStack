@@ -19,6 +19,7 @@
 import { randomBytes } from 'node:crypto';
 import * as fs from 'node:fs/promises';
 import type { MCPHealthConfig, MCPServerConfig, Permission } from '@wrongstack/core/types';
+import { toErrorMessage } from '@wrongstack/core/utils/error';
 import type { MCPRegistry } from './registry.js';
 
 /** Transport values accepted from UI surfaces (UI also offers a bare "http"). */
@@ -323,7 +324,7 @@ function liveState(name: string, registry: MCPRegistry): { state: string; tools:
 }
 
 function errMessage(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
+  return toErrorMessage(err);
 }
 
 // ── operations ────────────────────────────────────────────────────────────────

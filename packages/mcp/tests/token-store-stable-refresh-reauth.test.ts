@@ -84,6 +84,11 @@ function providerFixture(initial: MCPStoredAuthorization) {
       save: async (next: MCPStoredAuthorization) => {
         stored = next;
       },
+      saveRefreshed: async (next: MCPStoredAuthorization, expectedGrantId: string | undefined) => {
+        if (stored.grantId !== expectedGrantId) return stored;
+        stored = next;
+        return stored;
+      },
     } as never,
   });
   return {

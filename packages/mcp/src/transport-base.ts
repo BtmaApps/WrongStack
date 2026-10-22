@@ -571,8 +571,13 @@ export abstract class BaseHTTPTransport {
   protected requestTimeoutSignal(
     parent: AbortSignal | undefined,
     timeoutMs: number,
+    pauseForUser = true,
   ): { signal: AbortSignal; dispose: () => void } {
-    return createTimeoutSignal(parent, timeoutMs, () => this.serverRequests.awaitingUser);
+    return createTimeoutSignal(
+      parent,
+      timeoutMs,
+      () => pauseForUser && this.serverRequests.awaitingUser,
+    );
   }
 
   /**

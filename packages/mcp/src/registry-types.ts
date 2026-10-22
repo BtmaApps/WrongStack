@@ -1,6 +1,7 @@
 import type { EventBus } from '@wrongstack/core/kernel';
 import type { ToolRegistry } from '@wrongstack/core/registry';
 import type { Logger, MCPServerConfig } from '@wrongstack/core/types';
+import type { MCPTaskContext as AgentContext } from './task-identity.js';
 import type { MCPAuthorizationProvider } from './authorization.js';
 import type { MCPAuthorizationManager } from './authorization-manager.js';
 import type { ConnectionState } from './contracts.js';
@@ -12,6 +13,10 @@ export interface MCPRegistryOptions {
   events: EventBus;
   log: Logger;
   cacheDir?: string | undefined;
+  /** Durable project state, separate from the disposable capability cache. */
+  taskJournalDir?: string | undefined;
+  /** Supplies only the currently attached session; other sessions are never recovered into it. */
+  taskRecoveryContext?: (() => AgentContext | undefined) | undefined;
   /**
    * Working directory for stdio servers — the project root the host serves.
    * Omitted: children inherit the process cwd (only correct for a host that

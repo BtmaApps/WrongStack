@@ -7,6 +7,7 @@ import type { WSServerMessage } from '@/types';
 import { confirmModal } from '../ConfirmModal';
 import { Button } from '../ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
+import type { MCPServerConfig, MCPToolHints } from './contracts.js';
 import {
   type MCPAuthState,
   type MCPServer,
@@ -14,16 +15,15 @@ import {
   ServerCard,
 } from './MCPServerCards.js';
 import { ServerDialog } from './MCPServerDialog.js';
+import { MCPTasksPanel } from './MCPTasksPanel.js';
 import { OFFICIAL_SERVERS, type OfficialServer, toServerConfig } from './official-servers';
-
-import type { MCPServerConfig, MCPToolHints } from './contracts.js';
 
 export function MCPSection(): ReactElement {
   const ws = useWebSocket();
   const { t } = useAppTranslation();
   const [servers, setServers] = useState<MCPServer[]>([]);
   const [loading, setLoading] = useState(false);
-  const [tab, setTab] = useState<'list' | 'add' | 'recommended'>('list');
+  const [tab, setTab] = useState<'list' | 'add' | 'recommended' | 'tasks'>('list');
   const [editServer, setEditServer] = useState<MCPServer | undefined>();
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -467,15 +467,21 @@ export function MCPSection(): ReactElement {
       )}
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
-        <TabsList>
+        <TabsList className="flex-wrap">
           <TabsTrigger value="recommended">
             <Star className="w-3.5 h-3.5 mr-1" />
             {t('settings:mcp.tabRecommended')}
           </TabsTrigger>
           <TabsTrigger value="list">{t('settings:mcp.tabServers')}</TabsTrigger>
+          <TabsTrigger value="tasks">
+            {t('settings:mcp.tasks.title', { defaultValue: 'MCP tasks' })}
+          </TabsTrigger>
           <TabsTrigger value="add">{t('settings:mcp.tabAddCustom')}</TabsTrigger>
         </TabsList>
 
+        <TabsContent value="tasks">
+          <MCPTasksPanel />
+        </TabsContent>
         {/* Recommended tab — official MCP servers from the community */}
         <TabsContent value="recommended" className="space-y-3">
           <p className="text-sm text-muted-foreground">{t('settings:mcp.recommendedBody')}</p>

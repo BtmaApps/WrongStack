@@ -1,8 +1,9 @@
 import type { MCPAuthorizationProvider } from './authorization.js';
 
 import type { MCPTool } from './contracts.js';
-import type { MCPClientElicitationHandler } from './elicitation.js';
+import type { MCPClientElicitationHandler, ElicitationRequester } from './elicitation.js';
 import type { MCPLogMessageNotification, MCPProgressNotification } from './protocol.js';
+import type { MCPTaskOptions } from './task-protocol.js';
 
 export type Transport = 'stdio' | 'sse' | 'streamable-http';
 
@@ -52,6 +53,10 @@ export interface MCPClientOptions {
 
 export interface MCPRequestOptions {
   signal?: AbortSignal | undefined;
+  /** Explicit caller for an MRTR interaction; never inferred from a concurrent call. */
+  requester?: ElicitationRequester | undefined;
+  /** Modern Tasks are accepted only from advertising servers. Set false to require a synchronous result. */
+  tasks?: MCPTaskOptions | false | undefined;
 }
 
 export interface MCPPageOptions extends MCPRequestOptions {

@@ -300,6 +300,28 @@
     "filterPlaceholder": "Filter models…"
   },
   "mcp": {
+    "tasks": {
+      "title": "MCP tasks",
+      "description": "Tasks saved for this session. Recovery resumes observation without running the tool again.",
+      "noSession": "Open a session to view its tasks.",
+      "disconnected": "Reconnect to manage tasks.",
+      "empty": "No saved tasks in this session.",
+      "timeout": "No response. Refresh to try again.",
+      "actionTimeout": "No confirmation received. Refresh the status before trying again.",
+      "delivered": "Result collected",
+      "observing": "Observing task",
+      "waiting": "Waiting to resume observation",
+      "retry": "Retry recovery",
+      "cancel": "Cancel task",
+      "cancelRequested": "Cancel requested",
+      "status": {
+        "working": "Working",
+        "input_required": "Waiting for input",
+        "completed": "Completed",
+        "cancelled": "Cancelled",
+        "failed": "Failed"
+      }
+    },
     "status": {
       "connected": "Connected",
       "connecting": "Connecting",

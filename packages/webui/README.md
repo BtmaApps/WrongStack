@@ -26,6 +26,19 @@ fixture API/transport. The real DOM picker is covered by
 `packages/tools/tests/browser-live-view.test.ts`; the independent Docker proof is
 `bun packages/runtime/scripts/automation-verification-smoke.ts --image <trusted-image-with-git>`.
 
+In **Settings > MCP Servers > MCP tasks**, inspect tasks saved for the open
+session, retry recovery, or request cancellation. Recovery observes the existing
+remote task; it does not run the tool again. The server confirms final task status
+after a cancellation acknowledgement. Status and result-collection updates arrive
+over WebSocket. Reconnecting requests a fresh snapshot; hidden panels unsubscribe.
+Legacy hosts or interrupted streams fall back to five-second refreshes while visible.
+
+`bun packages/webui/tests/mcp-tasks-browser-smoke.mjs` checks the production panel
+at desktop and phone widths through the real route handlers, task journal and MCP
+registry against a local HTTP MCP server, using a real WebSocket connection and
+checking live changes without clicking Refresh. Build `@wrongstack/mcp` and
+`@wrongstack/webui-protocol` first; no provider credentials are required.
+
 ## Development commands
 
 From the workspace root:

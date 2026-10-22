@@ -336,6 +336,14 @@ export type ClientMessageServices =
   | { type: 'mcp.auth.status'; payload: { name: string } }
   | { type: 'mcp.auth.login'; payload: { name: string; clientId?: string; scopes?: string[] } }
   | { type: 'mcp.auth.logout'; payload: { name: string } }
+  | {
+      type: 'mcp.tasks.list' | 'mcp.tasks.subscribe' | 'mcp.tasks.unsubscribe';
+      payload: { sessionId: string; requestId: string };
+    }
+  | {
+      type: 'mcp.tasks.retry' | 'mcp.tasks.cancel';
+      payload: { sessionId: string; requestId: string; id: string };
+    }
   | { type: 'tools.list' }
   | { type: 'tool.enable'; payload: { name: string } }
   | { type: 'tool.disable'; payload: { name: string } };

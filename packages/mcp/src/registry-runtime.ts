@@ -42,6 +42,7 @@ import {
 } from './registry-slot-events.js';
 import type { ServerSlot } from './registry-slots.js';
 import type { MCPRegistryOptions } from './registry-types.js';
+import { MCPTaskRecovery } from './task-recovery.js';
 
 /**
  * State and connection machinery behind `MCPRegistry`: the slot table,
@@ -65,6 +66,7 @@ export abstract class MCPRegistryRuntime {
   protected readonly authorizationProviderFactory?: MCPRegistryOptions['authorizationProviderFactory'];
   protected readonly authorizationManager?: MCPAuthorizationManager | undefined;
   protected readonly elicitationHandler?: MCPRegistryOptions['elicitationHandler'];
+  protected readonly taskRecovery?: MCPTaskRecovery | undefined;
   protected readonly operationListeners = new Set<MCPOperationListener>();
   /** Starts still in flight, for {@link whenStarted}. */
   protected readonly startups = new Set<Promise<void>>();
@@ -82,6 +84,29 @@ export abstract class MCPRegistryRuntime {
     this.authorizationProviderFactory = opts.authorizationProviderFactory;
     this.authorizationManager = opts.authorizationManager;
     this.elicitationHandler = opts.elicitationHandler;
+    if (opts.taskJournalDir) {
+      this.taskRecovery = new MCPTaskRecovery(opts.taskJournalDir, {
+        log: this.log,
+        withClient: (receipt, run) => {
+          const slot = this.requireSlot(receipt.server);
+          const check = () => {
+            if (
+              slot.cfg.permission === 'deny' ||
+              (slot.cfg.allowedTools && !slot.cfg.allowedTools.includes(receipt.tool))
+            )
+              throw new Error('MCP task recovery denied by current server policy');
+          };
+          check();
+          return this.withConnectedClient(receipt.server, (client, assertCurrent) =>
+            run(client, slot.cfg.sandboxTrust === true, () => {
+              assertCurrent();
+              check();
+            }),
+          );
+        },
+      });
+      this.taskRecovery.setContextProvider(opts.taskRecoveryContext);
+    }
   }
 
   protected requireSlot(name: string): ServerSlot {

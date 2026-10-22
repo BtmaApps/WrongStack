@@ -245,6 +245,28 @@
     "filterPlaceholder": "Filtra modelli…"
   },
   "mcp": {
+    "tasks": {
+      "title": "Attività MCP",
+      "description": "Attività salvate per questa sessione. Il recupero riprende il monitoraggio senza eseguire di nuovo lo strumento.",
+      "noSession": "Apri una sessione per visualizzarne le attività.",
+      "disconnected": "Riconnettiti per gestire le attività.",
+      "empty": "Nessuna attività salvata in questa sessione.",
+      "timeout": "Nessuna risposta. Aggiorna per riprovare.",
+      "actionTimeout": "Nessuna conferma ricevuta. Aggiorna lo stato prima di riprovare.",
+      "delivered": "Risultato acquisito",
+      "observing": "Monitoraggio dell’attività in corso",
+      "waiting": "In attesa di riprendere il monitoraggio",
+      "retry": "Riprova il recupero",
+      "cancel": "Annulla attività",
+      "cancelRequested": "Annullamento richiesto",
+      "status": {
+        "working": "In corso",
+        "input_required": "In attesa di input",
+        "completed": "Completata",
+        "cancelled": "Annullata",
+        "failed": "Non riuscita"
+      }
+    },
     "status": {
       "connected": "Connesso",
       "connecting": "Connessione",

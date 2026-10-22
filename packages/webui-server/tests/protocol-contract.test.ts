@@ -43,14 +43,28 @@ describe('surface protocol contract', () => {
     // +1: browser.policy (/browser and /network typed in the WebUI composer).
     // +1: memory.sage.doctor (SAGE Doctor / Health tab).
     // +1: browser.live.pick (explicit element-context capture).
-    expect(new Set(CLIENT_MESSAGE_TYPES).size).toBe(293);
+    // +3: session-scoped MCP task list, retry and cooperative cancellation.
+    expect(new Set(CLIENT_MESSAGE_TYPES).size).toBe(298);
+    expect(CLIENT_MESSAGE_TYPES).toEqual(
+      expect.arrayContaining([
+        'mcp.tasks.list',
+        'mcp.tasks.retry',
+        'mcp.tasks.cancel',
+        'mcp.tasks.subscribe',
+        'mcp.tasks.unsubscribe',
+      ]),
+    );
     expect(CLIENT_MESSAGE_TYPES).toContain('browser.live.pick');
     // +2: worktree.timeline / worktree.timeline_event (worktree timeline log).
     // +1: leader.effort_changed (the leader's own effort, shown in the composer).
     // +1: browser.policy.result (its reply).
     // +1: memory.sage.doctor (the doctor report reply).
     // +1: browser.live.selection (correlated capture result).
-    expect(new Set(SERVER_MESSAGE_TYPES).size).toBe(305);
+    // +2: correlated MCP task list and operation result.
+    expect(new Set(SERVER_MESSAGE_TYPES).size).toBe(308);
+    expect(SERVER_MESSAGE_TYPES).toEqual(
+      expect.arrayContaining(['mcp.tasks.list', 'mcp.tasks.result', 'mcp.tasks.changed']),
+    );
     expect(SERVER_MESSAGE_TYPES).toContain('browser.live.selection');
     for (const type of CLIENT_MESSAGE_TYPES) {
       expect(decodeProtocolMessage({ type }, 'client')).toEqual({

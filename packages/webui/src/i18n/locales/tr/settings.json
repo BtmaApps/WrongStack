@@ -245,6 +245,28 @@
     "filterPlaceholder": "Modelleri filtrele…"
   },
   "mcp": {
+    "tasks": {
+      "title": "MCP görevleri",
+      "description": "Bu oturumun kaydedilmiş görevleri. Kurtarma, aracı yeniden çalıştırmadan görevi izlemeye devam eder.",
+      "noSession": "Görevleri görmek için bir oturum açın.",
+      "disconnected": "Görevleri yönetmek için yeniden bağlanın.",
+      "empty": "Bu oturumda kaydedilmiş görev yok.",
+      "timeout": "Yanıt alınamadı. Yenileyerek tekrar deneyin.",
+      "actionTimeout": "Onay alınamadı. Tekrar denemeden önce durumu yenileyin.",
+      "delivered": "Sonuç alındı",
+      "observing": "Görev izleniyor",
+      "waiting": "İzlemeye devam etmek için bekliyor",
+      "retry": "Kurtarmayı yeniden dene",
+      "cancel": "Görevi iptal et",
+      "cancelRequested": "İptal istendi",
+      "status": {
+        "working": "Çalışıyor",
+        "input_required": "Girdi bekliyor",
+        "completed": "Tamamlandı",
+        "cancelled": "İptal edildi",
+        "failed": "Başarısız"
+      }
+    },
     "status": {
       "connected": "Bağlandı",
       "connecting": "Bağlanıyor",
