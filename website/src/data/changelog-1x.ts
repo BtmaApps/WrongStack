@@ -1,20 +1,34 @@
-// Changelog — 1.x era (1.1.11 → 1.0.0).
+// Changelog — 1.x era (1.1.13 → 1.0.0).
 // Historical entries mirror CHANGELOG.md release notes. The 1.0.37 entry was
 // written from committed runtime/source evidence (git history and packages), not
 // the root CHANGELOG, which had not been extended when it landed. 1.1.0 absorbs
 // the 1.0.38 bump, which was never published.
 // The 1.1.5 entry summarizes the commits in v1.1.4..v1.1.5, the 1.1.6 entry
 // those in v1.1.5..v1.1.6, and the 1.1.7 entry those in v1.1.6..v1.1.7.
+// The current workspace entry records the verified dependency refresh.
 // Split out of src/lib/utils.ts.
 
 import type { ChangelogEntry } from './changelog-types';
 
 export const changelog1x: ChangelogEntry[] = [
   {
+    version: '1.1.13',
+    date: '2026-10-22',
+    tagline: 'Updated providers, terminal rendering and desktop runtimes',
+    latest: true,
+    highlights: [
+      'Provider integrations move together to the current compatible AI SDK releases',
+      'The terminal moves to Ink 8, including bounded text measurement and wrapping caches',
+      'Desktop moves to Electron 45 and Electron Builder 26.18 with packaging and file containment fixes',
+      'Codebase indexing updates the Tree-sitter runtime and all thirteen bundled language grammars',
+      'ACP SDK 2 keeps stable v1 APIs separate from the explicit sdk/unstable entry point for upstream experimental methods',
+      'Browser automation, editor components, virtualization and web animation dependencies are refreshed',
+    ],
+  },
+  {
     version: '1.1.11',
     date: '2026-10-20',
     tagline: 'Standalone-binary updates, smarter delegation and skills that follow the work',
-    latest: true,
     highlights: [
       'wstack update moves a package-manager install to the release binary from GitHub Releases, verifies it and removes the old global packages',
       'delegate without a role routes the task to the best-matching roster specialist, and the leader sees the whole roster by phase plus a live menu of the models its workers would run on',
