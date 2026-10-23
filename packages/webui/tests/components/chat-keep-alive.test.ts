@@ -58,7 +58,11 @@ describe('chat keep-alive', () => {
     const src = read('App.tsx');
     const inspector = src.slice(src.indexOf('<WorkspaceDockInspector') - 220);
 
-    expect(inspector).toContain('{sessionId && (');
+    // Shape-agnostic on purpose: the invariant is that the dock inspector is
+    // gated on sessionId (either `{sessionId && (` or the collapsed
+    // `{sessionId && <WorkspaceDockInspector … />` form) — never on
+    // `currentView === 'chat'`, which would hide it outside chat.
+    expect(inspector).toMatch(/sessionId && \(?\s*<WorkspaceDockInspector/);
     expect(inspector).not.toContain("currentView === 'chat'");
   });
 
