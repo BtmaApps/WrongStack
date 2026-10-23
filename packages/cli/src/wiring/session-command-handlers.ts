@@ -213,7 +213,7 @@ async function checkUncommittedChanges(projectRoot: string) {
   // that is not possible the exit goes without the advisory.
   const isolation = await gitIsolationEnv(projectRoot);
   if (!isolation) return undefined;
-  const result = await new Promise<{ stdout: string; code: number }>((resolve, reject) => {
+  const result = await new Promise<{ stdout: string; code: number }>((resolve) => {
     const child = spawn('git', ['status', '--porcelain'], {
       cwd: projectRoot,
       env: { ...process.env, ...isolation },
@@ -225,11 +225,13 @@ async function checkUncommittedChanges(projectRoot: string) {
     child.stdout?.on('data', (data) => {
       stdout += data;
     });
-    child.on('error', reject);
+    // A failed or timed-out `git status` skips the advisory; rejecting here
+    // made `/exit` throw before it exited.
+    child.on('error', () => resolve({ stdout: '', code: 1 }));
     // `code` is null only when git was killed by a signal — never a success.
     child.on('close', (code) => resolve({ stdout, code: code ?? 1 }));
   });
-  if (!result.stdout.trim()) return undefined;
+  if (result.code !== 0 || !result.stdout.trim()) return undefined;
   const count = result.stdout.split('\n').filter(Boolean).length;
   return {
     abort: true,
