@@ -55,19 +55,19 @@ suite. Memory, tools, providers, permissions, and the multi-agent runtime are al
 first-party and work together, on your machine, with no upstream agent to phone
 home to.
 
-### What's new in 1.1.14
+### What's new in 1.1.15
 
-- **Codebase intelligence:** atlas, diff-impact, flow-trace and onboarding
-  tools connect source symbols with polyglot infrastructure and schema files.
-- **CodeMap 2.0:** shortest paths, blast-radius rings, Louvain subsystem
-  clusters, guided tours and execution-flow tracing make large graphs usable.
-- **Mission continuity:** explicit user/continuation/runtime provenance keeps
-  automatic follow-ups anchored to the real user request.
-- **Git and dependency hardening:** repository-controlled Git programs are
-  isolated across automatic reads, while DOMPurify and cache semantics move to
-  upstream security-fixed releases.
+- **Git correctness:** subdirectory projects get correctly scoped paths,
+  commits carry only the staged index, and incomplete file lists are refused.
+- **Capability-gated media:** image and PDF parts reach only models that
+  accept them.
+- **SAGE verify-on-mutation:** edits re-check the memories anchored to the
+  changed files.
+- **Sealed companions:** resident companions stay out of supervision, pulses
+  and worker lanes.
 
-1.1.13 added durable MCP tasks, browser element selection, automation
+1.1.14 added polyglot codebase intelligence, CodeMap 2.0 and durable mission
+continuity; 1.1.13 added durable MCP tasks, browser element selection, automation
 environments and refreshed runtimes; 1.1.11 added standalone-binary updates, smarter delegation and skills that
 follow the work; 1.1.10 added a measured design layer, DESIGN.md interchange
 and prompt detail levels; 1.1.9 added the SAGE doctor, daemon-owned memory maintenance and AST
@@ -431,7 +431,7 @@ Full walk-through: [`docs/architecture.md`](docs/architecture.md).
 
 ## Status
 
-- **v1.1.14** — current repository version; semver from 1.0.0 onward
+- **v1.1.15** — current repository version; semver from 1.0.0 onward
 - Distribution: GitHub Releases only (standalone `wstack` binaries + Desktop); npm publishing is retired and the existing npm versions are frozen
 - Full release verification: `bun run release:check` before pushing the `vX.Y.Z` release tag
 - Coverage thresholds (root Vitest): ≥76% lines / ≥75% functions / ≥66% branches / ≥75% statements

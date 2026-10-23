@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.15] — 2026-10-23
+
+A correctness release: Git paths in subdirectory projects, capability-gated
+media parts, SAGE verify-on-mutation and sealed resident companions.
+
+### Fixed
+
+- **Git boundaries.** Porcelain paths are scoped to subdirectory projects, commits include only the staged index, C-quoted diff paths are decoded, the branch guard matches `git.exe`, and incomplete VCS file lists are refused instead of trusted.
+- **Provider media.** Image and PDF parts are sent only to models whose capabilities accept them, and media bytes stay out of secret scrubbing.
+- **SAGE memory.** Edits re-check the memories anchored to the changed files instead of silently skipping verification, bounded by the retrieval budget and failing open. Memory validity checks match across CRLF line endings.
+- **Fleet companions.** Resident companions are kept out of supervision, pulses and worker lanes, and their signals are tightened.
+- **Runtime and interfaces.** Autonomy no longer re-picks a Git task that already succeeded on the same dirty set, `/exit` proceeds when `git status` fails, `/prompt insert` arguments are quote-aware, the continue intent handles the dotted capital I, the WebUI context editor ignores host-only block keys, and the `/run` idempotency key works over plain HTTP.
+- **Templates and bench.** `{{#each}}` iterates newline-separated lists, and bench evidence mining recognizes hyphenated retrieval tool names.
+
 ## [1.1.14] — 2026-10-23
 
 Polyglot codebase intelligence, community-aware CodeMap navigation and a
