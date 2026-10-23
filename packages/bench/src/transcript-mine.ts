@@ -227,7 +227,21 @@ function suggestRetrieval(
   const rows: Array<{ index: number; name: string; marker: string }> = [];
   for (const [id, results] of toolResults) {
     const use = toolUses.get(id);
-    if (!use || use.index >= beforeIndex || !RETRIEVAL_TOOLS.has(use.name.toLowerCase())) continue;
+    // Tool names come from whichever surface recorded the session: the native
+    // registry spells the index tools with hyphens ('codebase-search',
+    // builtin.ts), while the MCP surface uses underscores ('codebase_search').
+    // Normalize hyphens to underscores for the set lookup so both spellings of
+    // every entry match; the recorded toolNames keep the transcript's own
+    // spelling. An exact-only compare silently skipped every native
+    // codebase-search retrieval, leaving drafts with empty retrieval evidence
+    // and a false 'no successful retrieval' curation note.
+    if (
+      !use ||
+      use.index >= beforeIndex ||
+      !RETRIEVAL_TOOLS.has(use.name.toLowerCase().replace(/-/g, '_'))
+    ) {
+      continue;
+    }
     for (const result of results) {
       if (result.isError || result.index >= beforeIndex) continue;
       const marker = conciseMarker(serialise(result.content));

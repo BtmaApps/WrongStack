@@ -79,6 +79,60 @@ describe('mineTranscript', () => {
     expect(draft.candidates).toHaveLength(1);
   });
 
+  it('captures retrieval by the registry-s spelling of index tools (hyphen or underscore)', async () => {
+    const dir = await tempDir();
+    // The native registry registers 'codebase-search' (builtin.ts, hyphen)
+    // while the MCP surface spells it 'codebase_search' (underscore). Both are
+    // retrieval evidence; an exact-only compare against the underscore set
+    // silently dropped every native-session retrieval and emitted the false
+    // curation note 'no successful retrieval result preceded this edit'.
+    const writeSession = async (retrievalName: string): Promise<string> => {
+      const transcriptPath = path.join(dir, `session-${retrievalName}.jsonl`);
+      const raw =
+        [
+          { type: 'session_start', id: `sess/${retrievalName}` },
+          { type: 'user_input', content: 'Find and modernize parseCells.' },
+          { type: 'tool_use', id: 'q-1', name: retrievalName, input: { query: 'parseCells' } },
+          {
+            type: 'tool_result',
+            id: 'q-1',
+            content: 'src/markdown-table.ts: parseCells() at L42',
+            isError: false,
+          },
+          {
+            type: 'tool_use',
+            id: 'edit-1',
+            name: 'edit',
+            input: { path: 'src/markdown-table.ts', newText: 'folded' },
+          },
+          { type: 'tool_call_end', id: 'edit-1', name: 'edit', ok: true },
+        ]
+          .map((event) => JSON.stringify(event))
+          .join('\n') + '\n';
+      await fs.writeFile(transcriptPath, raw, 'utf8');
+      return transcriptPath;
+    };
+
+    const native = await mineTranscript({
+      transcriptPath: await writeSession('codebase-search'),
+      outDir: path.join(dir, 'evals-native'),
+    });
+    expect(native.candidates[0]?.traceEval.retrieval).toEqual([
+      { toolNames: ['codebase-search'], contains: 'src/markdown-table.ts: parseCells() at L42' },
+    ]);
+    expect(
+      native.candidates[0]?.needsCuration.some((note) => /no successful retrieval/i.test(note)),
+    ).toBe(false);
+
+    const mcp = await mineTranscript({
+      transcriptPath: await writeSession('codebase_search'),
+      outDir: path.join(dir, 'evals-mcp'),
+    });
+    expect(mcp.candidates[0]?.traceEval.retrieval).toEqual([
+      { toolNames: ['codebase_search'], contains: 'src/markdown-table.ts: parseCells() at L42' },
+    ]);
+  });
+
   it('refuses a non-session JSONL rather than fabricating provenance', async () => {
     const dir = await tempDir();
     const transcriptPath = path.join(dir, 'not-a-session.jsonl');
