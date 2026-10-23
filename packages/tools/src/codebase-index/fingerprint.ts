@@ -9,7 +9,6 @@
 
 import { createHash } from 'node:crypto';
 import type { DatabaseSync } from 'node:sqlite';
-import type { IndexStore } from './writer.js';
 import { posixIndexPath } from './writer-helpers.js';
 
 type Statement = ReturnType<DatabaseSync['prepare']>;
@@ -147,9 +146,14 @@ export function computeFileStructuralFingerprintWithStatement(
 }
 
 /**
- * Compute a file's structural fingerprint from an {@link IndexStore}.
+ * Compute a file's structural fingerprint from an index store. Typed by the
+ * one method it reads: importing `IndexStore` from writer.ts closed a module
+ * cycle (writer → writer-store-derived → fingerprint → writer).
  */
-export function computeFileStructuralFingerprint(store: IndexStore, file: string): string {
+export function computeFileStructuralFingerprint(
+  store: { getFileStructuralFingerprint(file: string): string },
+  file: string,
+): string {
   return store.getFileStructuralFingerprint(file);
 }
 

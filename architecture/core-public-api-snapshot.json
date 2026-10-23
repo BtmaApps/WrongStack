@@ -1631,14 +1631,14 @@
       "classification": "coordination implementation",
       "intendedOwner": "Core subpath until physical extraction is justified",
       "sourceFiles": 243,
-      "sourceLines": 62534
+      "sourceLines": 62540
     },
     {
       "directory": "core",
       "classification": "agent-domain contract",
       "intendedOwner": "Core",
       "sourceFiles": 81,
-      "sourceLines": 16720
+      "sourceLines": 16724
     },
     {
       "directory": "design",
@@ -1652,7 +1652,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime pilot candidate after R2/R3",
       "sourceFiles": 106,
-      "sourceLines": 26475
+      "sourceLines": 26489
     },
     {
       "directory": "extension",
@@ -1736,7 +1736,7 @@
       "classification": "product feature",
       "intendedOwner": "@wrongstack/plugins",
       "sourceFiles": 30,
-      "sourceLines": 9780
+      "sourceLines": 9798
     },
     {
       "directory": "prompts",
@@ -1848,7 +1848,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime or focused VCS implementation",
       "sourceFiles": 2,
-      "sourceLines": 358
+      "sourceLines": 385
     },
     {
       "directory": "wiring",
@@ -1862,7 +1862,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime or focused worktree implementation",
       "sourceFiles": 9,
-      "sourceLines": 1588
+      "sourceLines": 1617
     }
   ]
 }
