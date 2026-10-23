@@ -30,9 +30,7 @@ function createTaskRequest(overrides: Record<string, unknown>) {
     requirements: [
       { id: 'req-1', text: 'Reject oversized payloads.', acceptanceCriteriaIds: ['ac-1'] },
     ],
-    acceptanceCriteria: [
-      { id: 'ac-1', statement: 'Ceilings hold.', evidenceKinds: ['test'] },
-    ],
+    acceptanceCriteria: [{ id: 'ac-1', statement: 'Ceilings hold.', evidenceKinds: ['test'] }],
     autonomy: {
       tier: 'A2',
       allowedOperations: ['repository_read', 'file_edit', 'focused_check'],

@@ -166,7 +166,9 @@ export function compactDescription(text: string, maxChars: number): string {
 
   const hardLimit = maxChars - 12;
   const boundary = findSemanticBoundary(normalized, hardLimit);
-  const head = dropSplitSurrogate(normalized.slice(0, boundary > 0 ? boundary : hardLimit)).trimEnd();
+  const head = dropSplitSurrogate(
+    normalized.slice(0, boundary > 0 ? boundary : hardLimit),
+  ).trimEnd();
   return `${head} ...`;
 }
 

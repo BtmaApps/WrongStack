@@ -7,7 +7,5 @@
   "model": "gpt-daybreak-blue-latest",
   "pruned": true,
   "archivePath": "D:\\Codebox\\PROJECTS\\WrongStack\\.wrongstack\\agents\\reviewer\\archive\\learned-2026-10-20T14-51-53-232Z.md",
-  "skills": [
-    "chimera"
-  ]
+  "skills": ["chimera"]
 }

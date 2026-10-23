@@ -183,9 +183,7 @@ export function AgentTree({
                 {t('activity:fleet.leader')}
               </span>
             ) : null}
-            <span className="shrink-0 text-[9px] text-muted-foreground">
-              {t(status.labelKey)}
-            </span>
+            <span className="shrink-0 text-[9px] text-muted-foreground">{t(status.labelKey)}</span>
           </span>
           <span
             className={cn(

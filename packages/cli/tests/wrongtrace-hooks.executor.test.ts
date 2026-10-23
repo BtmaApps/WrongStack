@@ -288,7 +288,9 @@ describe('WrongTrace hooks on the real HookRunner (executor path)', () => {
     const r = await runner.preToolUse('edit', { path: FRAGILE_PATH }, env, { mutating: true });
     expect(r.block).toBeFalsy();
     expect(r.additionalContext).toContain('fragile');
-    expect(stub.lockOwners()).toEqual([{ path: resolve(FRAGILE_PATH), owner: `wrongstack:${SESSION}` }]);
+    expect(stub.lockOwners()).toEqual([
+      { path: resolve(FRAGILE_PATH), owner: `wrongstack:${SESSION}` },
+    ]);
     await runner.postToolUse('edit', { path: FRAGILE_PATH }, { content: '', isError: false }, env);
     expect(stub.lockOwners()).toHaveLength(0);
     expect(emitted.some((e) => e.kind === 'allow-fragile')).toBe(true);

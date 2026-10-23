@@ -27,7 +27,12 @@ describe('verification ledger issuance preconditions', () => {
       verifyCandidatePrecondition: () => null;
     };
     activePlanFingerprint: string;
-    run: { taskId: string; contractVersion: number; planFingerprint: string; workspaceManifestHash: string };
+    run: {
+      taskId: string;
+      contractVersion: number;
+      planFingerprint: string;
+      workspaceManifestHash: string;
+    };
     precondition: (overrides?: Record<string, unknown>) => Record<string, unknown>;
     verifyIssuancePrecondition: (host: never, run: never, precondition: never) => unknown;
   }
@@ -153,15 +158,17 @@ describe('verification ledger issuance preconditions', () => {
         issuedAt: '2026-08-02T11:02:00.000Z',
         plan,
       },
-      ...(['planned', 'authorized', 'executing', 'proposed_complete'] as const).map((to, index) => ({
-        type: 'transition_task',
-        commandId: `c-${index + 4}`,
-        taskId: 'task-1',
-        expectedRevision: index + 3,
-        actor: 'model',
-        issuedAt: `2026-08-02T11:0${index + 3}:00.000Z`,
-        to,
-      })),
+      ...(['planned', 'authorized', 'executing', 'proposed_complete'] as const).map(
+        (to, index) => ({
+          type: 'transition_task',
+          commandId: `c-${index + 4}`,
+          taskId: 'task-1',
+          expectedRevision: index + 3,
+          actor: 'model',
+          issuedAt: `2026-08-02T11:0${index + 3}:00.000Z`,
+          to,
+        }),
+      ),
     ];
     for (const command of commands) store.execute(command as never, decisionContext);
 
@@ -205,7 +212,8 @@ describe('verification ledger issuance preconditions', () => {
         workspaceManifestHash,
       },
       precondition: (overrides = {}) => ({ ...basePrecondition, ...overrides }),
-      verifyIssuancePrecondition: verifyIssuancePrecondition as unknown as Fixture['verifyIssuancePrecondition'],
+      verifyIssuancePrecondition:
+        verifyIssuancePrecondition as unknown as Fixture['verifyIssuancePrecondition'],
     };
   }
 

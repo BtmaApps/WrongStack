@@ -27,7 +27,10 @@ async function connected(): Promise<{
   });
   vi.stubGlobal('fetch', async (_url: string, init?: RequestInit) => {
     if (init?.method !== 'POST') {
-      return new Response(stream, { status: 200, headers: { 'content-type': 'text/event-stream' } });
+      return new Response(stream, {
+        status: 200,
+        headers: { 'content-type': 'text/event-stream' },
+      });
     }
     const request = JSON.parse(String(init.body)) as { id?: number; method: string };
     const result =

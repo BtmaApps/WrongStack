@@ -11,9 +11,7 @@ describe('EmptyState terminal motif', () => {
     expect(container.querySelector('.ws-term-ascii')).not.toBeNull();
     expect(container.querySelector('.ws-term-cursor')).not.toBeNull();
     // Decorative motif is hidden from assistive tech; the real title stays.
-    expect(container.querySelector('[aria-hidden="true"]')?.textContent).not.toContain(
-      'No files',
-    );
+    expect(container.querySelector('[aria-hidden="true"]')?.textContent).not.toContain('No files');
     expect(screen.getByText('No files')).toBeDefined();
 
     // Default mode keeps the vector art and gains no terminal motif.

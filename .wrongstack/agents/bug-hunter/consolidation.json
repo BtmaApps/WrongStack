@@ -7,9 +7,5 @@
   "model": "gpt-6.1-sol",
   "pruned": true,
   "archivePath": "D:\\Codebox\\PROJECTS\\WrongStack\\.wrongstack\\agents\\bug-hunter\\archive\\learned-2026-10-17T17-48-07-025Z.md",
-  "skills": [
-    "typescript-strict",
-    "testing",
-    "bug-hunter"
-  ]
+  "skills": ["typescript-strict", "testing", "bug-hunter"]
 }

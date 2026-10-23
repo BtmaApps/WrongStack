@@ -27,12 +27,8 @@ vi.mock('node:fs/promises', async (importOriginal) => {
 const realReadFile = vi
   .mocked(fsp.readFile)
   .getMockImplementation() as unknown as typeof fsp.readFile;
-const realReaddir = vi
-  .mocked(fsp.readdir)
-  .getMockImplementation() as unknown as typeof fsp.readdir;
-const realRename = vi
-  .mocked(fsp.rename)
-  .getMockImplementation() as unknown as typeof fsp.rename;
+const realReaddir = vi.mocked(fsp.readdir).getMockImplementation() as unknown as typeof fsp.readdir;
+const realRename = vi.mocked(fsp.rename).getMockImplementation() as unknown as typeof fsp.rename;
 
 function errnoError(code: string): Error {
   return Object.assign(new Error(`injected ${code}`), { code });

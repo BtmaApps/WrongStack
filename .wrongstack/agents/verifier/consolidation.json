@@ -7,8 +7,5 @@
   "model": "gpt-daybreak-blue-latest",
   "pruned": true,
   "archivePath": "D:\\Codebox\\PROJECTS\\WrongStack\\.wrongstack\\agents\\verifier\\archive\\learned-2026-10-15T07-45-50-218Z.md",
-  "skills": [
-    "verify-before-done",
-    "testing"
-  ]
+  "skills": ["verify-before-done", "testing"]
 }

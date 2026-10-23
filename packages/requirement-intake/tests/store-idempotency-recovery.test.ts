@@ -21,13 +21,19 @@ afterEach(async () => {
 });
 
 async function makeDir(): Promise<string> {
-  const dir = path.join(os.tmpdir(), `intake-recovery-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  const dir = path.join(
+    os.tmpdir(),
+    `intake-recovery-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+  );
   dirs.push(dir);
   await fsp.mkdir(dir, { recursive: true });
   return dir;
 }
 
-function recordLiteral(id: string, overrides: Partial<RequirementIntakeRecord> = {}): RequirementIntakeRecord {
+function recordLiteral(
+  id: string,
+  overrides: Partial<RequirementIntakeRecord> = {},
+): RequirementIntakeRecord {
   return {
     id,
     projectId: 'proj_alpha',

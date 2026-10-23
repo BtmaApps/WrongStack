@@ -427,9 +427,9 @@ describe('recordActualUsage non-finite samples', () => {
     const state = getCalibrationState('nf');
     expect(state.count).toBe(3);
     expect(state.ratio).toBeCloseTo(1.2);
-    expect(Number.isFinite(estimateRequestTokensCalibrated('x'.repeat(350), '', [], 'nf').total)).toBe(
-      true,
-    );
+    expect(
+      Number.isFinite(estimateRequestTokensCalibrated('x'.repeat(350), '', [], 'nf').total),
+    ).toBe(true);
   });
 });
 

@@ -236,10 +236,7 @@ function sameTools(a: readonly Tool[], b: readonly Tool[]): boolean {
  * Only the declared `type` is compared: this layer runs before providers add
  * their own wire fields (`ttl`) to the marker.
  */
-function sameCacheControl(
-  a: TextBlock['cache_control'],
-  b: TextBlock['cache_control'],
-): boolean {
+function sameCacheControl(a: TextBlock['cache_control'], b: TextBlock['cache_control']): boolean {
   return a?.type === b?.type;
 }
 

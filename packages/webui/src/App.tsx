@@ -332,9 +332,7 @@ function AppInner() {
               open. */}
           {currentView !== 'setup' && (
             <ErrorBoundary level="panel" name={t('activity:panels.workspaceInspector')}>
-              {sessionId && (
-                <WorkspaceDockInspector sessionId={sessionId} />
-              )}
+              {sessionId && <WorkspaceDockInspector sessionId={sessionId} />}
             </ErrorBoundary>
           )}
         </div>

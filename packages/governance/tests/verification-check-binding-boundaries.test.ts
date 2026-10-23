@@ -40,8 +40,8 @@ describe('verification check binding boundaries', () => {
   it('freezes the binding it issues', () => {
     const registryFingerprint = calculateVerificationCheckRegistryFingerprint([baseDescriptor]);
 
-    expect(Object.isFrozen(createVerificationCheckBinding(registryFingerprint, baseDescriptor))).toBe(
-      true,
-    );
+    expect(
+      Object.isFrozen(createVerificationCheckBinding(registryFingerprint, baseDescriptor)),
+    ).toBe(true);
   });
 });
