@@ -569,11 +569,13 @@ describe('git change-set handlers', () => {
       expect(p.newText).toBe('v2\n');
     });
 
-    it('commit from a subdirectory project commits only the subdirectory', async () => {
+    it('commit from a subdirectory project never commits a staged file outside it', async () => {
       // Regression (chimera round-2): bare `git commit -m` from a
       // subdirectory cwd commits the ENTIRE repo's staged index since
       // Git 2.0 — staging one file outside the project and committing
-      // inside it used to leak the outside file into the commit.
+      // inside it used to leak the outside file into the commit. The
+      // commit is now refused instead (a `-- .` pathspec would also commit
+      // unstaged edits, F582).
       fsSync.writeFileSync(path.join(sub, 'index.ts'), 'export const v = 5;\n');
       // Stage a MODIFIED file OUTSIDE the subdirectory project — staging
       // an unmodified file would be a no-op and prove nothing.
@@ -584,10 +586,9 @@ describe('git change-set handlers', () => {
       const ws = createMockWs();
       await handleGitCommit(ws, sub, 'subdir-only commit');
       const result = ws.sent.find((m) => m.type === 'git.action_result');
-      expect(result?.payload.ok).toBe(true);
-      // The commit contains ONLY the sub project's file: keep.txt remains
-      // staged for a future commit (not consumed by this one). It is a
-      // TRACKED file, so staged-but-uncommitted shows as `M ` (X=M, Y=' ').
+      expect(result?.payload.ok).toBe(false);
+      expect(String(result?.payload.error)).toContain('keep.txt');
+      // Nothing was committed: keep.txt remains staged (`M `, X=M, Y=' ').
       const committed = execFileSync('git', ['show', '--name-only', '--pretty=format:', 'HEAD'], {
         cwd: sub,
         stdio: ['ignore', 'pipe', 'ignore'],
@@ -595,7 +596,7 @@ describe('git change-set handlers', () => {
         .toString()
         .trim()
         .replace(/\\/g, '/');
-      expect(committed).toBe('packages/webui/index.ts');
+      expect(committed).not.toContain('keep.txt');
       const rootOut = execFileSync('git', ['status', '--porcelain'], {
         cwd: repo,
         stdio: ['ignore', 'pipe', 'ignore'],

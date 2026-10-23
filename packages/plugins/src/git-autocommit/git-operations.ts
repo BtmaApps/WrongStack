@@ -173,11 +173,16 @@ export function parsePorcelainLine(line: string): string | null {
 export async function getChangedFiles(cwd?: string, signal?: AbortSignal): Promise<string[]> {
   const output = await runGit(['status', '--porcelain'], cwd, DEFAULT_GIT_TIMEOUT_MS, signal);
   if (!output) return [];
+  // Porcelain paths are repository-root relative whatever the cwd, while
+  // `stageFiles` resolves against cwd: a project opened in a subdirectory
+  // keeps its own entries, made cwd-relative.
+  const prefix = await runGit(['rev-parse', '--show-prefix'], cwd, DEFAULT_GIT_TIMEOUT_MS, signal);
   return output
     .split('\n')
     .filter((l) => l.trim())
     .map((l) => parsePorcelainLine(l))
-    .filter((p): p is string => p !== null && p.length > 0);
+    .filter((p): p is string => p !== null && p.length > 0 && p.startsWith(prefix))
+    .map((p) => p.slice(prefix.length));
 }
 
 export async function getStagedFiles(cwd?: string, signal?: AbortSignal): Promise<string[]> {

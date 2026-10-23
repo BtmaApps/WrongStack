@@ -92,6 +92,21 @@ export function parsePorcelainStatusZ(stdout: string): Array<{ path: string; sta
   return out;
 }
 
+/**
+ * Porcelain status paths are relative to the repository root whatever the
+ * cwd. Keep the entries under `prefix` (`git rev-parse --show-prefix` of the
+ * cwd) and make them cwd-relative, so a project opened in a repository
+ * subdirectory reads its own files instead of `<cwd>/<prefix>/<file>`.
+ */
+export function statusUnderPrefix(
+  stdout: string,
+  prefix: string,
+): Array<{ path: string; status: string }> {
+  return parsePorcelainStatusZ(stdout)
+    .filter((entry) => entry.path.startsWith(prefix))
+    .map((entry) => ({ ...entry, path: entry.path.slice(prefix.length) }));
+}
+
 async function getAllChangedFiles(cwd: string): Promise<Array<{ path: string; status: string }>> {
   const r = await runGit(['status', '--porcelain', '-z'], cwd);
   return r.code === 0 ? parsePorcelainStatusZ(r.stdout) : [];

@@ -598,7 +598,29 @@ export async function handleGitCommit(
     return;
   }
 
-  const res = await execGit(cwd, ['commit', '-m', trimmed, '--', '.']);
+  // Commit the index as staged. A pathspec (`-- .`) would switch git to
+  // `--only`, committing every modified tracked file's working-tree content
+  // whether or not it was staged. Containment for a subdirectory project is
+  // kept by refusing staged changes outside it instead.
+  const prefix = await currentRepoPrefix(projectRoot);
+  if (prefix) {
+    const staged = await execGit(cwd, ['diff', '--cached', '--name-only', '-z']);
+    const outside = staged.stdout.split('\0').filter((p) => p && !p.startsWith(prefix));
+    if (!staged.ok || outside.length > 0) {
+      send(ws, {
+        type: 'git.action_result',
+        payload: {
+          action: 'commit',
+          ok: false,
+          error: staged.ok
+            ? `Staged changes outside this project: ${outside.slice(0, 5).join(', ')}`
+            : staged.stderr || staged.error || 'git diff --cached failed',
+        },
+      });
+      return;
+    }
+  }
+  const res = await execGit(cwd, ['commit', '-m', trimmed]);
   if (!res.ok) {
     send(ws, {
       type: 'git.action_result',

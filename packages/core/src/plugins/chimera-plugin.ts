@@ -14,7 +14,7 @@ import {
   recordCompletedReview,
   recordStartedReview,
 } from './review-claim-registry.js';
-import { buildReviewContext, parsePorcelainStatusZ } from './review-context-builder.js';
+import { buildReviewContext, statusUnderPrefix } from './review-context-builder.js';
 import { executeFindingCommand } from './review-finding-commands.js';
 import type {
   ResolvedChimeraConfig,
@@ -187,10 +187,16 @@ async function getChangedFiles(cwd: string): Promise<ChangedFile[]> {
   // -z: line output C-quotes names with spaces/non-ASCII (`"my notes.ts"`), which
   // then fail fs.access and drop out of review. -uall: a new directory is one
   // `?? dir/` entry otherwise, and the files inside it were never reviewed.
-  const r = await runGit(['status', '--porcelain', '-z', '--untracked-files=all'], cwd);
-  if (r.code !== 0) return [];
+  const [r, prefix] = await Promise.all([
+    runGit(['status', '--porcelain', '-z', '--untracked-files=all'], cwd),
+    runGit(['rev-parse', '--show-prefix'], cwd),
+  ]);
+  if (r.code !== 0 || prefix.code !== 0) return [];
   const files: ChangedFile[] = [];
-  for (const { path: filePath, status: statusCode } of parsePorcelainStatusZ(r.stdout)) {
+  for (const { path: filePath, status: statusCode } of statusUnderPrefix(
+    r.stdout,
+    prefix.stdout.trim(),
+  )) {
     if (statusCode === 'A' || statusCode === 'A ' || statusCode === ' A' || statusCode === '??') {
       files.push({ path: filePath, status: 'added' });
     } else if (statusCode.includes('M')) {

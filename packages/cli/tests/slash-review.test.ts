@@ -79,6 +79,16 @@ function fakeChild(
   return child;
 }
 
+/**
+ * Answer `git status` with `child`; `git rev-parse --show-prefix` answers the
+ * repository root (empty prefix) with a fresh child of its own.
+ */
+function gitStatusReturns(child: unknown): void {
+  mockSpawn.mockImplementation((_bin: string, args: string[]) =>
+    args[0] === 'rev-parse' ? fakeChild([''], 0) : child,
+  );
+}
+
 function makeOpts(overrides: Partial<SlashCommandContext> = {}): SlashCommandContext {
   const events = {
     emitCustom: vi.fn(),
@@ -91,21 +101,21 @@ function makeOpts(overrides: Partial<SlashCommandContext> = {}): SlashCommandCon
 
 describe('buildReviewCommand', () => {
   it('returns no-changed-files when git status is empty', async () => {
-    mockSpawn.mockReturnValue(fakeChild([''], 0));
+    gitStatusReturns(fakeChild([''], 0));
     const cmd = buildReviewCommand(makeOpts());
     const res = await cmd.run('', { cwd } as never);
     expect(res?.message).toMatch(/No changed files/);
   });
 
   it('returns no-changed-files when git status has only .wrongstack/', async () => {
-    mockSpawn.mockReturnValue(fakeChild(['M  .wrongstack/config.json\0'], 0));
+    gitStatusReturns(fakeChild(['M  .wrongstack/config.json\0'], 0));
     const cmd = buildReviewCommand(makeOpts());
     const res = await cmd.run('', { cwd } as never);
     expect(res?.message).toMatch(/No changed files/);
   });
 
   it('returns no-matching-files when file filter yields nothing', async () => {
-    mockSpawn.mockReturnValue(fakeChild(['M  src/foo.ts\0'], 0));
+    gitStatusReturns(fakeChild(['M  src/foo.ts\0'], 0));
     mockAccess.mockRejectedValue(new Error('not found'));
     const cmd = buildReviewCommand(makeOpts());
     const res = await cmd.run('--files nonexistent', { cwd } as never);
@@ -113,7 +123,7 @@ describe('buildReviewCommand', () => {
   });
 
   it('triggers chimera review for changed files', async () => {
-    mockSpawn.mockReturnValue(fakeChild(['M  src/foo.ts\0'], 0));
+    gitStatusReturns(fakeChild(['M  src/foo.ts\0'], 0));
     mockAccess.mockResolvedValue(undefined);
     mockReadFile.mockResolvedValue('content of foo.ts');
 
@@ -143,7 +153,7 @@ describe('buildReviewCommand', () => {
   });
 
   it('filters files by --files substring', async () => {
-    mockSpawn.mockReturnValue(fakeChild(['M  src/bar.ts\0M  src/foo.ts\0'], 0));
+    gitStatusReturns(fakeChild(['M  src/bar.ts\0M  src/foo.ts\0'], 0));
     mockAccess.mockResolvedValue(undefined);
     mockReadFile.mockResolvedValue('content');
 
@@ -166,7 +176,7 @@ describe('buildReviewCommand', () => {
 
   it('respects --limit flag', async () => {
     const files = Array.from({ length: 5 }, (_, i) => `M  src/file${i}.ts\0`).join('');
-    mockSpawn.mockReturnValue(fakeChild([files], 0));
+    gitStatusReturns(fakeChild([files], 0));
     mockAccess.mockResolvedValue(undefined);
     mockReadFile.mockResolvedValue('content');
 
@@ -189,7 +199,7 @@ describe('buildReviewCommand', () => {
   });
 
   it('handles git error gracefully', async () => {
-    mockSpawn.mockReturnValue(fakeChild([''], 1));
+    gitStatusReturns(fakeChild([''], 1));
     const cmd = buildReviewCommand(makeOpts());
     const res = await cmd.run('', { cwd } as never);
     expect(res?.message).toMatch(/No changed files/);
@@ -203,7 +213,7 @@ describe('buildReviewCommand', () => {
     child.stdout = new PassThrough();
     child.stderr = new PassThrough();
     setImmediate(() => child.emit('error', new Error('ENOENT')));
-    mockSpawn.mockReturnValue(child);
+    gitStatusReturns(child);
 
     const cmd = buildReviewCommand(makeOpts());
     const res = await cmd.run('', { cwd } as never);
@@ -220,7 +230,7 @@ describe('buildReviewCommand changed-file listing', () => {
   it('keeps a multibyte name intact when a chunk boundary splits it', async () => {
     const record = Buffer.from(' M şema.ts\0');
     const cut = record.indexOf(0xc5) + 1; // between the two bytes of `ş`
-    mockSpawn.mockReturnValue(fakeChild([record.subarray(0, cut), record.subarray(cut)], 0));
+    gitStatusReturns(fakeChild([record.subarray(0, cut), record.subarray(cut)], 0));
     mockAccess.mockResolvedValue(undefined);
     mockReadFile.mockResolvedValue('content');
 
@@ -232,7 +242,7 @@ describe('buildReviewCommand changed-file listing', () => {
   });
 
   it('asks git for NUL records with every untracked file and skips rename sources', async () => {
-    mockSpawn.mockReturnValue(
+    gitStatusReturns(
       fakeChild(
         [
           ' M my notes.ts\u0000 M şema.ts\u0000?? feature/impl.ts\u0000' +

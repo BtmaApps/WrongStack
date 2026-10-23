@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import * as fsp from 'node:fs/promises';
 import * as path from 'node:path';
 import { gitIsolationEnv } from '@wrongstack/primitives';
-import { parsePorcelainStatusZ } from './review-context-builder.js';
+import { statusUnderPrefix } from './review-context-builder.js';
 
 export interface ChangedFile {
   path: string;
@@ -66,10 +66,13 @@ export async function isGitRepo(cwd: string): Promise<boolean> {
 export async function getChangedFiles(cwd: string): Promise<ChangedFile[]> {
   // -z: line output C-quotes names with spaces/non-ASCII (`"my notes.ts"`), and a
   // quoted path fails every later read, so the file silently left the review.
-  const r = await runGit(['status', '--porcelain', '-z', '--untracked-files=no'], cwd);
-  if (r.code !== 0) return [];
+  const [r, prefix] = await Promise.all([
+    runGit(['status', '--porcelain', '-z', '--untracked-files=no'], cwd),
+    runGit(['rev-parse', '--show-prefix'], cwd),
+  ]);
+  if (r.code !== 0 || prefix.code !== 0) return [];
   const files: ChangedFile[] = [];
-  for (const { path: filePath, status } of parsePorcelainStatusZ(r.stdout)) {
+  for (const { path: filePath, status } of statusUnderPrefix(r.stdout, prefix.stdout.trim())) {
     if (status.includes('A')) {
       files.push({ path: filePath, status: 'added' });
     } else if (status.includes('M') || status.startsWith('R') || status.startsWith('C')) {

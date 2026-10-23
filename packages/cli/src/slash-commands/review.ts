@@ -43,16 +43,23 @@ async function getChangedFiles(
   // `?? dir/` entry otherwise, and the files inside it were never reviewed.
   const r = await runGit(['status', '--porcelain', '-z', '--untracked-files=all'], cwd);
   if (r.code !== 0) return [];
+  // Porcelain paths are repository-root relative whatever the cwd; a project
+  // opened in a subdirectory keeps its own entries, made cwd-relative.
+  const prefixRun = await runGit(['rev-parse', '--show-prefix'], cwd);
+  if (prefixRun.code !== 0) return [];
+  const prefix = prefixRun.stdout.trim();
   const files: Array<{ path: string; status: 'added' | 'modified' }> = [];
   const records = r.stdout.split('\0');
   for (let i = 0; i < records.length; i++) {
     const record = records[i] ?? '';
     if (record.length < 4) continue;
     const statusCode = record.slice(0, 2).trim();
-    const filePath = record.slice(3);
+    const repoPath = record.slice(3);
     // A rename/copy record is followed by its source path.
     const renamed = statusCode.includes('R') || statusCode.includes('C');
     if (renamed) i++;
+    if (!repoPath.startsWith(prefix)) continue;
+    const filePath = repoPath.slice(prefix.length);
     if (statusCode === 'A' || statusCode === 'A ' || statusCode === ' A' || statusCode === '??') {
       files.push({ path: filePath, status: 'added' });
     } else if (statusCode.includes('M') || renamed) {
