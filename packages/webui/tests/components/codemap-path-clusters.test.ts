@@ -9,7 +9,7 @@ import {
   layoutGraph,
   listGraphClusters,
   sliceCanvasExecutionFlow,
-} from '../src/components/codemap-model.js';
+} from '../../src/components/codemap-model.js';
 
 describe('Phase 4.2: WebUI CodeMap 2.0 — BFS Shortest Path & Louvain Subsystem Layout', () => {
   const sampleGraph: CodeMapGraphResponse = {
