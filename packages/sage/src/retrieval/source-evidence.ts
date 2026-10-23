@@ -71,11 +71,22 @@ export async function snapshotMemoryEvidence(
       }
       // Match SAGE anchor verification's persisted hash vocabulary exactly.
       const hash = `sha256:${createHash('sha256').update(data).digest('hex')}`;
+      const fullText = data.toString('utf8');
+      const normalizedFullText = fullText.includes('\r\n')
+        ? fullText.replaceAll('\r\n', '\n')
+        : fullText;
       for (const check of validityChecks ?? []) {
-        if (check.path === sourcePath)
-          check.status = data.toString('utf8').includes(check.text) ? 'satisfied' : 'not_satisfied';
+        if (check.path === sourcePath) {
+          const checkNorm = check.text.includes('\r\n')
+            ? check.text.replaceAll('\r\n', '\n')
+            : check.text;
+          check.status =
+            fullText.includes(check.text) || normalizedFullText.includes(checkNorm)
+              ? 'satisfied'
+              : 'not_satisfied';
+        }
       }
-      files.push({ path: sourcePath, hash, text: data.toString('utf8').slice(0, 6000) });
+      files.push({ path: sourcePath, hash, text: fullText.slice(0, 6000) });
       if (
         memory.anchors.some((a) => a.path === sourcePath && a.contentHash && a.contentHash !== hash)
       )
