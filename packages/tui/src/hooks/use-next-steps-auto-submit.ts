@@ -22,6 +22,7 @@ import {
 import type { Action } from '../app-action-type.js';
 import type { AppProps } from '../app-props.js';
 import type { State } from '../app-state.js';
+import type { RunBlocksOptions } from '../tui-host-capabilities.js';
 import {
   createFailedRunTracker,
   FAILED_RUN_CONTINUE_PROMPT,
@@ -41,7 +42,9 @@ interface NextStepsAutoSubmitOptions {
   autonomyNextPrompt: AppProps['autonomyNextPrompt'];
   dispatch: Dispatch<Action>;
   clearDraft: () => void;
-  runBlocksRef: MutableRefObject<(blocks: ContentBlock[]) => Promise<void>>;
+  runBlocksRef: MutableRefObject<
+    (blocks: ContentBlock[], options?: RunBlocksOptions) => Promise<void>
+  >;
 }
 
 interface AutoProceedCandidateInput {
@@ -507,7 +510,7 @@ export function useNextStepsAutoSubmit({
                       const blocks: ContentBlock[] = [{ type: 'text', text: trimmed }];
                       dispatch({ type: 'addEntry', entry: { kind: 'user', text: trimmed } });
                       try {
-                        await runBlocksRef.current(blocks);
+                        await runBlocksRef.current(blocks, { origin: 'continuation' });
                       } finally {
                         clearDraft();
                       }
@@ -571,7 +574,7 @@ export function useNextStepsAutoSubmit({
               // throws a TDZ ReferenceError. The ref is only dereferenced when
               // the countdown fires, long after mount.
               try {
-                await runBlocksRef.current(blocks);
+                await runBlocksRef.current(blocks, { origin: 'continuation' });
               } finally {
                 // Always clear the input field after submit, even on error.
                 clearDraft();

@@ -17,6 +17,7 @@ export interface FailedResumeState {
   openedWriter: SessionWriter | undefined;
   oldWriter: ResumeAgent['ctx']['session'] | undefined;
   oldMessages: ResumeAgent['ctx']['messages'] | undefined;
+  oldContextEvidence: ResumeAgent['ctx']['contextEvidence'] | undefined;
   oldSessionRefCurrent: SessionWriter | undefined;
   previousDetachFn: SessionResumeContext['state']['detachActiveTodosCheckpoint'];
   oldTodos: TodoItem[];
@@ -41,6 +42,7 @@ export async function rollbackFailedResume(r: FailedResumeState): Promise<void> 
     openedWriter,
     oldWriter,
     oldMessages,
+    oldContextEvidence,
     oldSessionRefCurrent,
     previousDetachFn,
     oldTodos,
@@ -88,6 +90,7 @@ export async function rollbackFailedResume(r: FailedResumeState): Promise<void> 
     try {
       if (oldWriter !== undefined) agent.ctx.session = oldWriter;
       if (state.sessionRef) state.sessionRef.current = oldSessionRefCurrent;
+      if (oldContextEvidence !== undefined) agent.ctx.contextEvidence = oldContextEvidence;
       if (oldMessages !== undefined) agent.ctx.state.replaceMessages(oldMessages);
       if (previousDetachFn !== undefined) state.detachActiveTodosCheckpoint = previousDetachFn;
       // Always restore the original todos — even when empty. A later

@@ -598,7 +598,7 @@ export function createSubmitController(host: SubmitControllerHost) {
           await waitForIdleSettle(() => stateRef.current.status === 'idle', 1500);
           try {
             stampJournalMarker();
-            await runBlocks(steerBlocks);
+            await runBlocks(steerBlocks, continueResolved ? { origin: 'continuation' } : undefined);
           } finally {
             clearDraft();
           }
@@ -650,7 +650,7 @@ export function createSubmitController(host: SubmitControllerHost) {
     }
 
     stampJournalMarker();
-    await runBlocks(blocks);
+    await runBlocks(blocks, continueResolved ? { origin: 'continuation' } : undefined);
   };
   return submit;
 }

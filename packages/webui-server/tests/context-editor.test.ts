@@ -1,5 +1,6 @@
 import type { Context } from '@wrongstack/core/agent';
 import { type Message, ToolErrorCategory } from '@wrongstack/core/types';
+import { createContextEvidenceState } from '@wrongstack/core/utils';
 import { describe, expect, it } from 'vitest';
 import {
   applyContextEditorProposal,
@@ -29,6 +30,7 @@ function mockContext(messages: Message[]): Context {
     tokenCounter: { total: () => ({ input: 0, output: 0 }), reset: () => {}, account: () => {} },
     readFiles: new Set(),
     fileMtimes: new Map(),
+    contextEvidence: createContextEvidenceState(),
     meta: {},
     lastRequestTokens: undefined,
     lastRealInputTokens: undefined,
@@ -57,6 +59,26 @@ describe('contextEditorRevision', () => {
     expect(contextEditorRevision(a)).toBe(contextEditorRevision(b));
   });
 
+  it('ignores hidden message provenance but still hashes nested origin data', () => {
+    const withoutProvenance: Message[] = [{ role: 'user', content: 'hello' }];
+    const withProvenance: Message[] = [{ role: 'user', content: 'hello', origin: 'user_input' }];
+    expect(contextEditorRevision(withoutProvenance)).toBe(contextEditorRevision(withProvenance));
+
+    const nestedA: Message[] = [
+      {
+        role: 'assistant',
+        content: [{ type: 'tool_use', id: 't1', name: 'x', input: { origin: 'a' } }],
+      },
+    ];
+    const nestedB: Message[] = [
+      {
+        role: 'assistant',
+        content: [{ type: 'tool_use', id: 't1', name: 'x', input: { origin: 'b' } }],
+      },
+    ];
+    expect(contextEditorRevision(nestedA)).not.toBe(contextEditorRevision(nestedB));
+  });
+
   it('is unaffected by object key ordering in blocks', () => {
     const a: Message[] = [
       {
@@ -77,6 +99,34 @@ describe('contextEditorRevision', () => {
       },
     ];
     expect(contextEditorRevision(a)).toBe(contextEditorRevision(b));
+  });
+});
+
+describe('context editor mission continuity', () => {
+  it('re-anchors focus when the latest user turn is removed from history', async () => {
+    const messages: Message[] = [
+      { role: 'user', content: 'Build the durable focus lock', origin: 'user_input' },
+      { role: 'assistant', content: 'Initial work complete.' },
+      { role: 'user', content: 'Switch to an unrelated experiment', origin: 'user_input' },
+      { role: 'assistant', content: 'Experiment started.' },
+    ];
+    const ctx = mockContext(messages);
+    ctx.contextEvidence.currentIntent = {
+      text: 'Switch to an unrelated experiment',
+      updatedAt: 1,
+    };
+
+    const result = await applyContextEditorProposal({
+      ctx,
+      baseRevision: contextEditorRevision(ctx.messages),
+      messages: messages.slice(0, 2),
+      removals: [{ messageIndex: 2 }, { messageIndex: 3 }],
+      allowRepair: true,
+    });
+
+    expect('revision' in result).toBe(true);
+    expect(ctx.contextEvidence.currentIntent?.text).toBe('Build the durable focus lock');
+    expect(ctx.messages[0]?.origin).toBe('user_input');
   });
 });
 

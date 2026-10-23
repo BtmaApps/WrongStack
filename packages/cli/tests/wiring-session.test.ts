@@ -138,13 +138,19 @@ describe('setupSession', () => {
   it('resumes when --resume flag provided', async () => {
     const restoredMsg: Message = {
       role: 'user',
-      content: [{ type: 'text', text: 'hi' }],
+      content: [{ type: 'text', text: 'Build the durable focus lock' }],
+      origin: 'user_input',
+    } as Message;
+    const continuationMsg: Message = {
+      role: 'user',
+      content: [{ type: 'text', text: 'Continue with the next planned step.' }],
+      origin: 'runtime',
     } as Message;
     const sessionStore = makeSessionStore({
       resume: vi.fn().mockResolvedValue({
         writer: makeSessionWriter('resumed-1'),
         data: {
-          messages: [restoredMsg],
+          messages: [restoredMsg, continuationMsg],
           metadata: { id: 'resumed-1' },
           usage: { input: 100, output: 50 },
         },
@@ -168,7 +174,8 @@ describe('setupSession', () => {
     expect(claimSession).toHaveBeenCalledWith('resumed-1');
     expect(sessionStore.resume).toHaveBeenCalledWith('resumed-1');
     expect(result.session.id).toBe('resumed-1');
-    expect(result.restoredMessages).toEqual([restoredMsg]);
+    expect(result.restoredMessages).toEqual([restoredMsg, continuationMsg]);
+    expect(result.context.contextEvidence.currentIntent?.text).toBe('Build the durable focus lock');
     expect(renderer.writeInfo).toHaveBeenCalledWith(
       expect.stringContaining('Resumed session resumed-1'),
     );

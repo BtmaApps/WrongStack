@@ -20,6 +20,7 @@ import type { SessionWriter } from '@wrongstack/core/types';
 import { projectLastRequestTokens } from '@wrongstack/core/types/session-timeline';
 import {
   clearLeaderEffortOverride,
+  rehydrateContextEvidenceFromMessages,
   restoreLeaderEffortOverride,
   sessionScopedPath,
   toErrorMessage,
@@ -157,14 +158,11 @@ export async function resumeSession(
   let resumeClaim: import('@wrongstack/core/storage').SessionResumeClaim | undefined;
   let writerSwapped = false;
   let openedWriter: SessionWriter | undefined;
-  // Hoisted so the outer `catch` can restore them when a failure
-  // occurs AFTER `writerSwapped = true`. Without this, an unguarded
-  // throw anywhere between lines 142-303 would leave `agent.ctx`
-  // bound to the resumed session while the caller received `null`
-  // (silent corruption: the next user prompt would append to the
-  // resumed JSONL under a failed-resume UI).
+  // Hoisted so the outer catch can restore the prior session after a
+  // post-swap failure instead of leaving the next prompt on the wrong writer.
   let oldWriter: typeof agent.ctx.session | undefined;
   let oldMessages: typeof agent.ctx.messages | undefined;
+  let oldContextEvidence: typeof agent.ctx.contextEvidence | undefined;
   let oldSessionRefCurrent: SessionWriter | undefined;
   // Hoisted sidecar captures for the rollback arm. The pre-swap
   // `state.detachActiveTodosCheckpoint` (prior session's todo write
@@ -282,22 +280,19 @@ export async function resumeSession(
       resumed.writer.id,
     ).catch(() => null);
 
-    // Capture and swap writers BEFORE hydrating. replaceMessages emits the
-    // exact recovery snapshot through Context's conversation journal; it must
-    // land in the resumed session, never the session we are leaving.
-    // `oldWriter` / `oldMessages` are the function-scoped hoists from line
-    // ~108 — reassigning here (rather than shadowing via `const`) lets the
-    // outer `catch` at the end of this function restore them when a
-    // failure occurs AFTER `writerSwapped = true`.
+    // Swap writers before hydration so the recovery snapshot lands in the
+    // resumed journal; the hoisted prior state keeps rollback lossless.
     setStage('swap_writer');
     oldWriter = agent.ctx.session;
     oldMessages = [...agent.ctx.messages];
+    oldContextEvidence = agent.ctx.contextEvidence;
     agent.ctx.session = resumed.writer;
     try {
       // Rebuild the agent's conversation context from the resumed messages.
       // Go through the observable state wrapper so subscribers fire and
       // tool-use adjacency is re-checked on the next request.
       agent.ctx.state.replaceMessages(resumed.data.messages);
+      rehydrateContextEvidenceFromMessages(agent.ctx, resumed.data.messages);
       restoreSessionSubagentPolicy(
         agent.ctx,
         resumed.data.events,
@@ -312,6 +307,7 @@ export async function resumeSession(
       restoreLeaderEffortOverride(agent.ctx.meta, resumed.data.events);
     } catch (err) {
       agent.ctx.session = oldWriter;
+      if (oldContextEvidence !== undefined) agent.ctx.contextEvidence = oldContextEvidence;
       agent.ctx.state.replaceMessages(oldMessages);
       throw err;
     }
@@ -601,6 +597,7 @@ export async function resumeSession(
       openedWriter,
       oldWriter,
       oldMessages,
+      oldContextEvidence,
       oldSessionRefCurrent,
       previousDetachFn,
       oldTodos,

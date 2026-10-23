@@ -368,7 +368,10 @@ export function makeACPServerAgentTurn(opts: ACPServerAgentTurnOptions): ACPServ
 
     try {
       const userInput = promptToAgentInput(input.prompt);
-      const result = await agent.run(userInput, { signal: turnAbort.signal });
+      const result = await agent.run(userInput, {
+        signal: turnAbort.signal,
+        inputOrigin: 'user',
+      });
       if (!alive()) return { stopReason: 'cancelled' };
 
       // Stream the agent's final text back

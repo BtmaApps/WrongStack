@@ -122,7 +122,10 @@ export async function submitSlashCommand({
     opts?: { maxPollMs?: number },
   ) => Promise<boolean>;
   stateRef: import('./shared-types.js').MutableCell<import('./app-state.js').State>;
-  runBlocks: (blocks: import('@wrongstack/core/types').ContentBlock[]) => Promise<void>;
+  runBlocks: (
+    blocks: import('@wrongstack/core/types').ContentBlock[],
+    options?: import('./tui-host-capabilities.js').RunBlocksOptions,
+  ) => Promise<void>;
   liveDirector: () => import('@wrongstack/core/coordination').Director | null;
   clearTerminal: (() => void) | undefined;
   onClearHistory: import('./tui-host-capabilities.js').SubmitCapabilities['onClearHistory'];

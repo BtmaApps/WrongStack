@@ -33,6 +33,8 @@ export interface ApplyRewindOptions {
    * live rules match what a resume would restore.
    */
   meta?: Record<string, unknown> | undefined;
+  /** Rebuild session-scoped derived state after the durable history changes. */
+  onMessagesReplaced?: ((messages: readonly Message[]) => void) | undefined;
 }
 
 export interface ApplyRewindResult {
@@ -82,6 +84,7 @@ export async function applyRewindToConversation(
   const store = new DefaultSessionStore({ dir: sessionsDir });
   const data = await store.load(session.id);
   state.replaceMessages(data.messages);
+  opts.onMessagesReplaced?.(data.messages);
   restoreSessionPermissionOverrides(opts.meta, data);
 
   return {
@@ -118,6 +121,8 @@ export async function redoLastRewind(opts: {
   projectRoot: string;
   /** See `ApplyRewindOptions.meta`. */
   meta?: Record<string, unknown> | undefined;
+  /** See `ApplyRewindOptions.onMessagesReplaced`. */
+  onMessagesReplaced?: ((messages: readonly Message[]) => void) | undefined;
 }): Promise<RedoRewindResult | null> {
   const { session, state, sessionsDir, projectRoot } = opts;
   if (!session.peekRedo || !session.restoreRedo) return null;
@@ -156,6 +161,7 @@ export async function redoLastRewind(opts: {
   const restoredEvents = (await session.restoreRedo()) ?? 0;
   const data = await new DefaultSessionStore({ dir: sessionsDir }).load(session.id);
   state.replaceMessages(data.messages);
+  opts.onMessagesReplaced?.(data.messages);
   restoreSessionPermissionOverrides(opts.meta, data);
   return {
     toPromptIndex: peek.toPromptIndex,

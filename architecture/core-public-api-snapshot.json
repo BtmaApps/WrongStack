@@ -474,7 +474,7 @@
         "export { assertNotPrivateHost, embeddedIPv4, expandIPv6, isPrivateIPv4, isPrivateIPv6, } from './ip-guard.js';",
         "export { authoredBlocks, authoredText, LIVE_CONTEXT_MARKER } from './live-context.js';",
         "export { bindProviderCatalogId, configuredProviderIdentities, providerIdentities, } from './provider-catalog-binding.js';",
-        "export { buildCompletedWorkLedgerBlock, buildContextEvidenceDigest, COMPLETED_WORK_LEDGER_MARKER, createContextEvidenceState, formatCompletedWorkLedger, markAssistantReferencedEvidence, type RecordCompletedWorkInput, type RecordToolOutputEvidenceInput, recordCompletedWorkEvidence, recordToolOutputEvidence, recordUserIntentEvidence, repeatedReadPressure, syncCompletedWorkLedgerBlock, } from './context-evidence.js';",
+        "export { buildCompletedWorkLedgerBlock, buildContextEvidenceDigest, COMPLETED_WORK_LEDGER_MARKER, createContextEvidenceState, formatCompletedWorkLedger, markAssistantReferencedEvidence, type RecordCompletedWorkInput, type RecordToolOutputEvidenceInput, recordCompletedWorkEvidence, recordToolOutputEvidence, recordUserIntentEvidence, rehydrateContextEvidenceFromMessages, repeatedReadPressure, syncCompletedWorkLedgerBlock, } from './context-evidence.js';",
         "export { buildSgrSequence, buildTitleSequence, type ColorDepth, detectTerminal, ESCAPE_TERMINATOR, type EscapeEmitResult, type EscapeSequence, isStdinTTY, type MouseProtocol, onResize, safeEmit, setOutputLineGuard, setRawMode, setTitle, type TerminalCapability, TerminalLifecycle, writeErr, writeOut, } from './term.js';",
         "export { buildWin32CmdShimInvocation, type Win32CmdShimInvocation } from './win32-cmd.js';",
         "export { capSageLines, SAGE_INJECTOR_HEADINGS, type SageOutputSplit, splitSageOutputBlock, } from './sage-output-block.js';",
@@ -1638,7 +1638,7 @@
       "classification": "agent-domain contract",
       "intendedOwner": "Core",
       "sourceFiles": 81,
-      "sourceLines": 16724
+      "sourceLines": 16607
     },
     {
       "directory": "design",
@@ -1806,7 +1806,7 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "repositories over dependency-free persistence",
       "sourceFiles": 118,
-      "sourceLines": 26209
+      "sourceLines": 26215
     },
     {
       "directory": "tasking",
@@ -1840,8 +1840,8 @@
       "directory": "utils",
       "classification": "kernel primitive",
       "intendedOwner": "split dependency-free primitives from concrete helpers",
-      "sourceFiles": 92,
-      "sourceLines": 15509
+      "sourceFiles": 93,
+      "sourceLines": 15681
     },
     {
       "directory": "vcs",

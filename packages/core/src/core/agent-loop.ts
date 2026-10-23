@@ -30,6 +30,7 @@ import type { AgentResponseHandler } from './agent-response.js';
 import type { AgentToolHandler } from './agent-tools.js';
 import type { RunResult, UserInputPayload } from './agent-types.js';
 import { type RunOptions, resolveEventSessionId } from './context.js';
+import { resolveRunInputOrigin } from './context-environment.js';
 import { contextHistoryVersion, requestHistoryVersion } from './context-history-version.js';
 import { recordContextUsageAnchor, requestPromptStillCurrent } from './context-usage-anchor.js';
 import { consumeAutonomousContinue } from './continue-to-next-iteration.js';
@@ -104,13 +105,22 @@ export function createAgentLoopHandler(
     const sessionWriter = a.ctx.activeRunSessionWriter ?? a.ctx.session;
     a.ctx.meta['subagentsPolicyLocked'] = true;
     await a.pipelines.userInput.run(inputPayload);
-    recordUserIntentEvidence(a.ctx, inputPayload.text);
+    // Fail closed: only a host boundary that explicitly proves this is a real
+    // user submission may replace the mission anchor. Internal callers that
+    // omit provenance remain runtime turns by default.
+    const runInputOrigin = resolveRunInputOrigin(opts.inputOrigin);
+    recordUserIntentEvidence(a.ctx, inputPayload.text, {
+      preserveCurrentIntent: runInputOrigin !== 'user',
+    });
     await sessionWriter.append({
       type: 'user_input',
       ts: new Date().toISOString(),
       content: inputPayload.content,
     });
-    const inputOrigin = isRuntimeContextInput(inputPayload.text) ? 'runtime' : 'user_input';
+    const inputOrigin =
+      runInputOrigin === 'user' && !isRuntimeContextInput(inputPayload.text)
+        ? 'user_input'
+        : 'runtime';
     a.ctx.state.appendMessage({
       role: 'user',
       content: inputPayload.content,

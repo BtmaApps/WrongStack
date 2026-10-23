@@ -98,7 +98,10 @@ export async function runAutoProceed(
         text: steered ? `${suggestion}\n\n${GROUNDED_NO_PROGRESS_STEER}` : suggestion,
       },
     ];
-    const runResult = await opts.agent.run(runBlocks, { signal: ctrl.signal });
+    const runResult = await opts.agent.run(runBlocks, {
+      signal: ctrl.signal,
+      inputOrigin: 'continuation',
+    });
     console.log(
       JSON.stringify({
         level: 'info',

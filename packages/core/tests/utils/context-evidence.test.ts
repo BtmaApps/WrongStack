@@ -1,18 +1,21 @@
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { Context } from '../../src/core/context.js';
+import { resolveRunInputOrigin } from '../../src/core/context-environment.js';
 import {
   buildContextEvidenceDigest,
   buildConversationContinuityBlock,
+  buildMissionAnchorBlock,
   createContextEvidenceState,
   markAssistantReferencedEvidence,
   recordToolOutputEvidence,
   recordUserIntentEvidence,
+  rehydrateContextEvidenceFromMessages,
   repeatedReadPressure,
 } from '../../src/utils/context-evidence.js';
 
 function makeCtx(projectRoot = process.cwd()): Context {
-  return { projectRoot } as never as Context;
+  return { projectRoot, agentId: 'leader' } as never as Context;
 }
 
 describe('createContextEvidenceState', () => {
@@ -22,6 +25,15 @@ describe('createContextEvidenceState', () => {
     expect(s.toolCalls).toEqual([]);
     expect(s.fileGraph).toEqual({});
     expect(typeof s.updatedAt).toBe('number');
+  });
+});
+
+describe('resolveRunInputOrigin', () => {
+  it('fails closed for unlabelled callers and preserves explicit provenance', () => {
+    expect(resolveRunInputOrigin(undefined)).toBe('runtime');
+    expect(resolveRunInputOrigin('runtime')).toBe('runtime');
+    expect(resolveRunInputOrigin('continuation')).toBe('continuation');
+    expect(resolveRunInputOrigin('user')).toBe('user');
   });
 });
 
@@ -36,6 +48,46 @@ describe('recordUserIntentEvidence', () => {
     ).contextEvidence;
     expect(s.currentIntent.text).toBe('Implement the auth module');
     expect(s.sessionGoals).toContain('Implement the auth module');
+  });
+
+  it('locks the latest real user request as the active run mission', () => {
+    const ctx = makeCtx();
+    recordUserIntentEvidence(ctx, 'Implement the auth module without changing dependencies');
+
+    expect(buildMissionAnchorBlock(ctx)?.text).toContain(
+      'Our objective here is: Implement the auth module without changing dependencies',
+    );
+  });
+
+  it('replaces the mission anchor when a new real user run starts', () => {
+    const ctx = makeCtx();
+    recordUserIntentEvidence(ctx, 'Implement the auth module');
+    recordUserIntentEvidence(ctx, 'Stop that work and audit the billing flow instead');
+
+    expect(buildMissionAnchorBlock(ctx)?.text).toContain(
+      'Our objective here is: Stop that work and audit the billing flow instead',
+    );
+  });
+
+  it('does not replace the mission anchor with a generated continuation turn', () => {
+    const ctx = makeCtx();
+    recordUserIntentEvidence(ctx, 'Implement the auth module');
+    (
+      recordUserIntentEvidence as (
+        context: Context,
+        text: string,
+        options: { preserveCurrentIntent: boolean },
+      ) => void
+    )(ctx, 'Continue with the plan. Resume work on the next open todo.', {
+      preserveCurrentIntent: true,
+    });
+
+    expect(buildMissionAnchorBlock(ctx)?.text).toContain(
+      'Our objective here is: Implement the auth module',
+    );
+    expect((ctx.contextEvidence.recentUserTurns ?? []).map((turn) => turn.text)).toEqual([
+      'Implement the auth module',
+    ]);
   });
 
   it('bounds the real-user continuity tail independently of tool messages', () => {
@@ -79,6 +131,9 @@ describe('recordUserIntentEvidence', () => {
     expect(state.recentUserTurns.map((turn) => turn.text)).toEqual([
       'Keep working on the context task',
     ]);
+    expect(buildMissionAnchorBlock(ctx)?.text).toContain(
+      'Our objective here is: Keep working on the context task',
+    );
   });
 
   it('dedups + bounds sessionGoals', () => {
@@ -88,6 +143,41 @@ describe('recordUserIntentEvidence', () => {
     const s = (ctx as never as { contextEvidence: { sessionGoals: string[] } }).contextEvidence;
     expect(s.sessionGoals.length).toBe(8);
     expect(s.sessionGoals.at(-1)).toBe('goal 0');
+  });
+});
+
+describe('rehydrateContextEvidenceFromMessages', () => {
+  it('rebuilds the active mission from human turns and excludes runtime or tool traffic', () => {
+    const ctx = {
+      ...makeCtx(),
+      contextEvidence: {
+        ...createContextEvidenceState(),
+        currentIntent: { text: 'mission from another session', updatedAt: 1 },
+        sessionGoals: ['mission from another session'],
+      },
+    } as Context;
+
+    const restored = rehydrateContextEvidenceFromMessages(ctx, [
+      { role: 'user', content: 'Build the durable focus lock', origin: 'user_input' },
+      { role: 'assistant', content: 'Working on it.' },
+      { role: 'user', content: 'Continue with the next planned step.', origin: 'runtime' },
+      { role: 'user', content: 'devam et' },
+      { role: 'user', content: 'continue', origin: 'user_input' },
+      {
+        role: 'user',
+        content: [{ type: 'tool_result', tool_use_id: 't1', content: 'generated output' }],
+      },
+      { role: 'user', content: '[auto-wake] keep going' },
+      { role: 'user', content: 'Keep compatibility with legacy journals' },
+    ]);
+
+    expect(restored).toBe(ctx.contextEvidence);
+    expect(restored.currentIntent?.text).toBe('Keep compatibility with legacy journals');
+    expect((restored.recentUserTurns ?? []).map((turn) => turn.text)).toEqual([
+      'Build the durable focus lock',
+      'Keep compatibility with legacy journals',
+    ]);
+    expect(restored.sessionGoals).not.toContain('mission from another session');
   });
 });
 

@@ -9,7 +9,11 @@ import type { EventBus } from '@wrongstack/core/kernel';
 import type { ToolRegistry } from '@wrongstack/core/registry';
 import { restoreRequiredSkillsFromEvents } from '@wrongstack/core/skills';
 import type { SessionLoadProgress, SessionStore, TokenCounter } from '@wrongstack/core/types';
-import { resolveWstackPaths, sessionScopedPath } from '@wrongstack/core/utils';
+import {
+  rehydrateContextEvidenceFromMessages,
+  resolveWstackPaths,
+  sessionScopedPath,
+} from '@wrongstack/core/utils';
 import {
   buildReplayPayload,
   MAX_OPEN_SESSIONS_PER_CONNECTION,
@@ -409,6 +413,7 @@ export function buildSessionHandlerShared(ctx: SessionHandlersContext): SessionH
 
     if (!isRunning) {
       targetCtx.state.replaceMessages(messages);
+      rehydrateContextEvidenceFromMessages(targetCtx, messages);
       await targetCtx.flushConversationJournal?.().catch(() => undefined);
       await ctx.onBeforeSessionTodosReplaced?.(next.id, sessionsDirectory());
       targetCtx.state.replaceTodos(todos);

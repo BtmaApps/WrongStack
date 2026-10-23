@@ -7,6 +7,7 @@ import {
   type RewoundConversation,
   redoLastRewind,
 } from '@wrongstack/core/storage';
+import { rehydrateContextEvidenceFromMessages } from '@wrongstack/core/utils';
 import { useCallback } from 'react';
 import type { SessionInterruptController } from './use-session-interrupt-controller.js';
 
@@ -81,6 +82,7 @@ export function useSessionRewind({
         promptIndex: checkpointIndex,
         revertedFiles: reverted.revertedFiles,
         meta: agent.ctx.meta,
+        onMessagesReplaced: (messages) => rehydrateContextEvidenceFromMessages(agent.ctx, messages),
       });
       return { promptText: reverted.promptText, conversation: applied.conversation };
     },
@@ -107,6 +109,7 @@ export function useSessionRewind({
       sessionsDir: sessionsDir ?? '',
       projectRoot: agent.ctx.projectRoot ?? agent.ctx.cwd,
       meta: agent.ctx.meta,
+      onMessagesReplaced: (messages) => rehydrateContextEvidenceFromMessages(agent.ctx, messages),
     });
   }, [agent.ctx, sessionsDir, stopSessionProducers]);
 

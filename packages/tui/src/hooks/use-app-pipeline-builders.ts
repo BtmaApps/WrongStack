@@ -394,8 +394,10 @@ export function buildAppPipelineArgs(params: {
         openPromptPicker,
         refreshGoalSummary,
         exit,
-        runBlocks: (blocks: Parameters<S['actions']['runBlocks']>[0]) =>
-          runBlocksRef.current(blocks),
+        runBlocks: (
+          blocks: Parameters<S['actions']['runBlocks']>[0],
+          options?: Parameters<S['actions']['runBlocks']>[1],
+        ) => runBlocksRef.current(blocks, options),
         liveDirector,
         setMemoryContextMonitor,
         runSteerSequence,

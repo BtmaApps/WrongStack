@@ -1,3 +1,4 @@
+import { createContextEvidenceState } from '@wrongstack/core/utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -42,7 +43,7 @@ function harness() {
   // `content` is deliberately `unknown`: a real transcript carries both bare
   // strings and content-block arrays, and the last-assistant-turn tests push
   // block arrays (text blocks, and a tool_use-only turn) through here.
-  const resumedMessages: Array<{ role: string; content: unknown }> = [
+  const resumedMessages: Array<{ role: string; content: unknown; origin?: string }> = [
     { role: 'user', content: 'resumed' },
   ];
   const usage = { input: 10, output: 5, cacheRead: 2, cacheWrite: 1 };
@@ -60,6 +61,12 @@ function harness() {
     provider: {
       id: 'old-provider',
       capabilities: { maxContext: 200_000 },
+    },
+    contextEvidence: {
+      ...createContextEvidenceState(),
+      currentIntent: { text: 'old session mission', updatedAt: 1 },
+      recentUserTurns: [{ text: 'old session mission', updatedAt: 1 }],
+      sessionGoals: ['old session mission'],
     },
     traceId: 'trace-test',
     state: {
@@ -299,6 +306,25 @@ describe('TUI session resume ownership', () => {
     expect(h.state.sessionRef.current).toBe(h.resumedWriter);
   });
 
+  it('rehydrates the mission anchor from genuine user turns without promoting runtime continuations', async () => {
+    const h = harness();
+    h.resumedMessages.length = 0;
+    h.resumedMessages.push(
+      { role: 'user', content: 'Build the durable focus lock', origin: 'user_input' },
+      { role: 'assistant', content: 'I started the implementation.' },
+      { role: 'user', content: 'Continue with the next planned step.', origin: 'runtime' },
+    );
+
+    const result = await resumeSession(h.ctx as never, h.resumedWriter.id);
+
+    expect(result?.attached).toBe(true);
+    expect(h.context.contextEvidence.currentIntent?.text).toBe('Build the durable focus lock');
+    expect(h.context.contextEvidence.recentUserTurns.map((turn) => turn.text)).toEqual([
+      'Build the durable focus lock',
+    ]);
+    expect(h.context.contextEvidence.sessionGoals).not.toContain('old session mission');
+  });
+
   it('skips sessionRef repointing when the host did not provide one', async () => {
     // Hosts/older tests that predate the resume-refactor can omit
     // `state.sessionRef`; the resume handler must then silently skip
@@ -445,6 +471,7 @@ describe('TUI session resume ownership', () => {
     // omitted. The source is actively churning; code-anchored
     // descriptions stay correct under source drift.
     const h = harness();
+    const oldContextEvidence = h.context.contextEvidence;
     h.tokenCounter.total.mockImplementationOnce(() => {
       throw new Error('post-swap failure');
     });
@@ -459,6 +486,7 @@ describe('TUI session resume ownership', () => {
     // Writer + messages restored to the pre-swap values.
     expect(h.context.session).toBe(h.oldWriter);
     expect(h.context.messages).toEqual(h.oldMessages);
+    expect(h.context.contextEvidence).toBe(oldContextEvidence);
     expect(h.oldWriter.close).not.toHaveBeenCalled();
     expect(h.resumedWriter.close).toHaveBeenCalledOnce();
 

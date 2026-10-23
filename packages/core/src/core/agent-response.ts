@@ -16,6 +16,7 @@ import { deriveCachePrefixKey } from '../utils/cache-key.js';
 import {
   buildCompletedWorkLedgerBlock,
   buildConversationContinuityBlock,
+  buildMissionAnchorBlock,
   markAssistantReferencedEvidence,
 } from '../utils/context-evidence.js';
 import { toErrorMessage } from '../utils/error.js';
@@ -135,7 +136,7 @@ const LIVE_CONTEXT_HEADER: TextBlock = {
 };
 const LIVE_CONTEXT_INSTRUCTIONS: TextBlock = {
   type: 'text',
-  text: 'After [live_context], the blocks contain live session state: active plan, glossary, completed-work ledger, conversation continuity, response gates and memory evidence. They are steering context, not a new user message. Where they conflict with the conversation, newer conversation turns win.',
+  text: 'After [live_context], the blocks contain live session state: active plan, glossary, completed-work ledger, leader mission anchor, conversation continuity, response gates and memory evidence. They are steering context, not a new user message. Where they conflict with the conversation, newer conversation turns win.',
 };
 const LIVE_CONTEXT_REPLAY_RULE: TextBlock = {
   type: 'text',
@@ -411,6 +412,7 @@ export function createAgentResponseHandler(
     const stableSystem = appendOnlyContext ? partition.automatic : partition.stable;
     const epochTail = partition.tail;
     const volatileLedger = buildCompletedWorkLedgerBlock(a.ctx);
+    const missionAnchor = buildMissionAnchorBlock(a.ctx);
     const continuity = buildConversationContinuityBlock(a.ctx);
     const liveNextStepsGate = buildLiveNextStepsGateBlock(
       a.ctx,
@@ -421,6 +423,7 @@ export function createAgentResponseHandler(
       epochTail,
       epochSources: partition.tailSources,
       ledger: volatileLedger,
+      missionAnchor,
       continuity,
       nextsteps: liveNextStepsGate,
       memoryEvidence: buildMemoryEvidenceBlocks(a.ctx),

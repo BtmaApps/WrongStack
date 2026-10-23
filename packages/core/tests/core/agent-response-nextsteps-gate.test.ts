@@ -213,7 +213,40 @@ describe('provider request live-context tail', () => {
       .map((b) => b.text ?? '');
     expect(texts.join('\n')).toContain('[live_context]');
     expect(texts.join('\n')).toContain('[conversation_continuity]');
+    expect(texts.join('\n')).toContain('[mission_anchor]');
+    expect(texts.join('\n')).toContain('Our objective here is: Fix the context-loss bug');
+    expect(texts.join('\n')).toContain('Every next action must directly advance');
     expect(texts.join('\n')).toContain('[nextsteps_gate]');
+  });
+
+  it('does not inject the leader mission anchor into a subagent request', async () => {
+    const history = [{ role: 'user', content: 'research the parser' }];
+    const { ctx, a } = makeInternals({ messages: history });
+    ctx.agentId = 'researcher';
+    recordUserIntentEvidence(ctx, 'Research the parser implementation');
+
+    const request = await createAgentResponseHandler(a).buildAndRunRequestPipeline({});
+    expect(JSON.stringify(request.request.messages)).not.toContain('[mission_anchor]');
+    expect(JSON.stringify(request.request.system)).not.toContain('[mission_anchor]');
+  });
+
+  it('keeps the same mission anchor after the durable history is compacted', async () => {
+    const { ctx, a } = makeInternals({
+      messages: [{ role: 'user', content: 'Implement cancellation safely' }],
+    });
+    recordUserIntentEvidence(ctx, 'Implement cancellation safely');
+    const handler = createAgentResponseHandler(a);
+
+    await handler.buildAndRunRequestPipeline({});
+    ctx.messages = [
+      { role: 'system', content: '[context_state] compacted prior work' },
+      { role: 'user', content: 'tool result after compaction', origin: 'runtime' },
+    ] as never;
+
+    const next = await handler.buildAndRunRequestPipeline({});
+    expect(JSON.stringify(next.request.messages)).toContain(
+      'Our objective here is: Implement cancellation safely',
+    );
   });
 
   it('pins the cache boundary on the last durable block, before the tail', async () => {

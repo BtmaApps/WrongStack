@@ -538,6 +538,39 @@ describe('createSessionHandlers — resume, save, inspect', () => {
     expect(res?.payload['message']).toBe('Resumed session sess_resumed');
   });
 
+  it('rehydrates the mission anchor from the resumed session instead of the previous tab', async () => {
+    const messages = [
+      { role: 'user', content: 'Build the durable focus lock', origin: 'user_input' },
+      { role: 'assistant', content: 'Working on it.' },
+      { role: 'user', content: 'Continue with the next planned step.', origin: 'runtime' },
+    ];
+    const h = makeHarness({
+      store: {
+        resume: async () => ({
+          writer: writer('sess_resumed'),
+          data: { messages, events: [] },
+        }),
+        list: async () => [],
+      },
+    });
+    (h.context as never as { contextEvidence: unknown }).contextEvidence = {
+      currentIntent: { text: 'previous tab mission', updatedAt: 1 },
+    };
+
+    await h.routes.resumeSession(
+      h.ws as never,
+      {
+        type: 'session.resume',
+        payload: { id: 'sess_resumed' },
+      } as never,
+    );
+
+    expect(
+      (h.context as never as { contextEvidence: { currentIntent?: { text: string } } })
+        .contextEvidence.currentIntent?.text,
+    ).toBe('Build the durable focus lock');
+  });
+
   it.each([
     { provider: 'unknown', model: 'unknown' },
     { provider: 'unknown', model: 'saved-model' },
@@ -726,6 +759,9 @@ describe('createSessionHandlers — checkpoints and rewind', () => {
 
   it('still rewinds when no run is active', async () => {
     const h = makeHarness();
+    (h.context as never as { contextEvidence: unknown }).contextEvidence = {
+      currentIntent: { text: 'discarded future mission', updatedAt: 1 },
+    };
     const live = await new DefaultSessionStore({ dir: sessionsDir }).create({
       id: 'sess_current',
       title: '',
@@ -747,6 +783,10 @@ describe('createSessionHandlers — checkpoints and rewind', () => {
     expect(res?.payload['success']).toBe(true);
     expect(h.context.session.truncateToCheckpoint).toHaveBeenCalled();
     expect(h.context.state.replaceMessages).toHaveBeenCalled();
+    expect(
+      (h.context as never as { contextEvidence: { currentIntent?: unknown } }).contextEvidence
+        .currentIntent,
+    ).toBeUndefined();
   });
 });
 

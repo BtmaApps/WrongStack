@@ -1,7 +1,7 @@
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { applyRewindToConversation } from '../../src/storage/session-rewind-apply.js';
 import { DefaultSessionStore } from '../../src/storage/session-store.js';
 import type { Message } from '../../src/types/messages.js';
@@ -105,12 +105,14 @@ describe('applyRewindToConversation', () => {
     const store = new DefaultSessionStore({ dir: tmp });
     const w = await seedSession(store, 'rw-1');
     const convo = makeConversation([userMsg('first'), userMsg('second')]);
+    const onMessagesReplaced = vi.fn();
 
     const result = await applyRewindToConversation({
       session: w,
       state: convo,
       sessionsDir: tmp,
       promptIndex: 1,
+      onMessagesReplaced,
     });
 
     // Prompt 1's message is gone from BOTH the log and the live conversation.
@@ -127,6 +129,7 @@ describe('applyRewindToConversation', () => {
         .map((e) => (e as { promptIndex: number }).promptIndex),
     ).toEqual([0, 1]);
     expect(convo.messages).toHaveLength(1);
+    expect(onMessagesReplaced).toHaveBeenCalledWith(convo.messages);
     expect((convo.messages[0] as { content: Array<{ text: string }> }).content[0]?.text).toBe(
       'first',
     );

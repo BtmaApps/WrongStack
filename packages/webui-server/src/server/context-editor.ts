@@ -2,7 +2,10 @@ import { createHash } from 'node:crypto';
 import type { Context } from '@wrongstack/core/agent';
 import type { ToolRegistry } from '@wrongstack/core/registry';
 import type { Message } from '@wrongstack/core/types';
-import { repairToolUseAdjacency } from '@wrongstack/core/utils';
+import {
+  rehydrateContextEvidenceFromMessages,
+  repairToolUseAdjacency,
+} from '@wrongstack/core/utils';
 import type {
   ContextEditorAppliedResult,
   ContextEditorDiagnostics,
@@ -41,10 +44,14 @@ function canonicalize(value: unknown): unknown {
   return value;
 }
 
+function canonicalizeMessages(messages: readonly Message[]): unknown[] {
+  return messages.map(({ origin: _origin, ...editableMessage }) => canonicalize(editableMessage));
+}
+
 export function contextEditorRevision(messages: readonly Message[]): string {
   const hash = createHash('sha256');
   hash.update(REVISION_PREFIX);
-  hash.update(JSON.stringify(canonicalize(messages)));
+  hash.update(JSON.stringify(canonicalizeMessages(messages)));
   return hash.digest('hex');
 }
 
@@ -364,8 +371,8 @@ function validateRemovalPlan(
   }
   const expectedProposal = expectedMessages.filter((_, index) => !wholeMessages.has(index));
   if (
-    JSON.stringify(canonicalize(expectedProposal)) !==
-    JSON.stringify(canonicalize(proposedMessages))
+    JSON.stringify(canonicalizeMessages(expectedProposal)) !==
+    JSON.stringify(canonicalizeMessages(proposedMessages))
   ) {
     error(
       errors,
@@ -498,6 +505,7 @@ export async function applyContextEditorProposal(input: {
   const beforeMessages = input.ctx.messages.length;
   const beforeBlocks = countBlocks(input.ctx.messages);
   input.ctx.state.replaceMessages(validation.messages);
+  rehydrateContextEvidenceFromMessages(input.ctx, validation.messages);
   await input.ctx.flushConversationJournal?.();
   input.ctx.lastRequestTokens = undefined;
   input.ctx.lastRealInputTokens = undefined;

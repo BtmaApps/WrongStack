@@ -34,14 +34,14 @@
 import type { AgentFactory } from '@wrongstack/core/coordination';
 import { toErrorMessage } from '@wrongstack/core/utils';
 import {
-  codeAssistAllowsEdits,
   type CodeAssistPreset,
   type CodeAssistResult,
   type CodeAssistRunRequest,
+  codeAssistAllowsEdits,
 } from '@wrongstack/webui-protocol';
 import type { WebSocket } from 'ws';
-import type { WSClientMessage } from './types.js';
 import { buildCodeAssistPrompt } from './code-assist-prompt.js';
+import type { WSClientMessage } from './types.js';
 
 export interface CodeAssistRouteHandlers {
   run: (ws: WebSocket, msg: WSClientMessage) => Promise<void>;
@@ -191,6 +191,7 @@ export function createCodeAssistRouteHandlers(deps: {
 
           const result = (await built.agent.run(prompt, {
             signal: controller.signal,
+            inputOrigin: 'user',
           })) as {
             status?: string | undefined;
             finalText?: string | undefined;

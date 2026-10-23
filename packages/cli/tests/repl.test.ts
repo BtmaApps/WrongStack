@@ -145,6 +145,10 @@ describe('runRepl', () => {
     });
 
     expect(run).toHaveBeenCalled();
+    expect(run).toHaveBeenCalledWith(expect.any(Array), {
+      signal: expect.any(AbortSignal),
+      inputOrigin: 'user',
+    });
   });
 
   it('asks before sending an unanchored bare continue and cancels on no', async () => {
@@ -174,6 +178,33 @@ describe('runRepl', () => {
     );
     expect(writes.join('')).toContain("'continue' has no anchor");
     expect(writes.join('')).toContain('Cancelled');
+  });
+
+  it('marks a todo-grounded bare continue as continuation input', async () => {
+    clearSuggestions();
+    const run = vi.fn(
+      async (): Promise<RunResult> => ({ status: 'done', iterations: 1, finalText: 'done' }),
+    );
+    const agent = makeFakeAgent({
+      run,
+      ctx: {
+        todos: [{ id: 't1', content: 'Finish verification', status: 'in_progress' }],
+      } as Context,
+    });
+
+    await runRepl({
+      agent,
+      renderer: makeFakeRenderer(),
+      reader: makeFakeReader(['continue\n', '/exit\n']),
+      slashRegistry: makeFakeSlashRegistry(),
+      attachments: makeFakeAttachmentStore(),
+      banner: false,
+    });
+
+    expect(run).toHaveBeenCalledWith(expect.any(Array), {
+      signal: expect.any(AbortSignal),
+      inputOrigin: 'continuation',
+    });
   });
 
   it('uses the dynamic supportsVision resolver when routing image blocks', async () => {

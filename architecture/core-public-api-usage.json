@@ -4,9 +4,9 @@
   "rootImportFiles": 0,
   "bySpecifier": {
     "@wrongstack/core/agent": {
-      "files": 408,
+      "files": 409,
       "typeOnly": 317,
-      "runtimeOrMixed": 111
+      "runtimeOrMixed": 112
     },
     "@wrongstack/core/agent-catalog": {
       "files": 23,
@@ -239,9 +239,9 @@
       "runtimeOrMixed": 20
     },
     "@wrongstack/core/utils": {
-      "files": 838,
+      "files": 842,
       "typeOnly": 72,
-      "runtimeOrMixed": 795
+      "runtimeOrMixed": 799
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -2135,6 +2135,12 @@
       "file": "packages/tui/src/hooks/use-working-dir-chip.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/tui/src/run-blocks-controller.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/agent",
@@ -26456,6 +26462,12 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/tests/tui-session-resume.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/tests/webui-server/client-registration-control.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -28100,6 +28112,12 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
+      "file": "packages/tui/src/hooks/use-session-rewind.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
       "file": "packages/tui/src/hooks/use-session-slash-commands.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -28730,6 +28748,12 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
+      "file": "packages/webui-server/src/server/session-checkpoint-handlers.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
       "file": "packages/webui-server/src/server/session-cleanup-scheduler.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -28911,6 +28935,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/webui-server/tests/connections-health-route.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/webui-server/tests/context-editor.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

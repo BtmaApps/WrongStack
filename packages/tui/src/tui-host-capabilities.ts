@@ -60,7 +60,7 @@ export interface RunBlocksCapabilities {
 }
 
 /** Where a `runBlocks` invocation came from. Default `user`. */
-export type RunBlocksOrigin = 'user' | 'auto_wake';
+export type RunBlocksOrigin = 'user' | 'continuation' | 'auto_wake';
 
 export interface RunBlocksOptions {
   origin?: RunBlocksOrigin | undefined;

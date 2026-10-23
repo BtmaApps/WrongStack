@@ -45,7 +45,9 @@ describe('useNextStepsAutoSubmit', () => {
     'steers a repeated suggestion once, then parks until reset (yolo=%s)',
     async (yolo) => {
       let status: 'idle' | 'running' = 'idle';
-      const runBlocks = vi.fn(async (_blocks: Array<{ type: string; text?: string }>) => undefined);
+      const runBlocks = vi.fn(
+        async (_blocks: Array<{ type: string; text?: string }>, _options?: unknown) => undefined,
+      );
       const dispatch = vi.fn();
       const { result, rerender } = renderHook(() =>
         useNextStepsAutoSubmit({
@@ -79,6 +81,7 @@ describe('useNextStepsAutoSubmit', () => {
       await tick();
       expect(runBlocks).toHaveBeenCalledTimes(1);
       expect(runBlocks.mock.calls[0]?.[0][0]?.text).toBe('Continue the verification');
+      expect(runBlocks.mock.calls[0]?.[1]).toEqual({ origin: 'continuation' });
       await nextTurn();
       expect(runBlocks).toHaveBeenCalledTimes(2);
       expect(runBlocks.mock.calls[1]?.[0][0]?.text).toContain(

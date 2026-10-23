@@ -2,6 +2,7 @@
  * Session inspection, checkpoints, and rewind route handlers.
  */
 
+import { rehydrateContextEvidenceFromMessages } from '@wrongstack/core/utils';
 import type { SessionHandlerShared } from './session-handler-helpers.js';
 import { buildInspectPayload } from './session-history.js';
 import type { SessionRouteHandlers } from './session-routes.js';
@@ -91,9 +92,8 @@ export function createSessionCheckpointHandlers(
     rewindSession: async (ws, msg) => {
       if (!ensureCurrentSession(ws, msg, 'session.rewind')) return;
       // Payload-less frames are legal here too — see inspectSession above.
-      const { checkpointIndex } = (
-        msg as { payload?: { checkpointIndex?: number | undefined } }
-      ).payload ?? {};
+      const { checkpointIndex } =
+        (msg as { payload?: { checkpointIndex?: number | undefined } }).payload ?? {};
       // The old non-optional cast asserted a number the wire may never carry;
       // rewind truncates a journal, so refuse rather than rewind to `undefined`.
       if (typeof checkpointIndex !== 'number') {
@@ -137,6 +137,7 @@ export function createSessionCheckpointHandlers(
           promptIndex: checkpointIndex,
           revertedFiles: reverted.revertedFiles,
           meta: target.meta,
+          onMessagesReplaced: (messages) => rehydrateContextEvidenceFromMessages(target, messages),
         });
         result(ws, true, `Rewound to checkpoint ${checkpointIndex}`);
         broadcastToAll({

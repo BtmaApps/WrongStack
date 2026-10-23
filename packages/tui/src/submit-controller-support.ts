@@ -5,7 +5,7 @@ import type { Action, State } from './app-reducer.js';
 import type { emptyMemoryContextMonitor } from './memory-context-monitor.js';
 import type { MutableCell } from './shared-types.js';
 import type { TokenPreviewStore } from './token-previews.js';
-import type { SubmitCapabilities } from './tui-host-capabilities.js';
+import type { RunBlocksOptions, SubmitCapabilities } from './tui-host-capabilities.js';
 
 /**
  * Wait up to `deadlineMs` for an in-flight run to settle into `idle` before
@@ -86,7 +86,7 @@ export interface SubmitControllerHost {
     openPromptPicker(): Promise<void>;
     refreshGoalSummary(): void;
     exit(): void;
-    runBlocks(blocks: ContentBlock[]): Promise<void>;
+    runBlocks(blocks: ContentBlock[], options?: RunBlocksOptions): Promise<void>;
     liveDirector(): Director | null;
     setMemoryContextMonitor(value: ReturnType<typeof emptyMemoryContextMonitor>): void;
     runSteerSequence(direction: string): { preamble: string };

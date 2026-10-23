@@ -65,8 +65,17 @@ async function rewind(writer: SessionWriter, to: number) {
 
 const journalPath = (writer: SessionWriter) => path.join(sessionsDir, `${writer.id}.jsonl`);
 const journal = (writer: SessionWriter) => fs.readFile(journalPath(writer), 'utf8');
-const redo = (writer: SessionWriter) =>
-  redoLastRewind({ session: writer, state: state(), sessionsDir, projectRoot: root });
+const redo = (
+  writer: SessionWriter,
+  onMessagesReplaced?: Parameters<typeof redoLastRewind>[0]['onMessagesReplaced'],
+) =>
+  redoLastRewind({
+    session: writer,
+    state: state(),
+    sessionsDir,
+    projectRoot: root,
+    onMessagesReplaced,
+  });
 
 describe('redoLastRewind', () => {
   it('puts back the rewound file change and the journal, byte for byte', async () => {
@@ -83,11 +92,13 @@ describe('redoLastRewind', () => {
     expect(await fs.readFile(fileA, 'utf8')).toBe('one');
     expect(await journal(writer)).not.toBe(before);
 
-    const result = await redo(writer);
+    const onMessagesReplaced = vi.fn();
+    const result = await redo(writer, onMessagesReplaced);
     expect(result?.conflicts).toEqual([]);
     expect(result?.reappliedFiles).toEqual([fileA]);
     expect(await fs.readFile(fileA, 'utf8')).toBe('two');
     expect((await journal(writer)).startsWith(before)).toBe(true);
+    expect(onMessagesReplaced).toHaveBeenCalledWith(result?.conversation?.messages);
     // Nothing left to redo.
     expect(await redo(writer)).toBeNull();
     await writer.close();

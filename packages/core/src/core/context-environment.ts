@@ -38,11 +38,23 @@ import { resolveAndValidateWorkingDir } from './context-working-dir.js';
  */
 const allowOutsideProjectRootByContext = new WeakMap<object, boolean>();
 
+export type RunInputOrigin = 'user' | 'continuation' | 'runtime';
+
+/** Unlabelled callers are internal until a trusted host proves otherwise. */
+export function resolveRunInputOrigin(origin: RunInputOrigin | undefined): RunInputOrigin {
+  return origin ?? 'runtime';
+}
+
 export interface RunOptions {
   signal?: AbortSignal | undefined;
   model?: string | undefined;
   executionStrategy?: 'parallel' | 'sequential' | 'smart' | undefined;
   maxIterations?: number | undefined;
+  /**
+   * Provenance of the text passed to `Agent.run()`.
+   * Only a real user turn may replace the leader's active mission anchor.
+   */
+  inputOrigin?: RunInputOrigin | undefined;
   /**
    * Enable autonomous continue for this specific run. When true, the agent
    * loop re-runs on `[continue]`/`[next step]`/`[proceed]` markers or

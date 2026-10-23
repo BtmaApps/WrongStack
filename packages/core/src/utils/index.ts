@@ -34,6 +34,7 @@ export {
   recordCompletedWorkEvidence,
   recordToolOutputEvidence,
   recordUserIntentEvidence,
+  rehydrateContextEvidenceFromMessages,
   repeatedReadPressure,
   syncCompletedWorkLedgerBlock,
 } from './context-evidence.js';

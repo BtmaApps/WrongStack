@@ -1,11 +1,12 @@
-import type { ContentBlock } from '@wrongstack/core/types';
+import { detectContinueIntent } from '@wrongstack/core/agent';
 import { PROMPT_JOURNAL_RAW_MARKER } from '@wrongstack/core/prompts';
+import type { ContentBlock } from '@wrongstack/core/types';
 import { toErrorMessage } from '@wrongstack/core/utils';
 import { routeImagesForModel } from '@wrongstack/runtime/vision';
 import type { Action, State } from './app-reducer.js';
 import { fmtTok } from './components/history.js';
-import type { RunBlocksCapabilities, RunBlocksOptions } from './tui-host-capabilities.js';
 import type { MutableCell, StreamSegment } from './shared-types.js';
+import type { RunBlocksCapabilities, RunBlocksOptions } from './tui-host-capabilities.js';
 
 export interface RunBlocksRefs {
   readonly sessionGeneration: MutableCell<number>;
@@ -146,7 +147,11 @@ export function createRunBlocksController(
       if (capturedRaw !== undefined) {
         agent.ctx.meta[PROMPT_JOURNAL_RAW_MARKER] = capturedRaw;
       }
-      const result = await agent.run(routed.blocks, { signal: controller.signal });
+      const result = await agent.run(routed.blocks, {
+        signal: controller.signal,
+        inputOrigin:
+          origin === 'continuation' ? 'continuation' : origin === 'auto_wake' ? 'runtime' : 'user',
+      });
       if (runGeneration !== refs.sessionGeneration.current) return;
 
       refs.streamingText.current = '';
@@ -295,7 +300,9 @@ export function createRunBlocksController(
       if (head.journalRaw) {
         agent.ctx.meta[PROMPT_JOURNAL_RAW_MARKER] = head.journalRaw;
       }
-      await runBlocks(head.blocks);
+      await runBlocks(head.blocks, {
+        origin: detectContinueIntent(head.journalRaw ?? '') ? 'continuation' : 'user',
+      });
       return;
     }
     // Nothing queued: the auto-wake post-run check. A background result that

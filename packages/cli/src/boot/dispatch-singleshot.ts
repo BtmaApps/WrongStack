@@ -146,12 +146,16 @@ export async function runSingleShotDispatch(ctx: SingleShotDispatchContext): Pro
   try {
     result = await agent.run(schema ? withSchemaInstruction(query, schema) : query, {
       signal: ctrl.signal,
+      inputOrigin: 'user',
     });
     if (schema && result.status === 'done') {
       structured = checkStructuredAnswer(result.finalText, schema);
       if (!structured.ok && !ctrl.signal.aborted) {
         const first = result;
-        result = await agent.run(repairPrompt(structured.errors), { signal: ctrl.signal });
+        result = await agent.run(repairPrompt(structured.errors), {
+          signal: ctrl.signal,
+          inputOrigin: 'runtime',
+        });
         result = { ...result, iterations: first.iterations + result.iterations };
         if (result.status === 'done') structured = checkStructuredAnswer(result.finalText, schema);
       }

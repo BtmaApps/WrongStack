@@ -173,6 +173,7 @@ describe('createConversationOperations', () => {
     expect(h.run).toHaveBeenCalledWith('hello', {
       signal: h.controller.signal,
       maxIterations: 7,
+      inputOrigin: 'user',
     });
     expect(h.end).toHaveBeenCalledWith(ws, 'session-live', h.controller);
     expect(h.sent.at(-1)).toMatchObject({
@@ -221,7 +222,10 @@ describe('createConversationOperations', () => {
 
     // The turn ran with NO maxIterations key at all: the preference is
     // dropped (the agent's own default applies), not the turn.
-    expect(run).toHaveBeenCalledWith('hello', { signal: controller.signal });
+    expect(run).toHaveBeenCalledWith('hello', {
+      signal: controller.signal,
+      inputOrigin: 'user',
+    });
     // The post-run bookkeeping fired, so the scheduler settles the turn
     // instead of re-entering the same prompt.
     expect(onRunEnded).toHaveBeenCalledTimes(1);

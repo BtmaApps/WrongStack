@@ -106,7 +106,10 @@ describe('CLI production dispatch journeys', { concurrent: false }, () => {
     );
 
     expect(code).toBe(0);
-    expect(run).toHaveBeenCalledWith('fix this', { signal: expect.any(AbortSignal) });
+    expect(run).toHaveBeenCalledWith('fix this', {
+      signal: expect.any(AbortSignal),
+      inputOrigin: 'user',
+    });
     expect(renderer.write).toHaveBeenCalledWith('\nfinished\n');
     expect(surfaceMocks.killAll).toHaveBeenCalledOnce();
   });

@@ -43,6 +43,7 @@ export function liveTailEntriesOf(parts: {
   epochTail: readonly TextBlock[];
   epochSources: readonly string[];
   ledger: TextBlock | undefined;
+  missionAnchor: TextBlock | undefined;
   continuity: TextBlock | undefined;
   nextsteps: TextBlock | undefined;
   memoryEvidence: readonly TextBlock[];
@@ -52,6 +53,9 @@ export function liveTailEntriesOf(parts: {
     block,
   }));
   if (parts.ledger) entries.push({ source: 'ledger', block: parts.ledger });
+  if (parts.missionAnchor) {
+    entries.push({ source: 'mission-anchor', block: parts.missionAnchor });
+  }
   if (parts.continuity) entries.push({ source: 'continuity', block: parts.continuity });
   if (parts.nextsteps) entries.push({ source: 'nextsteps', block: parts.nextsteps });
   for (const block of parts.memoryEvidence) entries.push({ source: 'memory-evidence', block });

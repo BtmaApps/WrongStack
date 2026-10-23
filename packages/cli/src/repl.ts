@@ -210,6 +210,7 @@ export async function runRepl(opts: ReplOptions): Promise<number> {
         break;
       }
       const trimmed = raw.trim();
+      const continuationInput = detectContinueIntent(trimmed);
       if (!trimmed) {
         interrupts = 0;
         continue;
@@ -251,7 +252,10 @@ export async function runRepl(opts: ReplOptions): Promise<number> {
             const runCtrl = new AbortController();
             activeCtrl = runCtrl;
             try {
-              const runResult = await opts.agent.run(runBlocks, { signal: runCtrl.signal });
+              const runResult = await opts.agent.run(runBlocks, {
+                signal: runCtrl.signal,
+                inputOrigin: 'user',
+              });
               opts.onAgentIterationComplete?.(
                 estimateRequestTokensCalibrated(
                   opts.agent.ctx.messages,
@@ -318,7 +322,7 @@ export async function runRepl(opts: ReplOptions): Promise<number> {
         continue;
       }
 
-      if (detectContinueIntent(trimmed)) {
+      if (continuationInput) {
         const resolved = resolveContinuation({
           todos: opts.agent.ctx.todos,
           suggestions: getSuggestions(),
@@ -429,7 +433,10 @@ export async function runRepl(opts: ReplOptions): Promise<number> {
             ),
           );
         }
-        const result = await opts.agent.run(routed.blocks, { signal: runCtrl.signal });
+        const result = await opts.agent.run(routed.blocks, {
+          signal: runCtrl.signal,
+          inputOrigin: continuationInput ? 'continuation' : 'user',
+        });
         opts.onAgentIterationComplete?.(
           estimateRequestTokensCalibrated(
             opts.agent.ctx.messages,
@@ -538,6 +545,7 @@ export async function runRepl(opts: ReplOptions): Promise<number> {
             try {
               const suggestResult = await opts.agent.run(suggestBlocks, {
                 signal: suggestCtrl.signal,
+                inputOrigin: 'runtime',
               });
               opts.onAgentIterationComplete?.(
                 estimateRequestTokensCalibrated(

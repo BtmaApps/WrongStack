@@ -100,6 +100,10 @@ describe('makeACPServerAgentTurn', () => {
       (u) => updates.push(u as never),
     );
     expect(out.text).toBe('The answer.');
+    expect(run).toHaveBeenCalledWith('q', {
+      signal: expect.any(AbortSignal),
+      inputOrigin: 'user',
+    });
     expect(
       updates.filter((u) => u.sessionUpdate === 'agent_message_chunk').map((u) => u.content?.text),
     ).toEqual(['The answer.']);

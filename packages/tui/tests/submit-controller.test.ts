@@ -745,6 +745,9 @@ describe('createSubmitController — bare continue', () => {
       expect.stringContaining('Write the docs'),
     );
     expect(h.actionFns['runBlocks']).toHaveBeenCalled();
+    expect(h.actionFns['runBlocks']).toHaveBeenCalledWith(expect.any(Array), {
+      origin: 'continuation',
+    });
     const user = h.actions.find((a) => a.entry?.kind === 'user');
     expect(user?.entry?.text).not.toBe('continue');
   });

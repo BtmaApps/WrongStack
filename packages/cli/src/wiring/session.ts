@@ -27,6 +27,7 @@ import {
 import { projectLastRequestTokens } from '@wrongstack/core/types/session-timeline';
 import {
   expectDefined,
+  rehydrateContextEvidenceFromMessages,
   restoreLeaderEffortOverride,
   sessionScopedPath,
   toErrorMessage,
@@ -346,6 +347,7 @@ export async function setupSession(params: {
     // after it, incremental message_* events can be authoritative without
     // discarding messages written before the exact journal existed.
     context.state.replaceMessages(restoredMessages);
+    rehydrateContextEvidenceFromMessages(context, restoredMessages);
     await context.flushConversationJournal();
   }
   if (restoredEvents.length > 0 || restoredSubagentsAllowed !== undefined) {

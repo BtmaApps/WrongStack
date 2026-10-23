@@ -336,6 +336,7 @@ export function createConversationOperations(
       ran = true;
       const runResult = await agent.run(input, {
         signal: prepared.signal,
+        inputOrigin: origin === 'user' ? 'user' : 'runtime',
         ...(maxIterations !== undefined ? { maxIterations } : {}),
       });
       // The result goes to the session, not to the socket that asked. That

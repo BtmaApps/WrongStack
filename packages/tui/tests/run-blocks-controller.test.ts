@@ -82,6 +82,26 @@ describe('RunBlocks stale-epilogue contract', () => {
     expect(refs.activeController.current).toBeNull();
   }, 15000);
 
+  it('marks continuation and auto-wake runs as non-user mission input', async () => {
+    const continuation = makeControlledHost();
+    await continuation.runBlocks([{ type: 'text', text: 'continue' } as never], {
+      origin: 'continuation',
+    });
+    expect(continuation.capabilities.agent.run).toHaveBeenCalledWith(expect.any(Array), {
+      signal: expect.any(AbortSignal),
+      inputOrigin: 'continuation',
+    });
+
+    const autoWake = makeControlledHost();
+    await autoWake.runBlocks([{ type: 'text', text: 'worker result arrived' } as never], {
+      origin: 'auto_wake',
+    });
+    expect(autoWake.capabilities.agent.run).toHaveBeenCalledWith(expect.any(Array), {
+      signal: expect.any(AbortSignal),
+      inputOrigin: 'runtime',
+    });
+  }, 15000);
+
   it('/clear (generation bump) during the predictNext await must not dispatch into the cleared transcript', async () => {
     const { runBlocks, dispatch, refs, capabilities } = makeControlledHost({
       predictDelayMs: 300,
