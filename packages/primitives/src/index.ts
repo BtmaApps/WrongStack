@@ -8,6 +8,13 @@
 
 export type { BrowserElementSelection } from './browser-selection.js';
 export {
+  type GitIsolationOptions,
+  gitConfigEnv,
+  gitIsolationEnv,
+  gitIsolationEnvSync,
+  untrustedGitFilterKeys,
+} from './git-isolation.js';
+export {
   COMMAND_REDACTION_PROFILE,
   OUTBOUND_REDACTION_PROFILE,
   type RedactionProfile,

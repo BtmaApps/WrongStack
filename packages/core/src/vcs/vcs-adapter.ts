@@ -14,6 +14,7 @@
  */
 import * as fsp from 'node:fs/promises';
 import * as path from 'node:path';
+import { gitIsolationEnv } from '@wrongstack/primitives';
 import { buildChildEnv } from '../utils/child-env.js';
 import { runVcs, type VcsRunner, type VcsRunResult } from './vcs-runner.js';
 
@@ -76,80 +77,18 @@ export const HG_ISOLATED_ENV: Readonly<Record<string, string>> = Object.freeze({
  */
 export const GIT_ISOLATION_ARGS: readonly string[] = Object.freeze(['-c', 'core.fsmonitor=false']);
 
-const GIT_FILTER_COMMAND_RE = /^filter\..+\.(?:clean|smudge|process)$/;
-/** The user's own config. Anything else (`local`, `worktree`, a file they include) is the repository's. */
-const TRUSTED_GIT_CONFIG_SCOPES: ReadonlySet<string> = new Set(['system', 'global']);
-
 /**
- * Environment that blanks the filter commands the repository configures. A
- * `.gitattributes` filter runs its `clean`/`process` command whenever
- * status/diff reads a working-tree file, and the same untrusted `.git/config`
- * names the command; an empty command is no filter. The user's own filters
- * (git-lfs in the system or global config) stay: without them every LFS file
- * reads as modified. Read per call, because the config can change between
- * calls.
- *
- * `GIT_CONFIG_KEY_<n>`/`GIT_CONFIG_VALUE_<n>`, not `-c key=`: `-c` splits at
- * the first `=`, and a filter named `a=b` turned `filter.a=b.clean=` into the
- * unrelated key `filter.a`. They go after any the caller's environment holds.
- *
- * Undefined when the config could not be listed: the caller must not run git
- * then, since nothing is blanked.
+ * The git isolation environment for `cwd`, over core's scrubbed child
+ * environment: fsmonitor off and the repository's own filter commands
+ * blanked (see `gitIsolationEnv` in @wrongstack/primitives). Undefined when
+ * the config could not be listed: the caller must not run git then.
  */
-export async function gitFilterIsolationEnv(
+export function gitFilterIsolationEnv(
   binary: string,
   cwd: string,
   timeoutMs?: number,
 ): Promise<Record<string, string> | undefined> {
-  const list = (scoped: boolean) =>
-    runVcs(
-      binary,
-      [
-        ...GIT_ISOLATION_ARGS,
-        'config',
-        ...(scoped ? ['--show-scope'] : []),
-        '--null',
-        '--name-only',
-        '--get-regexp',
-        '^filter[.]',
-      ],
-      cwd,
-      { timeoutMs },
-    );
-  let scoped = true;
-  let result = await list(true);
-  // Exit 1 is "no filter configured". Git before 2.26 has no `--show-scope`:
-  // every filter command is blanked there.
-  if (result.code !== 0 && result.code !== 1) {
-    scoped = false;
-    result = await list(false);
-  }
-  if (result.code === 1 && !result.stdout) return {};
-  if (result.code !== 0 || result.stdoutTruncated) return undefined;
-  const fields = result.stdout.split('\0');
-  const keys = new Set<string>();
-  for (let i = 0; i < fields.length; ) {
-    const scope = scoped ? fields[i++] : undefined;
-    const key = fields[i++];
-    if (!key || !GIT_FILTER_COMMAND_RE.test(key)) continue;
-    if (scope === undefined || !TRUSTED_GIT_CONFIG_SCOPES.has(scope)) keys.add(key);
-  }
-  return gitConfigEnv([...keys], buildChildEnv()['GIT_CONFIG_COUNT']);
-}
-
-/** `GIT_CONFIG_*` entries setting each key to empty, after `baseCount` existing ones. */
-export function gitConfigEnv(keys: readonly string[], baseCount?: string): Record<string, string> {
-  if (keys.length === 0) return {};
-  const parsed = Number(baseCount ?? 0);
-  let n = Number.isSafeInteger(parsed) && parsed > 0 ? parsed : 0;
-  const env: Record<string, string> = {};
-  for (const key of keys) {
-    env[`GIT_CONFIG_KEY_${n}`] = key;
-    env[`GIT_CONFIG_VALUE_${n}`] = '';
-    n++;
-  }
-  env['GIT_CONFIG_COUNT'] = String(n);
-  return env;
+  return gitIsolationEnv(cwd, { binary, timeoutMs, baseEnv: buildChildEnv() });
 }
 
 /** Nearest repository first; at the same level git, then jj, then hg. */

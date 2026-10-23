@@ -10,7 +10,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { gitStatus } from '../../src/core/system-prompt-environment-probes.js';
-import { gitConfigEnv, gitFilterIsolationEnv, vcsAdapter } from '../../src/vcs/vcs-adapter.js';
+import { gitFilterIsolationEnv, vcsAdapter } from '../../src/vcs/vcs-adapter.js';
 import { removeProjectFixtureDirectory } from '../helpers/project-server-harness.js';
 
 const MARKERS = ['clean-ran.txt', 'process-ran.txt'];
@@ -33,10 +33,10 @@ afterEach(async () => {
   await removeProjectFixtureDirectory(repo, { maxRetries: 5, retryDelay: 100 });
 });
 
-/** The keys an isolation environment sets to empty, sorted. */
+/** The filter keys an isolation environment blanks, sorted (fsmonitor aside). */
 const blankedKeys = (env: Record<string, string> | undefined) =>
   Object.entries(env ?? {})
-    .filter(([name]) => name.startsWith('GIT_CONFIG_KEY_'))
+    .filter(([name, key]) => name.startsWith('GIT_CONFIG_KEY_') && key !== 'core.fsmonitor')
     .map(([, key]) => key)
     .sort();
 
@@ -70,7 +70,7 @@ describe('git filter isolation', () => {
     git('config', '--remove-section', 'filter.evil');
     // Whatever the machine's system/global config holds (git-lfs on most) is
     // not the repository's to run, and not ours to blank.
-    expect(await gitFilterIsolationEnv('git', repo)).toEqual({});
+    expect(blankedKeys(await gitFilterIsolationEnv('git', repo))).toEqual([]);
   });
 
   it('blanks a filter whose name holds "=" (`-c` splits at the first one)', async () => {
@@ -81,14 +81,6 @@ describe('git filter isolation', () => {
     expect(await vcsAdapter('git', repo).changedPaths()).toEqual(expect.arrayContaining(['a.ts']));
     expect(await gitStatus(repo)).toContain('modified');
     expect(await ranFilters()).toEqual([]);
-  });
-
-  it('appends after GIT_CONFIG_* entries already in the environment', () => {
-    expect(gitConfigEnv(['filter.x.clean'], '2')).toEqual({
-      GIT_CONFIG_KEY_2: 'filter.x.clean',
-      GIT_CONFIG_VALUE_2: '',
-      GIT_CONFIG_COUNT: '3',
-    });
   });
 
   it('refuses to run git when the config cannot be listed', async () => {
