@@ -245,4 +245,28 @@ describe('HostShadowManager keeps one review per conversation', () => {
     expect(h.manager.isShadowAgent('shadow-new')).toBe(true);
     expect(h.manager.getAgentId(TAB_A)).toBe('shadow-new');
   });
+
+  it('ignores companion probes for both work depth and failure review triggers', async () => {
+    for (const companionId of [
+      'explore-companion-taba-12345678',
+      'memory-companion-12345678',
+      'skill-companion-12345678',
+    ]) {
+      emitTask(h.events, TAB_A, 'failed', companionId);
+    }
+    await flush();
+    expect(h.spawns).toHaveLength(0);
+
+    // An in-flight companion probe must not hold back a shadow pass when a real worker fails.
+    h.events.emit('subagent.task_started', {
+      sessionId: TAB_A,
+      subagentId: 'explore-companion-taba-99999999',
+      taskId: 'probe-in-flight',
+    });
+    emitTask(h.events, TAB_A, 'failed', 'worker-1');
+    await flush();
+    expect(h.spawns).toHaveLength(1);
+    expect(h.spawns[0]?.config.originSessionId).toBe(TAB_A);
+    expect(h.spawns[0]?.description).toContain('worker-1');
+  });
 });

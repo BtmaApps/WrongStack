@@ -128,6 +128,9 @@ export function createHostExploreCompanion(
       // stamp the coordinator files it under the host's own session, and every
       // WebUI tab but the first would see its companion's activity in tab 1.
       originSessionId: sessionId,
+      gracefulFinish: false,
+      sealed: true,
+      spawnBudgetExempt: true,
       timeoutMs: Math.min(positive(template.timeoutMs, probeTimeoutMs), probeTimeoutMs),
       maxToolCalls: Math.min(positive(template.maxToolCalls, maxToolCalls), maxToolCalls),
       maxIterations: Math.min(positive(template.maxIterations, maxToolCalls), maxToolCalls),
@@ -194,6 +197,12 @@ export function createHostExploreCompanion(
   };
 
   const companion = new ExploreCompanion(options);
+  const offSessionTerminate = director.onSessionTerminate?.((terminatedSessionId) => {
+    if (terminatedSessionId !== sessionId) return;
+    companion.clearPending();
+    residentId = undefined;
+    if (active) settle(active, false);
+  });
   const offCompleted = director.on('task.completed', ({ result }) => {
     const job = active;
     if (!job || result.taskId !== job.taskId || result.subagentId !== job.subagentId) return;
@@ -223,6 +232,7 @@ export function createHostExploreCompanion(
     stop(): void {
       if (stopped) return;
       stopped = true;
+      offSessionTerminate?.();
       offCompleted();
       stopWatching();
       if (active) settle(active, true);
@@ -244,11 +254,8 @@ function forwardExploreFindings(input: {
 }): void {
   const { result, from, sessionId, events, probe, maxChars } = input;
   try {
-    const raw = result.report
-      ? formatExploreNote(result.report)
-      : typeof result.result === 'string'
-        ? result.result
-        : undefined;
+    const formattedReport = result.report ? formatExploreNote(result.report) : '';
+    const raw = formattedReport || (typeof result.result === 'string' ? result.result : undefined);
     if (!raw?.trim()) return;
     const subject = `[explore] ${probe.source}: ${probe.subject}`;
     postSessionNote({
@@ -271,10 +278,12 @@ function forwardExploreFindings(input: {
  * here the findings already carry `path:line`, so only the answer is kept.
  */
 export function formatExploreNote(report: SubagentStructuredReport): string {
-  const lines = [report.summary.trim()];
-  for (const finding of report.findings) {
-    const text = finding.trim();
-    if (text) lines.push(`- ${text}`);
+  const summary = report.summary.trim();
+  const findings = report.findings.map((f) => f.trim()).filter(Boolean);
+  if (!summary && findings.length === 0) return '';
+  const lines = [summary];
+  for (const text of findings) {
+    lines.push(`- ${text}`);
   }
   const next = report.suggested_next_steps.find((step) => step.trim());
   if (next) lines.push(`Next: ${next.trim()}`);

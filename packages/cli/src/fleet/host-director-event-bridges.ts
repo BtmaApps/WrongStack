@@ -242,8 +242,9 @@ export function registerDirectorSubagentLifecycleBridges(input: {
         provider?: string | undefined;
         model?: string | undefined;
       };
+      const owningSessionId = sessionFor(payload.subagentId);
       events.emit('subagent.spawned', {
-        sessionId: sessionFor(payload.subagentId),
+        sessionId: owningSessionId,
         subagentId: payload.subagentId,
         taskId: payload.taskId,
         name: payload.name,
@@ -252,7 +253,7 @@ export function registerDirectorSubagentLifecycleBridges(input: {
       });
       if (agentMonitor) {
         const agentName = payload.name ?? payload.role ?? payload.subagentId;
-        agentMonitor.trackSubagent(payload.subagentId, agentName, payload.taskId);
+        agentMonitor.trackSubagent(payload.subagentId, agentName, payload.taskId, owningSessionId);
       }
     }),
     director.fleet.filter('subagent.removed', (e) => {

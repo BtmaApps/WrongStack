@@ -105,6 +105,7 @@ export class DefaultMultiAgentCoordinator extends EventEmitter implements MultiA
   private static readonly MAX_SUBAGENT_TASK_HISTORY = 64;
   private totalIterations = 0;
   private inFlight = 0;
+  private readonly sealedInFlightTasks = new Set<string>();
   /**
    * Subagents currently being stopped. Set on entry to `stop()`, cleared
    * once `recordCompletion` lands the terminal TaskResult. Used by
@@ -487,7 +488,7 @@ export class DefaultMultiAgentCoordinator extends EventEmitter implements MultiA
   // --- internal dispatching ---------------------------------------------
 
   private tryDispatchNext(): void {
-    while (this.canDispatch()) {
+    while (this.pendingTasks.length > 0) {
       const dispatchable = this.takeNextDispatchableTask();
       if (!dispatchable) {
         // No idle worker right now. If every spawned subagent is
@@ -522,11 +523,19 @@ export class DefaultMultiAgentCoordinator extends EventEmitter implements MultiA
   }
 
   private canDispatch(): boolean {
-    return this.inFlight < (this.config.maxConcurrent ?? 16) && this.pendingTasks.length > 0;
+    return (
+      this.inFlight - this.sealedInFlightTasks.size < (this.config.maxConcurrent ?? 16) &&
+      this.pendingTasks.length > 0
+    );
   }
 
   private takeNextDispatchableTask(): { subagentId: string; task: TaskSpec } | null {
-    return takeNextDispatchableTaskFromQueue(this.pendingTasks, this.subagents, this.terminating);
+    return takeNextDispatchableTaskFromQueue(
+      this.pendingTasks,
+      this.subagents,
+      this.terminating,
+      this.canDispatch(),
+    );
   }
 
   /**
@@ -536,7 +545,7 @@ export class DefaultMultiAgentCoordinator extends EventEmitter implements MultiA
    * will eventually finish and become idle.
    */
   private hasLiveSubagent(): boolean {
-    return hasLiveSubagentInMap(this.subagents, this.terminating);
+    return hasLiveSubagentInMap(this.subagents, this.terminating, this.pendingTasks);
   }
 
   /**
@@ -620,6 +629,9 @@ export class DefaultMultiAgentCoordinator extends EventEmitter implements MultiA
 
     // Only count inFlight when we actually own the execution lifecycle.
     this.inFlight++;
+    if (subagent.config.sealed) {
+      this.sealedInFlightTasks.add(task.id);
+    }
 
     const result = await executeSubagentTask({
       runner: this.runner,
@@ -638,6 +650,7 @@ export class DefaultMultiAgentCoordinator extends EventEmitter implements MultiA
   }
 
   private recordCompletion(result: TaskResult): void {
+    this.sealedInFlightTasks.delete(result.taskId);
     this.pushCompletedResult(result);
     this.totalIterations += result.iterations;
 

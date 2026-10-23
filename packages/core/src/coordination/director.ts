@@ -171,7 +171,7 @@ export class Director extends DirectorCore implements DirectorFleetHost, ICoordi
     if (!areSubagentCompanionsAllowedForSession(policySessionId)) {
       throw new Error('Subagent companions are disabled for this session.');
     }
-    return this.spawnAdmitted(callerConfig, policySessionId);
+    return this.spawnAdmitted(callerConfig, policySessionId, undefined, { companion: true });
   }
 
   private async spawnAdmitted(
@@ -183,6 +183,7 @@ export class Director extends DirectorCore implements DirectorFleetHost, ICoordi
       cacheRead?: number | undefined;
       cacheWrite?: number | undefined;
     },
+    opts?: { companion?: boolean | undefined },
   ): Promise<string> {
     const self = this;
     return admitDirectorSpawn(
@@ -204,6 +205,7 @@ export class Director extends DirectorCore implements DirectorFleetHost, ICoordi
       callerConfig,
       policySessionId,
       priceLookup,
+      opts,
     );
   }
 

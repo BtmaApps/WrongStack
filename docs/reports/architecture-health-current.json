@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-23T15:26:07.634Z",
+  "generatedAt": "2026-10-23T15:27:33.295Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -14,7 +14,7 @@
     "packages": 38,
     "sourceFiles": 5252,
     "testFiles": 4648,
-    "sourceLines": 1148067,
+    "sourceLines": 1148661,
     "workspaceEdges": 140,
     "moduleEdges": 17303,
     "nonCommandSlashImports": 0,
@@ -29238,13 +29238,23 @@
       "relativeImports": 23
     },
     {
+      "file": "packages/cli/src/fleet/host-skill-companion.ts",
+      "lines": 754,
+      "relativeImports": 3
+    },
+    {
       "file": "packages/core/src/chronicle/project-server-client.ts",
       "lines": 705,
       "relativeImports": 5
     },
     {
+      "file": "packages/core/src/coordination/agent-monitor.ts",
+      "lines": 715,
+      "relativeImports": 4
+    },
+    {
       "file": "packages/core/src/coordination/multi-agent-coordinator.ts",
-      "lines": 712,
+      "lines": 725,
       "relativeImports": 15
     },
     {
@@ -29325,6 +29335,11 @@
       "relativeImports": 2
     },
     {
+      "file": "packages/cli/src/fleet/host-skill-companion.ts",
+      "lines": 754,
+      "relativeImports": 3
+    },
+    {
       "file": "apps/desktop/src/main/main.ts",
       "lines": 734,
       "relativeImports": 20
@@ -29335,19 +29350,24 @@
       "relativeImports": 6
     },
     {
+      "file": "packages/core/src/coordination/multi-agent-coordinator.ts",
+      "lines": 725,
+      "relativeImports": 15
+    },
+    {
       "file": "packages/webui/src/components/MemoryManager/useMemoryManagerState.ts",
       "lines": 720,
       "relativeImports": 9
     },
     {
+      "file": "packages/core/src/coordination/agent-monitor.ts",
+      "lines": 715,
+      "relativeImports": 4
+    },
+    {
       "file": "packages/plugins/src/audit/index.ts",
       "lines": 715,
       "relativeImports": 0
-    },
-    {
-      "file": "packages/core/src/coordination/multi-agent-coordinator.ts",
-      "lines": 712,
-      "relativeImports": 15
     },
     {
       "file": "packages/vibeui/src/lib/use-session.ts",
@@ -29440,11 +29460,6 @@
       "relativeImports": 25
     },
     {
-      "file": "packages/core/src/coordination/agent-monitor.ts",
-      "lines": 693,
-      "relativeImports": 4
-    },
-    {
       "file": "packages/core/src/execution/eternal-autonomy.ts",
       "lines": 693,
       "relativeImports": 13
@@ -29503,11 +29518,6 @@
       "file": "packages/webui/src/components/SettingsPanel/index.tsx",
       "lines": 691,
       "relativeImports": 25
-    },
-    {
-      "file": "packages/cli/src/fleet/host-skill-companion.ts",
-      "lines": 690,
-      "relativeImports": 3
     },
     {
       "file": "packages/cli/src/slash-commands/kanban-task-subcommands.ts",

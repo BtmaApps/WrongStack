@@ -23,6 +23,7 @@ export interface DirectorTaskRegistryDeps {
    * stopped. Omitted in hosts that assign before registering workers.
    */
   dispatchableSubagentIds?(): readonly string[];
+  onTaskAssigned?(subagentId: string): void;
   addTaskToManifest(subagentId: string, taskId: string): void;
   recordPendingTask(taskId: string, subagentId: string, description: string): void;
   appendSessionEvent(event: Parameters<SessionWriter['append']>[0]): Promise<void>;
@@ -178,6 +179,7 @@ export class DirectorTaskRegistry {
     }
 
     if (taskWithId.subagentId) {
+      this.deps.onTaskAssigned?.(taskWithId.subagentId);
       this.deps.addTaskToManifest(taskWithId.subagentId, taskWithId.id);
     }
     await this.deps.coordinator.assign(taskWithId);
@@ -189,6 +191,15 @@ export class DirectorTaskRegistry {
 
   async assignInternal(task: TaskSpec): Promise<string> {
     const taskWithId: TaskSpec = task.id ? task : { ...task, id: randomUUID() };
+    const liveIds = this.deps.dispatchableSubagentIds?.();
+    if (taskWithId.subagentId && liveIds && !liveIds.includes(taskWithId.subagentId)) {
+      throw new Error(
+        `assignInternal: unknown or stopped subagent "${taskWithId.subagentId}" — spawn it first (current fleet: ${liveIds.join(', ') || 'none'})`,
+      );
+    }
+    if (taskWithId.subagentId) {
+      this.deps.onTaskAssigned?.(taskWithId.subagentId);
+    }
     this.internalTaskIds.add(taskWithId.id);
     try {
       // Host-internal work is the only kind a sealed companion accepts.
@@ -242,6 +253,7 @@ export class DirectorTaskRegistry {
   retargetPendingTask(taskId: string, subagentId: string | undefined): boolean {
     if (!this.deps.coordinator.retargetPendingTask(taskId, subagentId)) return false;
     if (subagentId) {
+      this.deps.onTaskAssigned?.(subagentId);
       this.owners.set(taskId, subagentId);
       this.deps.addTaskToManifest(subagentId, taskId);
     } else {

@@ -187,5 +187,81 @@ describe('sealed subagent', () => {
     const done = completion(coord, 'probe');
     await registry.assignInternal({ id: 'probe', description: 'judge', subagentId: 'companion' });
     expect((await done).status).toBe('success');
+
+    await expect(
+      registry.assignInternal({
+        id: 'stale-probe',
+        description: 'judge',
+        subagentId: 'removed-companion',
+      }),
+    ).rejects.toThrow(/assignInternal: unknown or stopped subagent "removed-companion"/);
+  });
+
+  it('does not starve sealed companions under maxConcurrent or let idle companions block dead-queue drain', async () => {
+    let releaseWorker!: () => void;
+    const workerGate = new Promise<void>((resolve) => {
+      releaseWorker = resolve;
+    });
+    const coord = new DefaultMultiAgentCoordinator(
+      { coordinatorId: 'sealed-cap', doneCondition: { type: 'all_tasks_done' }, maxConcurrent: 1 },
+      {
+        runner: makeAgentSubagentRunner({
+          factory: async (c) =>
+            stubAgent({
+              sealed: c.id === 'companion',
+              gate: c.id === 'worker' ? workerGate : undefined,
+            }),
+        }),
+        sessionId: SESSION,
+      },
+    );
+    await coord.spawn({ id: 'worker', name: 'Worker' });
+    await coord.spawn({ id: 'companion', name: 'Companion', sealed: true });
+
+    const workerDone = completion(coord, 'worker-task');
+    await coord.assign({ id: 'worker-task', description: 'occupy maxConcurrent=1' });
+
+    // Even with maxConcurrent=1 occupied by worker, sealed companion probe runs immediately.
+    const probeDone = completion(coord, 'companion-probe');
+    await coord.assign(
+      { id: 'companion-probe', description: 'probe', subagentId: 'companion' },
+      { hostOwned: true },
+    );
+    expect((await probeDone).status).toBe('success');
+
+    releaseWorker();
+    expect((await workerDone).status).toBe('success');
+
+    // Now stop the only non-sealed worker while the sealed companion remains idle:
+    // an unpinned task must abort immediately instead of hanging forever.
+    await coord.stop('worker');
+    const orphanDone = completion(coord, 'orphan-unpinned');
+    await coord.assign({ id: 'orphan-unpinned', description: 'no live worker' });
+    expect((await orphanDone).status).toBe('stopped');
+  });
+
+  it('locks preempt ceiling on sealed companions at 85% timeoutMs instead of busy-spinning a 25ms timer', async () => {
+    let releaseProbe!: () => void;
+    const probeGate = new Promise<void>((resolve) => {
+      releaseProbe = resolve;
+    });
+    const coord = coordinator(() => stubAgent({ sealed: true, gate: probeGate }));
+    await coord.spawn({
+      id: 'companion',
+      name: 'Companion',
+      sealed: true,
+      timeoutMs: 200,
+    });
+
+    const done = completion(coord, 'timed-probe');
+    await coord.assign(
+      { id: 'timed-probe', description: 'probe', subagentId: 'companion' },
+      { hostOwned: true },
+    );
+
+    // Wait past 85% of 200ms (170ms) and release before 200ms wall deadline.
+    await new Promise((resolve) => setTimeout(resolve, 180));
+    releaseProbe();
+    expect((await done).status).toBe('success');
   });
 });

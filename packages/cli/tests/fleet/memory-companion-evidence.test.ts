@@ -115,5 +115,61 @@ describe('Memory Companion source evidence', () => {
         snapshot,
       )?.verdict,
     ).toBe('unverifiable');
+    expect(
+      parseMemoryCompanionVerdict(
+        JSON.stringify({
+          verdict: 'unverifiable',
+          summary: 'Insufficient evidence with omitted array.',
+        }),
+        snapshot,
+      ),
+    ).toEqual({
+      verdict: 'unverifiable',
+      summary: 'Insufficient evidence with omitted array.',
+      evidence: [],
+    });
+    expect(
+      parseMemoryCompanionVerdict(
+        `Note: checking {"ignored":true}\n\`\`\`json\n${JSON.stringify({
+          ...valid,
+          evidence: [{ path: './retry.ts', quote }],
+        })}\n\`\`\``,
+        snapshot,
+      ),
+    ).toEqual(valid);
+  });
+
+  it('matches multi-line LF quotes against CRLF source files on Windows', async () => {
+    await fs.writeFile(
+      path.join(root, 'crlf.ts'),
+      'export const retryQuota = 3;\r\nexport const backoffMs = 250;\r\n',
+    );
+    const m = memory(['crlf.ts']);
+    m.validity = {
+      statement: 'CRLF check.',
+      checks: [
+        {
+          type: 'source_contains',
+          path: 'crlf.ts',
+          text: 'export const retryQuota = 3;\nexport const backoffMs = 250;',
+        },
+      ],
+    };
+    const snapshot = await snapshotMemoryEvidence(root, m);
+    expect(snapshot.validityChecks?.[0]?.status).toBe('satisfied');
+    const verdict = parseMemoryCompanionVerdict(
+      JSON.stringify({
+        verdict: 'supported',
+        summary: 'Matches across line endings.',
+        evidence: [
+          {
+            path: 'crlf.ts',
+            quote: 'export const retryQuota = 3;\nexport const backoffMs = 250;',
+          },
+        ],
+      }),
+      snapshot,
+    );
+    expect(verdict?.verdict).toBe('supported');
   });
 });

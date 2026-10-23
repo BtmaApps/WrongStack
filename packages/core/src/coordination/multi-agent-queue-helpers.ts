@@ -87,22 +87,38 @@ export function isIdleSubagentInMap(
 export function hasLiveSubagentInMap(
   subagents: Map<string, SubagentEntry>,
   terminating: Set<string>,
+  pendingTasks?: readonly TaskSpec[],
 ): boolean {
-  if (subagents.size === 0) return true;
+  if (pendingTasks && pendingTasks.length > 0) {
+    for (const task of pendingTasks) {
+      if (task.subagentId) {
+        const pinned = subagents.get(task.subagentId);
+        if (pinned && pinned.status !== 'stopped' && !terminating.has(task.subagentId)) {
+          return true;
+        }
+      }
+    }
+  }
+  let nonSealedCount = 0;
   for (const [id, s] of subagents) {
+    if (s.config.sealed) continue;
+    nonSealedCount += 1;
     if (s.status !== 'stopped' && !terminating.has(id)) return true;
   }
-  return false;
+  return nonSealedCount === 0;
 }
 
 export function takeNextDispatchableTaskFromQueue(
   pendingTasks: TaskSpec[],
   subagents: Map<string, SubagentEntry>,
   terminating: Set<string>,
+  allowUnsealed = true,
 ): { subagentId: string; task: TaskSpec } | null {
   for (let i = 0; i < pendingTasks.length; i++) {
     const task = pendingTasks[i];
     if (!task) continue;
+    const isSealedPin = Boolean(task.subagentId && subagents.get(task.subagentId)?.config.sealed);
+    if (!isSealedPin && !allowUnsealed) continue;
     const subagentId = task.subagentId
       ? isIdleSubagentInMap(subagents, terminating, task.subagentId)
         ? task.subagentId

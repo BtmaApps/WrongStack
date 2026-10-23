@@ -98,11 +98,30 @@ function harness(timeoutMs?: number, ioTimeoutMs?: number) {
       } as TaskResult,
     });
   };
+  const finishWithProseSummary = (body: object) => {
+    const task = assignInternal.mock.calls.at(-1)![0];
+    completed({
+      result: {
+        taskId: task.id,
+        subagentId: 'worker',
+        status: 'success',
+        report: {
+          summary: 'Checked retry.ts and found a contradictive quota constant.',
+          findings: [],
+          files_examined: ['src/retry.ts'],
+          confidence: 0.95,
+          suggested_next_steps: [],
+        },
+        result: JSON.stringify(body),
+      } as TaskResult,
+    });
+  };
   return {
     events,
     companion,
     emit,
     finish,
+    finishWithProseSummary,
     note,
     snapshot,
     spawn,
@@ -378,5 +397,49 @@ describe('Memory Companion', () => {
     await vi.waitFor(() => expect(h.note).toHaveBeenCalledTimes(1));
     expect(h.spawn).not.toHaveBeenCalled();
     expect(h.note.mock.calls[0]?.[1]).toBe('[memory:unverifiable]');
+  });
+
+  it('falls back to result.result when report.summary is prose rather than JSON', async () => {
+    const h = harness();
+    h.emit();
+    await vi.waitFor(() => expect(h.assignInternal).toHaveBeenCalledTimes(1));
+    h.finishWithProseSummary({
+      verdict: 'contradicted',
+      summary: 'The current source defines a quota.',
+      evidence: [{ path: 'src/retry.ts', quote }],
+    });
+    await vi.waitFor(() =>
+      expect(h.note.mock.calls.some((call) => call[1] === '[memory:review]')).toBe(true),
+    );
+  });
+
+  it('drops queued reviews and suppresses unverifiable note when the session is stopped', async () => {
+    const h = harness();
+    h.emit('leader', ['m1', 'm2']);
+    await vi.waitFor(() => expect(h.assignInternal).toHaveBeenCalledTimes(1));
+    const firstTask = h.assignInternal.mock.calls[0]![0];
+    // Simulate coordinator stopping the task on session stop.
+    h.note.mockClear();
+    const onCompleted = (
+      h.companion as unknown as {
+        active?: { settle: (r?: TaskResult) => void };
+        pending: Map<string, unknown>;
+      }
+    ).active;
+    expect(onCompleted).toBeDefined();
+    onCompleted!.settle({
+      taskId: firstTask.id,
+      subagentId: 'worker',
+      status: 'stopped',
+      iterations: 0,
+      toolCalls: 0,
+      durationMs: 1,
+    });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(
+      h.note.mock.calls.filter(
+        (call) => call[1] === '[memory:unverifiable]' || call[1] === '[memory:review]',
+      ),
+    ).toHaveLength(0);
   });
 });

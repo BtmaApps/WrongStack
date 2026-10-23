@@ -367,7 +367,7 @@ export interface SkillCompanionConfig {
   maxProbesPerSession?: number | undefined;
   /** Minimum self-reported confidence (0..1) a pick needs. Default 0.6. */
   minConfidence?: number | undefined;
-  /** Hard host deadline per probe, including spawn and assignment. Default 45000. */
+  /** Host and worker deadline per probe. Default 300000; larger values are honored. */
   probeTimeoutMs?: number | undefined;
   /**
    * Skills offered to the judge per probe, after eligibility filtering and

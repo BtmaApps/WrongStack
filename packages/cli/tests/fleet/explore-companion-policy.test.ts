@@ -35,6 +35,8 @@ describe('explore companion lean spawn policy', () => {
     expect(constrained.skillNames).toEqual([]);
     expect(constrained.skillPool).toEqual([]);
     expect(constrained.skillContent).toBeUndefined();
+    expect(constrained.sealed).toBe(true);
+    expect(constrained.gracefulFinish).toBe(false);
   });
 
   it('builds one cacheable block: the brief without the project overlay, plus the root', () => {
@@ -91,5 +93,17 @@ describe('formatExploreNote', () => {
     );
     expect(note).not.toContain('Files examined');
     expect(note).not.toContain('(none)');
+  });
+
+  it('returns empty string when report has neither summary nor findings', () => {
+    expect(
+      formatExploreNote({
+        summary: '   ',
+        findings: ['  '],
+        files_examined: ['src/a.ts'],
+        confidence: 0.5,
+        suggested_next_steps: ['src/a.ts:1'],
+      }),
+    ).toBe('');
   });
 });

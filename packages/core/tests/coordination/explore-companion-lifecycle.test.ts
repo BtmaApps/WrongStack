@@ -93,6 +93,37 @@ describe('Explore Companion queue policy and delayed I/O', () => {
     expect(h.c.pendingCount()).toBe(0);
   });
 
+  it('skips runtime JS/TS stack and assertion boilerplate words so real symbols are probed', () => {
+    const h = harness();
+    h.events.emit('error', {
+      sessionId: 'session',
+      phase: 'tool',
+      err: new Error(
+        'TypeError: Expected String but Received Object at Function.Module.InvoiceValidator',
+      ),
+    });
+    expect(h.dispatched[0]?.hint?.symbol).toBe('InvoiceValidator');
+    expect(h.c.pendingCount()).toBe(0);
+  });
+
+  it('recognizes codebase-context and codebase-impact-analysis as view tools and empty JSON searches without count', () => {
+    const h = harness({ signals: { unfamiliarRead: false } });
+    h.emit('src/viewed.ts', 'codebase-context');
+    h.emit('src/viewed.ts', 'edit');
+    expect(h.dispatched).toEqual([]);
+    h.events.emit('tool.executed', {
+      id: 'empty-json-search',
+      sessionId: 'session',
+      name: 'codebase-search',
+      ok: true,
+      durationMs: 1,
+      input: { symbol: 'MissingAdapter' },
+      output: JSON.stringify({ results: [] }),
+    });
+    expect(h.dispatched[0]?.source).toBe('search_zero_hits');
+    expect(h.dispatched[0]?.hint?.symbol).toBe('MissingAdapter');
+  });
+
   it('preserves complete Windows file paths in error hints', () => {
     const h = harness();
     h.events.emit('error', {

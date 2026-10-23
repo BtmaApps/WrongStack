@@ -67,6 +67,7 @@ import {
 } from './skill-companion-outcomes.js';
 import {
   constrainSkillCompanion,
+  DEFAULT_SKILL_COMPANION_BUDGET,
   isProofDrivenBugHuntRequest,
   parseSkillCompanionPick,
   SKILL_COMPANION_ID_PREFIX,
@@ -156,7 +157,12 @@ export class HostSkillCompanion {
   private draining = false;
   private stopped = false;
   private active:
-    | { taskId: string; agentId: string; settle: (result?: TaskResult) => void }
+    | {
+        sessionId: string;
+        taskId: string;
+        agentId: string;
+        settle: (result?: TaskResult) => void;
+      }
     | undefined;
   private readonly off: Array<() => void>;
   private readonly maxProbes: number;
@@ -172,7 +178,7 @@ export class HostSkillCompanion {
     const config = input.config ?? {};
     this.maxProbes = Math.floor(positive(config.maxProbesPerSession, 8));
     this.minConfidence = Math.min(1, positive(config.minConfidence, 0.6));
-    this.probeTimeoutMs = positive(config.probeTimeoutMs, 45_000);
+    this.probeTimeoutMs = positive(config.probeTimeoutMs, DEFAULT_SKILL_COMPANION_BUDGET.timeoutMs);
     this.maxCandidates = Math.floor(positive(config.maxCandidates, 80));
     this.enforce = config.enforce !== 'off';
     this.pathRules = config.pathRules !== false;
@@ -207,14 +213,23 @@ export class HostSkillCompanion {
         this.harvest(sessionId, session);
         const request = (event.inputText ?? '').trim();
         const judged = request.length >= MIN_REQUEST_CHARS;
-        if (judged) session.request = request.slice(0, MAX_REQUEST_CHARS);
+        if (judged || (!session.request && request)) {
+          session.request = request.slice(0, MAX_REQUEST_CHARS);
+        }
         // Declared paths need no request: arm them for every turn, "continue"
         // included, so the executor holds the matching edit itself.
         void this.armPathRules(sessionId, session).catch(() => {});
         if (!judged) return;
         // A new request makes every queued probe for the old one stale.
-        for (const [key, probe] of this.pending)
-          if (probe.sessionId === sessionId) this.pending.delete(key);
+        for (const [key, probe] of this.pending) {
+          if (probe.sessionId === sessionId) {
+            this.pending.delete(key);
+            session.subjects.delete(probe.subject);
+            if (probe.subject.startsWith('family:')) {
+              session.families.delete(probe.subject.slice('family:'.length));
+            }
+          }
+        }
         this.enqueue({
           sessionId,
           trigger: 'turn',
@@ -246,6 +261,26 @@ export class HostSkillCompanion {
         if (this.active?.taskId === result.taskId && this.active.agentId === result.subagentId)
           this.active.settle(result);
       }),
+      ...(typeof input.director.onSessionTerminate === 'function'
+        ? [
+            input.director.onSessionTerminate((terminatedSessionId) => {
+              const session = this.sessions.get(terminatedSessionId);
+              if (session) session.resident = undefined;
+              for (const [key, probe] of this.pending) {
+                if (probe.sessionId === terminatedSessionId) {
+                  this.pending.delete(key);
+                  session?.subjects.delete(probe.subject);
+                  if (probe.subject.startsWith('family:')) {
+                    session?.families.delete(probe.subject.slice('family:'.length));
+                  }
+                }
+              }
+              if (this.active?.sessionId === terminatedSessionId) {
+                this.active.settle();
+              }
+            }),
+          ]
+        : []),
     ];
   }
 
@@ -277,7 +312,11 @@ export class HostSkillCompanion {
     this.sessions.delete(sessionId);
     for (const [key, probe] of this.pending)
       if (probe.sessionId === sessionId) this.pending.delete(key);
-    if (session?.resident && this.active?.agentId === session.resident) this.active.settle();
+    if (
+      this.active?.sessionId === sessionId ||
+      (session?.resident && this.active?.agentId === session.resident)
+    )
+      this.active.settle();
     if (session?.resident) void this.input.director.terminate(session.resident).catch(() => {});
   }
 
@@ -302,27 +341,30 @@ export class HostSkillCompanion {
     const leader = agents.find((agent) => agent.id === leaderId);
     for (const todo of leader?.todos ?? []) {
       const previous = session.todos.get(todo.id)?.status;
+      const content = todo.content.trim();
       session.todos.delete(todo.id);
-      session.todos.set(todo.id, { status: todo.status, content: todo.content.slice(0, 160) });
-      if (previous === 'in_progress' || todo.status !== 'in_progress') continue;
+      session.todos.set(todo.id, { status: todo.status, content: content.slice(0, 160) });
+      if (previous === 'in_progress' || todo.status !== 'in_progress' || !content) continue;
       this.enqueue({
         sessionId,
         trigger: 'todo',
         subject: `todo:${todo.id}`,
-        detail: `The leader started a todo: ${todo.content.slice(0, 200)}`,
+        detail: `The leader started a todo: ${content.slice(0, 200)}`,
       });
     }
     while (session.todos.size > 64) session.todos.delete(session.todos.keys().next().value!);
   }
 
-  private enqueue(probe: Probe): void {
+  private enqueue(probe: Probe): boolean {
     const session = this.sessions.get(probe.sessionId);
-    if (!session || session.subjects.has(probe.subject) || session.probes >= this.maxProbes) return;
+    if (!session || session.subjects.has(probe.subject) || session.probes >= this.maxProbes)
+      return false;
     const key = `${probe.sessionId}\0${probe.subject}`;
-    if (this.pending.size >= MAX_PENDING && !this.pending.has(key)) return;
+    if (this.pending.size >= MAX_PENDING && !this.pending.has(key)) return false;
     session.subjects.add(probe.subject);
     this.pending.set(key, probe);
     void this.drain();
+    return true;
   }
 
   private async drain(): Promise<void> {
@@ -404,6 +446,7 @@ export class HostSkillCompanion {
     sessionId: string,
     session: Session,
     ctx: Context,
+    probeDetail?: string,
   ): Promise<SkillCandidate[]> {
     const eligible = await this.eligibility(sessionId, session, ctx);
     if (!eligible) return [];
@@ -416,7 +459,10 @@ export class HostSkillCompanion {
     const openTodos = [...session.todos.values()]
       .filter((todo) => todo.status !== 'completed')
       .map((todo) => todo.content);
-    const terms = workTerms([session.request, ...openTodos], session.recentFiles);
+    const terms = workTerms(
+      [session.request, ...(probeDetail ? [probeDetail] : []), ...openTodos],
+      session.recentFiles,
+    );
     return rankSkillCandidates(all, terms, this.maxCandidates);
   }
 
@@ -454,13 +500,13 @@ export class HostSkillCompanion {
       if (covered.has(file)) continue;
       const family = fileFamily(file);
       if (!family || session.families.has(family)) continue;
-      session.families.add(family);
-      this.enqueue({
+      const queued = this.enqueue({
         sessionId,
         trigger: 'file_family',
         subject: `family:${family}`,
         detail: `The leader started editing a new kind of file: ${file}`,
       });
+      if (queued) session.families.add(family);
     }
   }
 
@@ -488,12 +534,7 @@ export class HostSkillCompanion {
         !session.declared.has(name) &&
         !eligible.excluded(name);
       for (const file of files) {
-        const glob = declaredPathMatch(
-          skill,
-          file,
-          ctx.projectRoot,
-          ctx.workingDir ?? ctx.cwd,
-        );
+        const glob = declaredPathMatch(skill, file, ctx.projectRoot, ctx.workingDir ?? ctx.cwd);
         if (!glob) continue;
         // A declared skill covers its files even once loaded or declined.
         covered.add(file);
@@ -517,8 +558,9 @@ export class HostSkillCompanion {
     if (!this.allowed(sessionId)) return;
     const session = this.sessions.get(sessionId)!;
     const ctx = this.leaderCtx(sessionId, session);
-    if (!ctx || !session.request || session.probes >= this.maxProbes) return;
-    const candidates = await this.candidates(sessionId, session, ctx);
+    if (!ctx || (probe.trigger === 'turn' && !session.request) || session.probes >= this.maxProbes)
+      return;
+    const candidates = await this.candidates(sessionId, session, ctx, probe.detail);
     if (candidates.length === 0 || !this.current(sessionId, session)) return;
     // Same lexical evidence the judge already found nothing in: a todo or a
     // new file family that adds no new overlap gets the same answer. A new
@@ -532,7 +574,7 @@ export class HostSkillCompanion {
     const taskId = randomUUID();
     let timeout: ReturnType<typeof setTimeout> | undefined;
     const completed = new Promise<TaskResult | undefined>((resolve) => {
-      this.active = { taskId, agentId, settle: resolve };
+      this.active = { sessionId, taskId, agentId, settle: resolve };
       timeout = setTimeout(() => {
         resolve(undefined);
         if (session.resident === agentId) session.resident = undefined;
@@ -559,15 +601,28 @@ export class HostSkillCompanion {
           id: taskId,
           subagentId: agentId,
           description,
-          maxToolCalls: 2,
+          maxToolCalls: DEFAULT_SKILL_COMPANION_BUDGET.maxToolCalls,
           timeoutMs: this.probeTimeoutMs,
         })
         .catch(() => this.active?.taskId === taskId && this.active.settle());
       const result = await completed;
-      if (result?.status !== 'success' || !this.current(sessionId, session)) return;
-      const raw =
-        result.report?.summary ?? (typeof result.result === 'string' ? result.result : '');
-      const pick = parseSkillCompanionPick(raw, candidates);
+      if (result?.status !== 'success') {
+        if (session.resident === agentId) session.resident = undefined;
+        void this.input.director.terminate(agentId).catch(() => {});
+        return;
+      }
+      if (!this.current(sessionId, session)) return;
+      const rawCandidates = [
+        result.report?.summary,
+        typeof result.result === 'string' ? result.result : undefined,
+        result.report?.findings?.length ? result.report.findings.join('\n') : undefined,
+      ];
+      let pick: ReturnType<typeof parseSkillCompanionPick>;
+      for (const rawCandidate of rawCandidates) {
+        if (!rawCandidate) continue;
+        pick = parseSkillCompanionPick(rawCandidate, candidates);
+        if (pick) break;
+      }
       if (!pick) return;
       if (pick.skills.length === 0 || pick.confidence < this.minConfidence) {
         if (evidence) {
@@ -634,11 +689,19 @@ export class HostSkillCompanion {
   }
 
   private async resident(sessionId: string, session: Session): Promise<string | undefined> {
-    if (
-      session.resident &&
-      !this.input.director.status().subagents.some((agent) => agent.id === session.resident)
-    )
-      session.resident = undefined;
+    if (session.resident) {
+      const alive = this.input.director
+        .status()
+        .subagents.some(
+          (agent) =>
+            agent.id === session.resident && agent.status !== 'stopped' && agent.status !== 'error',
+        );
+      if (!alive) {
+        const staleResident = session.resident;
+        session.resident = undefined;
+        void this.input.director.terminate(staleResident).catch(() => {});
+      }
+    }
     if (session.resident) return session.resident;
     const config: SubagentConfig = constrainSkillCompanion({
       id: `${SKILL_COMPANION_ID_PREFIX}${randomUUID()}`,
@@ -649,6 +712,7 @@ export class HostSkillCompanion {
       systemPromptOverride: SKILL_COMPANION_PROMPT,
       tier: 'budget',
       spawnBudgetExempt: true,
+      timeoutMs: this.probeTimeoutMs,
     });
     const id = await this.spawnBounded(config);
     if (!id) return undefined;

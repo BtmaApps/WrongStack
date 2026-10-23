@@ -12,7 +12,7 @@ const READ_NAMES = new Set(MEMORY_COMPANION_READ_TOOLS);
 const CAPS = {
   maxIterations: 8,
   maxToolCalls: 12,
-  maxTokens: 12000,
+  maxTokens: 64000,
   maxCostUsd: 0.15,
   timeoutMs: 60000,
 };
@@ -24,15 +24,20 @@ export function isMemoryCompanion(config: SubagentConfig): boolean {
 
 /** Reapply the host's read-only boundary AFTER project role/model overrides. */
 export function constrainMemoryCompanion(config: SubagentConfig): SubagentConfig {
-  const limited = {
+  const limited: SubagentConfig = {
     ...config,
     tools: [...MEMORY_COMPANION_READ_TOOLS],
+    disabledTools: undefined,
     capabilities: [],
     allowedCapabilities: ['fs.read'],
     skillNames: [],
     skillPool: [],
     skillContent: undefined,
     gracefulFinish: false,
+    spawnBudgetExempt: true,
+    textStream: 'silent',
+    toolStream: 'silent',
+    sealed: true,
   };
   for (const key of Object.keys(CAPS) as Array<keyof typeof CAPS>) {
     const value = config[key];

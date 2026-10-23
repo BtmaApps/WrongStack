@@ -26,16 +26,16 @@ Call no tool except submit_result. Return submit_result with summary containing 
 {"skills":[{"name":"exact candidate name","reason":"one line, at most 120 characters"}],"confidence":0.0}
 At most two skills, exact names from CANDIDATES, most important first. confidence is how sure you are the picks fit (0..1). Stop after this one answer.`;
 
-// Sealed: every cap is a hard stop, never extended. maxTokens counts input
-// too, so it must hold one call's floor — subagent baseline (~3.5k tokens),
-// the prompt, a full candidate payload (~7k at maxCandidates 80) and the
-// answer — plus a second iteration's re-send.
-const CAPS = {
-  maxIterations: 2,
-  maxToolCalls: 2,
-  maxTokens: 32_000,
-  maxCostUsd: 0.05,
-  timeoutMs: 45000,
+// Generous defaults for slow models and full catalogs. Explicit positive
+// host/project budgets are honored; sealing still isolates the picker from
+// unrelated tasks and runtime budget extensions. Tokens include input and
+// repeated context, not just the small JSON answer.
+export const DEFAULT_SKILL_COMPANION_BUDGET = {
+  maxIterations: 4,
+  maxToolCalls: 4,
+  maxTokens: 128_000,
+  maxCostUsd: 1,
+  timeoutMs: 300_000,
 };
 const MAX_DESCRIPTION_CHARS = 220;
 
@@ -65,12 +65,14 @@ export function constrainSkillCompanion(config: SubagentConfig): SubagentConfig 
     // delegated message, note, mailbox or budget extension can reach it.
     sealed: true,
   };
-  for (const key of Object.keys(CAPS) as Array<keyof typeof CAPS>) {
+  for (const key of Object.keys(DEFAULT_SKILL_COMPANION_BUDGET) as Array<
+    keyof typeof DEFAULT_SKILL_COMPANION_BUDGET
+  >) {
     const value = config[key];
     limited[key] =
       typeof value === 'number' && Number.isFinite(value) && value > 0
-        ? Math.min(value, CAPS[key])
-        : CAPS[key];
+        ? value
+        : DEFAULT_SKILL_COMPANION_BUDGET[key];
   }
   return limited;
 }
@@ -118,14 +120,50 @@ export interface SkillCompanionPick {
 
 function jsonObject(raw: string): unknown {
   const trimmed = raw.trim();
+  for (const match of trimmed.matchAll(/```(?:json)?\s*([\s\S]*?)```/gi)) {
+    const body = match[1]?.trim();
+    if (!body) continue;
+    try {
+      return JSON.parse(body);
+    } catch {
+      // Try next block.
+    }
+  }
   const start = trimmed.indexOf('{');
   const end = trimmed.lastIndexOf('}');
   if (start < 0 || end <= start) return undefined;
   try {
     return JSON.parse(trimmed.slice(start, end + 1));
   } catch {
-    return undefined;
+    // Fall back to balanced brace extraction from the end when earlier text contained `{...}`.
   }
+  for (let i = end; i >= start; i--) {
+    if (trimmed[i] !== '}') continue;
+    let depth = 0;
+    let inString = false;
+    for (let j = i; j >= start; j--) {
+      const ch = trimmed[j];
+      if (ch === '"') {
+        let backslashes = 0;
+        while (j - 1 - backslashes >= 0 && trimmed[j - 1 - backslashes] === '\\') backslashes++;
+        if (backslashes % 2 === 0) inString = !inString;
+        continue;
+      }
+      if (inString) continue;
+      if (ch === '}') depth++;
+      else if (ch === '{') {
+        depth--;
+        if (depth === 0) {
+          try {
+            return JSON.parse(trimmed.slice(j, i + 1));
+          } catch {
+            break;
+          }
+        }
+      }
+    }
+  }
+  return undefined;
 }
 
 /**

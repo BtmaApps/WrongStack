@@ -104,6 +104,7 @@ export function createExploreCompanionRegistry(
   return {
     ensure(sessionId: string): void {
       if (!sessionId) return;
+      sweepIdle(sessionId);
       const existing = live.get(sessionId);
       if (existing) {
         // Re-set to move to the end: this session is the most recently active.
@@ -112,7 +113,6 @@ export function createExploreCompanionRegistry(
         live.set(sessionId, existing);
         return;
       }
-      sweepIdle(sessionId);
       while (live.size >= max) {
         const before = live.size;
         evictOldest(sessionId);

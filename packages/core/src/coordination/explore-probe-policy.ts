@@ -18,6 +18,8 @@ export function exploreFileKey(file: string, projectRoot?: string): string {
  */
 const EXPLORE_IGNORED_SEGMENTS = new Set([
   '.temp_files',
+  '.wrongstack',
+  '.cache',
   'node_modules',
   'dist',
   'build',
@@ -25,6 +27,10 @@ const EXPLORE_IGNORED_SEGMENTS = new Set([
   '.git',
   '.turbo',
   '.next',
+  '__pycache__',
+  '.venv',
+  'venv',
+  'target',
 ]);
 
 /** True when the path is outside the project or under a scratch/generated tree. */
@@ -37,7 +43,8 @@ export function exploreIgnoredPath(file: string, projectRoot?: string): boolean 
 }
 
 const SOURCE_EXTENSION = /\.(?:[cm]?[jt]sx?|py|go|rs|java|kt|cs|rb|php|swift|c|cc|cpp|h|hpp)$/i;
-const TEST_FILE = /(?:^|\/)(?:tests?|__tests__|spec)\/|\.(?:test|spec)\.[^/]+$/i;
+const TEST_FILE =
+  /(?:^|\/)(?:tests?|__tests__|spec)\/|(?:^|\/)test_[^/]+\.py$|(?:[._])(?:test|spec)\.[^/]+$/i;
 
 /**
  * Production source the leader just opened. A first read of a test, doc,
@@ -52,11 +59,38 @@ export function exploreIsSourceFile(file: string): boolean {
 export function extractedExplorePath(input: unknown): string | undefined {
   if (!input || typeof input !== 'object') return undefined;
   const rec = input as Record<string, unknown>;
-  for (const field of ['path', 'file', 'file_path']) {
+  for (const field of [
+    'path',
+    'file',
+    'file_path',
+    'filePath',
+    'target_file',
+    'targetFile',
+    'filename',
+  ]) {
     const value = rec[field];
     if (typeof value === 'string' && value.trim()) return value;
   }
   return undefined;
+}
+
+export function extractedExplorePaths(input: unknown): string[] {
+  const single = extractedExplorePath(input);
+  if (!input || typeof input !== 'object') return single ? [single] : [];
+  const rec = input as Record<string, unknown>;
+  const out = new Set<string>(single ? [single] : []);
+  if (Array.isArray(rec['paths'])) {
+    for (const item of rec['paths']) {
+      if (typeof item === 'string' && item.trim()) out.add(item);
+    }
+  }
+  if (Array.isArray(rec['edits'])) {
+    for (const edit of rec['edits']) {
+      const nested = extractedExplorePath(edit);
+      if (nested) out.add(nested);
+    }
+  }
+  return [...out];
 }
 
 /** Recognize the actual tool JSON contracts before legacy text renderings. */
@@ -68,8 +102,12 @@ export function exploreSearchIsEmpty(e: {
   if (out.startsWith('{')) {
     try {
       const result = JSON.parse(out) as Record<string, unknown>;
-      if (Array.isArray(result.matches)) return result.matches.length === 0 && result.count === 0;
-      if (Array.isArray(result.results)) return result.results.length === 0 && result.total === 0;
+      if (Array.isArray(result.matches))
+        return result.matches.length === 0 && (result.count === 0 || result.count === undefined);
+      if (Array.isArray(result.results))
+        return result.results.length === 0 && (result.total === 0 || result.total === undefined);
+      if (Array.isArray(result.files))
+        return result.files.length === 0 && (result.count === 0 || result.count === undefined);
     } catch {
       // Event previews can be truncated. Do not guess from a fragment of JSON.
       return false;
@@ -112,11 +150,38 @@ const ERROR_BOILERPLATE = new Set([
   'ReferenceError',
   'SyntaxError',
   'RangeError',
+  'EvalError',
+  'URIError',
+  'AggregateError',
+  'AbortError',
+  'DOMException',
+  'Object',
+  'Function',
+  'Promise',
+  'Array',
+  'String',
+  'Number',
+  'Boolean',
+  'Symbol',
+  'Map',
+  'Set',
+  'Date',
+  'RegExp',
+  'Buffer',
+  'Module',
   'Cannot',
   'Could',
   'Failed',
   'Unhandled',
   'Timeout',
+  'Expected',
+  'Received',
+  'Invalid',
+  'Missing',
+  'Unknown',
+  'Unexpected',
+  'Warning',
+  'Internal',
   'ENOENT',
   'EACCES',
   'EPERM',

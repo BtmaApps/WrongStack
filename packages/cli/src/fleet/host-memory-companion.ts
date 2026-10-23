@@ -53,7 +53,13 @@ export class HostMemoryCompanion {
   private draining = false;
   private stopped = false;
   private active:
-    | { job: Job; taskId: string; agentId: string; settle: (result?: TaskResult) => void }
+    | {
+        job: Job;
+        taskId: string;
+        agentId: string;
+        cancel: () => void;
+        settle: (result?: TaskResult) => void;
+      }
     | undefined;
   private readonly off: Array<() => void>;
   constructor(private readonly input: Input) {
@@ -88,6 +94,20 @@ export class HostMemoryCompanion {
         if (this.active?.taskId === result.taskId && this.active.agentId === result.subagentId)
           this.active.settle(result);
       }),
+      ...(typeof input.director.onSessionTerminate === 'function'
+        ? [
+            input.director.onSessionTerminate((terminatedSessionId) => {
+              const session = this.sessions.get(terminatedSessionId);
+              if (session) session.resident = undefined;
+              for (const [key, job] of this.pending) {
+                if (job.sessionId === terminatedSessionId) this.pending.delete(key);
+              }
+              if (this.active?.job.sessionId === terminatedSessionId) {
+                this.active.cancel();
+              }
+            }),
+          ]
+        : []),
     ];
   }
 
@@ -113,9 +133,11 @@ export class HostMemoryCompanion {
   }
 
   stop(): void {
+    if (this.stopped) return;
     this.stopped = true;
     for (const off of this.off) off();
     for (const id of [...this.sessions.keys()]) this.release(id);
+    this.active?.settle();
     this.cooldown.clear();
   }
   private allowed(id: string): boolean {
@@ -123,7 +145,11 @@ export class HostMemoryCompanion {
   }
 
   private enqueue(sessionId: string, memoryId: string): void {
+    const session = this.sessions.get(sessionId);
     if (
+      !session ||
+      session.paused ||
+      session.probes >= 4 ||
       !this.allowed(sessionId) ||
       (this.active?.job.sessionId === sessionId && this.active.job.memoryId === memoryId)
     )
@@ -181,9 +207,12 @@ export class HostMemoryCompanion {
       return;
     const key = `${sessionId}\0${memoryId}\0${record.revision}\0${snapshot.fingerprint}`;
     if (Date.now() - (this.cooldown.get(key) ?? 0) < 10 * 60_000) return;
-    this.cooldown.set(key, Date.now());
-    while (this.cooldown.size > 128) this.cooldown.delete(this.cooldown.keys().next().value!);
+    const recordCooldown = () => {
+      this.cooldown.set(key, Date.now());
+      while (this.cooldown.size > 128) this.cooldown.delete(this.cooldown.keys().next().value!);
+    };
     if (snapshot.files.length === 0) {
+      recordCooldown();
       this.send(
         sessionId,
         '[memory:unverifiable]',
@@ -204,11 +233,19 @@ export class HostMemoryCompanion {
     }
     const template = this.input.roster['memory-curator'];
     if (!template) return;
-    if (
-      session.resident &&
-      !this.input.director.status().subagents.some((agent) => agent.id === session.resident)
-    )
-      session.resident = undefined;
+    if (session.resident) {
+      const alive = this.input.director
+        .status()
+        .subagents.some(
+          (agent) =>
+            agent.id === session.resident && agent.status !== 'stopped' && agent.status !== 'error',
+        );
+      if (!alive) {
+        const staleResident = session.resident;
+        session.resident = undefined;
+        void this.input.director.terminate(staleResident).catch(() => {});
+      }
+    }
     if (!session.resident) {
       const resident = await this.spawnBounded(
         constrainMemoryCompanion({
@@ -223,11 +260,12 @@ export class HostMemoryCompanion {
       );
       if (!resident) return;
       if (session.paused || !this.allowed(sessionId) || this.sessions.get(sessionId) !== session) {
-        await this.input.director.terminate(resident);
+        await this.input.director.terminate(resident).catch(() => {});
         return;
       }
       session.resident = resident;
     }
+    recordCooldown();
     session.probes++;
     const agentId = session.resident;
     const taskId = randomUUID();
@@ -249,10 +287,21 @@ export class HostMemoryCompanion {
     if (session.paused || !this.allowed(sessionId) || this.sessions.get(sessionId) !== session)
       return;
     let timeout: ReturnType<typeof setTimeout> | undefined;
+    let cancelled = false;
     const completed = new Promise<TaskResult | undefined>((resolve) => {
-      this.active = { job, taskId, agentId, settle: resolve };
+      this.active = {
+        job,
+        taskId,
+        agentId,
+        cancel: () => {
+          cancelled = true;
+          resolve(undefined);
+        },
+        settle: resolve,
+      };
       timeout = setTimeout(() => {
         resolve(undefined);
+        if (session.resident === agentId) session.resident = undefined;
         void this.input.director.terminate(agentId).catch(() => {});
       }, this.input.timeoutMs ?? 75000);
       timeout.unref?.();
@@ -277,10 +326,18 @@ export class HostMemoryCompanion {
           subagentId: agentId,
           description,
           maxToolCalls: 12,
-          timeoutMs: 60000,
+          timeoutMs: Math.min(this.input.timeoutMs ?? 60000, 60000),
         })
         .catch(() => this.active?.taskId === taskId && this.active.settle());
       const result = await completed;
+      if (cancelled || result?.status === 'stopped') {
+        if (session.resident === agentId) session.resident = undefined;
+        return;
+      }
+      if (result?.status !== 'success') {
+        if (session.resident === agentId) session.resident = undefined;
+        void this.input.director.terminate(agentId).catch(() => {});
+      }
       if (!this.allowed(sessionId) || this.sessions.get(sessionId) !== session) return;
       const current = await this.withinIoBudget(memory.getSage(memoryId));
       if (!current || current.revision !== record.revision || current.contextPolicy === 'never')
@@ -308,10 +365,19 @@ export class HostMemoryCompanion {
         this.sessions.get(sessionId) !== session
       )
         return;
-      const raw =
-        result?.report?.summary ?? (typeof result?.result === 'string' ? result.result : '');
-      const verdict =
-        result?.status === 'success' ? parseMemoryCompanionVerdict(raw, snapshot) : undefined;
+      const candidates = [
+        result?.report?.summary,
+        typeof result?.result === 'string' ? result.result : undefined,
+        result?.report?.findings?.length ? result.report.findings.join('\n') : undefined,
+      ];
+      let verdict: ReturnType<typeof parseMemoryCompanionVerdict>;
+      for (const candidate of candidates) {
+        if (!candidate) continue;
+        if (result?.status === 'success') {
+          verdict = parseMemoryCompanionVerdict(candidate, snapshot);
+          if (verdict) break;
+        }
+      }
       this.send(
         sessionId,
         verdict ? '[memory:review]' : '[memory:unverifiable]',

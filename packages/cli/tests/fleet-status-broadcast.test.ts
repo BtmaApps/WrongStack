@@ -216,6 +216,40 @@ describe('createFleetStatusBroadcaster', () => {
     ]);
   });
 
+  it('keeps Explore, Memory, and Skill Companion probe lifecycle chatter out of the mailbox', async () => {
+    build({ minIntervalMsPerAgent: 0, budgetWarnings: true });
+    for (const [subagentId, name] of [
+      ['explore-companion-s1-12345678', 'Explore Companion'],
+      ['memory-companion-12345678', 'Memory Companion'],
+      ['skill-companion-12345678', 'Skill Companion'],
+    ] as const) {
+      events.emit('subagent.spawned', {
+        subagentId,
+        taskId: `t-${subagentId}`,
+        name,
+        model: 'claude-haiku-4-5',
+      });
+      events.emit('subagent.task_started', {
+        subagentId,
+        taskId: `t-${subagentId}`,
+        description: 'internal companion probe',
+      });
+      events.emit('subagent.budget_warning', {
+        subagentId,
+        kind: 'iterations',
+        used: 3,
+        limit: 4,
+      });
+      events.emit('subagent.task_completed', completedEvent(subagentId));
+      events.emit('subagent.removed', { subagentId, reason: 'retired' });
+    }
+    await vi.runAllTimersAsync();
+
+    expect(fake.sent).toHaveLength(0);
+    expect(fake.heartbeats).toHaveLength(0);
+    expect(fake.deregistered).toHaveLength(0);
+  });
+
   it('pushes rich heartbeats on task start/stop (currentTask + status)', async () => {
     build();
     events.emit('subagent.task_started', {

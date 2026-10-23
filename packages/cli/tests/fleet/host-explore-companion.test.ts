@@ -341,9 +341,93 @@ describe('Explore Companion host lifecycle', () => {
     expect(note.body).not.toContain('wrong fallback');
   });
 
+  it('falls back to result.result when report summary and findings are blank', async () => {
+    const h = harness();
+    h.emit('src/a.ts');
+    await flush();
+    h.finish({
+      result: 'src/a.ts:10 — fallback finding from result text',
+      report: {
+        summary: '   ',
+        findings: [' '],
+        files_examined: ['src/a.ts'],
+        confidence: 0.5,
+        suggested_next_steps: [],
+      },
+    });
+    const note = vi.mocked(postSessionNote).mock.calls[0]![0];
+    expect(note.body).toBe('src/a.ts:10 — fallback finding from result text');
+  });
+
   it('disabled feature does not even open the mailbox', () => {
     const h = harness({ enabled: false });
     expect(h.companion).toBeNull();
     expect(getSharedProjectMailbox).not.toHaveBeenCalled();
+  });
+
+  it('clears queued probes on terminateSession without spawning a replacement resident', async () => {
+    const events = new EventBus();
+    const tasks: TaskSpec[] = [];
+    const releases: Array<() => void> = [];
+    let spawnCalls = 0;
+    const director = new Director({
+      sessionId: 'explore-stop',
+      config: {
+        coordinatorId: 'explore-stop',
+        doneCondition: { type: 'all_tasks_done' },
+        maxConcurrent: 1,
+      },
+      runner: async (task) => {
+        tasks.push(task);
+        await new Promise<void>((resolve) => {
+          releases.push(resolve);
+        });
+        return { result: 'src/a.ts:1 - ok', iterations: 1, toolCalls: 0 };
+      },
+    });
+    const origSpawn = director.spawnCompanion.bind(director);
+    vi.spyOn(director, 'spawnCompanion').mockImplementation(async (cfg) => {
+      spawnCalls += 1;
+      return origSpawn(cfg);
+    });
+    const companion = createHostExploreCompanion({
+      director,
+      events,
+      sessionId: 'explore-stop',
+      mailboxProjectDir: '/mailbox',
+      roster: FLEET_ROSTER,
+      config: { signals: { mailboxAsk: false } },
+    })!;
+    instances.push(companion);
+    try {
+      events.emit('tool.executed', {
+        id: '1',
+        name: 'edit',
+        durationMs: 1,
+        ok: true,
+        sessionId: 'explore-stop',
+        input: { path: 'src/first.ts' },
+      });
+      events.emit('tool.executed', {
+        id: '2',
+        name: 'edit',
+        durationMs: 1,
+        ok: true,
+        sessionId: 'explore-stop',
+        input: { path: 'src/second.ts' },
+      });
+      await vi.waitFor(() => expect(tasks).toHaveLength(1));
+      expect(spawnCalls).toBe(1);
+
+      await director.terminateSession('explore-stop');
+      releases.shift()?.();
+      await flush();
+
+      // Queued second probe was dropped on terminateSession — no second spawn or task.
+      expect(tasks).toHaveLength(1);
+      expect(spawnCalls).toBe(1);
+    } finally {
+      await director.shutdown();
+    }
   });
 });

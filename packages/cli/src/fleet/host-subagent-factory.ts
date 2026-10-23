@@ -94,6 +94,7 @@ export function createHostSubagentFactory(
   config: Config,
   host: HostSubagentFactoryContext,
 ): AgentFactory {
+  const linkedSubagentSessions = new Set<string>();
   return async (subCfg: SubagentConfig, task?: TaskSpec) => {
     const events = new EventBus();
     const liveConfig = host.deps.configStore.get();
@@ -185,12 +186,15 @@ export function createHostSubagentFactory(
     }
 
     const assignedCheckout =
-      !companion && subCfg.cwd && path.isAbsolute(subCfg.cwd) ? subCfg.cwd : host.deps.projectRoot;
-    let subCwd = companion
-      ? host.deps.projectRoot
-      : projectCfg?.cwd
-        ? path.resolve(assignedCheckout, projectCfg.cwd)
-        : (effectiveCfg.cwd ?? host.deps.cwd);
+      !companion && !exploreCompanion && subCfg.cwd && path.isAbsolute(subCfg.cwd)
+        ? subCfg.cwd
+        : host.deps.projectRoot;
+    let subCwd =
+      companion || exploreCompanion
+        ? host.deps.projectRoot
+        : projectCfg?.cwd
+          ? path.resolve(assignedCheckout, projectCfg.cwd)
+          : (effectiveCfg.cwd ?? host.deps.cwd);
     if (projectCfg?.cwd && !isInsideDirectory(assignedCheckout, subCwd)) {
       throw new Error(
         `Agent "${effectiveCfg.role ?? effectiveCfg.name}" cwd escapes its assigned checkout.`,
@@ -209,11 +213,13 @@ export function createHostSubagentFactory(
     }
 
     let onlineAgents: MailboxAgentStatus[] = [];
-    try {
-      const subagentMailbox = getSharedProjectMailbox(host.mailboxProjectDir());
-      onlineAgents = await subagentMailbox.getAgentStatuses();
-    } catch {
-      // Non-fatal: mailbox errors should not block subagent creation.
+    if (!companion && !exploreCompanion) {
+      try {
+        const subagentMailbox = getSharedProjectMailbox(host.mailboxProjectDir());
+        onlineAgents = await subagentMailbox.getAgentStatuses();
+      } catch {
+        // Non-fatal: mailbox errors should not block subagent creation.
+      }
     }
 
     const subagentTools = memoryCompanion
@@ -222,9 +228,10 @@ export function createHostSubagentFactory(
         ? skillCompanionTools()
         : host.filterTools(effectiveCfg.tools);
     const providerTools = provider.selectToolsForRequest?.(subagentTools) ?? subagentTools;
-    // The skill judge answers one JSON pick over its task payload. The general
-    // subagent prompt (project instructions, tool guides, environment) was
-    // ~13k tokens it never used, and its sealed token cap is a hard stop.
+    // The skill judge and memory companion answer one narrow JSON check over
+    // their task payload. The general subagent prompt (project instructions,
+    // tool guides, environment) was ~15k–27k tokens they never used, and their
+    // sealed token caps are hard stops.
     const rawRolePrompt =
       effectiveCfg.systemPromptOverride ??
       effectiveCfg.prompt ??
@@ -235,16 +242,28 @@ export function createHostSubagentFactory(
       ? exploreCompanionSystemPrompt({ rolePrompt: rawRolePrompt, projectRoot })
       : skillCompanion
         ? []
-        : await host.deps.systemPromptBuilder.build({
-            cwd: subCwd,
-            projectRoot: host.deps.projectRoot,
-            tools: providerTools,
-            catalogTools: subagentTools,
-            model: effModel,
-            provider: effProvider,
-            subagent: true,
-            onlineAgents,
-          });
+        : memoryCompanion
+          ? [
+              {
+                type: 'text',
+                text: [
+                  '# Environment',
+                  `- Project root: ${projectRoot}`,
+                  `- Platform: ${process.platform}`,
+                  '- Paths in evidence are relative to the project root.',
+                ].join('\n'),
+              },
+            ]
+          : await host.deps.systemPromptBuilder.build({
+              cwd: subCwd,
+              projectRoot: host.deps.projectRoot,
+              tools: providerTools,
+              catalogTools: subagentTools,
+              model: effModel,
+              provider: effProvider,
+              subagent: true,
+              onlineAgents,
+            });
 
     if (!exploreCompanion) {
       baseSystem.unshift({
@@ -309,9 +328,9 @@ export function createHostSubagentFactory(
     }
 
     const subagentName = effectiveCfg.id ?? effectiveCfg.name ?? `sub_${randomUUID().slice(0, 8)}`;
-    // The lean companion is never shown the LEARNED brief, so there is no
+    // Sealed host companions are never shown the LEARNED brief, so there is no
     // capture to attribute — and no consolidation pass to schedule.
-    if (effectiveCfg.role && !exploreCompanion) {
+    if (effectiveCfg.role && !companion && !exploreCompanion) {
       host.recordLearningRole(subagentName, effectiveCfg.role, skillResolution.selected);
     }
     let subSession: SessionWriter;
@@ -332,20 +351,28 @@ export function createHostSubagentFactory(
       // learns which spawn record it belongs to. Appended to the LEADER's
       // journal, because that is the file a reader starts from when asking
       // "which agents ran in this session, and where did they write".
-      void host.deps.session
-        .append({
-          type: 'agent_session_linked',
-          ts: new Date().toISOString(),
-          agentId: subagentName,
-          agentSessionId: ownSession.id,
-          ...(ownSession.transcriptPath ? { transcriptPath: ownSession.transcriptPath } : {}),
-          provider: effProvider,
-          model: effModel,
-        })
-        .catch(() => {
-          // Best-effort, same contract as every other session append: a
-          // missing link degrades discovery, it must not fail the spawn.
-        });
+      // Resident companions reuse the same `subagentName` across multiple
+      // probes; link the pair once so multi-probe runs do not spam the
+      // leader's journal with duplicate `agent_session_linked` records.
+      const linkKey = `${owningSessionId}:${subagentName}:${ownSession.id}`;
+      if (!linkedSubagentSessions.has(linkKey)) {
+        if (linkedSubagentSessions.size >= 2_000) linkedSubagentSessions.clear();
+        linkedSubagentSessions.add(linkKey);
+        void host.deps.session
+          .append({
+            type: 'agent_session_linked',
+            ts: new Date().toISOString(),
+            agentId: subagentName,
+            agentSessionId: ownSession.id,
+            ...(ownSession.transcriptPath ? { transcriptPath: ownSession.transcriptPath } : {}),
+            provider: effProvider,
+            model: effModel,
+          })
+          .catch(() => {
+            // Best-effort, same contract as every other session append: a
+            // missing link degrades discovery, it must not fail the spawn.
+          });
+      }
     } else {
       // No journal of its own — its events land in the leader's file, so they
       // need the stamp to stay attributable once they are interleaved.
@@ -467,7 +494,9 @@ export function createHostSubagentFactory(
       }),
     );
 
-    installDesignStudioMiddleware({ pipelines, ctx });
+    if (!companion && !exploreCompanion) {
+      installDesignStudioMiddleware({ pipelines, ctx });
+    }
     installSubagentAutoCompaction(pipelines, ctx, config.context, events);
     host.deps.installToolBoundary?.(pipelines);
 
@@ -497,11 +526,13 @@ export function createHostSubagentFactory(
 
     // A subagent without network capability has no design_reference, so the
     // gate stays off for it rather than demanding a check it cannot run.
-    installDesignTurnGate({
-      pipelines,
-      extensions: agent.extensions,
-      hasTool: (name) => agent.tools.get(name) !== undefined,
-    });
+    if (!companion && !exploreCompanion) {
+      installDesignTurnGate({
+        pipelines,
+        extensions: agent.extensions,
+        hasTool: (name) => agent.tools.get(name) !== undefined,
+      });
+    }
 
     agent.extensions.register(
       createFallbackModelExtension({

@@ -195,12 +195,15 @@ export async function buildDirector(host: HostDirectorSetupHost): Promise<void> 
             sessionId,
             mailboxProjectDir: host.mailboxProjectDir(),
             roster: host.roster,
-            config: config.fleet?.exploreCompanion,
+            config:
+              host.deps.configStore.get().fleet?.exploreCompanion ?? config.fleet?.exploreCompanion,
             projectRoot: host.deps.projectRoot,
             scrub: (text) => host.deps.secretScrubber.scrub(text),
             // Companion gate, not the general one: a Bug Hunter round runs
             // solo but keeps its read-only companions.
-            companionsAllowed: () => areSubagentCompanionsAllowedForSession(sessionId),
+            companionsAllowed: () =>
+              host.deps.configStore.get().fleet?.exploreCompanion?.enabled !== false &&
+              areSubagentCompanionsAllowedForSession(sessionId),
           })
         : null,
   });
@@ -271,10 +274,15 @@ export async function buildDirector(host: HostDirectorSetupHost): Promise<void> 
   host.exploreCompanionOff = host.deps.events.on('agent.run.started', (e) => {
     // Unstamped runs exist (thin embedders); `ensure` ignores an empty id,
     // but keep the narrowing explicit rather than relying on that.
-    if (e.sessionId && areSubagentCompanionsAllowedForSession(e.sessionId)) {
+    // Workers have agentRole metadata and must never open their own companions
+    // or evict a leader conversation from the 4-slot companion registries.
+    if (
+      e.sessionId &&
+      !e.ctx.meta?.['agentRole'] &&
+      areSubagentCompanionsAllowedForSession(e.sessionId)
+    ) {
       host.exploreCompanions?.ensure(e.sessionId);
-      // Workers have agentRole metadata and must never open their own verifier.
-      if (!e.ctx.meta?.['agentRole']) host.memoryCompanion?.ensure(e.sessionId);
+      host.memoryCompanion?.ensure(e.sessionId);
     }
     // `work_complete` closes one job, but this Director serves the whole
     // session: a leader run starting is the next job, so lift the latch —

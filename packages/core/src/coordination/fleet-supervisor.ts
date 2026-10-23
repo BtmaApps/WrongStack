@@ -58,9 +58,17 @@ import {
 
 export type { FleetSupervisorConfig } from '../types/config.js';
 
-/** Collab subagents (spawned by /collab review flows) are never supervised —
- *  same exclusion the Director's budget filter applies. */
-const COLLAB_ID_PREFIXES = ['bug-hunter-', 'refactor-planner-', 'critic-'];
+/** Collab subagents (spawned by /collab review flows) and host-owned resident
+ *  companions are never supervised — same exclusion the Director's budget
+ *  filter and sealed-agent boundary apply. */
+const COLLAB_ID_PREFIXES = [
+  'bug-hunter-',
+  'refactor-planner-',
+  'critic-',
+  'explore-companion-',
+  'memory-companion-',
+  'skill-companion-',
+];
 
 const DEFAULTS = {
   intervalMs: 20_000,
@@ -149,6 +157,7 @@ export class FleetSupervisor {
     // observation-only: the supervisor never negotiates a worker's budget.
     this.offHandles.push(
       this.opts.fleet.onAny((e) => {
+        if (this.isCollab(e.subagentId)) return;
         this.lastActivityAt.set(e.subagentId, this.now());
       }),
     );

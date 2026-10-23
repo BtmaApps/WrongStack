@@ -47,6 +47,7 @@ import {
   exploreSetsEqual,
   extractExploreSubjects,
   extractedExplorePath,
+  extractedExplorePaths,
 } from './explore-probe-policy.js';
 import type { ExploreProbe } from './explore-probe-types.js';
 import {
@@ -172,7 +173,12 @@ export const DEFAULT_EXPLORE_SEARCH_TOOLS: readonly string[] = ['grep', 'codebas
 const EXPLORE_AUTHOR_TOOLS = new Set(['write']);
 
 /** Partial views that still mean the leader has seen the file's shape. */
-const EXPLORE_VIEW_TOOLS = new Set(['codebase-skeleton', 'codebase-read-symbol']);
+const EXPLORE_VIEW_TOOLS = new Set([
+  'codebase-skeleton',
+  'codebase-read-symbol',
+  'codebase-context',
+  'codebase-impact-analysis',
+]);
 
 interface ResolvedExploreCompanionConfig {
   enabled: boolean;
@@ -359,10 +365,18 @@ export class ExploreCompanion {
     }
   }
 
+  /** Drop queued probes (e.g. when the owning session is stopped by the user) without detaching watchers. */
+  clearPending(): void {
+    for (const probe of this.pending) this.probedAt.delete(probe.subject);
+    this.pending.length = 0;
+  }
+
   /** Tear down watchers without touching host intent. Cooldowns survive. */
   private detach(dropPending = true): void {
     this.generation += 1;
-    if (dropPending) this.pending.length = 0;
+    if (dropPending) {
+      this.clearPending();
+    }
     for (const unsub of this.unsubscribers.splice(0)) unsub();
     if (this.pollTimer) {
       clearInterval(this.pollTimer);
@@ -385,7 +399,7 @@ export class ExploreCompanion {
     const path = extractedExplorePath(e.input);
     const fileKey = (file: string) => exploreFileKey(file, this.opts.projectRoot);
     const ignored = (file: string) => exploreIgnoredPath(file, this.opts.projectRoot);
-    const targets = e.writeTargets?.length ? e.writeTargets : path ? [path] : [];
+    const targets = e.writeTargets?.length ? e.writeTargets : extractedExplorePaths(e.input);
 
     if (e.ok && EXPLORE_AUTHOR_TOOLS.has(tool)) {
       for (const target of targets) this.readSet.add(fileKey(target));
@@ -443,12 +457,17 @@ export class ExploreCompanion {
       exploreSearchIsEmpty(e)
     ) {
       const input = (e.input ?? {}) as Record<string, unknown>;
-      const query =
+      const rawQuery =
         typeof input['query'] === 'string'
           ? input['query']
           : typeof input['pattern'] === 'string'
             ? input['pattern']
-            : '';
+            : typeof input['symbol'] === 'string'
+              ? input['symbol']
+              : typeof input['search'] === 'string'
+                ? input['search']
+                : '';
+      const query = rawQuery.trim();
       this.engage({
         id: randomUUID(),
         probe: query
@@ -470,14 +489,15 @@ export class ExploreCompanion {
     if (!leader?.todos) return;
     for (const todo of leader.todos) {
       const prev = this.todoSeen.get(todo.id);
-      if (prev !== 'in_progress' && todo.status === 'in_progress') {
-        const mentions = extractExploreSubjects(todo.content);
+      const content = todo.content.trim();
+      if (prev !== 'in_progress' && todo.status === 'in_progress' && content) {
+        const mentions = extractExploreSubjects(content);
         const first = mentions[0];
         this.engage({
           id: randomUUID(),
-          probe: `Pre-map files/symbols for the leader's in-progress todo so they can start already oriented: "${todo.content.slice(0, 160)}".`,
+          probe: `Pre-map files/symbols for the leader's in-progress todo so they can start already oriented: "${content.slice(0, 160)}".`,
           hint: first ? { [first.kind]: first.value } : undefined,
-          context: `Todo "${todo.content.slice(0, 120)}" flipped to in_progress.`,
+          context: `Todo "${content.slice(0, 120)}" flipped to in_progress.`,
           source: 'todo_in_progress',
           subject: `todo:${todo.id}`,
           createdAt: this.now(),

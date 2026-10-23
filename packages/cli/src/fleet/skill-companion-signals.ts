@@ -131,6 +131,8 @@ const EXTENSION_TERMS: Readonly<Record<string, readonly string[]>> = {
   tsx: ['react', 'component'],
   jsx: ['react', 'component'],
   ts: ['typescript'],
+  mts: ['typescript'],
+  cts: ['typescript'],
   py: ['python'],
   go: ['go'],
   rs: ['rust'],
@@ -138,6 +140,9 @@ const EXTENSION_TERMS: Readonly<Record<string, readonly string[]>> = {
   scss: ['css', 'style'],
   sql: ['sql', 'database'],
   prisma: ['prisma', 'database'],
+  graphql: ['graphql', 'api'],
+  gql: ['graphql', 'api'],
+  proto: ['protobuf', 'grpc'],
   md: ['markdown', 'docs'],
   docx: ['docx', 'word'],
   xlsx: ['xlsx', 'excel', 'spreadsheet'],
@@ -145,6 +150,10 @@ const EXTENSION_TERMS: Readonly<Record<string, readonly string[]>> = {
   pdf: ['pdf'],
   glsl: ['shader', 'webgl'],
   wgsl: ['shader', 'webgpu'],
+  mp3: ['audio', 'media'],
+  wav: ['audio', 'media'],
+  mp4: ['video', 'media'],
+  webm: ['video', 'media'],
   vue: ['vue'],
   svelte: ['svelte'],
 };
@@ -179,22 +188,74 @@ export function workTerms(texts: readonly string[], files: readonly string[]): M
 
 /** A coarse "kind of file" so a shift from app code to tests or infra re-probes. */
 export function fileFamily(file: string): string | undefined {
-  const base = file.replace(/\\/g, '/').split('/').pop()?.toLowerCase() ?? '';
+  const normalized = file.replace(/\\/g, '/').toLowerCase();
+  const base = normalized.split('/').pop() ?? '';
   if (!base) return undefined;
-  if (/\.(?:test|spec)\.[cm]?[jt]sx?$/.test(base) || /_test\.(?:go|py)$/.test(base)) return 'test';
-  if (base === 'dockerfile' || base.startsWith('docker-compose')) return 'docker';
+  if (
+    /\.(?:test|spec)\.[cm]?[jt]sx?$/.test(base) ||
+    /_test\.(?:go|py)$/.test(base) ||
+    /^test_.*\.py$/.test(base)
+  ) {
+    return 'test';
+  }
+  if (
+    base === 'dockerfile' ||
+    base.startsWith('dockerfile.') ||
+    base.startsWith('docker-compose') ||
+    /^compose\.ya?ml$/.test(base)
+  ) {
+    return 'docker';
+  }
   if (base.startsWith('wrangler.')) return 'wrangler';
+  if (normalized.includes('.github/workflows/')) return 'ci';
+  if (base.startsWith('next.config.')) return 'next-config';
+  if (base.startsWith('tailwind.config.')) return 'tailwind';
+  if (base.startsWith('playwright.config.')) return 'playwright';
+  if (base.startsWith('vitest.config.')) return 'vitest';
+  if (base.startsWith('drizzle.config.')) return 'drizzle';
   const dot = base.lastIndexOf('.');
   return dot > 0 ? base.slice(dot) : base;
 }
 
+const EDITED_PATH_KEYS = [
+  'path',
+  'file_path',
+  'filePath',
+  'file',
+  'target_file',
+  'targetFile',
+  'filename',
+] as const;
+
 /** The files a successful change touched, from the executor's targets or the input. */
 export function editedPaths(input: unknown, writeTargets: readonly string[] | undefined): string[] {
   if (writeTargets?.length) return [...writeTargets];
-  const record = (input ?? {}) as Record<string, unknown>;
-  for (const key of ['path', 'file_path', 'file']) {
+  if (!input || typeof input !== 'object') return [];
+  const record = input as Record<string, unknown>;
+  for (const key of EDITED_PATH_KEYS) {
     const value = record[key];
-    if (typeof value === 'string' && value.trim()) return [value];
+    if (typeof value === 'string' && value.trim()) return [value.trim()];
+  }
+  if (Array.isArray(record['paths'])) {
+    const paths = record['paths']
+      .filter((p): p is string => typeof p === 'string' && p.trim().length > 0)
+      .map((p) => p.trim());
+    if (paths.length > 0) return paths;
+  }
+  if (Array.isArray(record['edits'])) {
+    const paths: string[] = [];
+    for (const edit of record['edits']) {
+      if (!edit || typeof edit !== 'object') continue;
+      const entry = edit as Record<string, unknown>;
+      for (const key of EDITED_PATH_KEYS) {
+        const value = entry[key];
+        if (typeof value === 'string' && value.trim()) {
+          paths.push(value.trim());
+          break;
+        }
+      }
+    }
+    if (paths.length > 0) return [...new Set(paths)];
   }
   return [];
 }

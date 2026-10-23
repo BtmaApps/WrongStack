@@ -78,7 +78,7 @@ export function createAgentLoopHandler(
       return undefined;
     }
   })();
-  const getFleetPulse = attachFleetPulse(a, fleetPulseCfg);
+  const getFleetPulse = sealed ? async () => null : attachFleetPulse(a, fleetPulseCfg);
   const pulseEveryN = Math.max(1, fleetPulseCfg?.everyNIterations ?? 5);
   const backgroundCoordination = () => a.ctx.meta['coordinationContextMode'] === 'background';
 

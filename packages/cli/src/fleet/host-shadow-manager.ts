@@ -107,6 +107,15 @@ function logShadowFailure(event: string, sessionId: string, error: unknown): voi
   );
 }
 
+const COMPANION_SUBAGENT_PREFIXES = ['explore-companion-', 'memory-companion-', 'skill-companion-'];
+
+function isCompanionSubagentId(subagentId: string | undefined): boolean {
+  return (
+    typeof subagentId === 'string' &&
+    COMPANION_SUBAGENT_PREFIXES.some((prefix) => subagentId.startsWith(prefix))
+  );
+}
+
 /** An entry with nothing in flight and nothing to remember is free to evict. */
 function isDisposable(state: ShadowSessionState): boolean {
   return (
@@ -238,10 +247,12 @@ export class HostShadowManager {
             : undefined;
         this.noteShadowWorkCompleted(e.sessionId, problem);
       }),
-      this.ctx.deps.events.on('subagent.task_started', (e) =>
-        this.noteShadowWorkStarted(e.sessionId),
-      ),
+      this.ctx.deps.events.on('subagent.task_started', (e) => {
+        if (isCompanionSubagentId(e.subagentId)) return;
+        this.noteShadowWorkStarted(e.sessionId);
+      }),
       this.ctx.deps.events.on('subagent.task_completed', (e) => {
+        if (isCompanionSubagentId(e.subagentId)) return;
         const problem =
           e.status === 'failed' || e.status === 'timeout'
             ? `subagent ${e.subagentId} task ${e.taskId} ended with ${e.status}${e.error?.message ? `: ${e.error.message}` : ''}`

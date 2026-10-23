@@ -6,12 +6,20 @@
       "lines": 707,
       "relativeImports": 23
     },
+    "packages/cli/src/fleet/host-skill-companion.ts": {
+      "lines": 754,
+      "relativeImports": 3
+    },
     "packages/core/src/chronicle/project-server-client.ts": {
       "lines": 705,
       "relativeImports": 5
     },
+    "packages/core/src/coordination/agent-monitor.ts": {
+      "lines": 715,
+      "relativeImports": 4
+    },
     "packages/core/src/coordination/multi-agent-coordinator.ts": {
-      "lines": 712,
+      "lines": 725,
       "relativeImports": 15
     },
     "packages/core/src/execution/auto-compaction-middleware.ts": {

@@ -200,10 +200,19 @@ export async function executeSubagentWithTimeout({
         wallLimit !== undefined &&
         !wallExceeded &&
         gracefulFinish === undefined &&
-        budget.onThreshold &&
         preemptState === PreemptState.ACTIVE &&
         elapsed >= wallLimit * preemptFraction
       ) {
+        if (!budget.onThreshold) {
+          // Sealed companions (and any subagent without a threshold handler)
+          // never negotiate extensions. Lock the preempt ceiling so
+          // scheduleNext() waits once for the wall deadline instead of
+          // spinning on a 25ms timer for the remaining 15% of the timeout.
+          preemptState = PreemptState.LOCKED;
+          preemptedCeiling = wallLimit;
+          scheduleNext();
+          return;
+        }
         const activityTs = Date.now() - budget.idleMs();
         if (activityTs <= lastGrantActivityTs) {
           preemptState = PreemptState.LOCKED;

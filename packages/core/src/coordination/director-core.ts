@@ -238,7 +238,12 @@ export abstract class DirectorCore implements DirectorFleetHost {
     );
     this.coordinator.setFleetBus(this.fleet);
     this.fleetManager?.setCoordinator(this.coordinator);
-    this.tasks = createDirectorTaskRegistry(this);
+    this.tasks = createDirectorTaskRegistry(this, (subagentId) =>
+      this.armSubagentIdleRetirement(
+        subagentId,
+        this.subagentIdleDelayMs.get(subagentId) ?? this.subagentIdleTimeoutMs,
+      ),
+    );
     this.taskCompletedListener = (payload) => this.handleTaskCompleted(payload);
     this.coordinator.on('task.completed', this.taskCompletedListener);
 

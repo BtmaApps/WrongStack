@@ -27,9 +27,14 @@ describe('Memory Companion role overrides', () => {
     expect(limited).toMatchObject({
       maxIterations: 8,
       maxToolCalls: 12,
-      maxTokens: 12000,
+      maxTokens: 64000,
       maxCostUsd: 0.15,
       timeoutMs: 60000,
+      sealed: true,
+      gracefulFinish: false,
+      spawnBudgetExempt: true,
+      textStream: 'silent',
+      toolStream: 'silent',
     });
   });
 });

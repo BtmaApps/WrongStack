@@ -51,6 +51,8 @@ export interface AgentVirtualSession {
   createdAt: string;
   status: string;
   task?: string | undefined;
+  /** Owning conversation session id (for multi-session hosts). */
+  sessionId?: string | undefined;
   /** Ordered transcript entries (newest last). */
   transcript: AgentTimelineEntry[];
 }
@@ -310,16 +312,18 @@ export class AgentMonitorService {
   }
 
   /** Ensure a subagent is being tracked. Called when a subagent spawns. */
-  trackSubagent(subagentId: string, agentName: string, task?: string): void {
+  trackSubagent(subagentId: string, agentName: string, task?: string, sessionId?: string): void {
     if (this._sessions.has(subagentId)) return;
 
     const now = new Date().toISOString();
+    const effectiveSessionId = sessionId ?? this._sessionId;
     const session: AgentVirtualSession = {
       subagentId,
       agentName,
       createdAt: now,
       status: 'spawned',
       task,
+      ...(effectiveSessionId !== undefined ? { sessionId: effectiveSessionId } : {}),
       transcript: [],
     };
     this._sessions.set(subagentId, session);
@@ -337,7 +341,7 @@ export class AgentMonitorService {
 
     // Emit status change.
     this._events.emit('agent.status_changed', {
-      sessionId: this._sessionId,
+      sessionId: effectiveSessionId,
       subagentId,
       agentName,
       status: 'spawned',
@@ -370,7 +374,7 @@ export class AgentMonitorService {
     });
 
     this._events.emit('agent.status_changed', {
-      sessionId: this._sessionId,
+      sessionId: session.sessionId ?? this._sessionId,
       subagentId,
       agentName: session.agentName,
       status,
@@ -397,6 +401,23 @@ export class AgentMonitorService {
     if (!session) return;
 
     switch (type) {
+      case 'subagent.running': {
+        const taskId =
+          typeof payload.taskId === 'string' && payload.taskId ? payload.taskId : undefined;
+        if (taskId) session.task = taskId;
+        if (session.status !== 'running') {
+          session.status = 'running';
+          this._events.emit('agent.status_changed', {
+            sessionId: session.sessionId ?? this._sessionId,
+            subagentId,
+            agentName: session.agentName,
+            status: 'running',
+            ts: new Date().toISOString(),
+            task: session.task,
+          });
+        }
+        break;
+      }
       case 'provider.text_delta': {
         const text = payload.text as string | undefined;
         if (!text || text.length === 0) return;
@@ -563,9 +584,10 @@ export class AgentMonitorService {
 
   /** Announce a transcript entry on the local bus + HQ callback. */
   private _emitEntry(entry: AgentTimelineEntry): void {
+    const session = this._sessions.get(entry.subagentId);
     // Emit local timeline event (for TUI/WebUI).
     this._events.emit('agent.timeline.message', {
-      sessionId: this._sessionId,
+      sessionId: session?.sessionId ?? this._sessionId,
       subagentId: entry.subagentId,
       agentName: entry.agentName,
       content: entry.content,

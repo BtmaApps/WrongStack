@@ -171,6 +171,68 @@ describe('AgentMonitorService', () => {
     expect(statusEvents[0]!.status).toBe('spawned');
   });
 
+  it('stamps the owning subagent sessionId on status and timeline events instead of only the host boot session', () => {
+    const mon = createAgentMonitorService({
+      fleetBus,
+      events,
+      sessionId: 'boot-session',
+      transcriptsDir,
+      streamEnabled: true,
+    });
+    const statusSessions: Array<string | undefined> = [];
+    const timelineSessions: Array<string | undefined> = [];
+    events.on('agent.status_changed', (p) => statusSessions.push(p.sessionId));
+    events.on('agent.timeline.message', (p) => timelineSessions.push(p.sessionId));
+
+    mon.start();
+    mon.trackSubagent('skill-companion-1', 'Skill Companion', 'probe', 'tab-2');
+    fleetBus.emit(
+      makeFleetEvent('skill-companion-1', 'tool.started', { name: 'read', iteration: 1 }),
+    );
+    mon.completeSubagent('skill-companion-1', 'completed', 'Done');
+    mon.stop();
+
+    expect(statusSessions).toEqual(['tab-2', 'tab-2']);
+    expect(timelineSessions.every((s) => s === 'tab-2')).toBe(true);
+  });
+
+  it('transitions resident subagents back to running and updates task on subagent.running', () => {
+    const statusEvents: Array<{
+      sessionId?: string;
+      subagentId: string;
+      status: string;
+      task?: string;
+    }> = [];
+    events.on('agent.status_changed', (p) => {
+      statusEvents.push({
+        sessionId: p.sessionId,
+        subagentId: p.subagentId,
+        status: p.status,
+        task: p.task,
+      });
+    });
+
+    monitor.start();
+    monitor.trackSubagent('explore-companion-1', 'Explore Companion', 'probe-1', 'tab-3');
+    monitor.completeSubagent('explore-companion-1', 'completed', 'Done probe 1');
+    fleetBus.emit(
+      makeFleetEvent('explore-companion-1', 'subagent.running', {
+        taskId: 'probe-2',
+        sessionId: 'tab-3',
+      }),
+    );
+
+    const session = monitor.getSession('explore-companion-1');
+    expect(session?.status).toBe('running');
+    expect(session?.task).toBe('probe-2');
+    expect(statusEvents.at(-1)).toEqual({
+      sessionId: 'tab-3',
+      subagentId: 'explore-companion-1',
+      status: 'running',
+      task: 'probe-2',
+    });
+  });
+
   // ── Timeline entries via FleetBus ─────────────────────────────────
 
   it('routes provider.text_delta into timeline', () => {

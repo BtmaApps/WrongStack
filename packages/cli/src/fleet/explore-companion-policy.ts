@@ -32,8 +32,11 @@ export function constrainExploreCompanion(config: SubagentConfig): SubagentConfi
     skillNames: [],
     skillPool: [],
     skillContent: undefined,
+    gracefulFinish: false,
     textStream: 'silent',
     toolStream: 'silent',
+    sealed: true,
+    spawnBudgetExempt: true,
   };
 }
 

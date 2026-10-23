@@ -119,6 +119,7 @@ describe('explore companion through the real subagent factory', () => {
       expect(text).not.toContain('## LEARNED');
       expect(text.length).toBeLessThan(5_000);
       expect(agent.ctx.tools.map((tool) => tool.name)).not.toContain('tree');
+      expect(agent.ctx.meta?.sealedAgent).toBe(true);
     } finally {
       await dispose?.();
     }
@@ -136,6 +137,28 @@ describe('explore companion through the real subagent factory', () => {
       const joined = agent.ctx.systemPrompt.map((block) => block.text).join('\n');
       expect(joined).toContain('GENERAL SUBAGENT PROMPT');
       expect(joined).toMatch(/You are a subagent operating under a Director/);
+    } finally {
+      await dispose?.();
+    }
+  });
+
+  it('gives memory-companion a lean sealed prompt without invoking systemPromptBuilder.build', async () => {
+    const h = harness();
+    const { agent, dispose } = await h.factory({
+      id: 'memory-companion-test-1234',
+      name: 'Memory Companion',
+      role: 'memory-curator',
+      prompt: 'You are Memory Companion.',
+      systemPromptOverride: 'You are Memory Companion.',
+    });
+    try {
+      expect(h.build).not.toHaveBeenCalled();
+      expect(h.recordLearningRole).not.toHaveBeenCalled();
+      expect(agent.ctx.meta?.sealedAgent).toBe(true);
+      const joined = agent.ctx.systemPrompt.map((block) => block.text).join('\n');
+      expect(joined).toContain('You are Memory Companion.');
+      expect(joined).toContain(`- Project root: ${process.cwd()}`);
+      expect(joined).not.toContain('GENERAL SUBAGENT PROMPT');
     } finally {
       await dispose?.();
     }

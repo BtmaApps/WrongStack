@@ -13,6 +13,7 @@ export function createDirectorTaskRegistry(
     | 'appendSessionEvent'
     | 'scheduleManifest'
   >,
+  onTaskAssigned?: (subagentId: string) => void,
 ): DirectorTaskRegistry {
   return new DirectorTaskRegistry({
     coordinator: host.coordinator,
@@ -23,6 +24,7 @@ export function createDirectorTaskRegistry(
         .getStatus()
         .subagents.filter((s) => s.status !== 'stopped')
         .map((s) => s.id),
+    ...(onTaskAssigned ? { onTaskAssigned } : {}),
     addTaskToManifest: (subagentId, taskId) => {
       if (host.fleetManager) {
         host.fleetManager.addTaskToSubagent(subagentId, taskId);

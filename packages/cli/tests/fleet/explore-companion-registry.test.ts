@@ -78,15 +78,17 @@ describe('explore companion registry', () => {
     expect(companionFor('t2')?.stopped).toBe(1);
   });
 
-  it('sweeps a conversation that has not run for a long time', () => {
+  it('sweeps a conversation that has not run for a long time even when an existing tab runs again', () => {
     const { registry, advance, companionFor } = registryWithClock();
 
     registry.ensure('stale');
+    registry.ensure('active');
     advance(16 * 60_000);
-    registry.ensure('fresh');
+    registry.ensure('active');
 
-    expect(registry.ids()).toEqual(['fresh']);
+    expect(registry.ids()).toEqual(['active']);
     expect(companionFor('stale')?.stopped).toBe(1);
+    expect(companionFor('active')?.stopped).toBe(0);
   });
 
   it('keeps a session alive as long as it keeps running', () => {

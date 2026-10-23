@@ -124,11 +124,30 @@ function harness(
       } as TaskResult,
     });
   };
+  const finishWithProseSummary = (body: object) => {
+    const task = assignInternal.mock.calls.at(-1)![0];
+    completed({
+      result: {
+        taskId: task.id,
+        subagentId: 'worker',
+        status: 'success',
+        report: {
+          summary: 'Picked frontend-design for the settings screen.',
+          findings: [],
+          files_examined: [],
+          confidence: 0.9,
+          suggested_next_steps: [],
+        },
+        result: JSON.stringify(body),
+      } as TaskResult,
+    });
+  };
   return {
     events,
     ctx,
     run,
     finish,
+    finishWithProseSummary,
     note,
     spawn,
     assignInternal,
@@ -294,6 +313,30 @@ describe('Skill Companion', () => {
     h.run('Redesign the settings page please');
     await new Promise((resolve) => setTimeout(resolve, 10));
     expect(h.spawn).not.toHaveBeenCalled();
+  });
+
+  it('still judges a todo or file-family edit after a short opening turn like "continue"', async () => {
+    const h = harness();
+    h.run('continue');
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(h.assignInternal).not.toHaveBeenCalled();
+
+    h.events.emit('session.agents_updated', {
+      sessionId: 'S1',
+      agents: [
+        {
+          id: 'leader',
+          todos: [{ id: 't1', content: 'Deploy workers with wrangler', status: 'in_progress' }],
+        },
+      ],
+    } as never);
+    await vi.waitFor(() => expect(h.assignInternal).toHaveBeenCalledTimes(1));
+    expect(h.assignInternal.mock.calls[0]![0].description).toContain('"todo"');
+    h.finish({
+      skills: [{ name: 'cloudflare', reason: 'wrangler deployment' }],
+      confidence: 0.9,
+    });
+    await vi.waitFor(() => expect(h.note).toHaveBeenCalledTimes(1));
   });
 
   it('re-probes when the leader starts editing a new kind of file, within the cap', async () => {
@@ -515,6 +558,34 @@ describe('Skill Companion', () => {
     expect(h.note).not.toHaveBeenCalled();
   });
 
+  it('accepts a judge answer after the former 45-second deadline', async () => {
+    vi.useFakeTimers();
+    const h = harness();
+    h.run('Redesign the settings page please');
+    await vi.waitFor(() => expect(h.assignInternal).toHaveBeenCalledTimes(1));
+    expect(h.spawn.mock.calls[0]![0].timeoutMs).toBe(300_000);
+    expect(h.assignInternal.mock.calls[0]![0]).toMatchObject({ timeoutMs: 300_000 });
+
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(h.terminate).not.toHaveBeenCalled();
+    h.finish(PICK);
+    await vi.waitFor(() => expect(h.note).toHaveBeenCalledTimes(1));
+  });
+
+  it('honors a configured deadline above five minutes in the host and worker', async () => {
+    vi.useFakeTimers();
+    const h = harness({ timeoutMs: 900_000 });
+    h.run('Redesign the settings page please');
+    await vi.waitFor(() => expect(h.assignInternal).toHaveBeenCalledTimes(1));
+    expect(h.spawn.mock.calls[0]![0].timeoutMs).toBe(900_000);
+    expect(h.assignInternal.mock.calls[0]![0]).toMatchObject({ timeoutMs: 900_000 });
+
+    await vi.advanceTimersByTimeAsync(600_000);
+    expect(h.terminate).not.toHaveBeenCalled();
+    h.finish(PICK);
+    await vi.waitFor(() => expect(h.note).toHaveBeenCalledTimes(1));
+  });
+
   it('does not recommend into a context that moved to another conversation', async () => {
     const h = harness();
     h.run('Redesign the settings page please');
@@ -525,10 +596,27 @@ describe('Skill Companion', () => {
     expect(h.note).not.toHaveBeenCalled();
     expect(readSkillCompanionState(h.ctx)).toBeUndefined();
   });
+
+  it('falls back to result.result when report.summary is prose and retires a failed resident', async () => {
+    const h = harness({ maxProbes: 4 });
+    h.run('Redesign the settings page please');
+    await vi.waitFor(() => expect(h.assignInternal).toHaveBeenCalledTimes(1));
+    // First probe fails: resident is retired and a fresh resident is spawned on the next turn.
+    h.finish(PICK, 'error');
+    await vi.waitFor(() => expect(h.terminate).toHaveBeenCalledWith('worker'));
+    h.run('Now redesign the dashboard settings screen');
+    await vi.waitFor(() => expect(h.assignInternal).toHaveBeenCalledTimes(2));
+    expect(h.spawn).toHaveBeenCalledTimes(2);
+    h.finishWithProseSummary(PICK);
+    await vi.waitFor(() => expect(h.note).toHaveBeenCalledTimes(1));
+    expect(readSkillCompanionState(h.ctx)?.recommended).toEqual([
+      { name: 'frontend-design', reason: 'new settings screen' },
+    ]);
+  });
 });
 
 describe('Skill Companion policy', () => {
-  it('caps budgets and strips tools after project overrides', () => {
+  it('honors explicit budgets and strips tools after project overrides', () => {
     const limited = constrainSkillCompanion({
       id: 'skill-companion-x',
       name: 'Skill Companion',
@@ -536,17 +624,23 @@ describe('Skill Companion policy', () => {
       tools: ['bash', 'write'],
       maxToolCalls: 500,
       maxCostUsd: 5,
+      maxIterations: 10,
+      maxTokens: 256_000,
+      timeoutMs: 900_000,
       skillNames: ['testing'],
     });
     expect(limited.tools).toEqual([]);
     expect(limited.sealed).toBe(true);
     expect(limited.skillNames).toEqual([]);
-    expect(limited.maxToolCalls).toBe(2);
-    expect(limited.maxCostUsd).toBe(0.05);
+    expect(limited.maxToolCalls).toBe(500);
+    expect(limited.maxCostUsd).toBe(5);
+    expect(limited.maxIterations).toBe(10);
+    expect(limited.maxTokens).toBe(256_000);
+    expect(limited.timeoutMs).toBe(900_000);
     expect(isSkillCompanion({ id: 'skill-companion-x', name: 'x', role: 'reviewer' })).toBe(false);
   });
 
-  it('token cap holds one full-payload judge call (sealed caps are hard stops)', () => {
+  it('default budget holds one full-payload judge call', () => {
     // Regression: a 6000-token cap with a ~23k-token first call killed every
     // probe after the judge had already answered.
     const tool = makeSubagentResultTool();
@@ -580,6 +674,7 @@ describe('Skill Companion policy', () => {
       role: 'skill-companion',
     });
     expect(call).toBeLessThan(limited.maxTokens!);
+    expect(limited).toMatchObject({ maxTokens: 128_000, maxCostUsd: 1, timeoutMs: 300_000 });
   });
 
   it('parses fenced answers and keeps only offered names', () => {
@@ -593,5 +688,66 @@ describe('Skill Companion policy', () => {
     );
     expect(pick).toEqual({ skills: [{ name: 'testing', reason: 'r' }], confidence: 1 });
     expect(parseSkillCompanionPick('no json here', offered)).toBeUndefined();
+  });
+
+  it('cancels queued probes on director.onSessionTerminate and allows re-probing later', async () => {
+    let terminateListener: ((sessionId: string) => void) | undefined;
+    const events = new EventBus();
+    let completed: (event: { result: TaskResult }) => void = () => {};
+    const spawn = vi.fn(async () => 'worker');
+    const assignInternal = vi.fn(async () => {});
+    const terminate = vi.fn(async () => {});
+    const director = {
+      spawnCompanion: spawn,
+      assignInternal,
+      terminate,
+      status: () => ({ subagents: [{ id: 'worker' }] }),
+      on: (_event: string, handler: typeof completed) => {
+        completed = handler;
+        return () => {};
+      },
+      onSessionTerminate: (cb: (sessionId: string) => void) => {
+        terminateListener = cb;
+        return () => {};
+      },
+    } as unknown as Director;
+    const c2 = new HostSkillCompanion({
+      director,
+      events,
+      skillLoader: () => ({ list: vi.fn(async () => CATALOG) }) as unknown as SkillLoader,
+      enabled: () => true,
+      scrub: (t) => t,
+      note: vi.fn(),
+    });
+    instances.push(c2);
+    void completed;
+    const ctx = leaderCtx('S1');
+    events.emit('agent.run.started', {
+      sessionId: 'S1',
+      ctx,
+      model: 'm',
+      at: new Date().toISOString(),
+      inputText: 'Design a distinctive new UI screen and deploy to cloudflare workers',
+    });
+    await vi.waitFor(() => expect(assignInternal).toHaveBeenCalledTimes(1));
+    // Queue a second probe while first is in flight
+    events.emit('session.agents_updated', {
+      sessionId: 'S1',
+      agents: [
+        {
+          id: 'leader',
+          name: 'leader',
+          status: 'running',
+          iterations: 1,
+          toolCalls: 1,
+          lastActivityAt: new Date().toISOString(),
+          todos: [{ id: 't1', content: 'Write unit tests for worker', status: 'in_progress' }],
+        },
+      ],
+    });
+    terminateListener?.('S1');
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    // Queued todo probe was dropped — no second assignment happened
+    expect(assignInternal).toHaveBeenCalledTimes(1);
   });
 });

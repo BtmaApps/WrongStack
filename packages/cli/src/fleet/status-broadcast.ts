@@ -43,11 +43,41 @@ const DEFAULT_MIN_INTERVAL_MS = 15_000;
 const DEFAULT_GLOBAL_PER_MINUTE = 20;
 const BODY_MAX = 200;
 
-function isSilentInfrastructureAgent(name: string): boolean {
-  // Chimera has its own durable report mail plus chimera.report_available.
-  // Re-broadcasting its ephemeral reviewer lifecycle only adds duplicate
-  // "joined the fleet" / "task success" noise to every project session.
-  return name.trim().toLowerCase() === 'chimera-review';
+const SILENT_INFRASTRUCTURE_NAMES = new Set([
+  'chimera-review',
+  'explore companion',
+  'explore-companion',
+  'memory companion',
+  'memory-companion',
+  'memory-curator',
+  'skill companion',
+  'skill-companion',
+]);
+
+const SILENT_INFRASTRUCTURE_PREFIXES = [
+  'explore-companion-',
+  'memory-companion-',
+  'skill-companion-',
+];
+
+function isSealedCompanionSubagent(subagentId?: string): boolean {
+  return (
+    typeof subagentId === 'string' &&
+    SILENT_INFRASTRUCTURE_PREFIXES.some((prefix) => subagentId.startsWith(prefix))
+  );
+}
+
+function isSilentInfrastructureAgent(name: string, subagentId?: string): boolean {
+  // Chimera and resident host companions (Explore, Memory, Skill) have their
+  // own durable/same-session note channels. Re-broadcasting their internal
+  // lifecycle only adds duplicate "joined the fleet" / "task success" noise
+  // to every project session and consumes the global status rate cap.
+  const normalized = name.trim().toLowerCase();
+  if (SILENT_INFRASTRUCTURE_NAMES.has(normalized)) return true;
+  return (
+    isSealedCompanionSubagent(subagentId) ||
+    SILENT_INFRASTRUCTURE_PREFIXES.some((prefix) => normalized.startsWith(prefix))
+  );
 }
 
 interface PendingBroadcast {
@@ -177,7 +207,7 @@ export function createFleetStatusBroadcaster(opts: FleetStatusBroadcasterOptions
           if (announcedSpawn.has(e.subagentId)) return;
           announcedSpawn.add(e.subagentId);
           const name = e.name ?? nameOf(e.subagentId);
-          if (isSilentInfrastructureAgent(name)) {
+          if (isSilentInfrastructureAgent(name, e.subagentId)) {
             silentInfrastructureAgents.add(e.subagentId);
             return;
           }
@@ -190,6 +220,10 @@ export function createFleetStatusBroadcaster(opts: FleetStatusBroadcasterOptions
           });
         }),
         opts.events.on('subagent.task_started', (e) => {
+          // Sealed resident companions never register in the mailbox agent table;
+          // skipping them avoids opening the project mailbox IPC connection and
+          // sending no-op heartbeats for internal probes.
+          if (isSealedCompanionSubagent(e.subagentId)) return;
           // Registry enrichment only — a start is visible via the pulse;
           // broadcasting every start would double mailbox traffic.
           heartbeat({
@@ -199,9 +233,13 @@ export function createFleetStatusBroadcaster(opts: FleetStatusBroadcasterOptions
           });
         }),
         opts.events.on('subagent.task_completed', (e) => {
+          if (isSealedCompanionSubagent(e.subagentId)) return;
           heartbeat({ agentId: agentIdentity(e.subagentId, e.sessionId), status: 'idle' });
           const name = nameOf(e.subagentId);
-          if (silentInfrastructureAgents.has(e.subagentId) || isSilentInfrastructureAgent(name)) {
+          if (
+            silentInfrastructureAgents.has(e.subagentId) ||
+            isSilentInfrastructureAgent(name, e.subagentId)
+          ) {
             return;
           }
           const ok = e.status === 'success';
@@ -218,7 +256,7 @@ export function createFleetStatusBroadcaster(opts: FleetStatusBroadcasterOptions
           if (!broadcastBudgetWarnings) return;
           if (
             silentInfrastructureAgents.has(e.subagentId) ||
-            isSilentInfrastructureAgent(nameOf(e.subagentId))
+            isSilentInfrastructureAgent(nameOf(e.subagentId), e.subagentId)
           ) {
             return;
           }
@@ -245,11 +283,13 @@ export function createFleetStatusBroadcaster(opts: FleetStatusBroadcasterOptions
         // and (b) the heartbeat path is throttled to 1/5s so it silently drops
         // when fired right after the task_completed idle heartbeat.
         opts.events.on('subagent.removed', (e) => {
-          void mb()
-            .deregisterAgent(agentIdentity(e.subagentId, e.sessionId))
-            .catch(() => {
-              /* best-effort — a broken mailbox must never affect the fleet */
-            });
+          if (!isSealedCompanionSubagent(e.subagentId)) {
+            void mb()
+              .deregisterAgent(agentIdentity(e.subagentId, e.sessionId))
+              .catch(() => {
+                /* best-effort — a broken mailbox must never affect the fleet */
+              });
+          }
           announcedSpawn.delete(e.subagentId);
           silentInfrastructureAgents.delete(e.subagentId);
           lastSentAt.delete(e.subagentId);

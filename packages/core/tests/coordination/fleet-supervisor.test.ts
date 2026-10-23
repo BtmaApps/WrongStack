@@ -650,4 +650,41 @@ describe('FleetSupervisor looping-worker signal', () => {
     expect(h.signals).not.toContain('looping_agent');
     h.supervisor.stop();
   });
+
+  it('leaves host-owned resident companions (explore, memory, skill) completely unsupervised', async () => {
+    const h = makeHarness(approveBrain(), { loopStreak: 2, failureStreak: 2 });
+    h.supervisor.start();
+    h.state.subagents = [
+      sub('explore-companion-sess-1234', 'idle'),
+      sub('memory-companion-5678', 'idle'),
+      sub('skill-companion-9abc', 'idle'),
+    ];
+    h.state.pending = [task('t1'), task('t2')];
+
+    for (const id of [
+      'explore-companion-sess-1234',
+      'memory-companion-5678',
+      'skill-companion-9abc',
+    ]) {
+      emitLoop(h, id);
+      emitLoop(h, id);
+      h.events.emit('subagent.task_completed', {
+        subagentId: id,
+        taskId: 'probe',
+        status: 'error',
+      } as never);
+      h.events.emit('subagent.task_completed', {
+        subagentId: id,
+        taskId: 'probe-2',
+        status: 'error',
+      } as never);
+    }
+    await h.supervisor.evaluate();
+
+    expect(h.signals).toEqual([]);
+    expect(h.actions.retargetPendingTask).not.toHaveBeenCalled();
+    expect(h.actions.steerAgent).not.toHaveBeenCalled();
+    expect(h.actions.terminate).not.toHaveBeenCalled();
+    h.supervisor.stop();
+  });
 });

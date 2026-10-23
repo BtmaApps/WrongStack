@@ -171,6 +171,40 @@ describe('ExploreCompanion trigger mapping', () => {
     await flush();
     expect(h.probes.map((p) => p.hint?.file)).toEqual(['src/a.ts', 'src/b.ts']);
   });
+
+  it('extracts multi_edit edits[] and targetFile/filename paths when writeTargets is absent', async () => {
+    const h = makeHarness();
+    toolExecuted(h.events, { name: 'read', input: { targetFile: 'src/read-first.ts' } });
+    await flush();
+    h.probes.length = 0;
+    toolExecuted(h.events, {
+      name: 'multi_edit',
+      input: {
+        edits: [
+          { file_path: 'src/read-first.ts' },
+          { targetFile: 'src/unread-one.ts' },
+          { filename: 'src/unread-two.ts' },
+        ],
+      },
+    });
+    await flush();
+    expect(h.probes.map((p) => p.hint?.file)).toEqual(['src/unread-one.ts', 'src/unread-two.ts']);
+  });
+
+  it.each([
+    'src/test_auth.py',
+    'src/auth_test.py',
+    'pkg/auth/service_test.go',
+    'crates/core/src/lib_test.rs',
+    '.wrongstack/state.ts',
+    '.venv/lib/site.py',
+    'target/debug/generated.rs',
+  ])('does not fire unfamiliar_read probes on colocated test or internal path %s', async (file) => {
+    const h = makeHarness({ projectRoot: process.cwd() });
+    toolExecuted(h.events, { name: 'read', input: { path: file } });
+    await flush();
+    expect(h.probes).toEqual([]);
+  });
   it('edit on a file the leader never read → map-file probe with file hint', async () => {
     const h = makeHarness();
     toolExecuted(h.events, { name: 'edit', input: { path: 'src/a.ts' } });

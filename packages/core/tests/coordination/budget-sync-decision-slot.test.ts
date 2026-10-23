@@ -20,7 +20,9 @@ function overrun(budget: SubagentBudget): BudgetThresholdSignal | undefined {
 }
 
 const pendingKinds = (budget: SubagentBudget): string[] => [
-  ...(budget as never as { _pendingNegotiations: Map<string, unknown> })._pendingNegotiations.keys(),
+  ...(
+    budget as never as { _pendingNegotiations: Map<string, unknown> }
+  )._pendingNegotiations.keys(),
 ];
 
 type Handler = NonNullable<SubagentBudget['onThreshold']>;

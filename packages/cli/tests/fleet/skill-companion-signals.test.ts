@@ -6,8 +6,11 @@ import {
   validateSkillDocument,
 } from '@wrongstack/core/skills';
 import { describe, expect, it } from 'vitest';
+import { parseSkillCompanionPick } from '../../src/fleet/skill-companion-policy.js';
 import {
+  editedPaths,
   evidenceSignature,
+  fileFamily,
   rankSkillCandidates,
   workTerms,
 } from '../../src/fleet/skill-companion-signals.js';
@@ -76,5 +79,44 @@ describe('Skill Companion signals', () => {
     expect(validateSkillDocument(doc('paths:\n  nested: true'), 'edge')).toContain(
       'paths must be a string or a list of strings',
     );
+  });
+
+  it('distinguishes high-signal config and workflow families from generic extensions', () => {
+    expect(fileFamily('.github/workflows/ci.yml')).toBe('ci');
+    expect(fileFamily('next.config.ts')).toBe('next-config');
+    expect(fileFamily('tailwind.config.ts')).toBe('tailwind');
+    expect(fileFamily('playwright.config.ts')).toBe('playwright');
+    expect(fileFamily('vitest.config.ts')).toBe('vitest');
+    expect(fileFamily('drizzle.config.ts')).toBe('drizzle');
+    expect(fileFamily('wrangler.toml')).toBe('wrangler');
+    expect(fileFamily('src/app.test.ts')).toBe('test');
+    expect(fileFamily('tests/test_auth.py')).toBe('test');
+    expect(fileFamily('Dockerfile.prod')).toBe('docker');
+    expect(fileFamily('compose.yaml')).toBe('docker');
+    expect(fileFamily('src/index.ts')).toBe('.ts');
+  });
+
+  it('extracts editedPaths from camelCase, target_file, paths[], and multi_edit edits[] inputs', () => {
+    expect(editedPaths({ filePath: ' src/App.tsx ' }, undefined)).toEqual(['src/App.tsx']);
+    expect(editedPaths({ target_file: 'workers/edge.ts' }, undefined)).toEqual(['workers/edge.ts']);
+    expect(editedPaths({ paths: ['a.ts', 'b.tsx'] }, undefined)).toEqual(['a.ts', 'b.tsx']);
+    expect(
+      editedPaths(
+        {
+          edits: [{ file_path: 'src/one.ts' }, { filePath: 'src/two.ts' }, { path: 'src/one.ts' }],
+        },
+        undefined,
+      ),
+    ).toEqual(['src/one.ts', 'src/two.ts']);
+  });
+
+  it('extracts JSON picks even when prefaced by earlier brace blocks or fences', () => {
+    const candidates = [{ name: 'cloudflare', description: 'Workers' }];
+    const raw =
+      'Context {"echo":1}\n```json\n{"skills":[{"name":"cloudflare","reason":"Workers deploy"}],"confidence":0.9}\n```';
+    expect(parseSkillCompanionPick(raw, candidates)).toEqual({
+      skills: [{ name: 'cloudflare', reason: 'Workers deploy' }],
+      confidence: 0.9,
+    });
   });
 });

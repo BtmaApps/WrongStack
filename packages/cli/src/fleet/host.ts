@@ -51,9 +51,9 @@ import { HostLearningScheduler } from './host-learning-scheduler.js';
 import { HostLearningRoleTracker } from './host-learning-tracker.js';
 import { emitHostLifecycleCompleted } from './host-lifecycle-events.js';
 import type { HostMemoryCompanion } from './host-memory-companion.js';
-import type { HostSkillCompanion } from './host-skill-companion.js';
 import { applyFleetRootDefaults } from './host-paths.js';
 import { HostShadowManager } from './host-shadow-manager.js';
+import type { HostSkillCompanion } from './host-skill-companion.js';
 import type { HostSpawnAndWaitOptions, HostSpawnOptions } from './host-spawn-types.js';
 import { buildFleetHostStatus, type FleetHostStatus, type FleetHostUsage } from './host-status.js';
 import { createHostSubagentFactory } from './host-subagent-factory.js';
@@ -470,6 +470,8 @@ export class MultiAgentHost {
   }
 
   private captureCompletedTaskLearning(result: TaskResult): void {
+    // Host companions are single-purpose observers/judges, not trainable roles.
+    if (result.subagentId.startsWith('explore-companion-')) return;
     // A verifier's provisional judgment must not train the role as a new fact
     // before the source/revision gate has accepted its report.
     if (result.subagentId.startsWith('memory-companion-')) return;

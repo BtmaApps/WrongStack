@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-23T15:26:07.634Z
+**Generated:** 2026-10-23T15:27:33.295Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,7 +9,7 @@
 |---|---:|
 | Workspace packages | 38 |
 | Production source files | 5252 |
-| Production source lines | 1148067 |
+| Production source lines | 1148661 |
 | Test files | 4648 |
 | Workspace dependency edges | 140 |
 | Relative module edges | 17303 |
@@ -88,11 +88,13 @@ None.
 | 1098 | `packages/webui/src/components/codemap-model.ts` |
 | 911 | `packages/vibeui/src/lib/session.ts` |
 | 889 | `packages/tools/src/codebase-index/infra-parser.ts` |
+| 754 | `packages/cli/src/fleet/host-skill-companion.ts` |
 | 734 | `apps/desktop/src/main/main.ts` |
 | 733 | `packages/vibeui/src/components/provider-manager.tsx` |
+| 725 | `packages/core/src/coordination/multi-agent-coordinator.ts` |
 | 720 | `packages/webui/src/components/MemoryManager/useMemoryManagerState.ts` |
+| 715 | `packages/core/src/coordination/agent-monitor.ts` |
 | 715 | `packages/plugins/src/audit/index.ts` |
-| 712 | `packages/core/src/coordination/multi-agent-coordinator.ts` |
 | 708 | `packages/vibeui/src/lib/use-session.ts` |
 | 707 | `packages/acp/src/client/acp-session.ts` |
 | 705 | `packages/core/src/chronicle/project-server-client.ts` |
@@ -111,7 +113,6 @@ None.
 | 695 | `packages/core/src/storage/config-loader.ts` |
 | 694 | `packages/cli/src/slash-commands/fix-classifier.ts` |
 | 694 | `packages/core/src/core/agent-response.ts` |
-| 693 | `packages/core/src/coordination/agent-monitor.ts` |
 | 693 | `packages/core/src/execution/eternal-autonomy.ts` |
 | 692 | `packages/core/src/core/agent-loop.ts` |
 | 692 | `packages/simpleui/src/automation-workspace.tsx` |
@@ -124,7 +125,6 @@ None.
 | 691 | `packages/tui/src/hooks/use-director-fleet-bridge.ts` |
 | 691 | `packages/webui-server/src/server/session-handler-helpers.ts` |
 | 691 | `packages/webui/src/components/SettingsPanel/index.tsx` |
-| 690 | `packages/cli/src/fleet/host-skill-companion.ts` |
 | 690 | `packages/cli/src/slash-commands/kanban-task-subcommands.ts` |
 | 690 | `packages/core/src/coordination/autonomous-coordinator.ts` |
 | 690 | `packages/plugins/src/notify-hub/index.ts` |
