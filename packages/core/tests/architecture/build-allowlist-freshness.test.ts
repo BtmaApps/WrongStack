@@ -61,6 +61,13 @@ function blockEntries(key: string): string[] {
   return out;
 }
 
+/** Entries of an optional top-level block; an absent block grants nothing. */
+function optionalBlockEntries(key: string): string[] {
+  return workspaceYaml.split(/\r?\n/).some((line) => line.startsWith(`${key}:`))
+    ? blockEntries(key)
+    : [];
+}
+
 /** Whether the lockfile resolves this package at any version, at any depth. */
 function inLockfile(name: string): boolean {
   // pnpm lockfile keys are `/name@version` or `name@version:` depending on the
@@ -294,7 +301,7 @@ describe('build-allowlist freshness across workflows (VF-31)', () => {
  * 4.0.62). Unlike `allowBuilds`, nothing was pinning this list.
  */
 describe('cooldown exclusions stay in sync with the tree (WS-SEC-17)', () => {
-  const excludes = blockEntries('minimumReleaseAgeExclude');
+  const excludes = optionalBlockEntries('minimumReleaseAgeExclude');
 
   /**
    * Every version the lockfile resolves for a package name.
@@ -315,10 +322,7 @@ describe('cooldown exclusions stay in sync with the tree (WS-SEC-17)', () => {
     return [...out].sort();
   }
 
-  it('parses the exclude block', () => {
-    // Same vacuity guard as the blocks above: an empty parse would make the
-    // assertion below pass while checking nothing.
-    expect(excludes.length).toBeGreaterThan(0);
+  it('parses every configured exclusion while allowing the safer empty state', () => {
     expect(excludes.every((e) => e.lastIndexOf('@') > 0)).toBe(true);
   });
 

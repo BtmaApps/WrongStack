@@ -17,8 +17,10 @@ overrides:
   # dompurify <=3.4.12: IN_PLACE hook removal leaves a detached subtree
   # executable -> XSS (GHSA-55q2-fjhq-7xh7). Patched in 3.4.13.
   # dompurify <=3.4.15: IN_PLACE rawtext XSS (GHSA-6688-9rhm-gjv2). Patched in 3.4.16.
+  # dompurify 3.4.16: SAFE_FOR_TEMPLATES and IN_PLACE bypasses
+  # (GHSA-cg2g-xh64-v4q7, GHSA-mrv2-3pqr-j5jr). Patched in 3.4.17.
   # Pulled in transitively by monaco-editor (webui).
-  dompurify: ">=3.4.16"
+  dompurify: ">=3.4.17"
   # sharp <0.35.0 libvips vulnerabilities (GHSA-f88m-g3jw-g9cj).
   # sharp <0.35.5: RCE via librsvg CVE-2026-96889 (GHSA-wq5f-xc86-pv6w). Patched in 0.35.5.
   sharp: ">=0.35.5"
@@ -34,6 +36,9 @@ overrides:
   # fast-uri <3.1.8: inconsistent host case normalization via percent-encoding.
   # Transitive through ajv (webui-protocol, electron-builder).
   fast-uri@>=3.0.0 <3.1.8: ^3.1.8
+  # GHSA-ch52-4w7c-c8xp: max-stale handling can disclose cross-user cached
+  # responses. Pulled in through Electron's download stack; fixed in 4.3.0.
+  http-cache-semantics: ">=4.3.0"
   # GHSA-68fv-2mgg-jv7q: indexed source-map offsets can block the event loop.
   source-map-js@<1.2.2: 1.2.2
   # GHSA-hp3w-g68c-fv3c: remove sprintf-js via the maintained proxy agent.
@@ -53,12 +58,6 @@ peerDependencyRules:
 auditConfig:
   ignoreGhsas:
     - GHSA-gv7w-rqvm-qjhr
-    # No upstream release fixes GHSA-ch52-4w7c-c8xp as of 2026-10-03.
-    # The pinned local patch refuses stale reuse when maxAge() is zero.
-    # cache-semantics-patch.test.ts requires the patch, every lockfile resolution,
-    # and the installed dependency used by cacheable-request to remain guarded.
-    # Isolated before/after and compatibility proof: .reports/openhands-third-cache-security.json.
-    - GHSA-ch52-4w7c-c8xp
 allowBuilds:
   # electron-winstaller: arrives transitively with electron-builder (desktop
   # packaging). Its `install` script (`script/select-7z-arch.js`) copies the
@@ -107,12 +106,6 @@ minimumReleaseAge: 1440
 # strings to reappear and skip the delay with no review. Removed 2026-09-10
 # and pinned by `build-allowlist-freshness.test.ts`, which now fails on a
 # stale entry the way it already did for `allowBuilds`.
-minimumReleaseAgeExclude:
-  # GHSA-6688-9rhm-gjv2 (IN_PLACE rawtext XSS): 3.4.16 is the advisory fix,
-  # published 2026-10-06 and required by the >=3.4.16 override floor above.
-  - "dompurify@3.4.16"
-patchedDependencies:
-  http-cache-semantics@4.2.0: patches/http-cache-semantics@4.2.0.patch
 # pnpm 12 no longer reads pnpm-specific settings from .npmrc (verified
 # 2026-09-19: `pnpm config get verify-deps-before-run` stayed `undefined` with
 # the key present in .npmrc) — this file is the operative config home.
