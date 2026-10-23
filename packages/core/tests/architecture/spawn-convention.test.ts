@@ -67,6 +67,8 @@ const REASON_SELF_RELAUNCH =
   'Relaunches the wstack CLI itself or its bundled UI — must inherit the full operator shell environment.';
 const REASON_OPERATOR_TOOL =
   'Operator-facing helper (browser opener, git query, interactive prompt) running with the operator shell environment by contract.';
+const REASON_GIT_ISOLATION_PROBE =
+  'Leaf-level bootstrap probe that runs only git config with core.fsmonitor disabled to discover repository filter commands before the sanitized git environment can exist; it cannot import core buildChildEnv without reversing the workspace dependency graph.';
 const REASON_TRUSTED_DAEMON =
   'Spawns a trusted wstack-managed project daemon that may decrypt config/vault state — inherited env is the contract between wstack processes.';
 const REASON_INTERNAL_WORKER =
@@ -108,6 +110,7 @@ const CHILD_ENV_EXEMPT: Record<string, string> = {
   'cli/src/services/run-git.ts': REASON_OPERATOR_TOOL,
   'cli/src/slash-commands/review.ts': REASON_OPERATOR_TOOL,
   'cli/src/slash-commands/suggest.ts': REASON_OPERATOR_TOOL,
+  'primitives/src/git-isolation.ts': REASON_GIT_ISOLATION_PROBE,
   'webui-server/src/server/open-browser.ts': REASON_OPERATOR_TOOL,
   'webui-server/src/server/frontend-static-serve.ts': REASON_OPERATOR_TOOL,
   // ── Trusted wstack daemons ──

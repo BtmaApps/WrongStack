@@ -128,7 +128,7 @@ describe('Agent.run required-skill gate', () => {
     ]);
     dirs.push(tmp);
 
-    await agent.run(`Hunt one bug.\n${MARKER}`);
+    await agent.run(`Hunt one bug.\n${MARKER}`, { inputOrigin: 'user' });
 
     expect(editSpy).toHaveBeenCalledTimes(1);
     const results = toolResults(provider);
@@ -154,13 +154,15 @@ describe('Agent.run required-skill gate', () => {
     ]);
     dirs.push(tmp);
 
-    await agent.run(`Hunt one bug.\n${MARKER}`);
+    await agent.run(`Hunt one bug.\n${MARKER}`, { inputOrigin: 'user' });
     expect(editSpy).toHaveBeenCalledTimes(1);
 
     agent.ctx.state.replaceMessages([
       { role: 'system', content: '[prior_turns_digest: round 1; tool I/O omitted]' },
     ]);
-    await agent.run("This is round 2/3; we're continuing the bug hunt.");
+    await agent.run("This is round 2/3; we're continuing the bug hunt.", {
+      inputOrigin: 'continuation',
+    });
 
     expect(editSpy).toHaveBeenCalledTimes(2);
     const results = toolResults(provider);
@@ -172,7 +174,7 @@ describe('Agent.run required-skill gate', () => {
     const { agent, editSpy, tmp } = await buildAgent([toolUse('e1', 'edit'), DONE]);
     dirs.push(tmp);
 
-    await agent.run('Load $bug-hunter and fix the bug.');
+    await agent.run('Load $bug-hunter and fix the bug.', { inputOrigin: 'user' });
 
     expect(editSpy).toHaveBeenCalledTimes(1);
   });

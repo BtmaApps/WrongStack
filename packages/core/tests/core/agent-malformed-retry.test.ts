@@ -142,7 +142,7 @@ describe('malformed tool call → specific error feedback → model retry (E2E)'
     ]);
     const { agent, tmp } = await buildAgent(provider, [kitTool, writer]);
     cleanupDirs.push(tmp);
-    expect((await agent.run('Check settings parity')).status).toBe('done');
+    expect((await agent.run('Check settings parity', { inputOrigin: 'user' })).status).toBe('done');
     expect(create).toHaveBeenCalledWith(
       expect.objectContaining({ task: 'Check settings parity', projectRoot: tmp }),
     );
@@ -173,7 +173,7 @@ describe('malformed tool call → specific error feedback → model retry (E2E)'
     const { agent, ctx, tmp } = await buildAgent(provider, [kitTool]);
     cleanupDirs.push(tmp);
     ctx.meta.featureToolCoach = false;
-    await agent.run('Check settings parity');
+    await agent.run('Check settings parity', { inputOrigin: 'user' });
     expect(create).not.toHaveBeenCalled();
     expect(JSON.stringify(provider.receivedRequests)).not.toContain('must not appear');
   });
@@ -219,7 +219,7 @@ describe('malformed tool call → specific error feedback → model retry (E2E)'
     const { agent, ctx, tmp } = await buildAgent(provider, [readTool]);
     cleanupDirs.push(tmp);
 
-    const result = await agent.run('read a.ts', { maxIterations: 10 });
+    const result = await agent.run('read a.ts', { maxIterations: 10, inputOrigin: 'user' });
 
     // The run never crashed — every malformed turn became an is_error
     // tool_result and the loop kept going to completion.
@@ -295,7 +295,7 @@ describe('malformed tool call → specific error feedback → model retry (E2E)'
     cleanupDirs.push(tmp);
     ctx.meta['featureToolCoach'] = false;
 
-    await agent.run('Read a.ts');
+    await agent.run('Read a.ts', { inputOrigin: 'user' });
 
     expect(provider.calls).toBe(2);
     expect(JSON.stringify(provider.receivedRequests)).not.toContain('[TOOL COACH');
