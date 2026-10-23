@@ -1,11 +1,11 @@
-// Changelog — 1.x era (1.1.13 → 1.0.0).
+// Changelog — 1.x era (1.1.14 → 1.0.0).
 // Historical entries mirror CHANGELOG.md release notes. The 1.0.37 entry was
 // written from committed runtime/source evidence (git history and packages), not
 // the root CHANGELOG, which had not been extended when it landed. 1.1.0 absorbs
 // the 1.0.38 bump, which was never published.
 // The 1.1.5 entry summarizes the commits in v1.1.4..v1.1.5, the 1.1.6 entry
 // those in v1.1.5..v1.1.6, and the 1.1.7 entry those in v1.1.6..v1.1.7.
-// The 1.1.13 entry summarizes v1.1.12..HEAD, including the dependency refresh.
+// The 1.1.13 and 1.1.14 entries mirror the tagged release notes.
 // Split out of src/lib/utils.ts.
 
 import type { ChangelogEntry } from './changelog-types';
@@ -14,15 +14,16 @@ export const changelog1x: ChangelogEntry[] = [
   {
     version: '1.1.14',
     date: '2026-10-23',
-    tagline:
-      'Polyglot codebase intelligence, Louvain community clustering, execution flow slicing and WebUI CodeMap 2.0',
+    tagline: 'Polyglot codebase intelligence, CodeMap 2.0 and durable mission continuity',
     latest: true,
     highlights: [
       'Four new built-in and MCP codebase intelligence tools: codebase-atlas, codebase-diff-impact, codebase-flow-trace and codebase-onboard',
-      'Structural fingerprinting, >50% body-span drift gates, deterministic Louvain community clustering and 4-layer schema normalization for incremental concept enrichment',
-      'Polyglot infrastructure & schema graph parsing across Dockerfile, docker-compose, GitHub Actions, SQL, GraphQL, Protobuf, Terraform, Kubernetes, OpenAPI, Makefile, CMake, dotenv, Markdown WikiLinks and Shell scripts',
-      'Cross-system SAGE memory anchor healing (file moves and symbol renames) and WrongTrace error/latency health alerts surfaced in codebase impact and context tools',
-      'WebUI CodeMap 2.0 adds BFS shortest-path animation, 0/1/2-hop blast radius rings, collapsible Louvain subsystem clusters, persona-aware guided tours and one-click execution flow tracing',
+      'Polyglot graph enrichment connects Docker, Compose, GitHub Actions, SQL, GraphQL, Protobuf, Terraform, Kubernetes, OpenAPI, Make, CMake, dotenv, Markdown WikiLinks and shell inputs; deterministic Louvain clustering groups related modules',
+      'WebUI CodeMap 2.0 adds shortest-path animation, hop-based blast-radius rings, collapsible subsystem clusters, persona-aware guided tours and one-click execution-flow tracing; tour and path-finder accessibility text is localized across all seven catalogs',
+      'Real user turns stay distinct from continuations and runtime input, and a durable mission anchor keeps automatic follow-ups aligned with the user’s request',
+      'Automatic and read-only Git operations clear repository-controlled filters and filesystem monitors before inspecting untrusted checkouts, including worktree, plugin, WebUI and code-index paths',
+      'Cancellation, pull-request identity, patch paths, provider handoffs, streaming task ownership and process-kill parsing gain regression coverage across the runtime and interfaces',
+      'DOMPurify 3.4.17 and http-cache-semantics 4.3.0 bring upstream security fixes, replacing an obsolete local patch and advisory exception',
     ],
   },
   {

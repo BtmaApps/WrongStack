@@ -41,6 +41,7 @@ import {
   version,
 } from '@/data/content';
 import { Link } from '@/lib/router';
+import { releaseHighlights } from '@/data/release-highlights';
 
 const demoLines = [
   { type: 'command', text: 'wrongstack "trace the flaky checkout test and fix it"' },
@@ -332,17 +333,12 @@ export function HomePage() {
             <div className="max-w-3xl">
               <Eyebrow>Release highlights · v{version}</Eyebrow>
               <h2 className="mt-3 text-3xl font-black tracking-[-0.035em] text-fg sm:text-4xl">
-                Bun-first development. Skill guidance. Sealed helpers.
+                {releaseHighlights.title}
               </h2>
-              <p className="mt-4 text-base leading-7 text-muted">
-                In {version}: contributor scripts, tests, CI and the SQLite adapters run on the
-                pinned Bun toolchain. A resident Skill Companion watches active work and recommends
-                missed skills, sealed subagents keep host-owned helpers inside one job, and
-                document, media and workflow playbooks grow the bundled skill catalog to 116 skills.
-              </p>
+              <p className="mt-4 text-base leading-7 text-muted">{releaseHighlights.summary}</p>
             </div>
             <a
-              href={`${repoUrl}/blob/main/CHANGELOG.md`}
+              href={`${repoUrl}/blob/v${version}/CHANGELOG.md`}
               className="group inline-flex shrink-0 items-center gap-2 text-sm font-bold text-fg"
             >
               Read {version} release notes
@@ -350,34 +346,19 @@ export function HomePage() {
             </a>
           </div>
           <div className="mt-6 grid gap-px overflow-hidden rounded-2xl border border-line bg-line md:grid-cols-3">
-            {[
-              [
-                'Bun-first development',
-                'Workspace scripts, tests, CI and the SQLite adapters support Bun, and contributor commands run on the pinned Bun toolchain.',
-              ],
-              [
-                'Skill guidance',
-                'Local intent rules suggest playbooks without an API call, and the Skill Companion recommends missed skills through a sealed, tool-less judge that accepts only host-owned tasks.',
-              ],
-              [
-                'Focused reading and setup',
-                'codebase-read-symbol reads a named declaration from a file with AST parsing and exact line bounds. /browser reports Chromium readiness, installs its runtime and manages project origin allowances.',
-              ],
-            ].map(([title, body], index) => (
+            {releaseHighlights.cards.map(({ title, body, href, linkLabel }, index) => (
               <Reveal key={title} delay={index * 0.04} className="bg-card p-6">
                 <span className="font-mono text-xs font-black text-brand-2">
                   {String(index + 1).padStart(2, '0')}
                 </span>
                 <h3 className="mt-6 text-lg font-black tracking-[-0.025em] text-fg">{title}</h3>
                 <p className="mt-2 text-sm leading-6 text-muted">{body}</p>
-                {title === 'WrongStack ToolFlow' && (
-                  <Link
-                    href="/tools/tool-script"
-                    className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-brand"
-                  >
-                    See the measured contribution <ArrowRight className="size-4" />
-                  </Link>
-                )}
+                <Link
+                  href={href}
+                  className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-brand"
+                >
+                  {linkLabel} <ArrowRight className="size-4" />
+                </Link>
               </Reveal>
             ))}
           </div>

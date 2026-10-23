@@ -177,12 +177,13 @@ export const featureStories: Feature[] = [
     eyebrow: 'Repository understanding',
     title: 'Navigate structure, symbols and meaning before editing',
     summary:
-      'Fast file search, a persistent codebase index and an optional LSP bridge let the agent move from text matches to symbol-aware repository understanding.',
+      'Polyglot repository graphs connect symbols, infrastructure and schemas. Atlas, change-impact, execution-flow and onboarding tools expose that structure, and WebUI CodeMap 2.0 makes it navigable alongside search and the optional LSP bridge.',
     details: [
-      'Grep, glob and tree cover fast structural discovery',
-      'Codebase index supports project-wide retrieval',
+      'codebase-atlas maps repository hubs and Louvain communities; codebase-diff-impact inspects change impact',
+      'codebase-flow-trace follows execution paths; codebase-onboard builds dependency-ordered architectural tours',
+      'Infrastructure and schema inputs contribute normalized relationships to the polyglot graph',
+      'CodeMap 2.0 adds shortest paths, blast-radius rings, collapsible clusters and guided tours',
       'LSP diagnostics and go-to-definition add semantic context',
-      'Monaco completion serves the graphical editing surface',
       'TypeScript dead-code findings include confidence and preview; selected cleanup rechecks, verifies and supports undo',
     ],
     icon: ScanSearch,
@@ -368,7 +369,7 @@ export const capabilityIndex = [
   ['Agent workflow', 'Goals, todos, plans, SDD, Goal, BTW, prompt enhancement', 'agent-workflow'],
   [
     'Code intelligence',
-    'Grep, glob, tree, codebase index, LSP bridge, Monaco completion',
+    'Polyglot graphs, repository atlas, change impact, execution flows and CodeMap 2.0',
     'code-intelligence',
   ],
   [

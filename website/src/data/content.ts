@@ -571,12 +571,12 @@ export const surfaces = [
     name: 'WebUI',
     tagline: 'The rich workspace',
     description:
-      'A per-session browser workspace with chat search, code editing, live tool progress, checkpoints, tasks and model routing. Run standalone or share the CLI agent.',
+      'A per-session browser workspace with chat search, code editing, CodeMap 2.0, live tool progress, checkpoints, tasks and model routing. Run standalone or share the CLI agent.',
     launch: 'wstack --webui',
     best: 'Visual inspection and browser-based work',
     traits: [
       'Standalone or shared agent',
-      'Monaco editor and Code Atlas',
+      'Monaco editor and CodeMap 2.0',
       'Rich tool cards and Bug Hunt',
       'Token-gated remote access',
     ],

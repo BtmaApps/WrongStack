@@ -1,12 +1,12 @@
 import type { SiteRoute } from './content';
 import { COMMAND_COUNT } from './content-commands';
 import { PLUGIN_COUNT, TOOL_COUNT } from './runtime-catalog';
+import { releaseHighlights } from './release-highlights';
 
 export const pageMeta: Record<SiteRoute, { title: string; description: string }> = {
   '/': {
     title: 'WrongStack — AI coding, under your control',
-    description:
-      'A terminal-native AI coding agent with tools, memory, multi-agent fleets, MCP, WebUI, Desktop and explicit permission control.',
+    description: releaseHighlights.socialDescription,
   },
   '/features': {
     title: 'Features — WrongStack',

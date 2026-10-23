@@ -1,6 +1,8 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { releaseHighlights } from '../src/data/release-highlights';
+import { pageMeta } from '../src/data/content-page-meta';
 import {
   type ChangelogEntry,
   changelog,
@@ -52,6 +54,26 @@ describe('site data — changelog invariants', () => {
     expect(changelog[0]?.version).toBe(packageVersion);
     expect(changelog[0]?.latest).toBe(true);
     expect(changelog[0]?.highlights.length).toBeGreaterThan(0);
+  });
+
+  it('keeps the release spotlight and social previews aligned with the current release', () => {
+    const html = new DOMParser().parseFromString(
+      readFileSync(resolve(websiteRoot, 'index.html'), 'utf8'),
+      'text/html',
+    );
+    const schema = JSON.parse(
+      html.querySelector('script[type="application/ld+json"]')!.textContent!,
+    );
+    expect(releaseHighlights.version).toBe(packageVersion);
+    expect(pageMeta['/'].description).toBe(releaseHighlights.socialDescription);
+    expect(html.querySelector('meta[property="og:description"]')?.getAttribute('content')).toBe(
+      releaseHighlights.socialDescription,
+    );
+    expect(html.querySelector('meta[name="twitter:description"]')?.getAttribute('content')).toBe(
+      releaseHighlights.socialDescription,
+    );
+    expect(schema.softwareVersion).toBe(packageVersion);
+    expect(schema.dateModified).toBe(`${changelog[0]!.date}T00:00:00Z`);
   });
 
   it('keeps every entry on an ISO date with a non-empty tagline and highlights', () => {
