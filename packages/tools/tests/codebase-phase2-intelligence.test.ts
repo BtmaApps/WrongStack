@@ -253,11 +253,15 @@ export function testDiscount(): void {
 `,
     );
 
-    const report = await codebaseDiffImpactTool.execute({ persist: true }, {
-      cwd: tmpDir,
-      projectRoot: tmpDir,
-      meta: { codebaseIndexDir: indexDir },
-    } as never);
+    const report = await codebaseDiffImpactTool.execute(
+      { persist: true },
+      {
+        cwd: tmpDir,
+        projectRoot: tmpDir,
+        meta: { codebaseIndexDir: indexDir },
+      } as never,
+      { signal: new AbortController().signal },
+    );
 
     expect(report.status).toBe('ok');
     expect(report.persistedOverlayPath).toBe('.wrongstack/atlas/diff-overlay.json');

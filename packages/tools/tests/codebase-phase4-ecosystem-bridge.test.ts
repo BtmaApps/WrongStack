@@ -208,6 +208,7 @@ describe('Phase 4.1: Cross-System Ecosystem Bridge (SAGE + Codebase Index)', () 
           projectRoot: tmpDir,
           meta: { codebaseIndexDir: indexDir },
         } as never,
+        { signal: new AbortController().signal },
       );
 
       expect(res.symbol).toBe('settleInvoice');
@@ -470,11 +471,15 @@ describe('Phase 4.1: Cross-System Ecosystem Bridge (SAGE + Codebase Index)', () 
         projectRoot: tmpDir,
         meta: { codebaseIndexDir: indexDir },
       } as never;
-      const briefRes = await codebaseAtlasTool.execute({ mode: 'brief' }, ctx);
+      const briefRes = await codebaseAtlasTool.execute({ mode: 'brief' }, ctx, {
+        signal: new AbortController().signal,
+      });
       expect(briefRes.indexed).toBe(true);
       expect(briefRes.brief).toBeDefined();
 
-      const writeRes = await codebaseAtlasTool.execute({ mode: 'write' }, ctx);
+      const writeRes = await codebaseAtlasTool.execute({ mode: 'write' }, ctx, {
+        signal: new AbortController().signal,
+      });
       expect(writeRes.written?.files).toContain('atlas.json');
       expect(writeRes.freshness?.fresh).toBe(true);
     } finally {

@@ -1,8 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createMessageHandler } from '../src/lib/message-handler.js';
 import { DEFAULT_PREFS } from '../src/lib/prefs-model.js';
+import type { QueuedItem } from '../src/lib/queue-model.js';
 import { createWorklistStore } from '../src/lib/worklist-store.js';
-import type { ChatMessage, QueuedItem, ToolCallInfo } from '../src/types.js';
+import type { ChatMessage, ToolCallInfo } from '../src/types.js';
 
 function harness() {
   let messages: ChatMessage[] = [];

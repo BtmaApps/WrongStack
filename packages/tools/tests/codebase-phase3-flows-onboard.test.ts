@@ -301,6 +301,7 @@ export function handleLoginRequest(email: string): string {
         projectRoot: tmpDir,
         meta: { codebaseIndexDir: indexDir },
       } as never,
+      { signal: new AbortController().signal },
     );
 
     expect(result.status).toBe('ok');
@@ -349,11 +350,15 @@ export function handleLoginRequest(email: string): string {
     ]);
 
     try {
-      const onboard = await codebaseOnboardTool.execute({ maxSteps: 5 }, {
-        cwd: tmpDir,
-        projectRoot: tmpDir,
-        meta: { codebaseIndexDir: indexDir },
-      } as never);
+      const onboard = await codebaseOnboardTool.execute(
+        { maxSteps: 5 },
+        {
+          cwd: tmpDir,
+          projectRoot: tmpDir,
+          meta: { codebaseIndexDir: indexDir },
+        } as never,
+        { signal: new AbortController().signal },
+      );
 
       expect(onboard.status).toBe('ok');
       expect(onboard.steps.length).toBeGreaterThanOrEqual(3);
@@ -387,11 +392,15 @@ export function handleLoginRequest(email: string): string {
       expect(notes).toContain('Asynchronous Promise/async execution boundary.');
       expect(notes).toContain('Supports cooperative cancellation via AbortSignal.');
 
-      const nonTech = await codebaseOnboardTool.execute({ maxSteps: 4, persona: 'non-technical' }, {
-        cwd: tmpDir,
-        projectRoot: tmpDir,
-        meta: { codebaseIndexDir: indexDir },
-      } as never);
+      const nonTech = await codebaseOnboardTool.execute(
+        { maxSteps: 4, persona: 'non-technical' },
+        {
+          cwd: tmpDir,
+          projectRoot: tmpDir,
+          meta: { codebaseIndexDir: indexDir },
+        } as never,
+        { signal: new AbortController().signal },
+      );
       expect(nonTech.persona).toBe('non-technical');
       expect(nonTech.steps[0]?.explanation).toContain('cross-module workflows');
     } finally {
