@@ -144,7 +144,7 @@ export function findSemanticLintCandidates(
       continue;
     }
     if (raw.startsWith('+++ ')) {
-      const target = raw.slice(4).trim();
+      const target = unquoteDiffPath(raw.slice(4).trim());
       file = target === '/dev/null' ? '' : target.replace(/^b\//, '');
       continue;
     }
@@ -167,6 +167,34 @@ export function findSemanticLintCandidates(
   }
   flush();
   return out;
+}
+
+const C_ESCAPES: Readonly<Record<string, number>> = { t: 9, n: 10, r: 13, '"': 34, '\\': 92 };
+
+/**
+ * git C-quotes a diff header path holding non-ASCII or special bytes
+ * (`"b/\305\237ema.ts"`, core.quotePath); `\NNN` escapes are UTF-8 bytes.
+ */
+function unquoteDiffPath(value: string): string {
+  if (value.length < 2 || !value.startsWith('"') || !value.endsWith('"')) return value;
+  const inner = value.slice(1, -1);
+  const bytes: number[] = [];
+  for (let i = 0; i < inner.length; i++) {
+    const code = inner.codePointAt(i) ?? 0;
+    if (code !== 92) {
+      const ch = String.fromCodePoint(code);
+      bytes.push(...Buffer.from(ch, 'utf8'));
+      i += ch.length - 1;
+    } else if (/^[0-7]{3}/.test(inner.slice(i + 1, i + 4))) {
+      bytes.push(Number.parseInt(inner.slice(i + 1, i + 4), 8));
+      i += 3;
+    } else {
+      const next = inner[i + 1] ?? '';
+      bytes.push(C_ESCAPES[next] ?? next.charCodeAt(0));
+      i += 1;
+    }
+  }
+  return Buffer.from(bytes).toString('utf8');
 }
 
 /** Judge candidates, one request per rule chunk. Never throws. */

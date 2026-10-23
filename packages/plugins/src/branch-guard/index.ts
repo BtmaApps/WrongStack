@@ -235,12 +235,17 @@ interface GitCommandMatch {
  * `git -C . commit` or `git -c user.name=x commit` past the guard.
  */
 const GIT_GLOBAL_OPTIONS = String.raw`(?:\s+(?:-[Cc]\s+(?:"[^"]*"|'[^']*'|\S+)|--(?:git-dir|work-tree|namespace|exec-path|super-prefix)\s+(?!-)\S+|--?(?![Cc]\s)[A-Za-z][\w-]*(?:=\S+)?))*`;
+/**
+ * The git binary as a shell spells it: `git`, Windows' `git.exe`, and the end
+ * of a quoted full path (`"C:\Program Files\Git\cmd\git.exe" commit`).
+ */
+const GIT_BINARY = String.raw`\bgit(?:\.exe)?["']?`;
 const GIT_OP_RE = new RegExp(
-  String.raw`\bgit${GIT_GLOBAL_OPTIONS}\s+(commit|push|merge)(?![a-zA-Z0-9_-])`,
+  String.raw`${GIT_BINARY}${GIT_GLOBAL_OPTIONS}\s+(commit|push|merge)(?![a-zA-Z0-9_-])`,
   'g',
 );
 const GIT_SWITCH_RE = new RegExp(
-  String.raw`\bgit${GIT_GLOBAL_OPTIONS}\s+(checkout|switch)\s+([^;&|\n]*)`,
+  String.raw`${GIT_BINARY}${GIT_GLOBAL_OPTIONS}\s+(checkout|switch)\s+([^;&|\n]*)`,
   'g',
 );
 

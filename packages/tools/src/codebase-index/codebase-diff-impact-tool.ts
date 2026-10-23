@@ -131,6 +131,55 @@ export async function writeDiffImpactOverlay(
 
 const HUNK_HEADER_RE = /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/;
 
+const C_ESCAPES: Readonly<Record<string, number>> = {
+  a: 7,
+  b: 8,
+  t: 9,
+  n: 10,
+  v: 11,
+  f: 12,
+  r: 13,
+  '"': 34,
+  '\\': 92,
+};
+
+/** Undo git's C quoting; `\NNN` escapes are UTF-8 bytes, decoded together. */
+function unquoteGitPath(inner: string): string {
+  const bytes: number[] = [];
+  for (let i = 0; i < inner.length; i++) {
+    const code = inner.codePointAt(i) ?? 0;
+    if (code !== 92) {
+      const ch = String.fromCodePoint(code);
+      bytes.push(...Buffer.from(ch, 'utf8'));
+      i += ch.length - 1;
+      continue;
+    }
+    const octal = /^[0-7]{3}/.exec(inner.slice(i + 1, i + 4));
+    if (octal) {
+      bytes.push(Number.parseInt(octal[0], 8));
+      i += 3;
+      continue;
+    }
+    const next = inner[i + 1] ?? '';
+    bytes.push(C_ESCAPES[next] ?? next.charCodeAt(0));
+    i += 1;
+  }
+  return Buffer.from(bytes).toString('utf8');
+}
+
+/**
+ * A `---`/`+++` path as git prints it: C-quoted when it holds non-ASCII or
+ * special bytes (core.quotePath), behind `a/`/`b/` or a `diff.mnemonicPrefix`
+ * letter (`c/`, `i/`, `w/`, `o/`).
+ */
+function diffHeaderPath(raw: string): string {
+  let value = raw.trim();
+  if (value.length >= 2 && value.startsWith('"') && value.endsWith('"')) {
+    value = unquoteGitPath(value.slice(1, -1));
+  }
+  return value === '/dev/null' ? value : value.replace(/^[abciwo]\//, '');
+}
+
 /**
  * Parse unified `git diff -U0` output into per-file changed line ranges.
  * Exported as a pure helper for direct unit testing.
@@ -148,15 +197,14 @@ export function parseUnifiedDiff(diffText: string): ParsedDiffFile[] {
       continue;
     }
     if (line.startsWith('--- ')) {
-      const rawOld = line.slice(4).trim();
-      oldPath = rawOld === '/dev/null' ? '/dev/null' : rawOld.replace(/^a\//, '');
+      oldPath = diffHeaderPath(line.slice(4));
       continue;
     }
     if (line.startsWith('+++ ')) {
-      const rawNew = line.slice(4).trim();
-      const isDeleted = rawNew === '/dev/null';
+      const newPath = diffHeaderPath(line.slice(4));
+      const isDeleted = newPath === '/dev/null';
       const isAdded = oldPath === '/dev/null';
-      const relPath = (isDeleted ? oldPath : rawNew.replace(/^b\//, '')).replace(/\\/g, '/');
+      const relPath = (isDeleted ? oldPath : newPath).replace(/\\/g, '/');
       if (!relPath || relPath === '/dev/null') continue;
       current = {
         file: relPath,
@@ -348,7 +396,11 @@ export const codebaseDiffImpactTool: Tool<CodebaseDiffImpactInput, CodebaseDiffI
       });
     }
 
-    const diffArgs = ['diff', '-U0', '--no-color', '--no-ext-diff', '--no-textconv'];
+    // Fixed prefixes: `diff.noprefix` / `diff.mnemonicPrefix` config would
+    // otherwise decide how the header paths read.
+    const DIFF_BASE = ['diff', '-U0', '--no-color', '--no-ext-diff', '--no-textconv'];
+    const PREFIXES = ['--src-prefix=a/', '--dst-prefix=b/'];
+    const diffArgs = [...DIFF_BASE, ...PREFIXES];
     if (staged) diffArgs.push('--cached');
     // --end-of-options right before the revision: it is read as a revision,
     // never as a git option (options after the marker are revisions too).
@@ -360,7 +412,7 @@ export const codebaseDiffImpactTool: Tool<CodebaseDiffImpactInput, CodebaseDiffI
     let diffText = await runGit(projectRoot, diffArgs);
     if (diffText === null && baseRef === 'HEAD' && !staged) {
       // Fallback for fresh repos with no HEAD commit yet
-      const fallbackArgs = ['diff', '-U0', '--no-color', '--no-ext-diff', '--no-textconv'];
+      const fallbackArgs = [...DIFF_BASE, ...PREFIXES];
       if (pathFilter.length > 0) fallbackArgs.push('--', ...pathFilter);
       diffText = await runGit(projectRoot, fallbackArgs);
     }

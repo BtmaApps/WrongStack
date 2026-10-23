@@ -187,11 +187,10 @@ export function normalizeVcsPath(input: string): string | null {
   return resolved;
 }
 
-function paths(output: string, separator: RegExp | string): string[] {
-  return output
-    .split(separator)
-    .map(normalizeVcsPath)
-    .filter((value): value is string => value !== null);
+/** Undefined when a listed path is rejected: the list would be incomplete. */
+function paths(output: string, separator: RegExp | string): string[] | undefined {
+  const normalized = output.split(separator).filter(Boolean).map(normalizeVcsPath);
+  return normalized.every((value): value is string => value !== null) ? normalized : undefined;
 }
 
 function firstLine(result: VcsRunResult): string | undefined {
@@ -216,7 +215,10 @@ function gitAdapter(root: string, binary: string, run: VcsRunner): VcsAdapter {
         git('ls-files', '--others', '--exclude-standard', '-z'),
       ]);
       if (!ok(tracked) || !ok(untracked)) return undefined;
-      return [...new Set([...paths(tracked.stdout, '\0'), ...paths(untracked.stdout, '\0')])];
+      const trackedPaths = paths(tracked.stdout, '\0');
+      const untrackedPaths = paths(untracked.stdout, '\0');
+      if (!trackedPaths || !untrackedPaths) return undefined;
+      return [...new Set([...trackedPaths, ...untrackedPaths])];
     },
     isPristine: async () => {
       const status = await git(

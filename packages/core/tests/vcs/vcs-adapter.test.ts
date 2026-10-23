@@ -122,9 +122,13 @@ describe('adapters against a fake runner', () => {
     expect(await vcsAdapter('git', tmp, { runner: failing.runner }).changedPaths()).toBeUndefined();
     const cut = fakeRunner({ 'git status': { stdout: '', stdoutTruncated: true } });
     expect(await vcsAdapter('git', tmp, { runner: cut.runner }).isPristine()).toBeUndefined();
-    // Paths that leave the root are dropped.
+    // A listed path that is rejected makes the list incomplete, not shorter:
+    // a checkpoint would otherwise omit the file without an unresolved entry.
     const escaping = fakeRunner({ 'hg status': { stdout: '../outside\0/abs\0C:\\abs\0ok\0' } });
-    expect(await vcsAdapter('hg', tmp, { runner: escaping.runner }).changedPaths()).toEqual(['ok']);
+    expect(await vcsAdapter('hg', tmp, { runner: escaping.runner }).changedPaths()).toBeUndefined();
+    // `x:notes.md` is a legal POSIX name git prints verbatim with -z.
+    const colon = fakeRunner({ 'git diff': { stdout: 'a.ts\0x:notes.md\0' }, 'git ls-files': {} });
+    expect(await vcsAdapter('git', tmp, { runner: colon.runner }).changedPaths()).toBeUndefined();
   });
 
   // WS-2026-09-26-02: these run for the first system prompt of every session

@@ -1835,7 +1835,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime or focused TypeSafe integration",
       "sourceFiles": 14,
-      "sourceLines": 2390
+      "sourceLines": 2418
     },
     {
       "directory": "utils",
@@ -1849,7 +1849,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime or focused VCS implementation",
       "sourceFiles": 2,
-      "sourceLines": 385
+      "sourceLines": 387
     },
     {
       "directory": "wiring",
