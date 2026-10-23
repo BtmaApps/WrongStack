@@ -80,7 +80,8 @@ function foldDiacritics(text: string): string {
 }
 
 function normalizeContinueInput(raw: string): string {
-  let normalized = foldDiacritics(raw.trim().toLowerCase());
+  // 'İ' first: its default lowercase is 'i' + U+0307, which the fold misses.
+  let normalized = foldDiacritics(raw.trim().replace(/İ/g, 'i').toLowerCase());
   normalized = normalized.replace(/^["'`]+/, '').replace(/["'`]+$/, '');
   normalized = normalized.replace(/^[\s.!?,;:…]+/, '').replace(/[\s.!?,;:…]+$/, '');
   normalized = normalized.replace(/\s+/g, ' ').trim();

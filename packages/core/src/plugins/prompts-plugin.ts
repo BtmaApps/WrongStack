@@ -204,7 +204,9 @@ function buildPromptSearchCommand(
       // /prompt insert <slug> [k=v ...]
       if (trimmed.startsWith('insert ') || trimmed.startsWith('use ')) {
         const rest = trimmed.slice(trimmed.indexOf(' ') + 1).trim();
-        const [slug, ...kvs] = rest.split(/\s+/);
+        // Quote-aware: `topic="error handling"` is one token, which `unquote`
+        // then strips; a plain whitespace split cut it into `topic="error`.
+        const [slug, ...kvs] = rest.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) ?? [];
         if (!slug) return { message: 'Usage: /prompt insert <slug> [var=value …]' };
         const entry = await loader.find(slug);
         if (!entry) return { message: `No prompt with slug/id "${slug}". Try /prompt ${slug}` };

@@ -1737,7 +1737,7 @@
       "classification": "product feature",
       "intendedOwner": "@wrongstack/plugins",
       "sourceFiles": 30,
-      "sourceLines": 9822
+      "sourceLines": 9824
     },
     {
       "directory": "prompts",
@@ -1842,7 +1842,7 @@
       "classification": "kernel primitive",
       "intendedOwner": "split dependency-free primitives from concrete helpers",
       "sourceFiles": 94,
-      "sourceLines": 15749
+      "sourceLines": 15750
     },
     {
       "directory": "vcs",
