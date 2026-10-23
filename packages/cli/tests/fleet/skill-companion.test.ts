@@ -139,6 +139,9 @@ function harness(
           suggested_next_steps: [],
         },
         result: JSON.stringify(body),
+        iterations: 1,
+        toolCalls: 0,
+        durationMs: 1,
       } as TaskResult,
     });
   };
@@ -602,7 +605,7 @@ describe('Skill Companion', () => {
     h.run('Redesign the settings page please');
     await vi.waitFor(() => expect(h.assignInternal).toHaveBeenCalledTimes(1));
     // First probe fails: resident is retired and a fresh resident is spawned on the next turn.
-    h.finish(PICK, 'error');
+    h.finish(PICK, 'failed');
     await vi.waitFor(() => expect(h.terminate).toHaveBeenCalledWith('worker'));
     h.run('Now redesign the dashboard settings screen');
     await vi.waitFor(() => expect(h.assignInternal).toHaveBeenCalledTimes(2));

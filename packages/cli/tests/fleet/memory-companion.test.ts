@@ -113,6 +113,9 @@ function harness(timeoutMs?: number, ioTimeoutMs?: number) {
           suggested_next_steps: [],
         },
         result: JSON.stringify(body),
+        iterations: 1,
+        toolCalls: 0,
+        durationMs: 1,
       } as TaskResult,
     });
   };
