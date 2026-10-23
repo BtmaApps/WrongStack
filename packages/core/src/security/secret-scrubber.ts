@@ -1,4 +1,5 @@
 import type { SecretScrubber } from '../types/secret-scrubber.js';
+import { isOpaqueMediaStringField } from '../utils/opaque-media.js';
 import { PATTERNS } from './secret-scrubber-patterns.js';
 
 /**
@@ -403,7 +404,7 @@ export class DefaultSecretScrubber implements SecretScrubber {
       copies.set(source, out);
       for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
         Object.defineProperty(out, k, {
-          value: visit(val),
+          value: isOpaqueMediaStringField(v as Record<string, unknown>, k, val) ? val : visit(val),
           enumerable: true,
           writable: true,
           configurable: true,
@@ -465,7 +466,7 @@ export class DefaultSecretScrubber implements SecretScrubber {
       let out: Record<string, unknown> | undefined;
       for (const k of Object.keys(source)) {
         const before = source[k];
-        const after = visit(before);
+        const after = isOpaqueMediaStringField(source, k, before) ? before : visit(before);
         if (after === before) continue;
         out ??= { ...source };
         Object.defineProperty(out, k, {

@@ -4,6 +4,30 @@ import { DefaultSecretScrubber } from '../../src/security/secret-scrubber.js';
 const s = new DefaultSecretScrubber();
 
 describe('SecretScrubber', () => {
+  it('preserves opaque image base64 while scrubbing adjacent text', () => {
+    const imageData = `/EAAA${'A'.repeat(24)}/AA`;
+    const secret = `sk-ant-api03-${'a'.repeat(49)}`;
+    const input = {
+      content: [
+        {
+          type: 'image',
+          source: { type: 'base64', media_type: 'image/png', data: imageData },
+        },
+        { type: 'text', text: `credential ${secret}` },
+      ],
+    };
+
+    for (const method of ['scrubObject', 'scrubObjectShared'] as const) {
+      const scrubber = new DefaultSecretScrubber();
+      const output = scrubber[method](input);
+      const image = output.content[0] as { source: { data: string } };
+      const text = output.content[1] as { text: string };
+      expect(image.source.data, method).toBe(imageData);
+      expect(text.text, method).toContain('[REDACTED:anthropic_key]');
+      expect(JSON.stringify(output), method).not.toContain('[REDACTED:square_token]');
+    }
+  });
+
   it('redacts anthropic-style keys', () => {
     const inp = 'token=sk-ant-api03-AbCdEfGhIjKlMnOpQrStUvWxYzAbCdEfGh';
     expect(s.scrub(inp)).toContain('[REDACTED:anthropic_key]');

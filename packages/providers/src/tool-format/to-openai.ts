@@ -14,6 +14,7 @@ import {
   SCHEMA_DESCRIPTION_MAX_CHARS,
   TOOL_DESCRIPTION_MAX_CHARS,
 } from '@wrongstack/core/utils';
+import { documentInputFallback, imageInputFallback } from '../media-input-policy.js';
 import type { ReasoningEchoField } from '../reasoning-echo-support.js';
 
 export interface OpenAIToolSchema {
@@ -107,6 +108,12 @@ export interface OpenAIToolCall {
 
 export interface ConvertOptions {
   flattenContentToString?: boolean | undefined;
+  /** Emit native image parts. False flattens images to a text marker. */
+  allowImages?: boolean | undefined;
+  /** Emit native PDF parts. False uses the document's extracted text. */
+  allowDocuments?: boolean | undefined;
+  /** Emit remote image URLs. Defaults to true. */
+  allowImageUrls?: boolean | undefined;
   stripCacheControl?: boolean | undefined;
   systemAsMessage?: boolean | undefined;
   /**
@@ -187,7 +194,7 @@ export function messagesToOpenAI(
           role: 'user',
           content: opts.flattenContentToString
             ? blocksToString(others)
-            : blocksToContentArray(others),
+            : blocksToContentArray(others, opts),
         });
       }
     } else if (msg.role === 'assistant') {
@@ -260,18 +267,49 @@ function blocksToString(blocks: ContentBlock[]): string {
     .join('');
 }
 
-function blocksToContentArray(blocks: ContentBlock[]): OpenAIContent[] | string {
-  const hasImage = blocks.some((b) => b.type === 'image' || b.type === 'document');
-  if (!hasImage) {
+function blocksToContentArray(
+  blocks: ContentBlock[],
+  opts: ConvertOptions,
+): OpenAIContent[] | string {
+  const allowImages = opts.allowImages !== false;
+  const allowDocuments = opts.allowDocuments !== false;
+  const hasNativeMedia = blocks.some(
+    (b) =>
+      (b.type === 'image' &&
+        imageInputFallback(b, {
+          allowImages,
+          allowImageUrls: opts.allowImageUrls,
+        }) === undefined) ||
+      (b.type === 'document' && documentInputFallback(b, allowDocuments) === undefined),
+  );
+  if (!hasNativeMedia) {
     return blocks
-      .filter((b): b is TextBlock => b.type === 'text')
-      .map((b) => b.text)
+      .map((b) => {
+        if (b.type === 'text') return b.text;
+        if (b.type === 'image') {
+          return (
+            imageInputFallback(b, {
+              allowImages,
+              allowImageUrls: opts.allowImageUrls,
+            }) ?? '[image]'
+          );
+        }
+        if (b.type === 'document') {
+          return documentInputFallback(b, allowDocuments) ?? documentAsText(b).text;
+        }
+        return '';
+      })
       .join('');
   }
   return blocks
     .map((b): OpenAIContent | null => {
       if (b.type === 'text') return { type: 'text', text: b.text };
       if (b.type === 'image') {
+        const fallback = imageInputFallback(b, {
+          allowImages,
+          allowImageUrls: opts.allowImageUrls,
+        });
+        if (fallback) return { type: 'text', text: fallback };
         const url =
           b.source.type === 'url'
             ? (b.source.url ?? '')
@@ -279,6 +317,8 @@ function blocksToContentArray(blocks: ContentBlock[]): OpenAIContent[] | string 
         return { type: 'image_url', image_url: { url } };
       }
       if (b.type === 'document') {
+        const fallback = documentInputFallback(b, allowDocuments);
+        if (fallback) return { type: 'text', text: fallback };
         return {
           type: 'file',
           file: {

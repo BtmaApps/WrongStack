@@ -128,6 +128,7 @@ export {
   repairToolUseAdjacency,
 } from './message-invariants.js';
 export * from './newline-normalize.js';
+export { isOpaqueMediaStringField, isStandardBase64Payload } from './opaque-media.js';
 export {
   decodeSessionIdStrict,
   isSafePathSegment,

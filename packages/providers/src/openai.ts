@@ -215,6 +215,8 @@ export class OpenAIProvider extends WireAdapter {
       model: req.model,
       messages: messagesToOpenAI(this.stripCacheControl(req), req.messages, {
         ...this.opts.quirks,
+        allowImages: ctx.capabilities?.vision !== false,
+        allowDocuments: ctx.capabilities?.pdf !== false,
         reasoningEchoField: this.reasoningEchoField(req),
       }),
       stream: true,

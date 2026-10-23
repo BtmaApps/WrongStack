@@ -46,6 +46,7 @@ import {
   SCHEMA_DESCRIPTION_MAX_CHARS,
   TOOL_DESCRIPTION_MAX_CHARS,
 } from '@wrongstack/core/utils';
+import { documentInputFallback, imageInputFallback } from '../media-input-policy.js';
 import { responsesReasoningSummary } from '../responses-reasoning-summary.js';
 
 export interface ResponsesTool {
@@ -140,6 +141,10 @@ export interface ResponsesInputOptions {
    * the choice is between losing the picture and losing the turn.
    */
   allowImages?: boolean | undefined;
+  /** Emit remote image URLs. Some subscription routes accept uploaded base64 only. */
+  allowImageUrls?: boolean | undefined;
+  /** Emit native PDF parts. False uses the document's extracted text. */
+  allowDocuments?: boolean | undefined;
 }
 
 /** The reasoning item for a thinking block, or null when it cannot be replayed. */
@@ -182,15 +187,19 @@ export function messagesToResponsesInput(
           .map((b): Record<string, unknown> | null => {
             if (b.type === 'text') return { type: 'input_text', text: b.text };
             if (b.type === 'image') {
-              if (opts.allowImages === false) {
-                // Leave a marker rather than dropping the block outright: the
-                // model would otherwise answer a question about a picture it
-                // was never told existed.
-                return { type: 'input_text', text: '[image omitted: model accepts text only]' };
-              }
+              const fallback = imageInputFallback(b, {
+                allowImages: opts.allowImages,
+                allowImageUrls: opts.allowImageUrls,
+              });
+              // Leave a marker rather than dropping the block outright: the
+              // model would otherwise answer a question about a picture it
+              // was never told existed.
+              if (fallback) return { type: 'input_text', text: fallback };
               return { type: 'input_image', detail: 'auto', image_url: imageUrl(b) };
             }
             if (b.type === 'document') {
+              const fallback = documentInputFallback(b, opts.allowDocuments !== false);
+              if (fallback) return { type: 'input_text', text: fallback };
               return {
                 type: 'input_file',
                 filename: b.name ?? 'document.pdf',

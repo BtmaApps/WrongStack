@@ -6,6 +6,8 @@ import { randomUUID } from 'node:crypto';
  * turns.
  */
 import type {
+  Capabilities,
+  ContentBlock,
   Message,
   ReasoningEffort,
   Request,
@@ -17,6 +19,7 @@ import type {
 import { compactToolDefinitionForWire, safeParse } from '@wrongstack/core/utils';
 import { providerErrorFromStreamPayload } from '../error-parse.js';
 import { capabilitiesForFamily } from '../family-capabilities.js';
+import { documentInputFallback, imageInputFallback } from '../media-input-policy.js';
 import { type BuildBodyContext, resolveMaxOutputTokens } from '../model-output-limits.js';
 import { normalizeGemini } from '../stop-reason.js';
 import { defineWireFormat } from '../wire-format.js';
@@ -66,7 +69,7 @@ export const googleWireFormat = defineWireFormat<GoogleStreamState>({
   buildHeaders: (apiKey) => ({ 'x-goog-api-key': apiKey }),
   buildBody: (req: Request, ctx: BuildBodyContext) => {
     const body: Record<string, unknown> = {
-      contents: messagesToGemini(req.messages),
+      contents: messagesToGemini(req.messages, ctx?.capabilities),
       generationConfig: buildGenConfig(req, ctx),
     };
     // Explicit caching: GoogleProvider.stream() resolved a cachedContents/*
@@ -472,7 +475,10 @@ function sanitizeSchemaForGemini(node: unknown): Record<string, unknown> | undef
   return out;
 }
 
-function messagesToGemini(messages: Message[]): GeminiContent[] {
+function messagesToGemini(
+  messages: Message[],
+  capabilities: Capabilities | undefined,
+): GeminiContent[] {
   const out: GeminiContent[] = [];
   const toolNameById = new Map<string, string>();
   for (const m of messages) {
@@ -497,6 +503,9 @@ function messagesToGemini(messages: Message[]): GeminiContent[] {
             part.thoughtSignature = sig;
           }
           parts.push(part);
+        } else {
+          const media = geminiMediaPart(b, capabilities);
+          if (media) parts.push(media);
         }
       }
       if (parts.length > 0) out.push({ role: 'model', parts });
@@ -515,15 +524,9 @@ function messagesToGemini(messages: Message[]): GeminiContent[] {
             response: { content: responseText },
           },
         });
-      } else if (b.type === 'image' && b.source.type === 'base64') {
-        textParts.push({
-          inlineData: {
-            mimeType: b.source.media_type ?? 'image/png',
-            data: b.source.data ?? '',
-          },
-        });
-      } else if (b.type === 'document') {
-        textParts.push({ inlineData: { mimeType: b.source.media_type, data: b.source.data } });
+      } else {
+        const media = geminiMediaPart(b, capabilities);
+        if (media) textParts.push(media);
       }
     }
     const userParts: GeminiPart[] = [...textParts];
@@ -535,6 +538,35 @@ function messagesToGemini(messages: Message[]): GeminiContent[] {
     if (userParts.length > 0) out.push({ role: 'user', parts: userParts });
   }
   return coalesceConsecutiveRoles(out);
+}
+
+function geminiMediaPart(
+  block: ContentBlock,
+  capabilities: Capabilities | undefined,
+): GeminiPart | undefined {
+  if (block.type === 'image') {
+    const fallback = imageInputFallback(block, {
+      allowImages: capabilities?.vision !== false,
+      // Gemini's generateContent wire accepts inline bytes or Files API URIs,
+      // not an arbitrary public HTTP image URL.
+      allowImageUrls: false,
+    });
+    return fallback
+      ? { text: fallback }
+      : {
+          inlineData: {
+            mimeType: block.source.media_type ?? 'image/png',
+            data: block.source.data ?? '',
+          },
+        };
+  }
+  if (block.type === 'document') {
+    const fallback = documentInputFallback(block, capabilities?.pdf !== false);
+    return fallback
+      ? { text: fallback }
+      : { inlineData: { mimeType: block.source.media_type, data: block.source.data } };
+  }
+  return undefined;
 }
 
 /**

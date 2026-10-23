@@ -8,6 +8,7 @@
  * `parseStreamEvent` call instead of an async generator loop.
  */
 import type {
+  Capabilities,
   ContentBlock,
   Message,
   ReasoningEffort,
@@ -21,6 +22,7 @@ import { parseToolInput } from '../_tool-input.js';
 import { capAnthropicCacheBreakpoints } from '../cache-breakpoint-cap.js';
 import { providerErrorFromStreamPayload } from '../error-parse.js';
 import { capabilitiesForFamily } from '../family-capabilities.js';
+import { documentInputFallback, imageInputFallback } from '../media-input-policy.js';
 import { type BuildBodyContext, resolveRequiredMaxOutputTokens } from '../model-output-limits.js';
 import { normalizeAnthropic } from '../stop-reason.js';
 import { toolsToAnthropic } from '../tool-format/to-anthropic.js';
@@ -164,7 +166,7 @@ export const anthropicWireFormat = defineWireFormat<AnthropicStreamState>({
       max_tokens: maxOutput,
       messages: req.messages.map((m: Message) => ({
         role: m.role === 'system' ? 'user' : m.role,
-        content: normalizeMessageContent(m),
+        content: normalizeMessageContent(m, ctx?.capabilities),
       })),
       stream: true,
     };
@@ -441,7 +443,7 @@ function redactedThinkingData(b: ContentBlock): string | undefined {
   return typeof data === 'string' && data.length > 0 ? data : undefined;
 }
 
-function normalizeMessageContent(m: Message): unknown {
+function normalizeMessageContent(m: Message, capabilities: Capabilities | undefined): unknown {
   if (typeof m.content === 'string') return m.content;
   return (
     (m.content as ContentBlock[])
@@ -456,7 +458,7 @@ function normalizeMessageContent(m: Message): unknown {
         (b) =>
           b.type !== 'thinking' || b.thinking.length > 0 || redactedThinkingData(b) !== undefined,
       )
-      .map((b) => sanitizeAnthropicBlock(b))
+      .map((b) => sanitizeAnthropicBlock(b, capabilities))
   );
 }
 
@@ -509,7 +511,10 @@ function findDeepestMarkedBlock(
  *   - `tool_use.providerMeta`   — e.g. Gemini thought-signatures
  *   - `thinking.providerMeta`   — provider-specific metadata
  */
-function sanitizeAnthropicBlock(b: ContentBlock): Record<string, unknown> {
+function sanitizeAnthropicBlock(
+  b: ContentBlock,
+  capabilities: Capabilities | undefined,
+): Record<string, unknown> {
   switch (b.type) {
     case 'text':
       return b.cache_control
@@ -538,10 +543,16 @@ function sanitizeAnthropicBlock(b: ContentBlock): Record<string, unknown> {
         ? { type: 'thinking', thinking: b.thinking, signature: b.signature }
         : { type: 'thinking', thinking: b.thinking };
     }
-    case 'image':
-      return { type: 'image', source: b.source };
-    case 'document':
-      return { type: 'document', source: b.source, ...(b.name ? { title: b.name } : {}) };
+    case 'image': {
+      const fallback = imageInputFallback(b, { allowImages: capabilities?.vision !== false });
+      return fallback ? { type: 'text', text: fallback } : { type: 'image', source: b.source };
+    }
+    case 'document': {
+      const fallback = documentInputFallback(b, capabilities?.pdf !== false);
+      return fallback
+        ? { type: 'text', text: fallback }
+        : { type: 'document', source: b.source, ...(b.name ? { title: b.name } : {}) };
+    }
     default:
       return b as never as Record<string, unknown>;
   }

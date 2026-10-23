@@ -67,7 +67,11 @@ export function buildCodexRequestBody(
           // it an `input_image` part buys a 400 and a retry; dropping the
           // image costs the picture but keeps the turn, which is the better
           // half of a choice the caller already made by picking a text model.
-          allowImages: policy?.acceptsImages ?? true,
+          allowImages: policy?.acceptsImages ?? options.capabilities?.vision !== false,
+          // The ChatGPT Codex route follows the official client and accepts
+          // uploaded data URLs, not arbitrary remote URLs.
+          allowImageUrls: false,
+          allowDocuments: options.capabilities?.pdf !== false,
         }),
         policy?.truncation,
       ),

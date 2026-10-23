@@ -1,4 +1,5 @@
 import { performance } from 'node:perf_hooks';
+import { isOpaqueMediaStringField } from '@wrongstack/core/utils';
 
 import { cloneCredentialPatterns } from '../runtime/credential-patterns.js';
 
@@ -456,8 +457,12 @@ export function collectText(request: Record<string, unknown>): string {
   const walk = (v: unknown): void => {
     if (typeof v === 'string') parts.push(v);
     else if (Array.isArray(v)) for (const i of v) walk(i);
-    else if (v && typeof v === 'object')
-      for (const val of Object.values(v as Record<string, unknown>)) walk(val);
+    else if (v && typeof v === 'object') {
+      const record = v as Record<string, unknown>;
+      for (const [key, val] of Object.entries(record)) {
+        if (!isOpaqueMediaStringField(record, key, val)) walk(val);
+      }
+    }
   };
   walk(request['system']);
   walk(request['messages']);
@@ -503,9 +508,12 @@ export function redactDeep(
     return value.map((v) => redactDeep(v, allow, counter, skip, budget, deadline));
   if (value && typeof value === 'object') {
     const out: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+    const source = value as Record<string, unknown>;
+    for (const [k, v] of Object.entries(source)) {
       Object.defineProperty(out, k, {
-        value: redactDeep(v, allow, counter, skip, budget, deadline),
+        value: isOpaqueMediaStringField(source, k, v)
+          ? v
+          : redactDeep(v, allow, counter, skip, budget, deadline),
         enumerable: true,
         configurable: true,
         writable: true,

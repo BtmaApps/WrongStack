@@ -496,6 +496,7 @@
         "export { hardenWin32ExecutableSearch, NO_CWD_EXE_SEARCH_ENV } from './win32-exe-search.js';",
         "export { hasMeaningfulContent, type MessageRepairReport, type MessageRepairResult, repairToolUseAdjacency, } from './message-invariants.js';",
         "export { installAsciiOutput, isAsciiMode, toAscii } from './ascii-fallback.js';",
+        "export { isOpaqueMediaStringField, isStandardBase64Payload } from './opaque-media.js';",
         "export { isPidAlive } from './pid.js';",
         "export { isSessionTranscriptFileName, sessionScopedPath } from './session-scoped-path.js';",
         "export { isUlid, ulid } from './ulid.js';",
@@ -1778,7 +1779,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime security subsystem",
       "sourceFiles": 40,
-      "sourceLines": 11043
+      "sourceLines": 11044
     },
     {
       "directory": "session-catalog",
@@ -1840,8 +1841,8 @@
       "directory": "utils",
       "classification": "kernel primitive",
       "intendedOwner": "split dependency-free primitives from concrete helpers",
-      "sourceFiles": 93,
-      "sourceLines": 15681
+      "sourceFiles": 94,
+      "sourceLines": 15749
     },
     {
       "directory": "vcs",

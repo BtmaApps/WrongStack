@@ -194,9 +194,9 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1478,
-      "typeOnly": 1302,
-      "runtimeOrMixed": 434
+      "files": 1480,
+      "typeOnly": 1303,
+      "runtimeOrMixed": 435
     },
     "@wrongstack/core/types/limits": {
       "files": 1,
@@ -239,9 +239,9 @@
       "runtimeOrMixed": 20
     },
     "@wrongstack/core/utils": {
-      "files": 842,
+      "files": 844,
       "typeOnly": 72,
-      "runtimeOrMixed": 799
+      "runtimeOrMixed": 801
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -18998,6 +18998,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/providers/src/media-input-policy.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/providers/src/minimax.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -19563,6 +19569,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/providers/tests/helpers/stream-timeout-overflow.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/providers/tests/image-input-contracts.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -26732,6 +26744,12 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
+      "file": "packages/plugins/src/prompt-firewall/secret-detection.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
       "file": "packages/plugins/src/semver-bump/index.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -26775,6 +26793,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/providers/src/codex-account-catalog.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/providers/src/media-input-policy.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

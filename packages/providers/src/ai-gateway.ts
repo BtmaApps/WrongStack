@@ -172,7 +172,10 @@ export class AiGatewayProvider implements Provider {
       });
       const result = this.streamTextImpl({
         model: this.resolveModel(req.model),
-        messages: convertMessages(req.messages),
+        messages: convertMessages(req.messages, {
+          allowImages: this.capabilities.vision !== false,
+          allowDocuments: this.capabilities.pdf !== false,
+        }),
         ...(convertSystem(req) ? { system: convertSystem(req) } : {}),
         ...(req.tools?.length ? { tools: convertTools(req.tools) } : {}),
         ...(req.toolChoice ? { toolChoice: convertToolChoice(req.toolChoice) } : {}),

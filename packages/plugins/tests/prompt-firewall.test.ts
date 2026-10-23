@@ -79,6 +79,9 @@ function setup(cfg: Record<string, unknown> = {}): MockApi {
 
 const GH_TOKEN = 'ghp_' + 'A'.repeat(38);
 const AWS_KEY = 'AKIAIOSFODNN7EXAMPLE';
+// Valid base64 alphabet containing a Square-token-shaped run by chance.
+// Real PNGs can contain the same bytes; scanning it as prose corrupts the image.
+const IMAGE_WITH_SQUARE_SHAPE = `/EAAA${'A'.repeat(24)}/AA`;
 
 const req = (text: string) => ({
   model: 'm',
@@ -179,6 +182,39 @@ describe('prompt-firewall plugin', () => {
     expect(JSON.stringify(sent)).toContain('[REDACTED:aws-access-key]');
     expect(JSON.stringify(original)).toContain(AWS_KEY);
     expect(sent).not.toBe(original);
+  });
+
+  it('redacts adjacent text without rewriting opaque image base64', async () => {
+    const api = setup({ enabled: true, mode: 'redact' });
+    const inner = vi.fn().mockResolvedValue(resp('ok'));
+    const original = {
+      model: 'm',
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'image',
+              source: {
+                type: 'base64',
+                media_type: 'image/png',
+                data: IMAGE_WITH_SQUARE_SHAPE,
+              },
+            },
+            { type: 'text', text: `use ${GH_TOKEN} now` },
+          ],
+        },
+      ],
+    };
+
+    await api._wrap!(null, original, inner);
+
+    const sent = inner.mock.calls[0]![1] as typeof original;
+    const image = sent.messages[0]!.content[0] as { source: { data: string } };
+    const text = sent.messages[0]!.content[1] as { text: string };
+    expect(image.source.data).toBe(IMAGE_WITH_SQUARE_SHAPE);
+    expect(text.text).toContain('[REDACTED:github-token]');
+    expect(JSON.stringify(sent)).not.toContain('[REDACTED:square_token]');
   });
 
   it('lets PEM certificate and base64 padding fixtures through unchanged', async () => {

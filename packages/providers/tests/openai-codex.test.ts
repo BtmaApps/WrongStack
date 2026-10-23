@@ -694,12 +694,61 @@ describe('OpenAICodexProvider per-model catalog policy', () => {
       messages: [
         {
           role: 'user',
-          content: [{ type: 'image', source: { type: 'url', url: 'https://example.test/a.png' } }],
+          content: [
+            {
+              type: 'image',
+              source: { type: 'base64', media_type: 'image/png', data: 'AAAA' },
+            },
+          ],
         },
       ],
     });
     const input = body['input'] as Array<{ content?: Array<{ type: string }> }>;
     expect(input[0]?.content?.[0]?.type).toBe('input_image');
+  });
+
+  it('does not send remote image URLs to the base64-only Codex route', async () => {
+    const body = await sendWith([{ slug: 'gpt-6.1-sol', input_modalities: ['text', 'image'] }], {
+      model: 'gpt-6.1-sol',
+      messages: [
+        {
+          role: 'user',
+          content: [{ type: 'image', source: { type: 'url', url: 'https://example.test/a.png' } }],
+        },
+      ],
+    });
+    const input = body['input'] as Array<{ content?: Array<{ type: string; text?: string }> }>;
+    expect(input[0]?.content).toEqual([
+      {
+        type: 'input_text',
+        text: '[image omitted: provider requires uploaded image data; reattach image]',
+      },
+    ]);
+  });
+
+  it('omits a legacy image whose persisted base64 was corrupted by redaction', async () => {
+    const body = await sendWith([{ slug: 'gpt-6.1-sol', input_modalities: ['text', 'image'] }], {
+      model: 'gpt-6.1-sol',
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'image',
+              source: {
+                type: 'base64',
+                media_type: 'image/png',
+                data: 'AAAA[REDACTED:square_token]AAAA',
+              },
+            },
+          ],
+        },
+      ],
+    });
+    const input = body['input'] as Array<{ content?: Array<{ type: string; text?: string }> }>;
+    expect(input[0]?.content).toEqual([
+      { type: 'input_text', text: '[image omitted: invalid base64 data; reattach image]' },
+    ]);
   });
 
   function toolRoundTrip(output: string): Omit<Request, 'model'> {

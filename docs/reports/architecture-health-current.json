@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-23T14:43:33.149Z",
+  "generatedAt": "2026-10-23T15:15:05.354Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 38,
-    "sourceFiles": 5250,
-    "testFiles": 4643,
-    "sourceLines": 1147631,
+    "sourceFiles": 5252,
+    "testFiles": 4645,
+    "sourceLines": 1147890,
     "workspaceEdges": 140,
-    "moduleEdges": 17296,
+    "moduleEdges": 17303,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -248,8 +248,8 @@
     {
       "name": "@wrongstack/core",
       "dir": "packages/core",
-      "sourceFiles": 1164,
-      "testFiles": 1018,
+      "sourceFiles": 1165,
+      "testFiles": 1019,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -264,7 +264,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 1018
+          "testFiles": 1019
         }
       ]
     },
@@ -512,8 +512,8 @@
     {
       "name": "@wrongstack/providers",
       "dir": "packages/providers",
-      "sourceFiles": 137,
-      "testFiles": 120,
+      "sourceFiles": 138,
+      "testFiles": 121,
       "workspaceDependencies": [
         "@wrongstack/core"
       ],
@@ -526,7 +526,7 @@
         {
           "path": "packages/providers/tsconfig.test.json",
           "error": null,
-          "testFiles": 120
+          "testFiles": 121
         }
       ]
     },
@@ -11109,6 +11109,12 @@
         ]
       },
       {
+        "file": "packages/core/tests/storage/session-media-scrubbing.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/core/tests/storage/session-message-provenance.test.ts",
         "projects": [
           "root-node"
@@ -15226,6 +15232,12 @@
       },
       {
         "file": "packages/providers/tests/google.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/providers/tests/image-input-contracts.test.ts",
         "projects": [
           "root-node"
         ]

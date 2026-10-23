@@ -382,6 +382,51 @@ describe('OpenAICompatibleProvider', () => {
     expect(captured).not.toHaveProperty('prompt_cache_key');
   });
 
+  it('flattens historical images when the selected compatible model is text-only', async () => {
+    let captured: Record<string, unknown> | undefined;
+    const spy = vi.fn(async (_url: unknown, init: { body?: string } = {}) => {
+      captured = JSON.parse(init.body ?? '{}');
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ model: 'm', choices: [], usage: {} }),
+        text: async (): Promise<string> => '',
+      };
+    }) as never as typeof fetch;
+    const provider = new OpenAICompatibleProvider({
+      id: 'zai-coding-plan',
+      definitionId: 'zai-coding-plan',
+      apiKey: 'k',
+      baseUrl: 'https://api.z.ai/api/coding/paas/v4',
+      capabilities: { vision: false },
+      fetchImpl: spy,
+    });
+
+    await provider.complete(
+      {
+        model: 'glm-5.3-highspeed',
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'image',
+                source: { type: 'base64', media_type: 'image/png', data: 'AAAA' },
+              },
+              { type: 'text', text: 'continue from this screenshot' },
+            ],
+          },
+        ],
+      },
+      { signal: new AbortController().signal },
+    );
+
+    const messages = captured?.['messages'] as Array<{ content: unknown }>;
+    expect(messages[0]?.content).toBe(
+      '[image omitted: model accepts text only]continue from this screenshot',
+    );
+  });
+
   it('does not send disabled thinking to always-on compatible models', async () => {
     let captured: Record<string, unknown> | undefined;
     const spy = vi.fn(async (_url: unknown, init: { body?: string } = {}) => {

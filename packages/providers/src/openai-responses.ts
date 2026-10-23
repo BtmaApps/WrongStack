@@ -179,6 +179,8 @@ export class OpenAIResponsesProvider extends WireAdapter {
       input: appendVolatileSystem(
         messagesToResponsesInput(req.messages, {
           includeReasoning: this.responseOptions.replayReasoning,
+          allowImages: ctx.capabilities?.vision !== false,
+          allowDocuments: ctx.capabilities?.pdf !== false,
         }),
         volatileSystem,
       ),

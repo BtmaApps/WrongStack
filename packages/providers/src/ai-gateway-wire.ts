@@ -23,6 +23,7 @@ import {
   tool,
 } from 'ai';
 import { splitGatewayModelId } from './capabilities.js';
+import { documentInputFallback, imageInputFallback } from './media-input-policy.js';
 
 export const DEFAULT_GATEWAY_ID = 'ai-gateway';
 
@@ -55,7 +56,16 @@ export interface AiSdkStreamTextInput {
   maxRetries: number;
 }
 
-export function convertMessages(messages: Message[]): ModelMessage[] {
+export interface AiGatewayMessageOptions {
+  allowImages?: boolean | undefined;
+  allowImageUrls?: boolean | undefined;
+  allowDocuments?: boolean | undefined;
+}
+
+export function convertMessages(
+  messages: Message[],
+  options: AiGatewayMessageOptions = {},
+): ModelMessage[] {
   const converted: ModelMessage[] = [];
 
   for (const message of messages) {
@@ -106,9 +116,15 @@ export function convertMessages(messages: Message[]): ModelMessage[] {
     const pushRegular = () => {
       if (regular.length === 0) return;
       if (message.role === 'assistant') {
-        converted.push({ role: 'assistant', content: regular.map(convertAssistantBlock) });
+        converted.push({
+          role: 'assistant',
+          content: regular.map((block) => convertAssistantBlock(block, options)),
+        });
       } else {
-        converted.push({ role: 'user', content: regular.map(convertUserBlock) });
+        converted.push({
+          role: 'user',
+          content: regular.map((block) => convertUserBlock(block, options)),
+        });
       }
     };
     const pushToolResults = () => {
@@ -409,7 +425,10 @@ export function convertReasoning(
   return reasoning.effort ?? (reasoning.enabled ? 'provider-default' : undefined);
 }
 
-function convertAssistantBlock(block: Exclude<ContentBlock, { type: 'tool_result' }>) {
+function convertAssistantBlock(
+  block: Exclude<ContentBlock, { type: 'tool_result' }>,
+  options: AiGatewayMessageOptions,
+) {
   switch (block.type) {
     case 'text':
       return { type: 'text' as const, text: block.text };
@@ -436,14 +455,19 @@ function convertAssistantBlock(block: Exclude<ContentBlock, { type: 'tool_result
           ? { providerOptions: toProviderOptions(block.providerMeta) as never }
           : {}),
       };
-    case 'image':
+    case 'image': {
+      const fallback = imageInputFallback(block, options);
+      if (fallback) return { type: 'text' as const, text: fallback };
       return {
         type: 'file' as const,
         mediaType: block.source.media_type ?? 'image/png',
         data: imageData(block),
       };
-    case 'document':
-      return { type: 'text' as const, text: documentAsText(block).text };
+    }
+    case 'document': {
+      const fallback = documentInputFallback(block, options.allowDocuments !== false);
+      return { type: 'text' as const, text: fallback ?? documentAsText(block).text };
+    }
   }
 }
 
@@ -456,28 +480,37 @@ function safeImageUrl(url: string | undefined): URL | string {
   }
 }
 
-function convertUserBlock(block: Exclude<ContentBlock, { type: 'tool_result' }>) {
+function convertUserBlock(
+  block: Exclude<ContentBlock, { type: 'tool_result' }>,
+  options: AiGatewayMessageOptions,
+) {
   switch (block.type) {
     case 'text':
       return { type: 'text' as const, text: block.text };
-    case 'image':
+    case 'image': {
+      const fallback = imageInputFallback(block, options);
+      if (fallback) return { type: 'text' as const, text: fallback };
       return {
         type: 'image' as const,
         image:
           block.source.type === 'url' ? safeImageUrl(block.source.url) : (block.source.data ?? ''),
         ...(block.source.media_type ? { mediaType: block.source.media_type } : {}),
       };
+    }
     case 'thinking':
       return { type: 'text' as const, text: block.thinking };
     case 'tool_use':
       return { type: 'text' as const, text: `[tool:${block.name}] ${JSON.stringify(block.input)}` };
-    case 'document':
+    case 'document': {
+      const fallback = documentInputFallback(block, options.allowDocuments !== false);
+      if (fallback) return { type: 'text' as const, text: fallback };
       return {
         type: 'file' as const,
         mediaType: block.source.media_type,
         data: block.source.data,
         ...(block.name ? { filename: block.name } : {}),
       };
+    }
   }
 }
 
