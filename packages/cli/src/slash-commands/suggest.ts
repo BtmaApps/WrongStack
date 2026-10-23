@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import type { Context } from '@wrongstack/core/agent';
 import type { SlashCommand } from '@wrongstack/core/types';
 import { color, toErrorMessage } from '@wrongstack/core/utils';
+import { gitIsolationEnv } from '@wrongstack/primitives';
 import { parseNextSteps } from '@wrongstack/tools/next-steps';
 import type { SlashCommandContext } from './command-context.js';
 import { setAutoSuggestions, setSuggestions } from './suggestion-store.js';
@@ -13,15 +14,20 @@ import { setAutoSuggestions, setSuggestions } from './suggestion-store.js';
  * Goal: give the subagent enough breadcrumbs to generate useful suggestions
  * without overwhelming it with raw message dumps.
  */
-function readGitStatus(projectRoot: string, includeBranch: boolean): Promise<string> {
+async function readGitStatus(projectRoot: string, includeBranch: boolean): Promise<string> {
   const args = ['status', '--short'];
   if (includeBranch) args.push('--branch');
+  // The repository's config names programs `status` runs (fsmonitor,
+  // `.gitattributes` filters); when they cannot be switched off, git does not run.
+  const isolation = await gitIsolationEnv(projectRoot, { timeoutMs: 5000 });
+  if (!isolation) return '';
   return new Promise((resolve) => {
     execFile(
       'git',
       args,
       {
         cwd: projectRoot,
+        env: { ...process.env, ...isolation },
         encoding: 'utf8',
         timeout: 5000,
         windowsHide: true,

@@ -40,6 +40,7 @@ import {
   type TypeSafeRoute,
 } from '@wrongstack/core/typesafe';
 import { buildChildEnv, color } from '@wrongstack/core/utils';
+import { gitIsolationEnv } from '@wrongstack/primitives';
 import { activeProfileConfigPath } from '../../profile-config-path.js';
 import { maskedKey, mutateConfigProviders } from '../../provider-config-utils.js';
 import type { SubcommandDeps, SubcommandHandler } from '../contracts.js';
@@ -340,14 +341,20 @@ async function test(deps: SubcommandDeps, write: (line: string) => void): Promis
   }
 }
 
-function runGit(cwd: string, args: string[]): Promise<string> {
+async function runGit(cwd: string, args: string[]): Promise<string> {
+  // The repository's config names programs `diff` runs on working-tree
+  // files (fsmonitor, `.gitattributes` filters); when they cannot be switched
+  // off, git does not run.
+  const isolation = await gitIsolationEnv(cwd, { baseEnv: buildChildEnv() });
+  if (!isolation)
+    throw new Error('git isolation unavailable: the repository config could not be read');
   return new Promise((resolve, reject) => {
     execFile(
       'git',
       args,
       {
         cwd,
-        env: buildChildEnv(),
+        env: { ...buildChildEnv(), ...isolation },
         encoding: 'utf8',
         timeout: 30_000,
         windowsHide: true,
