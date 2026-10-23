@@ -1,17 +1,30 @@
 import { toErrorMessage } from '@wrongstack/core/utils';
+import { gitIsolationEnv } from '@wrongstack/primitives';
 import type { WebSocket } from 'ws';
 import { currentRepoPrefix, isUnsafeRelativePath, MAX_DIFF_BYTES } from './git-paths.js';
 import { send } from './ws-utils.js';
 
-/** Spawn `git` in `cwd` and resolve its trimmed stdout ('' on any error). */
+/**
+ * Spawn `git` in `cwd` and resolve its trimmed stdout ('' on any error). Runs
+ * isolated from the programs the repository's own config names (fsmonitor,
+ * `.gitattributes` filters): the panel refreshes on its own. When that
+ * isolation cannot be set up, git does not run ('').
+ */
 export function makeGit(cwd: string | undefined) {
   return async (args: string[]): Promise<string> => {
+    const isolation = await gitIsolationEnv(cwd ?? process.cwd(), { timeoutMs: 5000 });
+    if (!isolation) return '';
     const { execFile: ef } = await import('node:child_process');
     return new Promise((resolve) => {
       ef(
         'git',
         args,
-        { cwd, timeout: 5000, maxBuffer: 1024 * 1024 * 16 },
+        {
+          cwd,
+          env: { ...process.env, ...isolation },
+          timeout: 5000,
+          maxBuffer: 1024 * 1024 * 16,
+        },
         (err: Error | null, stdout: string) => resolve(err ? '' : stdout),
       );
     });

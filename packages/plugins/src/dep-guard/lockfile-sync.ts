@@ -18,6 +18,7 @@ import { execFile } from 'node:child_process';
 import { shellCommandLinesFromInput } from '@wrongstack/core/security';
 import type { HookInput, PluginAPI } from '@wrongstack/core/types';
 import { buildChildEnv } from '@wrongstack/core/utils';
+import { gitIsolationEnv } from '@wrongstack/primitives';
 
 export type GitRunner = (cwd: string, args: string[]) => Promise<string | null>;
 
@@ -61,14 +62,19 @@ export interface LockfileDrift {
   summary: string;
 }
 
-export const runGit: GitRunner = (cwd, args) =>
-  new Promise((resolve) => {
+export const runGit: GitRunner = async (cwd, args) => {
+  // The repository's config names programs git runs on status/diff
+  // (fsmonitor, `.gitattributes` filters); when they cannot be switched off,
+  // git does not run.
+  const isolation = await gitIsolationEnv(cwd, { baseEnv: buildChildEnv() });
+  if (!isolation) return null;
+  return new Promise((resolve) => {
     execFile(
       'git',
       args,
       {
         cwd,
-        env: buildChildEnv(),
+        env: { ...buildChildEnv(), ...isolation },
         windowsHide: true,
         maxBuffer: 16 * 1024 * 1024,
         timeout: 10_000,
@@ -76,6 +82,7 @@ export const runGit: GitRunner = (cwd, args) =>
       (err, stdout) => resolve(err ? null : stdout),
     );
   });
+};
 
 // ---------------------------------------------------------------------------
 // Commit detection

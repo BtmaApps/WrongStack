@@ -42,6 +42,7 @@
 import { execFile } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { isAbsolute, join, relative } from 'node:path';
+import { gitIsolationEnv } from '@wrongstack/primitives';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -157,13 +158,19 @@ export async function gitDiffFingerprint(
   ) {
     return null;
   }
-  const git = (args: string[]): Promise<string> =>
-    new Promise<string>((resolve, reject) => {
+  const git = async (args: string[]): Promise<string> => {
+    // The repository's config names programs git runs on status/diff
+    // (fsmonitor, `.gitattributes` filters); when they cannot be switched off,
+    // git does not run.
+    const isolation = await gitIsolationEnv(cwd, { timeoutMs: 1_000 });
+    if (!isolation) throw new Error('git isolation unavailable');
+    return new Promise<string>((resolve, reject) => {
       execFile(
         'git',
         args,
         {
           cwd,
+          env: { ...process.env, ...isolation },
           encoding: 'utf8',
           timeout: 1_000,
           // The hook follows only the file touched by this edit/write. A whole
@@ -179,8 +186,9 @@ export async function gitDiffFingerprint(
         },
       );
     });
+  };
   try {
-    const diff = await git(['diff', '--no-ext-diff', '--', pathspec]);
+    const diff = await git(['diff', '--no-ext-diff', '--no-textconv', '--', pathspec]);
     if (diff.length > 0) return hashString(diff);
     // `git diff` is empty for an UNTRACKED file however it changes, so every
     // write while scaffolding new files read as "no diff" and the streak

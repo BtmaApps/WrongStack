@@ -49,6 +49,12 @@ vi.mock('node:child_process', () => ({
   execSync: mockExecSync,
   execFile: mockExecFile,
 }));
+// The git isolation lookup runs its own `git config`; the plugin's git calls
+// are what is under test, so the lookup answers "nothing to blank".
+vi.mock('@wrongstack/primitives', async (o) => ({
+  ...(await o<typeof import('@wrongstack/primitives')>()),
+  gitIsolationEnv: async () => ({}),
+}));
 
 const diffSummaryPlugin = (await import('../src/diff-summary')).default;
 

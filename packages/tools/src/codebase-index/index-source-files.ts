@@ -15,6 +15,7 @@ import type { Dirent, Stats } from 'node:fs';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { DEFAULT_WALK_IGNORE_DIRS } from '@wrongstack/core/utils';
+import { gitIsolationEnv } from '@wrongstack/primitives';
 import { xxhash64String as contentHashHex } from './content-hash.js';
 import type { IgnoreMatcher } from './gitignore.js';
 import { throwIfAborted, YIELD_EVERY_N, yieldEventLoop } from './index-scheduling.js';
@@ -75,13 +76,23 @@ function normalizeComparablePath(value: string): string {
   return process.platform === 'win32' ? resolved.toLowerCase() : resolved;
 }
 
-function gitOutput(projectRoot: string, args: string[]): Promise<Buffer> {
+/**
+ * `ls-files -m` re-reads working-tree files, which runs the programs the
+ * repository's own config names (fsmonitor, `.gitattributes` filters); they
+ * are switched off, and when that is not possible git does not run.
+ */
+async function gitOutput(projectRoot: string, args: string[]): Promise<Buffer> {
+  // `rev-parse` reads no working-tree file; it skips the extra config spawn.
+  const isolation = args[0] === 'rev-parse' ? {} : await gitIsolationEnv(projectRoot);
+  if (!isolation)
+    throw new Error('git isolation unavailable: the repository config could not be read');
   return new Promise((resolve, reject) => {
     execFile(
       'git',
       ['-C', projectRoot, ...args],
       {
         encoding: 'buffer',
+        env: { ...process.env, ...isolation },
         maxBuffer: MAX_GIT_FILE_LIST_BYTES,
         windowsHide: true,
       },

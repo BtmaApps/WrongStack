@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { gitIsolationEnv } from '@wrongstack/primitives';
 import type { AgentFactory } from '../coordination/agent-subagent-runner.js';
 import {
   makeAgentSubagentRunner,
@@ -568,8 +569,14 @@ export class ParallelEternalEngine {
     const { execFile } = await import('node:child_process');
     const { promisify } = await import('node:util');
     const execFileP = promisify(execFile);
+    // The repository's config names programs `status` runs (fsmonitor,
+    // `.gitattributes` filters); when they cannot be switched off, git does not run.
+    const isolation = await gitIsolationEnv(this.opts.projectRoot, { timeoutMs: 5_000 });
+    if (!isolation)
+      throw new Error('git isolation unavailable: the repository config could not be read');
     const { stdout } = await execFileP('git', ['status', '--porcelain'], {
       cwd: this.opts.projectRoot,
+      env: { ...process.env, ...isolation },
       timeout: 5_000,
     });
     return stdout;

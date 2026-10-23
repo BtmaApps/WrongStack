@@ -32,6 +32,7 @@ import { execFile } from 'node:child_process';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, isAbsolute, relative, resolve } from 'node:path';
 import { type Plugin, type PluginAPI, ToolValidationError } from '@wrongstack/core/types';
+import { gitIsolationEnv } from '@wrongstack/primitives';
 import { releaseHandle } from '../runtime/index.js';
 
 const API_VERSION = '^0.1.10';
@@ -143,7 +144,12 @@ function resolveProjectPath(rawPath: string, cwd = process.cwd()): string | null
 // Git helpers
 // ---------------------------------------------------------------------------
 
-function runGit(args: string[], timeout: number): Promise<string | null> {
+async function runGit(args: string[], timeout: number): Promise<string | null> {
+  // The repository's config names programs git runs on status/diff
+  // (fsmonitor, `.gitattributes` filters); when they cannot be switched off,
+  // git does not run.
+  const isolation = await gitIsolationEnv(process.cwd(), { timeoutMs: timeout });
+  if (!isolation) return null;
   return new Promise((resolveOutput) => {
     execFile(
       'git',
@@ -151,6 +157,7 @@ function runGit(args: string[], timeout: number): Promise<string | null> {
       {
         encoding: 'utf8',
         cwd: process.cwd(),
+        env: { ...process.env, ...isolation },
         windowsHide: true,
         timeout,
         maxBuffer: 5 * 1024 * 1024,

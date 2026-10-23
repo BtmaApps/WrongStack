@@ -8,6 +8,7 @@
  * @module worktree/worktree-git
  */
 import { resolve, sep } from 'node:path';
+import { gitFilterIsolationEnv } from '../vcs/vcs-adapter.js';
 import { runVcs } from '../vcs/vcs-runner.js';
 import type { RunResult } from './worktree-types.js';
 
@@ -66,11 +67,39 @@ export async function identityArgs(runGit: GitRunner, cwd: string): Promise<stri
   return ['-c', `user.name=${name || 'Goal'}`, '-c', `user.email=${email || 'goal@agent.local'}`];
 }
 
+/**
+ * Subcommands that only read run isolated from the programs the repository's
+ * own config names (fsmonitor, `.gitattributes` filters). Merges, resets and
+ * `worktree add` write files and keep git's ordinary behavior: blanking a
+ * local smudge filter there (git-crypt) would check out the stored bytes.
+ */
+const READ_SUBCOMMANDS: ReadonlySet<string> = new Set([
+  'status',
+  'diff',
+  'ls-files',
+  'log',
+  'show',
+]);
+
 export async function defaultRun(gitBin: string, args: string[], cwd: string): Promise<RunResult> {
+  let env: Record<string, string> | undefined;
+  if (READ_SUBCOMMANDS.has(args[0] ?? '')) {
+    env = await gitFilterIsolationEnv(gitBin, cwd);
+    if (!env) {
+      return {
+        code: 1,
+        stdout: '',
+        stderr: 'git isolation unavailable: the repository config could not be read',
+      };
+    }
+  }
   // Bound the captured output — a merge/status against a huge worktree
   // can emit MBs that nothing reads in full (parseConflictPaths only
   // scans for CONFLICT lines). 1 MB matches grep.ts's buffer cap.
-  const { code, stdout, stderr } = await runVcs(gitBin, args, cwd, { maxOutputBytes: 1_000_000 });
+  const { code, stdout, stderr } = await runVcs(gitBin, args, cwd, {
+    maxOutputBytes: 1_000_000,
+    env,
+  });
   return { code, stdout, stderr };
 }
 

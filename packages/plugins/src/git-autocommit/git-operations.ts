@@ -1,6 +1,7 @@
 import { execFile } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { gitIsolationEnv } from '@wrongstack/primitives';
 
 // ---------------------------------------------------------------------------
 // Git helpers
@@ -12,6 +13,14 @@ const DEFAULT_GIT_TIMEOUT_MS = 30_000;
 // short timeout appropriate for read-only git commands.
 const GIT_COMMIT_TIMEOUT_MS = 5 * 60_000;
 
+const READ_SUBCOMMANDS: ReadonlySet<string> = new Set([
+  'status',
+  'diff',
+  'ls-files',
+  'log',
+  'show',
+]);
+
 async function runGit(
   args: string[],
   cwd?: string,
@@ -19,6 +28,15 @@ async function runGit(
   signal?: AbortSignal,
 ): Promise<string> {
   signal?.throwIfAborted();
+  // Reads run isolated from the programs the repository's own config names
+  // (fsmonitor, `.gitattributes` filters); `add`/`commit` keep git's ordinary
+  // behavior, hooks and filters included, as when the user commits.
+  let isolation: Record<string, string> = {};
+  if (READ_SUBCOMMANDS.has(args[0] ?? '')) {
+    const env = await gitIsolationEnv(cwd ?? process.cwd());
+    if (!env) throw new Error('git command failed: the repository config could not be read');
+    isolation = env;
+  }
   return await new Promise<string>((resolvePromise, rejectPromise) => {
     execFile(
       'git',
@@ -26,6 +44,7 @@ async function runGit(
       {
         encoding: 'utf-8',
         cwd,
+        env: { ...process.env, ...isolation },
         signal,
         windowsHide: true,
         timeout: timeoutMs,
@@ -360,7 +379,12 @@ export async function getStagedDiff(
   try {
     const stat = await runGit(['diff', '--cached', '--stat'], cwd, DEFAULT_GIT_TIMEOUT_MS, signal);
     // Limit full diff to prevent blowing up tool output
-    const diff = await runGit(['diff', '--cached'], cwd, DEFAULT_GIT_TIMEOUT_MS, signal);
+    const diff = await runGit(
+      ['diff', '--cached', '--no-ext-diff', '--no-textconv'],
+      cwd,
+      DEFAULT_GIT_TIMEOUT_MS,
+      signal,
+    );
     const MAX_DIFF = 20_000;
     const truncated =
       diff.length > MAX_DIFF ? diff.slice(0, MAX_DIFF) + '\n\n... (diff truncated)' : diff;
@@ -387,7 +411,7 @@ export async function getScopedStagedDiff(
       signal,
     );
     const diff = await runGit(
-      ['diff', '--cached', '--', ...paths],
+      ['diff', '--cached', '--no-ext-diff', '--no-textconv', '--', ...paths],
       cwd,
       DEFAULT_GIT_TIMEOUT_MS,
       signal,

@@ -31,6 +31,7 @@
 
 import { execFile } from 'node:child_process';
 import type { Plugin } from '@wrongstack/core/types';
+import { gitIsolationEnv } from '@wrongstack/primitives';
 import { BoundedMap, releaseHandle, withinProject } from '../runtime/index.js';
 
 const API_VERSION = '^0.1.10';
@@ -197,7 +198,15 @@ interface GitCommandResult {
   stdout: string;
 }
 
-function runGit(args: string[], cwd?: string): Promise<GitCommandResult> {
+/** A diff driver or textconv the repository assigns runs on patch output. */
+const NO_DIFF_PROGRAMS = ['--no-ext-diff', '--no-textconv'];
+
+async function runGit(args: string[], cwd?: string): Promise<GitCommandResult> {
+  // The repository's config names programs git runs on status/diff
+  // (fsmonitor, `.gitattributes` filters); when they cannot be switched off,
+  // git does not run.
+  const isolation = await gitIsolationEnv(cwd ?? process.cwd(), { timeoutMs: 3000 });
+  if (!isolation) return { ok: false, stdout: '' };
   return new Promise((resolveCommand) => {
     execFile(
       'git',
@@ -206,6 +215,7 @@ function runGit(args: string[], cwd?: string): Promise<GitCommandResult> {
         encoding: 'utf8',
         timeout: 3000,
         cwd,
+        env: { ...process.env, ...isolation },
         windowsHide: true,
         maxBuffer: 5 * 1024 * 1024,
       },
@@ -229,15 +239,19 @@ async function getGitDiff(
     const contextFlag = `-U${contextLines}`;
     if (isTracked) {
       // Standard diff for tracked files — argv form, no shell interpolation.
-      const result = await runGit(['diff', contextFlag, '--', filePath], cwd);
+      const result = await runGit(['diff', ...NO_DIFF_PROGRAMS, contextFlag, '--', filePath], cwd);
       if (!result.ok) return null;
       rawDiff = result.stdout;
     } else {
       // New/untracked file — diff against /dev/null.
       // git diff --no-index exits 1 when there ARE differences; stdout still
       // contains the desired diff, so the status is intentionally ignored.
-      rawDiff = (await runGit(['diff', '--no-index', contextFlag, '/dev/null', filePath], cwd))
-        .stdout;
+      rawDiff = (
+        await runGit(
+          ['diff', '--no-index', ...NO_DIFF_PROGRAMS, contextFlag, '/dev/null', filePath],
+          cwd,
+        )
+      ).stdout;
     }
 
     // If diff is empty, the file might be staged but not modified,

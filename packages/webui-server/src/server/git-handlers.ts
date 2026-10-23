@@ -10,6 +10,7 @@
 
 import nodePath from 'node:path';
 import { toErrorMessage } from '@wrongstack/core/utils';
+import { gitIsolationEnv } from '@wrongstack/primitives';
 import type { WebSocket } from 'ws';
 import { makeGit } from './git-history.js';
 import {
@@ -33,12 +34,25 @@ export async function handleGitInfo(ws: WebSocket, projectRoot: string): Promise
   const cwd = projectRoot || undefined;
   try {
     const { execFile: ef } = await import('node:child_process');
+    // `status`/`diff` run the programs the repository's own config names
+    // (fsmonitor, `.gitattributes` filters); they are switched off, and when
+    // that is not possible no git runs (every field null).
+    const isolation = await gitIsolationEnv(cwd ?? process.cwd(), { timeoutMs: 3000 });
     // null = git failed (not a repo, no git); '' = succeeded with no output.
     const gitOrNull = (args: string[]): Promise<string | null> =>
       new Promise((resolve) => {
-        ef('git', args, { cwd, timeout: 3000 }, (err: Error | null, stdout: string) => {
-          resolve(err ? null : stdout.trim());
-        });
+        if (!isolation) {
+          resolve(null);
+          return;
+        }
+        ef(
+          'git',
+          args,
+          { cwd, env: { ...process.env, ...isolation }, timeout: 3000 },
+          (err: Error | null, stdout: string) => {
+            resolve(err ? null : stdout.trim());
+          },
+        );
       });
     const git = async (args: string[]): Promise<string> => (await gitOrNull(args)) ?? '';
 

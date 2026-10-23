@@ -20,6 +20,7 @@ import { createHash } from 'node:crypto';
 import { readFile, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { buildChildEnv } from '@wrongstack/core/utils';
+import { gitIsolationEnv } from '@wrongstack/primitives';
 
 /** Runs kept per (fingerprint, command); older ones go first. */
 const MAX_RUNS_PER_KEY = 10;
@@ -92,14 +93,19 @@ export function runCompleted(output: string): boolean {
   );
 }
 
-function git(cwd: string, args: string[]): Promise<string | null> {
+async function git(cwd: string, args: string[]): Promise<string | null> {
+  // The repository's config names programs git runs on status/diff
+  // (fsmonitor, `.gitattributes` filters); when they cannot be switched off,
+  // git does not run.
+  const isolation = await gitIsolationEnv(cwd, { baseEnv: buildChildEnv() });
+  if (!isolation) return null;
   return new Promise((resolve) => {
     execFile(
       'git',
       args,
       {
         cwd,
-        env: buildChildEnv(),
+        env: { ...buildChildEnv(), ...isolation },
         windowsHide: true,
         maxBuffer: 64 * 1024 * 1024,
         timeout: 10_000,
@@ -123,7 +129,7 @@ const UNTRACKED_CONTENT_HASH_MAX_BYTES = 1024 * 1024;
 export async function treeFingerprint(cwd: string): Promise<string | null> {
   const [head, diff, untracked] = await Promise.all([
     git(cwd, ['rev-parse', 'HEAD']),
-    git(cwd, ['diff', 'HEAD', '--no-ext-diff', '--binary']),
+    git(cwd, ['diff', 'HEAD', '--no-ext-diff', '--no-textconv', '--binary']),
     git(cwd, ['ls-files', '--others', '--exclude-standard', '-z']),
   ]);
   if (head === null || diff === null || untracked === null) return null;

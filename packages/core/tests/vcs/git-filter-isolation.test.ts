@@ -13,6 +13,7 @@ import { gitStatus } from '../../src/core/system-prompt-environment-probes.js';
 import { getChangedFiles } from '../../src/plugins/auto-review-git.js';
 import { buildReviewContext } from '../../src/plugins/review-context-builder.js';
 import { gitFilterIsolationEnv, vcsAdapter } from '../../src/vcs/vcs-adapter.js';
+import { defaultRun as worktreeDefaultRun } from '../../src/worktree/worktree-git.js';
 import { removeProjectFixtureDirectory } from '../helpers/project-server-harness.js';
 
 const MARKERS = ['clean-ran.txt', 'process-ran.txt'];
@@ -100,6 +101,12 @@ describe('git filter isolation', () => {
       files: [{ path: 'a.ts', status: 'modified', content: 'b\n' }],
     });
     expect(bundle.files[0]?.diff).toContain('+b');
+    expect(await ranFilters()).toEqual([]);
+  });
+
+  it('worktree status reads run no repository program', async () => {
+    const status = await worktreeDefaultRun('git', ['status', '--porcelain'], repo);
+    expect(status.stdout).toContain('a.ts');
     expect(await ranFilters()).toEqual([]);
   });
 

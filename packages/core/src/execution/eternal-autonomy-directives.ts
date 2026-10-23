@@ -1,3 +1,4 @@
+import { gitIsolationEnv } from '@wrongstack/primitives';
 import type { GoalFile, JournalEntry } from '../storage/goal-store.js';
 
 import { toErrorMessage } from '../utils/error.js';
@@ -25,8 +26,14 @@ export async function pickGitTask(host: EternalAutonomyDirectivesHost): Promise<
 }
 
 export async function readGitStatus(host: EternalAutonomyDirectivesHost): Promise<string> {
+  // The repository's config names programs `status` runs (fsmonitor,
+  // `.gitattributes` filters); when they cannot be switched off, git does not run.
+  const isolation = await gitIsolationEnv(host.opts.projectRoot, { timeoutMs: 5_000 });
+  if (!isolation)
+    throw new Error('git isolation unavailable: the repository config could not be read');
   const { stdout } = await execFileP('git', ['status', '--porcelain'], {
     cwd: host.opts.projectRoot,
+    env: { ...process.env, ...isolation },
     timeout: 5_000,
   });
   return stdout;

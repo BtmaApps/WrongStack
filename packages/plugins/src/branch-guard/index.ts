@@ -30,6 +30,7 @@
 import { execFile } from 'node:child_process';
 import * as path from 'node:path';
 import type { Plugin } from '@wrongstack/core/types';
+import { gitIsolationEnv } from '@wrongstack/primitives';
 import { releaseHandle } from '../runtime/index.js';
 
 const API_VERSION = '^0.1.10';
@@ -142,12 +143,29 @@ function hasDisabledPluginEntry(raw: unknown): boolean {
  * commit` inside the window be judged against the stale branch and land on
  * the protected one. The lookup only runs for a guarded commit/push/merge.
  */
-function runGit(args: string[], cwd: string | undefined, signal: AbortSignal): Promise<string> {
+async function runGit(
+  args: string[],
+  cwd: string | undefined,
+  signal: AbortSignal,
+): Promise<string> {
+  // The repository's config names programs git runs on status/diff
+  // (fsmonitor, `.gitattributes` filters); when they cannot be switched off,
+  // git does not run.
+  const isolation = await gitIsolationEnv(cwd ?? process.cwd(), { timeoutMs: 3_000 });
+  if (!isolation)
+    throw new Error('git isolation unavailable: the repository config could not be read');
   return new Promise((resolve, reject) => {
     execFile(
       'git',
       args,
-      { encoding: 'utf-8', timeout: 3_000, cwd, windowsHide: true, signal },
+      {
+        encoding: 'utf-8',
+        timeout: 3_000,
+        cwd,
+        env: { ...process.env, ...isolation },
+        windowsHide: true,
+        signal,
+      },
       (error, stdout) => {
         if (error) reject(error);
         else resolve(stdout);

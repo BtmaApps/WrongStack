@@ -4,6 +4,12 @@ const cp = vi.hoisted(() => ({ execFileSync: vi.fn(), execFile: vi.fn() }));
 vi.mock('node:child_process', async (o) => ({ ...(await o()), execFile: cp.execFile }));
 const fsm = vi.hoisted(() => ({ existsSync: vi.fn() }));
 vi.mock('node:fs', async (o) => ({ ...(await o()), existsSync: fsm.existsSync }));
+// The git isolation lookup runs its own `git config`; the plugin's git calls
+// are what is under test, so the lookup answers "nothing to blank".
+vi.mock('@wrongstack/primitives', async (o) => ({
+  ...(await o<typeof import('@wrongstack/primitives')>()),
+  gitIsolationEnv: async () => ({}),
+}));
 
 import gitAutocommitPlugin from '../src/git-autocommit';
 
@@ -90,7 +96,7 @@ describe('git_autocommit', () => {
       if (k === 'diff --cached --name-only') return 'a.ts';
       if (k.startsWith('commit -m')) return 'deadbeef committed';
       if (k === 'diff --cached --stat') return ' a.ts | 1 +';
-      if (k === 'diff --cached') return '+added line';
+      if (k === 'diff --cached --no-ext-diff --no-textconv') return '+added line';
       return '';
     };
     const tools = setup();
@@ -155,7 +161,7 @@ describe('git_autocommit', () => {
       }
       if (k.startsWith('commit -m')) return 'cafe01 done';
       if (k === 'diff --cached --stat') return 'stat';
-      if (k === 'diff --cached') return 'diff';
+      if (k === 'diff --cached --no-ext-diff --no-textconv') return 'diff';
       return '';
     };
     const tools = setup({ 'git-autocommit': { autoStage: true } });
@@ -183,7 +189,10 @@ describe('git_autocommit', () => {
       // The scoped diff/readback uses the CONCRETE staged file list (the
       // source resolves pathspecs to files first), not the glob patterns.
       if (k === 'diff --cached --stat -- package.json packages/core/package.json') return 'stat';
-      if (k === 'diff --cached -- package.json packages/core/package.json') return '+version bump';
+      if (
+        k === 'diff --cached --no-ext-diff --no-textconv -- package.json packages/core/package.json'
+      )
+        return '+version bump';
       if (k === 'diff --name-only -- package.json packages/core/package.json') return '';
       if (k.startsWith('commit -m')) {
         staged.push(args.slice()); // capture exact commit argv
@@ -235,7 +244,7 @@ describe('git_autocommit', () => {
       if (k === 'add -- a.ts') return '';
       if (k === 'diff --cached --name-only') return 'a.ts';
       if (k === 'diff --cached --stat -- a.ts') return 'stat';
-      if (k === 'diff --cached -- a.ts') return 'diff';
+      if (k === 'diff --cached --no-ext-diff --no-textconv -- a.ts') return 'diff';
       // The working tree moved after staging: a.ts no longer matches the index.
       if (k === 'diff --name-only -- a.ts') return 'a.ts';
       return '';
@@ -254,7 +263,7 @@ describe('git_autocommit', () => {
       // The index holds a.ts (ours) AND b.ts (someone else's staging).
       if (k === 'diff --cached --name-only') return 'a.ts\nb.ts';
       if (k === 'diff --cached --stat -- a.ts') return 'stat';
-      if (k === 'diff --cached -- a.ts') return 'diff';
+      if (k === 'diff --cached --no-ext-diff --no-textconv -- a.ts') return 'diff';
       if (k === 'diff --name-only -- a.ts') return '';
       if (k.startsWith('commit -m')) {
         commits.push(args.slice()); // capture exact commit argv
@@ -341,7 +350,7 @@ describe('git_autocommit', () => {
       if (k === 'status --porcelain') return '?? new.ts\n M other.ts';
       if (k.startsWith('commit -m')) return 'h1 ok';
       if (k === 'diff --cached --stat') return 'stat';
-      if (k === 'diff --cached') return 'diff';
+      if (k === 'diff --cached --no-ext-diff --no-textconv') return 'diff';
       return '';
     };
     const tools = setup();
@@ -357,7 +366,7 @@ describe('git_autocommit', () => {
       const k = key(args);
       if (k === 'diff --cached --name-only') return 'a.ts';
       if (k === 'diff --cached --stat') return 'stat';
-      if (k === 'diff --cached') return big;
+      if (k === 'diff --cached --no-ext-diff --no-textconv') return big;
       return '';
     };
     const tools = setup();
@@ -418,7 +427,7 @@ describe('git_autocommit', () => {
       if (k === 'status --porcelain') return many;
       if (k.startsWith('commit -m')) return 'h ok';
       if (k === 'diff --cached --stat') return 'stat';
-      if (k === 'diff --cached') return 'diff';
+      if (k === 'diff --cached --no-ext-diff --no-textconv') return 'diff';
       return '';
     };
     const tools = setup();
@@ -445,7 +454,7 @@ describe('git_autocommit LLM generation (api.llm)', () => {
     const k = key(args);
     if (k === 'diff --cached --name-only') return 'a.ts';
     if (k === 'diff --cached --stat') return ' a.ts | 2 +-';
-    if (k === 'diff --cached') return '+const x = 1;\n-const x = 0;';
+    if (k === 'diff --cached --no-ext-diff --no-textconv') return '+const x = 1;\n-const x = 0;';
     if (k.startsWith('commit -m')) return 'abc123 committed';
     return '';
   };
