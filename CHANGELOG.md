@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.14] — 2026-10-23
+
+Polyglot codebase intelligence, community-aware CodeMap navigation and a
+leader mission anchor, with broader Git isolation and release security fixes.
+
+### Added
+
+- **Codebase intelligence.** `codebase-atlas`, `codebase-diff-impact`, `codebase-flow-trace` and `codebase-onboard` expose structural fingerprints, change impact, execution-flow slices and onboarding views through built-in and MCP tools.
+- **Polyglot graph enrichment.** Docker, Compose, GitHub Actions, SQL, GraphQL, Protobuf, Terraform, Kubernetes, OpenAPI, Make, CMake, dotenv, Markdown WikiLinks and shell inputs contribute normalized infrastructure and schema relationships. Deterministic Louvain clustering groups related modules.
+- **CodeMap 2.0.** The WebUI adds shortest-path animation, hop-based blast-radius rings, collapsible subsystem clusters, persona-aware guided tours and one-click execution-flow tracing.
+
+### Changed
+
+- **Mission continuity.** Real user turns are explicitly distinguished from continuations and runtime input. The leader keeps the durable user mission in the live request context so automatic follow-ups cannot silently replace it.
+- **Repository isolation.** Automatic and read-only Git operations blank repository-controlled filters and filesystem monitors before inspecting an untrusted checkout, including worktree, plugin, WebUI and code-index paths.
+
+### Fixed
+
+- **Runtime boundaries.** Cancellation, pull-request status identity, patch paths, provider warmup and refresh handoff, streaming task ownership, process-kill parsing and several SDD, SimpleUI, WebUI Server, CLI and browser edge cases are covered by regressions.
+- **Release security.** DOMPurify moves to 3.4.17 and `http-cache-semantics` to the upstream-fixed 4.3.0, removing the obsolete local patch and advisory exception. The release gate also recognizes the safer empty cooldown-exclusion state and keeps new Agent tests aligned with explicit input provenance.
+- **Localized CodeMap controls.** Guided-tour and path-finder accessibility text now goes through all seven locale catalogs.
+
 ## [1.1.13] — 2026-10-22
 
 Durable MCP tasks, browser element selection, automation environments and
