@@ -172,6 +172,18 @@ export function editableAutomationJob(job: AutomationJobInput): AutomationJobInp
   };
 }
 
+/**
+ * A unique `/run` idempotency key that also works over plain HTTP. The WebUI
+ * bundles this module, and Web Crypto's UUID helper exists only in secure
+ * contexts (#415); `getRandomValues` is available in both. The server only
+ * needs a unique opaque token (<= 128 chars), so no UUID shape is required.
+ */
+function idempotencyKey(): string {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
 export async function automationRequest<T>(
   route: string,
   method = 'GET',
@@ -186,7 +198,7 @@ export async function automationRequest<T>(
     ...(signal ? { signal } : {}),
     headers: {
       'content-type': 'application/json',
-      ...(route.endsWith('/run') ? { 'idempotency-key': crypto.randomUUID() } : {}),
+      ...(route.endsWith('/run') ? { 'idempotency-key': idempotencyKey() } : {}),
     },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });

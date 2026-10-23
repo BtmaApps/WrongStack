@@ -80,7 +80,10 @@ describe('automation HTTP request contract', () => {
   });
   it('sends run idempotency, body, cancellation and an encoded session target', async () => {
     const fetch = stub();
-    vi.stubGlobal('crypto', { randomUUID: () => 'fixture-request' });
+    // Plain-HTTP (non-secure) context: no UUID helper, only getRandomValues (#415).
+    vi.stubGlobal('crypto', {
+      getRandomValues: (bytes: Uint8Array) => bytes.fill(0xab),
+    });
     const signal = new AbortController().signal;
     const body = { expectedRevision: 1 };
     expect(await automationRequest('jobs/id/run', 'POST', body, signal, 'session/a')).toEqual({
@@ -92,7 +95,7 @@ describe('automation HTTP request contract', () => {
         method: 'POST',
         credentials: 'include',
         signal,
-        headers: { 'content-type': 'application/json', 'idempotency-key': 'fixture-request' },
+        headers: { 'content-type': 'application/json', 'idempotency-key': 'ab'.repeat(16) },
         body: JSON.stringify(body),
       },
     ]);
