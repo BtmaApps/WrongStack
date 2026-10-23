@@ -3408,7 +3408,12 @@
     "hub": "merkez",
     "centrality": "Merkezilik %{{value}}",
     "centralityLabel": "merkezilik",
-    "crux": "çekirdek"
+    "crux": "çekirdek",
+    "guidedArchitectureTour": "Etkileşimli rehberli mimari turu",
+    "previousTourStep": "Önceki tur adımı",
+    "nextTourStep": "Sonraki tur adımı",
+    "traceShortestPathToTargetNode": "Hedef düğüme en kısa yolu izle",
+    "selectTargetNode": "Hedef düğümü seç…"
   },
   "chronicle": {
     "codingIntelligence": "Kodlama Zekâsı",

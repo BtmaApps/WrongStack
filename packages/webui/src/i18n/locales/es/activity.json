@@ -3346,7 +3346,12 @@
     "hub": "eje",
     "centrality": "Centralidad {{value}}%",
     "centralityLabel": "centralidad",
-    "crux": "núcleo"
+    "crux": "núcleo",
+    "guidedArchitectureTour": "Recorrido interactivo guiado de la arquitectura",
+    "previousTourStep": "Paso anterior del recorrido",
+    "nextTourStep": "Siguiente paso del recorrido",
+    "traceShortestPathToTargetNode": "Trazar la ruta más corta al nodo de destino",
+    "selectTargetNode": "Seleccionar nodo de destino…"
   },
   "chronicle": {
     "codingIntelligence": "Inteligencia de programación",

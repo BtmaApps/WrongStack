@@ -3408,7 +3408,12 @@
     "hub": "hub",
     "centrality": "Centrality {{value}}%",
     "centralityLabel": "centrality",
-    "crux": "crux"
+    "crux": "crux",
+    "guidedArchitectureTour": "Interactive Guided Architecture Tour",
+    "previousTourStep": "Previous tour step",
+    "nextTourStep": "Next tour step",
+    "traceShortestPathToTargetNode": "Trace shortest path to target node",
+    "selectTargetNode": "Select target node…"
   },
   "chronicle": {
     "codingIntelligence": "Coding Intelligence",

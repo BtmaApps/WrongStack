@@ -3346,7 +3346,12 @@
     "hub": "pivot",
     "centrality": "Centralité {{value}} %",
     "centralityLabel": "centralité",
-    "crux": "cœur"
+    "crux": "cœur",
+    "guidedArchitectureTour": "Visite interactive guidée de l’architecture",
+    "previousTourStep": "Étape précédente de la visite",
+    "nextTourStep": "Étape suivante de la visite",
+    "traceShortestPathToTargetNode": "Tracer le chemin le plus court vers le nœud cible",
+    "selectTargetNode": "Sélectionner le nœud cible…"
   },
   "chronicle": {
     "codingIntelligence": "Renseignements de codage",

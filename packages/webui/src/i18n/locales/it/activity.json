@@ -3346,7 +3346,12 @@
     "hub": "snodo",
     "centrality": "Centralità {{value}}%",
     "centralityLabel": "centralità",
-    "crux": "nucleo"
+    "crux": "nucleo",
+    "guidedArchitectureTour": "Tour interattivo guidato dell’architettura",
+    "previousTourStep": "Passaggio precedente del tour",
+    "nextTourStep": "Passaggio successivo del tour",
+    "traceShortestPathToTargetNode": "Traccia il percorso più breve verso il nodo di destinazione",
+    "selectTargetNode": "Seleziona nodo di destinazione…"
   },
   "chronicle": {
     "codingIntelligence": "Intelligence di codifica",

@@ -134,7 +134,7 @@ export function CodeMapRelationInspector({
               type="button"
               onClick={() => (tourIndex === null ? stepTour(0) : setTourIndex(null))}
               className="inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
-              title="Interactive Guided Architecture Tour"
+              title={t('activity:codeMap.guidedArchitectureTour')}
             >
               <Compass className="h-3 w-3" />
               {tourIndex === null ? 'Tour' : `${tourIndex + 1}/${tourSteps.length}`}
@@ -177,7 +177,7 @@ export function CodeMapRelationInspector({
                 disabled={tourIndex === 0}
                 onClick={() => stepTour((tourIndex ?? 1) - 1)}
                 className="rounded border p-0.5 hover:bg-muted disabled:opacity-40"
-                aria-label="Previous tour step"
+                aria-label={t('activity:codeMap.previousTourStep')}
               >
                 <ChevronLeft className="h-3 w-3" />
               </button>
@@ -186,7 +186,7 @@ export function CodeMapRelationInspector({
                 disabled={tourIndex === tourSteps.length - 1}
                 onClick={() => stepTour((tourIndex ?? 0) + 1)}
                 className="rounded border p-0.5 hover:bg-muted disabled:opacity-40"
-                aria-label="Next tour step"
+                aria-label={t('activity:codeMap.nextTourStep')}
               >
                 <ChevronRight className="h-3 w-3" />
               </button>
@@ -309,10 +309,10 @@ export function CodeMapRelationInspector({
                   setTraceFlowActive(false);
                   setPathTargetId(e.target.value);
                 }}
-                aria-label="Trace shortest path to target node"
+                aria-label={t('activity:codeMap.traceShortestPathToTargetNode')}
                 className="w-full rounded border bg-background px-2 py-1 font-mono text-[11px] text-foreground"
               >
-                <option value="">Select target node…</option>
+                <option value="">{t('activity:codeMap.selectTargetNode')}</option>
                 {otherNodes.map((n) => (
                   <option key={n.id} value={n.id}>
                     {n.label}
