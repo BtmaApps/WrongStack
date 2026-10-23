@@ -13,6 +13,9 @@ vi.mock('node:child_process', async (importOriginal) => ({
   ...(await importOriginal<typeof import('node:child_process')>()),
   spawn: mockSpawn,
 }));
+vi.mock('@wrongstack/primitives', () => ({
+  gitIsolationEnv: vi.fn(async () => ({})),
+}));
 
 import { runGit } from '../src/services/run-git.js';
 
