@@ -273,6 +273,28 @@ describe('SageToolCallMiddleware — mutation triggers', () => {
     expect(spy).toHaveBeenCalled();
   });
 
+  it.each([
+    ['rejects', () => Promise.reject(new Error('verify failed'))],
+    ['never settles', () => new Promise<void>(() => {})],
+  ])('still injects memories when verifyForPaths %s', async (_label, verify) => {
+    const store = makeStore();
+    const mw = createSageToolCallMiddleware({
+      memory: Object.assign(store, { verifyForPaths: vi.fn(verify) }),
+      retrievalTimeoutMs: 50,
+    });
+    await store.rememberSage({
+      text: 'Write target keeps its header.',
+      importance: 0.95,
+      anchors: [{ type: 'file', path: 'src/newfile.ts' }],
+    });
+    const payload = makePayload({
+      toolUse: { type: 'tool_use', id: 'tu_w', name: 'write', input: { path: 'src/newfile.ts' } },
+      result: { type: 'tool_result', tool_use_id: 'tu_w', name: 'write', content: 'written' },
+    });
+    await mw.handler(payload, async (p) => p);
+    expect(memoryEvidenceText(payload)).toContain('Write target keeps its header.');
+  });
+
   it('does not call verifyForPaths when verifyOnMutation is false', async () => {
     const verifyForPaths = vi.fn();
     const store = makeStore();

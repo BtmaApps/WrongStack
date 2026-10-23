@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-23T13:59:41.036Z",
+  "generatedAt": "2026-10-23T14:43:33.149Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 38,
-    "sourceFiles": 5252,
-    "testFiles": 4648,
-    "sourceLines": 1148395,
+    "sourceFiles": 5250,
+    "testFiles": 4643,
+    "sourceLines": 1147631,
     "workspaceEdges": 140,
-    "moduleEdges": 17303,
+    "moduleEdges": 17296,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -248,8 +248,8 @@
     {
       "name": "@wrongstack/core",
       "dir": "packages/core",
-      "sourceFiles": 1165,
-      "testFiles": 1020,
+      "sourceFiles": 1164,
+      "testFiles": 1018,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -264,7 +264,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 1020
+          "testFiles": 1018
         }
       ]
     },
@@ -512,8 +512,8 @@
     {
       "name": "@wrongstack/providers",
       "dir": "packages/providers",
-      "sourceFiles": 138,
-      "testFiles": 121,
+      "sourceFiles": 137,
+      "testFiles": 120,
       "workspaceDependencies": [
         "@wrongstack/core"
       ],
@@ -526,7 +526,7 @@
         {
           "path": "packages/providers/tsconfig.test.json",
           "error": null,
-          "testFiles": 121
+          "testFiles": 120
         }
       ]
     },
@@ -947,7 +947,7 @@
       "name": "@wrongstack/webui-server",
       "dir": "packages/webui-server",
       "sourceFiles": 304,
-      "testFiles": 307,
+      "testFiles": 305,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -973,7 +973,7 @@
         {
           "path": "packages/webui-server/tsconfig.test.json",
           "error": null,
-          "testFiles": 307
+          "testFiles": 305
         }
       ]
     },
@@ -8793,12 +8793,6 @@
         ]
       },
       {
-        "file": "packages/core/tests/execution/eternal-autonomy-git-task-repeat.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
         "file": "packages/core/tests/execution/eternal-autonomy.test.ts",
         "projects": [
           "root-node"
@@ -11110,12 +11104,6 @@
       },
       {
         "file": "packages/core/tests/storage/session-load-cache-cost.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/storage/session-media-scrubbing.test.ts",
         "projects": [
           "root-node"
         ]
@@ -15238,12 +15226,6 @@
       },
       {
         "file": "packages/providers/tests/google.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/providers/tests/image-input-contracts.test.ts",
         "projects": [
           "root-node"
         ]
@@ -24357,12 +24339,6 @@
         ]
       },
       {
-        "file": "packages/webui-server/tests/context-editor-live-shape.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
         "file": "packages/webui-server/tests/context-editor.test.ts",
         "projects": [
           "root-node"
@@ -24514,12 +24490,6 @@
       },
       {
         "file": "packages/webui-server/tests/frontend-static-serve.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/webui-server/tests/git-commit-staged-only.test.ts",
         "projects": [
           "root-node"
         ]
@@ -29238,11 +29208,6 @@
       "relativeImports": 23
     },
     {
-      "file": "packages/cli/src/fleet/host-skill-companion.ts",
-      "lines": 734,
-      "relativeImports": 3
-    },
-    {
       "file": "packages/core/src/chronicle/project-server-client.ts",
       "lines": 705,
       "relativeImports": 5
@@ -29333,11 +29298,6 @@
       "file": "apps/desktop/src/main/main.ts",
       "lines": 734,
       "relativeImports": 20
-    },
-    {
-      "file": "packages/cli/src/fleet/host-skill-companion.ts",
-      "lines": 734,
-      "relativeImports": 3
     },
     {
       "file": "packages/vibeui/src/components/provider-manager.tsx",
@@ -29455,11 +29415,6 @@
       "relativeImports": 4
     },
     {
-      "file": "packages/core/src/execution/eternal-autonomy.ts",
-      "lines": 693,
-      "relativeImports": 13
-    },
-    {
       "file": "packages/core/src/core/agent-loop.ts",
       "lines": 692,
       "relativeImports": 39
@@ -29515,6 +29470,11 @@
       "relativeImports": 25
     },
     {
+      "file": "packages/cli/src/fleet/host-skill-companion.ts",
+      "lines": 690,
+      "relativeImports": 3
+    },
+    {
       "file": "packages/cli/src/slash-commands/kanban-task-subcommands.ts",
       "lines": 690,
       "relativeImports": 5
@@ -29548,6 +29508,11 @@
       "file": "packages/core/src/coordination/task-auctioneer.ts",
       "lines": 688,
       "relativeImports": 8
+    },
+    {
+      "file": "packages/core/src/execution/eternal-autonomy.ts",
+      "lines": 688,
+      "relativeImports": 13
     },
     {
       "file": "packages/webui/src/lib/ws-client.ts",

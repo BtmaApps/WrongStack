@@ -4,9 +4,9 @@
   "rootImportFiles": 0,
   "bySpecifier": {
     "@wrongstack/core/agent": {
-      "files": 409,
+      "files": 410,
       "typeOnly": 317,
-      "runtimeOrMixed": 112
+      "runtimeOrMixed": 113
     },
     "@wrongstack/core/agent-catalog": {
       "files": 23,
@@ -89,9 +89,9 @@
       "runtimeOrMixed": 58
     },
     "@wrongstack/core/kernel": {
-      "files": 386,
+      "files": 387,
       "typeOnly": 164,
-      "runtimeOrMixed": 242
+      "runtimeOrMixed": 243
     },
     "@wrongstack/core/kernel/events.js": {
       "files": 6,
@@ -194,8 +194,8 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1477,
-      "typeOnly": 1301,
+      "files": 1478,
+      "typeOnly": 1302,
       "runtimeOrMixed": 434
     },
     "@wrongstack/core/types/limits": {
@@ -1421,6 +1421,12 @@
       "file": "packages/sage/tests/tool-call-memory.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/sage/tests/verify-on-mutation-wiring.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/agent",
@@ -8871,6 +8877,12 @@
     {
       "specifier": "@wrongstack/core/kernel",
       "file": "packages/sage/tests/tool-call-memory.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
+      "file": "packages/sage/tests/verify-on-mutation-wiring.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -20235,6 +20247,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/sage/tests/model-feedback.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/sage/tests/verify-on-mutation-wiring.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },

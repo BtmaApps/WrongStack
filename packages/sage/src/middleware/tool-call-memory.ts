@@ -214,7 +214,16 @@ export function createSageToolCallMiddleware(
           trigger.paths.length > 0 &&
           didMutate(nextPayload.toolUse.name, nextPayload.toolUse.input)
         ) {
-          await opts.memory.verifyForPaths?.(trigger.paths, nextPayload.ctx.signal);
+          // Best-effort like retrieval: bounded by the same budget, and a slow
+          // or failed verify must neither stall the tool result nor count as
+          // a store fault that skips this call's injection or trips the breaker.
+          const verifying = opts.memory.verifyForPaths?.(trigger.paths, nextPayload.ctx.signal);
+          if (verifying) {
+            await withRetrievalBudget(
+              verifying,
+              opts.retrievalTimeoutMs ?? DEFAULT_RETRIEVAL_TIMEOUT_MS,
+            ).catch(() => undefined);
+          }
         }
 
         const plan = injector.plan({
