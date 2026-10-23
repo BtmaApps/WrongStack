@@ -484,7 +484,12 @@ export class EternalAutonomyEngine {
       }
 
       const gitTask = await this.pickGitTask();
-      if (gitTask) {
+      // A git task that already succeeded on the same dirty set is done: the
+      // tree stays dirty until someone commits, and re-picking it would keep
+      // the loop from reaching the goal until the dirty set changes.
+      const lastGit = goal.journal.findLast((entry) => entry.source === 'git');
+      const gitTaskDone = lastGit?.status === 'success' && lastGit.task === gitTask;
+      if (gitTask && !gitTaskDone) {
         return {
           source: 'git',
           task: gitTask,

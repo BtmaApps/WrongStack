@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-23T15:18:23.198Z",
+  "generatedAt": "2026-10-23T15:19:59.313Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 38,
     "sourceFiles": 5252,
-    "testFiles": 4646,
-    "sourceLines": 1148035,
+    "testFiles": 4647,
+    "sourceLines": 1148040,
     "workspaceEdges": 140,
     "moduleEdges": 17303,
     "nonCommandSlashImports": 0,
@@ -249,7 +249,7 @@
       "name": "@wrongstack/core",
       "dir": "packages/core",
       "sourceFiles": 1165,
-      "testFiles": 1019,
+      "testFiles": 1020,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -264,7 +264,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 1019
+          "testFiles": 1020
         }
       ]
     },
@@ -8788,6 +8788,12 @@
       },
       {
         "file": "packages/core/tests/execution/eternal-autonomy-extra.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/execution/eternal-autonomy-git-task-repeat.test.ts",
         "projects": [
           "root-node"
         ]
@@ -29433,6 +29439,11 @@
       "relativeImports": 4
     },
     {
+      "file": "packages/core/src/execution/eternal-autonomy.ts",
+      "lines": 693,
+      "relativeImports": 13
+    },
+    {
       "file": "packages/core/src/core/agent-loop.ts",
       "lines": 692,
       "relativeImports": 39
@@ -29526,11 +29537,6 @@
       "file": "packages/core/src/coordination/task-auctioneer.ts",
       "lines": 688,
       "relativeImports": 8
-    },
-    {
-      "file": "packages/core/src/execution/eternal-autonomy.ts",
-      "lines": 688,
-      "relativeImports": 13
     },
     {
       "file": "packages/webui/src/lib/ws-client.ts",
