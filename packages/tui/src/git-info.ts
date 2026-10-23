@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process';
 import { buildChildEnv } from '@wrongstack/core/utils';
+import { gitIsolationEnv } from '@wrongstack/primitives';
 
 export interface GitInfo {
   branch: string;
@@ -106,7 +107,7 @@ export function branchLabel(head: string, oid: string): string {
  */
 const MAX_LINE_CHARS = 64 * 1024;
 
-function spawnGit(cwd: string, args: string[]) {
+function spawnGit(cwd: string, args: string[], isolation: Record<string, string>) {
   // `--no-optional-locks` is a git-level option and must precede the
   // subcommand. Without it `git status` refreshes the stat cache by REWRITING
   // .git/index (922KB in this repo) on every poll, and holds .git/index.lock
@@ -115,7 +116,7 @@ function spawnGit(cwd: string, args: string[]) {
   // pure cost.
   return spawn('git', ['--no-optional-locks', ...args], {
     cwd,
-    env: buildChildEnv(),
+    env: { ...buildChildEnv(), ...isolation },
     // Inherit stderr (silent) — we don't care about git's noise.
     stdio: ['ignore', 'pipe', 'ignore'],
     // Don't let a slow git hang the TUI.
@@ -139,14 +140,19 @@ function spawnGit(cwd: string, args: string[]) {
  * `onLine` receives lines WITHOUT the trailing newline, including empty ones
  * — callers filter as they see fit.
  */
-function foldGit(
+async function foldGit(
   cwd: string,
   args: string[],
   onLine: (line: string) => void,
 ): Promise<{ ok: boolean }> {
+  // The opened repository's config names programs `status`/`diff` run
+  // (fsmonitor, `.gitattributes` filters); unless they are switched off,
+  // every poll would run them. No isolation, no poll.
+  const isolation = await gitIsolationEnv(cwd, { baseEnv: buildChildEnv(), timeoutMs: 3000 });
+  if (!isolation) return { ok: false };
   return new Promise((resolve) => {
     try {
-      const child = spawnGit(cwd, args);
+      const child = spawnGit(cwd, args, isolation);
       let carry = '';
       child.stdout?.setEncoding('utf8');
       child.stdout?.on('data', (chunk: string) => {

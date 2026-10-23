@@ -18,6 +18,12 @@ const { mockSpawn, mockAccess, mockReadFile } = vi.hoisted(() => ({
 vi.mock('node:child_process', () => {
   return { spawn: mockSpawn };
 });
+// The git isolation lookup runs its own `git config`; the review flow is what
+// is under test, so the lookup answers "nothing to blank".
+vi.mock('@wrongstack/primitives', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@wrongstack/primitives')>()),
+  gitIsolationEnv: async () => ({}),
+}));
 
 vi.mock('node:fs/promises', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:fs/promises')>();

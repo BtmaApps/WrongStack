@@ -7,6 +7,7 @@ import type { ToolRegistry } from '@wrongstack/core/registry';
 import type { Config, ConfigStore, TokenCounter } from '@wrongstack/core/types';
 import { color, writeOut } from '@wrongstack/core/utils';
 import type { MCPRegistry } from '@wrongstack/mcp';
+import { gitIsolationEnv } from '@wrongstack/primitives';
 import type { MultiAgentHost } from '../multi-agent.js';
 import { runPluginManagementCommand } from '../plugin-management.js';
 import type { CommitLLMProvider } from '../services/commit-message.js';
@@ -207,9 +208,15 @@ async function disposeSession(input: SessionCommandHandlersInput): Promise<void>
 }
 
 async function checkUncommittedChanges(projectRoot: string) {
+  // The repository's config names programs `status` runs (fsmonitor,
+  // `.gitattributes` filters); they are switched off for this check, and when
+  // that is not possible the exit goes without the advisory.
+  const isolation = await gitIsolationEnv(projectRoot);
+  if (!isolation) return undefined;
   const result = await new Promise<{ stdout: string; code: number }>((resolve, reject) => {
     const child = spawn('git', ['status', '--porcelain'], {
       cwd: projectRoot,
+      env: { ...process.env, ...isolation },
       stdio: ['ignore', 'pipe', 'pipe'],
       signal: AbortSignal.timeout(5000),
       windowsHide: true,

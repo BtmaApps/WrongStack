@@ -10,6 +10,8 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { gitStatus } from '../../src/core/system-prompt-environment-probes.js';
+import { getChangedFiles } from '../../src/plugins/auto-review-git.js';
+import { buildReviewContext } from '../../src/plugins/review-context-builder.js';
 import { gitFilterIsolationEnv, vcsAdapter } from '../../src/vcs/vcs-adapter.js';
 import { removeProjectFixtureDirectory } from '../helpers/project-server-harness.js';
 
@@ -80,6 +82,24 @@ describe('git filter isolation', () => {
     expect(blankedKeys(await gitFilterIsolationEnv('git', repo))).toEqual(['filter.a=b.process']);
     expect(await vcsAdapter('git', repo).changedPaths()).toEqual(expect.arrayContaining(['a.ts']));
     expect(await gitStatus(repo)).toContain('modified');
+    expect(await ranFilters()).toEqual([]);
+  });
+
+  it('automatic review change detection runs no repository program', async () => {
+    expect(await getChangedFiles(repo)).toEqual([{ path: 'a.ts', status: 'modified' }]);
+    expect(await ranFilters()).toEqual([]);
+  });
+
+  it('the review diff runs no diff driver or textconv the repository assigns', async () => {
+    await fsp.writeFile(path.join(repo, '.gitattributes'), '*.ts filter=evil diff=evil\n');
+    git('config', 'diff.evil.command', 'sh -c "echo ran > clean-ran.txt" --');
+    git('config', 'diff.evil.textconv', 'sh -c "echo ran > process-ran.txt; cat $1" --');
+    const bundle = await buildReviewContext({
+      cwd: repo,
+      config: {} as never,
+      files: [{ path: 'a.ts', status: 'modified', content: 'b\n' }],
+    });
+    expect(bundle.files[0]?.diff).toContain('+b');
     expect(await ranFilters()).toEqual([]);
   });
 

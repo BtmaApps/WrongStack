@@ -1,4 +1,5 @@
 import { type ChildProcess, spawn } from 'node:child_process';
+import { gitIsolationEnv } from '@wrongstack/primitives';
 import { BoundedProcessOutput } from './command-security.js';
 
 export interface CommandResult {
@@ -67,11 +68,18 @@ export class VerificationProcessRunner {
     timeoutMs = 30_000,
     env: NodeJS.ProcessEnv = process.env,
   ): Promise<{ stdout: string; stderr: string }> {
+    // The repository's config names programs status/diff/add run
+    // (fsmonitor, `.gitattributes` filters); when they cannot be switched
+    // off, git does not run.
+    const isolation = await gitIsolationEnv(this.projectRoot, { baseEnv: env });
+    if (!isolation) {
+      throw new Error('git isolation unavailable: the repository config could not be read');
+    }
     return new Promise((resolve, reject) => {
       const detachedProcessGroup = process.platform !== 'win32';
       const child = spawn('git', args, {
         cwd: this.projectRoot,
-        env,
+        env: { ...env, ...isolation },
         windowsHide: true,
         detached: detachedProcessGroup,
       });

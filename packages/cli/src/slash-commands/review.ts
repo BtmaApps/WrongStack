@@ -5,13 +5,19 @@ import type { Context } from '@wrongstack/core/agent';
 import type { ReviewContextBundle } from '@wrongstack/core/plugin';
 import { emitReviewIfChanged } from '@wrongstack/core/plugin';
 import type { SlashCommand } from '@wrongstack/core/types';
+import { gitIsolationEnv } from '@wrongstack/primitives';
 import type { SlashCommandContext } from './command-context.js';
 
 // ── Git helpers (minimal copy — same logic as chimera-plugin) ────────────
 async function runGit(args: string[], cwd: string): Promise<{ stdout: string; code: number }> {
+  // The repository's config names programs `status` runs (fsmonitor,
+  // `.gitattributes` filters); when they cannot be switched off, git does not run.
+  const isolation = await gitIsolationEnv(cwd);
+  if (!isolation) return { stdout: '', code: 1 };
   return new Promise((resolve) => {
     const child = spawn('git', args, {
       cwd,
+      env: { ...process.env, ...isolation },
       stdio: ['ignore', 'pipe', 'pipe'],
       signal: AbortSignal.timeout(10_000),
       windowsHide: true,

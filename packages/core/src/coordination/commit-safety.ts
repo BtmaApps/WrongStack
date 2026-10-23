@@ -25,6 +25,7 @@ import { spawn } from 'node:child_process';
 import * as path from 'node:path';
 import { buildChildEnv } from '../utils/child-env.js';
 import { resolveWstackPaths } from '../utils/wstack-paths.js';
+import { gitFilterIsolationEnv } from '../vcs/vcs-adapter.js';
 import { type FileAuthorEntry, getFullLog } from './file-author-tracker.js';
 
 export interface CommitSafetyOptions {
@@ -276,14 +277,19 @@ async function gitOtherWorktrees(cwd: string, signal?: AbortSignal): Promise<str
   return branches.slice(1);
 }
 
-function runGit(args: string[], cwd: string, signal?: AbortSignal): Promise<string> {
+async function runGit(args: string[], cwd: string, signal?: AbortSignal): Promise<string> {
+  // The repository's config names programs git runs (fsmonitor, filters);
+  // when they cannot be switched off, git does not run.
+  const isolation = await gitFilterIsolationEnv('git', cwd, GIT_TIMEOUT_MS);
+  if (!isolation)
+    throw new Error('git isolation unavailable: the repository config could not be read');
   return new Promise((resolve, reject) => {
     let stdout = '';
     let stderr = '';
     const child = spawn('git', args, {
       cwd,
       signal,
-      env: buildChildEnv(),
+      env: { ...buildChildEnv(), ...isolation },
       stdio: ['ignore', 'pipe', 'pipe'],
       windowsHide: true,
       timeout: GIT_TIMEOUT_MS,

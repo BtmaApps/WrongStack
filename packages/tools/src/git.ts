@@ -6,6 +6,7 @@ import { assessCommitSafety } from '@wrongstack/core/coordination';
 import type { Tool } from '@wrongstack/core/types';
 import { ToolValidationError } from '@wrongstack/core/types';
 import { buildChildEnv } from '@wrongstack/core/utils';
+import { gitIsolationEnv } from '@wrongstack/primitives';
 import { createOutputSpool, spoolNote } from './_output-spool.js';
 import { commandOutputPreviewBytes, normalizeCommandOutput } from './_util.js';
 
@@ -260,7 +261,12 @@ export const gitTool = {
     let stagedDiff: string | undefined;
     if (input.command === 'commit' && !input.dry_run) {
       try {
-        const diffResult = await runGit(['diff', '--cached'], gitDir, signal);
+        const diffResult = await runGit(
+          ['diff', '--cached', '--no-ext-diff', '--no-textconv'],
+          gitDir,
+          signal,
+          { isolate: true },
+        );
         // runGit already spools a large diff to disk and points at the full
         // file, so nothing past the preview is lost.
         if (diffResult.exitCode === 0) stagedDiff = diffResult.stdout;
@@ -269,7 +275,9 @@ export const gitTool = {
       }
     }
 
-    const result = await runGit(args, gitDir, signal);
+    const result = await runGit(args, gitDir, signal, {
+      isolate: READ_COMMANDS.has(input.command),
+    });
     if (stagedDiff !== undefined) result.diff = stagedDiff;
     if (safetyWarning !== undefined) result.warning = safetyWarning;
     return result;
@@ -369,6 +377,7 @@ function buildArgs(input: GitInput): string[] {
     case 'log':
       return [
         'log',
+        ...NO_DIFF_PROGRAMS,
         `--max-count=${limit}`,
         ...(input.format === 'oneline' ? ['--oneline'] : []),
         ...(input.format === 'stat' ? ['--stat'] : []),
@@ -376,7 +385,7 @@ function buildArgs(input: GitInput): string[] {
         ...(input.format === 'short' || !input.format ? [] : []),
       ];
     case 'diff':
-      return ['diff', '--no-color', ...(files.length ? ['--', ...files] : [])];
+      return ['diff', '--no-color', ...NO_DIFF_PROGRAMS, ...(files.length ? ['--', ...files] : [])];
     case 'commit':
       return [
         'commit',
@@ -460,9 +469,31 @@ function buildArgs(input: GitInput): string[] {
   }
 }
 
-function runGit(args: string[], cwd: string, signal: AbortSignal): Promise<GitOutput> {
+/**
+ * Subcommands that only read. They run isolated from the repository's own
+ * config programs (fsmonitor, `.gitattributes` filters); the approved
+ * operations that write keep git's ordinary behavior, hooks and filters
+ * included, as when the user runs them.
+ */
+const READ_COMMANDS: ReadonlySet<string> = new Set(['status', 'log', 'diff']);
+/** A diff driver or textconv the repository assigns runs on patch output. */
+const NO_DIFF_PROGRAMS = ['--no-ext-diff', '--no-textconv'];
+
+async function runGit(
+  args: string[],
+  cwd: string,
+  signal: AbortSignal,
+  opts: { isolate?: boolean } = {},
+): Promise<GitOutput> {
   if (signal.aborted) {
-    return Promise.reject(signal.reason ?? new Error('git: aborted'));
+    throw signal.reason ?? new Error('git: aborted');
+  }
+  let isolation: Record<string, string> = {};
+  if (opts.isolate) {
+    const env = await gitIsolationEnv(cwd, { baseEnv: buildChildEnv() });
+    if (!env)
+      throw new Error('git: isolation unavailable, the repository config could not be read');
+    isolation = env;
   }
 
   return new Promise((resolve, reject) => {
@@ -487,7 +518,7 @@ function runGit(args: string[], cwd: string, signal: AbortSignal): Promise<GitOu
     const child = spawn('git', args, {
       cwd,
       signal,
-      env: buildChildEnv(),
+      env: { ...buildChildEnv(), ...isolation },
       stdio: ['ignore', 'pipe', 'pipe'],
       windowsHide: true,
     });

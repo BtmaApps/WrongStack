@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process';
 import { toErrorMessage } from '@wrongstack/core/utils';
+import { gitIsolationEnv } from '@wrongstack/primitives';
 
 /**
  * Run a `git` subcommand and capture its output.
@@ -13,17 +14,38 @@ import { toErrorMessage } from '@wrongstack/core/utils';
  * Never rejects on a non-zero exit — the caller inspects `code`. It rejects
  * only when git could not be spawned at all, or when the 30s timeout fires.
  */
+/**
+ * Subcommands that only read run isolated from the programs the repository's
+ * own config names (fsmonitor, `.gitattributes` filters): a status refresh in
+ * a menu must not run them. `add`/`commit`/`push` the user asked for keep
+ * git's ordinary behavior, as when they run git themselves.
+ */
+const READ_COMMANDS: ReadonlySet<string> = new Set(['status', 'diff', 'log', 'show', 'ls-files']);
+
 export async function runGit(
   args: string[],
   cwd: string,
   /** Extra environment (e.g. `GIT_INDEX_FILE`), merged over this process's. */
   env?: NodeJS.ProcessEnv,
 ): Promise<{ stdout: string; stderr: string; code: number }> {
+  const baseEnv = { ...process.env, ...env };
+  let isolation: Record<string, string> = {};
+  if (READ_COMMANDS.has(args[0] ?? '')) {
+    const isolated = await gitIsolationEnv(cwd, { baseEnv });
+    if (!isolated) {
+      return {
+        stdout: '',
+        stderr: 'git isolation unavailable: the repository config could not be read',
+        code: 1,
+      };
+    }
+    isolation = isolated;
+  }
   try {
     return await new Promise((resolve, reject) => {
       const child = spawn('git', args, {
         cwd,
-        ...(env ? { env: { ...process.env, ...env } } : {}),
+        env: { ...baseEnv, ...isolation },
         stdio: ['ignore', 'pipe', 'pipe'],
         signal: AbortSignal.timeout(30_000),
         windowsHide: true,

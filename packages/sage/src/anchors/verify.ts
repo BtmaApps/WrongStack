@@ -4,6 +4,7 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { promisify } from 'node:util';
 import { assertProjectAgentRole, FLEET_ROSTER } from '@wrongstack/core/coordination';
+import { gitIsolationEnv } from '@wrongstack/primitives';
 import type {
   AnchorVerificationResult,
   MemoryAnchor,
@@ -77,11 +78,21 @@ async function batchGitBlobHashes(
       .map((real, index) => (real ? { target: targets[index]!, real } : undefined))
       .filter((p): p is { target: string; real: string } => p !== undefined);
     if (pairs.length === 0) return cache;
+    // `hash-object` runs the `.gitattributes` filter the repository's own
+    // config names; when it cannot be switched off, nothing is hashed.
+    const isolation = await gitIsolationEnv(projectRoot);
+    if (!isolation) return cache;
     const stdout = await new Promise<string>((resolve, reject) => {
       const child = execFile(
         'git',
         ['hash-object', '--stdin-paths'],
-        { cwd: projectRoot, windowsHide: true, timeout: 10_000, signal },
+        {
+          cwd: projectRoot,
+          env: { ...process.env, ...isolation },
+          windowsHide: true,
+          timeout: 10_000,
+          signal,
+        },
         (error, output) => {
           if (error) reject(error);
           else resolve(output);
@@ -516,8 +527,11 @@ async function verifyAnchor(
       // spawn (matches the pre-D5 per-anchor behavior). verifyMemoryAnchors
       // always passes a cache, so the batch path never takes this branch.
       try {
+        const isolation = await gitIsolationEnv(projectRoot);
+        if (!isolation) throw new Error('git isolation unavailable');
         const result = await execFileAsync('git', ['hash-object', realPath], {
           cwd: projectRoot,
+          env: { ...process.env, ...isolation },
           windowsHide: true,
           timeout: 5_000,
           signal,

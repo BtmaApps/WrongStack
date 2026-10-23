@@ -242,7 +242,15 @@ export class VerificationContext {
   async gitDiffForFiles(filePaths: string[]): Promise<string> {
     if (filePaths.length === 0) return '';
     try {
-      const { stdout } = await this.runGitCommand(['diff', 'HEAD', '--', ...filePaths]);
+      const { stdout } = await this.runGitCommand([
+        'diff',
+        // A diff driver or textconv the repository assigns runs on patch output.
+        '--no-ext-diff',
+        '--no-textconv',
+        'HEAD',
+        '--',
+        ...filePaths,
+      ]);
       return stdout;
     } catch {
       return '';

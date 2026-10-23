@@ -317,6 +317,10 @@ export class SageDomainTermExtractor {
         '-p',
         '-U8',
         '--no-color',
+        // `log -p` runs the textconv / external diff command a repository's
+        // own config assigns through `.gitattributes`.
+        '--no-textconv',
+        '--no-ext-diff',
       ]);
       stdout = result.stdout ?? '';
     } catch {

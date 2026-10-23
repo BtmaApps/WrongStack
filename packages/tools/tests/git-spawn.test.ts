@@ -152,7 +152,14 @@ describe('gitTool buildArgs (mocked spawn, real .git)', () => {
 
   it('builds diff args with a files filter', async () => {
     await run({ command: 'diff', files: 'x.ts' });
-    expect(capturedArgs).toEqual(['diff', '--no-color', '--', 'x.ts']);
+    expect(capturedArgs).toEqual([
+      'diff',
+      '--no-color',
+      '--no-ext-diff',
+      '--no-textconv',
+      '--',
+      'x.ts',
+    ]);
   });
 
   it('falls back to the raw command for an unknown subcommand', async () => {

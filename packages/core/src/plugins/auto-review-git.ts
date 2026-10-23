@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import * as fsp from 'node:fs/promises';
 import * as path from 'node:path';
+import { gitIsolationEnv } from '@wrongstack/primitives';
 import { parsePorcelainStatusZ } from './review-context-builder.js';
 
 export interface ChangedFile {
@@ -21,11 +22,16 @@ export async function runGit(
   args: string[],
   cwd: string,
 ): Promise<{ stdout: string; stderr: string; code: number }> {
+  // The repository's config names programs git runs (fsmonitor, filters);
+  // when they cannot be switched off, git does not run.
+  const isolation = await gitIsolationEnv(cwd);
+  if (!isolation) return { stdout: '', stderr: 'git isolation unavailable', code: 1 };
   return new Promise((resolve, reject) => {
     let child;
     try {
       child = spawn('git', args, {
         cwd,
+        env: { ...process.env, ...isolation },
         stdio: ['ignore', 'pipe', 'pipe'],
         signal: AbortSignal.timeout(15_000),
         windowsHide: true,

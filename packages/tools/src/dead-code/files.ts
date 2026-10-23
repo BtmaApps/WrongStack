@@ -12,6 +12,7 @@ import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { buildChildEnv, compilePathGlob } from '@wrongstack/core/utils';
+import { gitIsolationEnvSync } from '@wrongstack/primitives';
 import { loadGitignoreMatcher } from '../codebase-index/gitignore.js';
 
 export const CODE_EXTENSIONS = ['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs'];
@@ -87,10 +88,13 @@ export function compileIgnore(globs: readonly string[]): (rel: string) => boolea
 }
 
 function gitListFiles(projectRoot: string): string[] | null {
+  // `ls-files --others` can consult the repository's fsmonitor program.
+  const isolation = gitIsolationEnvSync(projectRoot, { baseEnv: buildChildEnv() });
+  if (!isolation) return null;
   try {
     const out = execFileSync('git', ['ls-files', '-z', '-co', '--exclude-standard'], {
       cwd: projectRoot,
-      env: buildChildEnv(),
+      env: { ...buildChildEnv(), ...isolation },
       encoding: 'utf8',
       maxBuffer: 256 * 1024 * 1024,
       windowsHide: true,

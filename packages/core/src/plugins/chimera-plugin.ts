@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import * as fsp from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { gitIsolationEnv } from '@wrongstack/primitives';
 import type { EventBus } from '../kernel/events.js';
 import type { Plugin } from '../types/plugin.js';
 import type { SlashCommand } from '../types/slash-command.js';
@@ -133,11 +134,16 @@ async function runGit(
   args: string[],
   cwd: string,
 ): Promise<{ stdout: string; stderr: string; code: number }> {
+  // The repository's config names programs git runs (fsmonitor, filters);
+  // when they cannot be switched off, git does not run.
+  const isolation = await gitIsolationEnv(cwd);
+  if (!isolation) return { stdout: '', stderr: 'git isolation unavailable', code: 1 };
   return new Promise((resolve, reject) => {
     let child;
     try {
       child = spawn('git', args, {
         cwd,
+        env: { ...process.env, ...isolation },
         stdio: ['ignore', 'pipe', 'pipe'],
         signal: AbortSignal.timeout(15_000),
         windowsHide: true,

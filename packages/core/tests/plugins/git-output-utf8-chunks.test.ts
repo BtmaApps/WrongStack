@@ -18,6 +18,16 @@ vi.mock('node:child_process', async (importOriginal) => ({
   ...(await importOriginal<typeof import('node:child_process')>()),
   spawn: mockSpawn,
 }));
+// The git isolation lookup runs its own `git config`; these tests are about
+// decoding the spawned command's output, so the lookup answers "nothing to blank".
+vi.mock('@wrongstack/primitives', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@wrongstack/primitives')>()),
+  gitIsolationEnv: async () => ({}),
+}));
+vi.mock('../../src/vcs/vcs-adapter.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../src/vcs/vcs-adapter.js')>()),
+  gitFilterIsolationEnv: async () => ({}),
+}));
 
 import { assessCommitSafety } from '../../src/coordination/commit-safety.js';
 import { EventBus } from '../../src/kernel/events.js';
@@ -105,7 +115,7 @@ describe('git helpers decode stdout across chunk boundaries', () => {
 
   it('the review context keeps a split multibyte diff', async () => {
     const diff = 'diff --git a/x.md b/x.md\n-eski şey\n+yeni şey\n';
-    outputs['diff HEAD'] = diff;
+    outputs['diff --no-ext-diff'] = diff;
     const bundle = await buildReviewContext({
       cwd: '/repo',
       config: {} as never,

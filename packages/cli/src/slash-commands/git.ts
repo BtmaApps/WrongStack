@@ -375,7 +375,8 @@ export function buildCommitCommand(opts: SlashCommandContext): SlashCommand {
 
       // Show staged diff before committing
       const diffStat = (await runGit(['diff', '--cached', '--stat'], cwd)).stdout || '';
-      const fullDiff = (await runGit(['diff', '--cached'], cwd)).stdout || '';
+      const fullDiff =
+        (await runGit(['diff', '--cached', '--no-ext-diff', '--no-textconv'], cwd)).stdout || '';
       const diffPreview =
         fullDiff.length > 8000
           ? fullDiff.slice(0, 8000) + '\n\n... (diff truncated, showing first 8KB)'

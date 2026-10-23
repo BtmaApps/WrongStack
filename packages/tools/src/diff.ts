@@ -6,6 +6,7 @@ import { StringDecoder } from 'node:string_decoder';
 import type { Tool } from '@wrongstack/core/types';
 import { ToolValidationError } from '@wrongstack/core/types';
 import { buildChildEnv } from '@wrongstack/core/utils';
+import { gitIsolationEnv } from '@wrongstack/primitives';
 import { mapWithConcurrency } from './_concurrency.js';
 import { safeResolveReal } from './_util.js';
 
@@ -223,7 +224,8 @@ async function gitDiff(
     throw new Error(`diff: not a git repository (or any parent up to project root): ${basePath}`);
   }
 
-  const args: string[] = ['diff', '--no-color'];
+  // A diff driver or textconv the repository assigns runs on patch output.
+  const args: string[] = ['diff', '--no-color', '--no-ext-diff', '--no-textconv'];
   if (statMode) args.push('--stat');
   if (!statMode && input.context !== undefined) {
     // Sanitized to a non-negative integer: `context` reaches the git argv.
@@ -316,13 +318,23 @@ function findGitDir(cwd: string, projectRoot: string): string | null {
   return null;
 }
 
-function runGit(
+async function runGit(
   args: string[],
   cwd: string,
   signal: AbortSignal,
 ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
   if (signal.aborted) {
-    return Promise.resolve({ stdout: '', stderr: 'Aborted', exitCode: 124 });
+    return { stdout: '', stderr: 'Aborted', exitCode: 124 };
+  }
+  // The repository's config names programs `diff` runs (fsmonitor,
+  // `.gitattributes` filters); when they cannot be switched off, git does not run.
+  const isolation = await gitIsolationEnv(cwd, { baseEnv: buildChildEnv() });
+  if (!isolation) {
+    return {
+      stdout: '',
+      stderr: 'git isolation unavailable: the repository config could not be read',
+      exitCode: 1,
+    };
   }
 
   return new Promise((resolve) => {
@@ -336,7 +348,7 @@ function runGit(
     const child = spawn('git', args, {
       cwd,
       signal,
-      env: buildChildEnv(),
+      env: { ...buildChildEnv(), ...isolation },
       stdio: ['ignore', 'pipe', 'pipe'],
       windowsHide: true,
     });

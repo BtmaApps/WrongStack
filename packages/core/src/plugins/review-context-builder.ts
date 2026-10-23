@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process';
 import type { KanbanTask } from '@wrongstack/kanban';
+import { gitIsolationEnv } from '@wrongstack/primitives';
 import type { ChronicleFileLineageRow } from '../chronicle/metrics-store.js';
 import { createChronicleProjectAccess } from '../chronicle/project-access.js';
 import type {
@@ -21,11 +22,16 @@ async function runGit(
   args: string[],
   cwd: string,
 ): Promise<{ stdout: string; stderr: string; code: number }> {
+  // The repository's config names programs git runs (fsmonitor, filters);
+  // when they cannot be switched off, git does not run.
+  const isolation = await gitIsolationEnv(cwd);
+  if (!isolation) return { stdout: '', stderr: 'git isolation unavailable', code: 1 };
   return new Promise((resolve, reject) => {
     let child;
     try {
       child = spawn('git', args, {
         cwd,
+        env: { ...process.env, ...isolation },
         stdio: ['ignore', 'pipe', 'pipe'],
         signal: AbortSignal.timeout(GIT_TIMEOUT_MS),
         windowsHide: true,
@@ -57,7 +63,7 @@ async function runGit(
  * Returns `undefined` when the file is untracked (added) or git fails.
  */
 async function getFileDiff(cwd: string, filePath: string): Promise<string | undefined> {
-  const r = await runGit(['diff', 'HEAD', '--', filePath], cwd);
+  const r = await runGit(['diff', '--no-ext-diff', '--no-textconv', 'HEAD', '--', filePath], cwd);
   if (r.code !== 0 || !r.stdout.trim()) return undefined;
   return r.stdout.length > MAX_DIFF_BYTES
     ? `${r.stdout.slice(0, MAX_DIFF_BYTES)}\n... (diff truncated at ${MAX_DIFF_BYTES} bytes — please use the read tool to view full file content)`
