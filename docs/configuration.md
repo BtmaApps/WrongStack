@@ -475,7 +475,7 @@ rather than dropping them silently.
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `type` | `string` | — | Provider type (usually matches the wire family). |
-| `apiKey` | `string` | — | API key. Auto-encrypted. Falls back to `<PROVIDER>_API_KEY` env var. |
+| `apiKey` | `string` | — | API key. Auto-encrypted. When unset, the key is read from the env vars in `envVars` (catalog providers default to their own, e.g. `OPENAI_API_KEY`; a custom provider reads none unless `envVars` names one). |
 | `apiKeys` | `ProviderApiKey[]` | — | Multiple keys with labels. Pick one with `activeKey`. |
 | `activeKey` | `string` | first entry | Label of the key to use from `apiKeys`. |
 | `baseUrl` | `string` | provider default | Custom API endpoint. |
