@@ -8,14 +8,15 @@ import { handleGitCommit } from '../src/server/git-handlers.js';
 
 /** Minimal ws mock that records parsed JSON sends. */
 function createMockWs() {
+  const sent: Array<{ type: string; payload: Record<string, unknown> }> = [];
   const ws = {
     readyState: 1,
-    sent: [] as Array<{ type: string; payload: Record<string, unknown> }>,
+    sent,
     send(data: string) {
-      this.sent.push(JSON.parse(data));
+      sent.push(JSON.parse(data));
     },
-  } as never as WebSocket & { sent: Array<{ type: string; payload: Record<string, unknown> }> };
-  return ws;
+  };
+  return ws as unknown as WebSocket & { sent: typeof sent };
 }
 
 function git(cwd: string, args: string[]): string {

@@ -198,10 +198,10 @@ describe('AgentMonitorService', () => {
 
   it('transitions resident subagents back to running and updates task on subagent.running', () => {
     const statusEvents: Array<{
-      sessionId?: string;
+      sessionId?: string | undefined;
       subagentId: string;
       status: string;
-      task?: string;
+      task?: string | undefined;
     }> = [];
     events.on('agent.status_changed', (p) => {
       statusEvents.push({
