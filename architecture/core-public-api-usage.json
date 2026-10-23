@@ -4,8 +4,8 @@
   "rootImportFiles": 0,
   "bySpecifier": {
     "@wrongstack/core/agent": {
-      "files": 410,
-      "typeOnly": 317,
+      "files": 411,
+      "typeOnly": 318,
       "runtimeOrMixed": 113
     },
     "@wrongstack/core/agent-catalog": {
@@ -194,8 +194,8 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1480,
-      "typeOnly": 1303,
+      "files": 1481,
+      "typeOnly": 1304,
       "runtimeOrMixed": 435
     },
     "@wrongstack/core/types/limits": {
@@ -239,9 +239,9 @@
       "runtimeOrMixed": 20
     },
     "@wrongstack/core/utils": {
-      "files": 844,
+      "files": 845,
       "typeOnly": 72,
-      "runtimeOrMixed": 801
+      "runtimeOrMixed": 802
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -2691,6 +2691,12 @@
     {
       "specifier": "@wrongstack/core/agent",
       "file": "packages/webui-server/src/server/worklist-session-context.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/webui-server/tests/context-editor-live-shape.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -23168,6 +23174,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/webui-server/tests/context-editor-live-shape.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/webui-server/tests/context-editor.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -28977,6 +28989,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/webui-server/tests/connections-health-route.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/webui-server/tests/context-editor-live-shape.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

@@ -28,13 +28,22 @@ import { estimateContextBreakdown, messageTokens } from './token-estimator.js';
 
 const REVISION_PREFIX = 'wrongstack-context-editor-v1\0';
 const MAX_REMOVAL_COUNT = 4096;
+// Host bookkeeping the snapshot round-trip cannot carry: the validator drops
+// these block keys, and the snapshot never sends `origin` / `authoredLength`.
+// Applied messages come from the server's originals, so they are kept there.
+const HOST_BLOCK_KEYS = new Set([
+  '_estTokens',
+  '_toolErrorInfo',
+  '_kanbanBoundary',
+  '_resultFormat',
+]);
 
 function canonicalize(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(canonicalize);
   if (isRecord(value)) {
     const sorted: Record<string, unknown> = {};
     for (const key of Object.keys(value).sort()) {
-      if (key === '_estTokens' || key === '_toolErrorInfo') continue;
+      if (HOST_BLOCK_KEYS.has(key)) continue;
       const item = value[key];
       if (item === undefined) continue;
       sorted[key] = canonicalize(item);
@@ -45,7 +54,9 @@ function canonicalize(value: unknown): unknown {
 }
 
 function canonicalizeMessages(messages: readonly Message[]): unknown[] {
-  return messages.map(({ origin: _origin, ...editableMessage }) => canonicalize(editableMessage));
+  return messages.map(({ origin: _origin, authoredLength: _authoredLength, ...editableMessage }) =>
+    canonicalize(editableMessage),
+  );
 }
 
 export function contextEditorRevision(messages: readonly Message[]): string {
