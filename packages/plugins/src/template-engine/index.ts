@@ -103,7 +103,8 @@ function expandLoops(
   escapeValue: (value: string) => string = identity,
 ): string {
   // Handle {{#each items}}...{{item}}...{{/each}}
-  // Simplified: just repeat the block for each item separated by newlines
+  // A list-valued variable repeats the block once per item, whether the
+  // items are comma-separated or newline-separated.
   return template.replace(
     /\{\{#each\s+([\w.-]+)\s*\}\}([\s\S]*?)\{\{\/each\}\}/g,
     (_, key, content) => {
@@ -112,6 +113,21 @@ function expandLoops(
       // If the variable value is a comma-separated list, expand each
       if (typeof val === 'string' && val.includes(',')) {
         const items = val.split(',').map((s) => s.trim());
+        return items
+          .map((item) => expandTemplate(content, { ...variables, [key]: item, item }, escapeValue))
+          .join('\n');
+      }
+      // A newline-separated list (LF or CRLF — the natural shape of pasted
+      // multi-line output) iterates once per line, binding both the loop
+      // variable and {{item}} like the comma branch. Trailing separators and
+      // blank lines separate items, they are not items: a value ending in
+      // `\n` must not gain a phantom empty iteration. Comma-separated values
+      // keep precedence (the branch above).
+      if (typeof val === 'string' && val.includes('\n')) {
+        const items = val
+          .split(/\r?\n/)
+          .map((line) => line.trim())
+          .filter((line) => line.length > 0);
         return items
           .map((item) => expandTemplate(content, { ...variables, [key]: item, item }, escapeValue))
           .join('\n');

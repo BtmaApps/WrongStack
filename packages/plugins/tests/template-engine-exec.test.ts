@@ -122,6 +122,56 @@ describe('template_expand', () => {
     expect(emptyRes.result).toBe('beforeafter');
   });
 
+  it('expands a newline-separated list loop once per line', async () => {
+    const tools = setup();
+    const lf = await tools.template_expand!.execute({
+      template: '{{#each items}}- {{item}}{{/each}}',
+      variables: { items: 'a\nb\nc' },
+      raw: true,
+    });
+    expect(lf.result).toBe('- a\n- b\n- c');
+
+    // The loop-variable reference style matches the comma branch.
+    const refStyle = await tools.template_expand!.execute({
+      template: '{{#each items}}- {{items}}{{/each}}',
+      variables: { items: 'a\nb\nc' },
+      raw: true,
+    });
+    expect(refStyle.result).toBe('- a\n- b\n- c');
+
+    // CRLF endings and a trailing separator do not create a phantom item.
+    const crlf = await tools.template_expand!.execute({
+      template: '{{#each items}}- {{item}}{{/each}}',
+      variables: { items: 'a\r\nb\r\nc\r\n' },
+      raw: true,
+    });
+    expect(crlf.result).toBe('- a\n- b\n- c');
+
+    // Blank lines are separators, not items: no iterations at all.
+    const blanks = await tools.template_expand!.execute({
+      template: 'before{{#each items}}x{{/each}}after',
+      variables: { items: '\n\n' },
+      raw: true,
+    });
+    expect(blanks.result).toBe('beforeafter');
+
+    // A single line with a trailing newline iterates exactly once.
+    const trailing = await tools.template_expand!.execute({
+      template: '{{#each items}}- {{item}}{{/each}}',
+      variables: { items: 'solo\n' },
+      raw: true,
+    });
+    expect(trailing.result).toBe('- solo');
+
+    // Comma separation keeps precedence for mixed-separator values.
+    const mixed = await tools.template_expand!.execute({
+      template: '{{#each items}}- {{item}}{{/each}}',
+      variables: { items: 'a,b\nc' },
+      raw: true,
+    });
+    expect(mixed.result).toBe('- a\n- b\nc');
+  });
+
   it('HTML-escapes by default and leaves raw output untouched', async () => {
     const tools = setup();
     const escaped = await tools.template_expand!.execute({
