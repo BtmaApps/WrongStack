@@ -1,4 +1,4 @@
-import { mailboxSessionTag } from '@wrongstack/core/coordination';
+import { mailboxSessionTag } from '@wrongstack/coordination';
 import type { HqClientCapability } from '@wrongstack/hq';
 import { createWebuiClientPresence } from '@wrongstack/webui-server';
 import {

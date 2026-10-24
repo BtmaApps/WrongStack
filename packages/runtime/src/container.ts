@@ -7,6 +7,7 @@ import {
   type Logger,
   type ModelsRegistry,
 } from '@wrongstack/contracts/types';
+import { defaultAgentCoordination, ProviderModelStatusTracker } from '@wrongstack/coordination';
 import {
   AGENT_COORDINATION,
   CHIMERA_REPORT_SESSION_RESOLVER,
@@ -16,8 +17,6 @@ import {
   FallbackProfileManager,
   HQ_MAILBOX_PUBLISHER_FACTORY,
 } from '@wrongstack/core/agent';
-import { defaultAgentCoordination } from '@wrongstack/core/agent-coordination';
-import { ProviderModelStatusTracker } from '@wrongstack/core/coordination';
 // PR-C1 (66c4eb68): execution/ and infrastructure/ symbols come from the
 // published subpaths now that types/index.ts no longer re-exports them.
 import {

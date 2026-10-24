@@ -4,7 +4,7 @@ import {
   type FleetWorktreePolicy,
   makeSessionNoteTool,
   makeSubagentResultTool,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
 import {
   clampSubagentCapabilities,
   ToolCapabilities,

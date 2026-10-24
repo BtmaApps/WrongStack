@@ -6,7 +6,7 @@ import {
   FleetManager,
   type FleetWorktreePolicy,
   HARD_MAX_SPAWN_DEPTH,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
 import { WorktreeManager } from '@wrongstack/worktree';
 
 import { resolveFleetWorktreePolicy } from './host-helpers.js';

@@ -25,9 +25,9 @@
 import { EventBus } from '@wrongstack/contracts/kernel';
 import type { Config, Provider, Request, Response } from '@wrongstack/contracts/types';
 import { ProviderError } from '@wrongstack/contracts/types';
+import { ProviderModelStatusTracker } from '@wrongstack/coordination';
 import type { Context } from '@wrongstack/core/agent';
 import { createFallbackModelExtension } from '@wrongstack/core/agent';
-import { ProviderModelStatusTracker } from '@wrongstack/core/coordination';
 import { describe, expect, it, vi } from 'vitest';
 import { buildProviderStatusCommand } from '../src/slash-commands/provider-status.js';
 

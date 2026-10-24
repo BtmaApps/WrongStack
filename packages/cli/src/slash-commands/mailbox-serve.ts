@@ -3,7 +3,7 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import type { SlashCommand } from '@wrongstack/contracts/types';
-import { resolveProjectDir } from '@wrongstack/core/coordination';
+import { resolveProjectDir } from '@wrongstack/coordination';
 import { cliSpawnArgs, wstackGlobalRoot } from '@wrongstack/core/utils';
 import { buildWin32CmdShimInvocation } from '../utils/win32-cmd.js';
 import type { SlashCommandContext } from './command-context.js';

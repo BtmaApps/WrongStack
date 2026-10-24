@@ -226,7 +226,6 @@ export {
   type ProviderCacheEntry,
   ProviderCacheLedger,
 } from './infrastructure/provider-cache-ledger.js';
-export { attachMailboxChecker } from './mailbox-attach.js';
 // ---- Notifications (one-way channel-agnostic delivery) ----
 export {
   type NotificationChannel,
@@ -328,7 +327,6 @@ export type {
   SessionLiveStatus,
   SessionRegistryEntry,
 } from './session-catalog/session-registry.js';
-export { attachSessionNotes } from './session-note-attach.js';
 export * from './skills/index.js';
 // DefaultTaskStore lives in task-store.ts (a sibling of task-tracker.ts).
 // Re-exporting here from the package root so consumers can do

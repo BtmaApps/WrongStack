@@ -18,7 +18,7 @@ vi.mock('@wrongstack/core/storage', () => ({
     get: async () => ({ projectRoot: '/project', status: 'running' }),
   }),
 }));
-vi.mock('@wrongstack/core/coordination', () => ({
+vi.mock('@wrongstack/coordination', () => ({
   getSharedProjectMailbox: () => ({ send: mockSend }),
   mailboxSessionTag: (id: string) => id,
 }));

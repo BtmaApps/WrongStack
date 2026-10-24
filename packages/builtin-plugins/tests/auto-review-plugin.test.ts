@@ -5,7 +5,7 @@ import * as path from 'node:path';
 import { EventBus } from '@wrongstack/contracts/kernel/events';
 import type { Config } from '@wrongstack/contracts/types/config';
 import type { SlashCommand } from '@wrongstack/contracts/types/slash-command';
-import { ProviderModelStatusTracker } from '@wrongstack/core/coordination';
+import { ProviderModelStatusTracker } from '@wrongstack/coordination';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   buildReviewerModelPool,

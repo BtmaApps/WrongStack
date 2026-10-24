@@ -1,5 +1,5 @@
 import { EventBus } from '@wrongstack/contracts/kernel';
-import { sessionNoteHub } from '@wrongstack/core/coordination';
+import { sessionNoteHub } from '@wrongstack/coordination';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createHostFleetSupervisor } from '../../src/fleet/host-supervisor.js';
 

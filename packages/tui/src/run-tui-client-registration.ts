@@ -2,7 +2,8 @@ import { randomUUID } from 'node:crypto';
 import * as path from 'node:path';
 import type { EventBus } from '@wrongstack/contracts/kernel';
 import type { Config } from '@wrongstack/contracts/types';
-import { RemoteMailbox, resolveProjectDir } from '@wrongstack/core/coordination';
+import { RemoteMailbox, resolveProjectDir } from '@wrongstack/coordination';
+import { wstackGlobalRoot } from '@wrongstack/core/utils';
 import {
   createHqPublisherFromEnv,
   startBrainTelemetryBridge,
@@ -12,7 +13,6 @@ import {
   startToolTelemetryBridge,
   startWorktreeTelemetryBridge,
 } from '@wrongstack/hq';
-import { wstackGlobalRoot } from '@wrongstack/core/utils';
 import type { TuiMailboxSnapshot } from './mailbox-view-model-types.js';
 
 interface RunTuiClientRegistrationOptions {

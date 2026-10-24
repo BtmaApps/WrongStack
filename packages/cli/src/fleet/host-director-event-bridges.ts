@@ -5,7 +5,7 @@ import type {
   DefaultMultiAgentCoordinator,
   Director,
   FleetManager,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
 
 type CompletedTask = {
   id: string;

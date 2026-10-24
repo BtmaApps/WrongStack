@@ -39,7 +39,7 @@ import {
   getSharedProjectMailbox,
   mailboxSessionTag,
   postSessionNote,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
 
 interface HostExploreCompanionInput {
   director: Director;

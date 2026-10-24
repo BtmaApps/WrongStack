@@ -1,7 +1,7 @@
 import * as path from 'node:path';
 import type { EventBus } from '@wrongstack/contracts/kernel';
 import type { Config, SessionWriter } from '@wrongstack/contracts/types';
-import type { AgentMonitorService, RemoteMailbox } from '@wrongstack/core/coordination';
+import type { AgentMonitorService, RemoteMailbox } from '@wrongstack/coordination';
 import type { HqPublisher } from '@wrongstack/hq';
 import {
   type ApprovalRegistry,

@@ -1,5 +1,5 @@
 import type { SkillManifest, SubagentConfig, Tool } from '@wrongstack/contracts/types';
-import { makeSubagentResultTool } from '@wrongstack/core/coordination';
+import { makeSubagentResultTool } from '@wrongstack/coordination';
 import { ToolCapabilities } from '@wrongstack/core/security';
 import { skillPromptExclusionReasons } from '@wrongstack/core/skills';
 

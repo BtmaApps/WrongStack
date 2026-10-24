@@ -28,18 +28,18 @@ import type {
   Tool,
 } from '@wrongstack/contracts/types';
 import {
+  type AgentFactory,
+  type AgentFactoryResult,
+  type ProviderModelStatusTracker,
+  resolveSubagentModelTarget,
+} from '@wrongstack/coordination';
+import {
   Agent,
   Context,
   createDefaultPipelines,
   createFallbackModelExtension,
   FallbackProfileManager,
 } from '@wrongstack/core/agent';
-import {
-  type AgentFactory,
-  type AgentFactoryResult,
-  type ProviderModelStatusTracker,
-  resolveSubagentModelTarget,
-} from '@wrongstack/core/coordination';
 import {
   createModelRuntimeMiddleware,
   installSubagentAutoCompaction,

@@ -23,12 +23,12 @@
 
 import { TOKENS } from '@wrongstack/contracts/kernel';
 import { DEFAULT_TOOLS_CONFIG, resolveContextWindowPolicy } from '@wrongstack/contracts/types';
-import { Agent, createEventUserInputAwaiter, isUnattendedAutonomy } from '@wrongstack/core/agent';
 import {
   CollaborationBus as CollaborationBusCtor,
   collabInjectMiddleware,
   collabPauseMiddleware,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
+import { Agent, createEventUserInputAwaiter, isUnattendedAutonomy } from '@wrongstack/core/agent';
 import { installDesignStudioMiddleware, installDesignTurnGate } from '@wrongstack/core/design';
 import type { AutoCompactionMiddleware } from '@wrongstack/core/execution';
 import {

@@ -7,7 +7,7 @@ import {
   mailboxSessionTag,
   resetSessionSubagentPolicy,
   unlockSessionSubagentPolicyForSession,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
 import { restoreSessionPermissionOverrides } from '@wrongstack/core/security';
 import { clearLeaderEffortOverride } from '@wrongstack/core/utils';
 import { createSessionCheckpointHandlers } from './session-checkpoint-handlers.js';

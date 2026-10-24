@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { promisify } from 'node:util';
-import { assertProjectAgentRole, FLEET_ROSTER } from '@wrongstack/core/coordination';
+import { assertProjectAgentRole, FLEET_ROSTER } from '@wrongstack/coordination';
 import { gitIsolationEnv } from '@wrongstack/primitives';
 import type {
   AnchorVerificationResult,

@@ -79,7 +79,7 @@ export interface RunTuiOptions extends RunTuiSurfaceOptions {
    * hook so the engine and TUI never race for the shared Context.
    */
   getParallelEngine?:
-    | (() => import('@wrongstack/core/coordination').ParallelEternalEngine | null)
+    | (() => import('@wrongstack/coordination').ParallelEternalEngine | null)
     | undefined;
   /**
    * Access the active SDD parallel run's control surface (or null). The TUI's

@@ -7,12 +7,12 @@ import {
   type SessionWriter,
 } from '@wrongstack/contracts/types';
 import { projectLastRequestTokens } from '@wrongstack/contracts/types/session-timeline';
-import { Context } from '@wrongstack/core/agent';
 import {
   restoreSessionSubagentModelPlan,
   restoreSessionSubagentPolicy,
   seedSessionSubagentPolicy,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
+import { Context } from '@wrongstack/core/agent';
 import { ProviderCacheLedger } from '@wrongstack/core/infrastructure';
 import { restoreSessionPermissionOverrides } from '@wrongstack/core/security';
 import { restoreRequiredSkillsFromEvents } from '@wrongstack/core/skills';

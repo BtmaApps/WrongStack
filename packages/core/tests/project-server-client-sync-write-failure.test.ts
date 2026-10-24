@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ChronicleProjectServerClient } from '../../chronicle/src/project-server-client.js';
-import { MailboxProjectServerConnection } from '../src/coordination/mailbox-project-server-client.js';
+import { MailboxProjectServerConnection } from '../../coordination/src/mailbox-project-server-client.js';
 
 interface PendingEntry {
   timer: ReturnType<typeof setTimeout>;

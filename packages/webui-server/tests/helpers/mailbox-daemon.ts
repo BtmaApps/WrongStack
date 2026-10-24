@@ -13,7 +13,7 @@
  */
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import { MailboxProjectServerConnection } from '@wrongstack/core/coordination';
+import { MailboxProjectServerConnection } from '@wrongstack/coordination';
 
 import { removeProjectFixtureDirectory } from '../../../core/tests/helpers/project-server-harness.js';
 /**

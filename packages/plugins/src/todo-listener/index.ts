@@ -31,8 +31,8 @@
  */
 
 import type { Plugin } from '@wrongstack/contracts/types';
+import type { Mailbox, MailboxMessage, MailboxSendInput } from '@wrongstack/coordination';
 import type { TodoItem } from '@wrongstack/core/agent';
-import type { Mailbox, MailboxMessage, MailboxSendInput } from '@wrongstack/core/coordination';
 import { releaseHandle, safeJsonStringify } from '../runtime/index.js';
 
 // ---------------------------------------------------------------------------

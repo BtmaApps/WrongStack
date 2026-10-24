@@ -7,14 +7,14 @@
 import * as path from 'node:path';
 import { TOKENS } from '@wrongstack/contracts/kernel';
 import { resolveTokenSavingTier, type SessionWriter } from '@wrongstack/contracts/types';
-import type { Agent } from '@wrongstack/core/agent';
 import {
   normalizeSubagentModelPlan,
   seedSessionSubagentPolicy,
   setSessionSubagentModelPlan,
   setSessionSubagentPolicy,
   subagentPolicyModeFrom,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
+import type { Agent } from '@wrongstack/core/agent';
 import { SkillInstaller } from '@wrongstack/core/skills';
 import { PromptUsageStore } from '@wrongstack/core/storage';
 import { isOutsideProject, resolveWstackPaths } from '@wrongstack/core/utils';

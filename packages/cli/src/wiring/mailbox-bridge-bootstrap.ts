@@ -19,7 +19,7 @@
  */
 
 import type { Config, Logger } from '@wrongstack/contracts/types';
-import { resolveProjectDir } from '@wrongstack/core/coordination';
+import { resolveProjectDir } from '@wrongstack/coordination';
 import { wstackGlobalRoot } from '@wrongstack/core/utils';
 import { type MailboxBridgeHandle, tryAcquireMailboxBridge } from '../mailbox-bridge-bootstrap.js';
 

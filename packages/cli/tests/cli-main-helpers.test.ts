@@ -25,8 +25,8 @@ vi.mock('../src/fleet/wrongforge-runner.js', async (importOriginal) => {
   return { ...actual, wrongForgeModels: mocks.wrongForgeModels };
 });
 
-vi.mock('@wrongstack/core/coordination', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@wrongstack/core/coordination')>();
+vi.mock('@wrongstack/coordination', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@wrongstack/coordination')>();
   return { ...actual, getSharedProjectMailbox: mocks.getSharedProjectMailbox };
 });
 

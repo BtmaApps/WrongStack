@@ -1,5 +1,5 @@
+import type { CoordinatorEvent } from '@wrongstack/coordination';
 import { useCallback, useEffect, useRef } from 'react';
-import type { CoordinatorEvent } from '@wrongstack/core/coordination';
 
 /**
  * Wires the AutonomousCoordinator into the TUI reducer via dispatch.

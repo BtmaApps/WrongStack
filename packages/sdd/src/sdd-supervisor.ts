@@ -12,8 +12,8 @@
 // never makes a run worse — it only adds intelligence when an LLM brain is wired.
 
 import type { TaskNode } from '@wrongstack/contracts/types';
+import type { BrainArbiter } from '@wrongstack/coordination';
 import { parseModelRef } from '@wrongstack/core/agent';
-import type { BrainArbiter } from '@wrongstack/core/coordination';
 import type { SddSubtaskSpec, SddSupervisorVerdict } from './sdd-parallel-run.js';
 
 export interface SddSupervisorOptions {

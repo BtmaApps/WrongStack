@@ -5,6 +5,7 @@
  */
 
 import type { IncomingMessage } from 'node:http';
+import * as path from 'node:path';
 import {
   createMailboxHttpRouter,
   createProjectMailbox,
@@ -12,8 +13,7 @@ import {
   MailboxEventEmitter,
   type MailboxHttpAccessDecision,
   MailboxHttpRateLimiter,
-} from '@wrongstack/core/coordination';
-import * as path from 'node:path';
+} from '@wrongstack/coordination';
 import * as HqServerAuth from './auth.js';
 import type { HqAuthState } from './auth-state.js';
 import type {

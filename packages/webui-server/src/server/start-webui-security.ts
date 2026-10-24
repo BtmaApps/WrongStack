@@ -1,6 +1,6 @@
 ﻿import type { EventBus } from '@wrongstack/contracts/kernel';
+import { getSharedProjectMailbox, resolveProjectDir } from '@wrongstack/coordination';
 import type { Context } from '@wrongstack/core/agent';
-import { getSharedProjectMailbox, resolveProjectDir } from '@wrongstack/core/coordination';
 import { wstackGlobalRoot } from '@wrongstack/core/utils';
 import type { SecurityRejectionEvent } from './connection-lifecycle.js';
 

@@ -6,7 +6,8 @@ import {
   getSharedProjectMailbox,
   type RemoteMailbox,
   resolveProjectDir,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
+import { wstackGlobalRoot } from '@wrongstack/core/utils';
 import type {
   ApprovalRegistry,
   CreateHqPublisherOptions,
@@ -14,7 +15,6 @@ import type {
   HqPublisher,
 } from '@wrongstack/hq';
 import { createApprovalRegistry, startApprovalTelemetryBridge } from '@wrongstack/hq';
-import { wstackGlobalRoot } from '@wrongstack/core/utils';
 import {
   startWebuiHqSessionTelemetry,
   type WebuiHqSessionTelemetry,

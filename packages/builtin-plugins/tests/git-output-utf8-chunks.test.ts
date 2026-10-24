@@ -30,7 +30,7 @@ vi.mock('../../core/src/vcs/vcs-adapter.js', async (importOriginal) => ({
 }));
 
 import { EventBus } from '@wrongstack/contracts/kernel/events';
-import { assessCommitSafety } from '@wrongstack/core/coordination';
+import { assessCommitSafety } from '@wrongstack/coordination';
 import { getChangedFiles } from '../src/auto-review-git.js';
 import { createChimeraPlugin } from '../src/chimera-plugin.js';
 import { buildReviewContext } from '../src/review-context-builder.js';

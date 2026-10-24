@@ -5,7 +5,7 @@
  */
 
 import { readFile } from 'node:fs/promises';
-import { type BrainLedgerEntry, DETERMINISTIC_BRAIN_TIERS } from '@wrongstack/core/coordination';
+import { type BrainLedgerEntry, DETERMINISTIC_BRAIN_TIERS } from '@wrongstack/coordination';
 import { color } from '@wrongstack/core/utils';
 import { judgeSummary } from './brain-council.js';
 

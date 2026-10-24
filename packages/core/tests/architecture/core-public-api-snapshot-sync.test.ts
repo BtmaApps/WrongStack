@@ -16,7 +16,7 @@ import {
  * Every case below is therefore pinned against an explicit fixture.
  */
 const FIXTURES: Record<string, string> = {
-  'packages/core/src/coordination/director.ts': "export { x } from '@wrongstack/core/kernel';",
+  'packages/core/src/core/agent-loop.ts': "export { x } from '@wrongstack/core/kernel';",
   'packages/cli/src/cli-main.ts': "import { y } from '@wrongstack/core/kernel';",
   'apps/desktop/src/main.ts': "import '@wrongstack/core/observability';",
   'scripts/snapshot-core-public-api.mjs':
@@ -35,7 +35,7 @@ describe('Core API snapshot pre-commit synchronization', () => {
     expect(
       changedSnapshotInputs(
         [
-          'packages/core/src/coordination/director.ts',
+          'packages/core/src/core/agent-loop.ts',
           'packages/cli/src/cli-main.ts',
           'apps/desktop/src/main.ts',
           'scripts/snapshot-core-public-api.mjs',
@@ -50,7 +50,7 @@ describe('Core API snapshot pre-commit synchronization', () => {
       'architecture/core-api-policy.json',
       'packages/cli/src/cli-main.ts',
       'packages/core/package.json',
-      'packages/core/src/coordination/director.ts',
+      'packages/core/src/core/agent-loop.ts',
       'scripts/snapshot-core-public-api.mjs',
     ]);
   });

@@ -21,7 +21,7 @@
 
 import { EventBus } from '@wrongstack/contracts/kernel';
 import type { SubagentRunContext, SubagentRunOutcome, TaskSpec } from '@wrongstack/contracts/types';
-import { Director, mailboxSessionTag } from '@wrongstack/core/coordination';
+import { Director, mailboxSessionTag } from '@wrongstack/coordination';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { createFleetStatusBroadcaster } from '../src/fleet/status-broadcast.js';

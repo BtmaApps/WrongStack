@@ -1,0 +1,396 @@
+import { EventBus } from '@wrongstack/contracts/kernel/events';
+import type { SessionWriter } from '@wrongstack/contracts/types/session';
+import { Context, consumeSessionNotes, enqueueSessionNote } from '@wrongstack/core/agent';
+import { describe, expect, it } from 'vitest';
+import { SessionNoteHub } from '../src/session-note-hub.js';
+import { makeSessionNoteTool } from '../src/session-note-tool.js';
+
+function makeWriter(id: string): SessionWriter {
+  return {
+    id,
+    pendingToolUses: [],
+    append: async () => {},
+    appendBatch: async () => {},
+    flush: async () => {},
+    close: async () => {},
+    recordFileChange: () => {},
+    recordSideEffect: () => {},
+    writeCheckpoint: async () => {},
+    writeFileSnapshot: async () => {},
+    truncateToCheckpoint: async () => 0,
+    clearSession: async () => {},
+    writeInFlightMarker: async () => {},
+    clearInFlightMarker: async () => {},
+  };
+}
+
+function makeCtx(id: string, sessionId = 'sess-1'): Context {
+  return new Context({
+    systemPrompt: [],
+    provider: null as never,
+    session: makeWriter(sessionId),
+    signal: new AbortController().signal,
+    tokenCounter: { account: () => {} } as never,
+    cwd: '/tmp',
+    projectRoot: '/tmp',
+    model: 'test',
+    agentId: id,
+  });
+}
+
+describe('SessionNoteHub ignorePeerBroadcasts', () => {
+  it("keeps peers' @session chatter off the inbox but lets direct notes and the leader through", () => {
+    const hub = new SessionNoteHub();
+    const got: string[] = [];
+    hub.register({
+      sessionId: 'sess-1',
+      agentId: 'acp-worker-1',
+      aliases: ['claude-code'],
+      ignorePeerBroadcasts: true,
+      deliver: (n) => got.push(`${n.from}:${n.body}`),
+    });
+    const post = (from: string, to: string, body: string) =>
+      hub.post({ sessionId: 'sess-1', from, to, kind: 'note', body }).delivered;
+
+    expect(post('explorer-2', '@session', 'found it')).toBe(0);
+    expect(post('explorer-2', 'claude-code', 'look at util.ts')).toBe(1);
+    expect(post('leader@abc', '@session', 'stop, plan changed')).toBe(1);
+    expect(got).toEqual(['explorer-2:look at util.ts', 'leader@abc:stop, plan changed']);
+  });
+});
+
+describe('SessionNoteHub', () => {
+  it('delivers to the leader alias in the same session only', () => {
+    const hub = new SessionNoteHub();
+    const leader = makeCtx('leader');
+    const other = makeCtx('leader', 'sess-other');
+    hub.register({
+      sessionId: 'sess-1',
+      agentId: 'leader',
+      aliases: ['leader'],
+      deliver: (n) => enqueueSessionNote(leader, n),
+    });
+    hub.register({
+      sessionId: 'sess-other',
+      agentId: 'leader',
+      aliases: ['leader'],
+      deliver: (n) => enqueueSessionNote(other, n),
+    });
+
+    const result = hub.post({
+      sessionId: 'sess-1',
+      from: 'explore-companion-abc',
+      to: 'leader',
+      kind: 'result',
+      body: 'found it',
+      subject: '[explore]',
+    });
+    expect(result.delivered).toBe(1);
+    expect(consumeSessionNotes(leader).map((n) => n.body)).toEqual(['found it']);
+    expect(consumeSessionNotes(other)).toEqual([]);
+  });
+
+  it('does not echo a note back to its sender', () => {
+    const hub = new SessionNoteHub();
+    const worker = makeCtx('worker-1');
+    hub.register({
+      sessionId: 'sess-1',
+      agentId: 'worker-1',
+      deliver: (n) => enqueueSessionNote(worker, n),
+    });
+    expect(
+      hub.post({
+        sessionId: 'sess-1',
+        from: 'worker-1',
+        to: 'worker-1',
+        kind: 'note',
+        body: 'loop',
+      }).delivered,
+    ).toBe(0);
+    expect(consumeSessionNotes(worker)).toEqual([]);
+  });
+
+  it('broadcasts @session to every other live inbox', () => {
+    const hub = new SessionNoteHub();
+    const leader = makeCtx('leader');
+    const worker = makeCtx('worker-1');
+    hub.register({
+      sessionId: 'sess-1',
+      agentId: 'leader',
+      aliases: ['leader'],
+      deliver: (n) => enqueueSessionNote(leader, n),
+    });
+    hub.register({
+      sessionId: 'sess-1',
+      agentId: 'worker-1',
+      deliver: (n) => enqueueSessionNote(worker, n),
+    });
+    expect(
+      hub.post({
+        sessionId: 'sess-1',
+        from: 'leader',
+        to: '@session',
+        kind: 'steer',
+        body: 'pause the probe',
+      }).delivered,
+    ).toBe(1);
+    expect(consumeSessionNotes(worker)[0]?.body).toBe('pause the probe');
+    expect(consumeSessionNotes(leader)).toEqual([]);
+  });
+
+  it.each([undefined, 'old-session'])(
+    'routes observers using the live session (initially %s)',
+    (initial) => {
+      const hub = new SessionNoteHub();
+      const events = new EventBus();
+      const seen: string[] = [];
+      const delivered: string[] = [];
+      let sessionId: string | undefined = initial;
+      events.on('session.note', (event) => seen.push(event.sessionId));
+      const off = hub.register({
+        sessionId: () => sessionId,
+        agentId: 'leader',
+        events,
+        deliver: (note) => delivered.push(note.body),
+      });
+
+      sessionId = ' new\\session ';
+      expect(
+        hub.post({
+          sessionId: 'new/session',
+          from: 'worker',
+          to: 'leader',
+          kind: 'note',
+          body: 'current',
+        }).delivered,
+      ).toBe(1);
+      expect(seen).toEqual(['new/session']);
+      hub.post({
+        sessionId: 'old-session',
+        from: 'worker',
+        to: 'leader',
+        kind: 'note',
+        body: 'old',
+      });
+      expect(seen).toEqual(['new/session']);
+      expect(delivered).toEqual(['current']);
+
+      sessionId = undefined;
+      hub.post({
+        sessionId: 'new/session',
+        from: 'worker',
+        to: 'leader',
+        kind: 'note',
+        body: 'unbound',
+      });
+      expect(seen).toEqual(['new/session']);
+      sessionId = 'new/session';
+      off();
+      off();
+      hub.post({
+        sessionId: 'new/session',
+        from: 'worker',
+        to: 'leader',
+        kind: 'note',
+        body: 'disposed',
+      });
+      expect(seen).toEqual(['new/session']);
+    },
+  );
+
+  it('prefers an explicit bus and otherwise uses the first matching bus even for the sender', () => {
+    const hub = new SessionNoteHub();
+    const first = new EventBus();
+    const second = new EventBus();
+    const explicit = new EventBus();
+    const seen: string[] = [];
+    first.on('session.note', () => seen.push('first'));
+    second.on('session.note', () => seen.push('second'));
+    explicit.on('session.note', () => seen.push('explicit'));
+    hub.register({ sessionId: 's', agentId: 'no-bus', deliver: () => {} });
+    hub.register({ sessionId: 's', agentId: 'sender', events: first, deliver: () => {} });
+    hub.register({ sessionId: 's', agentId: 'target', events: second, deliver: () => {} });
+    const input = {
+      sessionId: 's',
+      from: 'sender',
+      to: 'target',
+      kind: 'note' as const,
+      body: 'hi',
+    };
+    expect(hub.post({ ...input, events: explicit }).delivered).toBe(1);
+    expect(hub.post(input).delivered).toBe(1);
+    expect(seen).toEqual(['explicit', 'first']);
+  });
+
+  it('emits session.note for observers', () => {
+    const hub = new SessionNoteHub();
+    const events = new EventBus();
+    const seen: string[] = [];
+    events.on('session.note', (e) => seen.push(`${e.to}:${e.body}`));
+    hub.post({
+      sessionId: 'sess-1',
+      from: 'a',
+      to: 'leader',
+      kind: 'note',
+      body: 'hi',
+      events,
+    });
+    expect(seen).toEqual(['leader:hi']);
+  });
+
+  it('rebinds the cached bus to a surviving contributor, then drops it after the last unregisters', () => {
+    const hub = new SessionNoteHub();
+    const firstBus = new EventBus();
+    const secondBus = new EventBus();
+    const firstSeen: string[] = [];
+    const secondSeen: string[] = [];
+    firstBus.on('session.note', (e) => firstSeen.push(e.body));
+    secondBus.on('session.note', (e) => secondSeen.push(e.body));
+
+    const offFirst = hub.register({
+      sessionId: 'sess-1',
+      agentId: 'leader',
+      events: firstBus,
+      deliver: () => {},
+    });
+    const offSecond = hub.register({
+      sessionId: 'sess-1',
+      agentId: 'worker-1',
+      events: secondBus,
+      deliver: () => {},
+    });
+
+    // First-wins: the first contributor's bus carries session.note.
+    hub.post({ sessionId: 'sess-1', from: 'a', to: 'worker-1', kind: 'note', body: 'one' });
+    expect(firstSeen).toEqual(['one']);
+
+    // When the owning (first) contributor unregisters, the cache rebinds to
+    // the surviving contributor's bus: the dead agent's EventBus (and every
+    // closure its listeners hold) is released immediately instead of being
+    // retained until the session's LAST inbox unregisters.
+    offFirst();
+    hub.post({ sessionId: 'sess-1', from: 'a', to: 'worker-1', kind: 'note', body: 'two' });
+    expect(firstSeen).toEqual(['one']);
+    expect(secondSeen).toEqual(['two']);
+
+    // After the last contributor unregisters the cached bus is dropped — no
+    // zombie emissions on a torn-down agent's bus.
+    offSecond();
+    hub.post({ sessionId: 'sess-1', from: 'a', to: 'worker-1', kind: 'note', body: 'three' });
+    expect(firstSeen).toEqual(['one']);
+    expect(secondSeen).toEqual(['two']);
+
+    // A later live inbox re-primes the cache with its own bus.
+    const thirdBus = new EventBus();
+    const thirdSeen: string[] = [];
+    thirdBus.on('session.note', (e) => thirdSeen.push(e.body));
+    const offThird = hub.register({
+      sessionId: 'sess-1',
+      agentId: 'leader-2',
+      events: thirdBus,
+      deliver: () => {},
+    });
+    hub.post({ sessionId: 'sess-1', from: 'a', to: 'leader-2', kind: 'note', body: 'four' });
+    expect(thirdSeen).toEqual(['four']);
+    expect(firstSeen).toEqual(['one']);
+    offThird();
+  });
+
+  it('keeps the cached bus when a non-owning contributor unregisters', () => {
+    const hub = new SessionNoteHub();
+    const firstBus = new EventBus();
+    const secondBus = new EventBus();
+    const firstSeen: string[] = [];
+    const secondSeen: string[] = [];
+    firstBus.on('session.note', (e) => firstSeen.push(e.body));
+    secondBus.on('session.note', (e) => secondSeen.push(e.body));
+
+    const offFirst = hub.register({
+      sessionId: 'sess-1',
+      agentId: 'leader',
+      events: firstBus,
+      deliver: () => {},
+    });
+    const offSecond = hub.register({
+      sessionId: 'sess-1',
+      agentId: 'worker-1',
+      events: secondBus,
+      deliver: () => {},
+    });
+
+    // The non-owning contributor leaves while the first is still live: no
+    // rebind, the first bus stays bound.
+    offSecond();
+    hub.post({ sessionId: 'sess-1', from: 'a', to: 'leader', kind: 'note', body: 'kept' });
+    expect(firstSeen).toEqual(['kept']);
+    expect(secondSeen).toEqual([]);
+
+    // Then the owning contributor leaves too: refcount hits zero, bus drops.
+    offFirst();
+    hub.post({ sessionId: 'sess-1', from: 'a', to: 'leader', kind: 'note', body: 'gone' });
+    expect(firstSeen).toEqual(['kept']);
+  });
+
+  it('treats a disposer as single-use so a repeated call cannot drop a live bus', () => {
+    const hub = new SessionNoteHub();
+    const bus = new EventBus();
+    const seen: string[] = [];
+    bus.on('session.note', (e) => seen.push(e.body));
+    const offA = hub.register({
+      sessionId: 'sess-1',
+      agentId: 'a',
+      events: bus,
+      deliver: () => {},
+    });
+    const offB = hub.register({
+      sessionId: 'sess-1',
+      agentId: 'b',
+      events: bus,
+      deliver: () => {},
+    });
+
+    offA();
+    offA(); // Second call must not decrement the ref count again.
+    hub.post({ sessionId: 'sess-1', from: 'x', to: 'b', kind: 'note', body: 'still live' });
+    expect(seen).toEqual(['still live']);
+
+    offB();
+    hub.post({ sessionId: 'sess-1', from: 'x', to: 'b', kind: 'note', body: 'after last' });
+    expect(seen).toEqual(['still live']);
+  });
+});
+
+describe('session_note tool', () => {
+  it('posts onto the process hub', async () => {
+    const { sessionNoteHub } = await import('../src/session-note-hub.js');
+    const leader = makeCtx('leader');
+    const off = sessionNoteHub.register({
+      sessionId: 'sess-1',
+      agentId: 'leader',
+      aliases: ['leader'],
+      deliver: (n) => enqueueSessionNote(leader, n),
+    });
+    const tool = makeSessionNoteTool();
+    const worker = makeCtx('worker-1');
+    const out = (await tool.execute(
+      { to: 'leader', kind: 'result', body: 'map src/a.ts' },
+      worker,
+      { signal: new AbortController().signal },
+    )) as { delivered: number; channel: string };
+    expect(out.delivered).toBe(1);
+    expect(out.channel).toBe('session');
+    expect(consumeSessionNotes(leader)[0]?.body).toBe('map src/a.ts');
+    off();
+  });
+
+  it('throws on a missing recipient or body', async () => {
+    const tool = makeSessionNoteTool();
+    const exec = { signal: new AbortController().signal };
+    await expect(
+      tool.execute({ to: 'leader', body: '   ' }, makeCtx('worker-1'), exec),
+    ).rejects.toThrow(/to and body are required/);
+    await expect(tool.execute({ body: 'x' }, makeCtx('worker-1'), exec)).rejects.toThrow(
+      /to and body are required/,
+    );
+  });
+});

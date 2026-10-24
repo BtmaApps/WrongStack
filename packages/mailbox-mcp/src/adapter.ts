@@ -6,7 +6,7 @@ import {
   type MailboxMessageType,
   normalizeRecipient,
   type RemoteMailbox,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
 import {
   MCPServer,
   type MCPServerCallResult,

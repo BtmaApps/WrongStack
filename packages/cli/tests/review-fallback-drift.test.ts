@@ -6,7 +6,7 @@
  * explicit session-ref append requested by the spawn caller.
  */
 
-import { ProviderModelStatusTracker } from '@wrongstack/core/coordination';
+import { ProviderModelStatusTracker } from '@wrongstack/coordination';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   __resetReviewerRoundRobinCursor,

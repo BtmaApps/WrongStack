@@ -6,7 +6,7 @@ import {
   type PackageAuthorTrackerOptions,
   startPackageOutdatedWatcher,
   startTechStackConsumer,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
 import type { DefaultLogger } from '@wrongstack/core/infrastructure';
 import type { MultiAgentHost } from '../multi-agent.js';
 

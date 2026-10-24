@@ -1,7 +1,7 @@
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { getSharedProjectMailbox, type RemoteMailbox } from '@wrongstack/core/coordination';
+import { getSharedProjectMailbox, type RemoteMailbox } from '@wrongstack/coordination';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { SlashCommandContext } from '../src/slash-commands/index.js';
 import { buildMailboxCommand } from '../src/slash-commands/mailbox.js';

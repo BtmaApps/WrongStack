@@ -1,7 +1,7 @@
 /** Fleet and subagent hooks: spawn, monitor, budget, kill, retry and logs. */
 export interface SlashFleetCommandContext {
   /** Agent Monitor Service — tracks subagent conversations and streams to HQ. */
-  agentMonitor?: import('@wrongstack/core/coordination').AgentMonitorService | undefined;
+  agentMonitor?: import('@wrongstack/coordination').AgentMonitorService | undefined;
   /**
    * Generate a commit message by calling the LLM with the git diff.
    * Receives the raw diff, returns a commit message string.
@@ -107,7 +107,7 @@ export interface SlashFleetCommandContext {
   /**
    * Get fleet usage summary for /fleet usage.
    */
-  onFleetUsage?: (() => import('@wrongstack/core/coordination').FleetUsage | null) | undefined;
+  onFleetUsage?: (() => import('@wrongstack/coordination').FleetUsage | null) | undefined;
   /**
    * Kill all running subagents. Returns count of killed subagents.
    */
@@ -158,7 +158,7 @@ export interface SlashFleetCommandContext {
    * dispatcher uses it to resolve ambiguous routing decisions; without it the
    * dispatcher is heuristic-only. Built from the session provider in the host.
    */
-  onDispatchClassify?: import('@wrongstack/core/coordination').DispatchClassifier | undefined;
+  onDispatchClassify?: import('@wrongstack/coordination').DispatchClassifier | undefined;
   /**
    * Toggle subagent activity streaming into the leader's history. The
    * TUI installs the actual setter on mount via a shared controller;

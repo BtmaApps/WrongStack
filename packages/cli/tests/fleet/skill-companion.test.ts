@@ -10,8 +10,8 @@ import type {
 } from '@wrongstack/contracts/types';
 import type { Context } from '@wrongstack/core/agent';
 import { renderInstructionLayer } from '@wrongstack/core/agent';
-import type { Director } from '@wrongstack/core/coordination';
-import { DEFAULT_SUBAGENT_BASELINE, makeSubagentResultTool } from '@wrongstack/core/coordination';
+import type { Director } from '@wrongstack/coordination';
+import { DEFAULT_SUBAGENT_BASELINE, makeSubagentResultTool } from '@wrongstack/coordination';
 import {
   markRecommendedSkillLoaded,
   markRecommendedSkillUnavailable,

@@ -7,7 +7,6 @@
   "sourceExtensions": [".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs"],
   "coreAreas": {
     "brain": { "classification": "agent-domain", "targetOwner": "core" },
-    "coordination": { "classification": "feature-runtime", "targetOwner": "coordination" },
     "core": { "classification": "agent-domain", "targetOwner": "core" },
     "design": { "classification": "product-feature", "targetOwner": "core-focused-facade" },
     "execution": {

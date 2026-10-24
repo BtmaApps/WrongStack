@@ -1,7 +1,7 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as fs from 'node:fs/promises';
-import * as path from 'node:path';
 import * as os from 'node:os';
+import * as path from 'node:path';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('AutonomousCoordinator stop()', () => {
   let tempDir: string;
@@ -25,7 +25,9 @@ describe('AutonomousCoordinator stop()', () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     // Use dynamic import to avoid hoisting issues with vi.mock
-    const { AutonomousCoordinator } = await import('../src/coordination/autonomous-coordinator.js');
+    const { AutonomousCoordinator } = await import(
+      '../../coordination/src/autonomous-coordinator.js'
+    );
 
     const coordinator = new AutonomousCoordinator({
       sessionDir: tempDir,
@@ -67,7 +69,9 @@ describe('AutonomousCoordinator stop()', () => {
   it('is idempotent — calling stop() twice emits only one log', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-    const { AutonomousCoordinator } = await import('../src/coordination/autonomous-coordinator.js');
+    const { AutonomousCoordinator } = await import(
+      '../../coordination/src/autonomous-coordinator.js'
+    );
 
     const coordinator = new AutonomousCoordinator({
       sessionDir: tempDir,

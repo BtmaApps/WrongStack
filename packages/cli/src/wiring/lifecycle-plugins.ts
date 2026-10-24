@@ -19,7 +19,7 @@ import {
   normalizeTokenSavingTier,
   resolveContextWindowPolicy,
 } from '@wrongstack/contracts/types';
-import { getSharedProjectMailbox, type RemoteMailbox } from '@wrongstack/core/coordination';
+import { getSharedProjectMailbox, type RemoteMailbox } from '@wrongstack/coordination';
 import { installDesignTurnGate } from '@wrongstack/core/design';
 import { CouncilOrchestrator, OneShotOrchestrator } from '@wrongstack/core/execution';
 import {

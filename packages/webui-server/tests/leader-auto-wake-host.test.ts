@@ -1,5 +1,5 @@
 import { EventBus } from '@wrongstack/contracts/kernel';
-import { LeaderAutoWakeController, LeaderDeliveryHub } from '@wrongstack/core/coordination';
+import { LeaderAutoWakeController, LeaderDeliveryHub } from '@wrongstack/coordination';
 import { AUTO_WAKE_PROMPT_MARKER } from '@wrongstack/webui-protocol';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -14,7 +14,7 @@ vi.mock('@wrongstack/providers', async (importOriginal) => ({
   makeProviderFromConfig: vi.fn(() => ({ id: 'openai', capabilities: { maxContext: 128000 } })),
 }));
 
-import { AUTO_WAKE_MARKER } from '@wrongstack/core/coordination';
+import { AUTO_WAKE_MARKER } from '@wrongstack/coordination';
 import { createEmbeddedConversationRoutes } from '../src/server/embedded-host-adapters.js';
 import { createWebuiLeaderAutoWakeHost } from '../src/server/leader-auto-wake-host.js';
 import type { PendingConfirm } from '../src/server/pending-confirms.js';

@@ -2,7 +2,7 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { FleetNotifier } from '../src/coordination/fleet-notifier.js';
+import { FleetNotifier } from '../../coordination/src/fleet-notifier.js';
 
 const INSTANCES_FILE = 'webui-instances.json';
 

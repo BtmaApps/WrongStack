@@ -212,6 +212,6 @@ export interface ProjectDetail {
 }
 
 export interface HqRouterMailboxGateway {
-  mailbox: import('@wrongstack/core/coordination').Mailbox;
-  router: ReturnType<typeof import('@wrongstack/core/coordination').createMailboxHttpRouter>;
+  mailbox: import('@wrongstack/coordination').Mailbox;
+  router: ReturnType<typeof import('@wrongstack/coordination').createMailboxHttpRouter>;
 }

@@ -1,5 +1,5 @@
+import type { AutonomousCoordinator, CoordinatorEvent } from '@wrongstack/coordination';
 import type { Context } from '@wrongstack/core/agent';
-import type { AutonomousCoordinator, CoordinatorEvent } from '@wrongstack/core/coordination';
 import type { TuiRuntimeState } from './tui-runtime-state.js';
 
 interface TuiCoordinatorCallbacksContext {
@@ -73,7 +73,7 @@ export function createTuiCoordinatorCallbacks({
       if (!coordinator) return 'No coordinator is active.';
       await coordinator.graph.load();
       const goal = coordinator.graph.get(taskId) as
-        | import('@wrongstack/core/coordination').GoalNode
+        | import('@wrongstack/coordination').GoalNode
         | undefined;
       if (goal?.type !== 'goal') {
         return `Task ${taskId.slice(0, 8)} not found in the coordinator graph.`;
@@ -96,7 +96,7 @@ export function createTuiCoordinatorCallbacks({
       if (!coordinator) return 'No coordinator is active.';
       await coordinator.graph.load();
       const goal = coordinator.graph.get(taskId) as
-        | import('@wrongstack/core/coordination').GoalNode
+        | import('@wrongstack/coordination').GoalNode
         | undefined;
       if (goal?.type !== 'goal') {
         return `Task ${taskId.slice(0, 8)} not found in the coordinator graph.`;
@@ -115,7 +115,7 @@ export function createTuiCoordinatorCallbacks({
       if (!coordinator) return 'No coordinator is active.';
       await coordinator.graph.load();
       const goal = coordinator.graph.get(taskId) as
-        | import('@wrongstack/core/coordination').GoalNode
+        | import('@wrongstack/coordination').GoalNode
         | undefined;
       if (goal?.type !== 'goal') {
         return `Task ${taskId.slice(0, 8)} not found in the coordinator graph.`;

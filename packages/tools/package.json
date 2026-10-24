@@ -259,6 +259,7 @@
     "@typescript/typescript6": "^6.0.2",
     "@wrongstack/agent-catalog": "workspace:*",
     "@wrongstack/contracts": "workspace:*",
+    "@wrongstack/coordination": "workspace:*",
     "@wrongstack/core": "workspace:*",
     "@wrongstack/kanban": "workspace:*",
     "@wrongstack/persistence": "workspace:*",

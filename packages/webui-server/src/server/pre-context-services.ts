@@ -36,12 +36,7 @@ import {
   type SecretVault,
   type SessionStore,
 } from '@wrongstack/contracts/types';
-import {
-  Context,
-  DefaultSystemPromptBuilder,
-  providerToolsForVariant,
-} from '@wrongstack/core/agent';
-import type { AgentStatusTracker } from '@wrongstack/core/coordination';
+import type { AgentStatusTracker } from '@wrongstack/coordination';
 import {
   getSharedProjectMailbox,
   makeFleetStatusTool,
@@ -49,7 +44,12 @@ import {
   makeMailInboxTool,
   makeMailSendTool,
   makeSessionNoteTool,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
+import {
+  Context,
+  DefaultSystemPromptBuilder,
+  providerToolsForVariant,
+} from '@wrongstack/core/agent';
 import { DefaultPromptLoader, DefaultSkillLoader } from '@wrongstack/core/execution';
 import { DefaultTokenCounter, resolveMcpServerConfig } from '@wrongstack/core/infrastructure';
 import { DefaultModelsRegistry, DefaultModeStore, startCatalog } from '@wrongstack/core/models';
@@ -64,12 +64,6 @@ import {
   PromptUsageStore,
   seedScoutLearnedTools,
 } from '@wrongstack/core/storage';
-import {
-  createMcpControlTool,
-  createMcpUseTool,
-  createSessionRenameTool,
-  SESSION_RENAME_TOOL_NAME,
-} from '@wrongstack/tools/management';
 import {
   configureChildEnvGitIdentity,
   sessionScopedPath,
@@ -92,6 +86,12 @@ import {
 import { createDefaultContainer } from '@wrongstack/runtime';
 import { registerCanonicalHostTools } from '@wrongstack/runtime/tool-registration';
 import { configureDangerBypass, configureExecPolicy } from '@wrongstack/tools';
+import {
+  createMcpControlTool,
+  createMcpUseTool,
+  createSessionRenameTool,
+  SESSION_RENAME_TOOL_NAME,
+} from '@wrongstack/tools/management';
 import { attachSessionKanbanMirror, hydrateSessionKanban } from '@wrongstack/tools/session-kanban';
 import type { VectorMemoryStore } from '@wrongstack/vector-memory';
 import { seedContextMeta } from './context-meta.js';
@@ -568,7 +568,7 @@ export async function createPreContextServices(
   }
 
   // ── System prompt (with online agents from the shared mailbox) ──
-  let onlineAgents: import('@wrongstack/core/coordination').MailboxAgentStatus[] = [];
+  let onlineAgents: import('@wrongstack/coordination').MailboxAgentStatus[] = [];
   try {
     const systemMailbox = getSharedProjectMailbox(wpaths.projectDir);
     onlineAgents = await systemMailbox.getAgentStatuses();

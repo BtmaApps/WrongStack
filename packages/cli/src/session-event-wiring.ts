@@ -27,7 +27,7 @@ import {
   wireRollupsToChronicle,
   wireToolsToChronicle,
 } from '@wrongstack/chronicle';
-import { recordFileAction } from '@wrongstack/core/coordination';
+import { recordFileAction } from '@wrongstack/coordination';
 import { startNetworkTelemetryMonitor } from '@wrongstack/core/observability';
 import { DefaultSecretScrubber } from '@wrongstack/core/security';
 import type { SessionEventBridge } from '@wrongstack/core/storage';

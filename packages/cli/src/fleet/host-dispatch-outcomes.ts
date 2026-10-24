@@ -1,10 +1,10 @@
-import type { EventBus } from '@wrongstack/contracts/kernel';
 import {
   type DispatchLogEntry,
   recordDispatch,
   recordDispatchOutcome,
 } from '@wrongstack/agent-catalog';
-import type { Director } from '@wrongstack/core/coordination';
+import type { EventBus } from '@wrongstack/contracts/kernel';
+import type { Director } from '@wrongstack/coordination';
 
 /**
  * Workers remembered for outcome joining. A routed worker's tasks finish well

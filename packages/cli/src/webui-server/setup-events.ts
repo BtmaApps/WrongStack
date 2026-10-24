@@ -1,7 +1,7 @@
 import type { EventBus } from '@wrongstack/contracts/kernel';
 import type { SecretScrubber } from '@wrongstack/contracts/types';
+import { mailboxSessionTag } from '@wrongstack/coordination';
 import type { Context } from '@wrongstack/core/agent';
-import { mailboxSessionTag } from '@wrongstack/core/coordination';
 import type { JournalEntry } from '@wrongstack/goal';
 import {
   createEternalSubscription,

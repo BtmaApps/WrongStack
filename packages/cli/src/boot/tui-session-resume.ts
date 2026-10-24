@@ -14,7 +14,7 @@ import { projectLastRequestTokens } from '@wrongstack/contracts/types/session-ti
 import {
   restoreSessionSubagentModelPlan,
   restoreSessionSubagentPolicy,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
 import { restoreSessionPermissionOverrides } from '@wrongstack/core/security';
 import { restoreRequiredSkillsFromEvents } from '@wrongstack/core/skills';
 import { attachTodosCheckpoint, loadTodosCheckpoint } from '@wrongstack/core/storage';

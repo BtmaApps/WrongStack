@@ -1,4 +1,4 @@
-import { LeaderAutoWakeController } from '@wrongstack/core/coordination';
+import { LeaderAutoWakeController } from '@wrongstack/coordination';
 import { runWebUIDispatch } from './boot/dispatch-webui.js';
 import type { ExecuteDeps } from './execute-deps.js';
 import { createKanbanDispatchHandler } from './execution-kanban-dispatch.js';

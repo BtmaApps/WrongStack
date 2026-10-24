@@ -28,7 +28,7 @@ import {
 import {
   mailboxProjectServerEndpoint,
   mailboxProjectServerMetadataPath,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
 import {
   sessionCatalogProjectServerEndpoint,
   sessionCatalogProjectServerMetadataPath,

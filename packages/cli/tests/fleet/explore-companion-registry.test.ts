@@ -1,4 +1,4 @@
-import type { ExploreCompanion } from '@wrongstack/core/coordination';
+import type { ExploreCompanion } from '@wrongstack/coordination';
 import { describe, expect, it } from 'vitest';
 import { createExploreCompanionRegistry } from '../../src/fleet/host-explore-companion-registry.js';
 

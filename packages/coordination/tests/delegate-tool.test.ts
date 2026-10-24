@@ -1,0 +1,1649 @@
+import * as fs from 'node:fs/promises';
+import * as os from 'node:os';
+import * as path from 'node:path';
+import { EventBus } from '@wrongstack/contracts/kernel/events';
+import type {
+  SubagentRunContext,
+  SubagentRunOutcome,
+  TaskSpec,
+} from '@wrongstack/contracts/types/multi-agent';
+import type { Tool } from '@wrongstack/contracts/types/tool';
+import { ToolCapabilities } from '@wrongstack/core/security';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { createDelegateTool, type DelegateHost, hintForKind } from '../src/delegate-tool.js';
+import { Director } from '../src/director.js';
+import { FLEET_ROSTER } from '../src/fleet.js';
+
+/**
+ * Every call in this file exercises the historical BLOCKING contract, so the
+ * helper pins `wait: true` (an explicit `wait` in the input still wins).
+ * Background-mode behaviour lives in delegate-background.test.ts.
+ */
+function exec(tool: Tool, input: unknown, ctx?: unknown, opts?: { signal?: AbortSignal }) {
+  return tool.execute(
+    { wait: true, ...(input as Record<string, unknown>) },
+    ctx as never,
+    opts as { signal: AbortSignal },
+  );
+}
+
+/** Owning session for coordinator-scoped work under test. */
+const TEST_SESSION_ID = 'sess_test';
+
+/**
+ * Valid boundary shared by the happy-path calls. `delegate` enforces an
+ * explicit scope plus at least one concrete out-of-scope non-goal on every
+ * assignment; tests that exercise other behavior still need to satisfy that
+ * gate, exactly like a real leader.
+ */
+const BOUNDARY = {
+  scope: 'The named target only — read, verify, report.',
+  outOfScope: ['Do not modify any files', 'Do not fix issues you discover'],
+} as const;
+
+/**
+ * Tests the `delegate` LLM-callable tool. The tool is the
+ * one-call-does-everything entry point that auto-promotes the host to
+ * director mode if needed, spawns a subagent, assigns the task, and
+ * returns the result. These tests cover:
+ *
+ *  - successful end-to-end delegation through a role
+ *  - successful delegation with explicit name/provider/model
+ *  - error path: unknown role
+ *  - error path: no role + no name
+ *  - error path: missing task
+ *  - timeout path
+ *  - host that refuses promotion (legacy non-director path)
+ *  - auto-promotion: ensureDirector returns null then promoteToDirector succeeds
+ */
+
+describe('createDelegateTool', () => {
+  let director: Director;
+  let buses: Map<string, EventBus>;
+  let attachDisposers: Array<() => void>;
+
+  beforeEach(() => {
+    buses = new Map();
+    attachDisposers = [];
+  });
+
+  function buildLiveDirector(): Director {
+    const runner = vi.fn(
+      async (task: TaskSpec, ctx: SubagentRunContext): Promise<SubagentRunOutcome> => {
+        const bus = buses.get(ctx.subagentId)!;
+        bus.emit('iteration.started', { ctx: null as never, index: 1 });
+        bus.emit('tool.executed', { id: 'mock', name: 'mock', durationMs: 5, ok: true });
+        bus.emit('provider.response', {
+          ctx: null as never,
+          model: 'test-model',
+          usage: { input: 100, output: 50 },
+          stopReason: 'end_turn',
+        });
+        return {
+          result: `done:${task.description}`,
+          iterations: 1,
+          toolCalls: 1,
+        };
+      },
+    );
+    const d = new Director({
+      sessionId: TEST_SESSION_ID,
+      config: {
+        coordinatorId: 'delegate-test',
+        doneCondition: { type: 'all_tasks_done' },
+        maxConcurrent: 4,
+      },
+      runner,
+    });
+    // Hook every spawn into a fresh EventBus and wire it to the
+    // FleetBus so the in-line runner's events route through.
+    const origSpawn = d.spawn.bind(d);
+    d.spawn = async (config, priceLookup) => {
+      const id = await origSpawn(config, priceLookup);
+      const bus = new EventBus();
+      buses.set(id, bus);
+      attachDisposers.push(d.fleet.attach(id, bus));
+      return id;
+    };
+    return d;
+  }
+
+  function buildHost(initial: Director | null, promoted?: Director | null): DelegateHost {
+    let live = initial;
+    return {
+      isDirectorMode: () => !!live,
+      ensureDirector: async () => live,
+      promoteToDirector: async () => {
+        if (live) return live;
+        live = promoted ?? null;
+        return live;
+      },
+    };
+  }
+
+  it('declares subagent.spawn capability for subagent guards', () => {
+    const tool = createDelegateTool({ host: buildHost(null) });
+    expect(tool.capabilities).toContain(ToolCapabilities.SUBAGENT_SPAWN);
+  });
+
+  // Regression for H-10 (AT-03):
+  //   part (a): the previous `permission:'auto'` combined with the
+  //     spawned worker's `WIDE_SUBAGENT_CAPABILITIES` (SHELL_ARBITRARY,
+  //     SHELL_RESTRICTED, SHELL_EXEC, PACKAGE_INSTALL, FS_WRITE) made
+  //     every delegation a zero-prompt-surface shell+install+write grant
+  //     to a model-chosen nickname.
+  //   part (b): no `subjectKey`/`subjectFields` meant the approval
+  //     subject fell through to `input.name` — the worker nickname
+  //     the model picked.
+  // The fix: `permission:'confirm'` and `subjectKey:'name'`.
+  it('names installed external agents under provider only when there are some', () => {
+    const providerText = (tool: Tool) =>
+      String(
+        (tool.inputSchema as { properties: { provider: { description: string } } }).properties
+          .provider.description,
+      );
+    const plain = createDelegateTool({ host: buildHost(null) });
+    expect(providerText(plain)).not.toContain('acp');
+    const withClaude = createDelegateTool({
+      host: buildHost(null),
+      externalAgents: ['claude-code'],
+    });
+    expect(providerText(withClaude)).toContain('"acp" with `name` set to');
+    expect(providerText(withClaude)).toContain('(claude-code)');
+    expect(providerText(withClaude).length).toBeLessThanOrEqual(768);
+  });
+
+  it('names the models an external agent serves on `model`, within the wire budget', () => {
+    const modelText = (tool: Tool) =>
+      String(
+        (tool.inputSchema as { properties: { model: { description: string } } }).properties.model
+          .description,
+      );
+    const tool = createDelegateTool({
+      host: buildHost(null),
+      externalAgents: ['claude-code', 'wrongforge'],
+      externalAgentModels: {
+        wrongforge: { models: ['m-small', 'm-big'], default: 'm-small' },
+      },
+    });
+    expect(modelText(tool)).toContain(
+      'For `wrongforge` (provider "wrongforge"): one of m-small, m-big (default m-small)',
+    );
+    expect(modelText(tool)).not.toContain('claude-code');
+    expect(modelText(tool).length).toBeLessThanOrEqual(768);
+    expect(modelText(createDelegateTool({ host: buildHost(null) }))).toBe(
+      'Model id within the provider. Defaults to host model.',
+    );
+  });
+
+  it('prompts on every call (part a) and exposes the name as subject (part b)', () => {
+    const tool = createDelegateTool({ host: buildHost(null) });
+    expect(tool.permission).toBe('confirm');
+    expect(tool.subjectKey).toBe('name');
+  });
+
+  it('runs a delegated task end-to-end via roster role', async () => {
+    director = buildLiveDirector();
+    const tool = createDelegateTool({ host: buildHost(director), roster: FLEET_ROSTER });
+    const out = (await exec(
+      tool,
+      { role: 'bug-hunter', task: 'audit src/parser.ts', ...BOUNDARY },
+      null as never,
+      { signal: new AbortController().signal },
+    )) as { ok: boolean; status?: string; result?: unknown };
+    expect(out.ok).toBe(true);
+    expect(out.status).toBe('success');
+    // The runner echoes `done:${task.description}`; the description now
+    // carries the composed boundary block after the objective.
+    expect(String(out.result)).toContain('done:audit src/parser.ts');
+    expect(String(out.result)).toContain('TASK BOUNDARY');
+    expect(String(out.result)).toContain('- Do not modify any files');
+  });
+
+  it('can delegate the same roster role more than once', async () => {
+    director = buildLiveDirector();
+    const tool = createDelegateTool({ host: buildHost(director), roster: FLEET_ROSTER });
+
+    const first = (await exec(
+      tool,
+      { role: 'security-scanner', task: 'scan command injection', ...BOUNDARY },
+      null as never,
+      { signal: new AbortController().signal },
+    )) as { ok: boolean; subagentId?: string };
+    const second = (await exec(
+      tool,
+      { role: 'security-scanner', task: 'scan path traversal', ...BOUNDARY },
+      null as never,
+      { signal: new AbortController().signal },
+    )) as { ok: boolean; subagentId?: string };
+
+    expect(first.ok).toBe(true);
+    expect(second.ok).toBe(true);
+    expect(first.subagentId).toMatch(/^security-scanner-/);
+    expect(second.subagentId).toMatch(/^security-scanner-/);
+    expect(second.subagentId).not.toBe(first.subagentId);
+  });
+
+  it('accepts name + provider + model without a roster role', async () => {
+    director = buildLiveDirector();
+    const tool = createDelegateTool({ host: buildHost(director), roster: FLEET_ROSTER });
+    const out = (await exec(
+      tool,
+      {
+        name: 'oneoff',
+        provider: 'anthropic',
+        model: 'claude-haiku',
+        task: 'just do it',
+        ...BOUNDARY,
+      },
+      null as never,
+      { signal: new AbortController().signal },
+    )) as { ok: boolean; result?: unknown };
+    expect(out.ok).toBe(true);
+    expect(String(out.result)).toContain('done:just do it');
+    expect(String(out.result)).toContain('Out of scope');
+  });
+
+  it('rejects unknown role with a helpful error', async () => {
+    director = buildLiveDirector();
+    const tool = createDelegateTool({ host: buildHost(director), roster: FLEET_ROSTER });
+    const events = new EventBus();
+    const completed: unknown[] = [];
+    events.on('delegate.completed', (e) => completed.push(e));
+    const tool2 = createDelegateTool({ host: buildHost(director), roster: FLEET_ROSTER, events });
+    await expect(
+      exec(tool2, { role: 'does-not-exist', task: 'x', ...BOUNDARY }, null as never, {
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toThrow(/Unknown role/);
+    // Input errors never started a delegation, so no outcome line is emitted.
+    expect(completed).toHaveLength(0);
+    expect(tool.name).toBe('delegate');
+  });
+
+  it('rejects when neither role nor name is provided and there is no roster', async () => {
+    director = buildLiveDirector();
+    const tool = createDelegateTool({ host: buildHost(director) });
+    await expect(
+      exec(tool, { task: 'x', ...BOUNDARY }, null as never, {
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toThrow(/role.*name/i);
+  });
+
+  // The leader's default spawn tool used to throw here, so a leader that could
+  // not recall one of ~80 role ids had no way to reach a specialist, and the
+  // spawn never reached `/fleet routing` either.
+  it('routes the task to a specialist when neither role nor name is given', async () => {
+    director = buildLiveDirector();
+    const routed: unknown[] = [];
+    (director as unknown as { onSpawnRouted: (e: unknown) => void }).onSpawnRouted = (e) =>
+      routed.push(e);
+    const tool = createDelegateTool({ host: buildHost(director), roster: FLEET_ROSTER });
+    const out = (await exec(
+      tool,
+      {
+        task: 'translate the locale files and fix missing i18n keys for the german locale',
+        ...BOUNDARY,
+      },
+      null as never,
+      { signal: new AbortController().signal },
+    )) as { ok: boolean; subagentId?: string };
+    expect(out.ok).toBe(true);
+    expect(out.subagentId).toMatch(/^i18n-/);
+    expect(routed).toEqual([
+      expect.objectContaining({ role: 'i18n', source: 'description', tool: 'delegate' }),
+    ]);
+  });
+
+  it('records explicit-role and name-only delegations in routing telemetry', async () => {
+    director = buildLiveDirector();
+    const routed: Array<{ role: string; source: string; tool?: string }> = [];
+    (director as unknown as { onSpawnRouted: (e: unknown) => void }).onSpawnRouted = (e) =>
+      routed.push(e as { role: string; source: string; tool?: string });
+    const tool = createDelegateTool({ host: buildHost(director), roster: FLEET_ROSTER });
+    const signal = new AbortController().signal;
+    await exec(tool, { role: 'bug-hunter', task: 'audit', ...BOUNDARY }, null as never, { signal });
+    await exec(tool, { name: 'oneoff', task: 'do it', ...BOUNDARY }, null as never, { signal });
+    expect(routed.map(({ role, source, tool }) => ({ role, source, tool }))).toEqual([
+      { role: 'bug-hunter', source: 'explicit-role', tool: 'delegate' },
+      { role: 'oneoff', source: 'name-only', tool: 'delegate' },
+    ]);
+  });
+
+  it('rejects when task is missing or empty', async () => {
+    director = buildLiveDirector();
+    const tool = createDelegateTool({ host: buildHost(director), roster: FLEET_ROSTER });
+    await expect(
+      exec(tool, { role: 'bug-hunter' }, null as never, {
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toThrow(/task.*required/i);
+  });
+
+  // ─────────────────────────────────────────────────────────────────
+  // Task boundary enforcement — delegate rejects assignments whose
+  // scope/out-of-scope edges are not explicit, and composes the
+  // boundary into the canonical brief the worker receives.
+  // ─────────────────────────────────────────────────────────────────
+
+  it('rejects when the boundary is missing (no scope/outOfScope)', async () => {
+    director = buildLiveDirector();
+    const tool = createDelegateTool({ host: buildHost(director), roster: FLEET_ROSTER });
+    await expect(
+      exec(tool, { role: 'bug-hunter', task: 'audit the parser', outOfScope: [] }, null as never, {
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toThrow(/boundary incomplete[\s\S]*`scope`/);
+    // Rejected before any spawn cost was incurred.
+    expect(director.status().subagents).toHaveLength(0);
+  });
+
+  it('rejects placeholder outOfScope entries with a teaching error', async () => {
+    director = buildLiveDirector();
+    const tool = createDelegateTool({ host: buildHost(director), roster: FLEET_ROSTER });
+    await expect(
+      exec(
+        tool,
+        {
+          role: 'bug-hunter',
+          task: 'audit the parser',
+          scope: 'packages/core/src/parser only.',
+          outOfScope: ['none', 'n/a', '-'],
+        },
+        null as never,
+        { signal: new AbortController().signal },
+      ),
+    ).rejects.toThrow(/placeholder/);
+  });
+
+  it('composes the boundary block into the brief the worker receives', async () => {
+    director = buildLiveDirector();
+    const tool = createDelegateTool({ host: buildHost(director), roster: FLEET_ROSTER });
+    const out = (await exec(
+      tool,
+      {
+        role: 'bug-hunter',
+        task: 'audit src/parser.ts',
+        scope: 'packages/core/src/parser.ts only.',
+        outOfScope: ['Do not edit files', 'No dependency changes'],
+      },
+      null as never,
+      { signal: new AbortController().signal },
+    )) as { ok: boolean; result?: unknown };
+    expect(out.ok).toBe(true);
+    expect(String(out.result)).toContain('audit src/parser.ts');
+    expect(String(out.result)).toContain('Scope (what this task covers):');
+    expect(String(out.result)).toContain('packages/core/src/parser.ts only.');
+    expect(String(out.result)).toContain('- Do not edit files');
+    expect(String(out.result)).toContain('- No dependency changes');
+  });
+
+  it('carries the boundary block into handoff continuations', async () => {
+    const assigned: string[] = [];
+    let attempt = 0;
+    const d = fakeDirector({
+      assign: vi.fn(async (task: { id: string; description: string }) => {
+        assigned.push(task.description);
+        return task.id;
+      }) as never,
+      awaitTasks: vi.fn(async ([taskId]: string[]) => {
+        attempt += 1;
+        if (attempt === 1) {
+          return [
+            {
+              status: 'success',
+              result: 'First half complete.',
+              report: {
+                summary: 'Checkpoint.',
+                findings: [],
+                files_examined: [],
+                confidence: 0.9,
+                suggested_next_steps: [],
+                completion: 'partial',
+                remaining_work: 'Scan packages N through Z.',
+              },
+              iterations: 5,
+              toolCalls: 5,
+              durationMs: 20,
+              subagentId: 'sub-1',
+              taskId,
+            },
+          ];
+        }
+        return [
+          {
+            status: 'success',
+            result: 'All packages scanned.',
+            iterations: 5,
+            toolCalls: 5,
+            durationMs: 20,
+            subagentId: 'sub-2',
+            taskId,
+          },
+        ];
+      }) as never,
+    });
+    const tool = createDelegateTool({ host: buildHost(d), roster: FLEET_ROSTER });
+    const out = (await exec(
+      tool,
+      {
+        role: 'bug-hunter',
+        task: 'Scan every package',
+        maxHandoffs: 1,
+        ...BOUNDARY,
+      },
+      null as never,
+      { signal: new AbortController().signal },
+    )) as { ok: boolean };
+    expect(out.ok).toBe(true);
+    expect(assigned).toHaveLength(2);
+    expect(assigned[0]).toContain('TASK BOUNDARY');
+    // The fresh worker inherits the original edges verbatim via the
+    // "Original task:" carry-over in the handoff brief.
+    expect(assigned[1]).toContain('TASK BOUNDARY');
+    expect(assigned[1]).toContain('- Do not modify any files');
+  });
+
+  it('schema makes the boundary fields required', () => {
+    const tool = createDelegateTool({ host: buildHost(null), roster: FLEET_ROSTER });
+    const schema = tool.inputSchema as {
+      required?: string[];
+      properties?: Record<string, { type?: string }>;
+    };
+    expect(schema.required).toEqual(['task', 'scope', 'outOfScope']);
+    expect(schema.properties?.['scope']?.type).toBe('string');
+    expect(schema.properties?.['outOfScope']?.type).toBe('array');
+  });
+
+  it('auto-promotes when ensureDirector returns null but promote succeeds', async () => {
+    director = buildLiveDirector();
+    const host = buildHost(null, director); // promoteToDirector will return the director
+    const tool = createDelegateTool({ host, roster: FLEET_ROSTER });
+    const out = (await exec(
+      tool,
+      { role: 'bug-hunter', task: 'scan', ...BOUNDARY },
+      null as never,
+      { signal: new AbortController().signal },
+    )) as { ok: boolean };
+    expect(out.ok).toBe(true);
+  });
+
+  it('fails cleanly when promote is impossible', async () => {
+    const host: DelegateHost = {
+      isDirectorMode: () => false,
+      ensureDirector: async () => null,
+      promoteToDirector: async () => null,
+    };
+    const tool = createDelegateTool({ host, roster: FLEET_ROSTER });
+    const out = (await exec(tool, { role: 'bug-hunter', task: 'x', ...BOUNDARY }, null as never, {
+      signal: new AbortController().signal,
+    })) as { ok: boolean; error?: string };
+    expect(out.ok).toBe(false);
+    expect(out.error).toMatch(/Director could not be activated/);
+  });
+
+  it('returns a timeout error when the subagent does not finish in time', async () => {
+    // Custom director whose runner never completes — we'll set a tiny
+    // timeout to force the race to resolve to the timeout branch.
+    const runner = vi.fn(
+      () =>
+        new Promise<SubagentRunOutcome>(() => {
+          /* never resolves */
+        }),
+    );
+    director = new Director({
+      sessionId: TEST_SESSION_ID,
+      config: {
+        coordinatorId: 'hang-director',
+        doneCondition: { type: 'all_tasks_done' },
+        maxConcurrent: 1,
+      },
+      runner,
+    });
+    const tool = createDelegateTool({
+      host: buildHost(director),
+      roster: FLEET_ROSTER,
+      defaultTimeoutMs: 60_000, // won't be hit; we override per-call below
+    });
+    const out = (await exec(
+      tool,
+      { role: 'bug-hunter', task: 'wait forever', timeoutMs: 50, ...BOUNDARY },
+      null as never,
+      { signal: new AbortController().signal },
+    )) as { ok: boolean; stopReason?: string; error?: string };
+    expect(out.ok).toBe(false);
+    // `timedOut: true` was the old flag; the new return shape uses
+    // `stopReason` so the host LLM can distinguish host-side timeout
+    // from a subagent-internal timeout, budget exhaustion, abort, etc.
+    expect(out.stopReason).toBe('host_timeout');
+    expect(out.error).toMatch(/did not finish/);
+    expect(director.status().subagents.every((subagent) => subagent.status !== 'running')).toBe(
+      true,
+    );
+    await director.shutdown();
+  });
+
+  it('lists the whole roster in its prompt menu, not in the wire schema', () => {
+    const tool = createDelegateTool({
+      host: buildHost(null),
+      roster: FLEET_ROSTER,
+    });
+    const schema = tool.inputSchema as {
+      properties?: { role?: { description?: string; enum?: unknown } };
+    };
+    // The schema rides on every request; the roster stays out of it.
+    expect(schema.properties?.role?.enum).toBeUndefined();
+    expect(schema.properties?.role?.description ?? '').not.toContain('bug-hunter');
+    const menu = tool.promptVars?.roleList ?? '';
+    for (const role of Object.keys(FLEET_ROSTER)) expect(menu).toContain(role);
+    expect(menu).toMatch(/^- verify: .*bug-hunter/m);
+    expect(createDelegateTool({ host: buildHost(null) }).promptVars?.roleList).toBeUndefined();
+  });
+
+  // ─────────────────────────────────────────────────────────────────
+  // D5/T6 — Partial-output reader robustness on missing/corrupt JSONL
+  // ─────────────────────────────────────────────────────────────────
+  //
+  // When a subagent times out or busts a budget the delegate tool tries
+  // to read the per-subagent JSONL transcript to extract `partial`
+  // output for the orchestrator LLM. The disk path can be in any state:
+  //   - sessionsRoot doesn't exist at all
+  //   - sessionsRoot exists but has no run dir for this subagent
+  //   - the JSONL is half-flushed and contains a corrupt last line
+  // None of these may crash the tool — the orchestrator must still get
+  // a structured error (with status='timeout' or kind='budget_*') even
+  // if the partial is missing or incomplete.
+
+  it('T6: timeout with missing JSONL transcript still returns structured error', async () => {
+    const runner = vi.fn(
+      () =>
+        new Promise<SubagentRunOutcome>(() => {
+          /* never resolves */
+        }),
+    );
+    director = new Director({
+      sessionId: TEST_SESSION_ID,
+      config: {
+        coordinatorId: 'partial-test',
+        doneCondition: { type: 'all_tasks_done' },
+        maxConcurrent: 1,
+      },
+      runner,
+    });
+    const tool = createDelegateTool({
+      host: buildHost(director),
+      roster: FLEET_ROSTER,
+      // Point sessionsRoot at a path that *does not exist* — the reader
+      // must catch ENOENT silently and the tool must still return.
+      sessionsRoot: '/this/path/definitely/does/not/exist/abcd1234',
+      directorRunId: 'phantom-run',
+    });
+    const out = (await exec(
+      tool,
+      { role: 'bug-hunter', task: 'wait forever', timeoutMs: 30, ...BOUNDARY },
+      null as never,
+      { signal: new AbortController().signal },
+    )) as { ok: boolean; stopReason?: string; partial?: unknown; error?: string };
+
+    expect(out.ok).toBe(false);
+    expect(out.stopReason).toBe('host_timeout');
+    // Partial may be absent when the file isn't found — that's fine, the
+    // contract is "don't crash" and "carry stopReason". The orchestrator
+    // can fall back to the error message.
+    expect(out.error).toBeTruthy();
+    await director.shutdown();
+  });
+
+  it('T6-b: corrupt JSONL line is skipped, surrounding lines still parse', async () => {
+    // Set up an actual on-disk JSONL with a mix of valid + corrupt
+    // lines so the reader is exercised end-to-end. The reader uses
+    // line-level try/catch so one bad line must not poison the whole
+    // file.
+    const fs = await import('node:fs/promises');
+    const os = await import('node:os');
+    const path = await import('node:path');
+    const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'wstack-delegate-t6-'));
+    const runId = 'partial-run';
+    const subagentDir = path.join(tmpRoot, runId);
+    await fs.mkdir(subagentDir, { recursive: true });
+    // The subagent id used by the test director must match the file
+    // name. The runner stalls forever, so the spawn() side picks an
+    // id we can't predict — solve it by writing a JSONL for every
+    // possible id-prefix the test might land on: scan after the
+    // timeout fires and verify the reader doesn't throw.
+    //
+    // Simpler: pre-create a JSONL for a known id by overriding spawn
+    // to use a stable id. But Director.spawn allocates the id, so
+    // we instead seed a JSONL for the directorRunId path and rely on
+    // the reader's directorRunId branch which scans the whole run
+    // directory.
+    //
+    // We test the most stress-prone variant: write a known JSONL and
+    // a deliberately corrupt last line. The reader should swallow the
+    // parse error and still return whatever it could read.
+    const jsonl = [
+      JSON.stringify({ type: 'session_start', ts: '2026-01-01T00:00:00Z' }),
+      JSON.stringify({ type: 'user_input', content: 'investigate' }),
+      JSON.stringify({
+        type: 'llm_response',
+        stopReason: 'tool_use',
+        content: [{ type: 'text', text: 'I will check the file.' }],
+      }),
+      JSON.stringify({ type: 'tool_use', name: 'read' }),
+      // Deliberately corrupt — half-flushed line, what you'd see on
+      // a crashed writer.
+      '{"type":"llm_response","content":[{"type":"text","text":"par',
+      JSON.stringify({ type: 'session_end' }),
+      '', // trailing blank
+    ].join('\n');
+
+    const stubRunner = vi.fn(
+      () =>
+        new Promise<SubagentRunOutcome>(() => {
+          /* never resolves — forces timeout path */
+        }),
+    );
+    director = new Director({
+      sessionId: TEST_SESSION_ID,
+      config: {
+        coordinatorId: 'partial-test',
+        doneCondition: { type: 'all_tasks_done' },
+        maxConcurrent: 1,
+      },
+      runner: stubRunner,
+    });
+    // Intercept Director.spawn so we know the assigned id and can
+    // place the JSONL at the right path BEFORE the timeout fires.
+    const origSpawn = director.spawn.bind(director);
+    director.spawn = async (config, priceLookup) => {
+      const id = await origSpawn(config, priceLookup);
+      await fs.writeFile(path.join(subagentDir, `${id}.jsonl`), jsonl);
+      return id;
+    };
+
+    const tool = createDelegateTool({
+      host: buildHost(director),
+      roster: FLEET_ROSTER,
+      sessionsRoot: tmpRoot,
+      directorRunId: runId,
+    });
+
+    const out = (await exec(
+      tool,
+      { role: 'bug-hunter', task: 'investigate', timeoutMs: 30, ...BOUNDARY },
+      null as never,
+      { signal: new AbortController().signal },
+    )) as {
+      ok: boolean;
+      stopReason?: string;
+      partial?: {
+        lastAssistantText?: string;
+        toolUsesObserved?: number;
+        events?: number;
+      };
+    };
+
+    expect(out.ok).toBe(false);
+    expect(out.stopReason).toBe('host_timeout');
+    // The reader should have recovered the valid lines. We don't lock
+    // in exact counts because the JSONL format may evolve — the
+    // contract is "we got SOMETHING back, partial.events > 0".
+    expect(out.partial).toBeDefined();
+    expect(out.partial?.events).toBeGreaterThan(0);
+    // The valid llm_response line carries text → reader should expose it.
+    expect(out.partial?.lastAssistantText).toMatch(/check the file/);
+    // tool_use should be counted (1).
+    expect(out.partial?.toolUsesObserved).toBeGreaterThanOrEqual(1);
+
+    await director.shutdown();
+    await fs.rm(tmpRoot, { recursive: true, force: true });
+  });
+
+  // ─────────────────────────────────────────────────────────────────
+  // hintForKind coverage — all error kinds + the default retryable path
+  // ─────────────────────────────────────────────────────────────────
+
+  it('hintForKind tells the leader to route a spent quota elsewhere, not retry', () => {
+    const hint = hintForKind('provider_quota', false, 3_600_000);
+    expect(hint).toContain('Do not retry');
+    expect(hint).toContain('omit provider "acp"');
+  });
+
+  it('hintForKind surfaces provider_rate_limit with backoff hint', () => {
+    // Direct unit test — tests the function in isolation
+    const hint = hintForKind('provider_rate_limit', true, 2000, undefined);
+    expect(hint).toMatch(/rate.limit/i);
+    expect(hint).toMatch(/2000ms|backoff/i);
+  });
+
+  it('hintForKind surfaces provider_5xx with retry hint', () => {
+    const hint = hintForKind('provider_5xx', true, 3000, undefined);
+    expect(hint).toMatch(/retry/i);
+    expect(hint).toMatch(/3000ms|backoff|transient/i);
+  });
+
+  it('hintForKind surfaces provider_timeout hint', () => {
+    const hint = hintForKind('provider_timeout', true, 0, undefined);
+    expect(hint).toMatch(/timeout/i);
+    expect(hint).toMatch(/network|retry/i);
+  });
+
+  it('hintForKind surfaces provider_auth hint (non-retryable)', () => {
+    const hint = hintForKind('provider_auth', false, 0, undefined);
+    expect(hint).toMatch(/cannot retry|credentials|API key/i);
+  });
+
+  it('hintForKind surfaces context_overflow hint', () => {
+    const hint = hintForKind('context_overflow', false, 0, undefined);
+    expect(hint).toMatch(/context|model limit|largerContext|split/i);
+  });
+
+  it('hintForKind surfaces budget_iterations hint with partial output', () => {
+    const hint = hintForKind('budget_iterations', false, 0, { lastAssistantText: 'working on it' });
+    expect(hint).toMatch(/budget|exhausted|maxIterations/i);
+    expect(hint).toMatch(/partial output|working on it/i);
+  });
+
+  it('hintForKind surfaces budget_timeout hint', () => {
+    const hint = hintForKind('budget_timeout', false, 0, undefined);
+    expect(hint).toMatch(/wall.clock|timeoutMs|split/i);
+  });
+
+  it('hintForKind surfaces aborted_by_parent hint', () => {
+    const hint = hintForKind('aborted_by_parent', false, 0, undefined);
+    expect(hint).toMatch(/aborted|retryable|Ctrl/i);
+  });
+
+  it('hintForKind surfaces empty_response hint', () => {
+    const hint = hintForKind('empty_response', false, 0, undefined);
+    expect(hint).toMatch(/empty|no text|no tool calls|prompt|config/i);
+  });
+
+  it('hintForKind surfaces tool_failed hint with partial', () => {
+    const hint = hintForKind('tool_failed', false, 0, { lastAssistantText: 'trying to fix' });
+    expect(hint).toMatch(/tool.*failed|ok:false|retry/i);
+    expect(hint).toMatch(/trying to fix|reasoning/i);
+  });
+
+  it('hintForKind surfaces bridge_failed hint', () => {
+    const hint = hintForKind('bridge_failed', false, 0, undefined);
+    expect(hint).toMatch(/bridge|transport|restart/i);
+  });
+
+  it('hintForKind default case returns retryable fallback', () => {
+    const hint = hintForKind('unknown_kind', true, 0, undefined);
+    expect(hint).toMatch(/retryable|try again/i);
+  });
+
+  it('hintForKind returns undefined for success path (no kind)', () => {
+    expect(hintForKind(undefined, false, 0, undefined)).toBeUndefined();
+  });
+
+  // ─────────────────────────────────────────────────────────────────
+  // readSubagentPartial — no directorRunId, scan sessionsRoot dirs
+  // ─────────────────────────────────────────────────────────────────
+
+  it('readSubagentPartial scans sessionsRoot subdirs when no directorRunId is set', async () => {
+    const runner = vi.fn(
+      () =>
+        new Promise<SubagentRunOutcome>(() => {
+          /* never resolves — forces timeout */
+        }),
+    );
+    director = new Director({
+      sessionId: TEST_SESSION_ID,
+      config: {
+        coordinatorId: 'scan-test',
+        doneCondition: { type: 'all_tasks_done' },
+        maxConcurrent: 1,
+      },
+      runner,
+    });
+
+    // Create a sessionsRoot with some subdirectories (run dirs)
+    const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'delegate-scan-'));
+    const runId = 'run-abc';
+    const subagentDir = path.join(tmpRoot, runId);
+    await fs.mkdir(subagentDir, { recursive: true });
+
+    const jsonl = [
+      JSON.stringify({
+        type: 'llm_response',
+        stopReason: 'end_turn',
+        content: [{ type: 'text', text: 'scan result' }],
+      }),
+      JSON.stringify({ type: 'tool_use', name: 'read', id: 't1' }),
+    ].join('\n');
+
+    // Intercept spawn to write JSONL before timeout fires
+    const origSpawn = director.spawn.bind(director);
+    director.spawn = async (config, priceLookup) => {
+      const id = await origSpawn(config, priceLookup);
+      await fs.writeFile(path.join(subagentDir, `${id}.jsonl`), jsonl);
+      return id;
+    };
+
+    const tool = createDelegateTool({
+      host: buildHost(director),
+      roster: FLEET_ROSTER,
+      sessionsRoot: tmpRoot,
+      // NO directorRunId — forces the scan path (lines 411-420)
+    });
+
+    const out = (await exec(
+      tool,
+      { role: 'bug-hunter', task: 'scan', timeoutMs: 50, ...BOUNDARY },
+      null as never,
+      { signal: new AbortController().signal },
+    )) as { ok: boolean; partial?: { lastAssistantText?: string; events?: number } };
+
+    expect(out.ok).toBe(false);
+    expect(out.partial).toBeDefined();
+    expect(out.partial?.lastAssistantText).toMatch(/scan result/);
+    expect(out.partial?.events).toBeGreaterThan(0);
+
+    await director.shutdown();
+    await fs.rm(tmpRoot, { recursive: true, force: true });
+  });
+
+  // ─────────────────────────────────────────────────────────────────
+  // delegate.started / delegate.completed lifecycle events
+  // ─────────────────────────────────────────────────────────────────
+
+  it('emits delegate.started before and delegate.completed after a successful delegation', async () => {
+    director = buildLiveDirector();
+    const hostBus = new EventBus();
+    const started: Array<{ target: string; task: string; subagentId?: string }> = [];
+    const completed: Array<{
+      target: string;
+      ok: boolean;
+      status?: string;
+      summary: string;
+      iterations: number;
+      toolCalls: number;
+    }> = [];
+    hostBus.on('delegate.started', (e) =>
+      started.push({
+        target: e.target,
+        task: e.task,
+        ...(e.subagentId === undefined ? {} : { subagentId: e.subagentId }),
+      }),
+    );
+    hostBus.on('delegate.completed', (e) =>
+      completed.push({
+        target: e.target,
+        ok: e.ok,
+        ...(e.status === undefined ? {} : { status: e.status }),
+        summary: e.summary,
+        iterations: e.iterations,
+        toolCalls: e.toolCalls,
+      }),
+    );
+
+    const tool = createDelegateTool({
+      host: buildHost(director),
+      roster: FLEET_ROSTER,
+      events: hostBus,
+    });
+    const out = (await exec(
+      tool,
+      { role: 'bug-hunter', task: 'audit src/parser.ts', ...BOUNDARY },
+      null as never,
+      { signal: new AbortController().signal },
+    )) as { ok: boolean };
+
+    expect(out.ok).toBe(true);
+    expect(started).toEqual([
+      expect.objectContaining({
+        target: 'bug-hunter',
+        task: 'audit src/parser.ts',
+        subagentId: expect.any(String),
+      }),
+    ]);
+    expect(completed).toHaveLength(1);
+    expect(completed[0]).toMatchObject({
+      target: 'bug-hunter',
+      ok: true,
+      status: 'success',
+      iterations: 1,
+      toolCalls: 1,
+    });
+    expect(completed[0]!.summary).toMatch(/bug-hunter/);
+  });
+
+  // `subagent.done` has exactly one emitter in the whole repo — the delegate
+  // tool — but three production subscribers: the agent run loop (which fills
+  // `RunResult.delegateSummaries`), the bundled `agent-handoff` plugin, and the
+  // webui collab mirror. It once had ZERO emitters, because each completion
+  // branch raised only `delegate.completed`, and all three consumers were
+  // silently dead. Assert the pairing so a new branch cannot drop it again.
+  async function collectCompletionPair(
+    dir: Director,
+    input: Record<string, unknown>,
+  ): Promise<{
+    completed: Array<{ ok: boolean; summary: string }>;
+    done: Array<{ ok: boolean; summary: string }>;
+  }> {
+    const hostBus = new EventBus();
+    const completed: Array<{ ok: boolean; summary: string }> = [];
+    const done: Array<{ ok: boolean; summary: string }> = [];
+    hostBus.on('delegate.completed', (e) => completed.push({ ok: e.ok, summary: e.summary }));
+    hostBus.on('subagent.done', (e) => done.push({ ok: e.ok, summary: e.summary }));
+    const tool = createDelegateTool({
+      host: buildHost(dir),
+      roster: FLEET_ROSTER,
+      events: hostBus,
+    });
+    await exec(tool, { role: 'bug-hunter', ...BOUNDARY, ...input }, null as never, {
+      signal: new AbortController().signal,
+    });
+    return { completed, done };
+  }
+
+  it('emits subagent.done alongside delegate.completed when a delegation succeeds', async () => {
+    director = buildLiveDirector();
+    const { completed, done } = await collectCompletionPair(director, {
+      task: 'audit src/parser.ts',
+    });
+    expect(completed).toHaveLength(1);
+    expect(completed[0]!.ok).toBe(true);
+    // Same verdict and same summary text on both names.
+    expect(done).toEqual(completed);
+  });
+
+  it('emits subagent.done alongside delegate.completed on a failing outcome', async () => {
+    const runner = vi.fn(
+      () =>
+        new Promise<SubagentRunOutcome>(() => {
+          /* never resolves — the host await window expires instead */
+        }),
+    );
+    director = new Director({
+      sessionId: TEST_SESSION_ID,
+      config: {
+        coordinatorId: 'done-pairing-timeout-director',
+        doneCondition: { type: 'all_tasks_done' },
+        maxConcurrent: 1,
+      },
+      runner,
+    });
+    const { completed, done } = await collectCompletionPair(director, {
+      task: 'wait forever',
+      timeoutMs: 30,
+    });
+    expect(completed).toHaveLength(1);
+    expect(completed[0]!.ok).toBe(false);
+    expect(done).toEqual(completed);
+    await director.shutdown();
+  });
+
+  it('uses the free-form name as the delegate.* target when no role is given', async () => {
+    director = buildLiveDirector();
+    const hostBus = new EventBus();
+    const targets: string[] = [];
+    hostBus.on('delegate.started', (e) => targets.push(e.target));
+    const tool = createDelegateTool({ host: buildHost(director), events: hostBus });
+    await exec(tool, { name: 'oneoff', task: 'do the thing', ...BOUNDARY }, null as never, {
+      signal: new AbortController().signal,
+    });
+    expect(targets).toEqual(['oneoff']);
+  });
+
+  it('emits delegate.completed with host_timeout status on a timeout', async () => {
+    const runner = vi.fn(
+      () =>
+        new Promise<SubagentRunOutcome>(() => {
+          /* never resolves */
+        }),
+    );
+    director = new Director({
+      sessionId: TEST_SESSION_ID,
+      config: {
+        coordinatorId: 'timeout-event-director',
+        doneCondition: { type: 'all_tasks_done' },
+        maxConcurrent: 1,
+      },
+      runner,
+    });
+    const hostBus = new EventBus();
+    const completed: Array<{ ok: boolean; status?: string }> = [];
+    hostBus.on('delegate.completed', (e) =>
+      completed.push({ ok: e.ok, ...(e.status === undefined ? {} : { status: e.status }) }),
+    );
+    const tool = createDelegateTool({
+      host: buildHost(director),
+      roster: FLEET_ROSTER,
+      events: hostBus,
+    });
+    const out = (await exec(
+      tool,
+      { role: 'bug-hunter', task: 'wait forever', timeoutMs: 30, ...BOUNDARY },
+      null as never,
+      { signal: new AbortController().signal },
+    )) as { ok: boolean };
+    expect(out.ok).toBe(false);
+    expect(completed).toEqual([{ ok: false, status: 'host_timeout' }]);
+    await director.shutdown();
+  });
+
+  // ─────────────────────────────────────────────────────────────────
+  // Abort-signal handling — /interrupt & Esc must unblock the delegate
+  // wait immediately and stop the spawned subagent (the heartbeat
+  // re-arm would otherwise keep the wait alive as long as the subagent
+  // keeps emitting events).
+  // ─────────────────────────────────────────────────────────────────
+
+  it('honors the executor abort signal: unblocks, reports aborted, and stops the subagent', async () => {
+    let subagentSignal: AbortSignal | undefined;
+    const runner = vi.fn(
+      async (_task: TaskSpec, rctx: SubagentRunContext): Promise<SubagentRunOutcome> => {
+        subagentSignal = rctx.signal;
+        // Block until the coordinator aborts this subagent (terminate()).
+        await new Promise<void>((resolve) => {
+          rctx.signal.addEventListener('abort', () => resolve(), { once: true });
+        });
+        return { result: 'stopped late', iterations: 1, toolCalls: 0 };
+      },
+    );
+    director = new Director({
+      sessionId: TEST_SESSION_ID,
+      config: {
+        coordinatorId: 'abort-director',
+        doneCondition: { type: 'all_tasks_done' },
+        maxConcurrent: 1,
+      },
+      runner,
+    });
+    const hostBus = new EventBus();
+    const completed: Array<{ ok: boolean; status?: string }> = [];
+    hostBus.on('delegate.completed', (e) =>
+      completed.push({ ok: e.ok, ...(e.status === undefined ? {} : { status: e.status }) }),
+    );
+    const tool = createDelegateTool({
+      host: buildHost(director),
+      roster: FLEET_ROSTER,
+      events: hostBus,
+    });
+
+    const ctrl = new AbortController();
+    const pending = exec(
+      tool,
+      { role: 'bug-hunter', task: 'long-running work', ...BOUNDARY },
+      null as never,
+      { signal: ctrl.signal },
+    ) as Promise<{ ok: boolean; stopReason?: string; error?: string }>;
+    // Let spawn + assign land, then interrupt the leader.
+    await expect.poll(() => runner.mock.calls.length).toBeGreaterThan(0);
+    ctrl.abort('user interrupt (/interrupt)');
+    const out = await pending;
+
+    expect(out.ok).toBe(false);
+    expect(out.stopReason).toBe('aborted');
+    expect(out.error).toMatch(/interrupted/);
+    // The delegate must terminate the spawned subagent, not orphan it.
+    await expect.poll(() => subagentSignal?.aborted).toBe(true);
+    expect(completed).toEqual([{ ok: false, status: 'aborted' }]);
+    await director.shutdown();
+  });
+
+  it('returns aborted before spawning when the signal is already aborted', async () => {
+    // host is intentionally promotion-refusing: if the pre-spawn abort check
+    // is missing, the tool would return the promotion error instead.
+    const tool = createDelegateTool({ host: buildHost(null) });
+    const ctrl = new AbortController();
+    ctrl.abort();
+    const out = (await exec(tool, { name: 'worker', task: 'x' }, null as never, {
+      signal: ctrl.signal,
+    })) as { ok: boolean; stopReason?: string };
+    expect(out.ok).toBe(false);
+    expect(out.stopReason).toBe('aborted');
+  });
+
+  it('does not throw when no events bus is wired (best-effort emits)', async () => {
+    director = buildLiveDirector();
+    const tool = createDelegateTool({ host: buildHost(director), roster: FLEET_ROSTER });
+    const out = (await exec(
+      tool,
+      { role: 'bug-hunter', task: 'no bus here', ...BOUNDARY },
+      null as never,
+      { signal: new AbortController().signal },
+    )) as { ok: boolean };
+    expect(out.ok).toBe(true);
+  });
+
+  it('readSubagentPartial gracefully skips unreadable sessionsRoot entries', async () => {
+    // sessionsRoot exists but readdir fails (permissions) — should return undefined, not throw
+    const runner = vi.fn(
+      () =>
+        new Promise<SubagentRunOutcome>(() => {
+          /* never resolves */
+        }),
+    );
+    director = new Director({
+      sessionId: TEST_SESSION_ID,
+      config: {
+        coordinatorId: 'skip-test',
+        doneCondition: { type: 'all_tasks_done' },
+        maxConcurrent: 1,
+      },
+      runner,
+    });
+    const tool = createDelegateTool({
+      host: buildHost(director),
+      roster: FLEET_ROSTER,
+      // Point to a path where readdir will fail: a file instead of a dir
+      sessionsRoot: __filename, // It's a file, not a directory — readdir will throw
+      // No directorRunId — tries to scan
+    });
+    const out = (await exec(
+      tool,
+      { role: 'bug-hunter', task: 'x', timeoutMs: 50, ...BOUNDARY },
+      null as never,
+      { signal: new AbortController().signal },
+    )) as { ok: boolean; error?: string };
+    // Should get a timeout error, not a crash from the readdir failure
+    expect(out.ok).toBe(false);
+    expect(out.error).toMatch(/did not finish|timeout/i);
+    await director.shutdown();
+  });
+
+  // ── Edge coverage: role overrides, timer internals, error paths ──────
+
+  function fakeDirector(
+    over: {
+      spawn?: () => Promise<string>;
+      assign?: () => Promise<string>;
+      awaitTasks?: () => Promise<unknown[]>;
+      snapshot?: () => unknown;
+    } = {},
+  ) {
+    const filters = new Map<string, Array<(e: { subagentId?: string }) => void>>();
+    const fleet = {
+      filter: vi.fn((type: string, fn: (e: { subagentId?: string }) => void) => {
+        const arr = filters.get(type) ?? [];
+        arr.push(fn);
+        filters.set(type, arr);
+        return () => {
+          const a = filters.get(type);
+          if (a) {
+            const i = a.indexOf(fn);
+            if (i >= 0) a.splice(i, 1);
+          }
+        };
+      }),
+      emit: (type: string, payload: { subagentId?: string }) => {
+        for (const fn of filters.get(type) ?? []) fn(payload);
+      },
+    };
+    return {
+      fleet,
+      spawn: over.spawn ?? (vi.fn(async () => 'sub-1') as never),
+      assign: over.assign ?? (vi.fn(async () => 'task-1') as never),
+      awaitTasks:
+        over.awaitTasks ??
+        (vi.fn(async () => [
+          {
+            status: 'success',
+            result: 'ok',
+            iterations: 1,
+            toolCalls: 1,
+            durationMs: 5,
+            subagentId: 'sub-1',
+            taskId: 'task-1',
+          },
+        ]) as never),
+      snapshot: over.snapshot ?? (vi.fn(() => ({ perSubagent: {} })) as never),
+    } as never as Director;
+  }
+
+  describe('createDelegateTool — edge coverage', () => {
+    it('applies every role-path override to the spawned config', async () => {
+      director = buildLiveDirector();
+      const captured: Array<Record<string, unknown>> = [];
+      const origSpawn = director.spawn.bind(director);
+      director.spawn = (async (cfg: Record<string, unknown>, price?: unknown) => {
+        captured.push(cfg);
+        return origSpawn(cfg as never, price as never);
+      }) as never;
+      const tool = createDelegateTool({ host: buildHost(director), roster: FLEET_ROSTER });
+      await exec(
+        tool,
+        {
+          role: 'bug-hunter',
+          task: 'x',
+          ...BOUNDARY,
+          systemPromptOverride: 'extra',
+          provider: 'openai',
+          model: 'gpt-x',
+          maxIterations: 99,
+          maxToolCalls: 88,
+          idleTimeoutMs: 7_000,
+          maxTokens: 6_000,
+          maxCostUsd: 0.5,
+        },
+        null as never,
+        { signal: new AbortController().signal },
+      );
+      const cfg = captured[0]!;
+      // The caller's `systemPromptOverride` is preserved verbatim AND the
+      // delegate launch-mode preface is prepended. Layering order matters:
+      // the preface must come first so the caller's per-spawn guidance
+      // remains the "last word" on conflict (matching the
+      // director-prompts.ts layering — override composes last and wins).
+      const override = String(cfg.systemPromptOverride ?? '');
+      expect(override).toContain('Launch-mode guidance (delegate):');
+      expect(override).toContain('extra');
+      expect(override.indexOf('extra')).toBeGreaterThan(
+        override.indexOf('Launch-mode guidance (delegate):'),
+      );
+      expect(cfg.provider).toBe('openai');
+      expect(cfg.model).toBe('gpt-x');
+      expect(cfg.maxIterations).toBe(99);
+      expect(cfg.maxToolCalls).toBe(88);
+      expect(cfg.idleTimeoutMs).toBe(7_000);
+      expect(cfg.maxTokens).toBe(6_000);
+      expect(cfg.maxCostUsd).toBe(0.5);
+    });
+
+    it('preserves a roster-supplied systemPromptOverride instead of clobbering it', async () => {
+      // Regression test: a custom roster role that ships its own
+      // `systemPromptOverride` must not be overwritten by the delegate
+      // launch-mode preface wiring. Layering order is
+      // `[preface] + [roster override] + [caller override if distinct]`.
+      director = buildLiveDirector();
+      const captured: Array<Record<string, unknown>> = [];
+      const origSpawn = director.spawn.bind(director);
+      director.spawn = (async (cfg: Record<string, unknown>, price?: unknown) => {
+        captured.push(cfg);
+        return origSpawn(cfg as never, price as never);
+      }) as never;
+      const rosterWithOverride = {
+        ...FLEET_ROSTER,
+        'custom-with-override': {
+          ...FLEET_ROSTER['bug-hunter'],
+          systemPromptOverride: 'roster-supplied-override-body',
+        } as never,
+      };
+      const tool = createDelegateTool({ host: buildHost(director), roster: rosterWithOverride });
+      await exec(tool, { role: 'custom-with-override', task: 'x', ...BOUNDARY }, null as never, {
+        signal: new AbortController().signal,
+      });
+      const cfg = captured[0]!;
+      const override = String(cfg.systemPromptOverride ?? '');
+      expect(override).toContain('Launch-mode guidance (delegate):');
+      expect(override).toContain('roster-supplied-override-body');
+      // The roster override must NOT be clobbered (regression: prior IIFE
+      // only read `i.systemPromptOverride`, dropping the roster value).
+      expect(override).not.toMatch(/Launch-mode guidance \(delegate\):\s*$/);
+      // Mirror the established sibling-test cleanup pattern (see lines
+      // 248, 314, 416, 547, 647, 703, 757) so the live Director and any
+      // FleetBus filters registered by buildLiveDirector() are released.
+      await director.shutdown();
+    });
+
+    it('layers roster + caller overrides in precedence order when both are distinct', async () => {
+      // Regression test: when a roster role supplies its own
+      // `systemPromptOverride` AND the delegate caller supplies a distinct
+      // `systemPromptOverride`, both must survive into the layered
+      // override in order: `[preface] + [roster] + [caller]`. The
+      // upstream `cfg.systemPromptOverride = i.systemPromptOverride`
+      // assignment at the role-path must NOT clobber the roster value
+      // before the IIFE reads it.
+      director = buildLiveDirector();
+      const captured: Array<Record<string, unknown>> = [];
+      const origSpawn = director.spawn.bind(director);
+      director.spawn = (async (cfg: Record<string, unknown>, price?: unknown) => {
+        captured.push(cfg);
+        return origSpawn(cfg as never, price as never);
+      }) as never;
+      const rosterWithOverride = {
+        ...FLEET_ROSTER,
+        'custom-with-override': {
+          ...FLEET_ROSTER['bug-hunter'],
+          systemPromptOverride: 'roster-supplied-override-body',
+        } as never,
+      };
+      const tool = createDelegateTool({ host: buildHost(director), roster: rosterWithOverride });
+      await exec(
+        tool,
+        {
+          role: 'custom-with-override',
+          task: 'x',
+          ...BOUNDARY,
+          systemPromptOverride: 'caller-supplied-override-body',
+        },
+        null as never,
+        { signal: new AbortController().signal },
+      );
+      const cfg = captured[0]!;
+      const override = String(cfg.systemPromptOverride ?? '');
+      expect(override).toContain('Launch-mode guidance (delegate):');
+      expect(override).toContain('roster-supplied-override-body');
+      expect(override).toContain('caller-supplied-override-body');
+      // Ordering: preface first, then roster, then caller. Caller wins
+      // last because director-prompts.ts layers the override last.
+      const prefaceIdx = override.indexOf('Launch-mode guidance (delegate):');
+      const rosterIdx = override.indexOf('roster-supplied-override-body');
+      const callerIdx = override.indexOf('caller-supplied-override-body');
+      expect(prefaceIdx).toBeGreaterThanOrEqual(0);
+      expect(rosterIdx).toBeGreaterThan(prefaceIdx);
+      expect(callerIdx).toBeGreaterThan(rosterIdx);
+      // Mirror the established sibling-test cleanup pattern (see lines
+      // 248, 314, 416, 547, 647, 703, 757) so the live Director and any
+      // FleetBus filters registered by buildLiveDirector() are released.
+      await director.shutdown();
+    });
+
+    it('returns an empty-result error when awaitTasks resolves with []', async () => {
+      const d = fakeDirector({ awaitTasks: vi.fn(async () => []) });
+      const tool = createDelegateTool({ host: buildHost(d), roster: FLEET_ROSTER });
+      const out = (await exec(tool, { role: 'bug-hunter', task: 'x', ...BOUNDARY }, null as never, {
+        signal: new AbortController().signal,
+      })) as { ok: boolean; stopReason?: string; error?: string };
+      expect(out.ok).toBe(false);
+      expect(out.stopReason).toBe('error');
+      expect(out.error).toMatch(/no task result/i);
+    });
+
+    it('returns a host-timeout when awaitTasks rejects', async () => {
+      const d = fakeDirector({
+        awaitTasks: vi.fn(async () => Promise.reject(new Error('fleet gone'))),
+      });
+      const tool = createDelegateTool({ host: buildHost(d), roster: FLEET_ROSTER });
+      const out = (await exec(tool, { role: 'bug-hunter', task: 'x', ...BOUNDARY }, null as never, {
+        signal: new AbortController().signal,
+      })) as { ok: boolean; stopReason?: string };
+      expect(out.ok).toBe(false);
+      expect(out.stopReason).toBe('host_timeout');
+    });
+
+    it('returns a structured error when spawn throws (catch block)', async () => {
+      const d = fakeDirector({ spawn: vi.fn(async () => Promise.reject(new Error('spawn boom'))) });
+      const tool = createDelegateTool({
+        host: buildHost(d),
+        roster: FLEET_ROSTER,
+        events: new EventBus(),
+      });
+      const out = (await exec(tool, { role: 'bug-hunter', task: 'x', ...BOUNDARY }, null as never, {
+        signal: new AbortController().signal,
+      })) as { ok: boolean; stopReason?: string; error?: string };
+      expect(out.ok).toBe(false);
+      expect(out.stopReason).toBe('error');
+      expect(out.error).toMatch(/spawn boom/);
+    });
+
+    it('tolerates a throwing snapshot() (cost stays undefined)', async () => {
+      const d = fakeDirector({
+        snapshot: vi.fn(() => {
+          throw new Error('no usage');
+        }),
+      });
+      const tool = createDelegateTool({ host: buildHost(d), roster: FLEET_ROSTER });
+      const out = (await exec(tool, { role: 'bug-hunter', task: 'x', ...BOUNDARY }, null as never, {
+        signal: new AbortController().signal,
+      })) as { ok: boolean };
+      expect(out.ok).toBe(true);
+    });
+
+    it('resets the idle timer on subagent progress events (bump + arm)', async () => {
+      let resolveAwait!: (r: unknown) => void;
+      const d = fakeDirector({
+        awaitTasks: () =>
+          new Promise<unknown[]>((r) => {
+            resolveAwait = r as (r: unknown) => void;
+          }),
+      });
+      const tool = createDelegateTool({
+        host: buildHost(d),
+        roster: FLEET_ROSTER,
+        defaultTimeoutMs: 60_000,
+      });
+      const execP = exec(tool, { role: 'bug-hunter', task: 'x', ...BOUNDARY }, null as never, {
+        signal: new AbortController().signal,
+      });
+      // Let the delegate progress past spawn/assign/filter-registration to awaitTasks.
+      await new Promise((r) => setTimeout(r, 0));
+      // Fire a progress event for the subagent while the await is pending → bump → arm.
+      (
+        d as never as { fleet: { emit: (t: string, p: { subagentId?: string }) => void } }
+      ).fleet.emit('tool.executed', { subagentId: 'sub-1' });
+      resolveAwait([
+        {
+          status: 'success',
+          result: 'ok',
+          iterations: 2,
+          toolCalls: 2,
+          durationMs: 8,
+          subagentId: 'sub-1',
+          taskId: 'task-1',
+        },
+      ]);
+      const out = (await execP) as { ok: boolean };
+      expect(out.ok).toBe(true);
+    });
+
+    it('hintForKind surfaces budget_timeout hint with partial output', () => {
+      const hint = hintForKind('budget_timeout', false, 0, { lastAssistantText: 'almost done' });
+      expect(hint).toMatch(/wall.clock|timeoutMs/i);
+      expect(hint).toMatch(/almost done|partial/i);
+    });
+
+    it('hintForKind surfaces budget_cost hint with partial output', () => {
+      const hint = hintForKind('budget_cost', false, 0, { lastAssistantText: 'cost partial' });
+      expect(hint).toMatch(/budget|exhausted/i);
+      expect(hint).toMatch(/cost partial/i);
+    });
+
+    it('hintForKind surfaces budget hint without partial output', () => {
+      const hint = hintForKind('budget_iterations', false, 0, undefined);
+      expect(hint).toMatch(/budget|exhausted|maxIterations/i);
+      expect(hint).not.toMatch(/partial output/i);
+    });
+
+    it('builds a non-success summary (status path)', async () => {
+      // A failing task result exercises buildDelegateSummary's error branch.
+      const d = fakeDirector({
+        awaitTasks: vi.fn(async () => [
+          {
+            status: 'failed',
+            result: '',
+            iterations: 1,
+            toolCalls: 1,
+            durationMs: 5_000,
+            subagentId: 'sub-1',
+            taskId: 'task-1',
+            error: { kind: 'tool_failed' },
+          },
+        ]),
+      });
+      const tool = createDelegateTool({ host: buildHost(d), roster: FLEET_ROSTER });
+      const out = (await exec(tool, { role: 'bug-hunter', task: 'x', ...BOUNDARY }, null as never, {
+        signal: new AbortController().signal,
+      })) as { ok: boolean; summary?: string; hint?: string };
+      expect(out.ok).toBe(false);
+      expect(out.summary).toMatch(/failed/);
+      expect(out.hint).toMatch(/ok:false|tool inside/i);
+    });
+
+    it('uses generous role defaults and declares self-managed timeout ownership', async () => {
+      const spawned: Array<Record<string, unknown>> = [];
+      const d = fakeDirector({
+        spawn: vi.fn(async (cfg: Record<string, unknown>) => {
+          spawned.push(cfg);
+          return 'sub-1';
+        }) as never,
+      });
+      const tool = createDelegateTool({ host: buildHost(d), roster: FLEET_ROSTER });
+
+      expect(tool.managesOwnTimeout).toBe(true);
+      expect(tool.inputSchema.properties?.['maxHandoffs']?.maximum).toBe(8);
+      await exec(
+        tool,
+        { role: 'bug-hunter', task: 'audit the monorepo', ...BOUNDARY },
+        null as never,
+        { signal: new AbortController().signal },
+      );
+
+      expect(spawned[0]?.['timeoutMs']).toBeGreaterThanOrEqual(4 * 60 * 60 * 1000);
+      expect(spawned[0]?.['maxIterations']).toBeGreaterThanOrEqual(5_000);
+      expect(spawned[0]?.['maxToolCalls']).toBeGreaterThanOrEqual(15_000);
+    });
+
+    it('continues an explicit partial checkpoint with a fresh worker', async () => {
+      const spawned: string[] = [];
+      const assigned: string[] = [];
+      let attempt = 0;
+      const d = fakeDirector({
+        spawn: vi.fn(async (cfg: { id?: string }) => {
+          const id = cfg.id ?? `sub-${spawned.length + 1}`;
+          spawned.push(id);
+          return id;
+        }) as never,
+        assign: vi.fn(async (task: { id: string; description: string }) => {
+          assigned.push(task.description);
+          return task.id;
+        }) as never,
+        awaitTasks: vi.fn(async ([taskId]: string[]) => {
+          attempt += 1;
+          if (attempt === 1) {
+            return [
+              {
+                status: 'success',
+                result: 'Scanned packages A through M.',
+                report: {
+                  summary: 'First half complete.',
+                  findings: ['A-M scanned.'],
+                  files_examined: ['packages/a'],
+                  confidence: 0.9,
+                  suggested_next_steps: [],
+                  completion: 'partial',
+                  remaining_work: 'Scan packages N through Z and produce the final report.',
+                },
+                iterations: 20,
+                toolCalls: 40,
+                durationMs: 100,
+                subagentId: spawned[0],
+                taskId,
+              },
+            ];
+          }
+          return [
+            {
+              status: 'success',
+              result: 'All packages scanned.',
+              iterations: 10,
+              toolCalls: 15,
+              durationMs: 50,
+              subagentId: spawned[1],
+              taskId,
+            },
+          ];
+        }) as never,
+      });
+      const tool = createDelegateTool({ host: buildHost(d), roster: FLEET_ROSTER });
+      const out = (await exec(
+        tool,
+        { role: 'bug-hunter', task: 'Scan every package', maxHandoffs: 1, ...BOUNDARY },
+        null as never,
+        { signal: new AbortController().signal },
+      )) as { ok: boolean; result?: string; handoffs?: Array<{ remainingWork: string }> };
+
+      expect(out.ok).toBe(true);
+      expect(out.result).toBe('All packages scanned.');
+      expect(spawned).toHaveLength(2);
+      expect(new Set(spawned).size).toBe(2);
+      expect(assigned[1]).toContain('Scan packages N through Z');
+      expect(assigned[1]).toContain('mail_send');
+      expect(out.handoffs).toHaveLength(1);
+    });
+
+    it('continues recoverable read-only budget exhaustion from captured partial output', async () => {
+      let attempt = 0;
+      const assigned: string[] = [];
+      const d = fakeDirector({
+        assign: vi.fn(async (task: { id: string; description: string }) => {
+          assigned.push(task.description);
+          return task.id;
+        }) as never,
+        awaitTasks: vi.fn(async ([taskId]: string[]) => {
+          attempt += 1;
+          return attempt === 1
+            ? [
+                {
+                  status: 'failed',
+                  partial: { text: 'Reviewed packages A-M.', source: 'runner', capturedAt: 1 },
+                  error: {
+                    kind: 'budget_tool_calls',
+                    message: 'tool budget exhausted',
+                    retryable: false,
+                  },
+                  iterations: 50,
+                  toolCalls: 100,
+                  durationMs: 500,
+                  subagentId: 'architect-first',
+                  taskId,
+                },
+              ]
+            : [
+                {
+                  status: 'success',
+                  result: 'Review complete.',
+                  iterations: 10,
+                  toolCalls: 20,
+                  durationMs: 100,
+                  subagentId: 'architect-second',
+                  taskId,
+                },
+              ];
+        }) as never,
+      });
+      const tool = createDelegateTool({ host: buildHost(d), roster: FLEET_ROSTER });
+      const out = (await exec(
+        tool,
+        { role: 'architect', task: 'Review every package', maxHandoffs: 1, ...BOUNDARY },
+        null as never,
+        { signal: new AbortController().signal },
+      )) as { ok: boolean; handoffs?: unknown[] };
+
+      expect(out.ok).toBe(true);
+      expect(out.handoffs).toHaveLength(1);
+      expect(assigned[1]).toContain('Reviewed packages A-M');
+      expect(assigned[1]).toContain('finish only the work that remains');
+    });
+
+    it('does not continue a partial checkpoint when maxHandoffs is zero', async () => {
+      const partialResult = {
+        status: 'success',
+        result: 'checkpoint',
+        report: {
+          summary: 'Checkpoint only.',
+          findings: [],
+          files_examined: [],
+          confidence: 0.8,
+          suggested_next_steps: [],
+          completion: 'partial',
+          remaining_work: 'Finish the second half.',
+        },
+        iterations: 5,
+        toolCalls: 5,
+        durationMs: 20,
+        subagentId: 'sub-1',
+        taskId: 'task-1',
+      };
+      const d = fakeDirector({ awaitTasks: vi.fn(async () => [partialResult]) });
+      const tool = createDelegateTool({ host: buildHost(d), roster: FLEET_ROSTER });
+      const out = (await exec(
+        tool,
+        { role: 'bug-hunter', task: 'large scan', maxHandoffs: 0, ...BOUNDARY },
+        null as never,
+        { signal: new AbortController().signal },
+      )) as { ok: boolean; status?: string; stopReason?: string; hint?: string };
+
+      expect(out.ok).toBe(false);
+      expect(out.status).toBe('partial');
+      expect(out.stopReason).toBe('handoff_limit');
+      expect(out.hint).toContain('maxHandoffs');
+    });
+  });
+});

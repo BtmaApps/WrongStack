@@ -9,8 +9,8 @@ const mailboxMocks = vi.hoisted(() => ({
   send: vi.fn(async (_input: unknown) => ({ id: 'message-id' })),
 }));
 
-vi.mock('@wrongstack/core/coordination', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@wrongstack/core/coordination')>()),
+vi.mock('@wrongstack/coordination', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@wrongstack/coordination')>()),
   getSharedProjectMailbox: () => ({ send: mailboxMocks.send }),
 }));
 

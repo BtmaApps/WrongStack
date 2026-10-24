@@ -14,7 +14,7 @@ const HOT_PATHS = [
   'packages/webui-server/src/server/sdd-wizard-wiring.ts',
   'packages/webui-server/src/server/codebase-indexing.ts',
   'packages/cli/src/slash-commands/suggest.ts',
-  'packages/core/src/coordination/single-instance-mailbox.ts',
+  'packages/coordination/src/single-instance-mailbox.ts',
   'packages/plugins/src/accessibility-auditor/index.ts',
   'packages/plugins/src/duplicate-code-detector/index.ts',
   'packages/plugins/src/security-hotspot-scanner/index.ts',

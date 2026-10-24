@@ -14,7 +14,7 @@ import {
   type Director,
   mailboxSessionTag,
   makeKanbanQueueTool,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
 import {
   ALL_DESTRUCTIVE_KINDS,
   type DestructiveKind,

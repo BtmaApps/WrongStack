@@ -28,7 +28,7 @@ const mailbox = vi.hoisted(() => ({
   clientHeartbeat: vi.fn(async () => undefined),
 }));
 
-vi.mock('@wrongstack/core/coordination', async (importOriginal) => ({
+vi.mock('@wrongstack/coordination', async (importOriginal) => ({
   ...(await importOriginal<object>()),
   getSharedProjectMailbox: () => mailbox,
 }));

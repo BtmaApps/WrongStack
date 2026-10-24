@@ -13,7 +13,7 @@ import {
   WrongStackACPServer,
   WsBridgeTransport,
 } from '@wrongstack/acp/agent';
-import { leaderDeliveryHub } from '@wrongstack/core/coordination';
+import { leaderDeliveryHub } from '@wrongstack/coordination';
 import { type AcpHqTelemetry, startAcpHqTelemetry } from '../../acp-hq-telemetry.js';
 import {
   type AcpServerAgentFactory,

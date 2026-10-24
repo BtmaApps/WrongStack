@@ -1,3 +1,4 @@
+import { AGENT_CATALOG, AGENTS_BY_PHASE, type AgentPhase } from '@wrongstack/agent-catalog';
 import {
   isReasoningEffort,
   type ModelMatrixEntry,
@@ -5,15 +6,14 @@ import {
   type ReasoningEffort,
   type SlashCommand,
 } from '@wrongstack/contracts/types';
-import { fallbackProfileChain, parseModelRef } from '@wrongstack/core/agent';
-import { AGENT_CATALOG, AGENTS_BY_PHASE, type AgentPhase } from '@wrongstack/agent-catalog';
 import {
   MATRIX_PHASE_KEYS,
   matrixKeyKind,
   phaseForRole,
   resolveModelMatrix,
   resolveModelTargetFromEntry,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
+import { fallbackProfileChain, parseModelRef } from '@wrongstack/core/agent';
 import { color, expectDefined, toErrorMessage } from '@wrongstack/core/utils';
 import { visibleModelIds } from '../provider-helpers.js';
 import type { SlashCommandContext } from './command-context.js';

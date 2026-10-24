@@ -22,6 +22,7 @@ export * from './assert-never.js';
 export * from './atomic-write.js';
 export { deriveCachePrefixKey } from './cache-key.js';
 export * from './child-env.js';
+export { createChroniclePromptManifest } from './chronicle-prompt-manifest.js';
 export * from './color.js';
 export * from './config-backup.js';
 export * from './config-json.js';
@@ -94,6 +95,7 @@ export {
   assertNotPrivateHost,
   embeddedIPv4,
   expandIPv6,
+  isLoopbackHost,
   isPrivateIPv4,
   isPrivateIPv6,
 } from './ip-guard.js';
@@ -107,9 +109,11 @@ export {
 } from './json-schema-validate.js';
 export {
   clearLeaderEffortOverride,
+  conversationEffort,
   LEADER_EFFORT_META_KEY,
   readLeaderEffortOverride,
   restoreLeaderEffortOverride,
+  snapshotConversationEffort,
 } from './leader-effort-override.js';
 export {
   formatMemoryEvidenceBlock,
@@ -216,6 +220,7 @@ export { isSessionTranscriptFileName, sessionScopedPath } from './session-scoped
 export * from './sleep.js';
 export { slugify } from './slug.js';
 export * from './socket-path.js';
+export { loadDatabaseSync } from './sqlite-database.js';
 export { withSqliteExperimentalWarningSuppressed } from './sqlite-warning.js';
 export * from './string.js';
 export * from './task-format.js';
@@ -298,8 +303,8 @@ export {
   type ToolWireDefinitionLike,
 } from './tool-wire-compact.js';
 export { isUlid, ulid } from './ulid.js';
+export { countUnifiedDiffLines } from './unified-diff-count.js';
 export { DEFAULT_WALK_IGNORE_DIRS, DEFAULT_WALK_IGNORE_SET } from './walk-ignore.js';
 export { buildWin32CmdShimInvocation, type Win32CmdShimInvocation } from './win32-cmd.js';
 export { hardenWin32ExecutableSearch, NO_CWD_EXE_SEARCH_ENV } from './win32-exe-search.js';
 export * from './wstack-paths.js';
-export { createChroniclePromptManifest } from './chronicle-prompt-manifest.js';

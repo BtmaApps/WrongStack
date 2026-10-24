@@ -21,7 +21,7 @@ import {
   type MailboxMessage,
   type RemoteMailbox,
   resolveProjectDir,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
 import { wstackGlobalRoot } from '@wrongstack/core/utils';
 import type { SlashCommandContext } from './command-context.js';
 import { parseSubcommand, unknownSubcommand } from './helpers.js';

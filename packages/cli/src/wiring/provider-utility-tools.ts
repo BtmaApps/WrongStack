@@ -9,8 +9,8 @@ import type {
   Provider,
   ResolvedProvider,
 } from '@wrongstack/contracts/types';
+import type { ProviderModelStatusTracker } from '@wrongstack/coordination';
 import type { FallbackProfileManager } from '@wrongstack/core/agent';
-import type { ProviderModelStatusTracker } from '@wrongstack/core/coordination';
 import {
   type CouncilPersonaRegistry,
   type CouncilProfileRegistry,
@@ -21,8 +21,8 @@ import {
 import { createContextManagerTool } from '@wrongstack/core/infrastructure';
 import { ModelRouter } from '@wrongstack/core/models';
 import type { ToolRegistry } from '@wrongstack/core/registry';
-import { createCouncilTool, createOneShotLLMTool } from '@wrongstack/tools/management';
 import { createImageGenerateTool, imageTargetsFromCatalog } from '@wrongstack/tools';
+import { createCouncilTool, createOneShotLLMTool } from '@wrongstack/tools/management';
 
 interface ProviderUtilityToolsInput {
   toolRegistry: ToolRegistry;

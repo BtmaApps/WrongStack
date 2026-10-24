@@ -34,7 +34,7 @@ const repoRoot = resolve(import.meta.dirname, '../../../..');
 
 /** Every per-project daemon that owns an endpoint + metadata file. */
 const DAEMONS = [
-  'packages/core/src/coordination/mailbox-project-server.ts',
+  'packages/coordination/src/mailbox-project-server.ts',
   'packages/chronicle/src/project-server.ts',
   'packages/sage/src/project-server.ts',
 ] as const;

@@ -134,7 +134,7 @@ export interface SlashCommandContext extends SlashFleetCommandContext, SlashSddG
    * `runOneIteration()` from its main loop when autonomy is 'eternal-parallel'.
    */
   getParallelEngine?:
-    | (() => import('@wrongstack/core/coordination').ParallelEternalEngine | null)
+    | (() => import('@wrongstack/coordination').ParallelEternalEngine | null)
     | undefined;
   /**
    * Start the eternal/parallel autonomy engine. Called after `/autonomy eternal`
@@ -307,7 +307,7 @@ export interface SlashCommandContext extends SlashFleetCommandContext, SlashSddG
    * The session's global Brain arbiter (policy → LLM → human chain).
    * `/brain ask <question>` consults it directly for decision support.
    */
-  brain?: import('@wrongstack/core/coordination').BrainArbiter | undefined;
+  brain?: import('@wrongstack/coordination').BrainArbiter | undefined;
   /**
    * Live Brain autonomy settings — `/brain risk <level>` mutates
    * `maxAutoRisk` and `/brain mode <m>` mutates `mode` in place; the brain
@@ -317,7 +317,7 @@ export interface SlashCommandContext extends SlashFleetCommandContext, SlashSddG
   brainSettings?:
     | {
         maxAutoRisk: import('@wrongstack/core/execution').BrainAutoRisk;
-        mode?: import('@wrongstack/core/coordination').BrainEscalationMode | undefined;
+        mode?: import('@wrongstack/coordination').BrainEscalationMode | undefined;
         poolLabels?: string[] | undefined;
         councilLabels?: string[] | undefined;
         ledgerPath?: string | undefined;
@@ -347,7 +347,7 @@ export interface SlashCommandContext extends SlashFleetCommandContext, SlashSddG
    * bare test containers) fall back to counting the ring buffer, which is
    * capped at 20 entries and therefore only ever describes the recent past.
    */
-  brainTierStats?: (() => import('@wrongstack/core/coordination').BrainTierStats) | undefined;
+  brainTierStats?: (() => import('@wrongstack/coordination').BrainTierStats) | undefined;
   /** Config store for reading/writing config sections at runtime (e.g. settings menu). */
   configStore: import('@wrongstack/contracts/types').ConfigStore;
   /**
@@ -426,5 +426,5 @@ export interface SlashCommandContext extends SlashFleetCommandContext, SlashSddG
    * Shared provider/model status tracker. When set, the `/provider-status`
    * command can render live health information.
    */
-  statusTracker?: import('@wrongstack/core/coordination').ProviderModelStatusTracker | undefined;
+  statusTracker?: import('@wrongstack/coordination').ProviderModelStatusTracker | undefined;
 }

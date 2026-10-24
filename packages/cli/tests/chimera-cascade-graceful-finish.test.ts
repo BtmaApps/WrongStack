@@ -19,7 +19,7 @@
 
 import { EventBus } from '@wrongstack/contracts/kernel';
 import type { SubagentRunContext, SubagentRunOutcome, TaskSpec } from '@wrongstack/contracts/types';
-import { Director } from '@wrongstack/core/coordination';
+import { Director } from '@wrongstack/coordination';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { ReviewerAttempt } from '../src/chimera-reviewer-policy.js';

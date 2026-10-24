@@ -1,5 +1,5 @@
 import type { SlashCommand } from '@wrongstack/contracts/types';
-import type { Director } from '@wrongstack/core/coordination';
+import type { Director } from '@wrongstack/coordination';
 import { getProcessRegistry } from '@wrongstack/tools';
 import type { MutableRefObject } from 'react';
 import { useCallback, useEffect, useRef } from 'react';

@@ -1,6 +1,6 @@
 import { EventBus } from '@wrongstack/contracts/kernel';
 import type { TaskGraph } from '@wrongstack/contracts/types';
-import { ObservableBrainArbiter } from '@wrongstack/core/coordination';
+import { ObservableBrainArbiter } from '@wrongstack/coordination';
 import { TaskGraphStore } from '@wrongstack/sdd';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 

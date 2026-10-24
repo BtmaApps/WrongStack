@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-24T15:41:27.383Z",
+  "generatedAt": "2026-10-24T18:13:54.537Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -11,12 +11,12 @@
     ]
   },
   "summary": {
-    "packages": 45,
-    "sourceFiles": 5293,
+    "packages": 46,
+    "sourceFiles": 5294,
     "testFiles": 4655,
-    "sourceLines": 1150993,
-    "workspaceEdges": 211,
-    "moduleEdges": 15907,
+    "sourceLines": 1150934,
+    "workspaceEdges": 228,
+    "moduleEdges": 15763,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 3,
@@ -29,7 +29,6 @@
   "coreAreas": {
     "actual": [
       "brain",
-      "coordination",
       "core",
       "design",
       "execution",
@@ -59,7 +58,6 @@
     ],
     "registered": [
       "brain",
-      "coordination",
       "core",
       "design",
       "execution",
@@ -98,6 +96,7 @@
       "testFiles": 60,
       "workspaceDependencies": [
         "@wrongstack/contracts",
+        "@wrongstack/coordination",
         "@wrongstack/core",
         "@wrongstack/primitives"
       ],
@@ -219,6 +218,7 @@
         "@wrongstack/chronicle",
         "@wrongstack/codebase-index-mcp",
         "@wrongstack/contracts",
+        "@wrongstack/coordination",
         "@wrongstack/core",
         "@wrongstack/desktop",
         "@wrongstack/goal",
@@ -334,10 +334,36 @@
       ]
     },
     {
+      "name": "@wrongstack/coordination",
+      "dir": "packages/coordination",
+      "sourceFiles": 189,
+      "testFiles": 177,
+      "workspaceDependencies": [
+        "@wrongstack/agent-catalog",
+        "@wrongstack/contracts",
+        "@wrongstack/core",
+        "@wrongstack/kanban",
+        "@wrongstack/persistence",
+        "@wrongstack/primitives"
+      ],
+      "tsconfigs": [
+        {
+          "path": "packages/coordination/tsconfig.json",
+          "error": null,
+          "testFiles": 0
+        },
+        {
+          "path": "packages/coordination/tsconfig.test.json",
+          "error": null,
+          "testFiles": 177
+        }
+      ]
+    },
+    {
       "name": "@wrongstack/core",
       "dir": "packages/core",
-      "sourceFiles": 821,
-      "testFiles": 856,
+      "sourceFiles": 633,
+      "testFiles": 679,
       "workspaceDependencies": [
         "@wrongstack/agent-catalog",
         "@wrongstack/contracts",
@@ -354,7 +380,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 856
+          "testFiles": 679
         }
       ]
     },
@@ -505,6 +531,7 @@
       "sourceFiles": 7,
       "testFiles": 8,
       "workspaceDependencies": [
+        "@wrongstack/coordination",
         "@wrongstack/core",
         "@wrongstack/mcp"
       ],
@@ -615,6 +642,7 @@
       "testFiles": 127,
       "workspaceDependencies": [
         "@wrongstack/contracts",
+        "@wrongstack/coordination",
         "@wrongstack/core",
         "@wrongstack/plugin-sdk",
         "@wrongstack/primitives",
@@ -727,6 +755,7 @@
         "@wrongstack/builtin-plugins",
         "@wrongstack/chronicle",
         "@wrongstack/contracts",
+        "@wrongstack/coordination",
         "@wrongstack/core",
         "@wrongstack/governance",
         "@wrongstack/hq",
@@ -757,6 +786,7 @@
       "testFiles": 156,
       "workspaceDependencies": [
         "@wrongstack/contracts",
+        "@wrongstack/coordination",
         "@wrongstack/core",
         "@wrongstack/hq",
         "@wrongstack/persistence",
@@ -806,6 +836,7 @@
       "testFiles": 42,
       "workspaceDependencies": [
         "@wrongstack/contracts",
+        "@wrongstack/coordination",
         "@wrongstack/core",
         "@wrongstack/kanban",
         "@wrongstack/primitives",
@@ -931,6 +962,7 @@
       "workspaceDependencies": [
         "@wrongstack/agent-catalog",
         "@wrongstack/contracts",
+        "@wrongstack/coordination",
         "@wrongstack/core",
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -957,6 +989,7 @@
       "workspaceDependencies": [
         "@wrongstack/chronicle",
         "@wrongstack/contracts",
+        "@wrongstack/coordination",
         "@wrongstack/core",
         "@wrongstack/goal",
         "@wrongstack/hq",
@@ -1070,6 +1103,7 @@
       "testFiles": 55,
       "workspaceDependencies": [
         "@wrongstack/contracts",
+        "@wrongstack/coordination",
         "@wrongstack/core",
         "@wrongstack/hq",
         "@wrongstack/tools",
@@ -1121,6 +1155,7 @@
         "@wrongstack/builtin-plugins",
         "@wrongstack/chronicle",
         "@wrongstack/contracts",
+        "@wrongstack/coordination",
         "@wrongstack/core",
         "@wrongstack/goal",
         "@wrongstack/hq",
@@ -6755,6 +6790,1068 @@
         ]
       },
       {
+        "file": "packages/coordination/tests/acp-budget-policy.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/adaptive-concurrency.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/agent-bridge.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/agent-catalog.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/agent-monitor.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/agent-status-helpers.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/agent-subagent-runner.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/auto-extend.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/autonomous-brain.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/autonomous-coordinator-api.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/autonomous-coordinator-consensus.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/autonomous-coordinator.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/brain-cache.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/brain-escalation-routing.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/brain-explain.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/brain-heuristics.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/brain-ledger.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/brain-monitor-session-targeting.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/brain-monitor-signals.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/brain-monitor.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/brain-rules.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/brain-telemetry.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/brain-trace.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/brain.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/budget-edges-t1-t4.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/budget-sync-decision-slot.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/budget-wildcard-negotiation.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/change-manager.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/checkpoint-wiring.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/collab-bus.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/collab-debug-extra.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/collab-debug-project-root-confinement.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/collab-debug.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/commit-safety.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/consensus-protocol.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/coordination-integration.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/coordinator-await-any.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/coordinator-integration-coverage.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/coordinator-race.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/coordinator-retarget.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/coordinator-session-ownership.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/define-subagent-tool.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/delegate-abort-settlement.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/delegate-background.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/delegate-crash-stop-reason.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/delegate-no-session-fallback.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/delegate-timeout-e2e.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/delegate-timeout-overflow.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/delegate-timeout-preempt.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/delegate-tool.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/delegation-rehydrate-dispose.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/dep-watcher-bridge-paths.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/dep-watcher-e2e.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/dep-watcher.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/devops-ssh-tools.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/director-agent-lifecycle-events.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/director-await-any.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/director-budget-policy.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/director-budget-runaway.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/director-collab.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/director-companion-spawn.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/director-extra.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/director-idle-lifecycle.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/director-input-helpers.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/director-model-matrix.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/director-mutation-test-tool.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/director-prompts.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/director-session-monitor-fallback.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/director-session-subagent-models.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/director-spawn-idle-override.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/director-task-registry-ownership.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/director-task-registry.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/director-tools-kanban-queue.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/director-tools.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/director-toolset-audit-regressions.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/director.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/dispatcher.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/explore-companion-lifecycle.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/explore-companion.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/file-author-tracker.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/fleet-event-validation-extra.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/fleet-manager-extra.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/fleet-manager-resume-budget.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/fleet-manager.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/fleet-spawn.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/fleet-status-tool.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/fleet-supervisor.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/fleet-usage-aggregator.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/fleet-usage-cumulative.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/hq-mailbox-wiring.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/inter-agent-messaging.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/knowledge-graph-extra.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/knowledge-graph.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/large-answer-store.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/leader-auto-wake-startup-generation.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/leader-auto-wake.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/leader-delivery-hub.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/leader-effort-routing.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/leader-model-menu.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/mail-tools.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/mailbox-actions.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/mailbox-autocompact.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/mailbox-baseline.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/mailbox-codecs.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/mailbox-contract-matrix.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/mailbox-credential-oracle.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/mailbox-credential-store.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/mailbox-credential-throttle.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/mailbox-extra.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/mailbox-health.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/mailbox-hooks.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/mailbox-hq-publisher-sharing.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/mailbox-http-router.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/mailbox-http-sse.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/mailbox-message-codec.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/mailbox-project-server-auth-gate.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/mailbox-project-server-client-close-mid-connect.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/mailbox-project-server-client-entrypoint-transient.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/mailbox-project-server-client-respawn.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/mailbox-project-server-startup-idle.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/mailbox-project-server.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/mailbox-security-gate.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/mailbox-server-dispatch.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/mailbox-smoke.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/mailbox-types.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/mailbox-v2-receipts.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/manifest-deps.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/model-matrix.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/model-tier-leader.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/model-tier.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/multi-agent-coordinator-runner.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/multi-agent-coordinator.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/multi-agent-journeys.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/mutation-engine.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/mutation-test-integration.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/owning-session-routing.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/package-author-tracker.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/package-outdated-watcher-extra.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/package-outdated-watcher.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/parallel-eternal-engine.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/project-agent-identity-fence.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/project-server-endpoint-length.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/provider-status-tracker.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/remote-mailbox-credential-store.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/role-dispatch-rationale.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/role-skills.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/roster-discoverability.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/runtime-capability-manifest.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/sealed-subagent.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/session-note-hub.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/session-note-subagent-routing.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/session-subagent-models.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/session-subagent-policy.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/single-instance-mailbox.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/spawn-budget-exempt.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/spawn-model-chosen-tier.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/spawn-model-single-resolver.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/spawn-subagent-capability-toggles.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/sqlite-mailbox-contract.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/sqlite-mailbox-store.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/subagent-abort-during-tool.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/subagent-baseline.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/subagent-budget-edges.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/subagent-budget.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/subagent-error-classification.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/subagent-graceful-finish.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/subagent-nicknames.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/subagent-result-tool.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/task-auctioneer.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/task-boundary.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/task-dag-extra.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/task-dag.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/techstack-mailbox-consumer.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/techstack-report-loop.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/tool-lifecycle.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/typesafe-dispatch-classifier.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/coordination/tests/watchdog-guard.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/core/tests/agent-status-tracker.test.ts",
         "projects": [
           "root-node"
@@ -7116,1062 +8213,6 @@
       },
       {
         "file": "packages/core/tests/cloud-provider.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/acp-budget-policy.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/adaptive-concurrency.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/agent-bridge.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/agent-catalog.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/agent-monitor.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/agent-status-helpers.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/agent-subagent-runner.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/auto-extend.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/autonomous-brain.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/autonomous-coordinator-api.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/autonomous-coordinator-consensus.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/autonomous-coordinator.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/brain-cache.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/brain-escalation-routing.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/brain-explain.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/brain-heuristics.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/brain-ledger.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/brain-monitor-session-targeting.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/brain-monitor-signals.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/brain-monitor.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/brain-rules.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/brain-telemetry.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/brain-trace.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/brain.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/budget-edges-t1-t4.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/budget-sync-decision-slot.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/budget-wildcard-negotiation.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/change-manager.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/checkpoint-wiring.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/collab-bus.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/collab-debug-extra.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/collab-debug-project-root-confinement.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/collab-debug.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/commit-safety.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/consensus-protocol.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/coordination-integration.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/coordinator-await-any.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/coordinator-integration-coverage.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/coordinator-race.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/coordinator-retarget.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/coordinator-session-ownership.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/define-subagent-tool.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/delegate-abort-settlement.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/delegate-background.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/delegate-crash-stop-reason.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/delegate-no-session-fallback.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/delegate-timeout-e2e.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/delegate-timeout-overflow.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/delegate-timeout-preempt.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/delegate-tool.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/delegation-rehydrate-dispose.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/dep-watcher-bridge-paths.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/dep-watcher-e2e.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/dep-watcher.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/devops-ssh-tools.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/director-agent-lifecycle-events.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/director-await-any.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/director-budget-policy.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/director-budget-runaway.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/director-collab.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/director-companion-spawn.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/director-extra.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/director-idle-lifecycle.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/director-input-helpers.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/director-model-matrix.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/director-mutation-test-tool.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/director-prompts.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/director-session-monitor-fallback.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/director-session-subagent-models.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/director-spawn-idle-override.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/director-task-registry-ownership.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/director-task-registry.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/director-tools-kanban-queue.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/director-tools.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/director-toolset-audit-regressions.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/director.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/dispatcher.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/explore-companion-lifecycle.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/explore-companion.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/file-author-tracker.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/fleet-event-validation-extra.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/fleet-manager-extra.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/fleet-manager-resume-budget.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/fleet-manager.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/fleet-spawn.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/fleet-status-tool.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/fleet-supervisor.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/fleet-usage-aggregator.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/fleet-usage-cumulative.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/hq-mailbox-wiring.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/inter-agent-messaging.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/knowledge-graph-extra.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/knowledge-graph.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/large-answer-store.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/leader-auto-wake-startup-generation.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/leader-auto-wake.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/leader-delivery-hub.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/leader-effort-routing.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/leader-model-menu.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/mail-tools.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/mailbox-actions.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/mailbox-autocompact.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/mailbox-baseline.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/mailbox-codecs.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/mailbox-contract-matrix.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/mailbox-credential-oracle.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/mailbox-credential-store.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/mailbox-credential-throttle.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/mailbox-extra.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/mailbox-health.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/mailbox-hooks.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/mailbox-hq-publisher-sharing.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/mailbox-http-router.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/mailbox-http-sse.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/mailbox-message-codec.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/mailbox-project-server-auth-gate.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/mailbox-project-server-client-close-mid-connect.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/mailbox-project-server-client-entrypoint-transient.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/mailbox-project-server-client-respawn.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/mailbox-project-server-startup-idle.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/mailbox-project-server.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/mailbox-security-gate.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/mailbox-server-dispatch.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/mailbox-smoke.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/mailbox-types.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/mailbox-v2-receipts.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/manifest-deps.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/model-matrix.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/model-tier-leader.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/model-tier.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/multi-agent-coordinator-runner.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/multi-agent-coordinator.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/multi-agent-journeys.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/mutation-engine.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/mutation-test-integration.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/owning-session-routing.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/package-author-tracker.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/package-outdated-watcher-extra.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/package-outdated-watcher.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/project-agent-identity-fence.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/project-server-endpoint-length.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/provider-status-tracker.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/remote-mailbox-credential-store.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/role-dispatch-rationale.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/role-skills.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/roster-discoverability.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/runtime-capability-manifest.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/sealed-subagent.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/session-note-hub.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/session-note-subagent-routing.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/session-subagent-models.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/session-subagent-policy.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/single-instance-mailbox.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/spawn-budget-exempt.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/spawn-model-chosen-tier.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/spawn-model-single-resolver.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/spawn-subagent-capability-toggles.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/sqlite-mailbox-contract.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/sqlite-mailbox-store.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/subagent-abort-during-tool.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/subagent-baseline.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/subagent-budget-edges.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/subagent-budget.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/subagent-error-classification.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/subagent-graceful-finish.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/subagent-nicknames.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/subagent-result-tool.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/task-auctioneer.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/task-boundary.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/task-dag-extra.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/task-dag.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/techstack-mailbox-consumer.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/techstack-report-loop.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/tool-lifecycle.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/typesafe-dispatch-classifier.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/watchdog-guard.test.ts",
         "projects": [
           "root-node"
         ]
@@ -9162,12 +9203,6 @@
       },
       {
         "file": "packages/core/tests/execution/one-shot-llm.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/execution/parallel-eternal-engine.test.ts",
         "projects": [
           "root-node"
         ]
@@ -29395,12 +29430,12 @@
       "relativeImports": 3
     },
     {
-      "file": "packages/core/src/coordination/agent-monitor.ts",
+      "file": "packages/coordination/src/agent-monitor.ts",
       "lines": 715,
-      "relativeImports": 3
+      "relativeImports": 1
     },
     {
-      "file": "packages/core/src/coordination/multi-agent-coordinator.ts",
+      "file": "packages/coordination/src/multi-agent-coordinator.ts",
       "lines": 725,
       "relativeImports": 13
     },
@@ -29497,7 +29532,7 @@
       "relativeImports": 6
     },
     {
-      "file": "packages/core/src/coordination/multi-agent-coordinator.ts",
+      "file": "packages/coordination/src/multi-agent-coordinator.ts",
       "lines": 725,
       "relativeImports": 13
     },
@@ -29507,9 +29542,9 @@
       "relativeImports": 9
     },
     {
-      "file": "packages/core/src/coordination/agent-monitor.ts",
+      "file": "packages/coordination/src/agent-monitor.ts",
       "lines": 715,
-      "relativeImports": 3
+      "relativeImports": 1
     },
     {
       "file": "packages/plugins/src/audit/index.ts",
@@ -29547,7 +29582,7 @@
       "relativeImports": 17
     },
     {
-      "file": "packages/core/src/coordination/subagent-budget.ts",
+      "file": "packages/coordination/src/subagent-budget.ts",
       "lines": 699,
       "relativeImports": 2
     },
@@ -29557,7 +29592,7 @@
       "relativeImports": 12
     },
     {
-      "file": "packages/core/src/coordination/provider-status-tracker.ts",
+      "file": "packages/coordination/src/provider-status-tracker.ts",
       "lines": 698,
       "relativeImports": 4
     },
@@ -29577,14 +29612,9 @@
       "relativeImports": 3
     },
     {
-      "file": "packages/core/src/coordination/autonomous-brain.ts",
+      "file": "packages/coordination/src/autonomous-brain.ts",
       "lines": 696,
-      "relativeImports": 3
-    },
-    {
-      "file": "packages/core/src/coordination/fleet-manager.ts",
-      "lines": 696,
-      "relativeImports": 13
+      "relativeImports": 2
     },
     {
       "file": "packages/core/src/core/agent-tools.ts",
@@ -29600,6 +29630,11 @@
       "file": "packages/webui/src/components/KanbanView.tsx",
       "lines": 696,
       "relativeImports": 18
+    },
+    {
+      "file": "packages/coordination/src/fleet-manager.ts",
+      "lines": 695,
+      "relativeImports": 9
     },
     {
       "file": "packages/core/src/core/agent-loop.ts",
@@ -29642,11 +29677,6 @@
       "relativeImports": 2
     },
     {
-      "file": "packages/core/src/coordination/mailbox-project-server-client.ts",
-      "lines": 691,
-      "relativeImports": 4
-    },
-    {
       "file": "packages/governance/src/event-store.ts",
       "lines": 691,
       "relativeImports": 8
@@ -29682,7 +29712,7 @@
       "relativeImports": 5
     },
     {
-      "file": "packages/core/src/coordination/autonomous-coordinator.ts",
+      "file": "packages/coordination/src/autonomous-coordinator.ts",
       "lines": 690,
       "relativeImports": 16
     },
@@ -29697,12 +29727,17 @@
       "relativeImports": 6
     },
     {
+      "file": "packages/coordination/src/mailbox-project-server-client.ts",
+      "lines": 689,
+      "relativeImports": 3
+    },
+    {
       "file": "packages/core/src/storage/file-session-writer.ts",
       "lines": 689,
       "relativeImports": 12
     },
     {
-      "file": "packages/core/src/coordination/task-auctioneer.ts",
+      "file": "packages/coordination/src/task-auctioneer.ts",
       "lines": 688,
       "relativeImports": 8
     },
@@ -30602,83 +30637,95 @@
       "name": "runtimeCapabilityForTool"
     },
     {
-      "file": "packages/core/src/coordination/fleet.ts",
+      "file": "packages/coordination/src/fleet.ts",
       "name": "EXPLORE_COMPANION_TOOLS"
     },
     {
-      "file": "packages/core/src/coordination/mailbox-codecs.ts",
+      "file": "packages/coordination/src/leader-delivery-attach.ts",
+      "name": "isLeaderAgentId"
+    },
+    {
+      "file": "packages/coordination/src/mailbox-attach.ts",
+      "name": "applySessionAffinityFilter"
+    },
+    {
+      "file": "packages/coordination/src/mailbox-attach.ts",
+      "name": "resetMailboxHqPublishersForTests"
+    },
+    {
+      "file": "packages/coordination/src/mailbox-codecs.ts",
       "name": "parseMailboxHeartbeatInput"
     },
     {
-      "file": "packages/core/src/coordination/mailbox-codecs.ts",
+      "file": "packages/coordination/src/mailbox-codecs.ts",
       "name": "parseMailboxRegistrationInput"
     },
     {
-      "file": "packages/core/src/coordination/mailbox-codecs.ts",
+      "file": "packages/coordination/src/mailbox-codecs.ts",
       "name": "SEND_ALLOWED_FIELDS"
     },
     {
-      "file": "packages/core/src/coordination/mailbox-credential-store.ts",
+      "file": "packages/coordination/src/mailbox-credential-store.ts",
       "name": "resolveCredentialStorePath"
     },
     {
-      "file": "packages/core/src/coordination/mailbox-http-sse.ts",
+      "file": "packages/coordination/src/mailbox-http-sse.ts",
       "name": "MAX_PENDING_SSE_OPERATIONS"
     },
     {
-      "file": "packages/core/src/coordination/mailbox-http-sse.ts",
+      "file": "packages/coordination/src/mailbox-http-sse.ts",
       "name": "SSE_REVALIDATION_TIMEOUT_MS"
     },
     {
-      "file": "packages/core/src/coordination/mailbox-message-codec.ts",
+      "file": "packages/coordination/src/mailbox-message-codec.ts",
       "name": "parseMailboxLine"
     },
     {
-      "file": "packages/core/src/coordination/mailbox-message-codec.ts",
+      "file": "packages/coordination/src/mailbox-message-codec.ts",
       "name": "parseMailboxLines"
     },
     {
-      "file": "packages/core/src/coordination/mailbox-message-codec.ts",
+      "file": "packages/coordination/src/mailbox-message-codec.ts",
       "name": "parseMailboxMessageLine"
     },
     {
-      "file": "packages/core/src/coordination/mailbox-message-codec.ts",
+      "file": "packages/coordination/src/mailbox-message-codec.ts",
       "name": "serializeAckRecord"
     },
     {
-      "file": "packages/core/src/coordination/mailbox-message-codec.ts",
+      "file": "packages/coordination/src/mailbox-message-codec.ts",
       "name": "serializeMailboxMessage"
     },
     {
-      "file": "packages/core/src/coordination/mailbox-project-server-endpoint.ts",
+      "file": "packages/coordination/src/mailbox-project-server-endpoint.ts",
       "name": "mailboxProjectServerKey"
     },
     {
-      "file": "packages/core/src/coordination/mailbox-receipt-folding.ts",
+      "file": "packages/coordination/src/mailbox-receipt-folding.ts",
       "name": "buildReceiptRecordV2"
     },
     {
-      "file": "packages/core/src/coordination/mailbox-receipt-folding.ts",
+      "file": "packages/coordination/src/mailbox-receipt-folding.ts",
       "name": "extractV2Receipts"
     },
     {
-      "file": "packages/core/src/coordination/mailbox-receipt-folding.ts",
+      "file": "packages/coordination/src/mailbox-receipt-folding.ts",
       "name": "materializeMessages"
     },
     {
-      "file": "packages/core/src/coordination/mailbox-receipt-folding.ts",
+      "file": "packages/coordination/src/mailbox-receipt-folding.ts",
       "name": "serializeReceiptRecordV2"
     },
     {
-      "file": "packages/core/src/coordination/mutation-engine.ts",
+      "file": "packages/coordination/src/mutation-engine.ts",
       "name": "applyMutation"
     },
     {
-      "file": "packages/core/src/coordination/session-subagent-models.ts",
+      "file": "packages/coordination/src/session-subagent-models.ts",
       "name": "__resetAllSessionSubagentModelPlans"
     },
     {
-      "file": "packages/core/src/coordination/subagent-nicknames.ts",
+      "file": "packages/coordination/src/subagent-nicknames.ts",
       "name": "getAllNicknameKeys"
     },
     {
@@ -30828,18 +30875,6 @@
     {
       "file": "packages/core/src/infrastructure/provider-cache-ledger.ts",
       "name": "RECENT_HIT_RATIO_WINDOW"
-    },
-    {
-      "file": "packages/core/src/leader-delivery-attach.ts",
-      "name": "isLeaderAgentId"
-    },
-    {
-      "file": "packages/core/src/mailbox-attach.ts",
-      "name": "applySessionAffinityFilter"
-    },
-    {
-      "file": "packages/core/src/mailbox-attach.ts",
-      "name": "resetMailboxHqPublishersForTests"
     },
     {
       "file": "packages/core/src/quota/index.ts",

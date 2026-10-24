@@ -55,6 +55,7 @@ function entryMap(sources) {
 const coreEntries = entryMap([
   'src/index.ts',
   'src/core/index.ts',
+  'src/brain/index.ts',
   'src/execution/refine-decisions.ts',
   'src/statusline/index.ts',
   // Plan 28: the exec-sandbox tier contract ships as its own subpath
@@ -80,7 +81,6 @@ const coreEntries = entryMap([
   'src/boot.ts',
   // Default AgentCoordinationPort (composition root). `@wrongstack/runtime`
   // binds it to AGENT_COORDINATION; the agent loop never imports it.
-  'src/agent-coordination-default.ts',
   'src/utils/index.ts',
   'src/utils/expect-defined.ts',
   'src/utils/next-steps.ts',
@@ -100,8 +100,6 @@ const coreEntries = entryMap([
   'src/execution/prompt-enhancer.ts',
   'src/execution/index.ts',
   'src/design/index.ts',
-  'src/coordination/index.ts',
-  'src/coordination/mailbox-project-server.ts',
   'src/registry/index.ts',
   'src/extension/index.ts',
   'src/plugin/index.ts',
@@ -405,6 +403,19 @@ const profiles = {
   '@wrongstack/hq': {
     entries: { index: 'src/index.ts', protocol: 'src/protocol.ts' },
     // Shared chunk, so protocol constants and guards keep one identity.
+    splitting: true,
+    chunkNames: '[name]-[hash]',
+  },
+  // Multi-agent coordination (director, fleet, mailbox and its per-project
+  // daemon), extracted from core (src/coordination) on 2026-10-24.
+  // `mailbox-project-server` is the daemon entry the client spawns: it must
+  // stay at the dist ROOT next to the chunks, because the client locates it
+  // relative to its own module URL.
+  '@wrongstack/coordination': {
+    entries: {
+      index: 'src/index.ts',
+      'mailbox-project-server': 'src/mailbox-project-server.ts',
+    },
     splitting: true,
     chunkNames: '[name]-[hash]',
   },

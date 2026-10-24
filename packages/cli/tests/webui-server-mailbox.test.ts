@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { EventBus } from '@wrongstack/contracts/kernel';
-import { createProjectMailbox, resolveProjectDir } from '@wrongstack/core/coordination';
+import { createProjectMailbox, resolveProjectDir } from '@wrongstack/coordination';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { runWebUI } from '../src/webui-server.js';
 import { openWs } from './_ws-client.js';
@@ -44,7 +44,7 @@ afterEach(async () => {
   // Each project mailbox has a detached owner holding `_mailbox.sqlite` open;
   // Windows refuses to remove the directory while it lives.
   for (const mailbox of openMailboxes.splice(0)) await mailbox.close().catch(() => undefined);
-  const { MailboxProjectServerConnection } = await import('@wrongstack/core/coordination');
+  const { MailboxProjectServerConnection } = await import('@wrongstack/coordination');
   for (const projectDir of mailboxProjectDirs.splice(0)) {
     const control = new MailboxProjectServerConnection(projectDir);
     try {

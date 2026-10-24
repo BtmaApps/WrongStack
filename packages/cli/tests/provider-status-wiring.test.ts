@@ -34,8 +34,8 @@ vi.mock('@wrongstack/core/utils', async (importOriginal) => {
   };
 });
 
-vi.mock('@wrongstack/core/coordination', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@wrongstack/core/coordination')>();
+vi.mock('@wrongstack/coordination', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@wrongstack/coordination')>();
   return {
     ...actual,
     ProviderModelStatusTracker: class {

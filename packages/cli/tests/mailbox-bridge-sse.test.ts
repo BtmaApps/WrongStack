@@ -1,7 +1,7 @@
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { createProjectMailbox, resolveProjectDir } from '@wrongstack/core/coordination';
+import { createProjectMailbox, resolveProjectDir } from '@wrongstack/coordination';
 import { wstackGlobalRoot } from '@wrongstack/core/utils';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 

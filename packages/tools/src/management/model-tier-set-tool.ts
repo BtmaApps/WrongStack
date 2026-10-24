@@ -22,9 +22,14 @@
 
 import { ToolValidationError } from '@wrongstack/contracts/types/errors';
 import type { JSONSchema, Tool } from '@wrongstack/contracts/types/tool';
-import { activeTierConfig, listTierIds, resolveTier } from '@wrongstack/core/coordination';
-import type { TierModelEconomics } from '@wrongstack/core/coordination';
-import { evaluateLeaderTierSwitch, leaderTierPolicy } from '@wrongstack/core/coordination';
+import type { TierModelEconomics } from '@wrongstack/coordination';
+import {
+  activeTierConfig,
+  evaluateLeaderTierSwitch,
+  leaderTierPolicy,
+  listTierIds,
+  resolveTier,
+} from '@wrongstack/coordination';
 import type { FallbackManageToolOptions } from './fallback-manage-tool-options.js';
 
 export const LEADER_TIER_SET_TOOL_NAME = 'leader_tier_set';

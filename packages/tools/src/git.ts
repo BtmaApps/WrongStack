@@ -4,7 +4,7 @@ import { dirname, resolve, sep } from 'node:path';
 import { StringDecoder } from 'node:string_decoder';
 import type { Tool } from '@wrongstack/contracts/types';
 import { ToolValidationError } from '@wrongstack/contracts/types';
-import { assessCommitSafety } from '@wrongstack/core/coordination';
+import { assessCommitSafety } from '@wrongstack/coordination';
 import { buildChildEnv } from '@wrongstack/core/utils';
 import { gitIsolationEnv } from '@wrongstack/primitives';
 import { createOutputSpool, spoolNote } from './_output-spool.js';

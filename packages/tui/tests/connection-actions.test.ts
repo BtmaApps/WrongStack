@@ -82,7 +82,7 @@ vi.mock('@wrongstack/sage', () => ({
   },
 }));
 
-vi.mock('@wrongstack/core/coordination', () => ({
+vi.mock('@wrongstack/coordination', () => ({
   isMailboxProjectServerAvailable: mocks.isMailboxProjectServerAvailable,
   MailboxProjectServerConnection: class {
     shutdown = mocks.mailboxShutdown;

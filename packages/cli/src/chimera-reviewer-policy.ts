@@ -3,8 +3,8 @@ import {
   selectRoundRobinReviewerAssignment,
 } from '@wrongstack/builtin-plugins';
 import type { SubagentConfig, SubagentError, TaskResult } from '@wrongstack/contracts/types';
+import type { ProviderModelStatusTracker } from '@wrongstack/coordination';
 import { parseModelRef } from '@wrongstack/core/agent';
-import type { ProviderModelStatusTracker } from '@wrongstack/core/coordination';
 
 /**
  * Resolve the fallback-model chain used when spawning the chimera-review

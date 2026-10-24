@@ -2,9 +2,9 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { EventBus } from '@wrongstack/contracts/kernel';
-import { AgentStatusTracker, Director, mailboxSessionTag } from '@wrongstack/core/coordination';
+import { AgentStatusTracker, Director, mailboxSessionTag } from '@wrongstack/coordination';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { SqliteMailbox } from '../../../core/src/coordination/sqlite-mailbox.js';
+import { SqliteMailbox } from '../../../coordination/src/sqlite-mailbox.js';
 import {
   registerCoordinatorLifecycleHandlers,
   registerDirectorSubagentLifecycleBridges,

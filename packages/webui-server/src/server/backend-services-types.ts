@@ -12,14 +12,14 @@ import type {
   SkillLoader,
   Tracer,
 } from '@wrongstack/contracts/types';
-import type { Agent, AgentPipelines, Context } from '@wrongstack/core/agent';
 import type {
   AgentFactory,
   BrainDecisionLedger,
   BrainMonitor,
   CollaborationBus,
   ObservableBrainArbiter,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
+import type { Agent, AgentPipelines, Context } from '@wrongstack/core/agent';
 import type {
   AutoCompactionMiddleware,
   BrainAutoRisk,

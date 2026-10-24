@@ -7,7 +7,7 @@ import {
   createProjectMailbox,
   MailboxEventEmitter,
   MailboxProjectServerConnection,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   removeProjectFixtureDirectory,
@@ -49,7 +49,7 @@ describe('Mailbox MCP full-access IPC integration', () => {
   beforeAll(async () => {
     projectDir = await mkdtemp(join(tmpdir(), 'wrongstack-mailbox-mcp-'));
     const projectServer = fileURLToPath(
-      new URL('../../core/dist/coordination/mailbox-project-server.js', import.meta.url),
+      new URL('../../coordination/dist/mailbox-project-server.js', import.meta.url),
     );
     let stderr = '';
     serverProcess = spawn(process.execPath, [projectServer, '--project-dir', projectDir], {

@@ -27,8 +27,8 @@ vi.mock('@wrongstack/sdd', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@wrongstack/sdd')>();
   return { ...actual, cleanupStaleSddWorktrees: mocks.cleanupStaleSddWorktrees };
 });
-vi.mock('@wrongstack/core/coordination', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@wrongstack/core/coordination')>();
+vi.mock('@wrongstack/coordination', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@wrongstack/coordination')>();
   return {
     ...actual,
     makeKanbanQueueTool: () => ({ execute: mocks.executeKanbanQueue }),

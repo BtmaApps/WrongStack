@@ -2,12 +2,7 @@ import * as fs from 'node:fs/promises';
 import { createServer, type Server } from 'node:http';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import {
-  acquireOrJoin,
-  finalize,
-  type MailboxBridgeLock,
-  release,
-} from '@wrongstack/core/coordination';
+import { acquireOrJoin, finalize, type MailboxBridgeLock, release } from '@wrongstack/coordination';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 /**

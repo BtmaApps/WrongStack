@@ -6,8 +6,8 @@
  * the signature; status/task changes MUST).
  */
 import { describe, expect, it } from 'vitest';
+import type { MailboxAgentStatus } from '../../../coordination/src/mailbox-types.js';
 import { buildFleetPulseBlock, fleetPulseSignature } from '../../src/core/fleet-pulse.js';
-import type { MailboxAgentStatus } from '../../src/coordination/mailbox-types.js';
 
 function status(over: Partial<MailboxAgentStatus> & { agentId: string }): MailboxAgentStatus {
   return {

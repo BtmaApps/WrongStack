@@ -51,7 +51,7 @@ async function runDaemon(name) {
       await import('../../packages/chronicle/dist/project-server.js');
       return;
     case 'mailbox':
-      await import('../../packages/core/dist/coordination/mailbox-project-server.js');
+      await import('../../packages/coordination/dist/mailbox-project-server.js');
       return;
     case 'session-catalog':
       await import('../../packages/core/dist/session-catalog/project-server.js');

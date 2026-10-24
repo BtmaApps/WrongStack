@@ -4,17 +4,12 @@
   "rootImportFiles": 0,
   "bySpecifier": {
     "@wrongstack/core/agent": {
-      "files": 439,
-      "typeOnly": 334,
-      "runtimeOrMixed": 129
+      "files": 478,
+      "typeOnly": 362,
+      "runtimeOrMixed": 145
     },
     "@wrongstack/core/agent-catalog": {
       "files": 1,
-      "typeOnly": 0,
-      "runtimeOrMixed": 2
-    },
-    "@wrongstack/core/agent-coordination": {
-      "files": 2,
       "typeOnly": 0,
       "runtimeOrMixed": 2
     },
@@ -23,15 +18,15 @@
       "typeOnly": 0,
       "runtimeOrMixed": 3
     },
+    "@wrongstack/core/brain": {
+      "files": 22,
+      "typeOnly": 17,
+      "runtimeOrMixed": 13
+    },
     "@wrongstack/core/cloud-provider": {
       "files": 13,
       "typeOnly": 1,
       "runtimeOrMixed": 12
-    },
-    "@wrongstack/core/coordination": {
-      "files": 298,
-      "typeOnly": 113,
-      "runtimeOrMixed": 256
     },
     "@wrongstack/core/coordination/agent-subagent-runner.js": {
       "files": 2,
@@ -49,9 +44,9 @@
       "runtimeOrMixed": 15
     },
     "@wrongstack/core/execution": {
-      "files": 95,
+      "files": 103,
       "typeOnly": 24,
-      "runtimeOrMixed": 86
+      "runtimeOrMixed": 94
     },
     "@wrongstack/core/execution/refine-decisions": {
       "files": 2,
@@ -69,9 +64,9 @@
       "runtimeOrMixed": 11
     },
     "@wrongstack/core/infrastructure": {
-      "files": 63,
+      "files": 64,
       "typeOnly": 8,
-      "runtimeOrMixed": 58
+      "runtimeOrMixed": 59
     },
     "@wrongstack/core/kernel": {
       "files": 1,
@@ -114,9 +109,9 @@
       "runtimeOrMixed": 58
     },
     "@wrongstack/core/registry": {
-      "files": 180,
+      "files": 181,
       "typeOnly": 74,
-      "runtimeOrMixed": 109
+      "runtimeOrMixed": 110
     },
     "@wrongstack/core/replay": {
       "files": 3,
@@ -129,18 +124,18 @@
       "runtimeOrMixed": 2
     },
     "@wrongstack/core/sandbox": {
-      "files": 12,
+      "files": 14,
       "typeOnly": 0,
-      "runtimeOrMixed": 12
+      "runtimeOrMixed": 14
     },
     "@wrongstack/core/security": {
-      "files": 239,
+      "files": 266,
       "typeOnly": 31,
-      "runtimeOrMixed": 211
+      "runtimeOrMixed": 238
     },
     "@wrongstack/core/session-catalog": {
-      "files": 13,
-      "typeOnly": 0,
+      "files": 18,
+      "typeOnly": 5,
       "runtimeOrMixed": 14
     },
     "@wrongstack/core/skill-mentions": {
@@ -149,9 +144,9 @@
       "runtimeOrMixed": 6
     },
     "@wrongstack/core/skills": {
-      "files": 38,
+      "files": 39,
       "typeOnly": 5,
-      "runtimeOrMixed": 35
+      "runtimeOrMixed": 36
     },
     "@wrongstack/core/statusline": {
       "files": 27,
@@ -159,9 +154,9 @@
       "runtimeOrMixed": 30
     },
     "@wrongstack/core/storage": {
-      "files": 167,
-      "typeOnly": 43,
-      "runtimeOrMixed": 154
+      "files": 184,
+      "typeOnly": 56,
+      "runtimeOrMixed": 160
     },
     "@wrongstack/core/tasking": {
       "files": 43,
@@ -169,14 +164,14 @@
       "runtimeOrMixed": 23
     },
     "@wrongstack/core/typesafe": {
-      "files": 28,
-      "typeOnly": 7,
+      "files": 31,
+      "typeOnly": 10,
       "runtimeOrMixed": 23
     },
     "@wrongstack/core/utils": {
-      "files": 893,
+      "files": 932,
       "typeOnly": 69,
-      "runtimeOrMixed": 864
+      "runtimeOrMixed": 903
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -224,9 +219,9 @@
       "runtimeOrMixed": 17
     },
     "@wrongstack/core/vcs": {
-      "files": 1,
+      "files": 2,
       "typeOnly": 0,
-      "runtimeOrMixed": 1
+      "runtimeOrMixed": 2
     },
     "@wrongstack/core/wiring/proxy-rewrite": {
       "files": 21,
@@ -1270,6 +1265,240 @@
     {
       "specifier": "@wrongstack/core/agent",
       "file": "packages/codebase-index-mcp/src/adapter.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/coordination/src/agent-coordination-default.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/coordination/src/agent-subagent-runner.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/coordination/src/collab-pause.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/coordination/src/director-prompt-host.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/coordination/src/fleet-status-tool.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/coordination/src/mail-tools.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/coordination/src/mailbox-attach.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/coordination/src/mailbox-tool.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/coordination/src/model-matrix.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/coordination/src/multi-agent-queue-helpers.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/coordination/src/parallel-eternal-engine.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/coordination/src/session-note-attach.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/coordination/src/session-note-hub.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/coordination/src/session-note-tool.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/coordination/src/subagent-result-tool.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/coordination/tests/agent-subagent-runner.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/coordination/tests/budget-edges-t1-t4.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/coordination/tests/collab-bus.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/coordination/tests/coordinator-await-any.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/coordination/tests/coordinator-integration-coverage.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/coordination/tests/coordinator-race.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/coordination/tests/coordinator-retarget.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/coordination/tests/delegate-timeout-preempt.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/coordination/tests/leader-model-menu.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/coordination/tests/mail-tools.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/coordination/tests/mailbox-hq-publisher-sharing.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/coordination/tests/mutation-test-integration.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/coordination/tests/owning-session-routing.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/coordination/tests/parallel-eternal-engine.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/coordination/tests/project-agent-identity-fence.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/coordination/tests/sealed-subagent.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/coordination/tests/session-note-hub.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/coordination/tests/sqlite-mailbox-contract.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/coordination/tests/subagent-abort-during-tool.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/coordination/tests/subagent-baseline.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/coordination/tests/subagent-budget-edges.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/coordination/tests/subagent-error-classification.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/coordination/tests/tool-lifecycle.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/coordination/tests/watchdog-guard.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -2876,18 +3105,6 @@
       "runtimeOrMixed": 2
     },
     {
-      "specifier": "@wrongstack/core/agent-coordination",
-      "file": "packages/cli/tests/multi-agent.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/agent-coordination",
-      "file": "packages/runtime/src/container.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
       "specifier": "@wrongstack/core/boot",
       "file": "packages/cli/src/boot-config.ts",
       "typeOnly": 0,
@@ -2904,6 +3121,138 @@
       "file": "packages/webui-server/src/server/boot.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/brain",
+      "file": "packages/coordination/src/autonomous-brain.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/brain",
+      "file": "packages/coordination/src/autonomous-coordinator-types.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/brain",
+      "file": "packages/coordination/src/director-options.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/brain",
+      "file": "packages/coordination/src/director/director-budget-policy.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/brain",
+      "file": "packages/coordination/src/fleet-supervisor-rebalance-types.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/brain",
+      "file": "packages/coordination/src/fleet-supervisor-rebalance.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/brain",
+      "file": "packages/coordination/src/fleet-supervisor-worker-health.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/brain",
+      "file": "packages/coordination/src/fleet-supervisor.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/brain",
+      "file": "packages/coordination/src/index.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/brain",
+      "file": "packages/coordination/tests/brain-cache.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/brain",
+      "file": "packages/coordination/tests/brain-escalation-routing.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/brain",
+      "file": "packages/coordination/tests/brain-explain.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/brain",
+      "file": "packages/coordination/tests/brain-heuristics.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/brain",
+      "file": "packages/coordination/tests/brain-ledger.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/brain",
+      "file": "packages/coordination/tests/brain-monitor-session-targeting.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/brain",
+      "file": "packages/coordination/tests/brain-monitor-signals.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/brain",
+      "file": "packages/coordination/tests/brain-monitor.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/brain",
+      "file": "packages/coordination/tests/brain-rules.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/brain",
+      "file": "packages/coordination/tests/brain-telemetry.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/brain",
+      "file": "packages/coordination/tests/brain-trace.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/brain",
+      "file": "packages/coordination/tests/brain.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/brain",
+      "file": "packages/coordination/tests/fleet-supervisor.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
     },
     {
       "specifier": "@wrongstack/core/cloud-provider",
@@ -2980,1794 +3329,6 @@
     {
       "specifier": "@wrongstack/core/cloud-provider",
       "file": "packages/webui/src/types/client-message-settings.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/acp/src/integration/ensemble-runner.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/acp/src/integration/run-one-acp-task.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/builtin-plugins/tests/auto-review-plugin.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/builtin-plugins/tests/git-output-utf8-chunks.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/acp-hq-telemetry.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/boot/brain-decision-log.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/boot/dispatch-webui.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 5
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/boot/tool-registry.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/boot/tui-coordinator-callbacks.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 3
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/boot/tui-coordinator-setup.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 4
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/boot/tui-project-picker-callback.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/boot/tui-project-switch.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/boot/tui-runtime-state.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/boot/tui-session-resume.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/chimera-reviewer-policy.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/cli-eternal-flag.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/cli-main-helpers.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/cli-main-orchestration.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/execute-deps.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 6
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/execution-chimera-review.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/execution-cleanup.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/execution-repl-fleet-callbacks.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/execution-specialist-trigger.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/execution-tui.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/execution-webui.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/fleet/acp-live-progress.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/fleet/acp-live-steer.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/fleet/budget-source.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/fleet/explore-companion-policy.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/fleet/host-acp-runner.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 2
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/fleet/host-acp.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/fleet/host-budget.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 3
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/fleet/host-context.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/fleet/host-director-builder.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/fleet/host-director-event-bridges.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/fleet/host-director-services.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/fleet/host-director-setup.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 2
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/fleet/host-dispatch-outcomes.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/fleet/host-explore-companion-registry.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/fleet/host-explore-companion.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/fleet/host-helpers.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/fleet/host-learning-scheduler.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/fleet/host-memory-companion.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/fleet/host-shadow-manager.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/fleet/host-skill-companion.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/fleet/host-subagent-factory.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/fleet/host-supervisor.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/fleet/host-task-result-report.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/fleet/host-types.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/fleet/host.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 2
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/fleet/memory-companion-policy.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/fleet/routing.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/fleet/skill-companion-policy.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/fleet/status-broadcast.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/fleet/supervisor-registry.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/goal-host-types.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/goal-host.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/hq-command-controller.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/hq-fleet-control.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/hq-server.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/hq-server/mailbox-gateway-manager.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/hq-server/routes.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/hq-server/routes/mailbox-handlers.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 2
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/hq-server/types.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/kanban-dispatch-route.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/mailbox-bridge-bootstrap.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/repl-client-registration.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/repl-options.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/services/dispatch-classifier.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/session-event-wiring.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/slash-commands/agents.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/slash-commands/brain-status.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/slash-commands/clear.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/slash-commands/command-context-fleet.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 3
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/slash-commands/command-context.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 5
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/slash-commands/delegate.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/slash-commands/fleet.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/slash-commands/git.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/slash-commands/mailbox-demo.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/slash-commands/mailbox-serve.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/slash-commands/mailbox.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/slash-commands/provider-status.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/slash-commands/setmodel.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/slash-commands/subagent-models.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/slash-commands/tier.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/subagent-models/panel-service.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/subcommands/handlers/acp-server.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/subcommands/handlers/daemon-inventory.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/subcommands/handlers/mailbox-serve.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/subcommands/handlers/typesafe-brain-replay.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/tui-resource-menus.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/webui-server-options.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 5
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/webui-server/client-registration.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/webui-server/connection-handler.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/webui-server/kanban-host-adapter.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/webui-server/route-contexts.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/webui-server/session-start-payload.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/webui-server/setup-events.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/wiring/brain-and-orchestration.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 3
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/wiring/cli-execute-builder.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/wiring/command-host-state.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/wiring/dep-watcher-bridge.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/wiring/dep-watcher.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/wiring/director-announcement.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/wiring/director-setup.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/wiring/eternal-command-handlers.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/wiring/fleet-command-handlers.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/wiring/hq-telemetry.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/wiring/lifecycle-plugins.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/wiring/mailbox-bridge-bootstrap.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/wiring/plugins.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/wiring/provider-runtime-setup.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/wiring/provider-status.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/wiring/provider-utility-tools.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/wiring/runtime-lifecycle-deps.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/wiring/session-registry.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/wiring/session.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/wiring/slash-commands.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/tests/acp-live-steer.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/tests/auth-profile-fallback.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/tests/boot/director-tool-surface.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/tests/chimera-cascade-graceful-finish.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/tests/chimera-lifecycle-deregister.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/tests/chimera-subagent-rate-limit-smoke.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/tests/cli-main-helpers.test.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/tests/command-host-state.test.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/tests/daemon-endpoint-secret.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/tests/director-setup.test.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/tests/director-stats-bridge-model.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/tests/fleet-status-broadcast.test.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/tests/fleet/explore-companion-factory.test.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/tests/fleet/explore-companion-policy.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/tests/fleet/explore-companion-registry.test.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/tests/fleet/host-acp-runner.test.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/tests/fleet/host-context-skill-task.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/tests/fleet/host-dispatch-outcomes.test.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/tests/fleet/host-explore-companion.test.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/tests/fleet/lifecycle-presence.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/tests/fleet/memory-companion.live.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/tests/fleet/memory-companion.test.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/tests/fleet/shadow-pass-unhandled.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/tests/fleet/skill-companion.test.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/tests/fleet/supervisor-session-addressing.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/tests/helpers/mailbox-daemon.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/tests/hq-fleet-control.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/tests/hq-mailbox-actions.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/tests/hq-mailbox-mutation.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/tests/hq-server.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 7
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/tests/kanban-recovery-e2e.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/tests/kanban-reliable-queue.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/tests/light-subagent-rate-limit-end-to-end.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/tests/mailbox-bridge-bootstrap.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 2
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/tests/mailbox-bridge-mutation.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/tests/mailbox-bridge-security.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/tests/mailbox-bridge-sse.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/tests/mailbox-bridge.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/tests/mailbox-lock.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/tests/multi-agent.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/tests/provider-status-wiring.test.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/tests/review-fallback-drift.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/tests/slash-brain.test.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/tests/slash-mailbox.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/tests/slash-misc.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/tests/slash-provider-status.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/tests/slash-subagent-models.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/tests/slash-supervisor.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/tests/sprint2-reliable-queue.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/tests/subagent-model-lanes-e2e.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/tests/subagent-models-panel-service.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/tests/tui-coordinator-setup.test.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/tests/tui-resource-menus.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/tests/webui-server-mailbox.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 2
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/tests/webui-server/client-registration-control.test.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/hq/tests/mailbox-mapper.test.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/hq/tests/publisher.test.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/mailbox-mcp/src/adapter.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/mailbox-mcp/src/main.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/mailbox-mcp/src/tool-arg-parsing.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/mailbox-mcp/tests/adapter.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/mailbox-mcp/tests/ipc-full-access.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/mailbox-mcp/tests/stdio.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/plugins/src/agent-handoff/index.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/plugins/src/todo-listener/index.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/runtime/src/container.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/runtime/src/fleet/light-subagent-factory.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/runtime/src/jev-checks.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/runtime/src/kanban-ports.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/runtime/tests/light-subagent-factory-status-tracker.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/runtime/tests/tool-wire-budget.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/sage/src/anchors/verify.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/sdd/src/sdd-parallel-controls.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/sdd/src/sdd-parallel-run-state.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/sdd/src/sdd-parallel-run-types.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/sdd/src/sdd-supervisor.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/sdd/src/sdd-task-dispatch.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/sdd/src/sdd-task-execution.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/sdd/src/start-sdd-run.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/sdd/tests/sdd-supervisor.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/tools/src/git.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/tools/src/install.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/tools/src/management/fallback-agent-model-assign-tool.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/tools/src/management/fallback-system-config-view-tool.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/tools/src/management/model-tier-set-tool.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 2
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/tools/src/session-kanban-sync.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/tools/tests/install.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/tools/tests/session-kanban-completed-churn.test.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/tools/tests/session-kanban-mailbox.test.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/tools/tests/session-kanban-sync-guard.test.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/tui/src/app-coordination-props.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/tui/src/app-props.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 2
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/tui/src/app-view-contract.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/tui/src/components/agent-monitor-presentation.tsx",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/tui/src/components/agents-monitor-constants.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/tui/src/components/agents-monitor-parts.tsx",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/tui/src/components/agents-monitor.tsx",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/tui/src/connection-actions.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/tui/src/connections-health.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/tui/src/hooks/use-autonomous-coordinator.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/tui/src/hooks/use-brain-events.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/tui/src/hooks/use-core-tui-commands.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/tui/src/hooks/use-director-fleet-bridge.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/tui/src/hooks/use-exit-command.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/tui/src/hooks/use-interrupt-ladder.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/tui/src/hooks/use-leader-auto-wake.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/tui/src/hooks/use-session-interrupt-controller.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/tui/src/hooks/use-session-rewind.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/tui/src/hooks/use-session-slash-commands.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/tui/src/key-handler-context.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/tui/src/mailbox-view-model-types.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/tui/src/overlay-key-router.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/tui/src/run-tui-client-registration.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/tui/src/run-tui-options.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/tui/src/run-tui-surface-options.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/tui/src/submit-controller-support.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/tui/src/submit-slash-command.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/tui/src/ui-contracts.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/tui/src/use-controller-commands.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/tui/src/use-controller-confirm-auth.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/tui/src/use-controller-key-pipeline.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 2
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/tui/src/use-controller-panel-hooks.tsx",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/tui/src/use-controller-session-bridges.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/tui/tests/agents-monitor.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 2
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/tui/tests/f-key-live-panels.test.tsx",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/tui/tests/leader-auto-wake-host.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/tui/tests/run-tui-mailbox-integration.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/tui/tests/use-autonomous-coordinator.test.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/tui/tests/use-exit-command.test.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/webui-hq/src/domain/mailbox-actions.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/webui-server/src/server/agent-roster-handlers.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/webui-server/src/server/backend-brain.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/webui-server/src/server/backend-services-types.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/webui-server/src/server/backend-services.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/webui-server/src/server/brain-handlers.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/webui-server/src/server/client-presence.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/webui-server/src/server/code-assist-routes.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/webui-server/src/server/collab/collab-context.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/webui-server/src/server/collab/injection.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/webui-server/src/server/collaboration-ws-handler.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/webui-server/src/server/connections/collector.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/webui-server/src/server/connections/service-action-restarts.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/webui-server/src/server/discover-mailbox-bridge.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/webui-server/src/server/embedded-message-router-types.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/webui-server/src/server/goal-workers.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/webui-server/src/server/goal-ws-handler-internals.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/webui-server/src/server/goal-ws-handler.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/webui-server/src/server/hq-session-telemetry.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/webui-server/src/server/http-server/api-handlers.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 4
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/webui-server/src/server/kanban-management-dispatch.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/webui-server/src/server/leader-auto-wake-host.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/webui-server/src/server/mailbox-handlers.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/webui-server/src/server/pre-context-services.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 2
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/webui-server/src/server/prefs-route-context.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/webui-server/src/server/provider-routes.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/webui-server/src/server/route-contracts.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/webui-server/src/server/sdd-wizard-wiring.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/webui-server/src/server/session-context-handlers.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/webui-server/src/server/session-handlers.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/webui-server/src/server/session-history.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/webui-server/src/server/session-resume-handler.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/webui-server/src/server/standalone-session-identity.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/webui-server/src/server/start-webui-remediation.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/webui-server/src/server/start-webui-security.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/webui-server/tests/backend-services.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/webui-server/tests/brain-request-correlation.test.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/webui-server/tests/brain-route-payload-validation.test.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/webui-server/tests/brain-routes.test.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/webui-server/tests/code-assist-routes.test.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/webui-server/tests/collaboration-ws-handler.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/webui-server/tests/helpers/mailbox-daemon.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/webui-server/tests/http-server.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/webui-server/tests/leader-auto-wake-host.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 2
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/webui-server/tests/mailbox-handlers-extended.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/webui-server/tests/mailbox-handlers.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/webui-server/tests/sdd-supervisor-wiring.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/webui-server/tests/service-actions.gaps.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/webui-server/tests/setup-events-pattern-session-scope.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/webui/tests/hooks/sdd-brain-chat-routing.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
-      "file": "packages/worktree/tests/worktree-task-runner.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -5200,6 +3761,54 @@
     {
       "specifier": "@wrongstack/core/execution",
       "file": "packages/cli/tests/wiring-pipeline.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/execution",
+      "file": "packages/coordination/src/parallel-eternal-engine.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/execution",
+      "file": "packages/coordination/tests/brain-explain.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/execution",
+      "file": "packages/coordination/tests/brain-monitor.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/execution",
+      "file": "packages/coordination/tests/brain-telemetry.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/execution",
+      "file": "packages/coordination/tests/brain-trace.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/execution",
+      "file": "packages/coordination/tests/mutation-test-integration.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/execution",
+      "file": "packages/coordination/tests/role-skills.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/execution",
+      "file": "packages/coordination/tests/tool-lifecycle.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -5836,6 +4445,12 @@
     {
       "specifier": "@wrongstack/core/infrastructure",
       "file": "packages/cli/tests/wiring-pipeline.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/infrastructure",
+      "file": "packages/coordination/tests/mutation-test-integration.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -7407,6 +6022,12 @@
     },
     {
       "specifier": "@wrongstack/core/registry",
+      "file": "packages/coordination/tests/mutation-test-integration.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/registry",
       "file": "packages/mcp/src/registry-connect-loop.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -7990,6 +6611,18 @@
     {
       "specifier": "@wrongstack/core/sandbox",
       "file": "packages/cli/src/slash-commands/sandbox.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/sandbox",
+      "file": "packages/coordination/src/director-core.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/sandbox",
+      "file": "packages/coordination/src/director-spawn-admission.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -8793,6 +7426,168 @@
     },
     {
       "specifier": "@wrongstack/core/security",
+      "file": "packages/coordination/src/agent-monitor.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/coordination/src/define-subagent-tool.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/coordination/src/delegate-tool.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/coordination/src/director-basic-tools.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/coordination/src/director-collab-tools.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/coordination/src/director-mutation-test-tool.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/coordination/src/director-quality-gate-tool.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/coordination/src/director-spawn-admission.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/coordination/src/director-spawn-tool.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/coordination/src/director-tools.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/coordination/src/director.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/coordination/src/fleet-status-tool.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/coordination/src/fleet.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/coordination/src/index.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/coordination/src/knowledge-graph.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/coordination/src/mail-tools.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/coordination/src/mailbox-project-server.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/coordination/src/mailbox-tool.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/coordination/src/session-note-tool.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/coordination/src/subagent-result-tool.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/coordination/src/worktree-task-runner.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/coordination/tests/delegate-tool.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/coordination/tests/director-companion-spawn.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/coordination/tests/director-tools.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/coordination/tests/explore-companion.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/coordination/tests/mutation-test-integration.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/coordination/tests/session-subagent-policy.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
       "file": "packages/hq/src/approval-bridge.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -9519,6 +8314,36 @@
     },
     {
       "specifier": "@wrongstack/core/session-catalog",
+      "file": "packages/coordination/src/agent-status-helpers.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/session-catalog",
+      "file": "packages/coordination/src/agent-status-subagents.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/session-catalog",
+      "file": "packages/coordination/src/agent-status-tracker.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/session-catalog",
+      "file": "packages/coordination/src/fleet-status-tool.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/session-catalog",
+      "file": "packages/coordination/tests/fleet-status-tool.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/session-catalog",
       "file": "packages/tui/src/connection-actions.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -9706,6 +8531,12 @@
     {
       "specifier": "@wrongstack/core/skills",
       "file": "packages/cli/tests/skill-suggest-eval-fixtures.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/skills",
+      "file": "packages/coordination/tests/runtime-capability-manifest.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -10482,6 +9313,108 @@
       "file": "packages/cli/tests/wiring-provider-runtime-setup.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/storage",
+      "file": "packages/coordination/src/checkpoint-wiring.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/storage",
+      "file": "packages/coordination/src/director-completion-listeners.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/storage",
+      "file": "packages/coordination/src/director-core.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/storage",
+      "file": "packages/coordination/src/director-lifecycle.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/storage",
+      "file": "packages/coordination/src/director-session.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/storage",
+      "file": "packages/coordination/src/director-task-completion.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/storage",
+      "file": "packages/coordination/src/director-task-notes.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/storage",
+      "file": "packages/coordination/src/director.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/storage",
+      "file": "packages/coordination/src/director/director-task-registry.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/storage",
+      "file": "packages/coordination/src/fleet-manager.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 2
+    },
+    {
+      "specifier": "@wrongstack/core/storage",
+      "file": "packages/coordination/src/fleet-spawn.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/storage",
+      "file": "packages/coordination/src/parallel-eternal-engine.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/storage",
+      "file": "packages/coordination/tests/director-task-registry-ownership.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/storage",
+      "file": "packages/coordination/tests/director-task-registry.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/storage",
+      "file": "packages/coordination/tests/fleet-manager-resume-budget.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/storage",
+      "file": "packages/coordination/tests/mutation-test-integration.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/storage",
+      "file": "packages/coordination/tests/parallel-eternal-engine.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
     },
     {
       "specifier": "@wrongstack/core/storage",
@@ -11314,6 +10247,24 @@
     {
       "specifier": "@wrongstack/core/typesafe",
       "file": "packages/cli/tests/typesafe-lint-conventions-diff.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/typesafe",
+      "file": "packages/coordination/src/system-one-tier.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/typesafe",
+      "file": "packages/coordination/src/typesafe-dispatch-classifier.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/typesafe",
+      "file": "packages/coordination/tests/typesafe-dispatch-classifier.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -14106,6 +13057,240 @@
       "file": "packages/cli/tests/zero-statement-cli-modules.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/coordination/src/agent-monitor.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/coordination/src/agent-status-helpers.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/coordination/src/checkpoint-wiring.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/coordination/src/collab-snapshot.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/coordination/src/commit-safety.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/coordination/src/coordinator/error-classifier.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/coordination/src/delegate-tool.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/coordination/src/delegation/delegation-results.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/coordination/src/delegation/run-delegation.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/coordination/src/director-basic-tools.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/coordination/src/director-collab-tools.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/coordination/src/director-completion-listeners.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/coordination/src/director-prompts.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/coordination/src/director-session.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/coordination/src/director-spawn-model.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/coordination/src/director-spawn-tool.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/coordination/src/director-task-completion.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/coordination/src/director-tools.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/coordination/src/dispatcher.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/coordination/src/file-author-tracker.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/coordination/src/fleet-manager.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/coordination/src/fleet-notifier.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/coordination/src/global-mailbox-paths.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/coordination/src/knowledge-graph.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/coordination/src/leader-delivery-attach.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/coordination/src/mailbox-attach.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/coordination/src/mailbox-project-server-client.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/coordination/src/mailbox-project-server-endpoint.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/coordination/src/mailbox-project-server.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/coordination/src/mailbox-tool.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/coordination/src/package-author-tracker.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/coordination/src/package-outdated-watcher.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/coordination/src/parallel-eternal-engine.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/coordination/src/single-instance-mailbox.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/coordination/src/sqlite-mailbox-schema.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/coordination/src/techstack-mailbox-consumer.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/coordination/src/worktree-task-runner.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/coordination/tests/project-agent-identity-fence.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/coordination/tests/role-skills.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/utils",
@@ -17206,6 +16391,12 @@
     {
       "specifier": "@wrongstack/core/utils/tree-kill",
       "file": "packages/tools/src/dead-code/fix-verify.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/vcs",
+      "file": "packages/coordination/src/commit-safety.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

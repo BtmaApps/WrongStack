@@ -1,5 +1,5 @@
 import type { Logger } from '@wrongstack/contracts/types';
-import type { CollaborationBus } from '@wrongstack/core/coordination';
+import type { CollaborationBus } from '@wrongstack/coordination';
 import type { AnnotationsStore, SessionReader } from '@wrongstack/core/storage';
 import type { WebSocket } from 'ws';
 import type { WSCollabState, WSServerMessage } from '../types.js';

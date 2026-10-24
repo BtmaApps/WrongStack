@@ -10,7 +10,7 @@
  */
 
 import { EventBus } from '@wrongstack/contracts/kernel';
-import { FleetBus } from '@wrongstack/core/coordination';
+import { FleetBus } from '@wrongstack/coordination';
 import { describe, expect, it } from 'vitest';
 import { registerDirectorStatsBridge } from '../src/fleet/host-director-event-bridges.js';
 

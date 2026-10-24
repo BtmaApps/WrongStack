@@ -18,7 +18,7 @@ vi.mock('@wrongstack/chronicle', () => ({
   createChronicleProjectAccess: vi.fn(),
   resolveChronicleProjectServerOptions: vi.fn(() => ({ projectRoot: '/proj', endpoint: 'pipe' })),
 }));
-vi.mock('@wrongstack/core/coordination', () => ({
+vi.mock('@wrongstack/coordination', () => ({
   isMailboxProjectServerAvailable: vi.fn(() => false),
   MailboxProjectServerConnection: vi.fn(),
 }));
@@ -32,7 +32,7 @@ vi.mock('@wrongstack/tools', () => ({
 }));
 
 import * as chronicle from '@wrongstack/chronicle';
-import * as coordination from '@wrongstack/core/coordination';
+import * as coordination from '@wrongstack/coordination';
 import * as sessionCatalog from '@wrongstack/core/session-catalog';
 import * as kanban from '@wrongstack/kanban';
 import * as sage from '@wrongstack/sage';

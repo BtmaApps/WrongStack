@@ -61,7 +61,7 @@ vi.mock('@wrongstack/kanban', () => ({
   getKanbanServerConnection: mocks.getKanbanServerConnection,
 }));
 
-vi.mock('@wrongstack/core/coordination', () => ({
+vi.mock('@wrongstack/coordination', () => ({
   isMailboxProjectServerAvailable: mocks.isMailboxProjectServerAvailable,
   MailboxProjectServerConnection: class {
     probeStatus = mocks.mailboxStatus;

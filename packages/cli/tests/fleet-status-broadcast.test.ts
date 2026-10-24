@@ -8,7 +8,7 @@
  */
 
 import { EventBus } from '@wrongstack/contracts/kernel';
-import type { Mailbox } from '@wrongstack/core/coordination';
+import type { Mailbox } from '@wrongstack/coordination';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createFleetStatusBroadcaster } from '../src/fleet/status-broadcast.js';
 

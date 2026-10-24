@@ -14,12 +14,12 @@ import type {
  * Coordination the agent loop drives every iteration: the inbox checker,
  * session-note fan-in, the fleet pulse and leader deliveries.
  *
- * The loop must not import the implementation — the composition-root attach
- * modules (`mailbox-attach.ts`, `session-note-attach.ts`,
- * `leader-delivery-attach.ts`) reach into coordination, hq and plugins. The
- * host binds `AGENT_COORDINATION` instead: `createDefaultContainer` in
+ * The loop must not import the implementation — the attach modules
+ * (`mailbox-attach.ts`, `session-note-attach.ts`, `leader-delivery-attach.ts`)
+ * live in `@wrongstack/coordination`, above core. The host binds
+ * `AGENT_COORDINATION` instead: `createDefaultContainer` in
  * `@wrongstack/runtime` binds `defaultAgentCoordination` from
- * `@wrongstack/core/agent-coordination`. With no binding the loop runs without
+ * `@wrongstack/coordination`. With no binding the loop runs without
  * coordination (no inbox, notes, pulse or deliveries).
  *
  * `A` is the agent-internals handle. The members are METHODS so an

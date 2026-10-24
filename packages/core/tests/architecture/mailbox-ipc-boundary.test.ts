@@ -29,7 +29,7 @@ const ROOT = path.resolve(fileURLToPath(new URL('../../../..', import.meta.url))
 const SCAN_ROOTS = ['packages', 'apps', 'scripts'];
 
 /** The single process permitted to open the store. */
-const SQLITE_OWNER = 'packages/core/src/coordination/mailbox-project-server.ts';
+const SQLITE_OWNER = 'packages/coordination/src/mailbox-project-server.ts';
 
 /**
  * Modules allowed to name the on-disk layout: the store itself (schema plus
@@ -37,10 +37,10 @@ const SQLITE_OWNER = 'packages/core/src/coordination/mailbox-project-server.ts';
  * that spells them.
  */
 const STORAGE_AUTHORITIES = new Set([
-  'packages/core/src/coordination/sqlite-mailbox.ts',
-  'packages/core/src/coordination/global-mailbox-paths.ts',
-  'packages/core/src/coordination/mailbox-credential-store.ts',
-  'packages/core/src/coordination/remote-mailbox.ts',
+  'packages/coordination/src/sqlite-mailbox.ts',
+  'packages/coordination/src/global-mailbox-paths.ts',
+  'packages/coordination/src/mailbox-credential-store.ts',
+  'packages/coordination/src/remote-mailbox.ts',
 ]);
 
 /**
@@ -48,23 +48,23 @@ const STORAGE_AUTHORITIES = new Set([
  * rather than quietly becoming a second store.
  */
 const DELETED_LEGACY_MODULES = [
-  'packages/core/src/coordination/mailbox.ts',
-  'packages/core/src/coordination/global-mailbox.ts',
-  'packages/core/src/coordination/global-mailbox-ack.ts',
-  'packages/core/src/coordination/global-mailbox-actor-methods.ts',
-  'packages/core/src/coordination/global-mailbox-agents.ts',
-  'packages/core/src/coordination/global-mailbox-auto-compact.ts',
-  'packages/core/src/coordination/global-mailbox-clear.ts',
-  'packages/core/src/coordination/global-mailbox-clients.ts',
-  'packages/core/src/coordination/global-mailbox-purge-stale.ts',
-  'packages/core/src/coordination/global-mailbox-singleton-cache.ts',
-  'packages/core/src/coordination/mailbox-message-cache.ts',
-  'packages/core/src/coordination/mailbox-message-file-stat.ts',
-  'packages/core/src/coordination/mailbox-cache-index.ts',
-  'packages/core/src/coordination/mailbox-query-candidates.ts',
-  'packages/core/src/coordination/mailbox-registry-file.ts',
-  'packages/core/src/coordination/mailbox-registry-utils.ts',
-  'packages/core/src/coordination/mailbox-version-fence.ts',
+  'packages/coordination/src/mailbox.ts',
+  'packages/coordination/src/global-mailbox.ts',
+  'packages/coordination/src/global-mailbox-ack.ts',
+  'packages/coordination/src/global-mailbox-actor-methods.ts',
+  'packages/coordination/src/global-mailbox-agents.ts',
+  'packages/coordination/src/global-mailbox-auto-compact.ts',
+  'packages/coordination/src/global-mailbox-clear.ts',
+  'packages/coordination/src/global-mailbox-clients.ts',
+  'packages/coordination/src/global-mailbox-purge-stale.ts',
+  'packages/coordination/src/global-mailbox-singleton-cache.ts',
+  'packages/coordination/src/mailbox-message-cache.ts',
+  'packages/coordination/src/mailbox-message-file-stat.ts',
+  'packages/coordination/src/mailbox-cache-index.ts',
+  'packages/coordination/src/mailbox-query-candidates.ts',
+  'packages/coordination/src/mailbox-registry-file.ts',
+  'packages/coordination/src/mailbox-registry-utils.ts',
+  'packages/coordination/src/mailbox-version-fence.ts',
 ];
 
 /**
@@ -192,7 +192,7 @@ describe('mailbox IPC ownership boundary', () => {
     // Regression pin for the original defect: the composition glue behind the
     // agent loop's registration, heartbeat, delivery and ack.
     const source = await fs.readFile(
-      path.join(ROOT, 'packages/core/src/mailbox-attach.ts'),
+      path.join(ROOT, 'packages/coordination/src/mailbox-attach.ts'),
       'utf8',
     );
     expect(source).toContain('getSharedProjectMailbox');
@@ -202,7 +202,7 @@ describe('mailbox IPC ownership boundary', () => {
   it('does not expose the concrete SQLite store through public barrels', async () => {
     const barrels = await Promise.all([
       fs.readFile(path.join(ROOT, 'packages/core/src/index.ts'), 'utf8'),
-      fs.readFile(path.join(ROOT, 'packages/core/src/coordination/index.ts'), 'utf8'),
+      fs.readFile(path.join(ROOT, 'packages/coordination/src/index.ts'), 'utf8'),
     ]);
     expect(barrels.join('\n')).not.toMatch(/export\s+\{[^}]*SqliteMailbox/u);
   });

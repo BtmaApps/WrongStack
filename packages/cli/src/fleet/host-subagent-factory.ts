@@ -32,7 +32,7 @@ import {
   getSharedProjectMailbox,
   type MailboxAgentStatus,
   resolveSubagentModelTarget,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
 import { installDesignStudioMiddleware, installDesignTurnGate } from '@wrongstack/core/design';
 import {
   createModelRuntimeMiddleware,

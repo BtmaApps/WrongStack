@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { BrainArbiter } from '@wrongstack/core/coordination';
+import type { BrainArbiter } from '@wrongstack/coordination';
 import type { BrainAutoRisk, BrainConfigPatch, BrainRuntime } from '@wrongstack/core/execution';
 import { BUILTIN_COUNCIL_PERSONAS } from '@wrongstack/core/execution';
 import { toErrorMessage } from '@wrongstack/core/utils';

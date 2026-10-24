@@ -1,4 +1,4 @@
-import type { Director } from '@wrongstack/core/coordination';
+import type { Director } from '@wrongstack/coordination';
 import type { Action, State } from './app-reducer.js';
 import { coerceAgentSwarmMode, coercePanelPositionMap } from './app-settings-type.js';
 import { clearConfirmationKeyResult } from './components/clear-confirm-panel.js';

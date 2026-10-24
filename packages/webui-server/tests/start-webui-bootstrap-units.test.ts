@@ -98,7 +98,7 @@ import { handleWebuiSecurityRejection } from '../src/server/start-webui-security
 const mockMailbox = {
   send: vi.fn().mockResolvedValue(undefined),
 };
-vi.mock('@wrongstack/core/coordination', () => ({
+vi.mock('@wrongstack/coordination', () => ({
   getSharedProjectMailbox: () => mockMailbox,
   resolveProjectDir: () => 'D:/proj',
 }));

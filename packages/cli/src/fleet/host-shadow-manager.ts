@@ -39,7 +39,7 @@
  */
 
 import type { Config, SubagentConfig } from '@wrongstack/contracts/types';
-import { areSubagentsAllowedForSession, type Director } from '@wrongstack/core/coordination';
+import { areSubagentsAllowedForSession, type Director } from '@wrongstack/coordination';
 import { runHostShadowPass, stopHostShadowAfterTask } from './host-shadow-pass.js';
 import type { MultiAgentDeps, MultiAgentHostOptions } from './host-types.js';
 

@@ -264,8 +264,8 @@ describe('sparkline (via fleet-monitor re-export)', () => {
 
 describe('transcript pane helpers', () => {
   const tEntry = (
-    over: Partial<import('@wrongstack/core/coordination').AgentTimelineEntry> & { id: string },
-  ): import('@wrongstack/core/coordination').AgentTimelineEntry => ({
+    over: Partial<import('@wrongstack/coordination').AgentTimelineEntry> & { id: string },
+  ): import('@wrongstack/coordination').AgentTimelineEntry => ({
     subagentId: 'sa-1',
     agentName: 'Worker',
     ts: '2026-07-13T10:20:30.000Z',

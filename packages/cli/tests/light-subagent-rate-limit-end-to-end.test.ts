@@ -37,8 +37,8 @@ import type {
   Tool,
 } from '@wrongstack/contracts/types';
 import { ProviderError } from '@wrongstack/contracts/types';
+import { ProviderModelStatusTracker } from '@wrongstack/coordination';
 import { FallbackProfileManager } from '@wrongstack/core/agent';
-import { ProviderModelStatusTracker } from '@wrongstack/core/coordination';
 import { ProviderRegistry, ToolRegistry } from '@wrongstack/core/registry';
 import { DefaultSecretScrubber } from '@wrongstack/core/security';
 import { DefaultConfigStore } from '@wrongstack/core/storage';

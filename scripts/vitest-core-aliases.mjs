@@ -84,6 +84,7 @@ export function coreAliases(corePackageDir) {
   aliases['@wrongstack/worktree'] = resolve(corePackageDir, '../worktree/src');
   aliases['@wrongstack/builtin-plugins'] = resolve(corePackageDir, '../builtin-plugins/src');
   aliases['@wrongstack/agent-catalog'] = resolve(corePackageDir, '../agent-catalog/src');
+  aliases['@wrongstack/coordination'] = resolve(corePackageDir, '../coordination/src');
 
   // Bare alias LAST: prefix-matching means '@wrongstack/core' catches any
   // sub-path that wasn't explicitly aliased above, resolving to

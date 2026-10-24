@@ -14,7 +14,7 @@ import {
   type SubagentSlot,
   setSessionSubagentModelPlan,
   subagentSlotOccupancy,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
 import type {
   SubagentLaneTarget,
   SubagentModelsPanelHost,

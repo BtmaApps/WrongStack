@@ -77,7 +77,7 @@ vi.mock('@wrongstack/core/storage', () => ({
   getSessionRegistry: t.getSessionRegistryMock,
 }));
 
-vi.mock('@wrongstack/core/coordination', () => ({
+vi.mock('@wrongstack/coordination', () => ({
   AgentStatusTracker: t.AgentStatusTrackerMock,
   FleetNotifier: t.FleetNotifierMock,
 }));

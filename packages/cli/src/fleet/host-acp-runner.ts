@@ -14,9 +14,9 @@ import type { BuildAcpSubagentRunnerOptions } from './host-acp.js';
 
 export interface HostAcpRunnerHost {
   deps: import('./host-types.js').MultiAgentDeps;
-  getDirector: () => import('@wrongstack/core/coordination').Director | undefined;
+  getDirector: () => import('@wrongstack/coordination').Director | undefined;
   ensureCoordinator: (_config: import('@wrongstack/contracts/types').Config) => Promise<void>;
-  getCoordinator: () => import('@wrongstack/core/coordination').DefaultMultiAgentCoordinator;
+  getCoordinator: () => import('@wrongstack/coordination').DefaultMultiAgentCoordinator;
   buildACPRunner: (
     subagentId: string,
   ) => Promise<import('@wrongstack/contracts/types').SubagentRunner>;

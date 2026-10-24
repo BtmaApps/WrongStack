@@ -7,7 +7,7 @@ import {
 import {
   isMailboxProjectServerAvailable,
   MailboxProjectServerConnection,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
 import { SessionCatalogProjectClient } from '@wrongstack/core/session-catalog';
 import {
   assertDaemonRuntimeVersion,

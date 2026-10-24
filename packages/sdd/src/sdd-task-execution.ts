@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { EventMap } from '@wrongstack/contracts/kernel';
 import type { TaskNode, TaskResult } from '@wrongstack/contracts/types';
 import { ERROR_CODES, SddError } from '@wrongstack/contracts/types';
-import { assignNickname, type DefaultMultiAgentCoordinator } from '@wrongstack/core/coordination';
+import { assignNickname, type DefaultMultiAgentCoordinator } from '@wrongstack/coordination';
 import { expectDefined } from '@wrongstack/core/utils';
 import type { SddParallelRunOptions, TaskOutcome } from './sdd-parallel-run-types.js';
 

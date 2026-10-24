@@ -18,9 +18,9 @@
  */
 import * as path from 'node:path';
 import type { EventBus } from '@wrongstack/contracts/kernel';
+import type { BrainArbiter, LLMProvider } from '@wrongstack/coordination';
+import { AutonomousCoordinator, type Director, type Mailbox } from '@wrongstack/coordination';
 import type { Context } from '@wrongstack/core/agent';
-import type { BrainArbiter, LLMProvider } from '@wrongstack/core/coordination';
-import { AutonomousCoordinator, type Director, type Mailbox } from '@wrongstack/core/coordination';
 import { completeBrainLlm, parseOptionDecision } from '@wrongstack/core/execution';
 import type { WstackPaths } from '@wrongstack/core/utils';
 import type { TuiRuntimeState } from './tui-runtime-state.js';
@@ -184,7 +184,7 @@ export function setupAutonomousCoordinator(ctx: CoordinatorSetupContext): Coordi
         if (!state.autonomousCoordinator) return 'No coordinator is active.';
         await state.autonomousCoordinator.graph.load();
         const goal = state.autonomousCoordinator.graph.get(taskId) as
-          | import('@wrongstack/core/coordination').GoalNode
+          | import('@wrongstack/coordination').GoalNode
           | undefined;
         if (goal?.type !== 'goal') return `Task ${taskId.slice(0, 8)} not found.`;
         if (goal.status !== 'pending')
@@ -201,7 +201,7 @@ export function setupAutonomousCoordinator(ctx: CoordinatorSetupContext): Coordi
         if (!state.autonomousCoordinator) return 'No coordinator is active.';
         await state.autonomousCoordinator.graph.load();
         const goal = state.autonomousCoordinator.graph.get(taskId) as
-          | import('@wrongstack/core/coordination').GoalNode
+          | import('@wrongstack/coordination').GoalNode
           | undefined;
         if (goal?.type !== 'goal') return `Task ${taskId.slice(0, 8)} not found.`;
         if (goal.status !== 'in_progress')
@@ -216,7 +216,7 @@ export function setupAutonomousCoordinator(ctx: CoordinatorSetupContext): Coordi
         if (!state.autonomousCoordinator) return 'No coordinator is active.';
         await state.autonomousCoordinator.graph.load();
         const goal = state.autonomousCoordinator.graph.get(taskId) as
-          | import('@wrongstack/core/coordination').GoalNode
+          | import('@wrongstack/coordination').GoalNode
           | undefined;
         if (goal?.type !== 'goal') return `Task ${taskId.slice(0, 8)} not found.`;
         if (goal.status !== 'in_progress')

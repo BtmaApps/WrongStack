@@ -4,7 +4,7 @@ import { ToolValidationError } from '@wrongstack/contracts/types';
 import {
   detectEcosystem as detectPackageEcosystem,
   recordPackageAction,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
 import { spawnStream } from './_spawn-stream.js';
 import { detectPackageManager, normalizeCommandOutput, safeResolveReal } from './_util.js';
 import { detectNonJsEcosystem, tryLegacyPackageOperation } from './languages/legacy-bridge.js';

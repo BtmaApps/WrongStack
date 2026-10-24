@@ -815,9 +815,7 @@ describe('GET /api/sessions/:id/events (watch stream)', () => {
   });
 
   it('POST .../message delivers a steer message to the session mailbox', async () => {
-    const { mailboxSessionTag, createProjectMailbox } = await import(
-      '@wrongstack/core/coordination'
-    );
+    const { mailboxSessionTag, createProjectMailbox } = await import('@wrongstack/coordination');
     const { resolveWstackPaths } = await import('@wrongstack/core/utils');
     const res = await authFetch(`${evBase}/api/sessions/${sessionId}/message`, {
       method: 'POST',

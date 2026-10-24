@@ -1,6 +1,6 @@
 import { ToolValidationError } from '@wrongstack/contracts/types/errors';
 import type { JSONSchema, Tool } from '@wrongstack/contracts/types/tool';
-import { isValidMatrixKey } from '@wrongstack/core/coordination';
+import { isValidMatrixKey } from '@wrongstack/coordination';
 import { parseModelRef } from '@wrongstack/core/agent';
 import { isFavoriteRef, notFavoriteError, profileList } from './fallback-manage-helpers.js';
 import type { FallbackManageToolOptions } from './fallback-manage-tool-options.js';

@@ -17,7 +17,7 @@ import { randomUUID } from 'node:crypto';
 import type { SpecialistNeededPayload } from '@wrongstack/builtin-plugins';
 import type { EventBus } from '@wrongstack/contracts/kernel';
 import type { SessionWriter, StopReason } from '@wrongstack/contracts/types';
-import type { Director } from '@wrongstack/core/coordination';
+import type { Director } from '@wrongstack/coordination';
 
 export interface InstallSpecialistTriggerHandlerOptions {
   events: EventBus;

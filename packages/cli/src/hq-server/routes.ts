@@ -14,7 +14,8 @@ import type {
   Mailbox,
   MailboxHttpAccessDecision,
   MailboxHttpRateLimiter,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
+import type { TrustBoundary } from '@wrongstack/core/security';
 import type {
   createHqPersistence,
   HqAlertEngine,
@@ -23,7 +24,6 @@ import type {
   HqSnapshot,
   HqTranscriptEntry,
 } from '@wrongstack/hq';
-import type { TrustBoundary } from '@wrongstack/core/security';
 import type { WebSocket } from 'ws';
 import { HQ_HTML } from '../hq-recovery-html.js';
 import { resolveHqDistDir, serveHqStatic } from '../hq-static-serve.js';

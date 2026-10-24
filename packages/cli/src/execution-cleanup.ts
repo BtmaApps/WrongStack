@@ -1,4 +1,4 @@
-import type { Director } from '@wrongstack/core/coordination';
+import type { Director } from '@wrongstack/coordination';
 import type { ChimeraWorkRegistry } from './chimera-work-registry.js';
 import type { ExecuteDeps } from './execute-deps.js';
 import type { FleetStatusLine } from './fleet-statusline.js';

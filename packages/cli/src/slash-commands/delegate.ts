@@ -1,7 +1,7 @@
-import type { SlashCommand } from '@wrongstack/contracts/types';
 import type { AgentPhase } from '@wrongstack/agent-catalog';
 import { AGENT_CATALOG, AGENTS_BY_PHASE } from '@wrongstack/agent-catalog';
-import { dispatchAgent } from '@wrongstack/core/coordination';
+import type { SlashCommand } from '@wrongstack/contracts/types';
+import { dispatchAgent } from '@wrongstack/coordination';
 import { color, toErrorMessage } from '@wrongstack/core/utils';
 import type { SlashCommandContext } from './command-context.js';
 

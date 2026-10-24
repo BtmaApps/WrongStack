@@ -1,4 +1,4 @@
-import { MailboxEventEmitter, type RemoteMailbox } from '@wrongstack/core/coordination';
+import { MailboxEventEmitter, type RemoteMailbox } from '@wrongstack/coordination';
 import { describe, expect, it, vi } from 'vitest';
 import { createMailboxMcpServer, createMailboxMcpToolHost } from '../src/adapter.js';
 

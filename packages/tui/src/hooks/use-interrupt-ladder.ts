@@ -1,8 +1,8 @@
-import type { Director } from '@wrongstack/core/coordination';
+import type { Director } from '@wrongstack/coordination';
 import { getProcessRegistry } from '@wrongstack/tools';
 import { type Dispatch, type MutableRefObject, useCallback, useEffect, useRef } from 'react';
-import type { AppProps } from '../app-props.js';
 import type { Action } from '../app-action-type.js';
+import type { AppProps } from '../app-props.js';
 import type { State } from '../app-state.js';
 
 interface InterruptLadderOptions {

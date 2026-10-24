@@ -27,7 +27,7 @@
  * @module host-explore-companion-registry
  */
 
-import type { ExploreCompanion } from '@wrongstack/core/coordination';
+import type { ExploreCompanion } from '@wrongstack/coordination';
 
 /** Four live conversations is the WebUI's tab-slot ceiling. */
 const DEFAULT_MAX_COMPANIONS = 4;

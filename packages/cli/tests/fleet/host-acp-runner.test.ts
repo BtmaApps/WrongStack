@@ -1,6 +1,6 @@
 import { EventBus } from '@wrongstack/contracts/kernel';
 import type { Config, SubagentRunContext } from '@wrongstack/contracts/types';
-import type { Director } from '@wrongstack/core/coordination';
+import type { Director } from '@wrongstack/coordination';
 import { describe, expect, it, vi } from 'vitest';
 import {
   acpCommandOpts,

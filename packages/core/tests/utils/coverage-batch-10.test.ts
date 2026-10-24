@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest';
-import { InMemoryBridgeTransport } from '../../src/coordination/in-memory-transport.js';
-import { MailboxEventEmitter } from '../../src/coordination/mailbox-events.js';
+import { describe, expect, it } from 'vitest';
+import { InMemoryBridgeTransport } from '../../../coordination/src/in-memory-transport.js';
+import { MailboxEventEmitter } from '../../../coordination/src/mailbox-events.js';
 import {
   DEFAULT_HQ_REDACTION_POLICY,
   HQ_TRANSCRIPT_TEXT_CAP,

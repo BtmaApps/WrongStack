@@ -20,7 +20,7 @@ export { configureGoalPolicy, isGoalCommandAllowed, resetGoalPolicy } from './go
  * single-thread turn injection.
  */
 
-import { assignNickname } from '@wrongstack/core/coordination';
+import { assignNickname } from '@wrongstack/coordination';
 import {
   GoalPlanner,
   GoalRunLeaseBusyError,

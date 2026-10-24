@@ -6,7 +6,7 @@ import {
   MailboxProjectServerConnection,
   RemoteMailbox,
   resolveProjectDir,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
 import { wstackGlobalRoot } from '@wrongstack/core/utils';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { TuiMailboxSnapshot } from '../src/mailbox-view-model-types.js';

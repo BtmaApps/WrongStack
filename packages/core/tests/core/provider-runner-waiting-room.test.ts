@@ -5,7 +5,7 @@ import type { Logger } from '@wrongstack/contracts/types/logger';
 import type { Provider, Request, Response } from '@wrongstack/contracts/types/provider';
 import { classifyProviderError, ProviderError } from '@wrongstack/contracts/types/provider';
 import { describe, expect, it } from 'vitest';
-import { ProviderModelStatusTracker } from '../../src/coordination/provider-status-tracker.js';
+import { ProviderModelStatusTracker } from '../../../coordination/src/provider-status-tracker.js';
 import { runProviderWithRetry } from '../../src/core/provider-runner.js';
 import { DefaultRetryPolicy } from '../../src/execution/retry-policy.js';
 

@@ -1,10 +1,10 @@
 import {
   buildAutoWakePrompt,
   delegationDeliveryId,
-  type LeaderDelivery,
   LeaderAutoWakeController,
+  type LeaderDelivery,
   LeaderDeliveryHub,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createTuiLeaderWakePort } from '../src/hooks/use-leader-auto-wake.js';
 import { createRunBlocksController, type RunBlocksRefs } from '../src/run-blocks-controller.js';

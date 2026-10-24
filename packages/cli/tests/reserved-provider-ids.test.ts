@@ -1,6 +1,6 @@
 import { RESERVED_PROVIDER_IDS } from '@wrongstack/providers';
 import { describe, expect, it } from 'vitest';
-import { isExternalAgentProvider } from '../../core/src/coordination/external-agent-provider.js';
+import { isExternalAgentProvider } from '../../coordination/src/external-agent-provider.js';
 import { ACP_LEADER_PROVIDER_ID } from '../src/acp-leader/acp-leader-host.js';
 import { WRONGFORGE_AGENT_ID } from '../src/fleet/wrongforge-client.js';
 

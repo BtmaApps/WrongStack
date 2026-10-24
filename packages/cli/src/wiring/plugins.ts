@@ -163,7 +163,7 @@ export interface PluginsWiringDeps {
    * publish to other agents (todo-listener, session-recap). Optional —
    * minimal hosts (tests, the LSP server) may omit.
    */
-  mailbox?: import('@wrongstack/core/coordination').Mailbox | undefined;
+  mailbox?: import('@wrongstack/coordination').Mailbox | undefined;
   /**
    * Notification router — instantiated as a `NotifierImpl` by the host.
    * Plugins that deliver one-way notifications (Telegram, Slack, webhook)

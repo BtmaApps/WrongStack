@@ -18,8 +18,8 @@ import { TOKENS } from '@wrongstack/contracts/kernel';
 import type { Compactor, Config, Logger } from '@wrongstack/contracts/types';
 import type { Agent } from '@wrongstack/core/agent';
 import { EternalAutonomyEngine } from '@wrongstack/core/execution';
-import type { JournalEntry } from '@wrongstack/goal';
 import { color } from '@wrongstack/core/utils';
+import type { JournalEntry } from '@wrongstack/goal';
 import type { TerminalRenderer } from './renderer.js';
 import type { AutonomyMode } from './services/autonomy-mode.js';
 import { patchConfig } from './utils.js';
@@ -99,7 +99,7 @@ export async function launchEternalFromFlag(deps: EternalFlagDeps): Promise<bool
   const compactor = deps.container.resolve(TOKENS.Compactor) as Compactor;
   // Brain decision support is optional — the CLI binds TOKENS.BrainArbiter
   // before this launch path runs, but bare test containers may not.
-  let brain: import('@wrongstack/core/coordination').BrainArbiter | undefined;
+  let brain: import('@wrongstack/coordination').BrainArbiter | undefined;
   try {
     brain = deps.container.resolve(TOKENS.BrainArbiter);
   } catch {

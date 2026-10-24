@@ -21,7 +21,7 @@ import {
   ObservableBrainArbiter,
   renderLeaderModelMenu,
   terminalPolicyDecision,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
 import {
   type BrainAutoRisk,
   type BrainRuntime,
@@ -29,13 +29,13 @@ import {
   resolveBrainConfigDefaults,
 } from '@wrongstack/core/execution';
 import type { ToolRegistry } from '@wrongstack/core/registry';
+import { resolveTypeSafeJudge } from '@wrongstack/core/typesafe';
 import {
   createMcpControlTool,
   createMcpUseTool,
   createSessionRenameTool,
   SESSION_RENAME_TOOL_NAME,
 } from '@wrongstack/tools/management';
-import { resolveTypeSafeJudge } from '@wrongstack/core/typesafe';
 import { subscribeBrainDecisionLog } from '../boot/brain-decision-log.js';
 import { installedBridgeAgents } from '../fleet/acp-wrongstack-bridge.js';
 import { createSubagentWrongTraceHookRunner } from '../fleet/subagent-hook-runner.js';
@@ -111,7 +111,7 @@ interface BrainOrchestrationDeps {
   /** Leader's active mode id — propagated to spawned subagents as memoryContext.mode. */
   modeId?: string | undefined;
   /** Shared provider/model status tracker for the Director. */
-  statusTracker?: import('@wrongstack/core/coordination').ProviderModelStatusTracker | undefined;
+  statusTracker?: import('@wrongstack/coordination').ProviderModelStatusTracker | undefined;
   /** Trusted governance hook for in-process Fleet tool pipelines. */
   installToolBoundary?:
     | ((pipelines: import('@wrongstack/core/agent').AgentPipelines) => void)
@@ -122,7 +122,7 @@ interface BrainOrchestrationResult {
   brain: ObservableBrainArbiter;
   brainLog: AnyObj[];
   /** Session-lifetime per-tier decision tally for `/brain stats`. */
-  brainTierStats: () => import('@wrongstack/core/coordination').BrainTierStats;
+  brainTierStats: () => import('@wrongstack/coordination').BrainTierStats;
   brainSettings: BrainRuntimeSettings;
   /** Live-editable Brain config owner (apply = live + persist-to-global). */
   brainRuntime: BrainRuntime;

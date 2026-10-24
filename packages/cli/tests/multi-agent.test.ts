@@ -51,9 +51,8 @@ import type {
   TokenCounter,
   Tool,
 } from '@wrongstack/contracts/types';
+import { createProjectAgent, defaultAgentCoordination } from '@wrongstack/coordination';
 import { AGENT_COORDINATION } from '@wrongstack/core/agent';
-import { defaultAgentCoordination } from '@wrongstack/core/agent-coordination';
-import { createProjectAgent } from '@wrongstack/core/coordination';
 import { DefaultErrorHandler, DefaultRetryPolicy } from '@wrongstack/core/execution';
 import { DefaultLogger } from '@wrongstack/core/infrastructure';
 import { ProviderRegistry, ToolRegistry } from '@wrongstack/core/registry';

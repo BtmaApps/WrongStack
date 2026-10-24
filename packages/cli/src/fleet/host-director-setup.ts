@@ -18,7 +18,7 @@ import {
   makeFleetEmitTool,
   postSessionNote,
   type TaskResultNotification,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
 import { formatMemoryEvidenceBlock } from '@wrongstack/core/utils';
 import { getSageSurface } from '@wrongstack/sage';
 import { createHostFleetManager, prepareHostDirectorRuntime } from './host-director-builder.js';
@@ -50,7 +50,7 @@ export interface HostDirectorSetupHost {
   deps: MultiAgentDeps;
   learningScheduler: HostLearningScheduler;
   opts: MultiAgentHostOptions;
-  fleetManager: import('@wrongstack/core/coordination').FleetManager | undefined;
+  fleetManager: import('@wrongstack/coordination').FleetManager | undefined;
   sessionFactory: DirectorSessionFactory | undefined;
   roster: Record<string, SubagentConfig>;
   reportTaskResultToLeader(n: TaskResultNotification): Promise<void>;

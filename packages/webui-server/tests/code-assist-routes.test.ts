@@ -13,7 +13,7 @@
  */
 
 import { EventBus } from '@wrongstack/contracts/kernel';
-import type { AgentFactory } from '@wrongstack/core/coordination';
+import type { AgentFactory } from '@wrongstack/coordination';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { WebSocket } from 'ws';
 import { buildCodeAssistPrompt } from '../src/server/code-assist-prompt.js';

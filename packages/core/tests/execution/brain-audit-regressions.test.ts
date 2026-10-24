@@ -1,6 +1,8 @@
 import { EventBus } from '@wrongstack/contracts/kernel/events';
 import type { Provider } from '@wrongstack/contracts/types/provider';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { AutonomousBrain } from '../../../coordination/src/autonomous-brain.js';
+import type { KnowledgeGraph } from '../../../coordination/src/knowledge-graph.js';
 import {
   BrainDecisionQueue,
   type BrainDecisionRequest,
@@ -13,8 +15,6 @@ import { BrainDecisionLedger } from '../../src/brain/brain-ledger.js';
 import { BrainMonitor } from '../../src/brain/brain-monitor.js';
 import { BrainTierCounter, readDecisionTier } from '../../src/brain/brain-telemetry.js';
 import { BrainTraceRecorder, readBrainTrace } from '../../src/brain/brain-trace.js';
-import { AutonomousBrain } from '../../src/coordination/autonomous-brain.js';
-import type { KnowledgeGraph } from '../../src/coordination/knowledge-graph.js';
 import { createEventUserInputAwaiter } from '../../src/core/user-input-awaiter.js';
 import {
   createAutonomyBrain,

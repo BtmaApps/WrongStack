@@ -1,9 +1,9 @@
-import type { Context } from '@wrongstack/core/agent';
 import {
   areSubagentsAllowed,
   isSubagentPolicyLocked,
   lockSessionSubagentPolicyForSession,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
+import type { Context } from '@wrongstack/core/agent';
 import { SlashCommandRegistry } from '@wrongstack/core/registry';
 import { describe, expect, it, vi } from 'vitest';
 import { buildClearCommand } from '../src/slash-commands/clear.js';

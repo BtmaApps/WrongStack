@@ -44,7 +44,7 @@ import type {
   TaskResult,
 } from '@wrongstack/contracts/types';
 import { type Context, keepsOwnContext } from '@wrongstack/core/agent';
-import type { Director } from '@wrongstack/core/coordination';
+import type { Director } from '@wrongstack/coordination';
 import {
   armSkillPathRules,
   declaredPathMatch,

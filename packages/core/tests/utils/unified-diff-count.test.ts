@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { completedToolReceipt } from '../../src/coordination/agent-status-helpers.js';
+import { completedToolReceipt } from '../../../coordination/src/agent-status-helpers.js';
 import { compactDiff } from '../../src/utils/tool-output-renderers.js';
 import { countUnifiedDiffLines } from '../../src/utils/unified-diff-count.js';
 

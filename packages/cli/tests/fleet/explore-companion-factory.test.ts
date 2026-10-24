@@ -6,15 +6,15 @@
 
 import { Container, EventBus, TOKENS } from '@wrongstack/contracts/kernel';
 import type { Config, SubagentConfig, Tool } from '@wrongstack/contracts/types';
-import { DEFAULT_EXPLORE_COMPANION_AGENT_ID, FLEET_ROSTER } from '@wrongstack/core/coordination';
+import { DEFAULT_EXPLORE_COMPANION_AGENT_ID, FLEET_ROSTER } from '@wrongstack/coordination';
 import { DefaultErrorHandler, DefaultRetryPolicy } from '@wrongstack/core/execution';
 import { DefaultLogger } from '@wrongstack/core/infrastructure';
 import { ProviderRegistry, ToolRegistry } from '@wrongstack/core/registry';
 import { DefaultSecretScrubber } from '@wrongstack/core/security';
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('@wrongstack/core/coordination', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@wrongstack/core/coordination')>();
+vi.mock('@wrongstack/coordination', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@wrongstack/coordination')>();
   return {
     ...actual,
     // The factory tolerates a mailbox failure; a test must not reach the

@@ -17,11 +17,11 @@
  */
 
 import type { Config, Message, SkillLoader } from '@wrongstack/contracts/types';
-import type { BrainDecisionRequest } from '@wrongstack/core/coordination';
+import type { BrainDecisionRequest } from '@wrongstack/coordination';
 import {
   createSystemOneTierSuggester,
   makeTypeSafeDispatchClassifier,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
 import {
   probeSystemOneBrain,
   systemOneBrainSettles,
@@ -29,7 +29,6 @@ import {
 } from '@wrongstack/core/execution';
 import { SystemOneSelector } from '@wrongstack/core/models';
 import { createSkillSuggester } from '@wrongstack/core/skills';
-import { evaluateJevQuestions } from '@wrongstack/tools/management';
 import {
   BUILT_IN_SEMANTIC_LINT_RULES,
   createTypeSafeCriterionJudge,
@@ -44,6 +43,7 @@ import {
   createSystemOneTriage,
   type Sage,
 } from '@wrongstack/sage';
+import { evaluateJevQuestions } from '@wrongstack/tools/management';
 
 export interface JevCheckCase {
   feature: string;

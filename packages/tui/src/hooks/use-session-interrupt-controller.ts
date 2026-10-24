@@ -1,4 +1,4 @@
-import type { ParallelEternalEngine } from '@wrongstack/core/coordination';
+import type { ParallelEternalEngine } from '@wrongstack/coordination';
 import type { EternalAutonomyEngine } from '@wrongstack/core/execution';
 import type { SddRunControl } from '@wrongstack/sdd';
 import { useEffect } from 'react';

@@ -1,7 +1,7 @@
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { getSharedProjectMailbox, resolveProjectDir } from '@wrongstack/core/coordination';
+import { getSharedProjectMailbox, resolveProjectDir } from '@wrongstack/coordination';
 import { describe, expect, it, vi } from 'vitest';
 import type { WebSocket } from 'ws';
 import {

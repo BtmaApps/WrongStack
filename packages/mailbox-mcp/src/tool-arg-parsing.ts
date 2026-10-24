@@ -3,7 +3,7 @@ import {
   type MailboxMessageType,
   type MailboxQuery,
   type RemoteMailbox,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
 
 export const MAILBOX_CAPABILITIES = [
   'mail.send.informational',

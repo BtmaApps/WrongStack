@@ -160,7 +160,7 @@ function validateProductCatalog() {
       captures(fs.readFileSync(path.join(phaseDir, file), 'utf8'), /\brole:\s*'([^']+)'/g),
     );
   const fleetSource = fs.readFileSync(
-    path.join(repoRoot, 'packages/core/src/coordination/fleet.ts'),
+    path.join(repoRoot, 'packages/coordination/src/fleet.ts'),
     'utf8',
   );
   const builtInFleetBlock = sourceSection(fleetSource, '', '// ACP external agents');

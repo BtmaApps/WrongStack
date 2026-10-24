@@ -7,7 +7,7 @@ import {
   FleetSupervisor,
   mailboxSessionTag,
   postSessionNote,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
 import { toErrorMessage } from '@wrongstack/core/utils/error';
 import type { MultiAgentHostOptions } from './host-types.js';
 import { setActiveFleetSupervisor } from './supervisor-registry.js';

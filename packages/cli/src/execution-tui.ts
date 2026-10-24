@@ -1,6 +1,6 @@
 import { normalizeTokenSavingTier } from '@wrongstack/contracts/types';
+import { type CoordinatorEvent, LeaderAutoWakeController } from '@wrongstack/coordination';
 import { setQueuedMessagesSnapshot } from '@wrongstack/core/agent';
-import { type CoordinatorEvent, LeaderAutoWakeController } from '@wrongstack/core/coordination';
 import { activeLeaderEffort } from '@wrongstack/core/execution';
 import { noOpVault } from '@wrongstack/core/security';
 import { attachTodosCheckpoint, QueueStore } from '@wrongstack/core/storage';

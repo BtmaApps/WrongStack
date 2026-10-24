@@ -5,7 +5,7 @@
  * Director held — in the WebUI host, a Stop aimed at one tab's fleet killed
  * every tab's workers. WebUI tabs had no fleet hooks at all.
  */
-import { FLEET_ROSTER } from '@wrongstack/core/coordination';
+import { FLEET_ROSTER } from '@wrongstack/coordination';
 import { describe, expect, it, vi } from 'vitest';
 import { createHqFleetControl, killHqSessionFleet, spawnHqAgent } from '../src/hq-fleet-control.js';
 

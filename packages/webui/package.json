@@ -147,6 +147,7 @@
     "@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "^6.1.2",
     "@vitest/coverage-v8": "^5.0.5",
+    "@wrongstack/coordination": "workspace:*",
     "@wrongstack/sdd": "workspace:*",
     "@wrongstack/webui-server": "workspace:*",
     "jsdom": "30.0.1",

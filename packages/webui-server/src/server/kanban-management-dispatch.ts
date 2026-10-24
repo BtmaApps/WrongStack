@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
+import { resolveTier } from '@wrongstack/coordination';
 import { fallbackProfileChain, parseModelRef } from '@wrongstack/core/agent';
-import { resolveTier } from '@wrongstack/core/coordination';
 import { stripFrontmatter } from '@wrongstack/core/skills';
 import { makeLightSubagentFactory } from '@wrongstack/runtime';
 import type { KanbanSupervisorDeps } from './kanban-supervisor.js';

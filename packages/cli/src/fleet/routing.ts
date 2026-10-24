@@ -5,7 +5,7 @@ import type {
   SubagentRunner,
   TaskSpec,
 } from '@wrongstack/contracts/types';
-import { makeAgentSubagentRunner, NULL_FLEET_BUS } from '@wrongstack/core/coordination';
+import { makeAgentSubagentRunner, NULL_FLEET_BUS } from '@wrongstack/coordination';
 import { expectDefined } from '@wrongstack/core/utils';
 import { runWithQuotaHold } from './acp-quota-hold.js';
 import type { MultiAgentHost } from './host.js';

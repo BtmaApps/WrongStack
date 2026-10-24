@@ -28,7 +28,7 @@ vi.mock('@wrongstack/core/agent', () => ({
 }));
 vi.mock('@wrongstack/core/typesafe', () => ({ resolveTypeSafeJudge: vi.fn(() => undefined) }));
 
-vi.mock('@wrongstack/core/coordination', () => ({
+vi.mock('@wrongstack/coordination', () => ({
   BrainDecisionLedger: class {
     constructor(public options: any) {
       brainHostInstances.ledgers.push(this);
@@ -196,7 +196,7 @@ vi.mock('../src/server/model-catalog.js', () => ({
 
 import { TOKENS } from '@wrongstack/contracts/kernel';
 import { CONTEXT_WINDOW_MODE_PINNED_META_KEY } from '@wrongstack/contracts/types';
-import { getSharedProjectMailbox, mailboxSessionTag } from '@wrongstack/core/coordination';
+import { getSharedProjectMailbox, mailboxSessionTag } from '@wrongstack/coordination';
 import { createBrainRuntime, createStrategyCompactor } from '@wrongstack/core/execution';
 import { resolveTypeSafeJudge } from '@wrongstack/core/typesafe';
 import { makeLightSubagentFactory } from '@wrongstack/runtime';

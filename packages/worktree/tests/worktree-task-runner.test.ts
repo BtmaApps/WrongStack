@@ -10,7 +10,7 @@ import {
   subagentNeedsWorktree,
   WorktreeIntegrationError,
   wrapSubagentRunnerWithWorktrees,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
 import { describe, expect, it, vi } from 'vitest';
 import type { RunResult } from '../src/worktree-manager.js';
 import { WorktreeManager } from '../src/worktree-manager.js';

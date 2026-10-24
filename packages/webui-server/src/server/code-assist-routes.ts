@@ -31,7 +31,7 @@
  * `light-subagent-factory.ts`), so we can forward `provider.text_delta` chunks
  * to the panel without those tokens ever reaching the shared chat bus.
  */
-import type { AgentFactory } from '@wrongstack/core/coordination';
+import type { AgentFactory } from '@wrongstack/coordination';
 import { toErrorMessage } from '@wrongstack/core/utils';
 import {
   type CodeAssistPreset,

@@ -1,4 +1,4 @@
-import type { BrainArbiter } from '@wrongstack/core/coordination';
+import type { BrainArbiter } from '@wrongstack/coordination';
 import {
   type BrainRouteHandlers,
   handleBrainRoute,

@@ -1,5 +1,5 @@
 import type { FleetChatVerbosity } from '@wrongstack/contracts/types';
-import type { Director } from '@wrongstack/core/coordination';
+import type { Director } from '@wrongstack/coordination';
 import type {
   StatuslineDensities,
   StatuslineLines,

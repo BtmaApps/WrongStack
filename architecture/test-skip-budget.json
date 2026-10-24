@@ -112,22 +112,22 @@
       "fingerprint": "b6bed90afffce85b"
     },
     {
-      "file": "packages/core/tests/coordination/coordinator-integration-coverage.test.ts",
+      "file": "packages/coordination/tests/coordinator-integration-coverage.test.ts",
       "kind": "todo",
       "fingerprint": "1b3cd7293e3e53b8"
     },
     {
-      "file": "packages/core/tests/coordination/coordinator-integration-coverage.test.ts",
+      "file": "packages/coordination/tests/coordinator-integration-coverage.test.ts",
       "kind": "todo",
       "fingerprint": "598f7328e65776de"
     },
     {
-      "file": "packages/core/tests/coordination/mailbox-project-server-auth-gate.test.ts",
+      "file": "packages/coordination/tests/mailbox-project-server-auth-gate.test.ts",
       "kind": "skipIf",
       "fingerprint": "6bdd4173c55aff28"
     },
     {
-      "file": "packages/core/tests/coordination/package-author-tracker.test.ts",
+      "file": "packages/coordination/tests/package-author-tracker.test.ts",
       "kind": "skipIf",
       "fingerprint": "6c1dfd9f1895e5c4"
     },

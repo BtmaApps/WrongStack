@@ -6,7 +6,7 @@ import {
   getSessionSubagentModelPlan,
   resetSessionSubagentModelPlan,
   restoreSessionSubagentModelPlan,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
 import { DefaultSessionStore } from '@wrongstack/core/storage';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createSubagentModelsPanelHost } from '../src/subagent-models/panel-service.js';

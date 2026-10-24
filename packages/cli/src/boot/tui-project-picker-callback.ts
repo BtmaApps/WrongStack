@@ -9,7 +9,7 @@
  * Reads mutable state (projectRoot, wpaths) from TuiRuntimeState.
  */
 import * as path from 'node:path';
-import type { Director } from '@wrongstack/core/coordination';
+import type { Director } from '@wrongstack/coordination';
 import { color } from '@wrongstack/core/utils';
 import type { TerminalRenderer } from '../renderer.js';
 import type { ProjectSwitchContext } from './tui-project-switch.js';

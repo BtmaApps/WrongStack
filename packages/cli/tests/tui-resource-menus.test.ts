@@ -1,5 +1,5 @@
 import type { Config, ConfigStore } from '@wrongstack/contracts/types';
-import { ProviderModelStatusTracker } from '@wrongstack/core/coordination';
+import { ProviderModelStatusTracker } from '@wrongstack/coordination';
 import type { WstackPaths } from '@wrongstack/core/utils';
 import { describe, expect, it } from 'vitest';
 import { createTuiResourceMenuGetter } from '../src/tui-resource-menus.js';

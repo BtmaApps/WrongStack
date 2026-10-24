@@ -1,7 +1,3 @@
-import { TOKENS } from '@wrongstack/contracts/kernel';
-import type { SubagentConfig } from '@wrongstack/contracts/types';
-import { activeLimits, positiveLimit } from '@wrongstack/contracts/types';
-import { fenceIfUntrusted } from '@wrongstack/core/agent';
 import {
   DEFAULT_EAGER_SKILL_LIMIT,
   listProjectSkillAugmentations,
@@ -15,7 +11,11 @@ import {
   runtimeToolReferencesFromText,
   type SkillBlockReason,
 } from '@wrongstack/agent-catalog';
-import { FLEET_ROSTER } from '@wrongstack/core/coordination';
+import { TOKENS } from '@wrongstack/contracts/kernel';
+import type { SubagentConfig } from '@wrongstack/contracts/types';
+import { activeLimits, positiveLimit } from '@wrongstack/contracts/types';
+import { FLEET_ROSTER } from '@wrongstack/coordination';
+import { fenceIfUntrusted } from '@wrongstack/core/agent';
 import { formatMemoryEvidenceBlock, formatProjectSuppliedBlock } from '@wrongstack/core/utils';
 import { formatMemoryHintsDetailed, getSageRetrieval } from '@wrongstack/sage';
 import type { MultiAgentDeps } from './host-types.js';

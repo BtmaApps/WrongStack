@@ -15,7 +15,7 @@ import type {
   TaskSpec,
 } from '@wrongstack/contracts/types';
 import { ToolValidationError } from '@wrongstack/contracts/types';
-import { getSharedProjectMailbox, resolveProjectDir } from '@wrongstack/core/coordination';
+import { getSharedProjectMailbox, resolveProjectDir } from '@wrongstack/coordination';
 import { wstackGlobalRoot } from '@wrongstack/core/utils';
 import { registerAcpSteerInbox } from './acp-live-steer.js';
 import { startAcpTurnReminders } from './acp-turn-reminders.js';

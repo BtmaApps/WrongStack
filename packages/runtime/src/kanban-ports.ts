@@ -10,7 +10,7 @@
  * This module is idempotent: calling it from several boot paths (CLI,
  * MCP serve, ACP agent, WebUI server) is safe and cheap.
  */
-import { setKanbanBoundaryOps, setKanbanDispatch } from '@wrongstack/core/coordination';
+import { setKanbanBoundaryOps, setKanbanDispatch } from '@wrongstack/coordination';
 import { setKanbanGovernance } from '@wrongstack/core/security';
 import { setBoardStorePort } from '@wrongstack/core/storage';
 import {

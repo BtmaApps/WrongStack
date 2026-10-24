@@ -17,9 +17,9 @@
  * (fixed options) + the exported applySessionAffinityFilter.
  */
 import { describe, expect, it } from 'vitest';
-import type { Mailbox, MailboxMessage } from '../../src/coordination/mailbox-types.js';
+import { applySessionAffinityFilter } from '../../../coordination/src/mailbox-attach.js';
+import type { Mailbox, MailboxMessage } from '../../../coordination/src/mailbox-types.js';
 import { createMailboxChecker } from '../../src/core/mailbox-loop.js';
-import { applySessionAffinityFilter } from '../../src/mailbox-attach.js';
 
 const SESSION_A = 'sess-aaaaaaaaaaaaaaaa';
 const SESSION_B = 'sess-bbbbbbbbbbbbbbbb';

@@ -125,8 +125,8 @@ describe('security helpers are wired, not just present', () => {
       'packages/cli/src/hq-server/auth.ts', // signed session-cookie HMAC
       'packages/hq/src/auth-passwords.ts', // password hash comparison extracted from auth-store
       'packages/hq/src/bootstrap-store.ts',
-      'packages/core/src/coordination/mailbox-credential-store.ts',
-      'packages/core/src/coordination/mailbox-http-auth.ts',
+      'packages/coordination/src/mailbox-credential-store.ts',
+      'packages/coordination/src/mailbox-http-auth.ts',
       'packages/core/src/session-catalog/store-schema.ts',
       'packages/core/src/observability/prometheus.ts',
       'packages/cli/src/subcommands/handlers/acp-connection-gate.ts',

@@ -39,7 +39,7 @@ vi.mock('@wrongstack/core/infrastructure', () => ({
 }));
 
 const { createSessionAgentRegistry } = await import('../src/server/session-agent-registry.js');
-const { isLeaderAgentId } = await import('../../core/src/leader-delivery-attach.js');
+const { isLeaderAgentId } = await import('../../coordination/src/leader-delivery-attach.js');
 
 describe('WebUI per-tab agents are leaders', () => {
   it('builds every tab context with agentId `leader`, which the delivery drain accepts', () => {

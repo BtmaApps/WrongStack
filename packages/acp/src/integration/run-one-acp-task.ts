@@ -6,7 +6,7 @@
  */
 
 import type { SubagentRunContext } from '@wrongstack/contracts/types';
-import { SubagentBudget } from '@wrongstack/core/coordination';
+import { SubagentBudget } from '@wrongstack/coordination';
 import type { ACPProgressHandler } from '../client/acp-session.js';
 import type { PermissionPolicy } from '../client/permission.js';
 import {

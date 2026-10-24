@@ -4,7 +4,7 @@
  */
 
 import { projectLastRequestTokens } from '@wrongstack/contracts/types/session-timeline';
-import { restoreSessionSubagentPolicy } from '@wrongstack/core/coordination';
+import { restoreSessionSubagentPolicy } from '@wrongstack/coordination';
 import { restoreSessionPermissionOverrides } from '@wrongstack/core/security';
 import { restoreRequiredSkillsFromEvents } from '@wrongstack/core/skills';
 import { loadTodosCheckpoint } from '@wrongstack/core/storage';

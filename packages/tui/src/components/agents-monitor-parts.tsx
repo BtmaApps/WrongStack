@@ -4,7 +4,7 @@
  * roster. Every row is one truncating line, so the panel's height budget,
  * which counts them, stays exact.
  */
-import type { AgentTimelineEntry } from '@wrongstack/core/coordination';
+import type { AgentTimelineEntry } from '@wrongstack/coordination';
 import type React from 'react';
 import type { FleetEntry } from '../app-state.js';
 import { Box, Text } from '../ink.js';

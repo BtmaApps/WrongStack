@@ -6,8 +6,8 @@ import {
   type Request,
   type Response,
 } from '@wrongstack/contracts/types';
+import { ProviderModelStatusTracker } from '@wrongstack/coordination';
 import { createFallbackModelExtension, FallbackProfileManager } from '@wrongstack/core/agent';
-import { ProviderModelStatusTracker } from '@wrongstack/core/coordination';
 import { ProviderRegistry } from '@wrongstack/core/registry';
 import { describe, expect, it, vi } from 'vitest';
 import { resolveActiveApiKey } from '../src/provider-config-utils.js';

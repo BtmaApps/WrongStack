@@ -1,4 +1,4 @@
-import type { BrainArbiter, BrainDecisionRequest } from '@wrongstack/core/coordination';
+import type { BrainArbiter, BrainDecisionRequest } from '@wrongstack/coordination';
 import type {
   BrainConfigPatch,
   BrainConfigSnapshot,

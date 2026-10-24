@@ -53,7 +53,7 @@ vi.mock('@wrongstack/core/agent', () => ({
   },
   providerToolsForVariant: (registry: { listForProvider(): unknown }) => registry.listForProvider(),
 }));
-vi.mock('@wrongstack/core/coordination', () => ({
+vi.mock('@wrongstack/coordination', () => ({
   getSharedProjectMailbox: vi.fn(() => ({ getAgentStatuses: mocks.getAgentStatuses })),
   makeFleetStatusTool: vi.fn(() => ({ name: 'fleet' })),
   makeMailboxTool: vi.fn(() => ({ name: 'mailbox' })),

@@ -40,7 +40,7 @@ import {
   type SessionSubagentModelPlan,
   type SubagentSlot,
   setSessionSubagentModelPlanForSession,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
 import { DefaultErrorHandler, DefaultRetryPolicy } from '@wrongstack/core/execution';
 import { DefaultLogger } from '@wrongstack/core/infrastructure';
 import { ProviderRegistry, ToolRegistry } from '@wrongstack/core/registry';

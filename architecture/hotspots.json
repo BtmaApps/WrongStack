@@ -14,11 +14,11 @@
       "lines": 754,
       "relativeImports": 3
     },
-    "packages/core/src/coordination/agent-monitor.ts": {
+    "packages/coordination/src/agent-monitor.ts": {
       "lines": 715,
-      "relativeImports": 3
+      "relativeImports": 1
     },
-    "packages/core/src/coordination/multi-agent-coordinator.ts": {
+    "packages/coordination/src/multi-agent-coordinator.ts": {
       "lines": 725,
       "relativeImports": 13
     },

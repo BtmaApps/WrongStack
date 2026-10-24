@@ -6,7 +6,7 @@
 
 import type { Config } from '@wrongstack/contracts/types/config';
 import { describe, expect, it, vi } from 'vitest';
-import { createSystemOneTierSuggester } from '../src/coordination/system-one-tier.js';
+import { createSystemOneTierSuggester } from '../../coordination/src/system-one-tier.js';
 import type { TypeSafeJudge } from '../src/typesafe/index.js';
 
 const config = (routing: Record<string, string> = {}): Config =>

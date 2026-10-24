@@ -11,16 +11,16 @@
 import type { EventBus } from '@wrongstack/contracts/kernel';
 import { TOKENS } from '@wrongstack/contracts/kernel';
 import type { SecretScrubber, TaskGraph } from '@wrongstack/contracts/types';
+import type { AgentFactory } from '@wrongstack/coordination';
 import type { Agent } from '@wrongstack/core/agent';
-import type { AgentFactory } from '@wrongstack/core/coordination';
 import type { TaskTracker } from '@wrongstack/core/tasking';
-import type { WorktreeManager } from '@wrongstack/worktree';
 import {
   drainKanbanWorkflowCommands,
   kanbanWorkflowId,
   subscribeKanbanWorkflowCommands,
   writeKanbanWorkflowState,
 } from '@wrongstack/kanban';
+import type { WorktreeManager } from '@wrongstack/worktree';
 import {
   assertTaskGraphExecutionIntegrity,
   assertTaskGraphRequirementCoverage,

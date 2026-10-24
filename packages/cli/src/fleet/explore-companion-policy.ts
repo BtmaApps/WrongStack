@@ -1,5 +1,5 @@
 import type { SubagentConfig, TextBlock } from '@wrongstack/contracts/types';
-import { DEFAULT_EXPLORE_COMPANION_AGENT_ID, FLEET_ROSTER } from '@wrongstack/core/coordination';
+import { DEFAULT_EXPLORE_COMPANION_AGENT_ID, FLEET_ROSTER } from '@wrongstack/coordination';
 
 export const EXPLORE_COMPANION_ID_PREFIX = `${DEFAULT_EXPLORE_COMPANION_AGENT_ID}-`;
 

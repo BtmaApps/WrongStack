@@ -5,8 +5,8 @@ const mocks = vi.hoisted(() => ({
   instances: [] as Array<Record<string, unknown>>,
 }));
 
-vi.mock('@wrongstack/core/coordination', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@wrongstack/core/coordination')>();
+vi.mock('@wrongstack/coordination', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@wrongstack/coordination')>();
   class AutonomousCoordinator {
     graph = {
       load: vi.fn().mockResolvedValue(undefined),
@@ -41,7 +41,7 @@ afterEach(() => {
 
 function harness(
   director: Record<string, unknown> | null,
-  brain?: import('@wrongstack/core/coordination').BrainArbiter,
+  brain?: import('@wrongstack/coordination').BrainArbiter,
 ) {
   const listeners = new Set<(...args: unknown[]) => void>();
   const off = vi.fn();

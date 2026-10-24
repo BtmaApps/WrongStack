@@ -24,7 +24,7 @@
 
 import { readFile } from 'node:fs/promises';
 import * as path from 'node:path';
-import type { BrainDecisionRequest } from '@wrongstack/core/coordination';
+import type { BrainDecisionRequest } from '@wrongstack/coordination';
 import {
   probeSystemOneBrain,
   type SystemOneBrainProbe,

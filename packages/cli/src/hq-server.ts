@@ -13,7 +13,9 @@ import * as fs from 'node:fs/promises';
 import type { Server as HttpServer } from 'node:http';
 import * as http from 'node:http';
 import * as path from 'node:path';
-import { getSharedProjectMailbox } from '@wrongstack/core/coordination';
+import { getSharedProjectMailbox } from '@wrongstack/coordination';
+import { createCompatibilityTrustBoundary, type TrustBoundary } from '@wrongstack/core/security';
+import { isPidAlive } from '@wrongstack/core/utils';
 import {
   assessHqExposure,
   createHqPersistence,
@@ -34,8 +36,6 @@ import {
   toAlertMessage,
   watchHqAuthFile,
 } from '@wrongstack/hq';
-import { createCompatibilityTrustBoundary, type TrustBoundary } from '@wrongstack/core/security';
-import { isPidAlive } from '@wrongstack/core/utils';
 import { HQ_HTML } from './hq-recovery-html.js';
 import { createHqAuthState } from './hq-server/auth-state.js';
 import { createHqIpAllowlist } from './hq-server/ip-allowlist.js';

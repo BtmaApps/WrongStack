@@ -2,10 +2,9 @@ import * as path from 'node:path';
 import type { EventBus } from '@wrongstack/contracts/kernel';
 import type { TaskGraph } from '@wrongstack/contracts/types';
 import { ToolValidationError } from '@wrongstack/contracts/types';
+import type { AgentFactory, BrainArbiter } from '@wrongstack/coordination';
 import type { Agent } from '@wrongstack/core/agent';
-import type { AgentFactory, BrainArbiter } from '@wrongstack/core/coordination';
 import { DefaultTaskStore, type TaskStore, TaskTracker } from '@wrongstack/core/tasking';
-import { WorktreeManager } from '@wrongstack/worktree';
 import {
   cleanupStaleSddWorktrees,
   createKanbanSddSessionPersistence,
@@ -25,6 +24,7 @@ import {
   startSddRun,
   TaskGraphStore,
 } from '@wrongstack/sdd';
+import { WorktreeManager } from '@wrongstack/worktree';
 import { isGitWorkTree } from './git-process.js';
 import type { SddRunStartOpts, SddWizardDeps } from './sdd-wizard-ws-handler.js';
 

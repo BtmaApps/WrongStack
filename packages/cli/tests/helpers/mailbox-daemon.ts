@@ -20,7 +20,7 @@ import {
   MailboxProjectServerConnection,
   mailboxProjectServerEndpoint,
   mailboxProjectServerMetadataPath,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
 
 import { removeProjectFixtureDirectory } from '../../../core/tests/helpers/project-server-harness.js';
 

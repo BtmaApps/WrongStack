@@ -412,6 +412,7 @@
   },
   "dependencies": {
     "@wrongstack/contracts": "workspace:*",
+    "@wrongstack/coordination": "workspace:*",
     "@wrongstack/core": "workspace:*",
     "@wrongstack/plugin-sdk": "workspace:*",
     "@wrongstack/primitives": "workspace:*",

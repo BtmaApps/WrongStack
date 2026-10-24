@@ -212,7 +212,7 @@ const registryMock = vi.hoisted(() => ({
   listProviders: vi.fn(),
 }));
 
-vi.mock('@wrongstack/core/coordination', async (orig) => {
+vi.mock('@wrongstack/coordination', async (orig) => {
   const actual = (await orig()) as Record<string, unknown>;
   return {
     ...actual,

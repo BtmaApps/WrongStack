@@ -11,12 +11,12 @@ import {
   FLEET_ROSTER,
   getSharedProjectMailbox,
   postSessionNote,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createHostExploreCompanion } from '../../src/fleet/host-explore-companion.js';
 
-vi.mock('@wrongstack/core/coordination', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@wrongstack/core/coordination')>()),
+vi.mock('@wrongstack/coordination', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@wrongstack/coordination')>()),
   getSharedProjectMailbox: vi.fn(() => ({ query: vi.fn(async () => []), ack: vi.fn() })),
   postSessionNote: vi.fn(),
 }));

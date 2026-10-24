@@ -1,4 +1,4 @@
-import type { BrainArbiter } from '@wrongstack/core/coordination';
+import type { BrainArbiter } from '@wrongstack/coordination';
 import { describe, expect, it, vi } from 'vitest';
 import type { WebSocket } from 'ws';
 import type { BrainHandlerContext } from '../src/server/brain-handlers.js';

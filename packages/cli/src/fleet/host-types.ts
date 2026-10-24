@@ -10,8 +10,8 @@ import type {
   TokenCounter,
   Tracer,
 } from '@wrongstack/contracts/types';
+import type { BrainArbiter, ProviderModelStatusTracker } from '@wrongstack/coordination';
 import type { AgentPipelines, FallbackProfileManager } from '@wrongstack/core/agent';
-import type { BrainArbiter, ProviderModelStatusTracker } from '@wrongstack/core/coordination';
 import type { HookRunner } from '@wrongstack/core/hooks';
 import type { ProviderRegistry, ToolRegistry } from '@wrongstack/core/registry';
 
@@ -110,7 +110,7 @@ export interface MultiAgentHostOptions {
   /** Root session trace ID for correlating subagent storage events. */
   traceId?: string | undefined;
   /** Optional AgentMonitorService for tracking subagent conversations. */
-  agentMonitor?: import('@wrongstack/core/coordination').AgentMonitorService | undefined;
+  agentMonitor?: import('@wrongstack/coordination').AgentMonitorService | undefined;
   /** Called when the host auto-starts the Shadow Agent. */
   onShadowAgentStarted?: ((subagentId: string) => void) | undefined;
   /** Called when the tracked Shadow Agent stops. */

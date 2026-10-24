@@ -4,7 +4,7 @@ import {
   type Mailbox,
   type MailboxMessage,
   type MailboxQuery,
-} from '../../src/coordination/mailbox-types.js';
+} from '../../../coordination/src/mailbox-types.js';
 import {
   buildMailboxBlock,
   buildMailboxBtwAwarenessBlock,

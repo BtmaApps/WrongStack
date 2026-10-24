@@ -1,4 +1,4 @@
-import type { AgentTimelineEntry } from '@wrongstack/core/coordination';
+import type { AgentTimelineEntry } from '@wrongstack/coordination';
 // StatuslineItem is owned by @wrongstack/core/statusline; statusline-picker.tsx only
 // re-exports it. Importing from the owner keeps this contracts leaf out of the
 // components type graph (it was the sole back-edge in the tui settings type cycle).

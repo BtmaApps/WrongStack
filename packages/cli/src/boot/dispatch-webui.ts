@@ -26,10 +26,10 @@ import type {
   SessionWriter,
   SkillLoader,
 } from '@wrongstack/contracts/types';
+import type { BrainArbiter } from '@wrongstack/coordination';
 import type { Agent } from '@wrongstack/core/agent';
-import type { BrainArbiter } from '@wrongstack/core/coordination';
-import type { JournalEntry } from '@wrongstack/goal';
 import { color } from '@wrongstack/core/utils';
+import type { JournalEntry } from '@wrongstack/goal';
 import type { MCPRegistry } from '@wrongstack/mcp';
 import type { VectorMemoryStore } from '@wrongstack/vector-memory';
 import { confirmAcpLeaderThroughEvents } from '../acp-leader/acp-leader-host.js';
@@ -47,7 +47,7 @@ import {
 export interface WebUIDispatchContext {
   agent: Agent;
   events: EventBus;
-  statusTracker?: import('@wrongstack/core/coordination').ProviderModelStatusTracker | undefined;
+  statusTracker?: import('@wrongstack/coordination').ProviderModelStatusTracker | undefined;
   session: SessionWriter;
   config: Config;
   flags: Record<string, string | boolean>;
@@ -63,7 +63,7 @@ export interface WebUIDispatchContext {
   brainSettings:
     | {
         maxAutoRisk: import('@wrongstack/core/execution').BrainAutoRisk;
-        mode?: import('@wrongstack/core/coordination').BrainEscalationMode | undefined;
+        mode?: import('@wrongstack/coordination').BrainEscalationMode | undefined;
         poolLabels?: string[] | undefined;
         councilLabels?: string[] | undefined;
       }
@@ -109,10 +109,10 @@ export interface WebUIDispatchContext {
   /** Read-only worker transcript snapshot used for browser refresh replay. */
   agentTranscripts?:
     | {
-        getAllSessions(): import('@wrongstack/core/coordination').AgentVirtualSession[];
+        getAllSessions(): import('@wrongstack/coordination').AgentVirtualSession[];
         loadSessionsFromDisk(
           only?: readonly string[],
-        ): Promise<import('@wrongstack/core/coordination').AgentVirtualSession[]>;
+        ): Promise<import('@wrongstack/coordination').AgentVirtualSession[]>;
       }
     | undefined;
   /**
@@ -123,7 +123,7 @@ export interface WebUIDispatchContext {
    */
   updateInfo?: import('../webui-server/session-start-payload.js').BootUpdateInfo | undefined;
   /** Per-task agent factory for the SDD wizard's multi-agent run. */
-  sddSubagentFactory?: import('@wrongstack/core/coordination').AgentFactory | undefined;
+  sddSubagentFactory?: import('@wrongstack/coordination').AgentFactory | undefined;
   onKanbanDispatch?:
     | ((
         description: string,

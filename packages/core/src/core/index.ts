@@ -19,6 +19,7 @@ export {
   resolveChronicleFileLineage,
   resolveHqMailboxPublisherFactory,
 } from './agent-coordination.js';
+export type { AgentInternals } from './agent-internals.js';
 export { keepsOwnContext } from './agent-owned-context.js';
 export {
   type AgentInit,
@@ -47,6 +48,7 @@ export {
   type TodoItem,
 } from './context.js';
 export { type ContextBreakdown, getContextBreakdown } from './context-breakdown.js';
+export { resolveOwningSessionId } from './context-session-id.js';
 export {
   type ContinuationInput,
   type ContinuationSource,
@@ -80,6 +82,10 @@ export {
 } from './fallback-model.js';
 export { FallbackProfileManager } from './fallback-profile-manager.js';
 export {
+  buildFleetPulseBlock,
+  fleetPulseSignature,
+} from './fleet-pulse.js';
+export {
   InputBuilder,
   type InputBuilderEvent,
   type InputBuilderOptions,
@@ -94,6 +100,10 @@ export {
   type InstructionTemplateContext,
   renderInstructionLayer,
 } from './instruction-template.js';
+export {
+  buildMailboxBtwAwarenessBlock,
+  createMailboxChecker,
+} from './mailbox-loop.js';
 export {
   formatModelRef,
   type ModelRef,

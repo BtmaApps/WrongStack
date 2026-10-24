@@ -78,6 +78,7 @@
     "@wrongstack/builtin-plugins": "workspace:*",
     "@wrongstack/chronicle": "workspace:*",
     "@wrongstack/contracts": "workspace:*",
+    "@wrongstack/coordination": "workspace:*",
     "@wrongstack/core": "workspace:*",
     "@wrongstack/governance": "workspace:*",
     "@wrongstack/hq": "workspace:*",

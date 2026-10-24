@@ -12,7 +12,7 @@ import {
   areSubagentsAllowedForSession,
   type Director,
   FLEET_ROSTER,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
 
 export interface HqFleetScope {
   /**

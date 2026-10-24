@@ -1,11 +1,11 @@
-import type { Context } from '@wrongstack/core/agent';
 import {
   normalizeSubagentModelPlan,
   seedSessionSubagentPolicy,
   setSessionSubagentModelPlan,
   setSessionSubagentPolicy,
   subagentPolicyModeFrom,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
+import type { Context } from '@wrongstack/core/agent';
 import { type DestructiveKind, resolveYoloConfirmKinds } from '@wrongstack/core/security';
 import type { WebSocket } from 'ws';
 import { createAutonomyRouteHandlers } from './autonomy-routes.js';

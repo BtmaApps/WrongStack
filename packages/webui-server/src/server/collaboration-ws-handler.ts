@@ -1,6 +1,6 @@
 import type { EventBus } from '@wrongstack/contracts/kernel';
 import type { Logger } from '@wrongstack/contracts/types';
-import type { CollaborationBus, ConsumedInjectionInfo } from '@wrongstack/core/coordination';
+import type { CollaborationBus, ConsumedInjectionInfo } from '@wrongstack/coordination';
 import type { AnnotationsStore, SessionReader } from '@wrongstack/core/storage';
 import { toErrorMessage } from '@wrongstack/core/utils';
 import type { WebSocket } from 'ws';

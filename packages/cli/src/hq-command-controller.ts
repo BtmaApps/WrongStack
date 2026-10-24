@@ -17,7 +17,7 @@
  */
 
 import type { UserInputResponse } from '@wrongstack/contracts/types';
-import type { RemoteMailbox } from '@wrongstack/core/coordination';
+import type { RemoteMailbox } from '@wrongstack/coordination';
 import type { HqCommand, HqPublisherCommandResult } from '@wrongstack/hq';
 
 /**

@@ -83,7 +83,7 @@ interface SlashCommandsDeps {
       | undefined;
   };
   /** Agent Monitor Service — subagent conversation tracking and HQ streaming. */
-  agentMonitor?: import('@wrongstack/core/coordination').AgentMonitorService | undefined;
+  agentMonitor?: import('@wrongstack/coordination').AgentMonitorService | undefined;
   compactor: {
     compact(ctx: Context, opts?: { aggressive?: boolean | undefined }): Promise<CompactReport>;
   };

@@ -7,7 +7,7 @@ const mailboxMocks = vi.hoisted(() => ({
   closeError: null as Error | null,
 }));
 
-vi.mock('@wrongstack/core/coordination', () => ({
+vi.mock('@wrongstack/coordination', () => ({
   resolveProjectDir: (root: string) => root,
   RemoteMailbox: class {
     initialize = vi.fn(async () => {});

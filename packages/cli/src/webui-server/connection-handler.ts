@@ -89,7 +89,7 @@ export interface ConnectionHandlerDeps {
   loadAgentSessions?:
     | ((
         subagentIds: readonly string[],
-      ) => Promise<import('@wrongstack/core/coordination').AgentVirtualSession[]>)
+      ) => Promise<import('@wrongstack/coordination').AgentVirtualSession[]>)
     | undefined;
   needsSetup: boolean;
 }

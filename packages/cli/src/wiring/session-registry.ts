@@ -29,9 +29,7 @@ interface SetupSessionRegistryDeps {
 
 interface SetupSessionRegistryResult {
   /** AgentStatusTracker when the dynamic import and setup succeeded, else undefined. */
-  tracker:
-    | InstanceType<typeof import('@wrongstack/core/coordination').AgentStatusTracker>
-    | undefined;
+  tracker: InstanceType<typeof import('@wrongstack/coordination').AgentStatusTracker> | undefined;
   /**
    * Atomically move this process's registry ownership to another session.
    * Used by explicit resume; unrelated sessions in other processes are untouched.
@@ -63,7 +61,7 @@ export async function setupSessionRegistry(
   try {
     const [{ getSessionRegistry }, { AgentStatusTracker, FleetNotifier }] = await Promise.all([
       import('@wrongstack/core/storage'),
-      import('@wrongstack/core/coordination'),
+      import('@wrongstack/coordination'),
     ]);
     const registry = getSessionRegistry(wpaths.globalRoot);
     const projectSlug = path.basename(wpaths.projectDir);

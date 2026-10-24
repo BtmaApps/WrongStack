@@ -254,9 +254,7 @@ export async function handleApiSessionMessage(
 
   try {
     const { getSessionRegistry } = await import('@wrongstack/core/storage');
-    const { getSharedProjectMailbox, mailboxSessionTag } = await import(
-      '@wrongstack/core/coordination'
-    );
+    const { getSharedProjectMailbox, mailboxSessionTag } = await import('@wrongstack/coordination');
     const { resolveWstackPaths } = await import('@wrongstack/core/utils');
     const registry = getSessionRegistry(globalRoot);
     const probe = registryFailureSink('message', sessionId);
@@ -312,9 +310,7 @@ export async function handleApiSessionMailbox(
   }
   try {
     const { getSessionRegistry } = await import('@wrongstack/core/storage');
-    const { getSharedProjectMailbox, mailboxSessionTag } = await import(
-      '@wrongstack/core/coordination'
-    );
+    const { getSharedProjectMailbox, mailboxSessionTag } = await import('@wrongstack/coordination');
     const { resolveWstackPaths } = await import('@wrongstack/core/utils');
     const registry = getSessionRegistry(globalRoot);
     const probe = registryFailureSink('mailbox', sessionId);
@@ -402,9 +398,7 @@ export async function handleApiSessionInterrupt(
       : 'human@webui';
   try {
     const { getSessionRegistry } = await import('@wrongstack/core/storage');
-    const { getSharedProjectMailbox, mailboxSessionTag } = await import(
-      '@wrongstack/core/coordination'
-    );
+    const { getSharedProjectMailbox, mailboxSessionTag } = await import('@wrongstack/coordination');
     const { resolveWstackPaths } = await import('@wrongstack/core/utils');
     const registry = getSessionRegistry(globalRoot);
     const probe = registryFailureSink('interrupt', sessionId);
@@ -476,9 +470,7 @@ export async function handleApiFleetBroadcast(
       : 'human@webui';
   try {
     const { getSessionRegistry } = await import('@wrongstack/core/storage');
-    const { getSharedProjectMailbox, mailboxSessionTag } = await import(
-      '@wrongstack/core/coordination'
-    );
+    const { getSharedProjectMailbox, mailboxSessionTag } = await import('@wrongstack/coordination');
     const { resolveWstackPaths } = await import('@wrongstack/core/utils');
     const registry = getSessionRegistry(globalRoot);
     const probe = registryFailureSink('broadcast');

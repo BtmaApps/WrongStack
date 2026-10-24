@@ -15,8 +15,8 @@
  */
 
 import type { Config } from '@wrongstack/contracts/types';
-import type { DispatchClassifier } from '@wrongstack/core/coordination';
-import { makeLLMClassifier, makeTypeSafeDispatchClassifier } from '@wrongstack/core/coordination';
+import type { DispatchClassifier } from '@wrongstack/coordination';
+import { makeLLMClassifier, makeTypeSafeDispatchClassifier } from '@wrongstack/coordination';
 import {
   resolveTypeSafeAccount,
   type WarnSink,

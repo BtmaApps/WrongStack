@@ -1,10 +1,10 @@
 import { once } from 'node:events';
 import type { AddressInfo } from 'node:net';
-import type { BrainDecision, BrainDecisionRequest } from '@wrongstack/core/coordination';
+import type { BrainDecision, BrainDecisionRequest } from '@wrongstack/coordination';
 import { expect, it, vi } from 'vitest';
-import { WebSocket, WebSocketServer } from '../src/ws-runtime.js';
 import type { BrainHandlerContext } from '../src/server/brain-handlers.js';
 import { createBrainRouteHandlers, handleBrainRoute } from '../src/server/brain-routes.js';
+import { WebSocket, WebSocketServer } from '../src/ws-runtime.js';
 
 it('correlates out-of-order success and failure replies over a real WebSocket', async () => {
   const server = new WebSocketServer({ host: '127.0.0.1', port: 0 });

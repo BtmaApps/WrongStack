@@ -52,7 +52,7 @@
  */
 
 import type { SessionStore } from '@wrongstack/contracts/types';
-import type { AutonomousCoordinator, CoordinatorEvent } from '@wrongstack/core/coordination';
+import type { AutonomousCoordinator, CoordinatorEvent } from '@wrongstack/coordination';
 import type { WstackPaths } from '@wrongstack/core/utils';
 import type { SessionIdentityTarget } from '../wiring/session-registry.js';
 import type { PendingProjectSwitch } from './tui-project-spawn.js';

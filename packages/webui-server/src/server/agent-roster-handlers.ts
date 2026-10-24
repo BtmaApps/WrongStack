@@ -58,7 +58,7 @@ import {
   updateProjectAgentIdentity,
   updateProjectAgentLearned,
   updateProjectAgentLearningPolicy,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
 import type { WebSocket } from 'ws';
 import type { WSServerMessage } from './types.js';
 import { errMessage } from './ws-utils.js';

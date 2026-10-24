@@ -14,7 +14,7 @@ import {
   type SubagentSlot,
   setSessionSubagentModelPlan,
   subagentSlotOccupancy,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
 import { color } from '@wrongstack/core/utils';
 import type { SlashCommandContext } from './command-context.js';
 

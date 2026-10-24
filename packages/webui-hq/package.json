@@ -31,6 +31,7 @@
     "@radix-ui/react-tooltip": "^1.2.16",
     "@types/qrcode": "^1.5.6",
     "@wrongstack/contracts": "workspace:*",
+    "@wrongstack/coordination": "workspace:*",
     "@wrongstack/core": "workspace:*",
     "@wrongstack/hq": "workspace:*",
     "@wrongstack/tools": "workspace:*",

@@ -5,7 +5,7 @@ import {
   createProjectMailbox,
   type RemoteMailbox,
   resolveProjectDir,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
 import { createMailboxRouteHandlers, handleMailboxMessages } from '@wrongstack/webui-server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { WebSocket } from 'ws';

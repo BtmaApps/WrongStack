@@ -3,7 +3,7 @@ import {
   isSubagentPolicyLocked,
   setSessionSubagentPolicy,
   subagentPolicyMode,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
 import { toErrorMessage } from '@wrongstack/core/utils';
 import { useEffect } from 'react';
 import { AUTONOMY_OPTIONS } from '../components/autonomy-picker.js';

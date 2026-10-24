@@ -3,7 +3,7 @@ import {
   createProjectMailbox,
   MailboxEventEmitter,
   resolveProjectDir,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
 import { canonicalProjectRoot, wstackGlobalRoot } from '@wrongstack/core/utils';
 import { serveHttp, serveStdio } from '@wrongstack/mcp';
 import { createMailboxMcpServer } from './adapter.js';

@@ -25,13 +25,13 @@
       "types": "./dist/core/index.d.ts",
       "import": "./dist/core/index.js"
     },
+    "./brain": {
+      "types": "./dist/brain/index.d.ts",
+      "import": "./dist/brain/index.js"
+    },
     "./request-conversation": {
       "types": "./dist/core/request-conversation-binding.d.ts",
       "import": "./dist/core/request-conversation-binding.js"
-    },
-    "./agent-coordination": {
-      "types": "./dist/agent-coordination-default.d.ts",
-      "import": "./dist/agent-coordination-default.js"
     },
     "./boot": {
       "types": "./dist/boot.d.ts",
@@ -96,10 +96,6 @@
     "./design": {
       "types": "./dist/design/index.d.ts",
       "import": "./dist/design/index.js"
-    },
-    "./coordination": {
-      "types": "./dist/coordination/index.d.ts",
-      "import": "./dist/coordination/index.js"
     },
     "./registry": {
       "types": "./dist/registry/index.d.ts",

@@ -32,7 +32,7 @@ const FIXTURE_FILE = path.join(FIXTURE_DIR, 'ios.md');
 // pins the fixture source.
 const { agentPrompt } = await import('../src/agent-prompts.js');
 const { AGENT_CATALOG, ALL_AGENT_DEFINITIONS } = await import('../src/index.js');
-const { FLEET_ROSTER } = await import('../../core/src/coordination/fleet.js');
+const { FLEET_ROSTER } = await import('../../coordination/src/fleet.js');
 
 describe('iOS assistant smoke-test', () => {
   let originalEnvDir: string | undefined;

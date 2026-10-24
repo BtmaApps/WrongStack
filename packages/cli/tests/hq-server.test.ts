@@ -2,12 +2,12 @@ import * as fs from 'node:fs/promises';
 import * as http from 'node:http';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { createProjectMailbox } from '@wrongstack/core/coordination';
+import { createProjectMailbox } from '@wrongstack/coordination';
 import { HQ_AUTH_FILE_VERSION, HQ_PROTOCOL_VERSION, writeHqAuthFile } from '@wrongstack/hq';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { WebSocket } from '../src/ws-runtime.js';
 import { createCliHqPublisher } from '../src/hq-publisher.js';
 import { HQ_HTML, type HqServerHandle, startHqServer } from '../src/hq-server.js';
+import { WebSocket } from '../src/ws-runtime.js';
 import { removeMailboxTempRoot } from './helpers/mailbox-daemon.js';
 
 let handle: HqServerHandle | null = null;
@@ -44,7 +44,7 @@ afterEach(async () => {
  * dir, which doubles as a project dir in the same-process publisher test.
  */
 async function stopProjectMailboxOwners(): Promise<void> {
-  const { MailboxProjectServerConnection } = await import('@wrongstack/core/coordination');
+  const { MailboxProjectServerConnection } = await import('@wrongstack/coordination');
   const candidates = [dataDir];
   try {
     const projectsRoot = path.join(tempRoot, 'projects');
@@ -2568,9 +2568,7 @@ describe('HQ direct mailbox write (POST /api/mailbox-send)', () => {
 
       // The message must be readable from the SAME project mailbox the server
       // resolved — proving the write landed with zero connected clients.
-      const { createProjectMailbox, resolveProjectDir } = await import(
-        '@wrongstack/core/coordination'
-      );
+      const { createProjectMailbox, resolveProjectDir } = await import('@wrongstack/coordination');
       const projectDir = resolveProjectDir(projectRoot, globalRoot);
       const mailbox = createProjectMailbox({ projectDir, isolatedConnection: true });
       const msgs = await mailbox.query({ to: 'leader' });
@@ -2610,9 +2608,7 @@ describe('HQ direct mailbox write (POST /api/mailbox-send)', () => {
       });
       expect(res.status).toBe(202);
 
-      const { createProjectMailbox, resolveProjectDir } = await import(
-        '@wrongstack/core/coordination'
-      );
+      const { createProjectMailbox, resolveProjectDir } = await import('@wrongstack/coordination');
       const mailbox = createProjectMailbox({
         projectDir: resolveProjectDir(projectRoot, globalRoot),
         isolatedConnection: true,
@@ -2661,9 +2657,7 @@ describe('HQ direct mailbox write (POST /api/mailbox-send)', () => {
       });
       expect(res.status).toBe(202);
 
-      const { createProjectMailbox, resolveProjectDir } = await import(
-        '@wrongstack/core/coordination'
-      );
+      const { createProjectMailbox, resolveProjectDir } = await import('@wrongstack/coordination');
       const mailbox = createProjectMailbox({
         projectDir: resolveProjectDir(projectRoot, globalRoot),
         isolatedConnection: true,
@@ -2701,9 +2695,7 @@ describe('HQ direct mailbox write (POST /api/mailbox-send)', () => {
       // queue is delivered as a plain `note` mailbox message.
       expect(body.type).toBe('note');
 
-      const { createProjectMailbox, resolveProjectDir } = await import(
-        '@wrongstack/core/coordination'
-      );
+      const { createProjectMailbox, resolveProjectDir } = await import('@wrongstack/coordination');
       const mailbox = createProjectMailbox({
         projectDir: resolveProjectDir(projectRoot, globalRoot),
         isolatedConnection: true,
@@ -2749,9 +2741,7 @@ describe('HQ direct mailbox write (POST /api/mailbox-send)', () => {
         audience: 'leaders',
       });
 
-      const { createProjectMailbox, resolveProjectDir } = await import(
-        '@wrongstack/core/coordination'
-      );
+      const { createProjectMailbox, resolveProjectDir } = await import('@wrongstack/coordination');
       const mailbox = createProjectMailbox({
         projectDir: resolveProjectDir(projectRoot, globalRoot),
         isolatedConnection: true,

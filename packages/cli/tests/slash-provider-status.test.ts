@@ -1,7 +1,7 @@
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname } from 'node:path';
-import { ProviderModelStatusTracker } from '@wrongstack/core/coordination';
+import { ProviderModelStatusTracker } from '@wrongstack/coordination';
 import { describe, expect, it } from 'vitest';
 import { buildProviderStatusCommand } from '../src/slash-commands/provider-status.js';
 

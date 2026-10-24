@@ -6,14 +6,14 @@ import type {
   TaskNode,
   TaskResult,
 } from '@wrongstack/contracts/types';
-import type { AgentFactory } from '@wrongstack/core/coordination';
+import type { AgentFactory } from '@wrongstack/coordination';
 import {
   DefaultMultiAgentCoordinator,
   makeAgentSubagentRunner,
   withDisabledToolFiltering,
-} from '@wrongstack/core/coordination';
-import type { WorktreeHandle } from '@wrongstack/worktree';
+} from '@wrongstack/coordination';
 import { requireSessionId } from '@wrongstack/primitives';
+import type { WorktreeHandle } from '@wrongstack/worktree';
 import type { SddParallelControlsHost } from './sdd-parallel-controls.js';
 import type {
   SddParallelRunOptions,

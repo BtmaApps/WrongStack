@@ -40,7 +40,7 @@ export interface SessionStartPayloadDeps {
   modelsRegistry?: ModelsRegistry | undefined;
   /** Saved providers, to find an alias's catalog entry (`work` → `anthropic`). */
   appConfig?: { providers?: Config['providers'] } | undefined;
-  statusTracker?: import('@wrongstack/core/coordination').ProviderModelStatusTracker | undefined;
+  statusTracker?: import('@wrongstack/coordination').ProviderModelStatusTracker | undefined;
   modeId?: string | undefined;
   projectRoot?: string | undefined;
   updateInfo?: BootUpdateInfo | undefined;

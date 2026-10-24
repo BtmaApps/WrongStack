@@ -24,7 +24,7 @@ import type { Config } from '@wrongstack/contracts/types/config';
 import type { Provider, Request, Response } from '@wrongstack/contracts/types/provider';
 import { ProviderError } from '@wrongstack/contracts/types/provider';
 import { describe, expect, it, vi } from 'vitest';
-import { ProviderModelStatusTracker } from '../../src/coordination/provider-status-tracker.js';
+import { ProviderModelStatusTracker } from '../../../coordination/src/provider-status-tracker.js';
 import type { Context } from '../../src/core/context.js';
 import { createFallbackModelExtension } from '../../src/core/fallback-model.js';
 

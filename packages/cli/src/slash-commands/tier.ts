@@ -9,7 +9,7 @@
  */
 
 import type { Config, ModelTierLevel, SlashCommand } from '@wrongstack/contracts/types';
-import { leaderTierPolicy, listTierIds, resolveTier } from '@wrongstack/core/coordination';
+import { leaderTierPolicy, listTierIds, resolveTier } from '@wrongstack/coordination';
 import { color, toErrorMessage, updateJsonObjectFile } from '@wrongstack/core/utils';
 import { backupCurrent } from '../config-history.js';
 import { activeProfileConfigPath } from '../profile-config-path.js';

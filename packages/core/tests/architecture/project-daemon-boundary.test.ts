@@ -49,10 +49,10 @@ interface DaemonSpec {
 const DAEMONS: readonly DaemonSpec[] = [
   {
     name: 'mailbox',
-    endpointModule: 'packages/core/src/coordination/mailbox-project-server-endpoint.ts',
-    accessModule: 'packages/core/src/coordination/mailbox-project-server-client.ts',
+    endpointModule: 'packages/coordination/src/mailbox-project-server-endpoint.ts',
+    accessModule: 'packages/coordination/src/mailbox-project-server-client.ts',
     inlineEnv: 'WRONGSTACK_MAILBOX_INLINE',
-    serverModule: 'packages/core/src/coordination/mailbox-project-server.ts',
+    serverModule: 'packages/coordination/src/mailbox-project-server.ts',
   },
   {
     name: 'sage',
@@ -297,7 +297,7 @@ describe('project daemon boundary', () => {
     // constructs its store directly on that path today — the others open
     // storage lazily elsewhere — so this is asserted where it is structurally
     // checkable and extended per migration.
-    const owner = 'packages/core/src/coordination/mailbox-project-server.ts';
+    const owner = 'packages/coordination/src/mailbox-project-server.ts';
     const source = await fs.readFile(path.join(ROOT, owner), 'utf8');
     const elects = source.indexOf('bindProjectEndpoint(');
     const opensStore = source.indexOf('new SqliteMailbox');

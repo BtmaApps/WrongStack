@@ -1,5 +1,5 @@
 import type { SubagentRunContext, TaskSpec } from '@wrongstack/contracts/types';
-import { SessionNoteHub } from '@wrongstack/core/coordination';
+import { SessionNoteHub } from '@wrongstack/coordination';
 import { describe, expect, it, vi } from 'vitest';
 import { registerAcpSteerInbox, steerMessage } from '../src/fleet/acp-live-steer.js';
 

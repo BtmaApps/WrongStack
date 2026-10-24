@@ -33,7 +33,7 @@ import {
   type LeaderDeliveryHub,
   type LeaderWakePort,
   leaderDeliveryHub,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
 import type { PendingConfirm } from './pending-confirms.js';
 
 /** The controller surface this host drives (core's `LeaderAutoWakeController`). */

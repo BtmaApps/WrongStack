@@ -1,5 +1,5 @@
+import type { MailboxAgentStatus, MailboxMessage } from '@wrongstack/coordination';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { MailboxAgentStatus, MailboxMessage } from '@wrongstack/core/coordination';
 import {
   HqPublisher,
   type HqSocketLike,

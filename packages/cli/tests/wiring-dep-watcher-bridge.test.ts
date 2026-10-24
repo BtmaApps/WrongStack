@@ -29,7 +29,7 @@ const t = vi.hoisted(() => {
   };
 });
 
-vi.mock('@wrongstack/core/coordination', () => ({
+vi.mock('@wrongstack/coordination', () => ({
   attachDepWatcherBridge: t.attachDepWatcherBridgeMock,
   getSharedProjectMailbox: t.getSharedProjectMailboxMock,
 }));

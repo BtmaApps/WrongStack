@@ -12,7 +12,7 @@ vi.mock('@wrongstack/core/storage', () => ({
   createSessionEventBridge,
   resolveSessionLoggingConfig,
 }));
-vi.mock('@wrongstack/core/coordination', () => ({ recordFileAction }));
+vi.mock('@wrongstack/coordination', () => ({ recordFileAction }));
 
 const { wireSessionEvents } = await import('../src/session-event-wiring.js');
 

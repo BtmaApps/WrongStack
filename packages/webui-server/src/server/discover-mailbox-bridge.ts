@@ -2,11 +2,7 @@ import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
-import {
-  type MailboxBridgeLock,
-  readLiveLock,
-  resolveProjectDir,
-} from '@wrongstack/core/coordination';
+import { type MailboxBridgeLock, readLiveLock, resolveProjectDir } from '@wrongstack/coordination';
 import { isStandaloneBinary, wstackGlobalRoot } from '@wrongstack/core/utils';
 import { errMessage } from './ws-utils.js';
 

@@ -1,4 +1,4 @@
-import type { Director } from '@wrongstack/core/coordination';
+import type { Director } from '@wrongstack/coordination';
 import type { AppProps } from './app-props.js';
 import type { resolveControllerProps } from './controller-props.js';
 import type { useAppEnvironment } from './hooks/use-app-environment.js';

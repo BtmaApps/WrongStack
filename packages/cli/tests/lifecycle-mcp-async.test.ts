@@ -2,7 +2,7 @@ import { MCPRegistry } from '@wrongstack/mcp';
 import { describe, expect, it, vi } from 'vitest';
 import { setupLifecycleAndPlugins } from '../src/wiring/lifecycle-plugins.js';
 
-vi.mock('@wrongstack/core/coordination', () => ({
+vi.mock('@wrongstack/coordination', () => ({
   getSharedProjectMailbox: vi.fn().mockReturnValue({}),
 }));
 

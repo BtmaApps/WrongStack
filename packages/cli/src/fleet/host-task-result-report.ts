@@ -4,7 +4,7 @@ import {
   getSharedProjectMailbox,
   mailboxSessionTag,
   type TaskResultNotification,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
 
 type ReportTaskResultToLeaderOptions = {
   notification: TaskResultNotification;

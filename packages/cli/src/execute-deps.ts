@@ -29,15 +29,9 @@ import type {
   SkillLoader,
   TokenCounter,
 } from '@wrongstack/contracts/types';
+import type { AgentFactory, BrainArbiter, Director, RemoteMailbox } from '@wrongstack/coordination';
 import type { Agent, Context } from '@wrongstack/core/agent';
-import type {
-  AgentFactory,
-  BrainArbiter,
-  Director,
-  RemoteMailbox,
-} from '@wrongstack/core/coordination';
 import type { BrainAutoRisk } from '@wrongstack/core/execution';
-import type { JournalEntry } from '@wrongstack/goal';
 import type { SlashCommandRegistry } from '@wrongstack/core/registry';
 import type {
   StatuslineDensities,
@@ -46,6 +40,7 @@ import type {
 } from '@wrongstack/core/statusline';
 import type { QueueStore } from '@wrongstack/core/storage';
 import type { WstackPaths } from '@wrongstack/core/utils';
+import type { JournalEntry } from '@wrongstack/goal';
 import type { MCPRegistry } from '@wrongstack/mcp';
 import type { SddLifecycleResult, SddRunControl } from '@wrongstack/sdd';
 import type { VectorMemoryStore } from '@wrongstack/vector-memory';
@@ -195,7 +190,7 @@ interface SessionDeps {
 
 /** Provider/model registry, selection and switching. */
 interface ProviderDeps {
-  statusTracker?: import('@wrongstack/core/coordination').ProviderModelStatusTracker | undefined;
+  statusTracker?: import('@wrongstack/coordination').ProviderModelStatusTracker | undefined;
   providerAuthRegistry: import('@wrongstack/core/registry').ProviderAuthRegistry;
   modelsRegistry: ModelsRegistry;
   savedProviderCfg: ProviderConfig | undefined;
@@ -292,8 +287,8 @@ interface FleetDeps {
         getTranscript(
           subagentId: string,
           limit?: number,
-        ): import('@wrongstack/core/coordination').AgentTimelineEntry[];
-        getAllSessions(): import('@wrongstack/core/coordination').AgentVirtualSession[];
+        ): import('@wrongstack/coordination').AgentTimelineEntry[];
+        getAllSessions(): import('@wrongstack/coordination').AgentVirtualSession[];
         /**
          * Ring + on-disk transcripts, for surfaces that survive a process
          * restart. `only` restricts the result to named subagents — the
@@ -303,7 +298,7 @@ interface FleetDeps {
          */
         loadSessionsFromDisk(
           only?: readonly string[],
-        ): Promise<import('@wrongstack/core/coordination').AgentVirtualSession[]>;
+        ): Promise<import('@wrongstack/coordination').AgentVirtualSession[]>;
       }
     | undefined;
   authHost?: import('@wrongstack/tui').AuthPanelHost | undefined;
@@ -428,7 +423,7 @@ export interface PickerDeps {
   brainSettings?:
     | {
         maxAutoRisk: BrainAutoRisk;
-        mode?: import('@wrongstack/core/coordination').BrainEscalationMode | undefined;
+        mode?: import('@wrongstack/coordination').BrainEscalationMode | undefined;
         poolLabels?: string[] | undefined;
         councilLabels?: string[] | undefined;
       }
@@ -457,7 +452,7 @@ export interface LifecycleDeps {
     | (() => import('@wrongstack/core/execution').EternalAutonomyEngine | null)
     | undefined;
   getParallelEngine?:
-    | (() => import('@wrongstack/core/coordination').ParallelEternalEngine | null)
+    | (() => import('@wrongstack/coordination').ParallelEternalEngine | null)
     | undefined;
   getSddRun?: (() => SddRunControl | null) | undefined;
   onSddLifecycle?:

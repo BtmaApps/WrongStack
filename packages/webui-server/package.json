@@ -49,6 +49,7 @@
     "@wrongstack/builtin-plugins": "workspace:*",
     "@wrongstack/chronicle": "workspace:*",
     "@wrongstack/contracts": "workspace:*",
+    "@wrongstack/coordination": "workspace:*",
     "@wrongstack/core": "workspace:*",
     "@wrongstack/goal": "workspace:*",
     "@wrongstack/hq": "workspace:*",

@@ -79,7 +79,7 @@ import {
   MailboxHttpRateLimiter,
   release,
   resolveProjectDir,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
 import { startSharedHeapWatchdog, wstackGlobalRoot } from '@wrongstack/core/utils';
 import { type CliHqConnection, startCliHqConnection } from '../../hq-publisher.js';
 import type { SubcommandDeps, SubcommandHandler } from '../contracts.js';

@@ -1,6 +1,6 @@
 import type { Logger, MemoryPort } from '@wrongstack/contracts/types';
+import type { ProviderModelStatusTracker } from '@wrongstack/coordination';
 import type { Agent } from '@wrongstack/core/agent';
-import type { ProviderModelStatusTracker } from '@wrongstack/core/coordination';
 import type { TrustBoundary } from '@wrongstack/core/security';
 import type { MCPRegistry } from '@wrongstack/mcp';
 import type { WebSocket } from 'ws';

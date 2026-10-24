@@ -8,8 +8,8 @@ import type {
   SessionWriter,
   SkillLoader,
 } from '@wrongstack/contracts/types';
+import type { BrainArbiter } from '@wrongstack/coordination';
 import type { Agent } from '@wrongstack/core/agent';
-import type { BrainArbiter } from '@wrongstack/core/coordination';
 import type { BrainAutoRisk } from '@wrongstack/core/execution';
 import type { TrustBoundary } from '@wrongstack/core/security';
 import type { MCPRegistry } from '@wrongstack/mcp';
@@ -33,7 +33,7 @@ export interface CliWebUIOptions {
   trustBoundary?: TrustBoundary | undefined;
   agent: Agent;
   events: EventBus;
-  statusTracker?: import('@wrongstack/core/coordination').ProviderModelStatusTracker | undefined;
+  statusTracker?: import('@wrongstack/coordination').ProviderModelStatusTracker | undefined;
   session: SessionWriter;
   /** HTTP port (WS shares it — single-port design). Defaults to 3456. */
   port?: number | undefined;
@@ -119,7 +119,7 @@ export interface CliWebUIOptions {
   /** Read-only worker transcript snapshot used for F5/reconnect replay. */
   agentTranscripts?:
     | {
-        getAllSessions(): import('@wrongstack/core/coordination').AgentVirtualSession[];
+        getAllSessions(): import('@wrongstack/coordination').AgentVirtualSession[];
         /**
          * Ring + on-disk transcripts, for surfaces that survive a process
          * restart. `only` restricts the result to named subagents — the
@@ -129,7 +129,7 @@ export interface CliWebUIOptions {
          */
         loadSessionsFromDisk(
           only?: readonly string[],
-        ): Promise<import('@wrongstack/core/coordination').AgentVirtualSession[]>;
+        ): Promise<import('@wrongstack/coordination').AgentVirtualSession[]>;
       }
     | undefined;
   /**
@@ -182,7 +182,7 @@ export interface CliWebUIOptions {
    * When present, the WebUI exposes the "New SDD Project" wizard, which runs the
    * same multi-agent fleet as `/sdd execute`. Omitted → wizard is unavailable.
    */
-  sddSubagentFactory?: import('@wrongstack/core/coordination').AgentFactory | undefined;
+  sddSubagentFactory?: import('@wrongstack/coordination').AgentFactory | undefined;
   /** Session store — enables session.resume and session.delete from the WebUI. */
   sessionStore?: SessionStore | undefined;
   /** Host Brain arbiter (same instance bound at TOKENS.BrainArbiter). */
@@ -191,7 +191,7 @@ export interface CliWebUIOptions {
   brainSettings?:
     | {
         maxAutoRisk: BrainAutoRisk;
-        mode?: import('@wrongstack/core/coordination').BrainEscalationMode | undefined;
+        mode?: import('@wrongstack/coordination').BrainEscalationMode | undefined;
         poolLabels?: string[] | undefined;
         councilLabels?: string[] | undefined;
       }

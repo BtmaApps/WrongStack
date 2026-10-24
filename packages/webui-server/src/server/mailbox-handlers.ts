@@ -15,7 +15,7 @@ import {
   mailboxIdentityBase,
   type RemoteMailbox,
   resolveProjectDir,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
 import type { WebSocket } from 'ws';
 import type { MailboxActionPayload, MailboxSendPayload } from './ws-payload-validation.js';
 import { clampLimit } from './ws-payload-validation.js';

@@ -5,7 +5,7 @@ import {
   type Director,
   getSharedProjectMailbox,
   mailboxSessionTag,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
 
 import { createFleetStatusBroadcaster } from './status-broadcast.js';
 

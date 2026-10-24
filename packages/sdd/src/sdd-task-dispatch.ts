@@ -9,7 +9,7 @@ export interface SddTaskDispatchHost {
   ) => Promise<import('./sdd-parallel-run-types.js').TaskOutcome>;
   stopRequested: boolean;
   opts: import('./sdd-parallel-run-types.js').SddParallelRunOptions;
-  coordinator: import('@wrongstack/core/coordination').DefaultMultiAgentCoordinator | null;
+  coordinator: import('@wrongstack/coordination').DefaultMultiAgentCoordinator | null;
   usedNicknames: Set<string>;
   idleTimeoutMs: number;
   timeoutMs: number | undefined;

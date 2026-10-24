@@ -1,7 +1,7 @@
 import type { EventBus } from '@wrongstack/contracts/kernel';
 import type { TaskGraph, TaskNode, TaskProgress, TaskResult } from '@wrongstack/contracts/types';
+import type { AgentFactory } from '@wrongstack/coordination';
 import type { Agent } from '@wrongstack/core/agent';
-import type { AgentFactory } from '@wrongstack/core/coordination';
 import type { TaskTracker } from '@wrongstack/core/tasking';
 import type { WorktreeManager } from '@wrongstack/worktree';
 import type { TaskBatch } from './sdd-task-decomposer.js';

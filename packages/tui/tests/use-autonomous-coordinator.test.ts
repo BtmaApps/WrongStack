@@ -1,7 +1,7 @@
+import type { CoordinatorEvent } from '@wrongstack/coordination';
 import { render } from 'ink-testing-library';
 import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { CoordinatorEvent } from '@wrongstack/core/coordination';
 import { useAutonomousCoordinator } from '../src/hooks/use-autonomous-coordinator.js';
 import { Text } from '../src/ink.js';
 

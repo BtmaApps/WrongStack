@@ -2,7 +2,7 @@ import * as fs from 'node:fs/promises';
 import { createServer, type Server } from 'node:http';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { acquireOrJoin, MAILBOX_BRIDGE_LOCK_FILENAME } from '@wrongstack/core/coordination';
+import { acquireOrJoin, MAILBOX_BRIDGE_LOCK_FILENAME } from '@wrongstack/coordination';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   type ProbeFn,
@@ -401,7 +401,7 @@ describe('tryAcquireMailboxBridge', () => {
       strictPort: false,
     });
     expect(lock.kind).toBe('acquired');
-    const { readLiveLock } = await import('@wrongstack/core/coordination');
+    const { readLiveLock } = await import('@wrongstack/coordination');
     const result = await readLiveLock(projectDir);
     expect(result.kind).toBe('probe-failed');
     if (result.kind === 'probe-failed') {

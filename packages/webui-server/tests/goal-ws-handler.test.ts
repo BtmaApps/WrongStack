@@ -77,7 +77,7 @@ vi.mock('@wrongstack/goal', async (importOriginal) => {
   };
 });
 
-vi.mock('@wrongstack/core/coordination', () => ({
+vi.mock('@wrongstack/coordination', () => ({
   assignNickname: vi.fn(() => ({ key: 'nick-1', display: 'alice (1)' })),
 }));
 

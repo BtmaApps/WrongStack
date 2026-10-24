@@ -18,8 +18,8 @@ import type {
   CredentialValidation,
   IssueCredentialOptions,
   MailboxCredential,
-} from '../../src/coordination/mailbox-credential-store.js';
-import { SqliteMailbox } from '../../src/coordination/sqlite-mailbox.js';
+} from '../../../coordination/src/mailbox-credential-store.js';
+import { SqliteMailbox } from '../../../coordination/src/sqlite-mailbox.js';
 
 export interface CredentialStoreLike {
   load(): Promise<void>;

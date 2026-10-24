@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import type { EventBus } from '@wrongstack/contracts/kernel';
 import type { PermissionPolicy, ToolConfirmPendingResult } from '@wrongstack/contracts/types';
+import type { BrainArbiter } from '@wrongstack/coordination';
 import type { Context } from '@wrongstack/core/agent';
-import type { BrainArbiter } from '@wrongstack/core/coordination';
 import type { ToolExecutor } from '@wrongstack/core/execution';
 import {
   DEFAULT_ALWAYS_TRUST_TTL_MS,

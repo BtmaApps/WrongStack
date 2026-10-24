@@ -5,7 +5,7 @@
 
 import type { EventBus } from '@wrongstack/contracts/kernel/events';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { AgentStatusTracker } from '../src/coordination/agent-status-tracker.js';
+import { AgentStatusTracker } from '../../coordination/src/agent-status-tracker.js';
 import type { AgentEntry, SessionRegistry } from '../src/session-catalog/session-registry.js';
 
 // ── Mocks ──────────────────────────────────────────────────────────────

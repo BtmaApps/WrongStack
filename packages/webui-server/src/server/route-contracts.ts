@@ -13,8 +13,8 @@ import type {
   SessionStore,
   SkillLoader,
 } from '@wrongstack/contracts/types';
+import type { AgentFactory, ObservableBrainArbiter } from '@wrongstack/coordination';
 import type { Agent, AgentPipelines, Context } from '@wrongstack/core/agent';
-import type { AgentFactory, ObservableBrainArbiter } from '@wrongstack/core/coordination';
 import type {
   AutoCompactionMiddleware,
   BrainAutoRisk,

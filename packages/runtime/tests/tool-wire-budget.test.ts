@@ -1,10 +1,10 @@
 import type { JSONSchema, Tool } from '@wrongstack/contracts/types';
-import * as coordination from '@wrongstack/core/coordination';
+import * as coordination from '@wrongstack/coordination';
 import { contextManagerTool } from '@wrongstack/core/infrastructure';
-import * as coreTools from '@wrongstack/tools/management';
 import { SCHEMA_DESCRIPTION_MAX_CHARS, TOOL_DESCRIPTION_MAX_CHARS } from '@wrongstack/core/utils';
 import { createSageTools } from '@wrongstack/sage';
 import { builtinTools } from '@wrongstack/tools/builtin';
+import * as coreTools from '@wrongstack/tools/management';
 import {
   forgetTool,
   relatedMemoryTool,

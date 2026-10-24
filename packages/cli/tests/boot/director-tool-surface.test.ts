@@ -1,4 +1,4 @@
-import { buildDirectorToolset, FLEET_ROSTER } from '@wrongstack/core/coordination';
+import { buildDirectorToolset, FLEET_ROSTER } from '@wrongstack/coordination';
 import { ToolRegistry } from '@wrongstack/core/registry';
 import { registerCanonicalHostTools } from '@wrongstack/runtime/tool-registration';
 import { describe, expect, it, vi } from 'vitest';

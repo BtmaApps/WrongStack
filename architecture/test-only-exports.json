@@ -463,44 +463,51 @@
       "normalizeRuntimeToolName",
       "runtimeCapabilityForTool"
     ],
-    "packages/core/src/coordination/fleet.ts": [
+    "packages/coordination/src/fleet.ts": [
       "EXPLORE_COMPANION_TOOLS"
     ],
-    "packages/core/src/coordination/mailbox-codecs.ts": [
+    "packages/coordination/src/leader-delivery-attach.ts": [
+      "isLeaderAgentId"
+    ],
+    "packages/coordination/src/mailbox-attach.ts": [
+      "applySessionAffinityFilter",
+      "resetMailboxHqPublishersForTests"
+    ],
+    "packages/coordination/src/mailbox-codecs.ts": [
       "parseMailboxHeartbeatInput",
       "parseMailboxRegistrationInput",
       "SEND_ALLOWED_FIELDS"
     ],
-    "packages/core/src/coordination/mailbox-credential-store.ts": [
+    "packages/coordination/src/mailbox-credential-store.ts": [
       "resolveCredentialStorePath"
     ],
-    "packages/core/src/coordination/mailbox-http-sse.ts": [
+    "packages/coordination/src/mailbox-http-sse.ts": [
       "MAX_PENDING_SSE_OPERATIONS",
       "SSE_REVALIDATION_TIMEOUT_MS"
     ],
-    "packages/core/src/coordination/mailbox-message-codec.ts": [
+    "packages/coordination/src/mailbox-message-codec.ts": [
       "parseMailboxLine",
       "parseMailboxLines",
       "parseMailboxMessageLine",
       "serializeAckRecord",
       "serializeMailboxMessage"
     ],
-    "packages/core/src/coordination/mailbox-project-server-endpoint.ts": [
+    "packages/coordination/src/mailbox-project-server-endpoint.ts": [
       "mailboxProjectServerKey"
     ],
-    "packages/core/src/coordination/mailbox-receipt-folding.ts": [
+    "packages/coordination/src/mailbox-receipt-folding.ts": [
       "buildReceiptRecordV2",
       "extractV2Receipts",
       "materializeMessages",
       "serializeReceiptRecordV2"
     ],
-    "packages/core/src/coordination/mutation-engine.ts": [
+    "packages/coordination/src/mutation-engine.ts": [
       "applyMutation"
     ],
-    "packages/core/src/coordination/session-subagent-models.ts": [
+    "packages/coordination/src/session-subagent-models.ts": [
       "__resetAllSessionSubagentModelPlans"
     ],
-    "packages/core/src/coordination/subagent-nicknames.ts": [
+    "packages/coordination/src/subagent-nicknames.ts": [
       "getAllNicknameKeys"
     ],
     "packages/core/src/core/continue-to-next-iteration.ts": [
@@ -571,13 +578,6 @@
     ],
     "packages/core/src/infrastructure/provider-cache-ledger.ts": [
       "RECENT_HIT_RATIO_WINDOW"
-    ],
-    "packages/core/src/leader-delivery-attach.ts": [
-      "isLeaderAgentId"
-    ],
-    "packages/core/src/mailbox-attach.ts": [
-      "applySessionAffinityFilter",
-      "resetMailboxHqPublishersForTests"
     ],
     "packages/core/src/quota/index.ts": [
       "reachedQuotaWindow",

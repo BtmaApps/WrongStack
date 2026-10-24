@@ -25,10 +25,10 @@ import * as path from 'node:path';
 const DatabaseSync = loadTestDatabaseSync();
 
 import { fileURLToPath } from 'node:url';
-import { type MailboxMessage, resolveProjectDir } from '@wrongstack/core/coordination';
+import { type MailboxMessage, resolveProjectDir } from '@wrongstack/coordination';
 import { wstackGlobalRoot } from '@wrongstack/core/utils';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import type { PostFn } from '../../core/tests/coordination/mailbox-mutation-fixtures.js';
+import type { PostFn } from '../../coordination/tests/mailbox-mutation-fixtures.js';
 import {
   ACK_DEF,
   ACK_MANY_DEF,
@@ -40,7 +40,7 @@ import {
   HEARTBEAT_DEF,
   QUERY_DEF,
   SEND_DEF,
-} from '../../core/tests/coordination/mailbox-mutation-fixtures.js';
+} from '../../coordination/tests/mailbox-mutation-fixtures.js';
 
 import { removeProjectFixtureDirectory } from '../../core/tests/helpers/project-server-harness.js';
 

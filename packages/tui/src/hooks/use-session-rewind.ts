@@ -1,5 +1,5 @@
+import type { Director } from '@wrongstack/coordination';
 import type { Agent } from '@wrongstack/core/agent';
-import type { Director } from '@wrongstack/core/coordination';
 import {
   applyRewindToConversation,
   DefaultSessionRewinder,

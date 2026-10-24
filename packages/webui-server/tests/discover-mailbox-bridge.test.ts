@@ -13,7 +13,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const readLiveLock = vi.fn(async () => ({ kind: 'absent' as const }));
 
-vi.mock('@wrongstack/core/coordination', () => ({
+vi.mock('@wrongstack/coordination', () => ({
   readLiveLock: (...args: unknown[]) =>
     (readLiveLock as unknown as (...a: unknown[]) => unknown)(...args),
   resolveProjectDir: (root: string) => root,

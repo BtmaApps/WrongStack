@@ -24,7 +24,7 @@ class FakeTracker {
     return [];
   }
 }
-vi.mock('@wrongstack/core/coordination', () => ({ AgentStatusTracker: FakeTracker }));
+vi.mock('@wrongstack/coordination', () => ({ AgentStatusTracker: FakeTracker }));
 
 const bridges: { sessionId: string; stopped: boolean; writer: unknown }[] = [];
 const startSessionTelemetryBridge = vi.fn((opts: { sessionId: string; writer?: unknown }) => {

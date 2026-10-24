@@ -9,9 +9,9 @@ import {
   getSharedProjectMailbox,
   type MailboxMessage,
   resolveProjectDir,
-} from '@wrongstack/core/coordination';
-import { HQ_AUTH_FILE_VERSION, writeHqAuthFile } from '@wrongstack/hq';
+} from '@wrongstack/coordination';
 import { wstackGlobalRoot } from '@wrongstack/core/utils';
+import { HQ_AUTH_FILE_VERSION, writeHqAuthFile } from '@wrongstack/hq';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { type HqServerHandle, startHqServer } from '../src/hq-server.js';

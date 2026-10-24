@@ -1,6 +1,6 @@
 import type { Config } from '@wrongstack/contracts/types/config';
 import { describe, expect, it } from 'vitest';
-import type { ProviderModelStatusTracker } from '../../src/coordination/provider-status-tracker.js';
+import type { ProviderModelStatusTracker } from '../../../coordination/src/provider-status-tracker.js';
 import {
   diagnoseFallbackConfig,
   simulateFallbackFailover,

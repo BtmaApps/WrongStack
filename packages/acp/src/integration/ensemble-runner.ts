@@ -26,7 +26,7 @@
  *    `finally`, so a throw in the body still tears the child down.
  */
 
-import { SubagentBudget } from '@wrongstack/core/coordination';
+import { SubagentBudget } from '@wrongstack/coordination';
 import type { ACPProgressEvent } from '../client/acp-session.js';
 import { defaultPermissionPolicy } from '../client/permission.js';
 import { type DetectedAgent, EnsembleRegistry } from '../registry/ensemble-registry.js';

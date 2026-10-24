@@ -1,8 +1,8 @@
 import type { Logger } from '@wrongstack/contracts/types';
+import { type AgentFactory, assignNickname } from '@wrongstack/coordination';
 import type { Agent, Context } from '@wrongstack/core/agent';
-import { type AgentFactory, assignNickname } from '@wrongstack/core/coordination';
-import { GoalAssessor, type GoalAssessResult, type PhaseNode } from '@wrongstack/goal';
 import { toErrorMessage } from '@wrongstack/core/utils';
+import { GoalAssessor, type GoalAssessResult, type PhaseNode } from '@wrongstack/goal';
 import type { WebSocket } from 'ws';
 import { sendSerialized } from './ws-utils.js';
 

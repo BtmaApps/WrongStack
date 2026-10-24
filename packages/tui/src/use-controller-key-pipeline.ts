@@ -255,7 +255,7 @@ export function useControllerKeyPipeline({
   stateRef: React.RefObject<import('./app-state.js').State>;
   exitRequestedRef: React.RefObject<boolean>;
   agent: import('@wrongstack/core/agent').Agent;
-  liveDirector: () => import('@wrongstack/core/coordination').Director | null;
+  liveDirector: () => import('@wrongstack/coordination').Director | null;
   onExit: (code: number) => void;
   exit: (errorOrResult?: unknown) => void;
   activeCtrlRef: React.RefObject<AbortController | null>;
@@ -264,7 +264,7 @@ export function useControllerKeyPipeline({
     | (() => import('@wrongstack/core/execution').EternalAutonomyEngine | null)
     | undefined;
   getParallelEngine:
-    | (() => import('@wrongstack/core/coordination').ParallelEternalEngine | null)
+    | (() => import('@wrongstack/coordination').ParallelEternalEngine | null)
     | undefined;
   eternalLoopRunningRef: React.RefObject<boolean>;
   parallelLoopRunningRef: React.RefObject<boolean>;

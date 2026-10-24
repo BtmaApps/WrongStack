@@ -2,8 +2,8 @@
 
 import type { EventBus } from '@wrongstack/contracts/kernel';
 import type { AutonomyStage, Config } from '@wrongstack/contracts/types';
+import type { ParallelEternalEngine } from '@wrongstack/coordination';
 import type { Context } from '@wrongstack/core/agent';
-import type { ParallelEternalEngine } from '@wrongstack/core/coordination';
 import type { EternalAutonomyEngine } from '@wrongstack/core/execution';
 import type { JournalEntry } from '@wrongstack/goal';
 import type { SddRunRegistry } from '@wrongstack/sdd';

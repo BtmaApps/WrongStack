@@ -2,7 +2,7 @@ import type {
   MailboxAgentStatus,
   MailboxMessage,
   MailboxProjectServerStatus,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
 
 export interface TuiMailboxSnapshot {
   actorId?: string | undefined;

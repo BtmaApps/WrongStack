@@ -1,4 +1,4 @@
-import type { AgentTimelineEntry } from '@wrongstack/core/coordination';
+import type { AgentTimelineEntry } from '@wrongstack/coordination';
 import type { FleetEntry } from '../app-state.js';
 import { theme } from '../theme.js';
 

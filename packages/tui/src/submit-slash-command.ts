@@ -126,7 +126,7 @@ export async function submitSlashCommand({
     blocks: import('@wrongstack/contracts/types').ContentBlock[],
     options?: import('./tui-host-capabilities.js').RunBlocksOptions,
   ) => Promise<void>;
-  liveDirector: () => import('@wrongstack/core/coordination').Director | null;
+  liveDirector: () => import('@wrongstack/coordination').Director | null;
   clearTerminal: (() => void) | undefined;
   onClearHistory: import('./tui-host-capabilities.js').SubmitCapabilities['onClearHistory'];
   setMemoryContextMonitor: (

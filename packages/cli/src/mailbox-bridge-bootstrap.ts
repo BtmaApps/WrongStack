@@ -25,8 +25,8 @@
 
 import { spawn } from 'node:child_process';
 import * as path from 'node:path';
+import { readLiveLock } from '@wrongstack/coordination';
 import { cliSpawnArgs } from '@wrongstack/core/utils';
-import { readLiveLock } from '@wrongstack/core/coordination';
 import { buildWin32CmdShimInvocation } from './utils/win32-cmd.js';
 
 const MAILBOX_BRIDGE_BOOTSTRAP_TIMEOUT_MS = 5_000;

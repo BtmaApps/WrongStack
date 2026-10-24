@@ -1,7 +1,7 @@
 import type { EventBus } from '@wrongstack/contracts/kernel';
 import type { Logger } from '@wrongstack/contracts/types';
+import type { AgentFactory } from '@wrongstack/coordination';
 import type { Agent, Context } from '@wrongstack/core/agent';
-import type { AgentFactory } from '@wrongstack/core/coordination';
 import {
   GoalRunPersistence,
   type PhaseGraph,

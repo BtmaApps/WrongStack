@@ -12,13 +12,13 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { type EventBus, TOKENS } from '@wrongstack/contracts/kernel';
 import type { Config, MemoryPort, ModeStore, SkillLoader } from '@wrongstack/contracts/types';
+import { resetSessionSubagentPolicy } from '@wrongstack/coordination';
 import {
   type Agent,
   type Context,
   DefaultSystemPromptBuilder,
   setQueuedMessagesSnapshot,
 } from '@wrongstack/core/agent';
-import { resetSessionSubagentPolicy } from '@wrongstack/core/coordination';
 import { restoreSessionPermissionOverrides } from '@wrongstack/core/security';
 import { restoreRequiredSkillsFromEvents } from '@wrongstack/core/skills';
 import { DefaultSessionStore } from '@wrongstack/core/storage';

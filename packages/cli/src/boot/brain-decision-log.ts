@@ -13,7 +13,7 @@
  * (and indirectly `pushBrainLog`) for the duration of the session.
  */
 
-import { BrainTierCounter, type BrainTierStats } from '@wrongstack/core/coordination';
+import { BrainTierCounter, type BrainTierStats } from '@wrongstack/coordination';
 
 type BrainDecisionKind = 'answered' | 'ask_human' | 'denied' | 'intervention' | 'council_warn';
 

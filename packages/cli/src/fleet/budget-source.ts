@@ -5,7 +5,7 @@
  */
 
 import type { Config } from '@wrongstack/contracts/types';
-import { DEFAULT_MAX_FLEET_SPAWNS } from '@wrongstack/core/coordination';
+import { DEFAULT_MAX_FLEET_SPAWNS } from '@wrongstack/coordination';
 
 export type FleetBudgetSource = 'cli-flag' | 'env' | 'profile' | 'default';
 

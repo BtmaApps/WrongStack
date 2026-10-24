@@ -6,7 +6,7 @@ import { DEFAULT_CONTEXT_WINDOW_MODE_ID } from '@wrongstack/contracts/types';
 import {
   resetSessionSubagentPolicy,
   unlockSessionSubagentPolicyForSession,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
 import { compactionReportStillCurrent, getHistoryRetention } from '@wrongstack/core/execution';
 import {
   getRequestResidency,

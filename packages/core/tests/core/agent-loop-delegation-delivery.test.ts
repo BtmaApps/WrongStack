@@ -21,20 +21,20 @@ import type {
 import type { Request } from '@wrongstack/contracts/types/provider';
 import type { Tool } from '@wrongstack/contracts/types/tool';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { defaultAgentCoordination } from '../../src/agent-coordination-default.js';
-import { createDelegateTool } from '../../src/coordination/delegate-tool.js';
-import { DelegationTracker } from '../../src/coordination/delegation/delegation-tracker.js';
+import { defaultAgentCoordination } from '../../../coordination/src/agent-coordination-default.js';
+import { createDelegateTool } from '../../../coordination/src/delegate-tool.js';
+import { DelegationTracker } from '../../../coordination/src/delegation/delegation-tracker.js';
 import {
   AUTO_WAKE_MARKER,
   LeaderAutoWakeController,
-} from '../../src/coordination/delegation/leader-auto-wake.js';
+} from '../../../coordination/src/delegation/leader-auto-wake.js';
 import {
   DELEGATION_RESULT_MARKER,
   delegationDeliveryId,
   type LeaderDelivery,
   leaderDeliveryHub,
-} from '../../src/coordination/delegation/leader-delivery-hub.js';
-import { Director } from '../../src/coordination/director.js';
+} from '../../../coordination/src/delegation/leader-delivery-hub.js';
+import { Director } from '../../../coordination/src/director.js';
 import { Agent, createDefaultPipelines } from '../../src/core/agent.js';
 import { AGENT_COORDINATION } from '../../src/core/agent-coordination.js';
 import { Context } from '../../src/core/context.js';

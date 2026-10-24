@@ -12,7 +12,7 @@
  */
 
 import { EventBus } from '@wrongstack/contracts/kernel';
-import { ObservableBrainArbiter } from '@wrongstack/core/coordination';
+import { ObservableBrainArbiter } from '@wrongstack/coordination';
 import { describe, expect, it, vi } from 'vitest';
 import { registerSetupEventsPatternHandlers } from '../src/server/setup-events-pattern-handlers.js';
 import { createSetupEventSessionHelpers } from '../src/server/setup-events-session-helpers.js';

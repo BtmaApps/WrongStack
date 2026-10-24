@@ -1,6 +1,6 @@
 import type { EventBus } from '@wrongstack/contracts/kernel';
 import type { ContentBlock } from '@wrongstack/contracts/types';
-import type { LeaderWakePort } from '@wrongstack/core/coordination';
+import type { LeaderWakePort } from '@wrongstack/coordination';
 import { useEffect, useRef } from 'react';
 import type { TuiLeaderAutoWake } from '../app-props.js';
 import type { Action, State } from '../app-reducer.js';

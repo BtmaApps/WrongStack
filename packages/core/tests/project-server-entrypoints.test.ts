@@ -17,7 +17,7 @@ describe('project server entrypoint argument guards', () => {
 
   it('rejects a mailbox server launch without its project directory', async () => {
     process.argv = [process.execPath, 'mailbox-project-server'];
-    await expect(import('../src/coordination/mailbox-project-server.js')).rejects.toThrow(
+    await expect(import('../../coordination/src/mailbox-project-server.js')).rejects.toThrow(
       'mailbox project server requires --project-dir',
     );
   });

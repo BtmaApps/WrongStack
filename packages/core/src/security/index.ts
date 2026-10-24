@@ -99,9 +99,25 @@ export {
   setSessionPermissionOverrides,
 } from './session-permission-overrides.js';
 export {
+  areSubagentCompanionsAllowed,
+  areSubagentCompanionsAllowedForSession,
   areSubagentsAllowed,
+  areSubagentsAllowedForSession,
+  isSubagentPolicyLocked,
+  lockSessionSubagentPolicy,
+  lockSessionSubagentPolicyForSession,
+  resetSessionSubagentPolicy,
+  restoreSessionSubagentPolicy,
+  SUBAGENT_COMPANIONS_ALLOWED_META_KEY,
+  SUBAGENTS_ALLOWED_META_KEY,
+  SUBAGENTS_POLICY_LOCKED_META_KEY,
+  type SubagentPolicyMode,
+  seedSessionSubagentPolicy,
   setSessionSubagentPolicy,
   setSessionSubagentsAllowed,
+  subagentPolicyMode,
+  subagentPolicyModeFrom,
+  unlockSessionSubagentPolicyForSession,
 } from './session-subagent-policy.js';
 export { setSessionLeaderMetaResolver, subagentYoloPlus } from './session-yolo.js';
 export {

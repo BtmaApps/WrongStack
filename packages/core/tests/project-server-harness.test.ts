@@ -35,6 +35,14 @@ import type * as net from 'node:net';
 import * as path from 'node:path';
 import { WRONGSTACK_RUNTIME_VERSION } from '@wrongstack/primitives';
 import { afterEach, describe, expect, it } from 'vitest';
+import {
+  chronicleProjectServerEndpoint,
+  chronicleProjectServerMetadataPath,
+} from '../../chronicle/src/project-server-endpoint.js';
+import {
+  mailboxProjectServerEndpoint,
+  mailboxProjectServerMetadataPath,
+} from '../../coordination/src/mailbox-project-server-endpoint.js';
 import { governanceProjectServerEndpoint } from '../../governance/src/ipc-endpoint.js';
 import { GovernanceProjectServer } from '../../governance/src/project-server.js';
 import { GOVERNANCE_SERVICE_PROTOCOL_VERSION } from '../../governance/src/service-protocol.js';
@@ -48,14 +56,6 @@ import {
   projectIndexServerEndpoint,
   projectIndexServerMetadataPath,
 } from '../../tools/src/codebase-index/project-server-endpoint.js';
-import {
-  chronicleProjectServerEndpoint,
-  chronicleProjectServerMetadataPath,
-} from '../../chronicle/src/project-server-endpoint.js';
-import {
-  mailboxProjectServerEndpoint,
-  mailboxProjectServerMetadataPath,
-} from '../src/coordination/mailbox-project-server-endpoint.js';
 import {
   connectFrame,
   importDaemonInstance,
@@ -295,7 +295,7 @@ const CASES: HarnessCase[] = [
   },
   {
     name: 'mailbox',
-    moduleUrl: '../../src/coordination/mailbox-project-server.ts',
+    moduleUrl: '../../../coordination/src/mailbox-project-server.ts',
     args: (root) => ['--project-dir', root],
     endpoint: (root) => mailboxProjectServerEndpoint(root),
     metadataPath: (root) => mailboxProjectServerMetadataPath(root),
@@ -307,7 +307,7 @@ const CASES: HarnessCase[] = [
     watch: 'none',
     start: (root, nonce, shortIdle) =>
       importDaemonInstance(
-        '../../src/coordination/mailbox-project-server.ts',
+        '../../../coordination/src/mailbox-project-server.ts',
         ['--project-dir', root],
         nonce,
         shortIdle ? 'WRONGSTACK_MAILBOX_SERVER_IDLE_MS' : null,

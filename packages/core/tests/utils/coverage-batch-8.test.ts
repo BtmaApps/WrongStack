@@ -1,7 +1,10 @@
 import type { ContentBlock } from '@wrongstack/contracts/types/blocks';
 import type { SessionSummary } from '@wrongstack/contracts/types/session';
 import { describe, expect, it, vi } from 'vitest';
-import { HARD_MAX_SPAWN_DEPTH, resolveMaxSpawnDepth } from '../../src/coordination/spawn-budget.js';
+import {
+  HARD_MAX_SPAWN_DEPTH,
+  resolveMaxSpawnDepth,
+} from '../../../coordination/src/spawn-budget.js';
 import { NETWORK_ERR_RE } from '../../src/execution/regex-patterns.js';
 import { sessionContentText, userInputTitle } from '../../src/storage/session-helpers.js';
 import { generateSessionId, sanitizeModel } from '../../src/storage/session-id.js';

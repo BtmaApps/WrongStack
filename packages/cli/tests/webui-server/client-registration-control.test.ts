@@ -16,8 +16,8 @@ const clientHeartbeat = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
 const deregisterClient = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
 
 vi.mock('../../src/hq-publisher.js', () => ({ startCliHqConnection }));
-vi.mock('@wrongstack/core/coordination', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@wrongstack/core/coordination')>();
+vi.mock('@wrongstack/coordination', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@wrongstack/coordination')>();
   return {
     ...actual,
     resolveProjectDir: () => '/tmp/proj-dir',

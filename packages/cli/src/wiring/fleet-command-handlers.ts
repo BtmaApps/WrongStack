@@ -9,7 +9,7 @@ import {
   areSubagentsAllowedForSession,
   type Director,
   FLEET_ROSTER,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
 import { loadDirectorState } from '@wrongstack/core/storage';
 import { color, expectDefined, isSessionTranscriptFileName } from '@wrongstack/core/utils';
 import { formatFleetBudgetLines } from '../fleet/host-status.js';

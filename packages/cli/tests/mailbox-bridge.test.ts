@@ -5,7 +5,7 @@ import {
   createProjectMailbox,
   MailboxProjectServerConnection,
   resolveProjectDir,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
 import { wstackGlobalRoot } from '@wrongstack/core/utils';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {

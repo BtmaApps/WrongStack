@@ -33,7 +33,7 @@ const mocks = vi.hoisted(() => {
   };
 });
 
-vi.mock('@wrongstack/core/coordination', () => ({
+vi.mock('@wrongstack/coordination', () => ({
   getSharedProjectMailbox: () => ({
     registerClient: mocks.registerClient,
     deregisterClient: mocks.deregisterClient,

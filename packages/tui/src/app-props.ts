@@ -7,8 +7,8 @@ import type {
   TokenCounter,
   TokenSavingTier,
 } from '@wrongstack/contracts/types';
+import type { CoordinatorEvent } from '@wrongstack/coordination';
 import type { Agent } from '@wrongstack/core/agent';
-import type { CoordinatorEvent } from '@wrongstack/core/coordination';
 import type { SlashCommandRegistry } from '@wrongstack/core/registry';
 import type { QueueStore } from '@wrongstack/core/storage';
 import type { VisionAdapters } from '@wrongstack/runtime/vision';
@@ -33,7 +33,7 @@ import type { ProviderOption, ResourceMenuId, ResourceMenuSnapshot } from './ui-
  * can pass a fake). The TUI binds a port for its foreground session.
  */
 export interface TuiLeaderAutoWake {
-  attachPort(port: import('@wrongstack/core/coordination').LeaderWakePort): () => void;
+  attachPort(port: import('@wrongstack/coordination').LeaderWakePort): () => void;
   onRunFinished(sessionId: string): unknown;
   onSessionDisplayed(sessionId: string): unknown;
   noteUserInput(sessionId: string): void;
@@ -158,7 +158,7 @@ export interface AppProps
    * hook so the engine and TUI never race for the shared Context.
    */
   getParallelEngine?:
-    | (() => import('@wrongstack/core/coordination').ParallelEternalEngine | null)
+    | (() => import('@wrongstack/coordination').ParallelEternalEngine | null)
     | undefined;
   /**
    * Access the active SDD parallel run's control surface (or null). The SIGINT

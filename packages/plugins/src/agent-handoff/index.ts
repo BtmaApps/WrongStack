@@ -31,7 +31,7 @@
  */
 
 import type { Plugin } from '@wrongstack/contracts/types';
-import type { Mailbox, MailboxSendInput } from '@wrongstack/core/coordination';
+import type { Mailbox, MailboxSendInput } from '@wrongstack/coordination';
 import { safeJsonStringify } from '../runtime/index.js';
 
 const API_VERSION = '^0.1.10';

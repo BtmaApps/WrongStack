@@ -1,5 +1,5 @@
+import type { Mailbox, MailboxAgentStatus, MailboxMessage } from '@wrongstack/coordination';
 import { describe, expect, it } from 'vitest';
-import type { Mailbox, MailboxAgentStatus, MailboxMessage } from '@wrongstack/core/coordination';
 import {
   classifyMailboxRecipient,
   createMailboxEventPayload,

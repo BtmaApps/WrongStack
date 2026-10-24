@@ -18,7 +18,7 @@ import {
   makeMailInboxTool,
   makeMailSendTool,
   makeSessionNoteTool,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
 import { createContextManagerTool } from '@wrongstack/core/infrastructure';
 import type { ToolRegistry } from '@wrongstack/core/registry';
 import type { WstackPaths } from '@wrongstack/core/utils';

@@ -38,7 +38,7 @@ const mocks = vi.hoisted(() => ({
   startPackageOutdatedWatcher: vi.fn(),
 }));
 
-vi.mock('@wrongstack/core/coordination', () => ({
+vi.mock('@wrongstack/coordination', () => ({
   getSharedProjectMailbox: mocks.getSharedProjectMailbox,
   startTechStackConsumer: mocks.startTechStackConsumer,
   startPackageOutdatedWatcher: mocks.startPackageOutdatedWatcher,

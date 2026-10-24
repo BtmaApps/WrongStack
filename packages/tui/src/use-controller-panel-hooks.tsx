@@ -40,9 +40,7 @@ export function useControllerPanelHooks(inputs: {
     | undefined;
   slashRegistry: import('@wrongstack/core/registry').SlashCommandRegistry;
   subscribeCoordinatorEvents:
-    | ((
-        fn: (event: import('@wrongstack/core/coordination').CoordinatorEvent) => void,
-      ) => () => void)
+    | ((fn: (event: import('@wrongstack/coordination').CoordinatorEvent) => void) => () => void)
     | undefined;
   submitRef: React.RefObject<(text?: string | undefined) => void>;
   events: import('@wrongstack/contracts/kernel').EventBus;

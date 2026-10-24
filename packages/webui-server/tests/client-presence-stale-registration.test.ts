@@ -8,7 +8,7 @@ const seam = vi.hoisted(() => ({
   connects: [] as Array<(publisher: never) => void>,
 }));
 
-vi.mock('@wrongstack/core/coordination', () => ({
+vi.mock('@wrongstack/coordination', () => ({
   resolveProjectDir: () => '/fixture',
   getSharedProjectMailbox: () => ({
     registerClient: async (p: { clientId: string }) => {

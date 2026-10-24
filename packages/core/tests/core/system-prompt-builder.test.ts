@@ -352,8 +352,8 @@ describe('DefaultSystemPromptBuilder', () => {
   // dropped from its wire schema — so every leader was told "(no roster
   // configured)" beside a roster of ~80 roles.
   it('renders the real roster into the delegation guidance', async () => {
-    const { createDelegateTool } = await import('../../src/coordination/delegate-tool.js');
-    const { FLEET_ROSTER } = await import('../../src/coordination/fleet.js');
+    const { createDelegateTool } = await import('../../../coordination/src/delegate-tool.js');
+    const { FLEET_ROSTER } = await import('../../../coordination/src/fleet.js');
     const tool = createDelegateTool({ host: {} as never, roster: FLEET_ROSTER });
     for (const tokenSavingMode of ['off', 'medium'] as const) {
       const b = new DefaultSystemPromptBuilder({ todayIso: '2026-10-20', tokenSavingMode });

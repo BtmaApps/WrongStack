@@ -24,7 +24,7 @@
 
 import type { EventBus } from '@wrongstack/contracts/kernel';
 import type { SessionWriter } from '@wrongstack/contracts/types';
-import { AgentStatusTracker } from '@wrongstack/core/coordination';
+import { AgentStatusTracker } from '@wrongstack/coordination';
 import type { HqPublisher } from '@wrongstack/hq';
 import { startSessionTelemetryBridge } from '@wrongstack/hq';
 

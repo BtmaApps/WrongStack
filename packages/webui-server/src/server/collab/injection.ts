@@ -1,4 +1,4 @@
-import type { ConsumedInjectionInfo } from '@wrongstack/core/coordination';
+import type { ConsumedInjectionInfo } from '@wrongstack/coordination';
 import type { WebSocket } from 'ws';
 import type { WSServerMessage } from '../types.js';
 import type { CollabContext } from './collab-context.js';

@@ -1,8 +1,8 @@
 import * as path from 'node:path';
 import type { EventBus } from '@wrongstack/contracts/kernel';
 import type { AutonomyStage, Config, SessionWriter } from '@wrongstack/contracts/types';
-import type { Director, ParallelEternalEngine } from '@wrongstack/core/coordination';
-import { type AgentMonitorService, createAgentMonitorService } from '@wrongstack/core/coordination';
+import type { Director, ParallelEternalEngine } from '@wrongstack/coordination';
+import { type AgentMonitorService, createAgentMonitorService } from '@wrongstack/coordination';
 import type { EternalAutonomyEngine } from '@wrongstack/core/execution';
 import type { WstackPaths } from '@wrongstack/core/utils';
 import { expectDefined, sessionScopedPath } from '@wrongstack/core/utils';

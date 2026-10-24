@@ -7,8 +7,8 @@ import type {
   ProviderConfig,
   SecretVault,
 } from '@wrongstack/contracts/types';
+import type { ProviderModelStatusTracker } from '@wrongstack/coordination';
 import { createFallbackModelExtension, type FallbackProfileManager } from '@wrongstack/core/agent';
-import type { ProviderModelStatusTracker } from '@wrongstack/core/coordination';
 import type { ProviderRegistry } from '@wrongstack/core/registry';
 import {
   type ProviderConfigSnapshot,

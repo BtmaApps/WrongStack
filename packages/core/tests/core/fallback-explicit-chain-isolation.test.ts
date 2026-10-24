@@ -7,7 +7,7 @@
 
 import type { Config } from '@wrongstack/contracts/types/config';
 import { describe, expect, it } from 'vitest';
-import { ProviderModelStatusTracker } from '../../src/coordination/provider-status-tracker.js';
+import { ProviderModelStatusTracker } from '../../../coordination/src/provider-status-tracker.js';
 import { FallbackProfileManager } from '../../src/core/fallback-profile-manager.js';
 
 function makeConfig(overrides: Record<string, unknown> = {}): Config {

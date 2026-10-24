@@ -18,7 +18,7 @@ import {
   type MailboxMessageProjection,
   type RemoteMailbox,
   resolveProjectDir,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
 import { HQ_AUTH_FILE_VERSION, writeHqAuthFile } from '@wrongstack/hq';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { type HqServerHandle, startHqServer } from '../src/hq-server.js';

@@ -1,7 +1,7 @@
 import type { EventBus } from '@wrongstack/contracts/kernel';
 import type { Config, Logger, ModelsRegistry } from '@wrongstack/contracts/types';
+import { getSharedProjectMailbox, type MailboxAgentStatus } from '@wrongstack/coordination';
 import type { AgentPipelines } from '@wrongstack/core/agent';
-import { getSharedProjectMailbox, type MailboxAgentStatus } from '@wrongstack/core/coordination';
 import type {
   BootstrapGovernanceRuntimeOptions,
   GovernanceRuntimeBootstrapCloseResult,

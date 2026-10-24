@@ -13,7 +13,7 @@
  */
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import { MailboxProjectServerConnection } from '../../src/coordination/mailbox-project-server-client.js';
+import { MailboxProjectServerConnection } from '../../../coordination/src/mailbox-project-server-client.js';
 
 interface ClosableMailbox {
   close(): Promise<void>;

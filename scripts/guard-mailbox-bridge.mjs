@@ -25,7 +25,7 @@
  *     silently disappears.
  *
  * After the canonical router was extracted into
- * `packages/core/src/coordination/mailbox-http-router.ts`, the route
+ * `packages/coordination/src/mailbox-http-router.ts`, the route
  * table and `'http'` source literal now live in core. The guard
  * accepts either location so the bridge's delegation continues to
  * keep the public wire contract intact.
@@ -44,9 +44,9 @@ const log = (...a) => {
 const _MAILBOX_BRIDGE_FILES = [
   'packages/cli/src/subcommands/handlers/mailbox-serve.ts',
   'packages/cli/src/subcommands/index.ts',
-  'packages/core/src/coordination/mailbox-http-router.ts',
-  'packages/core/src/coordination/mailbox-types.ts',
-  'packages/core/src/coordination/index.ts',
+  'packages/coordination/src/mailbox-http-router.ts',
+  'packages/coordination/src/mailbox-types.ts',
+  'packages/coordination/src/index.ts',
   'packages/hq/src/protocol.ts',
 ];
 
@@ -66,7 +66,7 @@ const REQUIRED_ROUTES = [
 ];
 
 // Query-parameter literals introduced for the staleness filter. Both live
-// in `packages/core/src/coordination/mailbox-http-router.ts`. Callers
+// in `packages/coordination/src/mailbox-http-router.ts`. Callers
 // (HQ gateway, standalone bridge, external agents) pass them through the
 // URL appended to the route; if the guard ever rejects a router change
 // that drops either literal, the staleness filter has been broken at
@@ -77,14 +77,14 @@ const REQUIRED_SOURCE_LITERALS = [
   // Each file must contain its respective 'http' source literal. We
   // require the literal in the file (not in the diff) so renaming a
   // file or moving the literal elsewhere trips the guard.
-  { file: 'packages/core/src/coordination/mailbox-types.ts', literal: "'http'" },
+  { file: 'packages/coordination/src/mailbox-types.ts', literal: "'http'" },
   {
-    file: 'packages/core/src/coordination/mailbox-types.ts',
+    file: 'packages/coordination/src/mailbox-types.ts',
     literal: "'cli' | 'webui' | 'mcp' | 'acp' | 'http'",
   },
   // The shared router still tags external registrations as 'http'.
   // After extraction, the literal lives in mailbox-http-validation.ts.
-  { file: 'packages/core/src/coordination/mailbox-http-validation.ts', literal: "source: 'http'" },
+  { file: 'packages/coordination/src/mailbox-http-validation.ts', literal: "source: 'http'" },
   // Moved from hq/protocol.ts into the hq/protocol/ domain split (R12): the
   // HQ mailbox source union now lives with the HqMailbox* types in mailbox.ts.
   {
@@ -95,10 +95,10 @@ const REQUIRED_SOURCE_LITERALS = [
 
 const REQUIRED_HEALTHZ_UNAUTHENTICATED = {
   // After the canonical router was extracted, the `/healthz` branch lives
-  // in `packages/core/src/coordination/mailbox-http-router.ts`. It must
+  // in `packages/coordination/src/mailbox-http-router.ts`. It must
   // appear BEFORE any authorization step in that file so liveness probes
   // never require a token.
-  file: 'packages/core/src/coordination/mailbox-http-router.ts',
+  file: 'packages/coordination/src/mailbox-http-router.ts',
   marker: "pathname === '/healthz'",
   mustComeBefore: '.authorize(',
 };
@@ -142,7 +142,7 @@ async function checkRoutes() {
   // If any mailbox-bridge file is staged, every canonical route must
   // appear in at least one of the canonical files: the bridge
   // (`packages/cli/src/subcommands/handlers/mailbox-serve.ts`) or the
-  // shared router (`packages/core/src/coordination/mailbox-http-router.ts`).
+  // shared router (`packages/coordination/src/mailbox-http-router.ts`).
   // The bridge delegates to the router, so the route literals only need
   // to live in one place. We read both files from the working tree,
   // which includes staged + unstaged changes, so a focused commit that
@@ -150,8 +150,8 @@ async function checkRoutes() {
   const staged = getStagedFiles();
   const canonicalFiles = [
     'packages/cli/src/subcommands/handlers/mailbox-serve.ts',
-    'packages/core/src/coordination/mailbox-http-router.ts',
-    'packages/core/src/coordination/mailbox-http-validation.ts',
+    'packages/coordination/src/mailbox-http-router.ts',
+    'packages/coordination/src/mailbox-http-validation.ts',
   ];
   const anyCanonical = canonicalFiles.some((file) => staged.includes(file));
   if (!anyCanonical) {
@@ -219,8 +219,8 @@ async function checkQueryParamLiterals() {
   const staged = getStagedFiles();
   const canonicalFiles = [
     'packages/cli/src/subcommands/handlers/mailbox-serve.ts',
-    'packages/core/src/coordination/mailbox-http-router.ts',
-    'packages/core/src/coordination/mailbox-http-validation.ts',
+    'packages/coordination/src/mailbox-http-router.ts',
+    'packages/coordination/src/mailbox-http-validation.ts',
   ];
   const anyCanonical = canonicalFiles.some((file) => staged.includes(file));
   if (!anyCanonical) {

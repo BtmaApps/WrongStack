@@ -32,7 +32,7 @@ export interface ReplOptions {
     | (() => import('@wrongstack/core/execution').EternalAutonomyEngine | null)
     | undefined;
   getParallelEngine?:
-    | (() => import('@wrongstack/core/coordination').ParallelEternalEngine | null)
+    | (() => import('@wrongstack/coordination').ParallelEternalEngine | null)
     | undefined;
   getSddRun?: (() => import('@wrongstack/sdd').SddRunControl | null) | undefined;
   effectiveMaxContext?: number | undefined;

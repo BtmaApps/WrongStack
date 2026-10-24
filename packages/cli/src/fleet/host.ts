@@ -1,4 +1,10 @@
 import { randomUUID } from 'node:crypto';
+/**
+ * L1-E: Multi-agent CLI integration. The coordinator + per-task agent
+ * factory is created lazily on the first `/spawn` so users who never use
+ * subagents don't pay the construction cost.
+ */
+import { createProjectAgentRoster } from '@wrongstack/agent-catalog';
 import type { SubagentRunner } from '@wrongstack/contracts/types';
 import {
   AgentError,
@@ -7,12 +13,6 @@ import {
   type TaskResult,
   type Tool,
 } from '@wrongstack/contracts/types';
-/**
- * L1-E: Multi-agent CLI integration. The coordinator + per-task agent
- * factory is created lazily on the first `/spawn` so users who never use
- * subagents don't pay the construction cost.
- */
-import { createProjectAgentRoster } from '@wrongstack/agent-catalog';
 import {
   type AdaptiveConcurrencyController,
   type AgentFactory,
@@ -24,7 +24,7 @@ import {
   type FleetSupervisor,
   resolveProjectDir,
   type TaskResultNotification,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
 import { ToolRegistry } from '@wrongstack/core/registry';
 import { wstackGlobalRoot } from '@wrongstack/core/utils';
 import type { BuildAcpSubagentRunnerOptions } from './host-acp.js';
@@ -73,7 +73,7 @@ export class MultiAgentHost {
   private director?: Director | undefined;
   /** Own FleetManager — created in buildDirector(), used for pending task
    *  tracking so status() can show descriptions without host-side state. */
-  private fleetManager?: import('@wrongstack/core/coordination').FleetManager | undefined;
+  private fleetManager?: import('@wrongstack/coordination').FleetManager | undefined;
   /** Own FleetEmitTool — created in buildDirector() so subagents in director
    *  mode can publish structured events (bug.found, refactor.plan,
    *  critic.evaluation) onto the fleet bus without needing the tool registered

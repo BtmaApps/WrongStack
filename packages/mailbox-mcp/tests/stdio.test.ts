@@ -1,5 +1,5 @@
 import { PassThrough } from 'node:stream';
-import { MailboxEventEmitter, type RemoteMailbox } from '@wrongstack/core/coordination';
+import { MailboxEventEmitter, type RemoteMailbox } from '@wrongstack/coordination';
 import { serveStdio } from '@wrongstack/mcp';
 import { describe, expect, it, vi } from 'vitest';
 import { createMailboxMcpServer } from '../src/adapter.js';

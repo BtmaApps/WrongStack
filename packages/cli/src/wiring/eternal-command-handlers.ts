@@ -2,9 +2,9 @@
 
 import type { EventBus } from '@wrongstack/contracts/kernel';
 import type { AutonomyStage, Compactor, Config } from '@wrongstack/contracts/types';
+import type { BrainArbiter } from '@wrongstack/coordination';
+import { ParallelEternalEngine } from '@wrongstack/coordination';
 import type { Agent } from '@wrongstack/core/agent';
-import type { BrainArbiter } from '@wrongstack/core/coordination';
-import { ParallelEternalEngine } from '@wrongstack/core/coordination';
 import { EternalAutonomyEngine } from '@wrongstack/core/execution';
 import type { JournalEntry } from '@wrongstack/goal';
 import type { MultiAgentHost } from '../multi-agent.js';

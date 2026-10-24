@@ -1,5 +1,5 @@
 import type { SubagentConfig } from '@wrongstack/contracts/types';
-import { DEFAULT_EXPLORE_COMPANION_AGENT_ID, FLEET_ROSTER } from '@wrongstack/core/coordination';
+import { DEFAULT_EXPLORE_COMPANION_AGENT_ID, FLEET_ROSTER } from '@wrongstack/coordination';
 import { describe, expect, it } from 'vitest';
 import {
   constrainExploreCompanion,

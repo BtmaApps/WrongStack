@@ -6,11 +6,7 @@ import type {
   SessionLoadProgress,
   ThemePresetId,
 } from '@wrongstack/contracts/types';
-import type {
-  AutonomousCoordinator,
-  CoordinatorEvent,
-  Director,
-} from '@wrongstack/core/coordination';
+import type { AutonomousCoordinator, CoordinatorEvent, Director } from '@wrongstack/coordination';
 import type {
   StatuslineDensities,
   StatuslineLines,

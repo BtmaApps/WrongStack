@@ -11,7 +11,7 @@
  * @module fleet/supervisor-registry
  */
 
-import type { FleetSupervisor } from '@wrongstack/core/coordination';
+import type { FleetSupervisor } from '@wrongstack/coordination';
 
 let active: FleetSupervisor | null = null;
 

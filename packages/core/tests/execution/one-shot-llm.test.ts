@@ -8,7 +8,7 @@ import type {
 } from '@wrongstack/contracts/types/provider';
 import { ProviderError } from '@wrongstack/contracts/types/provider';
 import { describe, expect, it, vi } from 'vitest';
-import type { ProviderModelStatusTracker } from '../../src/coordination/provider-status-tracker.js';
+import type { ProviderModelStatusTracker } from '../../../coordination/src/provider-status-tracker.js';
 import { FallbackProfileManager } from '../../src/core/fallback-profile-manager.js';
 import {
   isProviderFailureTracked,

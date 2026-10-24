@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { AGENTS_BY_PHASE } from '../../../agent-catalog/src/index';
-import { MATRIX_PHASE_KEYS } from '../../../core/src/coordination/model-matrix';
+import { MATRIX_PHASE_KEYS } from '../../../coordination/src/model-matrix';
 import {
   formatModelMatrixRouteLabel,
   MODEL_MATRIX_DEFAULT_ROUTE,

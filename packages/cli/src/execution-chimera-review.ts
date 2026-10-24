@@ -13,11 +13,11 @@ import {
   recordCompletedReview,
   verifyFindingsAgainstDisk,
 } from '@wrongstack/builtin-plugins';
-import { effectiveFallbackChain, fallbackProfileChain } from '@wrongstack/core/agent';
 import {
   areSubagentsAllowedForSession,
   type ProviderModelStatusTracker,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
+import { effectiveFallbackChain, fallbackProfileChain } from '@wrongstack/core/agent';
 import {
   buildChimeraReviewTaskDescription,
   isChimeraAllClearReview,

@@ -1,5 +1,5 @@
 import type { SlashCommand } from '@wrongstack/contracts/types';
-import type { Director } from '@wrongstack/core/coordination';
+import type { Director } from '@wrongstack/coordination';
 import type { SlashCommandRegistry } from '@wrongstack/core/registry';
 import { render } from 'ink-testing-library';
 import React, { act, StrictMode, useState } from 'react';

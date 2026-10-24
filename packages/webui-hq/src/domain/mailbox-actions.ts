@@ -13,9 +13,9 @@
  * Optimistic updates are not handled here — they live in the React
  * component so the server remains the source of truth.
  */
-import type { MailboxActionInput, MailboxActionResult } from '@wrongstack/core/coordination';
-import { useHqStore } from '../data/store/index.js';
+import type { MailboxActionInput, MailboxActionResult } from '@wrongstack/coordination';
 import { authorizedFetch } from '../data/api.js';
+import { useHqStore } from '../data/store/index.js';
 
 /** Wire input: the core action input + the HQ project routing key. */
 export type HqMailboxActionInput = MailboxActionInput & {

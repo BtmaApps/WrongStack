@@ -1,6 +1,6 @@
 import type * as http from 'node:http';
 import * as path from 'node:path';
-import { type MailboxHttpAccessDecision, resolveProjectDir } from '@wrongstack/core/coordination';
+import { type MailboxHttpAccessDecision, resolveProjectDir } from '@wrongstack/coordination';
 import { authenticateBrowserRequest, hqAuthRequired, isCookieAuth, isTokenAuth } from '../auth.js';
 import { resolveHqProjectRoot } from '../project-root.js';
 import type { HqRouterMailboxGateway, HqRouterMutableAuth, HqSessionEntry } from '../types.js';
@@ -386,7 +386,7 @@ export async function handleMailboxAction(
   const projectRoot = actResolution.projectRoot;
 
   try {
-    const { actionToAckInput } = await import('@wrongstack/core/coordination');
+    const { actionToAckInput } = await import('@wrongstack/coordination');
     const projectDir = resolveProjectDir(projectRoot, actGlobalRoot);
     const mailbox = getMailboxGateway(projectDir).mailbox;
     const readerId = resolvedReaderId;

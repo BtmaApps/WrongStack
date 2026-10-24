@@ -1,4 +1,4 @@
-import type { Director } from '@wrongstack/core/coordination';
+import type { Director } from '@wrongstack/coordination';
 
 interface ReplFleetCallbacksOptions {
   director: Director | null | undefined;

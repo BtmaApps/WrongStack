@@ -1,7 +1,6 @@
 import { join } from 'node:path';
 import { type Container, type EventBus, TOKENS } from '@wrongstack/contracts/kernel';
 import type { Config, Logger, Provider } from '@wrongstack/contracts/types';
-import type { Context } from '@wrongstack/core/agent';
 import {
   BrainDecisionLedger,
   BrainDecisionQueue,
@@ -12,7 +11,8 @@ import {
   mailboxSessionTag,
   ObservableBrainArbiter as ObservableBrainArbiterCtor,
   terminalPolicyDecision,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
+import type { Context } from '@wrongstack/core/agent';
 import {
   type BrainAutoRisk,
   type BrainRuntimeOptions,

@@ -24,8 +24,8 @@
 
 import * as path from 'node:path';
 import type { Config } from '@wrongstack/contracts/types';
+import { AgentStatusTracker } from '@wrongstack/coordination';
 import type { Agent } from '@wrongstack/core/agent';
-import { AgentStatusTracker } from '@wrongstack/core/coordination';
 import {
   type ApprovalRegistry,
   createApprovalRegistry,

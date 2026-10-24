@@ -1,4 +1,4 @@
-import type { AgentTimelineEntry } from '@wrongstack/core/coordination';
+import type { AgentTimelineEntry } from '@wrongstack/coordination';
 import type React from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import type { FleetEntry } from '../app-state.js';

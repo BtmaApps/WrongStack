@@ -7,13 +7,13 @@
  * immediate parent. That is the precise signature of a leftover relative
  * path after a file was moved into a subdirectory:
  *
- *   // packages/core/src/coordination/collab-pause.ts
+ *   // packages/coordination/src/collab-pause.ts
  *   import './collab-bus.js';                  // ✓ correct
  *   import '../coordination/collab-bus.js';    // ✗ climbs out and back in
  *
  * It does NOT flag legitimate cross-area siblings:
  *
- *   // packages/core/src/coordination/foo.ts
+ *   // packages/coordination/src/foo.ts
  *   import '../session-catalog/foo.js';        // ✓ sibling area under src/
  *   import '../utils/pid.js';                  // ✓ sibling utility under src/
  *

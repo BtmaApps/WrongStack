@@ -87,9 +87,9 @@ const CHILD_ENV_EXEMPT: Record<string, string> = {
   'cli/src/wiring/session-command-handlers.ts': REASON_AGENT_CHILD,
   'cli/src/wiring/sdd-handlers.ts': REASON_AGENT_CHILD,
   'cli/src/chimera-cascade-evidence.ts': REASON_AGENT_CHILD,
-  'core/src/coordination/collab-director-host.ts': REASON_AGENT_CHILD,
-  'core/src/coordination/director-host-contracts.ts': REASON_AGENT_CHILD,
-  'core/src/coordination/icoordinator.ts': REASON_AGENT_CHILD,
+  'coordination/src/collab-director-host.ts': REASON_AGENT_CHILD,
+  'coordination/src/director-host-contracts.ts': REASON_AGENT_CHILD,
+  'coordination/src/icoordinator.ts': REASON_AGENT_CHILD,
   'contracts/src/types/multi-agent.ts': REASON_AGENT_CHILD,
   'sdd/src/verify-task.ts': REASON_AGENT_CHILD,
   // ── CLI self-relaunch / bundled UI ──
@@ -116,8 +116,8 @@ const CHILD_ENV_EXEMPT: Record<string, string> = {
   // ── Trusted wstack daemons ──
   'chronicle/src/project-server-client.ts': REASON_TRUSTED_DAEMON,
   'core/src/session-catalog/client.ts': REASON_TRUSTED_DAEMON,
-  'core/src/coordination/single-instance-mailbox.ts': REASON_TRUSTED_DAEMON,
-  'core/src/coordination/mailbox-project-server-client.ts': REASON_TRUSTED_DAEMON,
+  'coordination/src/single-instance-mailbox.ts': REASON_TRUSTED_DAEMON,
+  'coordination/src/mailbox-project-server-client.ts': REASON_TRUSTED_DAEMON,
   'sage/src/project-server-client.ts': REASON_TRUSTED_DAEMON,
   'kanban/src/server/client.ts': REASON_TRUSTED_DAEMON,
   'kanban/src/verification/verification-process.ts': REASON_TRUSTED_DAEMON,

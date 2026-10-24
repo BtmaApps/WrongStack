@@ -5,7 +5,7 @@
  */
 import type { ACPProgressEvent } from '@wrongstack/acp';
 import type { EventBus } from '@wrongstack/contracts/kernel';
-import type { FleetBus } from '@wrongstack/core/coordination';
+import type { FleetBus } from '@wrongstack/coordination';
 import { compactBridgeToolInput } from './host-event-bridge.js';
 
 export interface PublishAcpLiveProgressOpts {

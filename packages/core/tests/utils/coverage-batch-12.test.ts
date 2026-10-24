@@ -10,13 +10,13 @@ import {
   CLIENT_STALE_MS,
   HEARTBEAT_THROTTLE_MS,
   MAILBOX_AWARENESS_INTERVAL_MS,
-} from '../../src/coordination/mailbox-constants.js';
+} from '../../../coordination/src/mailbox-constants.js';
 // The rate limit is asserted against the module that enforces it, not against
 // a second copy in mailbox-constants — that copy existed only for this test.
 import {
   MAILBOX_HTTP_RATE_LIMIT_PER_MINUTE,
   MAILBOX_HTTP_RATE_LIMIT_WINDOW_MS,
-} from '../../src/coordination/mailbox-http-rate-limit.js';
+} from '../../../coordination/src/mailbox-http-rate-limit.js';
 
 // ── mailbox-constants ────────────────────────────────────────────────────
 

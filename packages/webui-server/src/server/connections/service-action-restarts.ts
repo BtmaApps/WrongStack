@@ -6,7 +6,7 @@ import {
 import {
   isMailboxProjectServerAvailable,
   MailboxProjectServerConnection,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
 import {
   assertDaemonRuntimeVersion,
   resolveWstackPaths,

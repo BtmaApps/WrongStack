@@ -1,7 +1,7 @@
 import * as path from 'node:path';
 import type { EventBus } from '@wrongstack/contracts/kernel';
 import type { Config, Logger } from '@wrongstack/contracts/types';
-import { AgentStatusTracker, FleetNotifier } from '@wrongstack/core/coordination';
+import { AgentStatusTracker, FleetNotifier } from '@wrongstack/coordination';
 import { getSessionRegistry, type SessionResumeClaim } from '@wrongstack/core/storage';
 import { WebSocket } from '../ws-runtime.js';
 import { errMessage } from './ws-utils.js';

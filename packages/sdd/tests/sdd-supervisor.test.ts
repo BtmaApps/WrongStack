@@ -3,7 +3,7 @@ import {
   type BrainArbiter,
   type BrainDecision,
   DefaultBrainArbiter,
-} from '@wrongstack/core/coordination';
+} from '@wrongstack/coordination';
 import { describe, expect, it } from 'vitest';
 import { SddSupervisor } from '../src/sdd-supervisor.js';
 

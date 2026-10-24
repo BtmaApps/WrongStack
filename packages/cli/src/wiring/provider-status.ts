@@ -2,8 +2,8 @@
 
 import * as fs from 'node:fs/promises';
 import type { EventBus } from '@wrongstack/contracts/kernel';
+import { ProviderModelStatusTracker } from '@wrongstack/coordination';
 import type { FallbackProfileManager } from '@wrongstack/core/agent';
-import { ProviderModelStatusTracker } from '@wrongstack/core/coordination';
 import type { WstackPaths } from '@wrongstack/core/utils';
 import { atomicWrite, toErrorMessage, withFileLock } from '@wrongstack/core/utils';
 

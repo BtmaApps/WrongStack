@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({
   serveStdio: vi.fn(),
 }));
 
-vi.mock('@wrongstack/core/coordination', async (original) => ({
+vi.mock('@wrongstack/coordination', async (original) => ({
   ...(await original()),
   createProjectMailbox: vi.fn(() => ({
     close: mocks.close,

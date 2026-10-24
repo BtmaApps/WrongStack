@@ -1,10 +1,10 @@
 import { aggregateFleetUsage, type FleetHostUsage } from './host-status.js';
 
 export interface HostBudgetHost {
-  fleetManager: import('@wrongstack/core/coordination').FleetManager | undefined;
+  fleetManager: import('@wrongstack/coordination').FleetManager | undefined;
   opts: import('./host-types.js').MultiAgentHostOptions;
-  director: import('@wrongstack/core/coordination').Director | undefined;
-  getCoordinator: () => import('@wrongstack/core/coordination').DefaultMultiAgentCoordinator;
+  director: import('@wrongstack/coordination').Director | undefined;
+  getCoordinator: () => import('@wrongstack/coordination').DefaultMultiAgentCoordinator;
   getMaxConcurrent: () => number;
   shadowManager: import('./host-shadow-manager.js').HostShadowManager;
 }

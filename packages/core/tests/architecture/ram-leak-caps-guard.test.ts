@@ -61,6 +61,7 @@ const PACKAGES = {
   core: 'packages/core',
   contracts: 'packages/contracts',
   chronicle: 'packages/chronicle',
+  coordination: 'packages/coordination',
   tools: 'packages/tools',
   webui: 'packages/webui-server',
   kanban: 'packages/kanban',
@@ -72,6 +73,7 @@ const PKG_FILES: Record<keyof typeof PACKAGES, Map<string, string>> = {
   core: loadPackage(PACKAGES.core),
   contracts: loadPackage(PACKAGES.contracts),
   chronicle: loadPackage(PACKAGES.chronicle),
+  coordination: loadPackage(PACKAGES.coordination),
   tools: loadPackage(PACKAGES.tools),
   webui: loadPackage(PACKAGES.webui),
   kanban: loadPackage(PACKAGES.kanban),
@@ -126,52 +128,46 @@ describe('RAM-leak caps (audit 2026-07-31)', () => {
   });
 
   it('core/knowledge-graph: DEFAULT_MAX_NODES = 2_000', () => {
-    const { value, file } = readConst('core', 'coordination/knowledge-graph.ts:DEFAULT_MAX_NODES');
+    const { value, file } = readConst('coordination', 'knowledge-graph.ts:DEFAULT_MAX_NODES');
     expect(value, file).toBe('2_000');
   });
 
   it('core/knowledge-graph: MAX_SUBSCRIPTIONS = 1_000', () => {
-    const { value, file } = readConst('core', 'coordination/knowledge-graph.ts:MAX_SUBSCRIPTIONS');
+    const { value, file } = readConst('coordination', 'knowledge-graph.ts:MAX_SUBSCRIPTIONS');
     expect(value, file).toBe('1_000');
   });
 
   it('core/knowledge-graph: MAX_PENDING_DELIVERIES_PER_SUBSCRIPTION = 1_000', () => {
     const { value, file } = readConst(
-      'core',
-      'coordination/knowledge-graph.ts:MAX_PENDING_DELIVERIES_PER_SUBSCRIPTION',
+      'coordination',
+      'knowledge-graph.ts:MAX_PENDING_DELIVERIES_PER_SUBSCRIPTION',
     );
     expect(value, file).toBe('1_000');
   });
 
   it('core/multi-agent-coordinator: MAX_COMPLETED_RESULTS = 200_000', () => {
     const { value, file } = readConst(
-      'core',
-      'coordination/multi-agent-coordinator.ts:MAX_COMPLETED_RESULTS',
+      'coordination',
+      'multi-agent-coordinator.ts:MAX_COMPLETED_RESULTS',
     );
     expect(value, file).toBe('200_000');
   });
 
   it('core/multi-agent-coordinator: MAX_SUBAGENT_TASK_HISTORY = 64', () => {
     const { value, file } = readConst(
-      'core',
-      'coordination/multi-agent-coordinator.ts:MAX_SUBAGENT_TASK_HISTORY',
+      'coordination',
+      'multi-agent-coordinator.ts:MAX_SUBAGENT_TASK_HISTORY',
     );
     expect(value, file).toBe('64');
   });
 
   it('core/large-answer-store: DEFAULT_MAX_ENTRIES = 256', () => {
-    const { value, file } = readConst(
-      'core',
-      'coordination/large-answer-store.ts:DEFAULT_MAX_ENTRIES',
-    );
+    const { value, file } = readConst('coordination', 'large-answer-store.ts:DEFAULT_MAX_ENTRIES');
     expect(value, file).toBe('256');
   });
 
   it('core/large-answer-store: DEFAULT_MAX_BYTES = 32 MiB', () => {
-    const { value, file } = readConst(
-      'core',
-      'coordination/large-answer-store.ts:DEFAULT_MAX_BYTES',
-    );
+    const { value, file } = readConst('coordination', 'large-answer-store.ts:DEFAULT_MAX_BYTES');
     expect(value, file).toBe('32 * 1024 * 1024');
   });
 
@@ -195,98 +191,83 @@ describe('RAM-leak caps (audit 2026-07-31)', () => {
 
   it('core/agent-status-subagents: RECENT_TOOL_LIMIT = 12', () => {
     const { value, file } = readConst(
-      'core',
-      'coordination/agent-status-subagents.ts:RECENT_TOOL_LIMIT',
+      'coordination',
+      'agent-status-subagents.ts:RECENT_TOOL_LIMIT',
     );
     expect(value, file).toBe('12');
   });
 
   it('core/agent-status-tracker: RECENT_MAIL_LIMIT = 12', () => {
-    const { value, file } = readConst(
-      'core',
-      'coordination/agent-status-tracker.ts:RECENT_MAIL_LIMIT',
-    );
+    const { value, file } = readConst('coordination', 'agent-status-tracker.ts:RECENT_MAIL_LIMIT');
     expect(value, file).toBe('12');
   });
 
   it('core/agent-status-tracker: SEEN_MAIL_LIMIT = 10_000', () => {
-    const { value, file } = readConst(
-      'core',
-      'coordination/agent-status-tracker.ts:SEEN_MAIL_LIMIT',
-    );
+    const { value, file } = readConst('coordination', 'agent-status-tracker.ts:SEEN_MAIL_LIMIT');
     expect(value, file).toBe('10_000');
   });
 
   it('core/agent-status-subagents: PARTIAL_TEXT_CAP = 1200', () => {
-    const { value, file } = readConst(
-      'core',
-      'coordination/agent-status-subagents.ts:PARTIAL_TEXT_CAP',
-    );
+    const { value, file } = readConst('coordination', 'agent-status-subagents.ts:PARTIAL_TEXT_CAP');
     expect(value, file).toBe('1200');
   });
 
   it('core/agent-status-subagents: TASK_TEXT_CAP = 1200', () => {
-    const { value, file } = readConst(
-      'core',
-      'coordination/agent-status-subagents.ts:TASK_TEXT_CAP',
-    );
+    const { value, file } = readConst('coordination', 'agent-status-subagents.ts:TASK_TEXT_CAP');
     expect(value, file).toBe('1200');
   });
 
   it('core/agent-status-tracker: PROMPT_TEXT_CAP = 6000', () => {
-    const { value, file } = readConst(
-      'core',
-      'coordination/agent-status-tracker.ts:PROMPT_TEXT_CAP',
-    );
+    const { value, file } = readConst('coordination', 'agent-status-tracker.ts:PROMPT_TEXT_CAP');
     expect(value, file).toBe('6000');
   });
 
   it('core/agent-status-tracker: AGENT_REAP_MS = 30_000', () => {
-    const { value, file } = readConst('core', 'coordination/agent-status-tracker.ts:AGENT_REAP_MS');
+    const { value, file } = readConst('coordination', 'agent-status-tracker.ts:AGENT_REAP_MS');
     expect(value, file).toBe('30_000');
   });
 
   it('core/agent-status-tracker: AGENT_SWEEP_INTERVAL_MS = 10_000', () => {
     const { value, file } = readConst(
-      'core',
-      'coordination/agent-status-tracker.ts:AGENT_SWEEP_INTERVAL_MS',
+      'coordination',
+      'agent-status-tracker.ts:AGENT_SWEEP_INTERVAL_MS',
     );
     expect(value, file).toBe('10_000');
   });
 
   it('core/agent-status-tracker: PENDING_TOOL_TTL_MS = 300_000', () => {
     const { value, file } = readConst(
-      'core',
-      'coordination/agent-status-tracker.ts:PENDING_TOOL_TTL_MS',
+      'coordination',
+      'agent-status-tracker.ts:PENDING_TOOL_TTL_MS',
     );
     expect(value, file).toBe('300_000');
   });
 
   it('core/fleet-supervisor: HISTORY_MAX = 100', () => {
-    const { value, file } = readConst('core', 'coordination/fleet-supervisor.ts:HISTORY_MAX');
+    const { value, file } = readConst('coordination', 'fleet-supervisor.ts:HISTORY_MAX');
     expect(value, file).toBe('100');
   });
 
   it('core/remote-mailbox: HQ_MAILBOX_EVENT_MAX_PENDING = 256', () => {
     const { value, file } = readConst(
-      'core',
-      'coordination/remote-mailbox.ts:HQ_MAILBOX_EVENT_MAX_PENDING',
+      'coordination',
+      'remote-mailbox.ts:HQ_MAILBOX_EVENT_MAX_PENDING',
     );
     expect(value, file).toBe('256');
   });
 
   it('core/remote-mailbox: HQ_MAILBOX_SNAPSHOT_MIN_INTERVAL_MS = 10_000', () => {
     const { value, file } = readConst(
-      'core',
-      'coordination/mailbox-constants.ts:HQ_MAILBOX_SNAPSHOT_MIN_INTERVAL_MS',
+      'coordination',
+      'mailbox-constants.ts:HQ_MAILBOX_SNAPSHOT_MIN_INTERVAL_MS',
     );
     expect(value, file).toBe('10_000');
   });
 
   it('core/mailbox-project-server: MAX_CLIENT_WRITE_BUFFER_BYTES = 8 MiB', () => {
     const { value, file } = readConst(
-      'core',
-      'coordination/mailbox-project-server.ts:MAX_CLIENT_WRITE_BUFFER_BYTES',
+      'coordination',
+      'mailbox-project-server.ts:MAX_CLIENT_WRITE_BUFFER_BYTES',
     );
     expect(value, file).toBe('8 * 1024 * 1024');
   });

@@ -194,7 +194,7 @@ export type RosterPhase = {
 };
 
 /**
- * Mirrors packages/core/src/coordination/agents/phase*.ts. The build guard
+ * Mirrors packages/agent-catalog/src/phase*.ts. The build guard
  * verifies every role against FLEET_ROSTER's source inputs.
  */
 export const rosterPhases = [

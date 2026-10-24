@@ -226,7 +226,7 @@ describe('connections health mailbox service', () => {
       }
       close() {}
     }
-    vi.doMock('@wrongstack/core/coordination', () => ({
+    vi.doMock('@wrongstack/coordination', () => ({
       isMailboxProjectServerAvailable: () => true,
       MailboxProjectServerConnection: FakeMailboxConnection,
     }));

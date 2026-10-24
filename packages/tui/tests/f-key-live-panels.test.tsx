@@ -1,4 +1,4 @@
-import type { AgentTimelineEntry } from '@wrongstack/core/coordination';
+import type { AgentTimelineEntry } from '@wrongstack/coordination';
 import type { KanbanBoard } from '@wrongstack/kanban';
 import { describe, expect, it, vi } from 'vitest';
 import type { FleetEntry } from '../src/app-state.js';

@@ -1,4 +1,4 @@
-import type { Director } from '@wrongstack/core/coordination';
+import type { Director } from '@wrongstack/coordination';
 import { useCallback, useEffect } from 'react';
 import type { resolveControllerProps } from './controller-props.js';
 import type { useAppRefSpine } from './hooks/use-app-ref-spine.js';
