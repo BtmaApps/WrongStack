@@ -8,11 +8,11 @@ browser snapshots and commands.
 | Owner | Source |
 |---|---|
 | Server entry | [`hq-server.ts`](../packages/cli/src/hq-server.ts) |
-| Wire contracts and publishers | [`packages/core/src/hq/`](../packages/core/src/hq/) |
+| Wire contracts and publishers | [`packages/core/src/hq/`](../packages/hq/src/) |
 | View/navigation registry | [`views.ts`](../packages/webui-hq/src/components/hq/views.ts) |
 | Browser transport | [`hq-socket.ts`](../packages/webui-hq/src/data/transport/hq-socket.ts) |
 | Browser store | [`data/store/`](../packages/webui-hq/src/data/store/) |
-| Alerts and persisted rule settings | [`alerts.ts`](../packages/core/src/hq/alerts.ts), [`alerts-config.ts`](../packages/core/src/hq/alerts-config.ts) |
+| Alerts and persisted rule settings | [`alerts.ts`](../packages/hq/src/alerts.ts), [`alerts-config.ts`](../packages/hq/src/alerts-config.ts) |
 
 Use the view registry for the current navigation and keyboard routes. Browser
 views project live fleet, transcripts, Kanban, mailbox, approvals, Brain and

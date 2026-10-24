@@ -399,7 +399,7 @@ See `docs/archive/plans/security-hardening-2026-06.md` (P2) for the current proc
 
 ## Reference
 
-- Tool type: [`packages/core/src/types/tool.ts`](../packages/core/src/types/tool.ts)
+- Tool type: [`packages/core/src/types/tool.ts`](../packages/contracts/src/types/tool.ts)
 - Tool executor (what calls you): [`packages/core/src/execution/tool-executor.ts`](../packages/core/src/execution/tool-executor.ts)
 - Streaming util used by bash/install/etc: [`packages/tools/src/_util.ts`](../packages/tools/src/_util.ts)
 - JSON schema validator: [`packages/core/src/utils/json-schema-validate.ts`](../packages/core/src/utils/json-schema-validate.ts)

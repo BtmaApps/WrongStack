@@ -6,18 +6,23 @@ tools in an individual session or verified external-service availability.
 
 ## Workspace packages
 
-36 packages, 2 applications, plus the private website.
+42 packages, 2 applications, plus the private website.
 
 | Package | Manifest | Publication |
 |---|---|---|
 | `@wrongstack/acp` | [packages/acp/package.json](../packages/acp/package.json) | private |
 | `@wrongstack/bench` | [packages/bench/package.json](../packages/bench/package.json) | private |
+| `@wrongstack/builtin-plugins` | [packages/builtin-plugins/package.json](../packages/builtin-plugins/package.json) | private |
+| `@wrongstack/chronicle` | [packages/chronicle/package.json](../packages/chronicle/package.json) | private |
 | `@wrongstack/cli` | [packages/cli/package.json](../packages/cli/package.json) | private |
 | `@wrongstack/client` | [packages/client/package.json](../packages/client/package.json) | private |
 | `@wrongstack/codebase-index-mcp` | [packages/codebase-index-mcp/package.json](../packages/codebase-index-mcp/package.json) | private |
+| `@wrongstack/contracts` | [packages/contracts/package.json](../packages/contracts/package.json) | private |
 | `@wrongstack/core` | [packages/core/package.json](../packages/core/package.json) | private |
 | `@wrongstack/desktop` | [apps/desktop/package.json](../apps/desktop/package.json) | private |
+| `@wrongstack/goal` | [packages/goal/package.json](../packages/goal/package.json) | private |
 | `@wrongstack/governance` | [packages/governance/package.json](../packages/governance/package.json) | private |
+| `@wrongstack/hq` | [packages/hq/package.json](../packages/hq/package.json) | private |
 | `@wrongstack/kanban` | [packages/kanban/package.json](../packages/kanban/package.json) | private |
 | `@wrongstack/kanban-mcp` | [packages/kanban-mcp/package.json](../packages/kanban-mcp/package.json) | private |
 | `@wrongstack/mailbox-mcp` | [packages/mailbox-mcp/package.json](../packages/mailbox-mcp/package.json) | private |
@@ -46,6 +51,7 @@ tools in an individual session or verified external-service availability.
 | `@wrongstack/webui-hq` | [packages/webui-hq/package.json](../packages/webui-hq/package.json) | private |
 | `@wrongstack/webui-protocol` | [packages/webui-protocol/package.json](../packages/webui-protocol/package.json) | private |
 | `@wrongstack/webui-server` | [packages/webui-server/package.json](../packages/webui-server/package.json) | private |
+| `@wrongstack/worktree` | [packages/worktree/package.json](../packages/worktree/package.json) | private |
 | `@wrongstack/wrongtrace` | [packages/wrongtrace/package.json](../packages/wrongtrace/package.json) | private |
 | `wrongstack` | [apps/wrongstack/package.json](../apps/wrongstack/package.json) | private |
 

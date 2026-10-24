@@ -654,7 +654,7 @@ async teardown(api) {
 
 For resources tied to a single agent run (not the whole plugin lifetime),
 use `ctx.registerAbortHook` from inside `Tool.execute` instead. See the
-JSDoc on [`Tool.cleanup`](../packages/core/src/types/tool.ts) for the rule.
+JSDoc on [`Tool.cleanup`](../packages/contracts/src/types/tool.ts) for the rule.
 
 ---
 
@@ -740,6 +740,6 @@ See `docs/archive/plans/security-hardening-2026-06.md` (P2) and `SECURITY.md`.
 
 ## Reference
 
-- Plugin type: [`packages/core/src/types/plugin.ts`](../packages/core/src/types/plugin.ts)
+- Plugin type: [`packages/core/src/types/plugin.ts`](../packages/contracts/src/types/plugin.ts)
 - Loader: [`packages/core/src/plugin/loader.ts`](../packages/core/src/plugin/loader.ts)
 - Test fixtures: [`packages/core/tests/plugin/`](../packages/core/tests/plugin/)

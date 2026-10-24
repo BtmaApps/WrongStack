@@ -1,7 +1,7 @@
 # Tactical todos
 
 `ctx.todos` is the session's tactical work list. `TodoItem` in
-[`types/context.ts`](../packages/core/src/types/context.ts) carries id, content,
+[`types/context.ts`](../packages/contracts/src/types/context.ts) carries id, content,
 status (`pending | in_progress | completed`) and optional `activeForm`.
 Strategic plans, executable Goal phases and project Kanban have separate stores.
 
@@ -10,7 +10,7 @@ Strategic plans, executable Goal phases and project Kanban have separate stores.
 Mutate through `ctx.state.replaceTodos(...)`, implemented by
 [`ConversationState`](../packages/core/src/core/conversation-state.ts).
 Direct array edits bypass observers. The event contract lives in
-[`types/conversation-state.ts`](../packages/core/src/types/conversation-state.ts).
+[`types/conversation-state.ts`](../packages/contracts/src/types/conversation-state.ts).
 An all-completed list can clear the active list while preserving
 `completedSnapshot` for observers, so projections can mark cards done.
 

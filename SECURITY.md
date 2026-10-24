@@ -204,7 +204,7 @@ accepts telemetry, persists event/snapshot/time-series data, and exposes a
 control plane. Treat the entire HQ data directory and endpoint as sensitive.
 Implementation: [`packages/cli/src/hq-server.ts`](packages/cli/src/hq-server.ts),
 [`packages/cli/src/hq-server/auth.ts`](packages/cli/src/hq-server/auth.ts), and
-[`packages/core/src/hq/`](packages/core/src/hq/).
+[`packages/hq/src/`](packages/hq/src/).
 
 Current controls include separate browser/client token lists, scoped token
 capabilities, optional scrypt-backed browser password login, signed HttpOnly
