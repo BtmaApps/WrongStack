@@ -60,6 +60,11 @@ the target.
    bug-free, and the report must not imply it does.
 
 Finish with `verify-before-done`: the same proof green, the regression test in
-the normal suite, related checks, and an honest outcome label.
+the normal suite, related checks, and an honest outcome label. Companion
+specialized proof-driven rounds follow the same single-issue evidence discipline
+for their domain: `/sechunt` (trust-boundary hardening), `/racehunt`
+(concurrency races & resource leaks), `/debloat` (zero-reachability dead-code
+excision), `/uipolish` (rendered UI & WCAG 2.2 AA ratchet), `/typehunt`
+(runtime boundary guards), and `/testgap` (blind-spot & invariant tests).
 
 ---

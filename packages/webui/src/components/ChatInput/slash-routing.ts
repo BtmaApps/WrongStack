@@ -8,6 +8,7 @@ import { SLASH_COMMANDS } from './slash-commands.js';
 
 import { runFKeyPanelCommand } from './slash-routing-fkeys.js';
 import { runGoalSlashCommand } from './slash-routing-goal.js';
+import { runHuntSlashCommand } from './slash-routing-hunt.js';
 import { runBrainSlashCommand, runMcpSlashCommand } from './slash-routing-mcp-brain.js';
 import { runNextStepsModeCommand, runYoloCommand } from './slash-routing-prefs.js';
 import type {
@@ -375,6 +376,32 @@ export function runChatSlashCommand(options: RunChatSlashCommandOptions): boolea
         'Suggest exact prompt messages I can submit back to you. Each must ask you to perform the work and must not assign a manual chore to me. Be specific and actionable.',
       );
       return true;
+    case '/bughunt':
+    case '/sechunt':
+    case '/secproof':
+    case '/racehunt':
+    case '/leakhunt':
+    case '/flakehunt':
+    case '/debloat':
+    case '/deadcode':
+    case '/excise':
+    case '/uipolish':
+    case '/a11yhunt':
+    case '/uihunt':
+    case '/typehunt':
+    case '/boundaryhunt':
+    case '/testgap':
+    case '/covhunt':
+    case '/invarianthunt':
+      return runHuntSlashCommand({
+        cmd,
+        args,
+        sessionId,
+        isLoading,
+        client,
+        addMessage,
+        setLoading,
+      });
     case '/review':
     case '/cr': {
       // Prompt-based code review — the agent uses its own git/read tools.

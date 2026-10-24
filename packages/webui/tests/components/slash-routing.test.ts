@@ -4,10 +4,14 @@ import {
   runChatSlashCommand,
 } from '../../src/components/ChatInput/slash-routing.js';
 import { streamCoalescer } from '../../src/lib/stream-coalescer.js';
+import { useBugHuntRunStore } from '../../src/stores/bug-hunt-run-store.js';
 import { useGoalCatalogStore } from '../../src/stores/goal-catalog-store.js';
 import { useSystemPromptStore } from '../../src/stores/system-prompt-store.js';
 
-beforeEach(() => useGoalCatalogStore.setState({ selectedGoalId: null, goals: [] }));
+beforeEach(() => {
+  useGoalCatalogStore.setState({ selectedGoalId: null, goals: [] });
+  useBugHuntRunStore.setState({ runs: {} });
+});
 
 // Mock external store dependencies and downloadChatAsMarkdown
 const mocks = vi.hoisted(() => {
@@ -1064,5 +1068,81 @@ describe('runChatSlashCommand — misc view routing', () => {
   it.each(['/prompt', '/prompts'])('%s opens the prompt library', (raw) => {
     expect(runChatSlashCommand(makeOptions({ raw }))).toBe(true);
     expect(mocks.setPromptLibraryOpen).toHaveBeenCalledWith(true);
+  });
+
+  describe('Proof-Driven Hunt slash commands (/bughunt, /sechunt, /racehunt, /debloat, /uipolish, /typehunt, /testgap)', () => {
+    it.each([
+      ['/bughunt', 'proof-driven-bug-hunter', undefined],
+      ['/sechunt', 'proof-driven-security-hardener', 'sechunt'],
+      ['/secproof', 'proof-driven-security-hardener', 'sechunt'],
+      ['/racehunt', 'proof-driven-race-leak-hunter', 'racehunt'],
+      ['/leakhunt', 'proof-driven-race-leak-hunter', 'racehunt'],
+      ['/flakehunt', 'proof-driven-race-leak-hunter', 'racehunt'],
+      ['/debloat', 'proof-driven-dead-code-excisor', 'debloat'],
+      ['/deadcode', 'proof-driven-dead-code-excisor', 'debloat'],
+      ['/excise', 'proof-driven-dead-code-excisor', 'debloat'],
+      ['/uipolish', 'proof-driven-ui-a11y-ratchet', 'uipolish'],
+      ['/a11yhunt', 'proof-driven-ui-a11y-ratchet', 'uipolish'],
+      ['/uihunt', 'proof-driven-ui-a11y-ratchet', 'uipolish'],
+      ['/typehunt', 'proof-driven-type-boundary-guard', 'typehunt'],
+      ['/boundaryhunt', 'proof-driven-type-boundary-guard', 'typehunt'],
+      ['/testgap', 'proof-driven-blind-spot-tester', 'testgap'],
+      ['/covhunt', 'proof-driven-blind-spot-tester', 'testgap'],
+      ['/invarianthunt', 'proof-driven-blind-spot-tester', 'testgap'],
+    ] as const)(
+      '%s requests builtin prompt %s and records run state',
+      (cmd, slug, expectedMode) => {
+        const opts = makeOptions({
+          raw: `${cmd} --rounds 3 packages/core`,
+          sessionId: 'sess-hunt',
+        });
+        expect(runChatSlashCommand(opts)).toBe(true);
+        expect(opts.client?.send).toHaveBeenCalledWith({
+          type: 'prompts.content',
+          payload: { slug },
+        });
+        const activeRun = useBugHuntRunStore.getState().runs['sess-hunt'];
+        expect(activeRun).toEqual({
+          scope: 'packages/core',
+          totalRounds: 3,
+          currentRound: 1,
+          requestId: null,
+          ...(expectedMode ? { mode: expectedMode } : {}),
+        });
+      },
+    );
+
+    it('stops an active hunt after the current round on /<cmd> stop', () => {
+      useBugHuntRunStore.getState().start('sess-hunt', {
+        scope: 'packages/webui',
+        totalRounds: 4,
+        currentRound: 2,
+        requestId: 'req-2',
+        mode: 'sechunt',
+      });
+      const opts = makeOptions({ raw: '/sechunt stop', sessionId: 'sess-hunt' });
+      expect(runChatSlashCommand(opts)).toBe(true);
+      expect(useBugHuntRunStore.getState().runs['sess-hunt']).toBeUndefined();
+      expect(opts.addMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          role: 'assistant',
+          content: expect.stringContaining(
+            'Stopping **Proof-Driven Security Hardener** after round 2/4 finishes.',
+          ),
+        }),
+      );
+    });
+
+    it('rejects out-of-range --rounds values in WebUI', () => {
+      const opts = makeOptions({ raw: '/debloat --rounds 99 src', sessionId: 'sess-hunt' });
+      expect(runChatSlashCommand(opts)).toBe(true);
+      expect(opts.client?.send).not.toHaveBeenCalled();
+      expect(opts.addMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          role: 'assistant',
+          content: expect.stringContaining('Usage: `/debloat [--rounds 1..10] [scope]`'),
+        }),
+      );
+    });
   });
 });

@@ -12,6 +12,7 @@
     "bugHunterTitle": "Proof-Driven Bug Hunter starten",
     "bugHunterBody": "Findet, beweist und behebt genau einen echten Fehler, prüft ihn und hält dann an.",
     "bugHunterScope": "Bereich",
+    "bugHunterMode": "Jagdmodus",
     "bugHunterWholeProject": "Ganzes Projekt",
     "bugHunterDirectoryScope": "{{path}} und darunter",
     "bugHunterMaxBugs": "Max. Fehler",

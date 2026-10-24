@@ -172,7 +172,7 @@ export const OPERATIONS_AND_QUALITY_RULES: readonly LocalSkillRule[] = [
     name: 'testing',
     domain: 'quality',
     match:
-      /\b(?:unit tests?|regression tests?|integration tests?|test coverage|birim test|regresyon test|test yaz)\b/i,
+      /\b(?:unit tests?|regression tests?|integration tests?|test coverage|testgap|covhunt|invarianthunt|birim test|regresyon test|test yaz)\b/i,
     priority: 110,
   },
   {
@@ -186,7 +186,7 @@ export const OPERATIONS_AND_QUALITY_RULES: readonly LocalSkillRule[] = [
     name: 'evidence-audit',
     domain: 'quality',
     match:
-      /\b(?:evidence.audit|find[^\n]{0,120}real[^\n]{0,120}bug|unknown defects|gercek[^\n]{0,120}(?:bug|kusur|hata)[^\n]{0,120}bul|kanitla[^\n]{0,120}duzelt)\b/i,
+      /\b(?:evidence.audit|racehunt|leakhunt|flakehunt|find[^\n]{0,120}real[^\n]{0,120}bug|unknown defects|gercek[^\n]{0,120}(?:bug|kusur|hata)[^\n]{0,120}bul|kanitla[^\n]{0,120}duzelt)\b/i,
     priority: 110,
   },
   {
@@ -224,14 +224,14 @@ export const OPERATIONS_AND_QUALITY_RULES: readonly LocalSkillRule[] = [
     name: 'code-quality',
     domain: 'quality',
     match:
-      /\b(?:dead code|unused depend|knip|bundle bloat|olu kod|kullanilmayan bagim|code quality audit)\b/i,
+      /\b(?:dead code|debloat|deadcode|excise|unused depend|knip|bundle bloat|olu kod|kullanilmayan bagim|code quality audit)\b/i,
     priority: 110,
   },
   {
     name: 'security-scanner',
     domain: 'quality',
     match:
-      /\b(?:security audit|security review|trust boundar|guvenlik incele|guvenlik denet|secret scan)\b/i,
+      /\b(?:security audit|security review|sechunt|secproof|trust boundar|guvenlik incele|guvenlik denet|secret scan)\b/i,
     priority: 90,
   },
   {

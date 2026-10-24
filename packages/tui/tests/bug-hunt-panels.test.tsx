@@ -34,6 +34,22 @@ describe('BugHuntRunningPanel', () => {
     expect(frame).toContain('Round 3');
     view.unmount();
   });
+
+  it('renders mode-specific title and stop hint for extended hunt commands', () => {
+    const view = render(
+      React.createElement(BugHuntRunningPanel, {
+        currentRound: 1,
+        totalRounds: 5,
+        commandName: 'debloat',
+        label: 'Proof-Driven Dead-Code & Bloat Excisor',
+      }),
+    );
+    const frame = view.lastFrame() ?? '';
+    expect(frame).toContain('PROOF-DRIVEN DEAD-CODE & BLOAT EXCISOR STARTED');
+    expect(frame).toContain('Round 1/5');
+    expect(frame).toContain('/debloat stop');
+    view.unmount();
+  });
 });
 
 describe('BugHuntContinuePanel', () => {
@@ -63,6 +79,20 @@ describe('BugHuntContinuePanel', () => {
     );
     const frame = view.lastFrame() ?? '';
     expect(frame).toContain('Proof-Driven Bug Hunter — Round 1 completed');
+    view.unmount();
+  });
+
+  it('renders custom mode label when provided', () => {
+    const view = render(
+      React.createElement(BugHuntContinuePanel, {
+        completedRounds: 1,
+        totalRounds: 3,
+        label: 'Proof-Driven Security Hardener',
+        onDecision: vi.fn(),
+      }),
+    );
+    const frame = view.lastFrame() ?? '';
+    expect(frame).toContain('Proof-Driven Security Hardener — Round 1/3 completed');
     view.unmount();
   });
 

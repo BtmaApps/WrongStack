@@ -12,7 +12,16 @@ import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useIsFullChrome } from '@/hooks/useChromeLevel';
 import { useAppTranslation } from '@/i18n';
-import { BUG_HUNT_LIMITS, type BugHuntLimit, buildBugHuntMessage } from '@/lib/bug-hunt-message';
+import {
+  BUG_HUNT_LIMITS,
+  BUG_HUNT_MODE_DESCRIPTIONS,
+  BUG_HUNT_MODE_LABELS,
+  BUG_HUNT_MODE_SLUGS,
+  BUG_HUNT_MODES,
+  type BugHuntLimit,
+  type BugHuntMode,
+  buildBugHuntMessage,
+} from '@/lib/bug-hunt-message';
 import { launchBuiltinRound } from '@/lib/launch-builtin-round';
 import {
   buildPerfRunMessage,
@@ -34,8 +43,6 @@ import type { TreeNode } from '@/stores/file-store';
 import { useLocalPrefs } from '@/stores/local-prefs';
 import type { WSServerMessage } from '@/types';
 import { LauncherArt, WorkbenchArt } from './WorkbenchArt';
-
-const BUG_HUNTER_SLUG = 'proof-driven-bug-hunter';
 
 /**
  * Header row of a launcher card. Under calm chrome it is the card's toggle —
@@ -118,6 +125,7 @@ export function WelcomeScreen() {
   const [savedCount, setSavedCount] = useState<number | undefined>(undefined);
   const [bugHuntState, setBugHuntState] = useState<'idle' | 'loading' | 'error'>('idle');
   const [bugHuntScope, setBugHuntScope] = useState('');
+  const [bugHuntMode, setBugHuntMode] = useState<BugHuntMode>('bughunt');
   const [bugHuntMaxBugs, setBugHuntMaxBugs] = useState<BugHuntLimit>(1);
   const [perfState, setPerfState] = useState<'idle' | 'loading' | 'error'>('idle');
   const [perfScope, setPerfScope] = useState('');
@@ -157,10 +165,11 @@ export function WelcomeScreen() {
     const client = getWSClient(wsUrl);
     if (!client.isConnected || bugHuntState === 'loading') return;
     setBugHuntState('loading');
+    const modePatch = bugHuntMode !== 'bughunt' ? { mode: bugHuntMode } : {};
 
     launchBuiltinRound({
       client,
-      slug: BUG_HUNTER_SLUG,
+      slug: BUG_HUNT_MODE_SLUGS[bugHuntMode],
       requireSoloSession: true,
       // Solo, but memory + explore companions stay: they are read-only.
       keepCompanions: true,
@@ -176,7 +185,7 @@ export function WelcomeScreen() {
 
 ## WebUI run configuration (mandatory)
 This is round 1/${bugHuntMaxBugs}. Investigate at most one proven bug in this round: discovery, proof, fix, verification, and cleanup. If no legitimate proof is possible, report no-proven-bug or blocked without changing production code. Stop after the round report; the WebUI will start another round only after this one finishes successfully and only while below the configured limit. Stay strictly within ${scopeText}.`,
-          { scope: bugHuntScope, maxBugs: bugHuntMaxBugs, currentRound: 1 },
+          { scope: bugHuntScope, maxBugs: bugHuntMaxBugs, currentRound: 1, ...modePatch },
         );
       },
       onSent: (id, content) => {
@@ -186,13 +195,14 @@ This is round 1/${bugHuntMaxBugs}. Investigate at most one proven bug in this ro
             totalRounds: bugHuntMaxBugs,
             currentRound: 1,
             requestId: id,
+            ...modePatch,
           });
         }
         addMessage({
           id,
           role: 'user',
           content,
-          bugHunt: { scope: bugHuntScope, maxBugs: bugHuntMaxBugs, currentRound: 1 },
+          bugHunt: { scope: bugHuntScope, maxBugs: bugHuntMaxBugs, currentRound: 1, ...modePatch },
         });
         setLoading(true);
       },
@@ -201,6 +211,7 @@ This is round 1/${bugHuntMaxBugs}. Investigate at most one proven bug in this ro
   }, [
     addMessage,
     bugHuntMaxBugs,
+    bugHuntMode,
     bugHuntScope,
     bugHuntState,
     sessionId,
@@ -396,10 +407,14 @@ Record the baseline, every attempt, and every keep/revert verdict in \`PERF_LOG.
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-semibold">
-                  {t('setup:welcome.bugHunterTitle')}
+                  {bugHuntMode !== 'bughunt'
+                    ? BUG_HUNT_MODE_LABELS[bugHuntMode]
+                    : t('setup:welcome.bugHunterTitle')}
                 </span>
                 <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">
-                  {t('setup:welcome.bugHunterBody')}
+                  {bugHuntMode !== 'bughunt'
+                    ? BUG_HUNT_MODE_DESCRIPTIONS[bugHuntMode]
+                    : t('setup:welcome.bugHunterBody')}
                 </span>
               </span>
             </LauncherHeader>
@@ -419,6 +434,22 @@ Record the baseline, every attempt, and every keep/revert verdict in \`PERF_LOG.
                   {scopeDirectories.map((path) => (
                     <option key={path} value={path}>
                       {t('setup:welcome.bugHunterDirectoryScope', { path })}
+                    </option>
+                  ))}
+                </select>
+                <label className="sr-only" htmlFor="bug-hunt-mode">
+                  {t('setup:welcome.bugHunterMode')}
+                </label>
+                <select
+                  id="bug-hunt-mode"
+                  value={bugHuntMode}
+                  onChange={(event) => setBugHuntMode(event.target.value as BugHuntMode)}
+                  disabled={!wsConnected || bugHuntState === 'loading'}
+                  className="min-w-0 rounded-md border border-border bg-background px-3 py-2 text-sm"
+                >
+                  {BUG_HUNT_MODES.map((mode) => (
+                    <option key={mode} value={mode}>
+                      {BUG_HUNT_MODE_LABELS[mode]}
                     </option>
                   ))}
                 </select>

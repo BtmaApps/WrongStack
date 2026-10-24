@@ -118,7 +118,7 @@ export const LOCAL_SKILL_RULES: readonly LocalSkillRule[] = [
   {
     name: 'typescript-strict',
     domain: 'frontend',
-    match: /\b(?:typescript|type narrowing|tip guven|tip daralt|\bany\b)\b/i,
+    match: /\b(?:typescript|type narrowing|typehunt|boundaryhunt|tip guven|tip daralt|\bany\b)\b/i,
     priority: 90,
   },
   {
@@ -276,7 +276,7 @@ export const LOCAL_SKILL_RULES: readonly LocalSkillRule[] = [
     name: 'accessibility',
     domain: 'design',
     match:
-      /\b(?:accessibility|a11y|wcag|screen.?reader|aria|erisilebilir|ekran okuyucu|keyboard navigation|klavye gezin)\b/i,
+      /\b(?:accessibility|a11y|uipolish|a11yhunt|uihunt|wcag|screen.?reader|aria|erisilebilir|ekran okuyucu|keyboard navigation|klavye gezin)\b/i,
     priority: 90,
   },
   {

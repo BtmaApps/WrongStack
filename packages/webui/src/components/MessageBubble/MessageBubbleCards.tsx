@@ -1,5 +1,6 @@
 import { Bot, Brain, Crosshair, Gauge, Info, Terminal, User } from 'lucide-react';
 import { useAppTranslation } from '@/i18n';
+import { BUG_HUNT_MODE_LABELS } from '@/lib/bug-hunt-message';
 import { PERF_RUN_METRIC_LABELS, PERF_RUN_MODE_LABELS } from '@/lib/perf-run-message';
 import { cn } from '@/lib/utils';
 import type { ChatMessage } from '@/stores';
@@ -58,11 +59,15 @@ export function MessageAvatar({
 /** The card a bug-hunt round prints in place of its instruction text. */
 export function BugHuntCard({ bugHunt }: { bugHunt: ChatMessage['bugHunt'] }) {
   const { t } = useAppTranslation();
+  const title =
+    bugHunt?.mode && bugHunt.mode !== 'bughunt'
+      ? BUG_HUNT_MODE_LABELS[bugHunt.mode]
+      : t('activity:message.bugHunterTitle');
   return (
     <div className="min-w-[15rem]">
       <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
         <Crosshair className="h-4 w-4 text-primary" />
-        <span>{t('activity:message.bugHunterTitle')}</span>
+        <span>{title}</span>
       </div>
       <div className="mt-2 flex flex-wrap gap-2 text-xs">
         <span className="rounded-full border border-primary/25 bg-primary/10 px-2 py-1">

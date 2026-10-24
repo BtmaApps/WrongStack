@@ -6,6 +6,7 @@ export type BugHuntContinueDecision = 'yes' | 'stop';
 interface BugHuntContinuePanelProps {
   completedRounds: number;
   totalRounds?: number | undefined;
+  label?: string | undefined;
   onDecision: (decision: BugHuntContinueDecision) => void;
 }
 
@@ -17,6 +18,7 @@ interface BugHuntContinuePanelProps {
 export function BugHuntContinuePanel({
   completedRounds,
   totalRounds,
+  label,
   onDecision,
 }: BugHuntContinuePanelProps): React.ReactElement {
   const [remaining, setRemaining] = React.useState(30);
@@ -56,7 +58,7 @@ export function BugHuntContinuePanel({
   return (
     <Box flexDirection="column" borderStyle="round" borderColor="cyan" paddingX={1}>
       <Text bold color="cyan">
-        Proof-Driven Bug Hunter — {roundLabel}
+        {label ?? 'Proof-Driven Bug Hunter'} — {roundLabel}
       </Text>
       <Text>Continue with the next proof-driven round?</Text>
       <Text dimColor>Automatically continuing in {remaining}s.</Text>

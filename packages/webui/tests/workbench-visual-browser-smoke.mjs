@@ -161,6 +161,7 @@ try {
       await shortcuts.nth(2).click();
       assert.equal(await page.evaluate(() => window.fixture.ui.getState().currentView), 'settings');
       await page.getByTestId('welcome-launcher-bug').click();
+      await expect(page.locator('#bug-hunt-mode')).toBeVisible();
       await expect(page.locator('#bug-hunt-scope')).toBeVisible();
       await page.getByTestId('welcome-launcher-perf').click();
       await expect(page.locator('#perf-mode')).toBeVisible();

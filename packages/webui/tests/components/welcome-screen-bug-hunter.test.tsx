@@ -157,6 +157,48 @@ describe('WelcomeScreen Proof-Driven Bug Hunter shortcut', () => {
     expect(screen.getByRole('alert').textContent).toBe('setup:welcome.bugHunterError');
   });
 
+  it('launches a selected Proof-Driven Hunt mode (e.g. debloat) and records its mode in the transcript', () => {
+    render(<WelcomeScreen />);
+
+    fireEvent.change(screen.getByLabelText('setup:welcome.bugHunterMode'), {
+      target: { value: 'debloat' },
+    });
+    fireEvent.change(screen.getByLabelText('setup:welcome.bugHunterScope'), {
+      target: { value: 'packages/webui' },
+    });
+    fireEvent.change(screen.getByLabelText('setup:welcome.bugHunterMaxBugs'), {
+      target: { value: '3' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /setup:welcome\.bugHunterStart/ }));
+
+    act(() => {
+      handlers.get('prefs.updated')?.({ payload: { subagentsAllowed: false } });
+    });
+    expect(send).toHaveBeenCalledWith({
+      type: 'prompts.content',
+      payload: { slug: 'proof-driven-dead-code-excisor' },
+    });
+
+    act(() => {
+      handlers.get('prompts.content')?.({
+        payload: {
+          slug: 'proof-driven-dead-code-excisor',
+          found: true,
+          content: 'Excise one dead unit.',
+        },
+      });
+    });
+
+    expect(useChatStore.getState().messages.at(-1)).toEqual(
+      expect.objectContaining({
+        content: expect.stringContaining(
+          '<!-- wrongstack-bug-hunt scope="packages%2Fwebui" max-bugs="3" round="1" mode="debloat" -->',
+        ),
+        bugHunt: { scope: 'packages/webui', maxBugs: 3, currentRound: 1, mode: 'debloat' },
+      }),
+    );
+  });
+
   it('sets solo mode before the first chat turn', () => {
     render(<WelcomeScreen />);
 

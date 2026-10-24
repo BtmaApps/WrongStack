@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
-  SLASH_COMMANDS,
-  SLASH_CATEGORY_ORDER,
   detectAtMention,
   matchSlash,
+  SLASH_CATEGORY_ORDER,
+  SLASH_COMMANDS,
 } from '@/components/ChatInput/slash-commands';
 
 describe('SLASH_CATEGORY_ORDER', () => {
@@ -32,6 +32,23 @@ describe('SLASH_COMMANDS', () => {
     const names = new Set(SLASH_COMMANDS.flatMap((c) => [c.name, ...(c.aliases ?? [])]));
     for (const command of [
       '/agents',
+      '/bughunt',
+      '/sechunt',
+      '/secproof',
+      '/racehunt',
+      '/leakhunt',
+      '/flakehunt',
+      '/debloat',
+      '/deadcode',
+      '/excise',
+      '/uipolish',
+      '/a11yhunt',
+      '/uihunt',
+      '/typehunt',
+      '/boundaryhunt',
+      '/testgap',
+      '/covhunt',
+      '/invarianthunt',
       '/compact!',
       '/enhance',
       '/load',

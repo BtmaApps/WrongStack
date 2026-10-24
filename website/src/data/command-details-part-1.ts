@@ -77,6 +77,71 @@ export const commandDetailsPart1: CommandDetailMap = {
     after:
       'Review the outcome: fixed-and-verified, fixed-verification-incomplete, no-proven-bug, or blocked. These reports are not automatically certified by the application.',
   },
+  '/sechunt': {
+    purpose:
+      'Prove and harden one reachable trust-boundary security flaw per round with a local negative proof.',
+    behavior:
+      'In a Solo session, `/sechunt [scope]` (or `/secproof`) runs the Proof-Driven Security Hardener protocol (`--rounds 1..25` in TUI, or via the WebUI Welcome Screen mode selector). It loads `security-scanner`, `evidence-audit`, `testing`, and `verify-before-done`, proves a boundary breach locally with a valid-input control, applies a surgical defense-in-depth fix, and promotes a permanent regression test.',
+    before: 'Choose a target boundary or package and record the current working-tree state.',
+    during:
+      'Use local, hermetic harnesses only; never probe external services or expose live credentials.',
+    after:
+      'Review the outcome (`fixed-and-verified`, `fixed-verification-incomplete`, `no-proven-bug`, or `blocked`) and the promoted regression test.',
+  },
+  '/racehunt': {
+    purpose:
+      'Prove and repair one concurrency race, stale-async clobber, or resource/listener leak per round.',
+    behavior:
+      'In a Solo session, `/racehunt [scope]` (aliases `/leakhunt`, `/flakehunt`) runs the Proof-Driven Race & Leak Hunter protocol (`--rounds 1..25`). It loads `evidence-audit`, `debugging`, `testing`, and `verify-before-done`, uses deterministic completion barriers or resource counters instead of wall-clock sleeps, fixes lifecycle ownership or cleanup, and verifies 5 consecutive passing runs.',
+    before: 'Identify the async state machine, transport, or lifecycle module to inspect.',
+    during:
+      'Drive interleavings with explicit deferreds/barriers and require 5x consecutive green verification runs.',
+    after:
+      'Confirm the promoted concurrency/leak regression test passes deterministically in the suite.',
+  },
+  '/debloat': {
+    purpose:
+      'Prove zero static and dynamic reachability for one dead-code or bloat unit per round and excise it.',
+    behavior:
+      'In a Solo session, `/debloat [scope]` (aliases `/deadcode`, `/excise`) runs the Proof-Driven Dead-Code & Bloat Excisor protocol (`--rounds 1..25`). It loads `code-quality`, `codebase-navigation`, `refactor-planner`, and `verify-before-done`, verifies zero incoming calls, dynamic imports, config/script references, and public barrel consumers before deleting, and reverts immediately if build, typecheck, or tests fail.',
+    before: 'Select a package or module where dead exports or obsolete shims are suspected.',
+    during: 'Confirm 4-way zero reachability before removing any symbol or file.',
+    after:
+      'Verify build, typecheck, architecture snapshots, and tests remain green after excision.',
+  },
+  '/uipolish': {
+    purpose:
+      'Measure, prove, and fix one concrete UI layout, interaction, or WCAG 2.2 AA accessibility defect per round.',
+    behavior:
+      'In a Solo session, `/uipolish [scope]` (aliases `/a11yhunt`, `/uihunt`) runs the Proof-Driven UI & Accessibility Ratchet protocol (`--rounds 1..25`). It loads `accessibility`, `design-critique`, `visual-regression`, and `verify-before-done`, proves a measurable contrast, overflow, keyboard/focus, or ARIA contract failure before editing, fixes it using project design tokens, and promotes a permanent component test.',
+    before: 'Target a UI package, route, or component and inspect its design tokens and locales.',
+    during:
+      'Prove the failure via rendered DOM inspection or a component accessibility test before changing markup or styles.',
+    after:
+      'Confirm the component test, i18n parity checks, and typecheck pass without visual regressions.',
+  },
+  '/typehunt': {
+    purpose:
+      'Prove how malformed runtime data breaches one unsafe type cast or boundary per round and replace it with a sound guard.',
+    behavior:
+      'In a Solo session, `/typehunt [scope]` (alias `/boundaryhunt`) runs the Proof-Driven Type & Boundary Guard protocol (`--rounds 1..25`). It loads `typescript-strict`, `api-design`, `testing`, and `verify-before-done`, proves with a runnable test that malformed data crosses an `as any` / `as unknown as T` or unvalidated `JSON.parse` boundary, replaces it with runtime narrowing or schema validation, and promotes the boundary test.',
+    before: 'Target a module with external inputs, serialization boundaries, or unsafe casts.',
+    during:
+      'Include both the malformed payload that triggers the failure and a valid-input control case.',
+    after:
+      'Confirm `typecheck` and the promoted runtime boundary test pass without suppression comments.',
+  },
+  '/testgap': {
+    purpose:
+      'Prove an unprotected high-impact production invariant per round and lock it down with a durable regression test.',
+    behavior:
+      'In a Solo session, `/testgap [scope]` (aliases `/covhunt`, `/invarianthunt`) runs the Proof-Driven Blind-Spot & Invariant Tester protocol (`--rounds 1..25`). It loads `testing`, `codebase-navigation`, `debugging`, and `verify-before-done`, proves in `.temp_files/` that breaking a critical invariant is missed by existing tests, and authors a permanent regression test without modifying production files.',
+    before: 'Choose a high-centrality module or critical boundary with thin behavioral coverage.',
+    during:
+      'Never mutate production source files in place; prove the blind spot in an isolated scratch harness and author a deterministic test.',
+    after:
+      'Confirm the new regression test passes 3 consecutive runs, passes typecheck/lint, and leaves production files untouched.',
+  },
   '/btw': {
     purpose: 'Add a non-aborting "by the way" note that reaches the agent on its next iteration.',
     behavior:

@@ -5,7 +5,7 @@ import { Link } from '@/lib/router';
 const workflows = [
   [
     'Proof-Driven Bug Hunter',
-    'Investigate a bounded scope with a failing reproduction, control case, and retained regression. Rounds are an investigation budget.',
+    'Investigate a bounded scope with a failing reproduction, control case, and retained regression across the Proof-Driven Hunt Suite (/bughunt, /sechunt, /racehunt, /debloat, /uipolish, /typehunt, /testgap). Rounds are an investigation budget.',
     '/bughunt --rounds 3 packages/tui',
     '/commands/bughunt',
   ],

@@ -6,12 +6,15 @@ import type { SkillManifest, SubagentConfig, Tool } from '@wrongstack/core/types
 export const SKILL_COMPANION_ROLE = 'skill-companion';
 export const SKILL_COMPANION_ID_PREFIX = 'skill-companion-';
 
+const PROOF_DRIVEN_HUNT_SLASH_RE =
+  /^\/(?:bughunt|sechunt|secproof|racehunt|leakhunt|flakehunt|debloat|deadcode|excise|uipolish|a11yhunt|uihunt|typehunt|boundaryhunt|testgap|covhunt|invarianthunt)(?:\s|$)/;
+
 /** Builtin hunt entry points and their generated continuation turns. */
 export function isProofDrivenBugHuntRequest(text: string): boolean {
   const request = text.trimStart();
   return (
-    /^\/bughunt(?:\s|$)/.test(request) ||
-    /^# ROLE: Autonomous Proof-Driven Bug Hunter & Fixer(?:\r?\n|$)/.test(request) ||
+    PROOF_DRIVEN_HUNT_SLASH_RE.test(request) ||
+    /^# ROLE: Autonomous Proof-Driven [^\r\n]+(?:\r?\n|$)/.test(request) ||
     /^<!-- wrongstack-bug-hunt\s/.test(request) ||
     /^This is round \d+(?:\/\d+)?; we're continuing the bug hunt\./.test(request)
   );

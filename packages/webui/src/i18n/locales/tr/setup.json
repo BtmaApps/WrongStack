@@ -12,6 +12,7 @@
     "bugHunterTitle": "Proof-Driven Bug Hunter'ı başlat",
     "bugHunterBody": "Gerçek bir bug bulur, kanıtlar, düzeltir, doğrular ve inceleme için durur.",
     "bugHunterScope": "Kapsam",
+    "bugHunterMode": "Av modu",
     "bugHunterWholeProject": "Tüm proje",
     "bugHunterDirectoryScope": "{{path}} ve altı",
     "bugHunterMaxBugs": "En çok bug",

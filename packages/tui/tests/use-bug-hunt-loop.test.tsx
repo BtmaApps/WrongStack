@@ -273,4 +273,19 @@ describe('useBugHuntLoop', () => {
     act(() => result.current.onBugHuntStarted(command, 3));
     expect(state.bugHuntRunning?.currentRound).toBe(1);
   });
+
+  it('preserves target scope across continuation rounds for extended hunt commands (/debloat, /sechunt)', () => {
+    vi.useFakeTimers();
+    const dispatch = vi.fn<(action: Action) => void>();
+    const submit = vi.fn<(command: string) => void>();
+    const { result } = renderHook(() => useBugHuntLoop(dispatch, submit));
+
+    act(() => result.current.onBugHuntStarted('/debloat --rounds 3 packages/tools', 3));
+    act(() => result.current.onRunFinished('done'));
+    act(() => vi.runOnlyPendingTimers());
+
+    expect(submit).toHaveBeenCalledWith(
+      "This is round 2/3; we're continuing the bug hunt. Stay within the original scope: packages/tools.",
+    );
+  });
 });

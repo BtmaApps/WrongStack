@@ -117,6 +117,53 @@ export const SLASH_COMMANDS: SlashCommandDef[] = [
 
   // Agent / autonomy
   {
+    name: '/bughunt',
+    category: 'Agent',
+    description: 'Proof-Driven Bug Hunter: /bughunt [--rounds 1..10] [scope] · /bughunt stop',
+  },
+  {
+    name: '/sechunt',
+    category: 'Agent',
+    aliases: ['/secproof'],
+    description:
+      'Proof-Driven Security Hardener: /sechunt [--rounds 1..10] [scope] · /sechunt stop',
+  },
+  {
+    name: '/racehunt',
+    category: 'Agent',
+    aliases: ['/leakhunt', '/flakehunt'],
+    description:
+      'Proof-Driven Race & Leak Hunter: /racehunt [--rounds 1..10] [scope] · /racehunt stop',
+  },
+  {
+    name: '/debloat',
+    category: 'Agent',
+    aliases: ['/deadcode', '/excise'],
+    description:
+      'Proof-Driven Dead-Code & Bloat Excisor: /debloat [--rounds 1..10] [scope] · /debloat stop',
+  },
+  {
+    name: '/uipolish',
+    category: 'Agent',
+    aliases: ['/a11yhunt', '/uihunt'],
+    description:
+      'Proof-Driven UI & Accessibility Ratchet: /uipolish [--rounds 1..10] [scope] · /uipolish stop',
+  },
+  {
+    name: '/typehunt',
+    category: 'Agent',
+    aliases: ['/boundaryhunt'],
+    description:
+      'Proof-Driven Type & Boundary Guard: /typehunt [--rounds 1..10] [scope] · /typehunt stop',
+  },
+  {
+    name: '/testgap',
+    category: 'Agent',
+    aliases: ['/covhunt', '/invarianthunt'],
+    description:
+      'Proof-Driven Blind-Spot & Invariant Tester: /testgap [--rounds 1..10] [scope] · /testgap stop',
+  },
+  {
     name: '/review',
     category: 'Agent',
     aliases: ['/cr'],

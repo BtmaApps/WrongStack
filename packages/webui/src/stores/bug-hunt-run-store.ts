@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { BugHuntLimit } from '@/lib/bug-hunt-message';
+import type { BugHuntLimit, BugHuntMode } from '@/lib/bug-hunt-message';
 
 const PENDING_REQUEST_ID = '__bug_hunt_continuation_pending__';
 
@@ -11,6 +11,8 @@ export interface BugHuntRun {
   currentRound: number;
   /** `null` after recovery; the next completion then claims the resumed run. */
   requestId: string | null;
+  /** Active Proof-Driven Hunt mode when non-default (`'bughunt'`). */
+  mode?: BugHuntMode | undefined;
 }
 
 interface BugHuntRunState {

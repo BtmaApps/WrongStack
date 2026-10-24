@@ -11,7 +11,7 @@ import { LOCAL_SKILL_RULES } from './local-rules.js';
 
 const MAX_QUERY_CHARS = 16_384;
 const ACTION =
-  /\b(?:build|create|implement|apply|add|fix|repair|debug|diagnose|refactor|migrate|upgrade|update|deploy|configure|render|animate|generate|write|commit|define|specify|redesign|collect|harden|tune|externalize|triage|design|review|audit|test|verify|prove|optimize|prepare|set up|choose|plan|find|measure|restore|port|kur\w*|yap\w*|ekle\w*|duzelt\w*|gelistir\w*|olustur\w*|uret\w*|hazirla\w*|tasarla\w*|guclendir\w*|teshis\w*|incele\w*|dogrula\w*|kanitla\w*|guncelle\w*|tasi\w*|yaz\w*|arastir\w*|bul\w*|olc\w*|sec\w*|canlandir\w*|uygula\w*|fails|failing|crashes|broken|calismiyor|hata veriyor|takiliyor)\b/;
+  /\b(?:build|create|implement|apply|add|fix|repair|debug|diagnose|refactor|migrate|upgrade|update|deploy|configure|render|animate|generate|write|commit|define|specify|redesign|collect|harden|tune|externalize|triage|design|review|audit|test|verify|prove|optimize|prepare|set up|choose|plan|find|measure|restore|port|bughunt|sechunt|secproof|racehunt|leakhunt|flakehunt|debloat|deadcode|excise|uipolish|a11yhunt|uihunt|typehunt|boundaryhunt|testgap|covhunt|invarianthunt|kur\w*|yap\w*|ekle\w*|duzelt\w*|gelistir\w*|olustur\w*|uret\w*|hazirla\w*|tasarla\w*|guclendir\w*|teshis\w*|incele\w*|dogrula\w*|kanitla\w*|guncelle\w*|tasi\w*|yaz\w*|arastir\w*|bul\w*|olc\w*|sec\w*|canlandir\w*|uygula\w*|fails|failing|crashes|broken|calismiyor|hata veriyor|takiliyor)\b/;
 const PROSE =
   /\b(?:birthday|haiku|poem|joke|greeting|weather|pizza|dogum gunu|siir|saka|gunaydin|hava durumu)\b/;
 const SOFTWARE =

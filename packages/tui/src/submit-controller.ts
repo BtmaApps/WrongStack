@@ -168,7 +168,11 @@ export function createSubmitController(host: SubmitControllerHost) {
     };
     // TUI workflow control must bypass prompt expansion and run/queue handling,
     // including when a round is currently streaming.
-    if (/^\/bughunt\s+stop$/.test(trimmed)) {
+    if (
+      /^\/(?:bughunt|sechunt|secproof|racehunt|leakhunt|flakehunt|debloat|deadcode|excise|uipolish|a11yhunt|uihunt|typehunt|boundaryhunt|testgap|covhunt|invarianthunt)\s+stop$/.test(
+        trimmed,
+      )
+    ) {
       pushSubmittedHistory();
       clearDraft();
       stopBugHuntAfterCurrentRound();

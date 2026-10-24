@@ -29,6 +29,7 @@ import { usePagination } from '@/hooks/usePagination';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { useAppTranslation } from '@/i18n';
 import { agentBelongsToSession } from '@/lib/agent-session';
+import { BUG_HUNT_MODE_LABELS } from '@/lib/bug-hunt-message';
 import { playCompletionChime } from '@/lib/chime';
 import { getWSClient } from '@/lib/ws-client';
 import {
@@ -364,7 +365,11 @@ export function SessionPanel() {
         <div className="bg-primary/[0.06] px-3 pb-2.5">
           <div className="flex items-center gap-2 text-xs font-semibold text-primary">
             <Crosshair className="h-3.5 w-3.5" aria-hidden="true" />
-            <span>{t('activity:sessionPanel.bugHuntInProgress')}</span>
+            <span>
+              {bugHuntRun.mode && bugHuntRun.mode !== 'bughunt'
+                ? BUG_HUNT_MODE_LABELS[bugHuntRun.mode]
+                : t('activity:sessionPanel.bugHuntInProgress')}
+            </span>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
             {t('activity:sessionPanel.bugHuntRoundOf', {

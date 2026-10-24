@@ -59,6 +59,12 @@ describe('local bundled skill recommendations', () => {
     ['Build an interactive HTML artifact', 'web-artifacts'],
     ['Test the browser E2E flow', 'webapp-testing'],
     ['Create an Excel spreadsheet', 'xlsx'],
+    ['Run a sechunt trust boundary review', 'security-scanner'],
+    ['Run racehunt on the session store', 'evidence-audit'],
+    ['Run debloat on unused exports', 'code-quality'],
+    ['Run uipolish on the dialog component', 'accessibility'],
+    ['Run typehunt on external payload parsers', 'typescript-strict'],
+    ['Run testgap on the retry module', 'testing'],
   ])('routes %s to %s', (text, expected) => {
     expect(recommendLocalSkills(text, catalog, ['skill'])?.names[0]).toBe(expected);
   });

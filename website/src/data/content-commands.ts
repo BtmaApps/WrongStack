@@ -85,6 +85,30 @@ const commandRows: Array<[string, string]> = [
   ['/coordinator', 'Control multi-session autonomous goal coordination.'],
   ['/review', 'Run a model-driven code review pass.'],
   ['/bughunt', 'Investigate a scoped bug with reproduction evidence and an optional round budget.'],
+  [
+    '/sechunt',
+    'Prove and harden one reachable trust-boundary security flaw per round (/secproof).',
+  ],
+  [
+    '/racehunt',
+    'Prove and fix one deterministic concurrency race or resource leak per round (/leakhunt, /flakehunt).',
+  ],
+  [
+    '/debloat',
+    'Prove zero reachability and excise one dead-code or bloat unit per round (/deadcode, /excise).',
+  ],
+  [
+    '/uipolish',
+    'Measure, prove, and fix one rendered UI or WCAG 2.2 AA accessibility defect per round (/a11yhunt, /uihunt).',
+  ],
+  [
+    '/typehunt',
+    'Prove and replace one unsafe type cast or unvalidated runtime boundary per round (/boundaryhunt).',
+  ],
+  [
+    '/testgap',
+    'Prove an unprotected production invariant and author a durable regression test per round (/covhunt, /invarianthunt).',
+  ],
   ['/mailbox', 'Read and send cross-agent project mailbox messages.'],
   ['/mailbox-demo', 'Exercise mailbox routing during development.'],
   ['/mailbox-serve', 'Expose the project mailbox through its HTTP bridge.'],
@@ -145,6 +169,12 @@ export const COMMAND_COUNT = commandRows.length;
 const categories: Record<Exclude<CommandCategory, 'All'>, string[]> = {
   Workflow: [
     '/bughunt',
+    '/sechunt',
+    '/racehunt',
+    '/debloat',
+    '/uipolish',
+    '/typehunt',
+    '/testgap',
     '/sdd',
     '/btw',
     '/next',
@@ -374,6 +404,30 @@ const featuredUsage: Record<string, { usage: string[]; note?: string }> = {
     usage: ['/bughunt', '/bughunt packages/core', '/bughunt --rounds 3 packages/tui'],
     note: 'Solo sessions only. A round budget authorizes investigations, not a guaranteed number of fixes.',
   },
+  '/sechunt': {
+    usage: ['/sechunt', '/sechunt packages/webui-server', '/sechunt --rounds 3 packages/core'],
+    note: 'Alias: /secproof. Requires a local non-destructive boundary proof before hardening.',
+  },
+  '/racehunt': {
+    usage: ['/racehunt', '/racehunt packages/tui', '/racehunt --rounds 3 packages/core'],
+    note: 'Aliases: /leakhunt, /flakehunt. Requires deterministic barriers and 5x repeat verification.',
+  },
+  '/debloat': {
+    usage: ['/debloat', '/debloat packages/core', '/debloat --rounds 3 packages/webui'],
+    note: 'Aliases: /deadcode, /excise. Proves zero static and dynamic reachability before excision.',
+  },
+  '/uipolish': {
+    usage: ['/uipolish', '/uipolish packages/webui', '/uipolish --rounds 3 packages/tui'],
+    note: 'Aliases: /a11yhunt, /uihunt. Proves rendered UI or WCAG 2.2 AA defects before fixing.',
+  },
+  '/typehunt': {
+    usage: ['/typehunt', '/typehunt packages/core', '/typehunt --rounds 3 packages/webui-server'],
+    note: 'Alias: /boundaryhunt. Replaces unsafe casts with verified runtime boundary guards.',
+  },
+  '/testgap': {
+    usage: ['/testgap', '/testgap packages/core', '/testgap --rounds 3 packages/tools'],
+    note: 'Aliases: /covhunt, /invarianthunt. Test-only mode: closes proven invariant blind spots without editing production files.',
+  },
   '/sdd': {
     usage: ['/sdd new "add OAuth account switching"', '/sdd approve', '/sdd status'],
     note: 'Phase flow: questioning → spec_review → implementation → task_review → executing. /sdd approve advances each phase.',
@@ -438,6 +492,12 @@ const pluginCommands = new Set([
   '/prompt',
   '/prompt-gen',
   '/bughunt',
+  '/sechunt',
+  '/racehunt',
+  '/debloat',
+  '/uipolish',
+  '/typehunt',
+  '/testgap',
   '/sync',
   '/skill',
   '/skill-gen',

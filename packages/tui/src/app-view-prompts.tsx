@@ -422,6 +422,7 @@ export function AppViewPrompts({
               <BugHuntContinuePanel
                 completedRounds={info.completedRounds}
                 totalRounds={info.totalRounds}
+                label={info.label}
                 onDecision={onDecision}
               />
             );
@@ -431,6 +432,8 @@ export function AppViewPrompts({
         <BugHuntRunningPanel
           currentRound={state.bugHuntRunning.currentRound}
           totalRounds={state.bugHuntRunning.totalRounds}
+          commandName={state.bugHuntRunning.commandName}
+          label={state.bugHuntRunning.label}
         />
       ) : null}
     </>

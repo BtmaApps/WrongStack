@@ -2,7 +2,11 @@ import { expectDefined } from '@wrongstack/core/utils/expect-defined';
 import { parseNextSteps } from '@wrongstack/tools/next-steps';
 import { toWireImages } from '@/components/ChatInput/image-attachments';
 import { toast } from '@/components/Toaster';
-import { buildBugHuntContinuation, buildBugHuntMessage } from '@/lib/bug-hunt-message';
+import {
+  BUG_HUNT_MODE_LABELS,
+  buildBugHuntContinuation,
+  buildBugHuntMessage,
+} from '@/lib/bug-hunt-message';
 import { playCompletionChime } from '@/lib/chime';
 import { setFaviconStatus } from '@/lib/favicon';
 import { ensureNotificationPermission, notifyIfHidden } from '@/lib/notify';
@@ -193,6 +197,7 @@ export function handleRunResult(msg: WSServerMessage) {
         scope: nextRound.scope,
         maxBugs: nextRound.totalRounds,
         currentRound: nextRound.currentRound,
+        ...(nextRound.mode ? { mode: nextRound.mode } : {}),
       };
       const continuation = buildBugHuntMessage(buildBugHuntContinuation(summary), summary);
       const requestId = getWSClient(useConfigStore.getState().wsUrl).sendMessage(
@@ -203,9 +208,13 @@ export function handleRunResult(msg: WSServerMessage) {
       );
       if (!requestId) {
         bugHuntRuns.stop(chat.sessionId);
+        const modeTitle =
+          nextRound.mode && nextRound.mode !== 'bughunt'
+            ? BUG_HUNT_MODE_LABELS[nextRound.mode]
+            : 'Proof-Driven Bug Hunter';
         chat.addMessage({
           role: 'assistant',
-          content: 'Proof-Driven Bug Hunter stopped because the next round could not be submitted.',
+          content: `${modeTitle} stopped because the next round could not be submitted.`,
           isError: true,
         });
       } else {

@@ -75,10 +75,22 @@ describe('createPromptsPlugin lifecycle', () => {
       'prompt-gen',
       'bughunt',
       'perf',
+      'sechunt',
+      'racehunt',
+      'debloat',
+      'uipolish',
+      'typehunt',
+      'testgap',
     ]);
     plugin.teardown!(api);
     expect(unregister).toHaveBeenCalledWith('prompts');
     expect(unregister).toHaveBeenCalledWith('bughunt');
+    expect(unregister).toHaveBeenCalledWith('sechunt');
+    expect(unregister).toHaveBeenCalledWith('racehunt');
+    expect(unregister).toHaveBeenCalledWith('debloat');
+    expect(unregister).toHaveBeenCalledWith('uipolish');
+    expect(unregister).toHaveBeenCalledWith('typehunt');
+    expect(unregister).toHaveBeenCalledWith('testgap');
     expect(unregister).toHaveBeenCalledWith('perf');
     expect(await plugin.health!()).toMatchObject({ ok: true });
   });
@@ -485,6 +497,41 @@ describe('/prompt, /prompt-gen, and /bughunt', () => {
     const out = await runCmd(bughunt, '', ctx());
     expect(out.runText).toBeUndefined();
     expect(out.message).toContain('proof-driven-bug-hunter');
+  });
+
+  it('registers /sechunt, /racehunt, /debloat, /uipolish, /typehunt, and /testgap with their aliases and canonical slugs', async () => {
+    const loader = new DefaultPromptLoader({
+      paths: { globalPrompts: dir, inProjectPrompts: path.join(dir, '__noproject') } as never,
+    });
+    const usage = new PromptUsageStore(path.join(dir, 'prompt-usage.json'));
+    const { api, registered } = makeApi();
+    createPromptsPlugin({ store, loader, usage }).setup!(api);
+
+    const byName = new Map(registered.map((c) => [c.name, c]));
+    expect(byName.get('sechunt')?.aliases).toEqual(['secproof']);
+    expect(byName.get('racehunt')?.aliases).toEqual(['leakhunt', 'flakehunt']);
+    expect(byName.get('debloat')?.aliases).toEqual(['deadcode', 'excise']);
+    expect(byName.get('uipolish')?.aliases).toEqual(['a11yhunt', 'uihunt']);
+    expect(byName.get('typehunt')?.aliases).toEqual(['boundaryhunt']);
+    expect(byName.get('testgap')?.aliases).toEqual(['covhunt', 'invarianthunt']);
+
+    await store.save(
+      store.createNew('Proof-Driven Dead-Code Excisor', 'Excise one dead unit.', ['dead-code'], {
+        category: 'refactoring',
+      }),
+    );
+    loader.invalidateCache();
+    const session = { id: 'debloat-session', append: vi.fn(async () => undefined) };
+    const debloat = byName.get('debloat')!;
+    const out = await runCmd(
+      debloat,
+      '--rounds 5 packages/tools',
+      ctx({ messages: [], meta: {}, session }),
+    );
+    expect(out.runText).toContain('Excise one dead unit.');
+    expect(out.runText).toContain('packages/tools');
+    expect(out.metadata).toEqual({ bugHunt: { rounds: 5 } });
+    expect((await usage.get('proof-driven-dead-code-excisor'))?.count).toBe(1);
   });
 });
 

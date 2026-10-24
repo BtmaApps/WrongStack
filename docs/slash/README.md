@@ -135,7 +135,7 @@ First-party plugins are official registry owners, so an enabled plugin exposes b
 
 | State | Plugin | Commands and aliases |
 |---|---|---|
-| Default active | `wstack-prompts` | `/prompts`, `/prompt`, `/prompt-gen`; [prompt library](prompts.md), [prompt search](prompt.md), [prompt generator](prompt-gen.md) |
+| Default active | `wstack-prompts` | `/prompts`, `/prompt`, `/prompt-gen`, `/bughunt`, `/perf`, `/sechunt` (`/secproof`), `/racehunt` (`/leakhunt`, `/flakehunt`), `/debloat` (`/deadcode`, `/excise`), `/uipolish` (`/a11yhunt`, `/uihunt`), `/typehunt` (`/boundaryhunt`), `/testgap` (`/covhunt`, `/invarianthunt`); [prompt library](prompts.md), [prompt search](prompt.md), [prompt generator](prompt-gen.md) |
 | Default active | `wstack-sync` | `/sync`; [sync](sync.md) |
 | Default active | `wstack-skills` | `/skill`, `/skill-gen`, `/skill-search`, `/skill-install`, `/skill-import`, `/skill-update`, `/skill-uninstall`; [skill commands](skills.md) |
 | Default active | `wstack-chimera` | `/chimera`; [Chimera](chimera.md) |

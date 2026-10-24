@@ -1,11 +1,20 @@
+import type { BugHuntSummary } from '@/lib/bug-hunt-message';
+import type { RoundLauncherClient } from '@/lib/launch-builtin-round';
 import type { WSClientMessage } from '@/types';
 
 /** Contracts for `runChatSlashCommand` and its per-command helpers. */
 
-export interface ChatAssistantMessage {
-  role: 'assistant';
-  content: string;
-}
+export type ChatAssistantMessage =
+  | {
+      role: 'assistant';
+      content: string;
+    }
+  | {
+      id?: string | undefined;
+      role: 'user';
+      content: string;
+      bugHunt?: BugHuntSummary | undefined;
+    };
 
 export type SlashRoutingView = 'chat' | 'sessions' | 'settings';
 
@@ -42,9 +51,14 @@ export type SlashRoutingClientMessage = Extract<
   | { type: 'config.doctor' }
   | { type: 'browser.policy' }
   | { type: 'prefs.update' }
+  | { type: 'prompts.content' }
+  | { type: 'prompts.used' }
 >;
 
 export interface SlashRoutingClient {
+  isConnected?: boolean | undefined;
+  on?: RoundLauncherClient['on'] | undefined;
+  sendMessage?: RoundLauncherClient['sendMessage'] | undefined;
   send?: (message: SlashRoutingClientMessage) => void;
   /**
    * Stamp a payload with the foreground session's id, when one is bound.

@@ -12,6 +12,7 @@
     "bugHunterTitle": "Lancer Proof-Driven Bug Hunter",
     "bugHunterBody": "Trouve, prouve et corrige un bug réel, le vérifie, puis s'arrête pour validation.",
     "bugHunterScope": "Périmètre",
+    "bugHunterMode": "Mode de chasse",
     "bugHunterWholeProject": "Projet entier",
     "bugHunterDirectoryScope": "{{path}} et ses sous-dossiers",
     "bugHunterMaxBugs": "Bugs max.",

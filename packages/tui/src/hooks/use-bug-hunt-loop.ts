@@ -3,13 +3,54 @@ import type { Action } from '../app-reducer.js';
 
 type ActiveBugHunt = {
   command: string;
+  commandName: string;
+  label: string;
   scope?: string | undefined;
   totalRounds?: number | undefined;
   completedRounds: number;
 };
 
+const HUNT_COMMAND_META: Record<string, { commandName: string; label: string }> = {
+  bughunt: { commandName: 'bughunt', label: 'Proof-Driven Bug Hunter' },
+  sechunt: { commandName: 'sechunt', label: 'Proof-Driven Security Hardener' },
+  secproof: { commandName: 'sechunt', label: 'Proof-Driven Security Hardener' },
+  racehunt: { commandName: 'racehunt', label: 'Proof-Driven Race & Leak Hunter' },
+  leakhunt: { commandName: 'racehunt', label: 'Proof-Driven Race & Leak Hunter' },
+  flakehunt: { commandName: 'racehunt', label: 'Proof-Driven Race & Leak Hunter' },
+  debloat: { commandName: 'debloat', label: 'Proof-Driven Dead-Code & Bloat Excisor' },
+  deadcode: { commandName: 'debloat', label: 'Proof-Driven Dead-Code & Bloat Excisor' },
+  excise: { commandName: 'debloat', label: 'Proof-Driven Dead-Code & Bloat Excisor' },
+  uipolish: { commandName: 'uipolish', label: 'Proof-Driven UI & Accessibility Ratchet' },
+  a11yhunt: { commandName: 'uipolish', label: 'Proof-Driven UI & Accessibility Ratchet' },
+  uihunt: { commandName: 'uipolish', label: 'Proof-Driven UI & Accessibility Ratchet' },
+  typehunt: { commandName: 'typehunt', label: 'Proof-Driven Type & Boundary Guard' },
+  boundaryhunt: { commandName: 'typehunt', label: 'Proof-Driven Type & Boundary Guard' },
+  testgap: { commandName: 'testgap', label: 'Proof-Driven Blind-Spot & Invariant Tester' },
+  covhunt: { commandName: 'testgap', label: 'Proof-Driven Blind-Spot & Invariant Tester' },
+  invarianthunt: { commandName: 'testgap', label: 'Proof-Driven Blind-Spot & Invariant Tester' },
+};
+
+function resolveHuntMeta(command: string): { commandName: string; label: string } {
+  const token = command.trim().match(/^\/([a-z][\w-]*)/)?.[1] ?? 'bughunt';
+  return HUNT_COMMAND_META[token] ?? { commandName: 'bughunt', label: 'Proof-Driven Bug Hunter' };
+}
+
+function buildRunningInfo(
+  active: Pick<ActiveBugHunt, 'commandName' | 'label'>,
+  currentRound: number,
+  totalRounds?: number,
+) {
+  return {
+    currentRound,
+    totalRounds,
+    ...(active.commandName !== 'bughunt'
+      ? { commandName: active.commandName, label: active.label }
+      : {}),
+  };
+}
+
 function parseBugHuntScope(command: string): string | undefined {
-  const args = command.replace(/^\/bughunt(?:\s+|$)/, '').trim();
+  const args = command.replace(/^\/[a-z][\w-]*(?:\s+|$)/, '').trim();
   const match = args.match(/^--rounds(?:\s+|=)\d+(?:\s+([\s\S]*))?$/);
   const scope = (match?.[1] ?? (match ? '' : args)).trim();
   return scope || undefined;
@@ -74,21 +115,25 @@ export function useBugHuntLoop(
       if (active?.command === command) {
         dispatch({
           type: 'bugHuntRunningOpen',
-          info: {
-            currentRound: active.completedRounds + 1,
-            totalRounds: active.totalRounds,
-          },
+          info: buildRunningInfo(active, active.completedRounds + 1, active.totalRounds),
         });
         return;
       }
       cancelPendingSubmit();
-      activeRef.current = {
+      const meta = resolveHuntMeta(command);
+      const nextActive: ActiveBugHunt = {
         command,
+        commandName: meta.commandName,
+        label: meta.label,
         scope: parseBugHuntScope(command),
         totalRounds,
         completedRounds: 0,
       };
-      dispatch({ type: 'bugHuntRunningOpen', info: { currentRound: 1, totalRounds } });
+      activeRef.current = nextActive;
+      dispatch({
+        type: 'bugHuntRunningOpen',
+        info: buildRunningInfo(nextActive, 1, totalRounds),
+      });
     },
     [dispatch, cancelPendingSubmit],
   );
@@ -106,7 +151,7 @@ export function useBugHuntLoop(
           type: 'addEntry',
           entry: {
             kind: 'info',
-            text: 'Proof-Driven Bug Hunter loop stopped because this round did not complete.',
+            text: `${active.label} loop stopped because this round did not complete.`,
           },
         });
         return;
@@ -121,8 +166,8 @@ export function useBugHuntLoop(
             kind: 'info',
             text:
               active.totalRounds === undefined
-                ? 'Proof-Driven Bug Hunter completed its single round.'
-                : `Proof-Driven Bug Hunter completed ${active.completedRounds}/${active.totalRounds} requested rounds.`,
+                ? `${active.label} completed its single round.`
+                : `${active.label} completed ${active.completedRounds}/${active.totalRounds} requested rounds.`,
           },
         });
         return;
@@ -136,10 +181,7 @@ export function useBugHuntLoop(
         const continuation = buildContinuationMessage(snapshot);
         dispatch({
           type: 'bugHuntRunningOpen',
-          info: {
-            currentRound: snapshot.completedRounds + 1,
-            totalRounds: snapshot.totalRounds,
-          },
+          info: buildRunningInfo(snapshot, snapshot.completedRounds + 1, snapshot.totalRounds),
         });
         pendingSubmitRef.current = submitAfterCurrentRun(() => {
           pendingSubmitRef.current = null;
@@ -181,7 +223,7 @@ export function useBugHuntLoop(
         type: 'addEntry',
         entry: {
           kind: 'info',
-          text: `Proof-Driven Bug Hunter stopped after ${active.completedRounds} completed rounds.`,
+          text: `${active.label} stopped after ${active.completedRounds} completed rounds.`,
         },
       });
       return;
@@ -189,12 +231,15 @@ export function useBugHuntLoop(
     // Reuse the normal completion check without interrupting the running round.
     const currentRound = active.completedRounds + 1;
     active.totalRounds = currentRound;
-    dispatch({ type: 'bugHuntRunningOpen', info: { currentRound, totalRounds: currentRound } });
+    dispatch({
+      type: 'bugHuntRunningOpen',
+      info: buildRunningInfo(active, currentRound, currentRound),
+    });
     dispatch({
       type: 'addEntry',
       entry: {
         kind: 'info',
-        text: `Proof-Driven Bug Hunter will stop after round ${currentRound} completes.`,
+        text: `${active.label} will stop after round ${currentRound} completes.`,
       },
     });
   }, [dispatch, cancelPendingSubmit]);

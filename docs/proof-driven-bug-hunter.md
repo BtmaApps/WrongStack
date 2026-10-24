@@ -1,9 +1,30 @@
-# Proof-Driven Bug Hunter
+# Proof-Driven Bug Hunter & Extended Hunt Suite
 
 `/bughunt [scope]` investigates one round in a Solo session. Use
 `/bughunt --rounds 3 packages/tui` to authorize three sequential rounds. WebUI
-offers a scope selector and a one-to-ten-round budget. Each round may fix one
-proven root cause; the budget does not guarantee that many bugs exist.
+offers a hunt mode selector, a scope selector, and a one-to-ten-round budget.
+Each round may fix one proven root cause; the budget does not guarantee that
+many issues exist.
+
+## Built-in Proof-Driven Hunt Modes
+
+In addition to `/bughunt`, the `wstack-prompts` plugin and WebUI Welcome Screen
+ship six specialized Proof-Driven / Ratchet hunt modes that share the same
+one-issue-per-round discipline, required-skills gate, and isolated
+`.temp_files/<slug>/<round-id>/` workspace contract:
+
+| Slash command | Aliases | Built-in prompt slug | Required skills (`<!-- wrongstack:required-skills ... -->`) |
+|---|---|---|---|
+| `/bughunt` | — | `proof-driven-bug-hunter` | `bug-hunter`, `debugging`, `testing`, `verify-before-done` |
+| `/sechunt` | `/secproof` | `proof-driven-security-hardener` | `security-scanner`, `evidence-audit`, `testing`, `verify-before-done` |
+| `/racehunt` | `/leakhunt`, `/flakehunt` | `proof-driven-race-leak-hunter` | `evidence-audit`, `debugging`, `testing`, `verify-before-done` |
+| `/debloat` | `/deadcode`, `/excise` | `proof-driven-dead-code-excisor` | `code-quality`, `codebase-navigation`, `refactor-planner`, `verify-before-done` |
+| `/uipolish` | `/a11yhunt`, `/uihunt` | `proof-driven-ui-a11y-ratchet` | `accessibility`, `design-critique`, `visual-regression`, `verify-before-done` |
+| `/typehunt` | `/boundaryhunt` | `proof-driven-type-boundary-guard` | `typescript-strict`, `api-design`, `testing`, `verify-before-done` |
+| `/testgap` | `/covhunt`, `/invarianthunt` | `proof-driven-blind-spot-tester` | `testing`, `codebase-navigation`, `debugging`, `verify-before-done` |
+
+All seven commands accept `[--rounds 1..25] [scope]` in the TUI and `<cmd> stop`
+to cap an active multi-round run after its current round completes.
 
 ## Required skills
 

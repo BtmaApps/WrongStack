@@ -194,7 +194,9 @@ export async function submitSlashCommand({
     if (res?.message) {
       dispatch({ type: 'addEntry', entry: { kind: 'info', text: res.message } });
     }
-    const bugHuntMatch = trimmed.match(/^\/bughunt(?:\s+--rounds(?:\s+|=)(\d+))?(?:\s|$)/);
+    const bugHuntMatch = trimmed.match(
+      /^\/(?:bughunt|sechunt|secproof|racehunt|leakhunt|flakehunt|debloat|deadcode|excise|uipolish|a11yhunt|uihunt|typehunt|boundaryhunt|testgap|covhunt|invarianthunt)(?:\s+--rounds(?:\s+|=)(\d+))?(?:\s|$)/,
+    );
     if (bugHuntMatch && res?.runText) {
       onBugHuntStarted(trimmed, bugHuntMatch[1] ? Number(bugHuntMatch[1]) : undefined);
     }

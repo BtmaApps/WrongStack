@@ -1,8 +1,3 @@
-import {
-  areSubagentsAllowed,
-  setSessionSubagentPolicy,
-} from '../coordination/session-subagent-policy.js';
-import type { Context } from '../core/context.js';
 import { DefaultPromptLoader, renderPrompt } from '../execution/prompt-loader.js';
 import { DefaultPromptStore } from '../storage/prompt-store.js';
 import { PromptUsageStore } from '../storage/prompt-usage-store.js';
@@ -10,6 +5,7 @@ import type { Plugin } from '../types/plugin.js';
 import type { PromptEntry, PromptLoader } from '../types/prompt.js';
 import type { SlashCommand } from '../types/slash-command.js';
 import type { WstackPaths } from '../utils/wstack-paths.js';
+import { buildProofDrivenHuntCommands, PROOF_DRIVEN_HUNT_SPECS } from './hunt-commands.js';
 import { buildPerfCommand } from './perf-command.js';
 import { buildPromptsCommand, dim, formatPrompt, unquote } from './prompts-command.js';
 
@@ -23,12 +19,18 @@ interface PromptsPluginOptions {
 /**
  * PromptsPlugin — built-in prompt library.
  *
- * Registers five slash commands:
+ * Registers slash commands:
  *   - `/prompts`     manage your library (list/view/add/edit/delete/favorite/extend)
  *   - `/prompt`      search the merged library (builtin + user + project) and insert
  *   - `/prompt-gen`  AI-guided authoring of a new high-quality prompt
  *   - `/bughunt`     run one Proof-Driven Bug Hunter round
  *   - `/perf`        run one measure-change-measure performance ratchet round
+ *   - `/sechunt`     run one Proof-Driven Security Hardener round
+ *   - `/racehunt`    run one Proof-Driven Race & Leak Hunter round
+ *   - `/debloat`     run one Proof-Driven Dead-Code & Bloat Excisor round
+ *   - `/uipolish`    run one Proof-Driven UI & Accessibility Ratchet round
+ *   - `/typehunt`    run one Proof-Driven Type & Boundary Guard round
+ *   - `/testgap`     run one Proof-Driven Blind-Spot & Invariant Tester round
  *
  * Active by default for all WrongStack sessions. The host injects a
  * `PromptLoader` (cross-layer read + copy-on-write) via `config.promptLoader`;
@@ -77,26 +79,34 @@ export function createPromptsPlugin(opts?: PromptsPluginOptions): Plugin {
         ),
       );
       api.slashCommands.register(buildPromptGenCommand(() => loader));
-      api.slashCommands.register(
-        buildBugHuntCommand(
-          () => loader,
-          () => usage,
-        ),
+      const huntCommands = buildProofDrivenHuntCommands(
+        () => loader,
+        () => usage,
       );
+      const [bugHuntCommand, ...extraHuntCommands] = huntCommands;
+      if (bugHuntCommand) api.slashCommands.register(bugHuntCommand);
       api.slashCommands.register(
         buildPerfCommand(
           () => loader,
           () => usage,
         ),
       );
-      api.log.info('[prompts] loaded — /prompts, /prompt, /prompt-gen, /bughunt, /perf available');
+      for (const cmd of extraHuntCommands) {
+        api.slashCommands.register(cmd);
+      }
+      const huntNames = PROOF_DRIVEN_HUNT_SPECS.map((s) => `/${s.name}`).join(', ');
+      api.log.info(
+        `[prompts] loaded — /prompts, /prompt, /prompt-gen, ${huntNames}, /perf available`,
+      );
     },
 
     teardown(api) {
       api.slashCommands.unregister('prompts');
       api.slashCommands.unregister('prompt');
       api.slashCommands.unregister('prompt-gen');
-      api.slashCommands.unregister('bughunt');
+      for (const spec of PROOF_DRIVEN_HUNT_SPECS) {
+        api.slashCommands.unregister(spec.name);
+      }
       api.slashCommands.unregister('perf');
       api.log.info('[prompts] unloaded');
     },
@@ -105,84 +115,6 @@ export function createPromptsPlugin(opts?: PromptsPluginOptions): Plugin {
       return { ok: true, message: 'Prompt store accessible' };
     },
   };
-}
-
-const PROOF_DRIVEN_BUG_HUNTER_SLUG = 'proof-driven-bug-hunter';
-
-function buildBugHuntCommand(
-  getLoader: () => PromptLoader | null,
-  getUsage: () => PromptUsageStore | null,
-): SlashCommand {
-  return {
-    name: 'bughunt',
-    description: 'Start one Proof-Driven Bug Hunter round.',
-    argsHint: '[package | path | feature | symptom]',
-    help: [
-      'Start one autonomous bug discovery, proof, fix, and verification round.',
-      '',
-      'Usage:',
-      '  /bughunt                         Hunt across the current project',
-      '  /bughunt --rounds 5              Run up to 5 TUI rounds (1-25)',
-      '  /bughunt packages/core/storage  Restrict the round to a target',
-      '  /bughunt --rounds 5 packages/tui Run up to 5 rounds in a target',
-      '',
-      'The agent handles exactly one bug and stops after its round report.',
-    ].join('\n'),
-    async run(args: string, ctx: Context) {
-      const loader = getLoader();
-      if (!loader) return { message: 'Prompt library not available.' };
-      const entry = await loader.find(PROOF_DRIVEN_BUG_HUNTER_SLUG);
-      if (!entry) {
-        return {
-          message: `Builtin prompt "${PROOF_DRIVEN_BUG_HUNTER_SLUG}" is unavailable. Rebuild or reinstall the prompt dataset.`,
-        };
-      }
-      const parsed = parseBugHuntArgs(args);
-      if (parsed.error) return { message: parsed.error };
-      // Solo, but the read-only companions (memory, explore) keep running:
-      // they cannot change code, so one fix still maps to one outcome. A
-      // session already solo — strict or not — is left as the user set it.
-      try {
-        if (areSubagentsAllowed(ctx)) await setSessionSubagentPolicy(ctx, 'companions');
-      } catch (err) {
-        const reason = err instanceof Error ? err.message : String(err);
-        return { message: `Proof-Driven Bug Hunter could not start: ${reason}` };
-      }
-      try {
-        await getUsage()?.record(entry.slug);
-      } catch {
-        // Usage tracking must never block a hunt.
-      }
-      const target = parsed.target;
-      const runText = target
-        ? `${entry.content}\n\n## User-selected target\nStay within this package, area, feature, or symptom for this round: ${target}`
-        : entry.content;
-      return {
-        message: target
-          ? `Proof-Driven Bug Hunter started for: ${target}`
-          : 'Proof-Driven Bug Hunter started for the current project.',
-        runText,
-        metadata: { bugHunt: { rounds: parsed.rounds } },
-      };
-    },
-  };
-}
-
-function parseBugHuntArgs(args: string): {
-  target: string;
-  rounds?: number | undefined;
-  error?: string | undefined;
-} {
-  const match = args.trim().match(/^--rounds(?:\s+|=)(\S+)(?:\s+([\s\S]*))?$/);
-  if (!match) return { target: args.trim() };
-  const rounds = Number(match[1]);
-  if (!Number.isInteger(rounds) || rounds < 1 || rounds > 25) {
-    return {
-      target: '',
-      error: 'Usage: /bughunt [--rounds 1..25] [package | path | feature | symptom]',
-    };
-  }
-  return { target: match[2]?.trim() ?? '', rounds };
 }
 
 // ── /prompt — search the merged library and insert ────────────────────────────
