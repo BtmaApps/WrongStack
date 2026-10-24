@@ -70,6 +70,14 @@ export class SageProjectServerConnection {
   /** Error reported by the live socket before it closed, if any. */
   protected closeCause: Error | null = null;
   private closeController = new AbortController(); // close() aborts, then replaces it
+  /**
+   * Bumped by every close(): an in-flight connect election captures it and
+   * stops (no retry, no re-armed spawn) when it moves. Without this, a close()
+   * landing mid-election was treated like any failed attempt — the loop kept
+   * retrying, respawned the detached daemon, and a late hello flipped the
+   * disposed connection back to 'connected' (round r1-20261024).
+   */
+  private connectEpoch = 0;
 
   private readonly spawnIfMissing: boolean;
 
@@ -197,6 +205,7 @@ export class SageProjectServerConnection {
   }
 
   close(): void {
+    this.connectEpoch++;
     const socket = this.socket;
     this.socket = null;
     this.info = null;
@@ -245,9 +254,13 @@ export class SageProjectServerConnection {
       throw new Error(this.state.lastError);
     }
     this.transition('connecting');
+    const epoch = this.connectEpoch;
     this.connecting = this.connectWithElection(spawnIfMissing)
       .catch((error) => {
-        this.transition('error', { error });
+        // The election died because close() ran mid-election: close() already
+        // set the truthful terminal state ('offline'/'unavailable'). Painting
+        // 'error' over it would report an intentional teardown as a failure.
+        if (epoch === this.connectEpoch) this.transition('error', { error });
         throw error;
       })
       .finally(() => {

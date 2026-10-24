@@ -47,6 +47,8 @@ export interface SageProjectServerConnectionInternals {
   >;
   authToken: string | undefined;
   closeCause: Error | null;
+  /** Bumped by close(): elections capture it and stop when it moves. */
+  connectEpoch: number;
   connectOnce(): Promise<void>;
   spawnDetachedServer(): void;
   currentAuthToken(): string | undefined;
@@ -76,15 +78,23 @@ export async function connectWithElection(
 ): Promise<void> {
   const deadline =
     Date.now() + (spawnIfMissing ? SERVER_START_TIMEOUT_MS : CONNECT_ATTEMPT_TIMEOUT_MS);
+  const epoch = self.connectEpoch;
+  const closedError = (): Error => new Error('SAGE server client disconnected');
   let lastSpawnAt = 0;
   let lastError: unknown = new Error('SAGE project server unavailable');
   while (Date.now() < deadline) {
+    // close() while this election was running stops it: no retry, no re-armed
+    // spawn, no post-close hello resurrection (round r1-20261024).
+    if (self.connectEpoch !== epoch) throw closedError();
     try {
       await self.connectOnce();
       return;
     } catch (error) {
       lastError = error;
     }
+    // The close may also land between the attempt failing and the spawn/retry
+    // decision below — re-check before either.
+    if (self.connectEpoch !== epoch) throw closedError();
     if (!spawnIfMissing) {
       // Only the attach-only mode names the absence; `status()` and
       // `shutdown()` probe with `false` too and keep their own handling.
@@ -267,6 +277,10 @@ export function handleServerMessage(
       self.socket?.destroy();
       return;
     }
+    // A hello for a handshake nobody waits on anymore — close() ran
+    // mid-election, or this attempt already failed — must not resurrect a
+    // torn-down connection. The socket is dead or being destroyed; drop it.
+    if (!self.connectResolve) return;
     self.info = message;
     self.transition('connected', { pid: message.pid });
     self.connectResolve?.();
