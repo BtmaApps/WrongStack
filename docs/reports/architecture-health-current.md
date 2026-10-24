@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-23T16:35:58.513Z
+**Generated:** 2026-10-24T09:23:14.884Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -8,11 +8,11 @@
 | Measure | Value |
 |---|---:|
 | Workspace packages | 38 |
-| Production source files | 5252 |
-| Production source lines | 1148656 |
-| Test files | 4648 |
+| Production source files | 5256 |
+| Production source lines | 1149767 |
+| Test files | 4651 |
 | Workspace dependency edges | 140 |
-| Relative module edges | 17303 |
+| Relative module edges | 17311 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 5 |
@@ -32,7 +32,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/cli | 676 | 669 | @wrongstack/acp, @wrongstack/bench, @wrongstack/codebase-index-mcp, @wrongstack/core, @wrongstack/desktop, @wrongstack/kanban, @wrongstack/kanban-mcp, @wrongstack/mailbox-mcp, @wrongstack/mcp, @wrongstack/persistence, @wrongstack/plug-lsp, @wrongstack/plugins, @wrongstack/primitives, @wrongstack/providers, @wrongstack/requirement-intake, @wrongstack/requirement-intake-mcp, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sage-mcp, @wrongstack/sdd, @wrongstack/security-scanner, @wrongstack/simpleui, @wrongstack/techstack, @wrongstack/telegram, @wrongstack/tools, @wrongstack/tui, @wrongstack/vector-memory, @wrongstack/vibeui, @wrongstack/webui, @wrongstack/webui-hq, @wrongstack/webui-protocol, @wrongstack/webui-server, @wrongstack/wrongtrace |
 | @wrongstack/client | 7 | 3 | @wrongstack/webui-protocol |
 | @wrongstack/codebase-index-mcp | 6 | 5 | @wrongstack/core, @wrongstack/mcp, @wrongstack/tools |
-| @wrongstack/core | 1165 | 1020 | @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
+| @wrongstack/core | 1166 | 1022 | @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/desktop | 48 | 35 | @wrongstack/core, @wrongstack/webui, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/governance | 45 | 37 | @wrongstack/persistence |
 | @wrongstack/kanban | 109 | 84 | @wrongstack/persistence, @wrongstack/primitives |
@@ -58,11 +58,11 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/tools | 350 | 346 | @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/tui | 496 | 429 | @wrongstack/core, @wrongstack/kanban, @wrongstack/primitives, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/tools |
 | @wrongstack/vector-memory | 18 | 28 | @wrongstack/core, @wrongstack/persistence, @wrongstack/sage |
-| @wrongstack/vibeui | 53 | 14 | @wrongstack/webui-protocol |
-| @wrongstack/webui | 764 | 506 | @wrongstack/core, @wrongstack/kanban, @wrongstack/plugins, @wrongstack/providers, @wrongstack/tools, @wrongstack/webui-protocol |
+| @wrongstack/vibeui | 55 | 14 | @wrongstack/webui-protocol |
+| @wrongstack/webui | 765 | 506 | @wrongstack/core, @wrongstack/kanban, @wrongstack/plugins, @wrongstack/providers, @wrongstack/tools, @wrongstack/webui-protocol |
 | @wrongstack/webui-hq | 127 | 55 | @wrongstack/core, @wrongstack/tools, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/webui-protocol | 29 | 15 | @wrongstack/core |
-| @wrongstack/webui-server | 304 | 307 | @wrongstack/core, @wrongstack/kanban, @wrongstack/mcp, @wrongstack/primitives, @wrongstack/providers, @wrongstack/requirement-intake, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/techstack, @wrongstack/tools, @wrongstack/vector-memory, @wrongstack/webui-protocol, @wrongstack/wrongtrace |
+| @wrongstack/webui-server | 304 | 308 | @wrongstack/core, @wrongstack/kanban, @wrongstack/mcp, @wrongstack/primitives, @wrongstack/providers, @wrongstack/requirement-intake, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/techstack, @wrongstack/tools, @wrongstack/vector-memory, @wrongstack/webui-protocol, @wrongstack/wrongtrace |
 | @wrongstack/wrongtrace | 11 | 9 | — |
 | wrongstack | 1 | 1 | @wrongstack/cli |
 
@@ -84,7 +84,7 @@ None.
 
 | Lines | File |
 |---:|---|
-| 1100 | `packages/vibeui/src/components/workspace.tsx` |
+| 1103 | `packages/vibeui/src/components/workspace.tsx` |
 | 1098 | `packages/webui/src/components/codemap-model.ts` |
 | 911 | `packages/vibeui/src/lib/session.ts` |
 | 889 | `packages/tools/src/codebase-index/infra-parser.ts` |
@@ -101,9 +101,9 @@ None.
 | 705 | `packages/webui-server/src/server/memory-handlers.ts` |
 | 703 | `packages/core/src/execution/auto-compaction-middleware.ts` |
 | 700 | `packages/core/src/chronicle/project-server.ts` |
-| 699 | `packages/client/src/client.ts` |
 | 699 | `packages/governance/src/runtime-compatibility.ts` |
 | 698 | `packages/core/src/coordination/subagent-budget.ts` |
+| 697 | `packages/client/src/client.ts` |
 | 696 | `packages/cli/src/boot/tui-session-resume.ts` |
 | 696 | `packages/core/src/coordination/autonomous-brain.ts` |
 | 696 | `packages/core/src/coordination/fleet-manager.ts` |

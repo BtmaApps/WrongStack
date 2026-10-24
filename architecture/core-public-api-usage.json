@@ -64,9 +64,9 @@
       "runtimeOrMixed": 1
     },
     "@wrongstack/core/goal": {
-      "files": 48,
+      "files": 47,
       "typeOnly": 21,
-      "runtimeOrMixed": 41
+      "runtimeOrMixed": 40
     },
     "@wrongstack/core/hooks": {
       "files": 14,
@@ -74,9 +74,9 @@
       "runtimeOrMixed": 11
     },
     "@wrongstack/core/hq": {
-      "files": 169,
-      "typeOnly": 104,
-      "runtimeOrMixed": 98
+      "files": 167,
+      "typeOnly": 103,
+      "runtimeOrMixed": 96
     },
     "@wrongstack/core/hq/protocol": {
       "files": 5,
@@ -5498,12 +5498,6 @@
     },
     {
       "specifier": "@wrongstack/core/goal",
-      "file": "packages/cli/src/goal-host.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/goal",
       "file": "packages/cli/src/repl-eternal-loop.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -5990,12 +5984,6 @@
     },
     {
       "specifier": "@wrongstack/core/hq",
-      "file": "packages/cli/src/hq-server/startup.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/hq",
       "file": "packages/cli/src/hq-server/sweeps.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -6017,12 +6005,6 @@
       "file": "packages/cli/src/hq-server/upgrade-handler.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 5
-    },
-    {
-      "specifier": "@wrongstack/core/hq",
-      "file": "packages/cli/src/hq-server/utils.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/hq",

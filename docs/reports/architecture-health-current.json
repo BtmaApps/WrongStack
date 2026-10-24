@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-23T16:35:58.513Z",
+  "generatedAt": "2026-10-24T09:23:14.884Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 38,
-    "sourceFiles": 5252,
-    "testFiles": 4648,
-    "sourceLines": 1148656,
+    "sourceFiles": 5256,
+    "testFiles": 4651,
+    "sourceLines": 1149767,
     "workspaceEdges": 140,
-    "moduleEdges": 17303,
+    "moduleEdges": 17311,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -248,8 +248,8 @@
     {
       "name": "@wrongstack/core",
       "dir": "packages/core",
-      "sourceFiles": 1165,
-      "testFiles": 1020,
+      "sourceFiles": 1166,
+      "testFiles": 1022,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -264,7 +264,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 1020
+          "testFiles": 1022
         }
       ]
     },
@@ -849,7 +849,7 @@
     {
       "name": "@wrongstack/vibeui",
       "dir": "packages/vibeui",
-      "sourceFiles": 53,
+      "sourceFiles": 55,
       "testFiles": 14,
       "workspaceDependencies": [
         "@wrongstack/webui-protocol"
@@ -870,7 +870,7 @@
     {
       "name": "@wrongstack/webui",
       "dir": "packages/webui",
-      "sourceFiles": 764,
+      "sourceFiles": 765,
       "testFiles": 506,
       "workspaceDependencies": [
         "@wrongstack/core",
@@ -947,7 +947,7 @@
       "name": "@wrongstack/webui-server",
       "dir": "packages/webui-server",
       "sourceFiles": 304,
-      "testFiles": 307,
+      "testFiles": 308,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -973,7 +973,7 @@
         {
           "path": "packages/webui-server/tsconfig.test.json",
           "error": null,
-          "testFiles": 307
+          "testFiles": 308
         }
       ]
     },
@@ -6417,6 +6417,12 @@
         ]
       },
       {
+        "file": "packages/core/tests/architecture/vitest-workers.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/core/tests/architecture/website-csp.test.ts",
         "projects": [
           "root-node"
@@ -10696,6 +10702,12 @@
       },
       {
         "file": "packages/core/tests/skills/tar-size-field.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/skills/tech-stack-version-sync.test.ts",
         "projects": [
           "root-node"
         ]
@@ -24495,6 +24507,12 @@
         ]
       },
       {
+        "file": "packages/webui-server/tests/file-mutations-root-case.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/webui-server/tests/file-picker.test.ts",
         "projects": [
           "root-node"
@@ -29279,8 +29297,8 @@
     },
     {
       "file": "packages/vibeui/src/components/workspace.tsx",
-      "lines": 1100,
-      "relativeImports": 27
+      "lines": 1103,
+      "relativeImports": 29
     },
     {
       "file": "packages/vibeui/src/lib/session.ts",
@@ -29316,8 +29334,8 @@
   "hotspots": [
     {
       "file": "packages/vibeui/src/components/workspace.tsx",
-      "lines": 1100,
-      "relativeImports": 27
+      "lines": 1103,
+      "relativeImports": 29
     },
     {
       "file": "packages/webui/src/components/codemap-model.ts",
@@ -29400,11 +29418,6 @@
       "relativeImports": 21
     },
     {
-      "file": "packages/client/src/client.ts",
-      "lines": 699,
-      "relativeImports": 5
-    },
-    {
       "file": "packages/governance/src/runtime-compatibility.ts",
       "lines": 699,
       "relativeImports": 12
@@ -29413,6 +29426,11 @@
       "file": "packages/core/src/coordination/subagent-budget.ts",
       "lines": 698,
       "relativeImports": 6
+    },
+    {
+      "file": "packages/client/src/client.ts",
+      "lines": 697,
+      "relativeImports": 4
     },
     {
       "file": "packages/cli/src/boot/tui-session-resume.ts",

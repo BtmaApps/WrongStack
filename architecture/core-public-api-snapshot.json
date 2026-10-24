@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "package": "@wrongstack/core",
-  "packageVersion": "1.1.15",
+  "packageVersion": "1.1.16",
   "policy": "Root is compatibility-only; new imports use owned domain subpaths.",
   "subpaths": [
     {
@@ -1625,7 +1625,7 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "focused repository or runtime subsystem",
       "sourceFiles": 51,
-      "sourceLines": 12684
+      "sourceLines": 12678
     },
     {
       "directory": "coordination",
@@ -1736,8 +1736,8 @@
       "directory": "plugins",
       "classification": "product feature",
       "intendedOwner": "@wrongstack/plugins",
-      "sourceFiles": 30,
-      "sourceLines": 9824
+      "sourceFiles": 31,
+      "sourceLines": 9997
     },
     {
       "directory": "prompts",

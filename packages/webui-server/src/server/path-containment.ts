@@ -17,6 +17,20 @@ export function isPathInside(root: string, target: string): boolean {
   );
 }
 
+/**
+ * True when `a` and `b` name the same location, compared with the SAME
+ * normalization {@link isPathInside} uses. A raw `===` is not a valid twin of
+ * that check: on win32 `isPathInside` folds case, so a case-variant spelling of
+ * the project root (`../PROJ` for `proj`) is accepted as "the root itself" while
+ * `realResolved === realProjectRoot` says it is some other path — which let
+ * `files.delete` recursively remove the whole project.
+ */
+export function isSamePath(a: string, b: string): boolean {
+  const normA = process.platform === 'win32' ? path.resolve(a).toLowerCase() : path.resolve(a);
+  const normB = process.platform === 'win32' ? path.resolve(b).toLowerCase() : path.resolve(b);
+  return path.relative(normA, normB) === '';
+}
+
 export async function resolveWorkingDirInsideProject(
   projectRoot: string,
   inputPath: string,

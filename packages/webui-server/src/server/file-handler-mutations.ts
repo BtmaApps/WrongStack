@@ -6,6 +6,7 @@ import {
   validatedPayload,
   withSessionEcho,
 } from './file-handler-helpers.js';
+import { isSamePath } from './path-containment.js';
 import { errMessage, messageSessionId, send } from './ws-utils.js';
 
 // ── files.create ──────────────────────────────────────────────────────
@@ -159,7 +160,9 @@ export async function handleFilesDelete(
   }
 
   const realProjectRoot = await fs.realpath(projectRoot);
-  if (realResolved === realProjectRoot) {
+  // Same comparison as the containment check: on case-insensitive filesystems
+  // a case-variant spelling of the root is still the root.
+  if (isSamePath(realResolved, realProjectRoot)) {
     send(ws, {
       type: 'files.deleted',
       payload: withSessionEcho(
@@ -236,7 +239,7 @@ export async function handleFilesRename(
 
   // Reject renaming the project root itself.
   const realProjectRoot = await fs.realpath(projectRoot);
-  if (realOld === realProjectRoot) {
+  if (isSamePath(realOld, realProjectRoot)) {
     send(ws, {
       type: 'files.renamed',
       payload: withSessionEcho(
@@ -355,7 +358,7 @@ export async function handleFilesMove(
 
   // Reject moving the project root.
   const realProjectRoot = await fs.realpath(projectRoot);
-  if (realSrc === realProjectRoot) {
+  if (isSamePath(realSrc, realProjectRoot)) {
     send(ws, {
       type: 'files.moved',
       payload: withSessionEcho(
