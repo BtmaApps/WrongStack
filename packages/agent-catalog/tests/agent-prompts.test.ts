@@ -2,8 +2,8 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { agentPrompt, agentPromptCacheSize } from '../../src/coordination/agents/agent-prompts.js';
-import { captureLearnedFromAgentOutputDetailed } from '../../src/coordination/agents/project-agent-identity.js';
+import { agentPrompt, agentPromptCacheSize } from '../src/agent-prompts.js';
+import { captureLearnedFromAgentOutputDetailed } from '../src/project-agent-identity.js';
 
 /**
  * B1 regression coverage: `agentPrompt` memoizes resolved prompts, but the

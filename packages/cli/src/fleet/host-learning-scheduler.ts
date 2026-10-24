@@ -10,7 +10,7 @@ import {
   type LearningOptimizerLlm,
   listProjectAgentRoles,
   resolveAutoOptimizePolicy,
-} from '@wrongstack/core/agent-catalog';
+} from '@wrongstack/agent-catalog';
 import { resolveSubagentModelTarget } from '@wrongstack/core/coordination';
 import { makeDispatchClassifier } from '../services/dispatch-classifier.js';
 import { buildHostSubagentProvider } from './host-provider.js';

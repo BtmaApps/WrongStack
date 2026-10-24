@@ -1,5 +1,5 @@
 import type { SubagentConfig } from '@wrongstack/contracts/types/multi-agent';
-import { clampSubagentCapabilities } from '../../security/capabilities.js';
+import { clampSubagentCapabilities } from '@wrongstack/primitives/tool-capabilities';
 import { inferRuntimeCapabilities } from './capability-manifest.js';
 import { loadProjectAgentConfig } from './project-agent-config-io.js';
 import { listProjectAgentRoles } from './project-agent-files.js';

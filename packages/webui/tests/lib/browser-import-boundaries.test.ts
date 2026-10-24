@@ -19,7 +19,7 @@ describe('browser import boundaries', () => {
     const forbiddenSpecifiers = [
       '@wrongstack/core/execution',
       '@wrongstack/core/execution/prompt-enhancer',
-      '@wrongstack/core/agent-catalog',
+      '@wrongstack/agent-catalog',
     ];
     const violations = browserSourceFiles(srcRoot).flatMap((file) => {
       const source = readFileSync(file, 'utf8');

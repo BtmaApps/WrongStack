@@ -18,7 +18,7 @@ import {
   resolveRoleSkillCandidates,
   setSkillPinned,
   updateProjectAgentIdentity,
-} from '@wrongstack/core/agent-catalog';
+} from '@wrongstack/agent-catalog';
 import { color } from '@wrongstack/core/utils';
 import type { SlashCommandContext } from './command-context.js';
 

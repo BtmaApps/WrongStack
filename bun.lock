@@ -89,6 +89,19 @@
         "vitest": "^5.0.5",
       },
     },
+    "packages/agent-catalog": {
+      "name": "@wrongstack/agent-catalog",
+      "version": "1.1.16",
+      "dependencies": {
+        "@wrongstack/contracts": "workspace:*",
+        "@wrongstack/persistence": "workspace:*",
+        "@wrongstack/primitives": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/node": "^22.20.5",
+        "typescript": "^7.0.2",
+      },
+    },
     "packages/bench": {
       "name": "@wrongstack/bench",
       "version": "1.1.16",
@@ -137,6 +150,7 @@
       },
       "dependencies": {
         "@wrongstack/acp": "workspace:*",
+        "@wrongstack/agent-catalog": "workspace:*",
         "@wrongstack/bench": "workspace:*",
         "@wrongstack/builtin-plugins": "workspace:*",
         "@wrongstack/chronicle": "workspace:*",
@@ -235,6 +249,7 @@
       "name": "@wrongstack/core",
       "version": "1.1.16",
       "dependencies": {
+        "@wrongstack/agent-catalog": "workspace:*",
         "@wrongstack/contracts": "workspace:*",
         "@wrongstack/kanban": "workspace:*",
         "@wrongstack/persistence": "workspace:*",
@@ -628,6 +643,7 @@
         "@msgpack/msgpack": "^3.1.3",
         "@playwright/test": "^1.64.1",
         "@typescript/typescript6": "^6.0.2",
+        "@wrongstack/agent-catalog": "workspace:*",
         "@wrongstack/contracts": "workspace:*",
         "@wrongstack/core": "workspace:*",
         "@wrongstack/kanban": "workspace:*",
@@ -914,6 +930,7 @@
       "devDependencies": {
         "@types/node": "^26.6.5",
         "@types/ws": "^8.18.1",
+        "@wrongstack/agent-catalog": "workspace:*",
         "typescript": "^7.0.2",
       },
     },
@@ -1737,6 +1754,8 @@
     "@workflow/serde": ["@workflow/serde@4.1.0", "", {}, "sha512-pav4F2BoirECWR7Nf1TKt+2eETcBj7jj4cBefQ8VXQCA6NPkaKeLfj/zMgi+3zYV5ZIBT4GuUiphsj0/b9hPQQ=="],
 
     "@wrongstack/acp": ["@wrongstack/acp@workspace:packages/acp"],
+
+    "@wrongstack/agent-catalog": ["@wrongstack/agent-catalog@workspace:packages/agent-catalog"],
 
     "@wrongstack/bench": ["@wrongstack/bench@workspace:packages/bench"],
 

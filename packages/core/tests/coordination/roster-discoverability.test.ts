@@ -12,7 +12,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { ALL_AGENT_DEFINITIONS } from '../../src/coordination/agents/index.js';
+import { ALL_AGENT_DEFINITIONS } from '../../../agent-catalog/src/index.js';
 import { rosterSummaryFromConfigs } from '../../src/coordination/director-prompts.js';
 import { FLEET_ROSTER } from '../../src/coordination/fleet.js';
 

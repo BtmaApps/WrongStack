@@ -1,6 +1,6 @@
 import { EventBus, type TrackedAgentSnapshot } from '@wrongstack/contracts/kernel/events';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { agentPrompt } from '../../src/coordination/agents/agent-prompts.js';
+import { agentPrompt } from '../../../agent-catalog/src/agent-prompts.js';
 import {
   buildProbeTaskText,
   DEFAULT_EXPLORE_COMPANION_AGENT_ID,

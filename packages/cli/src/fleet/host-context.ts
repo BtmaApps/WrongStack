@@ -14,7 +14,7 @@ import {
   resolveRoleSkillCandidates,
   runtimeToolReferencesFromText,
   type SkillBlockReason,
-} from '@wrongstack/core/agent-catalog';
+} from '@wrongstack/agent-catalog';
 import { FLEET_ROSTER } from '@wrongstack/core/coordination';
 import { formatMemoryEvidenceBlock, formatProjectSuppliedBlock } from '@wrongstack/core/utils';
 import { formatMemoryHintsDetailed, getSageRetrieval } from '@wrongstack/sage';

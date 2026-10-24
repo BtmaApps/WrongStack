@@ -21,10 +21,10 @@
  */
 
 import { randomUUID } from 'node:crypto';
+import { defaultSubagentBudget } from '@wrongstack/agent-catalog';
 import type { EventBus } from '@wrongstack/contracts/kernel/events';
 import type { Logger } from '@wrongstack/contracts/types/logger';
 import type { SubagentConfig } from '@wrongstack/contracts/types/multi-agent';
-import { defaultSubagentBudget } from './agents/types.js';
 import { AutonomousBrain } from './autonomous-brain.js';
 import { type PendingChangeGate, voteOnPendingChange } from './autonomous-coordinator-consensus.js';
 import {

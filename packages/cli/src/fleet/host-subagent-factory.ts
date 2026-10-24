@@ -23,7 +23,7 @@ import {
   applyProjectAgentConfig,
   buildProjectContextualizedPrompt,
   loadProjectAgentConfig,
-} from '@wrongstack/core/agent-catalog';
+} from '@wrongstack/agent-catalog';
 import {
   type AgentFactory,
   DEFAULT_SUBAGENT_BASELINE,

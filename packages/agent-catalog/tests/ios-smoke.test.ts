@@ -21,20 +21,18 @@ import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-// Fixture path: <repo>/packages/core/instructions/agents/ios.md
+// Fixture path: <repo>/packages/agent-catalog/instructions/agents/ios.md
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const FIXTURE_DIR = path.resolve(HERE, '../../instructions/agents');
+const FIXTURE_DIR = path.resolve(HERE, '../instructions/agents');
 const FIXTURE_FILE = path.join(FIXTURE_DIR, 'ios.md');
 
 // Dynamic imports at module top level (top-level await is allowed in ESM).
 // The loader reads env vars lazily inside agentPrompt(), so beforeAll
 // setting WRONGSTACK_AGENT_INSTRUCTIONS_DIR before any test runs is what
 // pins the fixture source.
-const { agentPrompt } = await import('../../src/coordination/agents/agent-prompts.js');
-const { AGENT_CATALOG, ALL_AGENT_DEFINITIONS } = await import(
-  '../../src/coordination/agents/index.js'
-);
-const { FLEET_ROSTER } = await import('../../src/coordination/fleet.js');
+const { agentPrompt } = await import('../src/agent-prompts.js');
+const { AGENT_CATALOG, ALL_AGENT_DEFINITIONS } = await import('../src/index.js');
+const { FLEET_ROSTER } = await import('../../core/src/coordination/fleet.js');
 
 describe('iOS assistant smoke-test', () => {
   let originalEnvDir: string | undefined;

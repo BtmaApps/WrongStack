@@ -1,8 +1,8 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import * as path from 'node:path';
+import { summarizeDispatchLog } from '@wrongstack/agent-catalog';
 import { EventBus } from '@wrongstack/contracts/kernel';
-import { summarizeDispatchLog } from '@wrongstack/core/agent-catalog';
 import type { Director } from '@wrongstack/core/coordination';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createDispatchOutcomeRecorder } from '../../src/fleet/host-dispatch-outcomes.js';

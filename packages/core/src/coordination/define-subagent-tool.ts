@@ -1,7 +1,7 @@
+import { defaultSubagentBudget } from '@wrongstack/agent-catalog';
 import type { SubagentConfig } from '@wrongstack/contracts/types/multi-agent';
 import type { JSONSchema, Tool } from '@wrongstack/contracts/types/tool';
 import { ToolCapabilities } from '../security/capabilities.js';
-import { defaultSubagentBudget } from './agents/types.js';
 
 export interface DefineSubagentInput {
   /** Unique name/role id for the subagent (letters, numbers, _, -, .). */

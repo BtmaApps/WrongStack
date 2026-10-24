@@ -7,7 +7,7 @@ import {
   missingRequiredRuntimeTools,
   missingRuntimeCapabilities,
   runtimeToolReferencesFromText,
-} from '@wrongstack/core/agent-catalog';
+} from '@wrongstack/agent-catalog';
 import {
   markRecommendedSkillLoaded,
   markRecommendedSkillUnavailable,

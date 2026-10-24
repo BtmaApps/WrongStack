@@ -72,6 +72,25 @@
     "packages/acp/src/version.ts": [
       "versionCoverage"
     ],
+    "packages/agent-catalog/src/dispatch-log.ts": [
+      "dispatchLogPath"
+    ],
+    "packages/agent-catalog/src/index.ts": [
+      "ROLE_DISPATCH_RATIONALE"
+    ],
+    "packages/agent-catalog/src/phase3-techstack.ts": [
+      "TECHSTACK_AGENTS"
+    ],
+    "packages/agent-catalog/src/project-agent-directive-outcome.ts": [
+      "DIRECTIVE_QUARANTINE_MAX_LIFT",
+      "shouldRetireDirective"
+    ],
+    "packages/agent-catalog/src/project-agent-skill-layer.ts": [
+      "projectSkillAffinityPath"
+    ],
+    "packages/agent-catalog/src/role-skills.ts": [
+      "BUNDLED_AGENT_SKILLS"
+    ],
     "packages/builtin-plugins/src/perf-command.ts": [
       "buildPerfRunText",
       "parsePerfArgs"
@@ -444,28 +463,6 @@
       "normalizeRuntimeToolName",
       "runtimeCapabilityForTool"
     ],
-    "packages/core/src/coordination/agents/agent-prompts.ts": [
-      "agentPromptCacheSize"
-    ],
-    "packages/core/src/coordination/agents/dispatch-log.ts": [
-      "dispatchLogPath"
-    ],
-    "packages/core/src/coordination/agents/index.ts": [
-      "ROLE_DISPATCH_RATIONALE"
-    ],
-    "packages/core/src/coordination/agents/phase3-techstack.ts": [
-      "TECHSTACK_AGENTS"
-    ],
-    "packages/core/src/coordination/agents/project-agent-directive-outcome.ts": [
-      "DIRECTIVE_QUARANTINE_MAX_LIFT",
-      "shouldRetireDirective"
-    ],
-    "packages/core/src/coordination/agents/project-agent-skill-layer.ts": [
-      "projectSkillAffinityPath"
-    ],
-    "packages/core/src/coordination/agents/role-skills.ts": [
-      "BUNDLED_AGENT_SKILLS"
-    ],
     "packages/core/src/coordination/fleet.ts": [
       "EXPLORE_COMPANION_TOOLS"
     ],
@@ -662,9 +659,6 @@
     ],
     "packages/core/src/utils/tree-kill.ts": [
       "WIN32_TASKKILL_BACKSTOP_MS"
-    ],
-    "packages/core/src/utils/wstack-paths.ts": [
-      "bootstrapProfileName"
     ],
     "packages/core/src/wiring/proxy-rewrite.ts": [
       "__resetProxyConfigForTests",

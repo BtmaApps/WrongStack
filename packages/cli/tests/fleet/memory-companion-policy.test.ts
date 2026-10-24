@@ -1,4 +1,4 @@
-import { applyProjectAgentConfig } from '@wrongstack/core/agent-catalog';
+import { applyProjectAgentConfig } from '@wrongstack/agent-catalog';
 import { describe, expect, it } from 'vitest';
 import { constrainMemoryCompanion } from '../../src/fleet/memory-companion-policy.js';
 

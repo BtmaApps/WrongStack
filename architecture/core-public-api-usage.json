@@ -9,9 +9,9 @@
       "runtimeOrMixed": 129
     },
     "@wrongstack/core/agent-catalog": {
-      "files": 24,
-      "typeOnly": 2,
-      "runtimeOrMixed": 25
+      "files": 1,
+      "typeOnly": 0,
+      "runtimeOrMixed": 2
     },
     "@wrongstack/core/agent-coordination": {
       "files": 2,
@@ -2868,144 +2868,6 @@
       "file": "packages/webui/src/stores/auto-submit-streak.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/agent-catalog",
-      "file": "packages/cli/src/execution-kanban-dispatch.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/agent-catalog",
-      "file": "packages/cli/src/fleet/host-context.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/agent-catalog",
-      "file": "packages/cli/src/fleet/host-dispatch-outcomes.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/agent-catalog",
-      "file": "packages/cli/src/fleet/host-learning-scheduler.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/agent-catalog",
-      "file": "packages/cli/src/fleet/host-learning.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/agent-catalog",
-      "file": "packages/cli/src/fleet/host-subagent-factory.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/agent-catalog",
-      "file": "packages/cli/src/fleet/host.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/agent-catalog",
-      "file": "packages/cli/src/fleet/skill-companion-outcomes.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/agent-catalog",
-      "file": "packages/cli/src/slash-commands/agent-improve.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/agent-catalog",
-      "file": "packages/cli/src/slash-commands/clear.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/agent-catalog",
-      "file": "packages/cli/src/slash-commands/delegate.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/agent-catalog",
-      "file": "packages/cli/src/slash-commands/fleet.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/agent-catalog",
-      "file": "packages/cli/src/slash-commands/setmodel.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/agent-catalog",
-      "file": "packages/cli/tests/fleet/host-context-skill-budget.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/agent-catalog",
-      "file": "packages/cli/tests/fleet/host-context-skill-loadability.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/agent-catalog",
-      "file": "packages/cli/tests/fleet/host-dispatch-outcomes.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/agent-catalog",
-      "file": "packages/cli/tests/fleet/host-learning.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/agent-catalog",
-      "file": "packages/cli/tests/fleet/memory-companion-policy.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/agent-catalog",
-      "file": "packages/cli/tests/slash-agent-improve.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/agent-catalog",
-      "file": "packages/cli/tests/slash-setmodel.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/agent-catalog",
-      "file": "packages/tools/src/management/fallback-system-config-view-tool.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/agent-catalog",
-      "file": "packages/tools/src/skill.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/agent-catalog",
-      "file": "packages/webui-server/tests/agent-roster-handlers.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/agent-catalog",

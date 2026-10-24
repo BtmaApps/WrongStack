@@ -26,6 +26,13 @@ import { WAVE4_AGENTS } from './phase9-wave4-platform-meta.js';
 import { assignSkillsToAgents, ROLE_SKILL_SETS, SHADOW_AGENT_SKILLS } from './role-skills.js';
 import type { AgentCapability, AgentDefinition, AgentPhase } from './types.js';
 
+export {
+  agentPrompt,
+  agentPromptCacheSize,
+  applyLazyPrompts,
+  cloneWithLazyPrompt,
+  defineLazyAgentPrompt,
+} from './agent-prompts.js';
 export * from './capability-manifest.js';
 export * from './dispatch-log.js';
 export * from './phase3-wave1-platform.js';

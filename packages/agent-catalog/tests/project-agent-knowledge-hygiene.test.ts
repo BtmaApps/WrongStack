@@ -39,7 +39,7 @@ import {
   saveProjectAgentConsolidated,
   saveProjectSkillAugmentation,
   scrubStaleLines,
-} from '../../src/coordination/agents/index.js';
+} from '../src/index.js';
 
 let projectRoot: string;
 

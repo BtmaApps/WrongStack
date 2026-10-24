@@ -1,9 +1,9 @@
+import type { DispatchLogEntry } from '@wrongstack/agent-catalog';
 import { ToolValidationError } from '@wrongstack/contracts/types/errors';
 import type { SubagentConfig } from '@wrongstack/contracts/types/multi-agent';
 import type { JSONSchema, Tool } from '@wrongstack/contracts/types/tool';
 import { ToolCapabilities } from '../security/capabilities.js';
 import { snapshotConversationEffort } from '../utils/leader-effort-override.js';
-import type { DispatchLogEntry } from './agents/dispatch-log.js';
 import type * as Host from './director-host-contracts.js';
 import { instantiateRosterConfig } from './director-input-helpers.js';
 import {

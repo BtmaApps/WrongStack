@@ -27,7 +27,7 @@ import {
   updateProjectAgentLearned,
   updateProjectAgentLearningPolicy,
   validateProjectAgentConfig,
-} from '../../src/coordination/agents/project-agent-identity.js';
+} from '../src/project-agent-identity.js';
 
 describe('project agent self-learning lifecycle', () => {
   let projectRoot = '';

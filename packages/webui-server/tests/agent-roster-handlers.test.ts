@@ -5,7 +5,7 @@ import {
   recordSkillBlocked,
   recordSkillLearned,
   resolveRoleSkillCandidates,
-} from '@wrongstack/core/agent-catalog';
+} from '@wrongstack/agent-catalog';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { WebSocket } from 'ws';
 import { AgentRosterWSHandler } from '../src/server/agent-roster-handlers.js';

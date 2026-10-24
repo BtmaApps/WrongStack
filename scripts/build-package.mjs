@@ -101,7 +101,6 @@ const coreEntries = entryMap([
   'src/execution/index.ts',
   'src/design/index.ts',
   'src/coordination/index.ts',
-  'src/coordination/agents/index.ts',
   'src/coordination/mailbox-project-server.ts',
   'src/registry/index.ts',
   'src/extension/index.ts',
@@ -286,6 +285,12 @@ const profiles = {
     external: [],
   },
   '@wrongstack/persistence': standard(),
+  // Agent role catalog and project-agent identity, extracted below core
+  // (src/coordination/agents) on 2026-10-24; ships its role prompts in
+  // instructions/agents.
+  '@wrongstack/agent-catalog': {
+    entries: { index: 'src/index.ts' },
+  },
   // Dependency leaf (card #5): kanban sits below core/tools, so the shared
   // regex guard lives here where every tier can import it.
   '@wrongstack/contracts': {
@@ -312,6 +317,9 @@ const profiles = {
       'expect-defined': 'src/expect-defined.ts',
       redaction: 'src/redaction.ts',
       string: 'src/string.ts',
+      'safe-json': 'src/safe-json.ts',
+      'project-supplied-fence': 'src/project-supplied-fence.ts',
+      'tool-capabilities': 'src/tool-capabilities.ts',
     },
     // One shared chunk, so `DefaultSecretScrubber` and the redaction
     // singleton keep a single identity across the entries.

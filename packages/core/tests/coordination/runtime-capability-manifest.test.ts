@@ -1,20 +1,20 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
 import {
   isDeprecatedRuntimeToolAlias,
   isKnownRuntimeCapability,
   normalizeRuntimeToolName,
   runtimeCapabilityForTool,
 } from '@wrongstack/contracts/types/runtime-capability-manifest';
+import { describe, expect, it } from 'vitest';
 import {
   ALL_AGENT_DEFINITIONS,
   BUNDLED_AGENT_SKILLS,
   inferRuntimeCapabilities,
   RUNTIME_CAPABILITY_MANIFEST,
   toolsForRuntimeCapabilities,
-} from '../../src/coordination/agents/index.js';
+} from '../../../agent-catalog/src/index.js';
 import { parseSkillFrontmatter } from '../../src/skills/frontmatter.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));

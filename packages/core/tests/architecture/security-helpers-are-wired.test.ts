@@ -175,7 +175,7 @@ describe('security helpers are wired, not just present', () => {
    * construction now, and a hand-built tag is a regression.
    */
   it('builds the project-supplied prompt fence in exactly one module', () => {
-    const ALLOWED = new Set(['packages/core/src/utils/project-supplied-fence.ts']);
+    const ALLOWED = new Set(['packages/primitives/src/project-supplied-fence.ts']);
 
     const offenders = SOURCES.filter(
       ({ rel, text }) => !ALLOWED.has(rel) && /['"`]<\/?project-supplied/.test(stripComments(text)),
@@ -206,7 +206,7 @@ describe('security helpers are wired, not just present', () => {
     /** Files that read untrusted repo content and put it in a system prompt. */
     const INJECTION_SITES = [
       // `.wrongstack/agents/<role>/{identity,learned}.md` + knowledge.json
-      'packages/core/src/coordination/agents/project-agent-identity.ts',
+      'packages/agent-catalog/src/project-agent-identity.ts',
       // `.wrongstack/skills/<name>/SKILL.md` bodies
       'packages/core/src/core/system-prompt-skill-bodies.ts',
       // `.wrongstack/instructions/{system.md,sections/*.md}`

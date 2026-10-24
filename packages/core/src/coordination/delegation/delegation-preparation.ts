@@ -18,10 +18,10 @@
  * @module coordination/delegation/run-delegation
  */
 import { randomUUID } from 'node:crypto';
+import type { DispatchLogEntry } from '@wrongstack/agent-catalog';
 import type { EventBus } from '@wrongstack/contracts/kernel/events';
 import { ToolValidationError } from '@wrongstack/contracts/types/errors';
 import type { SubagentConfig } from '@wrongstack/contracts/types/multi-agent';
-import type { DispatchLogEntry } from '../agents/dispatch-log.js';
 import type { Director } from '../director.js';
 import { readLeaderEffort, readSpawnSkills } from '../director-spawn-model.js';
 import { dispatchAgent, rosterDispatchCatalog } from '../dispatcher.js';

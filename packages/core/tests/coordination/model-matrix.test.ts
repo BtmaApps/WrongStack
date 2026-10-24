@@ -3,9 +3,9 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import type { ModelMatrixEntry } from '@wrongstack/contracts/types/config';
 import { describe, expect, it } from 'vitest';
-import { agentPrompt } from '../../src/coordination/agents/agent-prompts.js';
-import { AGENT_CATALOG, AGENTS_BY_PHASE } from '../../src/coordination/agents/index.js';
-import { TECHSTACK_AGENTS } from '../../src/coordination/agents/phase3-techstack.js';
+import { agentPrompt } from '../../../agent-catalog/src/agent-prompts.js';
+import { AGENT_CATALOG, AGENTS_BY_PHASE } from '../../../agent-catalog/src/index.js';
+import { TECHSTACK_AGENTS } from '../../../agent-catalog/src/phase3-techstack.js';
 import {
   isValidMatrixKey,
   MATRIX_PHASE_KEYS,

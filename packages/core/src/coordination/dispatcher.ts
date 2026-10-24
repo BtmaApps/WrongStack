@@ -18,14 +18,14 @@
  * `executor` generalist rather than failing.
  */
 
+import type { AgentPhase } from '@wrongstack/agent-catalog';
+import { AGENT_CATALOG, type AgentDefinition, getAgentDefinition } from '@wrongstack/agent-catalog';
 import type { SubagentConfig } from '@wrongstack/contracts/types/multi-agent';
 import {
   readBundledInstructionText,
   renderInstructionTemplate,
 } from '../utils/instruction-file.js';
 import { safeParse } from '../utils/safe-json.js';
-import { AGENT_CATALOG, type AgentDefinition, getAgentDefinition } from './agents/index.js';
-import type { AgentPhase } from './agents/types.js';
 
 /** Default agent used when nothing else matches — the generalist builder. */
 export const DEFAULT_DISPATCH_ROLE = 'executor';

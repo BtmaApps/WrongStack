@@ -20,7 +20,7 @@
 
 import { existsSync, readFileSync } from 'node:fs';
 import * as path from 'node:path';
-import { formatProjectSuppliedBlock } from '../../utils/project-supplied-fence.js';
+import { formatProjectSuppliedBlock } from '@wrongstack/primitives/project-supplied-fence';
 import { CAPTURE_COOLDOWN_MS, CAPTURE_MAX_PER_SESSION } from './project-agent-capture-window.js';
 import {
   boundConsolidatedDocument,

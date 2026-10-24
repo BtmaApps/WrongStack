@@ -45,7 +45,7 @@ import {
   scoreSkillAffinity,
   splitLearnedEntries,
   updateProjectAgentLearned,
-} from '../../src/coordination/agents/index.js';
+} from '../src/index.js';
 
 let projectRoot: string;
 

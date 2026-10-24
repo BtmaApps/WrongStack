@@ -17,9 +17,9 @@
  * truth both that command and the spawn path use to validate + resolve keys.
  */
 
+import { AGENT_CATALOG, AGENTS_BY_PHASE } from '@wrongstack/agent-catalog';
 import type { Config, ModelMatrixEntry, ProviderConfig } from '@wrongstack/contracts/types/config';
 import { fallbackProfileChain, parseModelRef } from '../core/fallback-model.js';
-import { AGENT_CATALOG, AGENTS_BY_PHASE } from './agents/index.js';
 import type { ProviderModelStatusTracker } from './provider-status-tracker.js';
 
 /** Either a static matrix or a live getter (re-read on every spawn). */

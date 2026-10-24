@@ -3,7 +3,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import type { TaskSpec } from '@wrongstack/contracts/types/multi-agent';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { LIGHT_BUDGET } from '../../src/coordination/agents/types.js';
+import { LIGHT_BUDGET } from '../../../agent-catalog/src/types.js';
 import type { CoordinatorEvent } from '../../src/coordination/autonomous-coordinator.js';
 import { AutonomousCoordinator } from '../../src/coordination/autonomous-coordinator.js';
 import { ChangeManager } from '../../src/coordination/change-manager.js';

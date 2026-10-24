@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { AgentDefinition } from '../../src/coordination/agents/types.js';
+import type { AgentDefinition } from '../../../agent-catalog/src/types.js';
 import { dispatchAgent } from '../../src/coordination/dispatcher.js';
 import { makeTypeSafeDispatchClassifier } from '../../src/coordination/typesafe-dispatch-classifier.js';
 import type {

@@ -9,7 +9,6 @@
  *
  * Known divergent exports:
  *   ./agent          → dist/core/index.js         (not src/agent/)
- *   ./agent-catalog  → dist/coordination/agents/   (not src/agent-catalog/)
  *
  * This helper reads packages/core/package.json at config-load time and
  * auto-detects divergence so new exceptions are picked up automatically.
@@ -84,6 +83,7 @@ export function coreAliases(corePackageDir) {
   aliases['@wrongstack/chronicle'] = resolve(corePackageDir, '../chronicle/src');
   aliases['@wrongstack/worktree'] = resolve(corePackageDir, '../worktree/src');
   aliases['@wrongstack/builtin-plugins'] = resolve(corePackageDir, '../builtin-plugins/src');
+  aliases['@wrongstack/agent-catalog'] = resolve(corePackageDir, '../agent-catalog/src');
 
   // Bare alias LAST: prefix-matching means '@wrongstack/core' catches any
   // sub-path that wasn't explicitly aliased above, resolving to

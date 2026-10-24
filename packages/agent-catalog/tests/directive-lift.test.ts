@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   DIRECTIVE_QUARANTINE_MAX_LIFT,
   shouldRetireDirective,
-} from '../../src/coordination/agents/project-agent-directive-outcome.js';
+} from '../src/project-agent-directive-outcome.js';
 import {
   directiveControl,
   directiveLift,
@@ -10,7 +10,7 @@ import {
   hasDirectiveLiftEvidence,
   isProvenDirective,
   type StructuredLearnedEntry,
-} from '../../src/coordination/agents/project-agent-learning-structured.js';
+} from '../src/project-agent-learning-structured.js';
 
 const entry = (over: Partial<StructuredLearnedEntry> = {}): StructuredLearnedEntry => ({
   key: 'k',

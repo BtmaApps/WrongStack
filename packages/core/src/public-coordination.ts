@@ -1,4 +1,13 @@
 // ---- Coordination (fleet/multi-agent tools) ----
+
+export {
+  AGENT_CATALOG,
+  AGENTS_BY_PHASE,
+  type AgentDefinition,
+  type AgentPhase,
+  ALL_AGENT_DEFINITIONS,
+  getAgentDefinition,
+} from '@wrongstack/agent-catalog';
 export {
   type BrainArbiter,
   type BrainDecision,
@@ -106,14 +115,6 @@ export {
   type AgentRunnerOptions,
   makeAgentSubagentRunner,
 } from './coordination/agent-subagent-runner.js';
-export {
-  AGENT_CATALOG,
-  AGENTS_BY_PHASE,
-  type AgentDefinition,
-  type AgentPhase,
-  ALL_AGENT_DEFINITIONS,
-  getAgentDefinition,
-} from './coordination/agents/index.js';
 export {
   type CollabBusState,
   CollaborationBus,

@@ -22,7 +22,7 @@ import {
   readRoleFileForUpdate,
   roleDir,
   writeTextAtomically,
-} from '@wrongstack/core/agent-catalog';
+} from '@wrongstack/agent-catalog';
 
 export const SUPPRESS_AT = 3;
 const ACCEPT_WEIGHT = 2;

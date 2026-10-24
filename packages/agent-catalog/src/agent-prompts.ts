@@ -1,7 +1,6 @@
 import { readFileSync, statSync } from 'node:fs';
 import * as path from 'node:path';
-import { moduleDirFor } from '@wrongstack/persistence';
-import { resolveWstackPaths } from '../../utils/wstack-paths.js';
+import { moduleDirFor, resolveWstackPaths } from '@wrongstack/persistence';
 import { buildProjectContextualizedPrompt } from './project-agent-identity.js';
 import { assertProjectAgentRole } from './project-agent-paths.js';
 
@@ -140,38 +139,30 @@ function loadTechVersionPolicy(): string {
   return body;
 }
 
+/**
+ * The bundled role prompts ship in this package's `instructions/agents`. Source
+ * (`src/`), build (`dist/`) and the standalone binary (whose `moduleDirFor` is
+ * the embedded package's `dist/`) all sit one level below the package root.
+ */
+function bundledAgentsDir(): string {
+  return path.resolve(
+    moduleDirFor(import.meta.url, '@wrongstack/agent-catalog'),
+    '../instructions/agents',
+  );
+}
+
 function policyCandidateDirs(envDir: string): string[] {
-  const here = moduleDirFor(import.meta.url, '@wrongstack/core');
   const profileInstructions = resolveWstackPaths({ projectRoot: process.cwd() }).globalInstructions;
   return [
     ...(envDir ? [path.resolve(envDir)] : []),
-    path.resolve(here, '../../../../instructions/agents'),
-    path.resolve(here, '../../../instructions/agents'),
-    path.resolve(here, '../../instructions/agents'),
-    path.resolve(here, '../instructions/agents'),
-    path.resolve(here, 'instructions/agents'),
+    bundledAgentsDir(),
     path.join(profileInstructions, 'agents'),
     profileInstructions,
   ].filter((dir, index, all) => all.indexOf(dir) === index);
 }
 
 function policyBody(envDir: string): string {
-  const here = moduleDirFor(import.meta.url, '@wrongstack/core');
-  // Two layouts must resolve:
-  //  * source: `packages/core/src/coordination/agents` → `../../instructions/agents/_policy/tech-version.md`
-  //  * build:  `packages/core/dist/coordination/agents` → `../../../instructions/agents/_policy/tech-version.md`
-  // Both point at the same on-disk file. We list every plausible relative
-  // depth so the policy finds the prompt regardless of where the consumer
-  // imported the helper from.
-  const roots = [
-    path.resolve(here, '_policy/tech-version.md'),
-    path.resolve(here, '../_policy/tech-version.md'),
-    path.resolve(here, '../../../instructions/agents/_policy/tech-version.md'),
-    path.resolve(here, '../../instructions/agents/_policy/tech-version.md'),
-    path.resolve(here, '../instructions/agents/_policy/tech-version.md'),
-    path.resolve(here, '../../../../instructions/agents/_policy/tech-version.md'),
-    path.resolve(here, 'instructions/agents/_policy/tech-version.md'),
-  ];
+  const roots = [path.resolve(bundledAgentsDir(), '_policy/tech-version.md')];
   // When the caller overrides the instructions dir, check there first so
   // `_policy/tech-version.md` placed in the override takes precedence.
   if (envDir) {
@@ -376,16 +367,11 @@ function agentPromptDirCandidates(envDir: string, projectRoot: string): string[]
   const cached = candidateCache.get(candKey);
   if (cached !== undefined) return cached;
 
-  const here = moduleDirFor(import.meta.url, '@wrongstack/core');
   const explicitDir = envDir || undefined;
   const candidates = [
     ...(explicitDir ? [path.resolve(explicitDir)] : []),
     path.join(profileInstructions, 'agents'),
-    path.resolve(here, '../../../../instructions/agents'),
-    path.resolve(here, '../../../instructions/agents'),
-    path.resolve(here, '../../instructions/agents'),
-    path.resolve(here, '../instructions/agents'),
-    path.resolve(here, 'instructions/agents'),
+    bundledAgentsDir(),
   ];
   const ordered = candidates.sort((a, b) => Number(!isDirectory(a)) - Number(!isDirectory(b)));
   candidateCache.set(candKey, ordered);

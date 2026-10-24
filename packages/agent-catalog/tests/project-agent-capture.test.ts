@@ -8,7 +8,7 @@ import {
   CAPTURE_COOLDOWN_MS,
   CAPTURE_MAX_PER_SESSION,
   canCaptureNewLearned,
-} from '../../src/coordination/agents/project-agent-identity.js';
+} from '../src/project-agent-identity.js';
 
 // Each test uses a unique project root to avoid module-level state collisions.
 let testCounter = 0;

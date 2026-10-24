@@ -6,3 +6,4 @@ export * from './socket-path.js';
 export * from './sqlite-runtime.js';
 export * from './sqlite-text-index.js';
 export * from './standalone-binary.js';
+export * from './wstack-paths.js';

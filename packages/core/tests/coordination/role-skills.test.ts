@@ -5,8 +5,8 @@ import {
   assignSkillsToAgents,
   BUNDLED_AGENT_SKILLS,
   ROLE_SKILL_SETS,
-} from '../../src/coordination/agents/role-skills.js';
-import type { AgentDefinition } from '../../src/coordination/agents/types.js';
+} from '../../../agent-catalog/src/role-skills.js';
+import type { AgentDefinition } from '../../../agent-catalog/src/types.js';
 import { DefaultSkillLoader } from '../../src/execution/skill-loader.js';
 import { resolveWstackPaths } from '../../src/utils/wstack-paths.js';
 

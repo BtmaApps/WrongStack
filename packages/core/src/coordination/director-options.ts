@@ -1,3 +1,4 @@
+import type { DispatchLogEntry } from '@wrongstack/agent-catalog';
 import type { Config } from '@wrongstack/contracts/types/config';
 import type { Logger } from '@wrongstack/contracts/types/logger';
 import type {
@@ -10,7 +11,6 @@ import type {
 import type { SessionWriter } from '@wrongstack/contracts/types/session';
 import type { WorktreeManagerPort } from '@wrongstack/contracts/types/worktree';
 import type { BrainArbiter } from '../brain/brain.js';
-import type { DispatchLogEntry } from './agents/dispatch-log.js';
 import type { DispatchClassifier } from './dispatcher.js';
 import type { FleetManager } from './fleet-manager.js';
 import type { ModelMatrixSource } from './model-matrix.js';

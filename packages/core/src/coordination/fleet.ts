@@ -4,15 +4,16 @@
  * for the director's roster.
  */
 
-import type { SubagentConfig } from '@wrongstack/contracts/types/multi-agent';
-import { ToolCapabilities } from '../security/capabilities.js';
-import { cloneWithLazyPrompt, defineLazyAgentPrompt } from './agents/agent-prompts.js';
 import {
   ALL_AGENT_DEFINITIONS,
+  cloneWithLazyPrompt,
+  defineLazyAgentPrompt,
   ROLE_SKILL_SETS,
   SHADOW_AGENT_SKILLS,
   TOOLS,
-} from './agents/index.js';
+} from '@wrongstack/agent-catalog';
+import type { SubagentConfig } from '@wrongstack/contracts/types/multi-agent';
+import { ToolCapabilities } from '../security/capabilities.js';
 import { isExternalAgentProvider } from './external-agent-provider.js';
 
 function defineAgent(

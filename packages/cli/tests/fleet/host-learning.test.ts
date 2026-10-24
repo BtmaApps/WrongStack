@@ -7,14 +7,14 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import * as path from 'node:path';
-import type { TaskResult } from '@wrongstack/contracts/types';
 import {
   captureLearnedFromAgentOutputDetailed,
   directiveTrials,
   loadSkillAffinity,
   readRawLearnedEntries,
   resetCaptureWindows,
-} from '@wrongstack/core/agent-catalog';
+} from '@wrongstack/agent-catalog';
+import type { TaskResult } from '@wrongstack/contracts/types';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { HostLearningRoleTracker } from '../../src/fleet/host-learning-tracker.js';
 import type { MultiAgentDeps } from '../../src/fleet/host-types.js';

@@ -22,7 +22,7 @@ import {
   WAVE2_AGENTS,
   WAVE3_AGENTS,
   WAVE4_AGENTS,
-} from '../../src/coordination/agents/index.js';
+} from '../../../agent-catalog/src/index.js';
 import { dispatchAgent } from '../../src/coordination/dispatcher.js';
 
 const WAVE_AGENTS = [...WAVE1_AGENTS, ...WAVE2_AGENTS, ...WAVE3_AGENTS, ...WAVE4_AGENTS];

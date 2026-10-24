@@ -4,7 +4,7 @@ import {
   captureLearnedFromAgentOutputDetailed,
   recordDirectiveOutcomes,
   recordSkillOutcome,
-} from '@wrongstack/core/agent-catalog';
+} from '@wrongstack/agent-catalog';
 import type { MultiAgentDeps } from './host-types.js';
 
 /** What a spawn recorded about the agent that will produce this result. */

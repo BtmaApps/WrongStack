@@ -39,7 +39,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import * as path from 'node:path';
-import { safeParse } from '../../utils/safe-json.js';
+import { safeParse } from '@wrongstack/primitives/safe-json';
 import { agentsDir } from './project-agent-paths.js';
 
 /** How the caller addressed the spawn — before dispatch had any say. */

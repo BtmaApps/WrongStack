@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AGENTS_BY_PHASE } from '../../../core/src/coordination/agents/index';
+import { AGENTS_BY_PHASE } from '../../../agent-catalog/src/index';
 import { MATRIX_PHASE_KEYS } from '../../../core/src/coordination/model-matrix';
 import {
   formatModelMatrixRouteLabel,

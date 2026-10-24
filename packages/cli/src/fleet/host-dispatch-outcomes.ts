@@ -3,7 +3,7 @@ import {
   type DispatchLogEntry,
   recordDispatch,
   recordDispatchOutcome,
-} from '@wrongstack/core/agent-catalog';
+} from '@wrongstack/agent-catalog';
 import type { Director } from '@wrongstack/core/coordination';
 
 /**

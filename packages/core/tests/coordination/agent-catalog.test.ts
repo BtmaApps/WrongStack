@@ -10,7 +10,7 @@ import {
   type AgentPhase,
   ALL_AGENT_DEFINITIONS,
   getAgentDefinition,
-} from '../../src/coordination/agents/index.js';
+} from '../../../agent-catalog/src/index.js';
 import { Director } from '../../src/coordination/director.js';
 import { makeSpawnTool } from '../../src/coordination/director-tools.js';
 import {
@@ -117,7 +117,7 @@ describe('agent catalog integrity', () => {
     process.env['WRONGSTACK_AGENT_POLICY'] = 'on';
     (globalThis as { __WS_DISABLE_PROMPT_CACHE__?: boolean }).__WS_DISABLE_PROMPT_CACHE__ = true;
     try {
-      const mod = await import('../../src/coordination/agents/agent-prompts.js');
+      const mod = await import('../../../agent-catalog/src/agent-prompts.js');
       for (const def of ALL_AGENT_DEFINITIONS) {
         const role = def.config.role as string;
         const prompt = mod.agentPrompt(role);

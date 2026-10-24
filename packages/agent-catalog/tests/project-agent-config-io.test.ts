@@ -7,8 +7,8 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { loadProjectAgentConfig } from '../../src/coordination/agents/project-agent-config-io.js';
-import { roleDir } from '../../src/coordination/agents/project-agent-paths.js';
+import { loadProjectAgentConfig } from '../src/project-agent-config-io.js';
+import { roleDir } from '../src/project-agent-paths.js';
 
 const roots: string[] = [];
 afterEach(() => {

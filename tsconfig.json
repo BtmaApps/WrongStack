@@ -4,6 +4,7 @@
     { "path": "./packages/persistence" },
     { "path": "./packages/primitives" },
     { "path": "./packages/contracts" },
+    { "path": "./packages/agent-catalog" },
     { "path": "./packages/hq" },
     { "path": "./packages/goal" },
     { "path": "./packages/chronicle" },

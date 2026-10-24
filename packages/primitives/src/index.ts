@@ -23,6 +23,14 @@ export {
   untrustedGitFilterKeys,
 } from './git-isolation.js';
 export {
+  formatProjectSuppliedBlock,
+  PROJECT_SUPPLIED_INSTRUCTIONS_TAG,
+  PROJECT_SUPPLIED_TAG,
+  type ProjectSuppliedBlockOptions,
+  sanitizeProjectSuppliedBody,
+  sanitizeProjectSuppliedSource,
+} from './project-supplied-fence.js';
+export {
   COMMAND_REDACTION_PROFILE,
   OUTBOUND_REDACTION_PROFILE,
   type RedactionProfile,
@@ -54,6 +62,13 @@ export {
   withDaemonVersion,
 } from './runtime-version.js';
 export {
+  type SafeParseResult,
+  safeParse,
+  safeStringify,
+  sanitizeJsonString,
+  stripCodeFences,
+} from './safe-json.js';
+export {
   isSystemSessionId,
   requireSessionId,
   SESSION_ID_REQUIRED,
@@ -64,3 +79,14 @@ export {
 export { truncate } from './string.js';
 export { nowIso } from './time.js';
 export { timingSafeTokenEqual } from './timing-safe.js';
+export {
+  capabilityDowngradesToConfirm,
+  clampSubagentCapabilities,
+  DANGEROUS_FOR_SUBAGENTS,
+  getDangerousCapabilities,
+  hasCapability,
+  hasDangerousCapabilityForSubagents,
+  ToolCapabilities,
+  type ToolCapability,
+  WIDE_SUBAGENT_CAPABILITIES,
+} from './tool-capabilities.js';

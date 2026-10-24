@@ -146,50 +146,6 @@
       ]
     },
     {
-      "subpath": "./agent-catalog",
-      "target": {
-        "types": "./dist/coordination/agents/index.d.ts",
-        "import": "./dist/coordination/agents/index.js"
-      },
-      "source": "packages/core/src/coordination/agents/index.ts",
-      "declarations": [
-        "export * from './capability-manifest.js';",
-        "export * from './dispatch-log.js';",
-        "export * from './phase3-wave1-platform.js';",
-        "export * from './phase3-wave2-meta.js';",
-        "export * from './phase8-wave3-products.js';",
-        "export * from './phase9-wave4-platform-meta.js';",
-        "export * from './project-agent-auto-optimize.js';",
-        "export * from './project-agent-capture-window.js';",
-        "export * from './project-agent-capture.js';",
-        "export * from './project-agent-config-io.js';",
-        "export * from './project-agent-config-validation.js';",
-        "export * from './project-agent-consolidation.js';",
-        "export * from './project-agent-directive-outcome.js';",
-        "export * from './project-agent-files.js';",
-        "export * from './project-agent-identity-types.js';",
-        "export * from './project-agent-identity.js';",
-        "export * from './project-agent-knowledge-manifests.js';",
-        "export * from './project-agent-learning-entries.js';",
-        "export * from './project-agent-learning-normalize.js';",
-        "export * from './project-agent-learning-policy.js';",
-        "export * from './project-agent-learning-structured.js';",
-        "export * from './project-agent-optimizer.js';",
-        "export * from './project-agent-paths.js';",
-        "export * from './project-agent-profile.js';",
-        "export * from './project-agent-quarantine.js';",
-        "export * from './project-agent-roster.js';",
-        "export * from './project-agent-skill-layer.js';",
-        "export * from './role-skills.js';",
-        "export * from './types.js';",
-        "export const AGENTS_BY_PHASE",
-        "export const AGENT_CATALOG",
-        "export const ALL_AGENT_DEFINITIONS",
-        "export const ROLE_DISPATCH_RATIONALE",
-        "export function getAgentDefinition"
-      ]
-    },
-    {
       "subpath": "./agent-coordination",
       "target": {
         "types": "./dist/agent-coordination-default.d.ts",
@@ -1177,8 +1133,8 @@
       "directory": "coordination",
       "classification": "coordination implementation",
       "intendedOwner": "Core subpath until physical extraction is justified",
-      "sourceFiles": 229,
-      "sourceLines": 58672
+      "sourceFiles": 185,
+      "sourceLines": 48669
     },
     {
       "directory": "core",
@@ -1297,7 +1253,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime security subsystem",
       "sourceFiles": 40,
-      "sourceLines": 10216
+      "sourceLines": 9947
     },
     {
       "directory": "session-catalog",
@@ -1346,7 +1302,7 @@
       "classification": "kernel primitive",
       "intendedOwner": "split dependency-free primitives from concrete helpers",
       "sourceFiles": 94,
-      "sourceLines": 15354
+      "sourceLines": 14526
     },
     {
       "directory": "vcs",

@@ -6,7 +6,7 @@ import {
   type SlashCommand,
 } from '@wrongstack/contracts/types';
 import { fallbackProfileChain, parseModelRef } from '@wrongstack/core/agent';
-import { AGENT_CATALOG, AGENTS_BY_PHASE, type AgentPhase } from '@wrongstack/core/agent-catalog';
+import { AGENT_CATALOG, AGENTS_BY_PHASE, type AgentPhase } from '@wrongstack/agent-catalog';
 import {
   MATRIX_PHASE_KEYS,
   matrixKeyKind,

@@ -9,7 +9,7 @@ import {
   recordDispatch,
   recordDispatchOutcome,
   summarizeDispatchLog,
-} from '../../src/coordination/agents/dispatch-log.js';
+} from '../src/dispatch-log.js';
 
 const roots: string[] = [];
 

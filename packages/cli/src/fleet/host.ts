@@ -12,7 +12,7 @@ import {
  * factory is created lazily on the first `/spawn` so users who never use
  * subagents don't pay the construction cost.
  */
-import { createProjectAgentRoster } from '@wrongstack/core/agent-catalog';
+import { createProjectAgentRoster } from '@wrongstack/agent-catalog';
 import {
   type AdaptiveConcurrencyController,
   type AgentFactory,

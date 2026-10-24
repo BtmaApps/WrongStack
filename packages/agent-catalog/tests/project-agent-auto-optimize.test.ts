@@ -15,7 +15,7 @@ import {
   resolveAutoOptimizePolicy,
   saveProjectAgentConsolidated,
   updateProjectAgentLearningPolicy,
-} from '../../src/coordination/agents/index.js';
+} from '../src/index.js';
 
 let projectRoot: string;
 
@@ -135,7 +135,7 @@ describe('scheduler', () => {
     overrides: Partial<ConstructorParameters<typeof LearningOptimizationScheduler>[0]> = {},
     policyOverrides: Partial<typeof DEFAULT_AUTO_OPTIMIZE_POLICY> = {},
   ) {
-    const events: Array<{ role: string; status?: string }> = [];
+    const events: Array<{ role: string; status?: string | undefined }> = [];
     const scheduler = new LearningOptimizationScheduler({
       projectRoot,
       getPolicy: () => policy(policyOverrides),

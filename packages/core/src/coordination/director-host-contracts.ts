@@ -5,6 +5,8 @@
  * orchestration implementation, and read-model evolution can then change
  * without creating a type-level dependency cycle.
  */
+
+import type { DispatchLogEntry } from '@wrongstack/agent-catalog';
 import type {
   AwaitAnyResult,
   CoordinatorStatus,
@@ -12,7 +14,6 @@ import type {
   TaskResult,
   TaskSpec,
 } from '@wrongstack/contracts/types/multi-agent';
-import type { DispatchLogEntry } from './agents/dispatch-log.js';
 import type { CollabDebugReport, CollabSessionOptions } from './collab-debug.js';
 import type { DispatchClassifier } from './dispatcher.js';
 import type { FleetBus, FleetUsage } from './fleet-bus.js';

@@ -1,6 +1,6 @@
 import type { SubagentRunner } from '@wrongstack/contracts/types/multi-agent';
 import { afterEach, describe, expect, it } from 'vitest';
-import { AGENT_CATALOG } from '../../src/coordination/agents/index.js';
+import { AGENT_CATALOG } from '../../../agent-catalog/src/index.js';
 import { Director } from '../../src/coordination/director.js';
 import { phaseForRole } from '../../src/coordination/model-matrix.js';
 

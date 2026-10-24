@@ -41,6 +41,15 @@ const ALLOWED_SELF_IMPORTS = new Set([
   '@wrongstack/primitives/expect-defined',
   '@wrongstack/primitives/redaction',
   '@wrongstack/primitives/string',
+  // safe-json, the project-supplied fence and the tool capability vocabulary
+  // moved down with the agent catalog; core re-exports them from these
+  // browser-safe subpaths.
+  '@wrongstack/primitives/safe-json',
+  '@wrongstack/primitives/project-supplied-fence',
+  '@wrongstack/primitives/tool-capabilities',
+  // The agent role catalog sits below core (contracts/primitives/persistence
+  // only); core's coordination imports it.
+  '@wrongstack/agent-catalog',
 ]);
 
 /**

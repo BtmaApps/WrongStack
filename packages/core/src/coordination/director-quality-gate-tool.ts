@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto';
+import { getAgentDefinition } from '@wrongstack/agent-catalog';
 import { ToolValidationError } from '@wrongstack/contracts/types/errors';
 import type { SubagentConfig, TaskResult } from '@wrongstack/contracts/types/multi-agent';
 import type { JSONSchema, Tool } from '@wrongstack/contracts/types/tool';
 import { ToolCapabilities } from '../security/capabilities.js';
-import { getAgentDefinition } from './agents/index.js';
 import type * as Host from './director-host-contracts.js';
 import {
   instantiateRosterConfig,

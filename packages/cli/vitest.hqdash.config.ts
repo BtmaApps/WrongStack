@@ -10,9 +10,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   resolve: {
     alias: {
-      '@wrongstack/core/agent-catalog': path.resolve(
+      '@wrongstack/agent-catalog': path.resolve(
         __dirname,
-        '../../packages/core/src/coordination/agents/index.ts',
+        '../../packages/agent-catalog/src/index.ts',
       ),
       '@wrongstack/core/agent': path.resolve(__dirname, '../../packages/core/src/core/index.ts'),
       '@wrongstack/core': path.resolve(__dirname, '../../packages/core/src'),

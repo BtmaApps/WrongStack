@@ -69,6 +69,7 @@ const EXTERNALS = [
  */
 const ASSETS = {
   core: ['package.json', 'skills', 'design-kits', 'instructions', 'data'],
+  'agent-catalog': ['package.json', 'instructions'],
   cli: ['package.json', 'data'],
   tools: ['package.json', 'dist/wasm'],
   bench: ['package.json', 'fixtures', 'subsets'],

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { missingRequiredRuntimeTools } from '@wrongstack/core/agent-catalog';
+import { missingRequiredRuntimeTools } from '@wrongstack/agent-catalog';
 import { WIDE_SUBAGENT_CAPABILITIES } from '@wrongstack/core/security';
 import { stripFrontmatter } from '@wrongstack/core/skills';
 import type { WebUIDispatchContext } from './boot/dispatch-webui.js';

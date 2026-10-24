@@ -29,10 +29,6 @@
       "types": "./dist/core/request-conversation-binding.d.ts",
       "import": "./dist/core/request-conversation-binding.js"
     },
-    "./agent-catalog": {
-      "types": "./dist/coordination/agents/index.d.ts",
-      "import": "./dist/coordination/agents/index.js"
-    },
     "./agent-coordination": {
       "types": "./dist/agent-coordination-default.d.ts",
       "import": "./dist/agent-coordination-default.js"
@@ -222,6 +218,7 @@
     "clean": "bun -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\""
   },
   "dependencies": {
+    "@wrongstack/agent-catalog": "workspace:*",
     "@wrongstack/contracts": "workspace:*",
     "@wrongstack/kanban": "workspace:*",
     "@wrongstack/persistence": "workspace:*",

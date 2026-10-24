@@ -124,7 +124,7 @@ export abstract class DirectorCore implements DirectorFleetHost {
     | import('../coordination/dispatcher.js').DispatchClassifier
     | undefined;
   readonly onSpawnRouted?:
-    | ((entry: import('./agents/dispatch-log.js').DispatchLogEntry) => void)
+    | ((entry: import('@wrongstack/agent-catalog').DispatchLogEntry) => void)
     | undefined;
   leaderContextPressure = 0;
   readonly maxLeaderContextLoad: number;

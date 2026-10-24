@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { DISCOVERY_AGENTS } from '../../src/coordination/agents/phase1-discovery.js';
-import { TECHSTACK_AGENTS } from '../../src/coordination/agents/phase3-techstack.js';
-import { KNOWLEDGE_AGENTS } from '../../src/coordination/agents/phase7-knowledge.js';
+import { DISCOVERY_AGENTS } from '../../../agent-catalog/src/phase1-discovery.js';
+import { TECHSTACK_AGENTS } from '../../../agent-catalog/src/phase3-techstack.js';
+import { KNOWLEDGE_AGENTS } from '../../../agent-catalog/src/phase7-knowledge.js';
 import {
   AGENT_STALE_MS,
   AUTO_COMPACT_DEFAULT_TTL_MS,

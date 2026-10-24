@@ -8,11 +8,12 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import { captureLearnedFromAgentOutputDetailed } from '../../src/coordination/agents/project-agent-capture.js';
+import { removeProjectFixtureDirectorySync } from '../../core/tests/helpers/project-server-harness.js';
+import { captureLearnedFromAgentOutputDetailed } from '../src/project-agent-capture.js';
 import {
   readRawLearnedEntries,
   saveProjectAgentConsolidated,
-} from '../../src/coordination/agents/project-agent-consolidation.js';
+} from '../src/project-agent-consolidation.js';
 import {
   listProjectAgentRoles,
   refreshProjectAgentIdentity,
@@ -21,19 +22,14 @@ import {
   updateProjectAgentIdentity,
   updateProjectAgentKnowledge,
   updateProjectAgentLearned,
-} from '../../src/coordination/agents/project-agent-files.js';
-import { recordProjectAgentOptimizePass } from '../../src/coordination/agents/project-agent-learning-policy.js';
-import {
-  appendQuarantine,
-  quarantinePath,
-} from '../../src/coordination/agents/project-agent-quarantine.js';
+} from '../src/project-agent-files.js';
+import { recordProjectAgentOptimizePass } from '../src/project-agent-learning-policy.js';
+import { appendQuarantine, quarantinePath } from '../src/project-agent-quarantine.js';
 import {
   projectSkillAffinityPath,
   recordSkillLearned,
   setSkillPinned,
-} from '../../src/coordination/agents/project-agent-skill-layer.js';
-
-import { removeProjectFixtureDirectorySync } from '../helpers/project-server-harness.js';
+} from '../src/project-agent-skill-layer.js';
 
 let tempRoot: string;
 

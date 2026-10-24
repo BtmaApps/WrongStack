@@ -152,7 +152,7 @@ function validateProductCatalog() {
     captures(runtimeModeBlock, /\bid:\s*'([^']+)'/g),
   );
 
-  const phaseDir = path.join(repoRoot, 'packages/core/src/coordination/agents');
+  const phaseDir = path.join(repoRoot, 'packages/agent-catalog/src');
   const runtimePhaseRoles = fs
     .readdirSync(phaseDir)
     .filter((file) => /^phase\d.*\.ts$/.test(file))

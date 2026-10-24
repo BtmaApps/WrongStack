@@ -16,7 +16,7 @@
 
 import type { SubagentConfig } from '@wrongstack/contracts/types/multi-agent';
 import { describe, expect, it } from 'vitest';
-import { applyProjectAgentConfig } from '../../src/coordination/agents/project-agent-identity.js';
+import { applyProjectAgentConfig } from '../../../agent-catalog/src/project-agent-identity.js';
 import {
   clampSubagentCapabilities,
   ToolCapabilities,

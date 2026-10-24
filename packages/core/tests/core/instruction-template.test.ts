@@ -6,7 +6,7 @@ import {
   normalizeRuntimeToolName,
 } from '@wrongstack/contracts/types/runtime-capability-manifest';
 import { describe, expect, it } from 'vitest';
-import { RUNTIME_CAPABILITY_MANIFEST } from '../../src/coordination/agents/capability-manifest.js';
+import { RUNTIME_CAPABILITY_MANIFEST } from '../../../agent-catalog/src/capability-manifest.js';
 import {
   type InstructionTemplateContext,
   renderInstructionLayer,

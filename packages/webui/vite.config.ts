@@ -20,8 +20,8 @@ export default defineConfig({
         replacement: path.resolve(__dirname, '../webui-server/src/protocol/index.ts'),
       },
       {
-        find: /^@wrongstack\/core\/agent-catalog$/,
-        replacement: path.resolve(__dirname, '../core/src/coordination/agents/index.ts'),
+        find: /^@wrongstack\/agent-catalog$/,
+        replacement: path.resolve(__dirname, '../agent-catalog/src/index.ts'),
       },
       {
         find: /^@wrongstack\/core\/models$/,

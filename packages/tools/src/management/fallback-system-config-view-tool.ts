@@ -1,5 +1,5 @@
 import type { JSONSchema, Tool } from '@wrongstack/contracts/types/tool';
-import { AGENT_CATALOG } from '@wrongstack/core/agent-catalog';
+import { AGENT_CATALOG } from '@wrongstack/agent-catalog';
 import { phaseForRole, resolveSubagentModelTarget } from '@wrongstack/core/coordination';
 import type { FallbackManageToolOptions } from './fallback-manage-tool-options.js';
 import { parseRefInternal } from './fallback-model-ref-parse.js';

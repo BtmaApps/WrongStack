@@ -2,7 +2,7 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { RUNTIME_CAPABILITY_MANIFEST } from '../../src/coordination/agents/capability-manifest.js';
+import { RUNTIME_CAPABILITY_MANIFEST } from '../../../agent-catalog/src/capability-manifest.js';
 import { DefaultSystemPromptBuilder } from '../../src/index.js';
 import { createMockTool } from '../helpers/test-harness.js';
 

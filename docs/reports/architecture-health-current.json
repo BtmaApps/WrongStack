@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-24T17:07:58.944Z",
+  "generatedAt": "2026-10-24T15:41:27.383Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -11,18 +11,18 @@
     ]
   },
   "summary": {
-    "packages": 44,
-    "sourceFiles": 5289,
+    "packages": 45,
+    "sourceFiles": 5293,
     "testFiles": 4655,
-    "sourceLines": 1150925,
-    "workspaceEdges": 205,
-    "moduleEdges": 15921,
+    "sourceLines": 1150993,
+    "workspaceEdges": 211,
+    "moduleEdges": 15907,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 3,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 0,
-    "testOnlyExports": 969
+    "testOnlyExports": 967
   },
   "errors": [],
   "packageCycles": [],
@@ -115,6 +115,29 @@
       ]
     },
     {
+      "name": "@wrongstack/agent-catalog",
+      "dir": "packages/agent-catalog",
+      "sourceFiles": 44,
+      "testFiles": 12,
+      "workspaceDependencies": [
+        "@wrongstack/contracts",
+        "@wrongstack/persistence",
+        "@wrongstack/primitives"
+      ],
+      "tsconfigs": [
+        {
+          "path": "packages/agent-catalog/tsconfig.json",
+          "error": null,
+          "testFiles": 0
+        },
+        {
+          "path": "packages/agent-catalog/tsconfig.test.json",
+          "error": null,
+          "testFiles": 12
+        }
+      ]
+    },
+    {
       "name": "@wrongstack/bench",
       "dir": "packages/bench",
       "sourceFiles": 29,
@@ -190,6 +213,7 @@
       "testFiles": 671,
       "workspaceDependencies": [
         "@wrongstack/acp",
+        "@wrongstack/agent-catalog",
         "@wrongstack/bench",
         "@wrongstack/builtin-plugins",
         "@wrongstack/chronicle",
@@ -312,9 +336,10 @@
     {
       "name": "@wrongstack/core",
       "dir": "packages/core",
-      "sourceFiles": 865,
-      "testFiles": 869,
+      "sourceFiles": 821,
+      "testFiles": 856,
       "workspaceDependencies": [
+        "@wrongstack/agent-catalog",
         "@wrongstack/contracts",
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -329,7 +354,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 869
+          "testFiles": 856
         }
       ]
     },
@@ -521,7 +546,7 @@
     {
       "name": "@wrongstack/persistence",
       "dir": "packages/persistence",
-      "sourceFiles": 9,
+      "sourceFiles": 10,
       "testFiles": 23,
       "workspaceDependencies": [],
       "tsconfigs": [
@@ -611,8 +636,8 @@
     {
       "name": "@wrongstack/primitives",
       "dir": "packages/primitives",
-      "sourceFiles": 22,
-      "testFiles": 17,
+      "sourceFiles": 25,
+      "testFiles": 18,
       "workspaceDependencies": [],
       "tsconfigs": [
         {
@@ -623,7 +648,7 @@
         {
           "path": "packages/primitives/tsconfig.test.json",
           "error": null,
-          "testFiles": 17
+          "testFiles": 18
         }
       ]
     },
@@ -904,6 +929,7 @@
       "sourceFiles": 373,
       "testFiles": 363,
       "workspaceDependencies": [
+        "@wrongstack/agent-catalog",
         "@wrongstack/contracts",
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -1810,6 +1836,78 @@
       },
       {
         "file": "packages/acp/tests/ws-bridge-transport.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/agent-catalog/tests/agent-prompts.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/agent-catalog/tests/directive-lift.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/agent-catalog/tests/dispatch-log.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/agent-catalog/tests/ios-smoke.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/agent-catalog/tests/project-agent-auto-optimize.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/agent-catalog/tests/project-agent-capture.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/agent-catalog/tests/project-agent-config-io.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/agent-catalog/tests/project-agent-directive-outcome.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/agent-catalog/tests/project-agent-files.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/agent-catalog/tests/project-agent-knowledge-hygiene.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/agent-catalog/tests/project-agent-learning.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/agent-catalog/tests/project-agent-skill-layer.test.ts",
         "projects": [
           "root-node"
         ]
@@ -6957,12 +7055,6 @@
         ]
       },
       {
-        "file": "packages/core/tests/architecture/vitest-source-alias-coverage.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
         "file": "packages/core/tests/architecture/vitest-test-order.test.ts",
         "projects": [
           "root-node"
@@ -7054,12 +7146,6 @@
       },
       {
         "file": "packages/core/tests/coordination/agent-monitor.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/agent-prompts.test.ts",
         "projects": [
           "root-node"
         ]
@@ -7365,12 +7451,6 @@
         ]
       },
       {
-        "file": "packages/core/tests/coordination/directive-lift.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
         "file": "packages/core/tests/coordination/director-agent-lifecycle-events.test.ts",
         "projects": [
           "root-node"
@@ -7497,12 +7577,6 @@
         ]
       },
       {
-        "file": "packages/core/tests/coordination/dispatch-log.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
         "file": "packages/core/tests/coordination/dispatcher.test.ts",
         "projects": [
           "root-node"
@@ -7588,12 +7662,6 @@
       },
       {
         "file": "packages/core/tests/coordination/inter-agent-messaging.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/ios-smoke.test.ts",
         "projects": [
           "root-node"
         ]
@@ -7887,55 +7955,7 @@
         ]
       },
       {
-        "file": "packages/core/tests/coordination/project-agent-auto-optimize.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/project-agent-capture.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/project-agent-config-io.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/project-agent-directive-outcome.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/project-agent-files.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
         "file": "packages/core/tests/coordination/project-agent-identity-fence.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/project-agent-knowledge-hygiene.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/project-agent-learning.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/coordination/project-agent-skill-layer.test.ts",
         "projects": [
           "root-node"
         ]
@@ -14938,6 +14958,12 @@
       },
       {
         "file": "packages/plugins/tests/workflow-read-stability.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/primitives/tests/browser-safe-subpaths.test.ts",
         "projects": [
           "root-node"
         ]
@@ -29658,7 +29684,7 @@
     {
       "file": "packages/core/src/coordination/autonomous-coordinator.ts",
       "lines": 690,
-      "relativeImports": 17
+      "relativeImports": 16
     },
     {
       "file": "packages/plugins/src/notify-hub/index.ts",
@@ -29834,6 +29860,34 @@
     {
       "file": "packages/acp/src/version.ts",
       "name": "versionCoverage"
+    },
+    {
+      "file": "packages/agent-catalog/src/dispatch-log.ts",
+      "name": "dispatchLogPath"
+    },
+    {
+      "file": "packages/agent-catalog/src/index.ts",
+      "name": "ROLE_DISPATCH_RATIONALE"
+    },
+    {
+      "file": "packages/agent-catalog/src/phase3-techstack.ts",
+      "name": "TECHSTACK_AGENTS"
+    },
+    {
+      "file": "packages/agent-catalog/src/project-agent-directive-outcome.ts",
+      "name": "DIRECTIVE_QUARANTINE_MAX_LIFT"
+    },
+    {
+      "file": "packages/agent-catalog/src/project-agent-directive-outcome.ts",
+      "name": "shouldRetireDirective"
+    },
+    {
+      "file": "packages/agent-catalog/src/project-agent-skill-layer.ts",
+      "name": "projectSkillAffinityPath"
+    },
+    {
+      "file": "packages/agent-catalog/src/role-skills.ts",
+      "name": "BUNDLED_AGENT_SKILLS"
     },
     {
       "file": "packages/builtin-plugins/src/perf-command.ts",
@@ -30548,38 +30602,6 @@
       "name": "runtimeCapabilityForTool"
     },
     {
-      "file": "packages/core/src/coordination/agents/agent-prompts.ts",
-      "name": "agentPromptCacheSize"
-    },
-    {
-      "file": "packages/core/src/coordination/agents/dispatch-log.ts",
-      "name": "dispatchLogPath"
-    },
-    {
-      "file": "packages/core/src/coordination/agents/index.ts",
-      "name": "ROLE_DISPATCH_RATIONALE"
-    },
-    {
-      "file": "packages/core/src/coordination/agents/phase3-techstack.ts",
-      "name": "TECHSTACK_AGENTS"
-    },
-    {
-      "file": "packages/core/src/coordination/agents/project-agent-directive-outcome.ts",
-      "name": "DIRECTIVE_QUARANTINE_MAX_LIFT"
-    },
-    {
-      "file": "packages/core/src/coordination/agents/project-agent-directive-outcome.ts",
-      "name": "shouldRetireDirective"
-    },
-    {
-      "file": "packages/core/src/coordination/agents/project-agent-skill-layer.ts",
-      "name": "projectSkillAffinityPath"
-    },
-    {
-      "file": "packages/core/src/coordination/agents/role-skills.ts",
-      "name": "BUNDLED_AGENT_SKILLS"
-    },
-    {
       "file": "packages/core/src/coordination/fleet.ts",
       "name": "EXPLORE_COMPANION_TOOLS"
     },
@@ -30974,10 +30996,6 @@
     {
       "file": "packages/core/src/utils/tree-kill.ts",
       "name": "WIN32_TASKKILL_BACKSTOP_MS"
-    },
-    {
-      "file": "packages/core/src/utils/wstack-paths.ts",
-      "name": "bootstrapProfileName"
     },
     {
       "file": "packages/core/src/wiring/proxy-rewrite.ts",

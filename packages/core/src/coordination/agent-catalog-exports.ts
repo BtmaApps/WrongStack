@@ -116,4 +116,4 @@ export {
   updateProjectAgentLearningPolicy,
   VERIFY_AGENTS,
   validateProjectAgentConfig,
-} from './agents/index.js';
+} from '@wrongstack/agent-catalog';

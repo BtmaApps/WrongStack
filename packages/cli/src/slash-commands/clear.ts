@@ -1,5 +1,5 @@
 import type { SessionWriter, SlashCommand } from '@wrongstack/contracts/types';
-import { resetCaptureWindows } from '@wrongstack/core/agent-catalog';
+import { resetCaptureWindows } from '@wrongstack/agent-catalog';
 import {
   resetSessionSubagentPolicy,
   unlockSessionSubagentPolicyForSession,

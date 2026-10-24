@@ -38,6 +38,18 @@
     "./string": {
       "types": "./dist/string.d.ts",
       "import": "./dist/string.js"
+    },
+    "./safe-json": {
+      "types": "./dist/safe-json.d.ts",
+      "import": "./dist/safe-json.js"
+    },
+    "./project-supplied-fence": {
+      "types": "./dist/project-supplied-fence.d.ts",
+      "import": "./dist/project-supplied-fence.js"
+    },
+    "./tool-capabilities": {
+      "types": "./dist/tool-capabilities.d.ts",
+      "import": "./dist/tool-capabilities.js"
     }
   },
   "files": [
