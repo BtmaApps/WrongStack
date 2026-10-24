@@ -22,13 +22,17 @@ import { isSamePath } from '../src/server/path-containment.js';
 type SentFrame = { type: string; payload: Record<string, unknown> };
 
 function mockWs(): WebSocket & { sent: SentFrame[] } {
-  return {
+  // Close over the array instead of reaching it through `this`: a literal cast
+  // straight to `WebSocket` types `this` as `never` inside its methods.
+  const sent: SentFrame[] = [];
+  const ws = {
     readyState: 1,
-    sent: [] as SentFrame[],
+    sent,
     send(data: string) {
-      this.sent.push(JSON.parse(data));
+      sent.push(JSON.parse(data) as SentFrame);
     },
-  } as never as WebSocket & { sent: SentFrame[] };
+  };
+  return ws as unknown as WebSocket & { sent: SentFrame[] };
 }
 
 function invertCase(name: string): string {
