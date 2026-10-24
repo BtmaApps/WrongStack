@@ -44,7 +44,7 @@ if (errors.length > 0) {
   console.error('Test skip budget FAILED');
   for (const error of errors) console.error(`- ${error}`);
   console.error(
-    'Every skip declaration change requires an explicit budget review. After review, refresh with: pnpm test-skips:sync (also part of pnpm release:prepare)',
+    'Every skip declaration change requires an explicit budget review. After review, refresh with: bun run test-skips:sync (also part of bun run release:prepare)',
   );
   process.exit(1);
 }

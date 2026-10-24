@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-24T18:13:54.537Z",
+  "generatedAt": "2026-10-24T19:20:45.726Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 46,
-    "sourceFiles": 5294,
-    "testFiles": 4655,
-    "sourceLines": 1150934,
+    "sourceFiles": 5312,
+    "testFiles": 4668,
+    "sourceLines": 1154019,
     "workspaceEdges": 228,
-    "moduleEdges": 15763,
+    "moduleEdges": 15805,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 3,
@@ -314,8 +314,8 @@
     {
       "name": "@wrongstack/contracts",
       "dir": "packages/contracts",
-      "sourceFiles": 124,
-      "testFiles": 2,
+      "sourceFiles": 125,
+      "testFiles": 3,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/primitives"
@@ -329,7 +329,7 @@
         {
           "path": "packages/contracts/tsconfig.test.json",
           "error": null,
-          "testFiles": 2
+          "testFiles": 3
         }
       ]
     },
@@ -363,7 +363,7 @@
       "name": "@wrongstack/core",
       "dir": "packages/core",
       "sourceFiles": 633,
-      "testFiles": 679,
+      "testFiles": 680,
       "workspaceDependencies": [
         "@wrongstack/agent-catalog",
         "@wrongstack/contracts",
@@ -380,7 +380,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 679
+          "testFiles": 680
         }
       ]
     },
@@ -783,7 +783,7 @@
       "name": "@wrongstack/sage",
       "dir": "packages/sage",
       "sourceFiles": 151,
-      "testFiles": 156,
+      "testFiles": 157,
       "workspaceDependencies": [
         "@wrongstack/contracts",
         "@wrongstack/coordination",
@@ -801,7 +801,7 @@
         {
           "path": "packages/sage/tsconfig.test.json",
           "error": null,
-          "testFiles": 156
+          "testFiles": 157
         }
       ]
     },
@@ -881,8 +881,8 @@
     {
       "name": "@wrongstack/simpleui",
       "dir": "packages/simpleui",
-      "sourceFiles": 131,
-      "testFiles": 101,
+      "sourceFiles": 132,
+      "testFiles": 102,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/tools",
@@ -903,7 +903,7 @@
         {
           "path": "packages/simpleui/tsconfig.test.json",
           "error": null,
-          "testFiles": 101
+          "testFiles": 102
         }
       ]
     },
@@ -984,8 +984,8 @@
     {
       "name": "@wrongstack/tui",
       "dir": "packages/tui",
-      "sourceFiles": 496,
-      "testFiles": 429,
+      "sourceFiles": 497,
+      "testFiles": 430,
       "workspaceDependencies": [
         "@wrongstack/chronicle",
         "@wrongstack/contracts",
@@ -1014,7 +1014,7 @@
         {
           "path": "packages/tui/tsconfig.test.json",
           "error": null,
-          "testFiles": 429
+          "testFiles": 430
         }
       ]
     },
@@ -1045,8 +1045,8 @@
     {
       "name": "@wrongstack/vibeui",
       "dir": "packages/vibeui",
-      "sourceFiles": 55,
-      "testFiles": 14,
+      "sourceFiles": 68,
+      "testFiles": 20,
       "workspaceDependencies": [
         "@wrongstack/webui-protocol"
       ],
@@ -1059,15 +1059,15 @@
         {
           "path": "packages/vibeui/tsconfig.test.json",
           "error": null,
-          "testFiles": 14
+          "testFiles": 20
         }
       ]
     },
     {
       "name": "@wrongstack/webui",
       "dir": "packages/webui",
-      "sourceFiles": 765,
-      "testFiles": 506,
+      "sourceFiles": 767,
+      "testFiles": 508,
       "workspaceDependencies": [
         "@wrongstack/contracts",
         "@wrongstack/core",
@@ -1092,7 +1092,7 @@
         {
           "path": "packages/webui/tsconfig.test.json",
           "error": null,
-          "testFiles": 506
+          "testFiles": 508
         }
       ]
     },
@@ -6790,6 +6790,12 @@
         ]
       },
       {
+        "file": "packages/contracts/tests/stream-activity.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/coordination/tests/acp-budget-policy.test.ts",
         "projects": [
           "root-node"
@@ -8147,6 +8153,12 @@
       },
       {
         "file": "packages/core/tests/architecture/vitest-daemon-reaper.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/architecture/vitest-source-alias-coverage.test.ts",
         "projects": [
           "root-node"
         ]
@@ -16564,6 +16576,12 @@
         ]
       },
       {
+        "file": "packages/sage/tests/project-server-client-close-during-election.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/sage/tests/project-server-client-entrypoint-transient.test.ts",
         "projects": [
           "root-node"
@@ -17963,6 +17981,12 @@
       },
       {
         "file": "packages/simpleui/tests/socket-request.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/simpleui/tests/stream-meter.test.tsx",
         "projects": [
           "root-node"
         ]
@@ -23092,6 +23116,12 @@
         ]
       },
       {
+        "file": "packages/tui/tests/stream-activity.test.tsx",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/tui/tests/stream-chip-expiration.test.ts",
         "projects": [
           "root-node"
@@ -23806,6 +23836,24 @@
         ]
       },
       {
+        "file": "packages/vibeui/tests/explorer-view.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/vibeui/tests/file-shelf.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/vibeui/tests/mascot.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/vibeui/tests/memory-view.test.ts",
         "projects": [
           "root-node"
@@ -23842,6 +23890,18 @@
         ]
       },
       {
+        "file": "packages/vibeui/tests/stop-all-prompt.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/vibeui/tests/stream-meter.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/vibeui/tests/transcript-view.test.ts",
         "projects": [
           "root-node"
@@ -23849,6 +23909,12 @@
       },
       {
         "file": "packages/vibeui/tests/working-activity.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/vibeui/tests/workspace-preferences.test.ts",
         "projects": [
           "root-node"
         ]
@@ -27502,6 +27568,12 @@
         ]
       },
       {
+        "file": "packages/webui/tests/components/stream-meter.test.tsx",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
         "file": "packages/webui/tests/components/streaming-markdown.test.ts",
         "projects": [
           "webui-jsdom"
@@ -28169,6 +28241,12 @@
       },
       {
         "file": "packages/webui/tests/integration/p2-gate.test.ts",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
+        "file": "packages/webui/tests/lib/a11y-static-boundaries.test.ts",
         "projects": [
           "webui-jsdom"
         ]
@@ -29271,8 +29349,18 @@
       "syntax": "import"
     },
     {
+      "from": "packages/simpleui/src/stream-meter.tsx",
+      "specifier": "./stream-meter.css",
+      "syntax": "import"
+    },
+    {
       "from": "packages/vibeui/src/app/layout.tsx",
       "specifier": "./globals.css",
+      "syntax": "import"
+    },
+    {
+      "from": "packages/vibeui/src/components/stream-meter.tsx",
+      "specifier": "./stream-meter.css",
       "syntax": "import"
     },
     {
@@ -29356,6 +29444,11 @@
       "syntax": "dynamic-import"
     },
     {
+      "from": "packages/webui/src/components/StreamMeter/index.tsx",
+      "specifier": "./stream-meter.css",
+      "syntax": "import"
+    },
+    {
       "from": "packages/webui/src/components/ui/empty-state.tsx",
       "specifier": "../terminal-motifs.css",
       "syntax": "import"
@@ -29426,7 +29519,7 @@
     },
     {
       "file": "packages/cli/src/fleet/host-skill-companion.ts",
-      "lines": 754,
+      "lines": 753,
       "relativeImports": 3
     },
     {
@@ -29455,24 +29548,34 @@
       "relativeImports": 2
     },
     {
+      "file": "packages/vibeui/src/components/memory-browser.tsx",
+      "lines": 709,
+      "relativeImports": 12
+    },
+    {
       "file": "packages/vibeui/src/components/provider-manager.tsx",
       "lines": 733,
       "relativeImports": 6
     },
     {
+      "file": "packages/vibeui/src/components/resource-hub.tsx",
+      "lines": 800,
+      "relativeImports": 12
+    },
+    {
       "file": "packages/vibeui/src/components/workspace.tsx",
-      "lines": 1103,
-      "relativeImports": 29
+      "lines": 1222,
+      "relativeImports": 34
     },
     {
       "file": "packages/vibeui/src/lib/session.ts",
-      "lines": 911,
-      "relativeImports": 3
+      "lines": 801,
+      "relativeImports": 5
     },
     {
       "file": "packages/vibeui/src/lib/use-session.ts",
-      "lines": 708,
-      "relativeImports": 6
+      "lines": 757,
+      "relativeImports": 7
     },
     {
       "file": "packages/webui/src/components/codemap-model.ts",
@@ -29498,8 +29601,8 @@
   "hotspots": [
     {
       "file": "packages/vibeui/src/components/workspace.tsx",
-      "lines": 1103,
-      "relativeImports": 29
+      "lines": 1222,
+      "relativeImports": 34
     },
     {
       "file": "packages/webui/src/components/codemap-model.ts",
@@ -29507,18 +29610,28 @@
       "relativeImports": 0
     },
     {
-      "file": "packages/vibeui/src/lib/session.ts",
-      "lines": 911,
-      "relativeImports": 3
-    },
-    {
       "file": "packages/tools/src/codebase-index/infra-parser.ts",
       "lines": 889,
       "relativeImports": 2
     },
     {
+      "file": "packages/vibeui/src/lib/session.ts",
+      "lines": 801,
+      "relativeImports": 5
+    },
+    {
+      "file": "packages/vibeui/src/components/resource-hub.tsx",
+      "lines": 800,
+      "relativeImports": 12
+    },
+    {
+      "file": "packages/vibeui/src/lib/use-session.ts",
+      "lines": 757,
+      "relativeImports": 7
+    },
+    {
       "file": "packages/cli/src/fleet/host-skill-companion.ts",
-      "lines": 754,
+      "lines": 753,
       "relativeImports": 3
     },
     {
@@ -29552,9 +29665,9 @@
       "relativeImports": 0
     },
     {
-      "file": "packages/vibeui/src/lib/use-session.ts",
-      "lines": 708,
-      "relativeImports": 6
+      "file": "packages/vibeui/src/components/memory-browser.tsx",
+      "lines": 709,
+      "relativeImports": 12
     },
     {
       "file": "packages/acp/src/client/acp-session.ts",
@@ -29607,6 +29720,16 @@
       "relativeImports": 21
     },
     {
+      "file": "packages/webui-server/src/server/completion-handlers.ts",
+      "lines": 697,
+      "relativeImports": 1
+    },
+    {
+      "file": "packages/webui/src/components/KanbanView.tsx",
+      "lines": 697,
+      "relativeImports": 18
+    },
+    {
       "file": "packages/cli/src/boot/tui-session-resume.ts",
       "lines": 696,
       "relativeImports": 3
@@ -29620,16 +29743,6 @@
       "file": "packages/core/src/core/agent-tools.ts",
       "lines": 696,
       "relativeImports": 11
-    },
-    {
-      "file": "packages/webui-server/src/server/completion-handlers.ts",
-      "lines": 696,
-      "relativeImports": 1
-    },
-    {
-      "file": "packages/webui/src/components/KanbanView.tsx",
-      "lines": 696,
-      "relativeImports": 18
     },
     {
       "file": "packages/coordination/src/fleet-manager.ts",
@@ -29659,6 +29772,11 @@
     {
       "file": "packages/core/src/execution/eternal-autonomy.ts",
       "lines": 693,
+      "relativeImports": 13
+    },
+    {
+      "file": "packages/coordination/src/sqlite-mailbox.ts",
+      "lines": 692,
       "relativeImports": 13
     },
     {
@@ -29730,21 +29848,6 @@
       "file": "packages/coordination/src/mailbox-project-server-client.ts",
       "lines": 689,
       "relativeImports": 3
-    },
-    {
-      "file": "packages/core/src/storage/file-session-writer.ts",
-      "lines": 689,
-      "relativeImports": 12
-    },
-    {
-      "file": "packages/coordination/src/task-auctioneer.ts",
-      "lines": 688,
-      "relativeImports": 8
-    },
-    {
-      "file": "packages/webui/src/lib/ws-client.ts",
-      "lines": 688,
-      "relativeImports": 14
     }
   ],
   "testOnlyExports": [
@@ -30551,18 +30654,6 @@
     {
       "file": "packages/cli/src/wiring/external-plugins.ts",
       "name": "resolveExternalPluginTrustMode"
-    },
-    {
-      "file": "packages/cli/src/wiring/mailbox-bridge-bootstrap.ts",
-      "name": "MAILBOX_BRIDGE_META_KEY"
-    },
-    {
-      "file": "packages/cli/src/wiring/metrics.ts",
-      "name": "registerMcpHealthCheck"
-    },
-    {
-      "file": "packages/cli/src/wiring/metrics.ts",
-      "name": "registerMcpMetrics"
     },
     {
       "file": "packages/cli/src/wiring/plugins.ts",
@@ -32787,6 +32878,18 @@
     {
       "file": "packages/vector-memory/src/sage-fusion.ts",
       "name": "__testing"
+    },
+    {
+      "file": "packages/vibeui/src/lib/file-shelf.ts",
+      "name": "MAX_RECENT_FILES"
+    },
+    {
+      "file": "packages/vibeui/src/lib/mascot.ts",
+      "name": "MASCOT_HEIGHT"
+    },
+    {
+      "file": "packages/vibeui/src/lib/mascot.ts",
+      "name": "MASCOT_WIDTH"
     },
     {
       "file": "packages/vibeui/src/lib/transport.ts",

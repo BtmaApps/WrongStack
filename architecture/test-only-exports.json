@@ -420,13 +420,6 @@
       "hashPluginClosure",
       "resolveExternalPluginTrustMode"
     ],
-    "packages/cli/src/wiring/mailbox-bridge-bootstrap.ts": [
-      "MAILBOX_BRIDGE_META_KEY"
-    ],
-    "packages/cli/src/wiring/metrics.ts": [
-      "registerMcpHealthCheck",
-      "registerMcpMetrics"
-    ],
     "packages/cli/src/wiring/plugins.ts": [
       "_resetDeprecatedWarningsForTests",
       "BUILTIN_PLUGIN_NAME_HINTS",
@@ -1634,6 +1627,13 @@
     ],
     "packages/vector-memory/src/sage-fusion.ts": [
       "__testing"
+    ],
+    "packages/vibeui/src/lib/file-shelf.ts": [
+      "MAX_RECENT_FILES"
+    ],
+    "packages/vibeui/src/lib/mascot.ts": [
+      "MASCOT_HEIGHT",
+      "MASCOT_WIDTH"
     ],
     "packages/vibeui/src/lib/transport.ts": [
       "STABLE_CONNECTION_MS",

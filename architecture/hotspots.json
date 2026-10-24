@@ -11,7 +11,7 @@
       "relativeImports": 5
     },
     "packages/cli/src/fleet/host-skill-companion.ts": {
-      "lines": 754,
+      "lines": 753,
       "relativeImports": 3
     },
     "packages/coordination/src/agent-monitor.ts": {
@@ -34,21 +34,29 @@
       "lines": 889,
       "relativeImports": 2
     },
+    "packages/vibeui/src/components/memory-browser.tsx": {
+      "lines": 709,
+      "relativeImports": 12
+    },
     "packages/vibeui/src/components/provider-manager.tsx": {
       "lines": 733,
       "relativeImports": 6
     },
+    "packages/vibeui/src/components/resource-hub.tsx": {
+      "lines": 800,
+      "relativeImports": 12
+    },
     "packages/vibeui/src/components/workspace.tsx": {
-      "lines": 1103,
-      "relativeImports": 29
+      "lines": 1222,
+      "relativeImports": 34
     },
     "packages/vibeui/src/lib/session.ts": {
-      "lines": 911,
-      "relativeImports": 3
+      "lines": 801,
+      "relativeImports": 5
     },
     "packages/vibeui/src/lib/use-session.ts": {
-      "lines": 708,
-      "relativeImports": 6
+      "lines": 757,
+      "relativeImports": 7
     },
     "packages/webui/src/components/codemap-model.ts": {
       "lines": 1098,

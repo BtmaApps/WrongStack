@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "package": "@wrongstack/core",
-  "packageVersion": "1.1.16",
+  "packageVersion": "1.2.0",
   "policy": "Root is compatibility-only; new imports use owned domain subpaths.",
   "subpaths": [
     {
@@ -1074,7 +1074,7 @@
       "classification": "agent-domain contract",
       "intendedOwner": "Core",
       "sourceFiles": 80,
-      "sourceLines": 16859
+      "sourceLines": 16899
     },
     {
       "directory": "design",
@@ -1088,7 +1088,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime pilot candidate after R2/R3",
       "sourceFiles": 107,
-      "sourceLines": 25987
+      "sourceLines": 26005
     },
     {
       "directory": "extension",
@@ -1235,7 +1235,7 @@
       "classification": "kernel primitive",
       "intendedOwner": "split dependency-free primitives from concrete helpers",
       "sourceFiles": 94,
-      "sourceLines": 14531
+      "sourceLines": 14539
     },
     {
       "directory": "vcs",
