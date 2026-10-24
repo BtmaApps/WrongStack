@@ -1162,7 +1162,7 @@ is also taken.
   mailbox aggregation, protocol mismatch, drawer markup, live event feed
 - `packages/core/src/hq/` — protocol, redaction, mapper, publisher,
   factory (client-side)
-- `packages/core/src/coordination/sqlite-mailbox.ts` — `SqliteMailbox` →
+- `packages/coordination/src/sqlite-mailbox.ts` — `SqliteMailbox` →
   `HqPublisher` wiring
 - `packages/core/src/mailbox-attach.ts` — agent-loop checker mailbox
   publisher injection
@@ -1172,7 +1172,7 @@ is also taken.
 ## Shared mailbox router
 
 The canonical external-agent mailbox HTTP protocol lives in
-`packages/core/src/coordination/mailbox-http-router.ts`. Both
+`packages/coordination/src/mailbox-http-router.ts`. Both
 `wstack mailbox serve` and `wstack --hq` mount it; one implementation,
 two hosts.
 

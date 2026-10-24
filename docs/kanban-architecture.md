@@ -126,7 +126,7 @@ Primary implementation files:
 | Agent tool | `packages/tools/src/kanban.ts` | LLM-callable `kanban` tool actions; records presence on every successful mutation |
 | External MCP | `packages/kanban-mcp` | Project-bound stdio/HTTP server with read, manage, destructive, and long-poll watch tiers |
 | External-agent skill | `packages/core/skills/wrongstack-kanban/SKILL.md` | Portable inspect/claim/heartbeat/verify/reconcile workflow for MCP-capable coding agents |
-| Director tool | `packages/core/src/coordination/director-tools.ts` | `kanban_queue` fleet dispatch bridge; subagent prompt includes reassessment contract |
+| Director tool | `packages/coordination/src/director-tools.ts` | `kanban_queue` fleet dispatch bridge; subagent prompt includes reassessment contract |
 | Security boundary | `packages/core/src/security/kanban-boundary.ts` | Execution-time governance, lease and filesystem checks, called from `tool-executor.ts` ([§21](#21-security-boundary)) |
 | System prompt | `packages/core/instructions/system{,-pro,-lite}.md` | `<!--ws:if tool=kanban-->` blocks: card prerequisites, hard conditions, lifecycle, evidence and hand-off rules |
 | CLI | `packages/cli/src/slash-commands/kanban.ts` | Human slash-command surface (`/kanban`, `/kb`, `/board`) |

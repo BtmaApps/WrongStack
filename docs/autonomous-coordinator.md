@@ -93,11 +93,11 @@ flowchart TB
 | CLI entry | `packages/cli/src/cli-main.ts` | Owns mutable `director`; passes `getDirector: () => director` into execution. |
 | Execution wiring | `packages/cli/src/execution.ts` | Lazily creates `AutonomousCoordinator`, adapts LLM provider, exposes start/stop/event subscriptions to TUI/slash context. |
 | Slash command | `packages/cli/src/slash-commands/coordinator.ts` | User-facing `/coordinator start|stop|status`. |
-| Core coordinator | `packages/core/src/coordination/autonomous-coordinator.ts` | Decomposes goals, runs decision loop, coordinates DAG/auction/Director/consensus. |
-| Brain | `packages/core/src/coordination/autonomous-brain.ts` | LLM-backed prioritization/approval decisions. |
-| Knowledge | `packages/core/src/coordination/knowledge-graph.ts` | Persistent facts, goals, decisions, and change records. |
-| Auction | `packages/core/src/coordination/task-auctioneer.ts` | Shared task marketplace and assignment state. |
-| DAG | `packages/core/src/coordination/task-dag.ts` | Dependency-aware readiness/completion tracking. |
+| Core coordinator | `packages/coordination/src/autonomous-coordinator.ts` | Decomposes goals, runs decision loop, coordinates DAG/auction/Director/consensus. |
+| Brain | `packages/coordination/src/autonomous-brain.ts` | LLM-backed prioritization/approval decisions. |
+| Knowledge | `packages/coordination/src/knowledge-graph.ts` | Persistent facts, goals, decisions, and change records. |
+| Auction | `packages/coordination/src/task-auctioneer.ts` | Shared task marketplace and assignment state. |
+| DAG | `packages/coordination/src/task-dag.ts` | Dependency-aware readiness/completion tracking. |
 | UI hook | `packages/tui/src/hooks/use-autonomous-coordinator.ts` | Subscribes to coordinator events and dispatches reducer actions. |
 | UI reducer | `packages/tui/src/app-reducer.ts` | Builds coordinator monitor timeline and counters. |
 
@@ -509,7 +509,7 @@ flowchart TB
 |---|---|---|
 | `/coordinator start` prints not ready | No live Director has been created/promoted. | `packages/cli/src/execution.ts`, `packages/cli/src/cli-main.ts` |
 | Goals show, no task assignment | Coordinator constructed without `director`. | `packages/cli/src/execution.ts` |
-| Subagent completes but goal remains pending | Duplicate task id / goal id split. | `packages/core/src/coordination/autonomous-coordinator.ts` |
+| Subagent completes but goal remains pending | Duplicate task id / goal id split. | `packages/coordination/src/autonomous-coordinator.ts` |
 | TUI monitor receives no events | Missing `subscribeCoordinatorEvents` prop/hook. | `packages/tui/src/app.tsx`, `packages/tui/src/hooks/use-autonomous-coordinator.ts` |
 | Consensus handling throws unknown voter | Coordinator self id missing from voters. | `_buildVoters()` in `autonomous-coordinator.ts` |
 | Process leaks handlers after stop | `stop()` used where `dispose()` is needed. | `packages/cli/src/execution.ts` |

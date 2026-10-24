@@ -45,7 +45,7 @@
 The built-in roster contains 50 catalog agents across 9 phases (Discovery →
 Meta), plus the operational `shadow-agent` role. Five optional ACP runtimes
 extend the addressable set from 51 to 56. The phase catalog is defined in
-`packages/core/src/coordination/agents/`.
+`packages/agent-catalog/src/`.
 Each agent has a scoped tool allowlist and budget tier. Spawn any of them by
 role: `/fleet spawn debugger`, `/fleet spawn e2e 2`, or let the dispatcher pick
 with `/fleet dispatch "fix the login crash"`. `spawn_subagent role:<role>` works
@@ -149,9 +149,9 @@ telemetry. Static configured ceilings (not live used counts) also appear in
 - `packages/cli/src/slash-commands/fleet.ts` — `/fleet` incl. `list` / `dispatch`
 - `packages/cli/src/fleet-statusline.ts` — plain-REPL live status line
 - `packages/tui/src/components/fleet-monitor.tsx` — graphical TUI dashboard (Ctrl+F)
-- `packages/core/src/coordination/agents/` — 50-agent catalog (phases 1-9)
-- `packages/core/src/coordination/dispatcher.ts` — heuristic + LLM routing
-- `packages/core/src/coordination/auto-extend.ts` — heartbeat auto-extend policy
-- `packages/core/src/coordination/director.ts` — director-side auto-extend
-- `packages/core/src/coordination/fleet.ts` — roster + budgets
-- `packages/core/src/coordination/delegate-tool.ts` — `fleet-retry` tool
+- `packages/agent-catalog/src/` — 50-agent catalog (phases 1-9)
+- `packages/coordination/src/dispatcher.ts` — heuristic + LLM routing
+- `packages/coordination/src/auto-extend.ts` — heartbeat auto-extend policy
+- `packages/coordination/src/director.ts` — director-side auto-extend
+- `packages/coordination/src/fleet.ts` — roster + budgets
+- `packages/coordination/src/delegate-tool.ts` — `fleet-retry` tool

@@ -25,16 +25,16 @@
 
 | Class | File | Responsibility |
 |-------|------|----------------|
-| `Director` | `packages/core/src/coordination/director.ts` | High-level orchestrator; owns coordinator, FleetBus, usage aggregator. Exposes imperative API + LLM-callable tools. |
-| `DefaultMultiAgentCoordinator` | `packages/core/src/coordination/multi-agent-coordinator.ts` | Task queue, dispatch to idle workers, concurrency cap, budget enforcement. |
-| `FleetBus` | `packages/core/src/coordination/fleet-bus.ts` | Fan-in event bus; re-emits per-subagent events with subagent attribution. |
-| `FleetUsageAggregator` | `packages/core/src/coordination/fleet-bus.ts` | Rolls up token usage + cost from `provider.response` / `tool.executed` events. |
-| `InMemoryAgentBridge` | `packages/core/src/coordination/agent-bridge.ts` | Bidirectional request/response bridge between director and subagents. |
-| `InMemoryBridgeTransport` | `packages/core/src/coordination/in-memory-transport.ts` | In-memory message transport backing the bridge. |
-| `SubagentBudget` | `packages/core/src/coordination/subagent-budget.ts` | Per-subagent hard/soft budget enforcement (iterations, tools, tokens, cost, timeout). |
+| `Director` | `packages/coordination/src/director.ts` | High-level orchestrator; owns coordinator, FleetBus, usage aggregator. Exposes imperative API + LLM-callable tools. |
+| `DefaultMultiAgentCoordinator` | `packages/coordination/src/multi-agent-coordinator.ts` | Task queue, dispatch to idle workers, concurrency cap, budget enforcement. |
+| `FleetBus` | `packages/coordination/src/fleet-bus.ts` | Fan-in event bus; re-emits per-subagent events with subagent attribution. |
+| `FleetUsageAggregator` | `packages/coordination/src/fleet-bus.ts` | Rolls up token usage + cost from `provider.response` / `tool.executed` events. |
+| `InMemoryAgentBridge` | `packages/coordination/src/agent-bridge.ts` | Bidirectional request/response bridge between director and subagents. |
+| `InMemoryBridgeTransport` | `packages/coordination/src/in-memory-transport.ts` | In-memory message transport backing the bridge. |
+| `SubagentBudget` | `packages/coordination/src/subagent-budget.ts` | Per-subagent hard/soft budget enforcement (iterations, tools, tokens, cost, timeout). |
 | `DirectorStateCheckpoint` | `packages/core/src/storage/director-state.ts` | Incremental on-disk snapshot of fleet state for crash recovery. |
-| `makeDirectorSessionFactory` | `packages/core/src/coordination/director-session.ts` | Produces per-subagent JSONL session writers under `<runDir>/<subagentId>.jsonl`. |
-| `createDelegateTool` | `packages/core/src/coordination/delegate-tool.ts` | One-call spawn+assign for a self-contained task. Background by default: returns a `delegationId`, a `DelegationTracker` follows the worker to settlement, and the result is delivered to the owning leader as a `[DELEGATION RESULT]` block (`leader-delivery-hub.ts`). `wait: true` keeps the blocking spawn+assign+await call. |
+| `makeDirectorSessionFactory` | `packages/coordination/src/director-session.ts` | Produces per-subagent JSONL session writers under `<runDir>/<subagentId>.jsonl`. |
+| `createDelegateTool` | `packages/coordination/src/delegate-tool.ts` | One-call spawn+assign for a self-contained task. Background by default: returns a `delegationId`, a `DelegationTracker` follows the worker to settlement, and the result is delivered to the owning leader as a `[DELEGATION RESULT]` block (`leader-delivery-hub.ts`). `wait: true` keeps the blocking spawn+assign+await call. |
 
 ### Director tools (14 total)
 

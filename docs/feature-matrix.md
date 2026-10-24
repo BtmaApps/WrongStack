@@ -202,7 +202,7 @@ tracks *spend* (with pricing), the latter enforces a *budget*
 ### Cross-agent
 
 Plugins that publish to the project mailbox
-([`RemoteMailbox`](../packages/core/src/coordination/remote-mailbox.ts))
+([`RemoteMailbox`](../packages/coordination/src/remote-mailbox.ts))
 so other agents in the same project (terminals, WebUIs, shadow
 agents) can see what this one is doing.
 
@@ -392,4 +392,4 @@ migration hints.
 - [`packages/core/skills/plugin-author/SKILL.md`](../packages/core/skills/plugin-author/SKILL.md) — bundled skill that walks through adding a new plugin
 - [`docs/hooks.md`](hooks.md) — how the hook runner works; what `PreToolUse` / `PostToolUse` / `Stop` mean in the core event bus
 - [`docs/configuration.md`](configuration.md) — `config.extensions[<name>]` per-plugin config surface
-- [`packages/core/src/coordination/sqlite-mailbox.ts`](../packages/core/src/coordination/sqlite-mailbox.ts) — the durable mailbox store used by the project-scoped owner
+- [`packages/coordination/src/sqlite-mailbox.ts`](../packages/coordination/src/sqlite-mailbox.ts) — the durable mailbox store used by the project-scoped owner

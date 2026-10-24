@@ -132,8 +132,8 @@ but that has not been measured here.
 
 | File | Role |
 |---|---|
-| `packages/core/src/coordination/dispatcher.ts` | The two-stage router and the `DispatchClassifier` seam. Unchanged except for the optional `confidence`. |
-| `packages/core/src/coordination/typesafe-dispatch-classifier.ts` | The typed classifier. |
+| `packages/coordination/src/dispatcher.ts` | The two-stage router and the `DispatchClassifier` seam. Unchanged except for the optional `confidence`. |
+| `packages/coordination/src/typesafe-dispatch-classifier.ts` | The typed classifier. |
 | `packages/cli/src/services/dispatch-classifier.ts` | Picks which classifier the config asks for. |
 | `packages/core/src/typesafe/` | Shared client and account resolution. |
 

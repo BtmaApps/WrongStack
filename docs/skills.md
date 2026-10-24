@@ -342,7 +342,7 @@ A skill is a passive Markdown file. A **roster role** is a TypeScript subagent d
 | | Skill | Roster role |
 |---|---|---|
 | What it is | `SKILL.md` with YAML frontmatter | TypeScript `SubagentConfig` object |
-| Where it lives | `packages/core/skills/<name>/SKILL.md` (or `~/.wrongstack/profiles/<name>/skills/`, `<project>/.wrongstack/skills/`) | `packages/core/src/coordination/fleet.ts` (or related agent modules) |
+| Where it lives | `packages/core/skills/<name>/SKILL.md` (or `~/.wrongstack/profiles/<name>/skills/`, `<project>/.wrongstack/skills/`) | `packages/coordination/src/fleet.ts` (or related agent modules) |
 | How it reaches the agent | Injected into the system prompt via `DefaultSkillLoader` when `DefaultSystemPromptBuilder` builds the prompt | Spawned via `spawn_subagent { role: '<id>' }` and runs in its own context/budget |
 | Who maintains it | Humans (with AI assistance via `/skill-gen`) | WrongStack core team — compiled into the binary |
 | Listed in `/skill` | Yes | No |
@@ -350,7 +350,7 @@ A skill is a passive Markdown file. A **roster role** is a TypeScript subagent d
 
 ### Example: `shadow-agent`
 
-`shadow-agent` is a roster role, not a skill. Its lazy prompt-backed configuration is defined in `packages/core/src/coordination/fleet.ts` and uses `SHADOW_AGENT_SKILLS` from `packages/core/src/coordination/agents/role-skills.ts`. The roster catalog in `packages/core/src/coordination/fleet.ts` registers it under the key `'shadow-agent'`. You start it with:
+`shadow-agent` is a roster role, not a skill. Its lazy prompt-backed configuration is defined in `packages/coordination/src/fleet.ts` and uses `SHADOW_AGENT_SKILLS` from `packages/agent-catalog/src/role-skills.ts`. The roster catalog in `packages/coordination/src/fleet.ts` registers it under the key `'shadow-agent'`. You start it with:
 
 ```
 spawn_subagent { role: 'shadow-agent', task: '...', maxIterations: 12 }
@@ -361,7 +361,7 @@ agent identity and skills live under `.wrongstack/agents/`; an installed
 `.wrongstack/skills/shadow-agent/SKILL.md` is a local skill, not the fleet role
 definition. See [agent identity and learning](slash/agent-improve.md).
 
-Other roster roles follow the same pattern (see `packages/core/src/coordination/agents/`). If you're looking for "how do I make the agent smarter about X", you almost always want to write a skill. If you're looking for "how do I spawn a specialized subagent that runs X", you want a roster role.
+Other roster roles follow the same pattern (see `packages/agent-catalog/src/`). If you're looking for "how do I make the agent smarter about X", you almost always want to write a skill. If you're looking for "how do I spawn a specialized subagent that runs X", you want a roster role.
 
 ---
 

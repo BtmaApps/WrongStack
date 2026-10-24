@@ -94,5 +94,5 @@ Use /delegate list to browse by phase.
 ## Code reference
 
 - `packages/cli/src/slash-commands/delegate.ts`
-- `packages/core/src/coordination/dispatcher.ts` — `dispatchAgent`
-- `packages/core/src/coordination/agents/` — agent catalog (50 roles, 9 phases)
+- `packages/coordination/src/dispatcher.ts` — `dispatchAgent`
+- `packages/agent-catalog/src/` — agent catalog (50 roles, 9 phases)

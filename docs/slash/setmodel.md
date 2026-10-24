@@ -86,8 +86,8 @@ and to run parallel subagents on different providers, one lane each — use
 ## Code reference
 
 - `packages/cli/src/slash-commands/setmodel.ts` — the command + persistence
-- `packages/core/src/coordination/model-matrix.ts` — `resolveModelMatrix`, key validation
-- `packages/core/src/coordination/director.ts` — `Director.spawn` applies the matrix before the spawn event/manifest
+- `packages/coordination/src/model-matrix.ts` — `resolveModelMatrix`, key validation
+- `packages/coordination/src/director.ts` — `Director.spawn` applies the matrix before the spawn event/manifest
 - `packages/runtime/src/fleet/light-subagent-factory.ts` — runtime subagent factory applies role-specific model/runtime
 - `packages/cli/src/fleet/host.ts` — CLI fleet host applies the same model/runtime path
 - `packages/webui/src/components/SettingsPanel/index.tsx` — WebUI Model Routing editor

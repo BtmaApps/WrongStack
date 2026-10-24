@@ -144,9 +144,9 @@ use `to: "leader"` together with `audience: "leaders"`.
 ## Code Reference
 
 - `packages/cli/src/subcommands/handlers/mailbox-serve.ts` — bridge startup
-- `packages/core/src/coordination/sqlite-mailbox.ts` — storage + transport
-- `packages/core/src/coordination/mailbox-credential-store.ts` — credential lifecycle
-- `packages/core/src/coordination/mailbox-http-router.ts` — HTTP route dispatch + auth
+- `packages/coordination/src/sqlite-mailbox.ts` — storage + transport
+- `packages/coordination/src/mailbox-credential-store.ts` — credential lifecycle
+- `packages/coordination/src/mailbox-http-router.ts` — HTTP route dispatch + auth
 - `docs/slash/mailbox-serve.md` — slash command docs
 - `docs/slash/mailbox.md` — operator mailbox commands
 - `docs/archive/specs/global-mailbox-p0-contract-repairs.md` — full specification (24 acceptance criteria)

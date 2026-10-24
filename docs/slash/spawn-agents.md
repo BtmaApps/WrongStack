@@ -145,10 +145,10 @@ The subagent responds synchronously — the director gets the answer in the same
 
 - `packages/cli/src/slash-commands/spawn-agents.ts`
 - `packages/cli/src/multi-agent.ts` — `MultiAgentHost` wiring
-- `packages/core/src/coordination/multi-agent-coordinator.ts`
-- `packages/core/src/coordination/director.ts` — director orchestration
-- `packages/core/src/coordination/director-tools.ts` — fleet tool factories
-- `packages/core/src/coordination/fleet-bus.ts` — `FleetBus` event multiplexer
+- `packages/coordination/src/multi-agent-coordinator.ts`
+- `packages/coordination/src/director.ts` — director orchestration
+- `packages/coordination/src/director-tools.ts` — fleet tool factories
+- `packages/coordination/src/fleet-bus.ts` — `FleetBus` event multiplexer
 - `packages/tui/src/components/fleet-panel.tsx` — TUI live panel
 
 **Enforcement files:**

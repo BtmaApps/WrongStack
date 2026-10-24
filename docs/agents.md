@@ -139,7 +139,7 @@ All surfaces on one project share `~/.wrongstack/projects/<slug>/`:
 
 ## Collab Debug Session
 
-`CollabSession` (`/collab <paths>` or `collab_debug` tool): three-agent parallel pipeline `bug-hunter` → `refactor-planner` → `critic`. Agents emit structured events via the `fleet_emit` tool → `FleetBus`; downstream agents consume in real time (`bug.found` per-finding no batching, `refactor.plan` per bug, `critic.evaluation` → Director final report). Known payloads schema-validated and role-bound; attribution from executing `Context.agentId` + `subagentTaskId`, never model-supplied; unknown event types allowed for plugins. Code: `core/src/coordination/collab-debug.ts`, `fleet-bus.ts`; TUI `fleet-monitor.tsx` (Ctrl+F), `fleet-panel.tsx`.
+`CollabSession` (`/collab <paths>` or `collab_debug` tool): three-agent parallel pipeline `bug-hunter` → `refactor-planner` → `critic`. Agents emit structured events via the `fleet_emit` tool → `FleetBus`; downstream agents consume in real time (`bug.found` per-finding no batching, `refactor.plan` per bug, `critic.evaluation` → Director final report). Known payloads schema-validated and role-bound; attribution from executing `Context.agentId` + `subagentTaskId`, never model-supplied; unknown event types allowed for plugins. Code: `coordination/src/collab-debug.ts`, `fleet-bus.ts`; TUI `fleet-monitor.tsx` (Ctrl+F), `fleet-panel.tsx`.
 
 ## HQ Command Center (port 3499)
 
@@ -198,7 +198,7 @@ Three noop-default pillars: Metrics (`MetricsSink`, opt-in `--metrics`), Traces 
 
 ## Key files
 
-`apps/wrongstack/src/index.js` (published bin shim) · `packages/cli/src/index.ts` (export + main-entry guard) · `packages/cli/src/cli-main.ts` (boot orchestrator) · `packages/cli/src/repl.ts` · `packages/cli/src/slash-commands/index.ts` · `packages/core/src/kernel/{container,pipeline,events,run-controller}.ts` · `packages/core/src/core/agent.ts` (main loop) · `packages/core/src/execution/tool-executor.ts` · `packages/core/src/coordination/multi-agent-coordinator.ts` · `packages/tools/src/builtin.ts` · `packages/mcp/src/client.ts`.
+`apps/wrongstack/src/index.js` (published bin shim) · `packages/cli/src/index.ts` (export + main-entry guard) · `packages/cli/src/cli-main.ts` (boot orchestrator) · `packages/cli/src/repl.ts` · `packages/cli/src/slash-commands/index.ts` · `packages/core/src/kernel/{container,pipeline,events,run-controller}.ts` · `packages/core/src/core/agent.ts` (main loop) · `packages/core/src/execution/tool-executor.ts` · `packages/coordination/src/multi-agent-coordinator.ts` · `packages/tools/src/builtin.ts` · `packages/mcp/src/client.ts`.
 
 ## Slash commands
 

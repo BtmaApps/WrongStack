@@ -141,11 +141,11 @@ event, so `/resume` brings it back. It is never written to `config.json` — use
 
 ## Code reference
 
-- `packages/core/src/coordination/session-subagent-models.ts` — the plan, the lane
+- `packages/coordination/src/session-subagent-models.ts` — the plan, the lane
   accounting, journal + resume
-- `packages/core/src/coordination/director-spawn-model.ts` — the single resolver
+- `packages/coordination/src/director-spawn-model.ts` — the single resolver
   that owns the precedence order above
-- `packages/core/src/coordination/director.ts` — claims a lane before resolution,
+- `packages/coordination/src/director.ts` — claims a lane before resolution,
   releases it in `remove()`
 - `packages/cli/src/slash-commands/subagent-models.ts` — this command
 - `packages/cli/src/subagent-models/panel-service.ts` — TUI panel host bridge

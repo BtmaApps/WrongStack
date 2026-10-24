@@ -2,7 +2,7 @@
 
 This document describes the mailbox implementation that ships in WrongStack.
 The source of truth is the code under
-`packages/core/src/coordination/mailbox-project-server*.ts`,
+`packages/coordination/src/mailbox-project-server*.ts`,
 `remote-mailbox.ts`, and `sqlite-mailbox.ts`.
 
 ## Runtime guarantee
