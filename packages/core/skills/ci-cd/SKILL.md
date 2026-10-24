@@ -1,6 +1,6 @@
 ---
 name: ci-cd
-version: 1.0.1
+version: 1.0.2
 description: "Build and repair reproducible CI and deployment workflows with explicit artifacts, permissions and release gates. Use when working on GitHub Actions or other pipelines, caches, matrices, packaging or deployment evidence; preserve the authoritative checks and never hide failures."
 trigger: "working on GitHub Actions or other pipelines, caches, matrices, packaging or deployment evidence; preserve the authoritative checks and never hide failures."
 required-capabilities: [filesystem.read, filesystem.write]
@@ -51,18 +51,27 @@ service. They are separate evidence boundaries.
 6. Report commands, hosted run/commit when applicable, artifact/deployment status
    and remaining environment-specific gaps.
 
+## Core Patterns & Pitfalls
+
+- **Least-Privilege `permissions:` & Concurrency**: Declare explicit top-level `permissions: { contents: read }` in GitHub Actions workflows (elevating per-job only for OIDC/pages/packages), set job `timeout-minutes`, and configure `concurrency:` groups (cancel-in-progress for PR branches, serialized queue without cancel for production deploys).
+- **Script Injection Prevention**: Never interpolate untrusted GitHub context expressions (`${{ github.event.pull_request.title }}`, branch names, commit messages) directly inside a `run:` shell block; bind them to `env:` variables first and reference `"$PR_TITLE"` in the shell.
+- **Anti-pattern — `pull_request_target` with Untrusted Checkout**: Checking out and executing PR head code inside a `pull_request_target` workflow grants untrusted forks access to repository secrets and write tokens.
+
 ## Sources
 
 [GitHub secure workflow use](https://docs.github.com/en/actions/reference/security/secure-use),
-reviewed 2026-10-09. Follow the selected CI platform's own current contracts.
+reviewed 2026-10-23. Follow the selected CI platform's own current contracts.
 
 ## Acceptance checks
 
-- Validate the workflow syntax, least-privilege credentials, matrix conditions and the actual job results.
+- [ ] Workflow triggers, working directories, frozen lockfile installs, and runner/runtime versions match repo standards
+- [ ] Explicit `permissions`, `timeout-minutes`, and `concurrency` rules configured without `continue-on-error` masking
+- [ ] Untrusted event fields passed via `env:` variables rather than inline `${{ ... }}` shell interpolation
+- [ ] Cache keys include OS, runtime version, and lockfile hashes; local check vs hosted CI vs deployed state reported separately
 
 ## Skills in scope
 
-- tech-stack — current compatible runtimes/dependencies.
-- docker-deploy — image build/startup.
-- verify-before-done — completion evidence.
-- git-flow — exact reviewed changes and publication authorization.
+- tech-stack — runtime, package manager, and toolchain version alignment across local and CI runners.
+- docker-deploy — multi-stage container builds, layer cache exports, and digest pinning in CI.
+- verify-before-done — running the authoritative repo verification suite before declaring pipeline fixes complete.
+- git-flow — branch protection rules, commit hygiene, and release tag workflows.

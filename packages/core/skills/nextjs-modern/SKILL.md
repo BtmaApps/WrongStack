@@ -1,7 +1,7 @@
 ---
 name: nextjs-modern
 description: "Build, migrate, and debug Next.js 16 App Router applications with React 19, Server Components, Server Actions, explicit caching, and production deployment. Use when implementing Next.js routes, upgrading to the latest stable Next.js, or fixing rendering and cache behavior."
-version: 1.2.1
+version: 1.2.2
 required-capabilities: [filesystem.read, filesystem.write]
 required-tools: []
 optional-capabilities: [verification.run, web.research]
@@ -20,8 +20,8 @@ paths: ["next.config.*"]
 
 ## Overview
 
-Target the latest stable release: Next.js 16.4.0 with React/react-dom 19.3.0,
-verified from npm on 2026-10-09. Refresh the registry before a new install or
+Target the latest stable release: Next.js 16.4.3 with React/react-dom 19.3.1,
+verified from npm on 2026-10-23. Refresh the registry before a new install or
 upgrade. The installed version explains migration work; it does not make an
 older major the recommended target.
 
@@ -64,14 +64,15 @@ older major the recommended target.
 
 ## Before returning
 
-- Latest stable target and installed starting version recorded with source URLs.
-- Server/client boundary, authorization and cache policy verified.
-- Mutation refresh checked through the visible UI, including error handling.
-- Build and relevant route checks reported; deployment evidence scoped honestly.
+- [ ] Next.js 16 and React 19 versions, `next.config.*`, and `proxy.ts` / bundler settings verified against lockfile
+- [ ] Dynamic request APIs (`params`, `searchParams`, `cookies()`, `headers()`) properly awaited
+- [ ] Client boundaries (`'use client'`) minimized and server-only secrets/DB clients isolated from client bundles
+- [ ] Every Server Action and Route Handler validates input and enforces server-side user/tenant authorization
+- [ ] Cache invalidation (`updateTag(tag)` vs `revalidateTag(tag, 'max')`), two-user isolation, and `next build` verified
 
 ## Sources
 
-Reviewed 2026-10-09; refresh before upgrades:
+Reviewed 2026-10-23; refresh before upgrades:
 [installation](https://nextjs.org/docs/app/getting-started/installation),
 [version 16 migration](https://nextjs.org/docs/app/guides/upgrading/version-16),
 [revalidateTag](https://nextjs.org/docs/app/api-reference/functions/revalidateTag),
@@ -79,7 +80,7 @@ Reviewed 2026-10-09; refresh before upgrades:
 
 ## Skills in scope
 
-- react-modern — component, form and hook semantics.
-- typescript-strict — action states and route contracts.
-- testing — cache and route behavior.
-- docker-deploy — production container startup.
+- react-modern — React 19 `useActionState`, `useOptimistic`, Server/Client Component composition, and Suspense boundaries.
+- typescript-strict — generated Next.js route types (`PageProps`, `LayoutProps`, `next typegen`) and strict action state contracts.
+- testing — verifying App Router Server Actions, Route Handlers, and per-user cache isolation.
+- docker-deploy — standalone output (`output: 'standalone'`), `HOSTNAME=0.0.0.0` binding, and multi-stage container builds.

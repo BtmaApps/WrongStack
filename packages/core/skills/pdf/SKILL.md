@@ -1,7 +1,7 @@
 ---
 name: pdf
 description: "Generate, inspect, assemble, and render vector-quality PDF documents with precise page geometry, print typography, page breaks, and PDF/A standards. Use when generating downloadable reports, invoices, printable whitepapers, combining PDF pages, or rendering HTML to vector PDF."
-version: 1.0.0
+version: 1.1.0
 required-capabilities: [filesystem.read, filesystem.write]
 required-tools: []
 optional-capabilities: [verification.run, web.research]
@@ -21,7 +21,7 @@ metadata:
 
 PDF is a fixed-layout vector format designed for visual fidelity across all printing and viewing devices.
 Avoid blurry rasterized screenshots disguised as PDFs. Use native vector PDF composition tools
-such as `pdf-lib` (npm), Typst, or headless Chromium print engines (`@playwright/test` / Puppeteer)
+such as `pdf-lib` (npm), Typst, or headless Chromium print engines (`@playwright/test` / Puppeteer; checked 2026-10-23: pdf-lib 1.17.1, Playwright 1.64.1, Puppeteer 25.16.0)
 with explicit print CSS (`@media print`, `@page`) to achieve flawless typography, pagination, and vector line art.
 
 ## Core Engineering Rules
@@ -65,7 +65,7 @@ await page.setContent(`
   </head>
   <body>
     <h1>System Audit & Compliance Report</h1>
-    <div class="meta">Generated: 2026-10-10 | Environment: Production Edge</div>
+    <div class="meta">Generated: 2026-10-23 | Environment: Production Edge</div>
     <p>Detailed verification of global edge gateway policies and TLS termination certificates.</p>
   </body>
   </html>
@@ -83,9 +83,15 @@ await page.pdf({
 await browser.close();
 ```
 
+## Skills in scope
+
+- `office-documents` — multi-format document generation across DOCX, XLSX, PPTX, and PDF
+- `canvas-design` — poster-grade editorial layouts, grids, and print typography
+- `docx` — editable Word document authoring when downstream redlining is required
+
 ## Acceptance checks
 
-- Document renders with sharp vector text and scalable paths without raster blurriness.
-- Page pagination, running headers, and footers ("Page X of Y") render correctly without overlaps.
-- Table rows and section headings do not break awkwardly across page edges.
-- Colors and backgrounds are preserved via `printBackground: true`.
+- [ ] Document renders with crisp vector text and scalable SVG/PDF paths without raster blurriness.
+- [ ] Page geometry (`@page` A4/Letter, bleed, margins) and running headers/footers ("Page X of Y") render without overlaps.
+- [ ] Table rows (`tr { break-inside: avoid; }`) and section headings (`break-after: avoid;`) do not split awkwardly across page boundaries.
+- [ ] Background fills, cards, and semantic colors are preserved via `printBackground: true` and verified for print contrast.

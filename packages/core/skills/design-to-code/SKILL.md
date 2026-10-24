@@ -105,17 +105,18 @@ form is not done.
 
 ## Acceptance checks
 
-- Reference access, viewports and match/adapt decisions are recorded in the brief.
-- `fidelity.md` exists from the final round; its overall score and lowest axis are reported.
-- Every remaining off/near finding is either fixed or listed as a justified adaptation.
-- Screenshots of reference and implementation were compared at each viewport.
-- Font/asset substitutions and licences are recorded.
-- Interactions and states were exercised, separately from visual fidelity.
+- [ ] Reference access, viewports, and literal-match vs. adaptation decisions are recorded in `.design/brief.md`.
+- [ ] `fidelity.md` exists from the final comparison round with its overall score and lowest axis reported.
+- [ ] Every remaining `off` or `near` property is either resolved via tokens/components or documented as a justified adaptation.
+- [ ] Reference and implementation screenshots were compared side by side at each target viewport (`1440`, `768`, `390`).
+- [ ] Font and asset substitutions and licenses are explicitly recorded.
+- [ ] Interactive flows, keyboard navigation, focus states, and loading/empty/error states were exercised beyond static visual fidelity.
 
 ## Skills in scope
 
-- design-reference-read — measuring the reference.
-- design-system — tokens, kits, materialize.
-- design-patterns — region structure and invariants.
-- design-critique — rendered evidence beyond fidelity.
-- interaction-design, accessibility — behavior a reference does not show.
+- `design-reference-read` — extracting measured design DNA and scale anchors from the reference URL or image
+- `design-system` — mapping measured roles and scales onto project tokens or a Design Studio kit
+- `design-patterns` — preserving regional layout anatomy and responsive invariants during implementation
+- `design-critique` — auditing rendered visual hierarchy and state completeness beyond automated fidelity scores
+- `interaction-design` — keyboard operability, focus choreography, and state feedback not visible in static mockups
+- `accessibility` — WCAG 2.2 contrast, target sizes, and semantic ARIA verification

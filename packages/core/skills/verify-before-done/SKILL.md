@@ -94,8 +94,8 @@ in a working tree others may be using.
 Done: charges now retry with an idempotency key, so a timeout can't double-charge.
 
 Verified
-- Proof: `node scratch/double-charge.mjs` — exit 1 "FAIL: 2 charge requests" before, exit 0 after
-- `pnpm --filter billing test` — 48 passed, including the new retry test (failed before the fix)
+- Proof: `bun scratch/double-charge.mjs` — exit 1 "FAIL: 2 charge requests" before, exit 0 after
+- `bun run --filter billing test` — 48 passed, including the new retry test (failed before the fix)
 - Type check — clean
 - `app charge --dry-run` on the fixture order — one charge request with the expected key
 

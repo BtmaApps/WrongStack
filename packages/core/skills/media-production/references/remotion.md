@@ -1,38 +1,34 @@
-# Remotion workflow
+# Remotion Production Workflow
 
-Checked 2026-10-09: Remotion and @remotion/renderer 4.0.534.
-Keep all @remotion/* packages on the matching release. Verify the current
+Checked 2026-10-23: Remotion and @remotion/renderer 4.0.538.
+Keep all @remotion/* packages on the exact matching version (no caret `^` skew across `@remotion/cli`, `@remotion/renderer`, `@remotion/transitions`, `@remotion/google-fonts`, and `remotion`). Verify the current
 [setup](https://www.remotion.dev/docs/),
 [renderer API](https://www.remotion.dev/docs/renderer/render-media) and
 [license](https://www.remotion.dev/docs/license) before adding or upgrading.
 
-## Frame contract
+## 1. Frame-Deterministic Composition Contract
 
-- Register compositions with explicit id, component, width, height, fps and
-  durationInFrames; validate inputProps and derived duration metadata.
-- Drive animation from useCurrentFrame/useVideoConfig; convert seconds to frames
-  deliberately. Sequence-local frame values reset with their sequence.
-- Clamp interpolation where extrapolation would cause invalid opacity/geometry.
-  Seed randomness and snapshot external data before rendering.
-- Resolve fonts, images and audio with supported loading primitives and bounded
-  delays. A live API call during frame rendering makes runs nondeterministic.
-- Use actual styled components/CSS; utility classes work only if the project's
-  Tailwind compilation is configured.
+- Register every `<Composition>` in `src/Root.tsx` with explicit `id`, `component`, `width`, `height`, `fps`, `durationInFrames`, `defaultProps`, and optional `schema` (Zod) + `calculateMetadata` when duration or dimensions depend on async input data.
+- Drive **all** motion from `useCurrentFrame()` and `useVideoConfig()` (`fps`, `width`, `height`, `durationInFrames`) using `interpolate()` or `spring()`:
+  - Always pass `{ extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }` to `interpolate()` unless unbounded extrapolation is intentional.
+  - Remember that `<Sequence from={start} durationInFrames={len}>` shifts `useCurrentFrame()` to `0` at `start` for its children; use `<Series>` or `@remotion/transitions` (`<TransitionSeries>`) for sequential shots.
+- **Forbidden inside Remotion components**: CSS `transition` / `@keyframes`, `requestAnimationFrame`, `setTimeout` / `setInterval`, `Math.random()` (use `random('seed-string')` from `remotion`), and unawaited network fetches inside render frames. Headless Chromium renders frames out of order and in parallel; non-frame-driven state causes flickering and torn frames.
 
-## Rendering
+## 2. Asset, Font & Audio Readiness
 
-1. Verify the installed CLI/API. For a configured composition, the normal shape is:
+- Reference local assets via `staticFile('path-in-public.png')` and render media with Remotion's `<Img>`, `<OffthreadVideo>`, and `<Audio>` primitives so the renderer waits for frame decoding before capturing screenshots.
+- When loading custom fonts or async data inside a component, gate rendering with `delayRender('reason')` and call `continueRender(handle)` (or `cancelRender(err)` on failure) inside a `useEffect` cleanup-safe block so Chromium never captures fallback system fonts.
 
-~~~powershell
-pnpm exec remotion render src/index.ts ProductDemo out/product-demo.mp4
-~~~
+## 3. Staged Preview & Final Render Pipeline
 
-2. Render representative stills or a short frame range first; inspect captions,
-   safe areas, assets and transition boundaries.
-3. Render the final artifact with an explicitly chosen codec and audio policy.
-   Limit concurrency to the host's memory/CPU instead of assuming more is faster.
-4. Probe and play the output. Record dimensions, fps, duration, audio streams,
-   render command and source revision/inputs.
-
-Do not use browser setTimeout/CSS animations as the rendering clock. Do not
-claim free commercial use without checking the applicable Remotion license.
+1. **Still & Boundary Frame Inspection**: Render key frames (first frame, transition midpoints, dense text frames, final frame) before encoding a full timeline:
+   ~~~powershell
+   bunx remotion still src/index.ts ProductDemo out/check-frame.png --frame=45
+   ~~~
+2. **Short Segment Test**: Render a 2–3 second frame range (`--frames=0-90`) to verify motion smoothness, audio sync, and encoding flags.
+3. **Full Production Render**:
+   ~~~powershell
+   bunx remotion render src/index.ts ProductDemo out/product-demo.mp4 --codec=h264 --pixel-format=yuv420p --crf=18
+   ~~~
+   Bound `--concurrency` when rendering WebGL/Three.js (`@remotion/three` with `--gl=angle`) or high-resolution 4K compositions so headless browser workers do not exhaust RAM or GPU contexts.
+4. **Delivery Verification**: Probe the output file with `ffprobe` (confirm `width`, `height`, `r_frame_rate`, `duration`, `pix_fmt=yuv420p`, and audio stream presence) and inspect playback. Do not claim free commercial use without checking the applicable Remotion company license terms.

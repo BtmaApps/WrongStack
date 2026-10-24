@@ -1,7 +1,7 @@
 ---
 name: audio-studio
 description: "Compose music, lyrics, soundscapes and voiceovers, or implement browser audio feedback. Use when creating Suno or other music prompts, TTS narration, a soundtrack or interactive sound; use media-production for the final video timeline and mux."
-version: 1.2.1
+version: 1.2.2
 required-capabilities: [filesystem.read, filesystem.write]
 required-tools: []
 optional-capabilities: [verification.run, web.research]
@@ -20,7 +20,7 @@ metadata:
 ## Overview
 
 Suno v6 is the current flagship model (v6-mini is the accessible fast variant),
-verified against its official model guide on 2026-10-09. ElevenLabs offers Eleven
+verified against its official model guide on 2026-10-23. ElevenLabs offers Eleven
 v3 alongside models optimized for latency. Choose the latest available model
 appropriate to the task; record its exact id, access tier and output limits.
 Do not describe an SDK version as a model version.
@@ -55,19 +55,28 @@ Do not describe an SDK version as a model version.
 5. Retain a lossless master when available; export a playback-compatible preview.
    Record voice/model, sample rate, channels, duration and edits.
 
+## Core Patterns & Pitfalls
+
+- **Prompt & Lyrics Separation (Suno v6 / Music Models)**: Keep style/genre/tempo/instrumentation descriptors in the style field (`Style of Music`) and structural metatags (`[Intro]`, `[Verse 1]`, `[Chorus]`, `[Bridge]`, `[Outro]`, `[Instrumental Interlude]`) cleanly separated from sung lyrics so the model never sings stage directions aloud.
+- **TTS Pacing & Ducking (ElevenLabs v3 / Narration)**: Spell out ambiguous acronyms, numbers, or domain terms phonetically when needed, verify exact segment duration via `ffprobe`, and duck background music by 10–14 dB under spoken voiceover with smooth attack/release ramps.
+- **Web Audio API Lifecycle**: Always check `audioCtx.state === 'suspended'` and resume only inside a user-gesture handler (`pointerdown`/`keydown`), ramp gain changes (`gain.exponentialRampToValueAtTime` / `linearRampToValueAtTime`) to prevent audible zero-crossing clicks, and disconnect nodes on teardown.
+
 ## Sources
 
 [Suno models](https://help.suno.com/en/articles/13924737),
 [ElevenLabs models](https://elevenlabs.io/docs/overview/models).
-SDK snapshot: ElevenLabs client 1.27.0 and fal client 1.10.1, checked
-2026-10-09; refresh npm before installation.
+SDK snapshot: ElevenLabs client 1.30.0 and fal client 1.10.1, checked
+2026-10-23; refresh npm before installation.
 
 ## Acceptance checks
 
-- Listen to the delivered audio; verify duration, clipping, channels and the intended voice/music balance.
+- [ ] Model ID, voice/style parameters, access/licensing scope, and target duration recorded
+- [ ] Generated audio file inspected with `ffprobe` (duration, sample rate, channels) and listened to for clipping, truncated endings, or mispronounced text
+- [ ] Voiceover and background music balanced with clean fades and no true-peak clipping
+- [ ] For Web Audio API, `AudioContext` gesture unlock, mute/volume persistence, and node teardown verified
 
 ## Skills in scope
 
-- media-production — audio placement, subtitles and delivery.
-- motion-canvas-video — synchronize scene cues to narration.
-- manim-video — narration pacing for explanations.
+- media-production — muxing audio stems, loudness normalization, subtitles, and final video timeline assembly.
+- motion-canvas-video — binding 2D animation cues and generator transitions to narration timestamps.
+- manim-video — synchronizing mathematical proofs and `self.wait()` timing with spoken voiceover segments.

@@ -1,7 +1,7 @@
 ---
 name: discernment-nudge
 description: "Append critical epistemic scrutiny, assumption checks, and missing context prompts before finalizing high-stakes plans, architecture decisions, cost estimates, or security claims. Use when delivering consequential recommendations or actionable strategies where unstated assumptions could cause catastrophic failure."
-version: 1.0.0
+version: 1.1.0
 required-capabilities: [filesystem.read, filesystem.write]
 required-tools: []
 optional-capabilities: [verification.run, web.research]
@@ -21,7 +21,7 @@ metadata:
 
 High-stakes engineering solutions and plans often fail not from poor syntax, but from unexamined
 assumptions, unverified estimates, or invisible operational blind spots.
-The Discernment Nudge pauses before final sign-off to explicitly model three epistemic habits:
+The Discernment Nudge (reviewed 2026-10-23) pauses before final sign-off to explicitly model three epistemic habits:
 1. **Fact Checking & Grounding**: Which claims depend on unverified environmental state?
 2. **Logic & Reasoning Stress**: Where did the proposal leap to conclusions without proof?
 3. **Missing Context Exposure**: What critical constraints did the solution silently assume?
@@ -44,15 +44,22 @@ Before completing the response, evaluate the drafted proposal against these prom
 3. **Missing Context**: "The estimate assumes team availability without holiday freezes or concurrent compliance audits. Does your timeline account for external QA sign-off cycles?"
 ```
 
-## Rules of Engagement
+## Rules of Engagement & Anti-Patterns
 
-1. **Be Specific, Not Generic**: Never output generic advice like "always test in staging" or "be careful". Tie every question to an exact line, number, or system component in the generated solution.
-2. **Preserve Momentum**: Frame questions as constructive probes, not roadblocks. Provide immediate paths to verify each concern.
-3. **Maximum Once per Consequential Decision**: Do not nag continuously on repetitive iterative turns.
+1. **Be Specific, Not Generic**: Never output generic advice like "always test in staging", "monitor logs", or "be careful". Tie every question to an exact metric, capacity boundary, failure mode, or system component in the generated solution.
+2. **Quantify Failure Blast Radius**: State what happens if the assumption is wrong (e.g., lock contention stalls writes for >30s, egress bill spikes 4x, or split-brain corrupts tenant state) and give a concrete command or query to verify it now.
+3. **Preserve Momentum**: Frame questions as constructive verification probes after delivering the complete solution, never as an excuse to withhold the requested implementation or plan.
+4. **Maximum Once per Consequential Decision**: Do not nag continuously on repetitive iterative turns once the user has acknowledged the trade-off.
+
+## Skills in scope
+
+- `evidence-audit` — proof-driven verification of security, performance, and concurrency claims
+- `verify-before-done` — final completion gate and observable check reporting
+- `sdd` — specification-driven requirements and constraint discovery
 
 ## Acceptance checks
 
-- Consequential claims, numbers, and architectural trade-offs are identified and probed.
-- Exactly 2–3 concrete, context-specific scrutiny questions are generated.
-- Questions target unverified facts, logic leaps, and missing operational context.
-- No generic AI boilerplates or condescending warnings are included.
+- [ ] Consequential claims, quantitative projections, and architectural trade-offs are identified and probed.
+- [ ] Exactly 2–3 concrete, context-specific scrutiny questions are appended with immediate verification steps.
+- [ ] Questions target unverified environmental facts, logic leaps, and missing operational context.
+- [ ] Zero generic AI boilerplate warnings or unrequested refusal roadblocks are included.

@@ -3,7 +3,7 @@ name: react-modern
 description: |
   Use this skill when writing, reviewing, or debugging React components and hooks — state, effects, data fetching, forms, Server and Client Components — in whatever React setup the project uses.
   Triggers: user mentions "React", "component", "hook", "useState", "useEffect", "re-render", "Server Component", "use client", "Suspense", "useTransition", "useActionState", "Next.js", "JSX", "TSX".
-version: 2.1.1
+version: 2.1.2
 required-capabilities: [filesystem.read, filesystem.write]
 required-tools: []
 optional-capabilities: [verification.run, browser.interact]
@@ -160,7 +160,7 @@ function RenameForm({ rename }: { rename: (prev: State, data: FormData) => Promi
 
 ## Current React and async semantics
 
-Target React/react-dom 19.3.0, checked from npm on 2026-10-09; upgrade the pair
+Target React/react-dom 19.3.1, checked from npm on 2026-10-23; upgrade the pair
 with the framework and type packages after checking peer requirements.
 Keep rendering pure, make cleanup work under Strict Mode and distinguish
 optimistic state from persisted success. Server Action authorization belongs

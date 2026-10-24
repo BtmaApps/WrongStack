@@ -3,7 +3,7 @@ name: node-modern
 description: |
   Use this skill when writing, reviewing, or refactoring Node.js code — modules, async flow, cancellation, file and process I/O, HTTP — on a current Node.js release.
   Triggers: user mentions "Node", "Node.js", "ESM", "CommonJS", "require", "import", "fetch", "AbortSignal", "AbortController", "stream", "child_process", "spawn", "fs", "event loop".
-version: 2.1.2
+version: 2.1.3
 required-capabilities: [filesystem.read, filesystem.write]
 required-tools: []
 optional-capabilities: [verification.run]
@@ -21,7 +21,7 @@ metadata:
 
 ## Overview
 
-Current Node.js (v26.11.1 as checked 2026-10-09) ships natively what older code pulled from npm:
+Current Node.js (v26.12.1 Current / v24.22.1 LTS as checked 2026-10-23) ships natively what older code pulled from npm:
 native TypeScript type stripping (`node file.ts`), native `.env`
 loading (`node --env-file`), built-in SQLite (`node:sqlite`), global WebSocket,
 `Promise.withResolvers()`, global fetch, `AbortSignal.timeout`, `node:test`, Web Streams,
@@ -130,8 +130,8 @@ In ESM, `__dirname` doesn't exist: use `import.meta.dirname` on current Node, or
 
 ## Current runtime and ownership
 
-Latest stable checked 2026-10-09: Node.js 26.11.1 (Current), Bun 1.4.2,
-pnpm 12.10.1. Refresh the official release/registry before recommendations.
+Latest stable checked 2026-10-23: Node.js 26.12.1 (Current) / 24.22.1 (LTS), Bun 1.4.4,
+pnpm 12.15.0. Refresh the official release/registry before recommendations.
 Current and LTS are different channels; do not label Current as LTS.
 Native TypeScript execution strips supported syntax; it does not typecheck or
 implement tsconfig path aliases. Verify the real module/resolution contract.

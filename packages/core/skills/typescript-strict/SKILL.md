@@ -3,7 +3,7 @@ name: typescript-strict
 description: |
   Use this skill when writing, reviewing, or fixing TypeScript where type safety matters — type errors, narrowing, unsafe casts, or tightening compiler strictness.
   Triggers: user mentions "TypeScript", "type error", "tsc", "strict", "type safety", "narrowing", "any", "unknown", "discriminated union", "branded type", "noUncheckedIndexedAccess", "exactOptionalPropertyTypes".
-version: 2.1.1
+version: 2.1.2
 required-capabilities: [filesystem.read, filesystem.write]
 required-tools: []
 optional-capabilities: [verification.run]
@@ -22,7 +22,7 @@ paths: ["tsconfig*.json"]
 
 ## Overview
 
-Target TypeScript 7.0.2, verified from npm on 2026-10-09. Static types protect
+Target TypeScript 7.0.2, verified from npm on 2026-10-23. Static types protect
 compile-time contracts; external data still needs runtime validation. Work
 within the project strictness and module-resolution contract.
 
@@ -141,7 +141,7 @@ the boundary instead of hand-written guards.
 
 ## Current compiler and module contract
 
-Target TypeScript 7.0.2, checked from npm on 2026-10-09. Verify compiler/migration
+Target TypeScript 7.0.2, checked from npm on 2026-10-23. Verify compiler/migration
 support in the framework and build plugins; use the repository's authoritative
 checker rather than silently substituting a different implementation.
 Match moduleResolution/module/exports to the emitted runtime: bundler and
@@ -150,6 +150,16 @@ payloads or ensure HTML strings are escaped.
 satisfies checks compatibility without serving as a runtime parser or a
 universal replacement for intentional annotations and widening.
 Read the [resolution reference](https://www.typescriptlang.org/tsconfig/moduleResolution.html).
+
+## Proof-driven round (/typehunt, /boundaryhunt)
+
+In a Proof-Driven Type & Boundary Guard round, harden one unsafe cast or
+unvalidated external boundary per round. First inspect the project's installed
+TypeScript and schema validator versions (for example Zod 4.6.7, Valibot, or
+TypeBox). Prove with a runnable test that malformed runtime data crosses the
+current boundary and causes a downstream failure or state corruption while a
+valid-input control passes, replace the cast with a sound runtime guard or
+schema check, and promote the boundary test into the permanent suite.
 
 ## Skills in scope
 

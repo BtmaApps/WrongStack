@@ -2,7 +2,7 @@
 name: react-native-expo
 description: "Build and upgrade React Native or Expo applications with navigation, native modules and verified platform integration. Use when implementing mobile screens, Expo Router flows or device capabilities; choose a supported SDK combination rather than forcing independent latest packages together."
 trigger: "Build and upgrade React Native or Expo applications with navigation, native modules and verified platform integration. Use when implementing mobile screens, Expo Router flows or device capabilities; choose a supported SDK combination rather than forcing independent latest packages together."
-version: 1.0.1
+version: 1.0.2
 required-capabilities: [filesystem.read]
 required-tools: []
 optional-capabilities: [filesystem.write, execution.shell, verification.run, web.research]
@@ -21,18 +21,24 @@ paths: ["eas.json", "metro.config.*"]
 
 ## Overview
 
-Build and upgrade React Native or Expo applications with navigation, native modules and verified platform integration.
+React Native (New Architecture / Fabric / TurboModules) and Expo SDK combine declarative native UI, file-based routing (`expo-router`), and config-plugin native generation. Shipping reliable mobile screens requires keeping dependencies aligned with the active Expo SDK matrix, handling safe areas, keyboard avoidance, and cold/warm deep links, and distinguishing JS-only changes from native binary rebuilds.
 
-Checked 2026-10-09: React Native 0.87.1, Expo 57.0.27 and Expo Router 57.0.25. Expo SDK 57 documents RN 0.86 and React 19.2.3; independent React 19.3.0/RN 0.87.1 are newer. Refresh the matrix before setup.
+Checked 2026-10-23: React Native 0.88.0, Expo 58.0.17, Expo Router 58.0.25, Reanimated 4.7.1 and React Navigation 7.5.1. Expo SDK 58 bundles RN 0.88.0 and Reanimated 4.7.1; Expo Router 58.0.25 pins react-server-dom-webpack ~19.3.0 while standalone React is 19.3.1. Refresh the matrix before setup.
 
 ## Rules
 
-1. Identify Expo-managed/prebuild/bare workflow, installed SDK and generated native directories.
+1. Identify Expo-managed/prebuild/bare workflow, installed SDK and generated native directories (`ios/`, `android/`).
 2. For latest independent React/RN targets, use a verified bare combination when Expo support lags. For Expo, report its supported matrix explicitly; do not silently downgrade or suppress dependency checks.
-3. Install native dependencies through the project's Expo-compatible flow when appropriate; inspect config plugins and generated native changes.
+3. Install native dependencies through the project's Expo-compatible flow (`npx expo install`) when appropriate; inspect config plugins and generated native changes.
 4. Keep navigation, deep links, auth redirects and back behavior consistent across cold/warm launches.
-5. Request device permissions at the actual feature boundary and handle denial/revocation without a crash.
-6. Keep credentials in supported secure storage and server authorization at the server; an app bundle is publicly inspectable.
+5. Request device permissions at the actual feature boundary and handle denial/revocation/settings redirect without a crash.
+6. Keep credentials in supported secure storage (`expo-secure-store` / Keychain / Keystore) and server authorization at the server; an app bundle is publicly inspectable.
+
+## Core Patterns & Pitfalls
+
+- **List & Render Discipline**: Render variable-length feeds with virtualized lists (`FlashList` or `FlatList`) with stable `keyExtractor` and memoized row components; never nest vertical virtualized lists inside a vertical `ScrollView`.
+- **Navigation & Auth Guarding**: In Expo Router, gate protected route groups (`(app)/_layout.tsx`) on resolved auth storage readiness so cold-start deep links preserve their intended destination after sign-in.
+- **Anti-pattern — Expo Go Assumption**: Custom native modules or config-plugin permissions require a development build (`expo-dev-client` / prebuild); never claim native capability verification from a web preview or mismatched Expo Go binary.
 
 ## Workflow
 
@@ -44,16 +50,20 @@ Checked 2026-10-09: React Native 0.87.1, Expo 57.0.27 and Expo Router 57.0.25. E
 
 ## Before returning
 
-SDK compatibility/blockers visible; native generation changes reviewed; platform/device checks recorded; simulator or JS-only evidence not presented as release proof.
+- [ ] Expo SDK / React Native / React peer matrix verified without forced incompatible versions
+- [ ] Native module and `app.json` / `app.config.*` plugin changes reviewed against build fingerprint
+- [ ] Safe areas, keyboard avoidance, permission denial states, and cold/warm deep links handled
+- [ ] Tokens/secrets stored in secure platform storage and never hardcoded in JS bundle config
+- [ ] Simulator/device vs JS-only test evidence reported transparently
 
 ## Sources
 
-Versioned facts checked 2026-10-09; refresh authoritative sources before new installs/upgrades.
+Versioned facts checked 2026-10-23; refresh authoritative sources before new installs/upgrades.
 [Expo SDK matrix](https://docs.expo.dev/versions/latest/), [Expo upgrade](https://docs.expo.dev/workflow/upgrading-expo-sdk-walkthrough/), [React Native](https://reactnative.dev/docs/getting-started).
 
 ## Skills in scope
 
-- mobile-design — native navigation, insets and touch adaptation.
-- mobile-performance — release-device profiling.
-- mobile-release — signed artifact and store delivery.
-- authentication-sessions — account/session authorization and renewal.
+- mobile-design — native navigation patterns, safe-area insets, keyboard handling, and touch target sizing.
+- mobile-performance — release-build frame timing, startup latency, and memory profiling on target devices.
+- mobile-release — EAS / native code signing, runtime version alignment, and App Store / Play Store delivery.
+- authentication-sessions — secure token storage, OAuth/passkey deep-link callbacks, and session rotation.

@@ -1,6 +1,6 @@
 # Skill Creator — WrongStack (Compact)
 
-<!-- source-version: 1.4.1 -->
+<!-- source-version: 1.4.2 -->
 
 ## Selection card
 - Task: Author and validate bundled or project skills. / TR: Bundled veya proje skilli yaz ve doğrula.
@@ -12,7 +12,7 @@
 Skills guide the agent; the runtime owns tool schemas, permissions and execution.
 Write instructions that change useful decisions, then validate discovery,
 resources and behavior. The [Agent Skills specification](https://agentskills.io/specification)
-was reviewed on 2026-10-09; WrongStack adds audience and runtime capability fields.
+was reviewed on 2026-10-23; WrongStack adds audience and runtime capability fields.
 
 ## Rules
 
@@ -41,8 +41,8 @@ this compact body does not expand task scope or authorization.
 
 ## Before returning
 
-- Destination, name, description and audience correct.
-- Required surfaces exist; optional integrations have a real fallback.
-- Linked resources load and changed helpers execute successfully.
-- Behavioral checks distinguished from structural checks.
-- Catalogs synchronized; verification results and unknowns reported.
+- [ ] Destination, name, description, trigger, and audience metadata verified
+- [ ] Required surfaces exist and optional integrations have a real fallback
+- [ ] Linked resources load and changed helpers execute successfully
+- [ ] Behavioral checks distinguished from structural checks
+- [ ] Catalogs synchronized; verification results and unknowns reported

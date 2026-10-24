@@ -2,7 +2,7 @@
 name: kotlin-android
 description: "Build and upgrade native Android applications with Kotlin, Compose/View UI and lifecycle-aware work. Use when implementing Android screens, navigation, permissions or background jobs; coordinate Kotlin, Gradle, AGP and SDK compatibility."
 trigger: "Build and upgrade native Android applications with Kotlin, Compose/View UI and lifecycle-aware work. Use when implementing Android screens, navigation, permissions or background jobs; coordinate Kotlin, Gradle, AGP and SDK compatibility."
-version: 1.0.1
+version: 1.0.2
 required-capabilities: [filesystem.read]
 required-tools: []
 optional-capabilities: [filesystem.write, execution.shell, verification.run, web.research]
@@ -21,18 +21,24 @@ paths: ["AndroidManifest.xml"]
 
 ## Overview
 
-Build and upgrade native Android applications with Kotlin, Compose/View UI and lifecycle-aware work.
+Modern Android applications combine Kotlin Coroutines/Flow, Jetpack Compose (with unidirectional data flow and lifecycle-aware state collection), Room/DataStore persistence, and Gradle Version Catalogs (`libs.versions.toml`). Reliable Android engineering requires coordinating Kotlin, Gradle, AGP, and `compileSdk`/`targetSdk` compatibility while ensuring UI state survives configuration changes and process death.
 
-Checked 2026-10-09: Kotlin 2.4.21 and Gradle 9.8.1. Verify current AGP/Compose/compiler/JDK and Android SDK matrix; independently latest versions may not form a supported build.
+Checked 2026-10-23: Kotlin 2.4.21 and Gradle 9.8.2. Verify current AGP/Compose/compiler/JDK and Android SDK matrix; independently latest versions may not form a supported build.
 
 ## Rules
 
-1. Inspect build plugins/catalogs, SDK levels, app id, manifests and signing variants.
-2. Scope coroutines/flows to the correct lifecycle and use structured cancellation.
-3. Keep UI state observable and ownership explicit; recomposition is not permission to start duplicate side effects.
-4. Handle permission denial, process recreation, background restrictions and saved state as real product states.
-5. Match Android back/navigation, insets, large screens and accessibility.
-6. Store sensitive app credentials in supported mechanisms and authorize data operations on the server.
+1. Inspect build plugins/version catalogs (`libs.versions.toml`), SDK levels, app id, manifests and signing variants.
+2. Scope coroutines/flows to the correct lifecycle (`viewModelScope`, `collectAsStateWithLifecycle`) and preserve structured cancellation (never swallow `CancellationException`).
+3. Keep UI state observable (`StateFlow` of immutable UI state) and ownership explicit; Compose recomposition is not permission to start duplicate side effects.
+4. Handle permission denial, configuration changes, process recreation (`SavedStateHandle` / `rememberSaveable`), background restrictions (`WorkManager`), and edge-to-edge window insets as real product states.
+5. Match predictive back navigation (`BackHandler` / Navigation Compose), window size classes, and TalkBack accessibility semantics.
+6. Store sensitive app credentials in Android Keystore-backed mechanisms and authorize data operations on the server.
+
+## Core Patterns & Pitfalls
+
+- **Compose State & Side Effects**: Collect flows in Compose with `collectAsStateWithLifecycle()` and trigger lifecycle-bound side effects inside `LaunchedEffect(key)` or `DisposableEffect(key)`, never directly in composable function bodies.
+- **Process Death Resilience**: Store user-entered draft IDs, filter keys, and navigation state in `SavedStateHandle` or `rememberSaveable`; in-memory `ViewModel` fields alone are wiped when the OS reclaims backgrounded processes.
+- **Anti-pattern — Catching `Exception` over Coroutines**: A broad `catch (e: Exception)` inside a `suspend` function intercepts `CancellationException` and breaks structured concurrency unless `if (e is CancellationException) throw e` or `ensureActive()` is preserved.
 
 ## Workflow
 
@@ -44,11 +50,15 @@ Checked 2026-10-09: Kotlin 2.4.21 and Gradle 9.8.1. Verify current AGP/Compose/c
 
 ## Before returning
 
-Tool/SDK matrix clear; coroutine/state lifecycle checked; device behavior and signing/release proof separated.
+- [ ] Kotlin, Gradle, AGP, Compose compiler, and `compileSdk`/`targetSdk` matrix verified
+- [ ] Coroutines/Flows scoped cleanly with `CancellationException` propagation intact
+- [ ] Compose state collected via `collectAsStateWithLifecycle` with side effects isolated to effect APIs
+- [ ] Configuration change, process recreation (`SavedStateHandle`), edge-to-edge insets, and permission denial states handled
+- [ ] Gradle unit/instrumentation tests, lint checks, and device vs emulator evidence reported
 
 ## Sources
 
-Versioned facts checked 2026-10-09; refresh authoritative sources before new installs/upgrades.
+Versioned facts checked 2026-10-23; refresh authoritative sources before new installs/upgrades.
 [Kotlin releases](https://github.com/JetBrains/kotlin/releases), [Android architecture](https://developer.android.com/topic/architecture), [Android build](https://developer.android.com/build).
 
 ## Skills in scope

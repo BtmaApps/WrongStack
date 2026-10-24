@@ -1,7 +1,7 @@
 ---
 name: tech-stack
 description: "Validate and upgrade dependencies against live registries and official migration guides in any ecosystem. Use when choosing packages, requesting latest versions, investigating deprecations, or planning a dependency upgrade; preserve the project package manager and distinguish recommendations from installs."
-version: 1.5.1
+version: 1.5.3
 required-capabilities: [filesystem.read]
 required-tools: []
 optional-capabilities: [verification.run, web.research, filesystem.write]
@@ -22,7 +22,7 @@ metadata:
 Use the latest stable release for new recommendations and requested upgrades.
 Verify it live; neither an old repository pin nor a remembered version defines
 the target. The [version snapshot](references/current-versions.md) records what
-was checked on 2026-10-09, not a permanent claim of latest.
+was checked on 2026-10-23, not a permanent claim of latest.
 
 ## Rules
 
@@ -85,11 +85,13 @@ For current npm targets and preview-tag detection, run the read-only helper:
 
 ~~~powershell
 bun run packages/core/skills/tech-stack/scripts/check-versions.mjs expo react-native prisma @prisma/client
+bun run skill:check-versions
+bun run skill:sync-versions
 ~~~
 
-It reports selected stable version, latest tag, engines, peers, source and checked
-UTC time. It performs bounded public registry reads and installs nothing.
-Use official platform release metadata for non-npm runtimes and service versions.
+`check-versions.mjs` reports selected stable version, latest tag, engines, peers, source and checked
+UTC time. `sync-versions.mjs` (`skill:check-versions` / `skill:sync-versions`) audits or updates
+`references/stable-registry-check.json`, `references/current-versions.md`, and bundled skill snapshots.
 
 ## Report
 
@@ -102,12 +104,15 @@ and any access failures. State when a source could not be verified.
 
 ## Acceptance checks
 
-- Record installed/resolved and live stable targets, dated sources, blockers and checks actually run.
+- [ ] Installed/resolved package versions, live-queried stable targets, and checked dates/URLs are recorded in the report table.
+- [ ] Prerelease tags (`next`, `canary`, `rc`, `alpha`, `beta`) and deprecated/yanked releases were filtered out when selecting stable targets.
+- [ ] Engine, runtime, and peer-dependency constraints were cross-checked across coherent upgrade groups before recommending or applying changes.
+- [ ] Repository package manager and lockfile integrity were preserved, and executed verification commands (or network blockers) are explicitly reported.
 
 ## Skills in scope
 
-- node-modern — runtime and standard-library compatibility.
-- react-modern — coordinated React upgrades.
-- typescript-strict — compiler and module-resolution behavior.
-- security-scanner — advisory assessment and remediation.
-- ci-cd — installation and release reproducibility.
+- `node-modern` — Node.js/Bun runtime engines and standard-library replacement assessment
+- `react-modern` — coordinated React, React DOM, and framework peer upgrades
+- `typescript-strict` — compiler target, module resolution, and type-definition compatibility
+- `security-scanner` — CVE advisory reachability and remediation version selection
+- `ci-cd` — frozen-lockfile reproducibility and pipeline image/runtime alignment

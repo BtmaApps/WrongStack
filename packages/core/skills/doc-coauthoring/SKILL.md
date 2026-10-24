@@ -1,7 +1,7 @@
 ---
 name: doc-coauthoring
 description: "Collaboratively author technical specifications, RFCs, PRDs, ADRs, and decision documents through structured context gathering, iterative refinement, and blind reader testing. Use when drafting substantial documentation, architecture proposals, or engineering design records."
-version: 1.0.0
+version: 1.1.0
 required-capabilities: [filesystem.read, filesystem.write]
 required-tools: []
 optional-capabilities: [verification.run, web.research]
@@ -20,7 +20,7 @@ metadata:
 ## Overview
 
 Collaborative documentation bridges the gap between tacit engineer knowledge and reader comprehension.
-Rather than generating an unreviewed wall of text, lead the author through an active 3-stage pipeline:
+Rather than generating an unreviewed wall of text, lead the author through an active 3-stage pipeline (reviewed 2026-10-23):
 1. **Context Gathering & Discovery**
 2. **Iterative Refinement & Structural Synthesis**
 3. **Cold Reader Testing (Blind Validation)**
@@ -66,9 +66,15 @@ Audit the completed draft from the perspective of an engineer who has zero prior
 ## 7. Open Questions & Reader Testing Feedback
 ```
 
+## Skills in scope
+
+- `sdd` — specification-driven development and testable acceptance criteria
+- `internal-comms` — 3P updates, incident postmortems, and executive decision memos
+- `docx` — exporting finalized specifications into formal OpenXML Word documents
+
 ## Acceptance checks
 
-- Document passes all 3 stages (Context Gathering, Section Synthesis, Cold Reader Testing).
-- Goals, non-goals, and evaluated alternatives are explicitly documented.
-- All technical terms, acronyms, and dependencies are defined without relying on unstated tribal knowledge.
-- Deliverable is saved in the repository's standard documentation path.
+- [ ] Document completes all 3 stages (Context Gathering, Section Synthesis, and Cold Reader Testing).
+- [ ] Goals, explicit non-goals, failure modes, and at least two evaluated alternatives with trade-off rationale are documented.
+- [ ] All technical terms, schemas, rollout/rollback gates, and dependencies are defined without relying on unstated tribal knowledge.
+- [ ] Deliverable is saved in the repository's standard documentation path with accurate status and ownership metadata.

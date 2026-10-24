@@ -1,6 +1,6 @@
 # Tech Stack Validator (Compact)
 
-<!-- source-version: 1.5.1 -->
+<!-- source-version: 1.5.3 -->
 
 ## Selection card
 - Task: Verify latest stable versions and migration constraints. / TR: Son kararlı sürüm ve geçiş kısıtını doğrula.
@@ -12,7 +12,7 @@
 Use the latest stable release for new recommendations and requested upgrades.
 Verify it live; neither an old repository pin nor a remembered version defines
 the target. The [version snapshot](references/current-versions.md) records what
-was checked on 2026-10-09, not a permanent claim of latest.
+was checked on 2026-10-23, not a permanent claim of latest.
 
 ## Rules
 
@@ -43,4 +43,7 @@ Load the full tech-stack skill for live inspection helpers, source adapters and 
 
 ## Acceptance checks
 
-- Record installed/resolved and live stable targets, dated sources, blockers and checks actually run.
+- [ ] Installed/resolved and live stable targets recorded with dated registry sources
+- [ ] Prerelease tags and deprecated/yanked releases filtered out
+- [ ] Engine and peer-dependency blockers stated before recommending or applying upgrades
+- [ ] Package manager and lockfile integrity preserved; executed checks reported

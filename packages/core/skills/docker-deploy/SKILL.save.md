@@ -1,6 +1,6 @@
 # Docker Deploy (Compact)
 
-<!-- source-version: 2.1.1 -->
+<!-- source-version: 2.1.2 -->
 
 ## Selection card
 - Task: Build and deploy a reproducible container image. / TR: Tekrarlanabilir container imajı kur ve deploy et.
@@ -19,9 +19,9 @@ command, the start command, the port, and what the process needs at runtime
 
 1. **Pre-flight: Inspect repo manifests & live base image registries first.** Inspect `package.json`,
    lockfiles, and existing `Dockerfile` / `compose.yaml`. Query Docker Hub or live container registries
-   to find current stable base image tags (e.g. `node:26.11.1-bookworm-slim`, `postgres:18.6-alpine`)
+   to find current stable base image tags (e.g. `node:26.12.1-bookworm-slim`, `postgres:18.6-alpine`)
    before configuring builds. Latest stable PostgreSQL is 18.6 (19 is beta),
-   checked 2026-10-09 against https://www.postgresql.org/support/versioning/.
+   checked 2026-10-23 against https://www.postgresql.org/support/versioning/.
 2. Multi-stage builds: build with the toolchain and dev dependencies, ship a
    runtime stage with only production artifacts.
 3. Pin the base image to a specific version tag (optionally a digest); never

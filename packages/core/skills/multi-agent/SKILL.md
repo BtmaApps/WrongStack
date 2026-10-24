@@ -76,15 +76,15 @@ That workflow's actual tool contract governs roles and result handling.
 
 ## Before returning
 
-- Delegation permitted and concurrency limits respected.
-- Shared writers isolated or serialized.
-- Every worker status reconciled; evidence checked.
-- Combined result validated; gaps and conflicting observations visible.
+- [ ] Delegation authorization and host concurrency limits were verified and respected.
+- [ ] File and shared-resource write ownership was partitioned or serialized before dispatch.
+- [ ] Every worker completion status (including partial, cancelled, or timed-out runs) and evidence was reconciled.
+- [ ] Combined final state passed integration checks under a single owner, with any coverage gaps or conflicting observations reported.
 
 ## Skills in scope
 
-- code-review — independent change review.
-- evidence-audit — scoped evidence-led rounds.
-- refactor-planner — dependency sequencing.
-- audit-log — worker/session evidence analysis.
-- output-standards — final result synthesis.
+- `code-review` — independent review of worker-produced diffs and cross-module contract changes
+- `evidence-audit` — scoped proof-driven verification rounds across isolated subsystems
+- `refactor-planner` — dependency graph ordering and file-ownership partitioning before parallel execution
+- `audit-log` — inspection of worker session trajectories, tool calls, and failure traces
+- `output-standards` — deduplicated synthesis of multi-worker results into a unified report

@@ -1,6 +1,6 @@
 ---
 name: mcp-development
-version: 1.0.1
+version: 1.0.2
 description: "Build and maintain MCP servers and clients with versioned protocol contracts, typed schemas and reliable lifecycle handling. Use when exposing tools/resources/prompts over MCP, selecting a transport or fixing reconnect/cancellation behavior; do not assume all protocol versions share the same session model."
 trigger: "exposing tools/resources/prompts over MCP, selecting a transport or fixing reconnect/cancellation behavior; do not assume all protocol versions share the same session model."
 required-capabilities: [filesystem.read, filesystem.write]
@@ -19,8 +19,8 @@ metadata:
 
 ## Overview
 
-Latest checked targets on 2026-10-09: MCP specification 2026-07-28 and
-@modelcontextprotocol/sdk 1.32.1. Verify the SDK's supported protocol versions
+Latest checked targets on 2026-10-23: MCP specification 2026-07-28 and
+@modelcontextprotocol/sdk 1.32.2. Verify the SDK's supported protocol versions
 and clients before combining them. Latest SDK does not imply support for every
 new protocol feature.
 
@@ -50,6 +50,12 @@ new protocol feature.
 5. Verify discovery and actual invocation; local schema validity alone does not
    prove integration. Report negotiated versions and unavailable features.
 
+## Core Patterns & Pitfalls
+
+- **Stdio Transport Purity**: Over `stdio` transport, `stdout` carries exclusively newline-delimited JSON-RPC 2.0 frames; a single stray `console.log()` or library banner on `stdout` corrupts the protocol stream. Route all diagnostic logging to `process.stderr` (`console.error`).
+- **Tool Errors vs Protocol Errors**: Return actionable domain/execution failures inside the tool result (`{ isError: true, content: [{ type: "text", text: "..." }] }`) so the model can self-correct, reserving JSON-RPC protocol errors for unknown tools, invalid framing, or transport faults.
+- **Anti-pattern — Unbounded Tool Output & Prompt Injection**: Returning multi-megabyte payloads or unvalidated remote HTML overflows host context windows and exposes the client to indirect prompt injection; paginate/truncate results and mark tool annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`) accurately.
+
 ## Sources
 
 [Versioned specification](https://modelcontextprotocol.io/specification/2026-07-28),
@@ -57,11 +63,14 @@ new protocol feature.
 
 ## Acceptance checks
 
-- Exercise real startup, schemas, valid/invalid protocol responses and shutdown.
+- [ ] Negotiated MCP protocol version and `@modelcontextprotocol/sdk` transport (`stdio` vs Streamable HTTP) verified
+- [ ] Zero non-JSON-RPC output written to `stdout` on `stdio` servers (all diagnostics routed to `stderr`)
+- [ ] Tool input schemas bounded, outputs truncated/paginated safely, and domain errors returned with `isError: true`
+- [ ] Request cancellation, client disconnect cleanup, and stale-session fencing verified end-to-end
 
 ## Skills in scope
 
-- api-design — bounded contracts and errors.
-- security-scanner — defensive trust-boundary review.
-- testing — deterministic lifecycle checks.
-- wrongstack-mailbox-mcp — project Mailbox integration.
+- api-design — JSON Schema input/output design, pagination cursors, and structured tool error messages.
+- security-scanner — path-traversal, SSRF, command-injection, and Origin/auth checks on MCP tool handlers.
+- testing — JSON-RPC client-server handshake, cancellation, and reconnect integration tests.
+- wrongstack-mailbox-mcp — project-scoped WrongStack Mailbox MCP coordination protocol.

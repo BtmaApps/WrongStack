@@ -1,7 +1,7 @@
 ---
 name: docx
 description: "Author, edit, inspect, and style Microsoft Word documents (.docx) with structured XML formatting, professional typography, headers/footers, and custom styles. Use when generating formal Word reports, contracts, manuals, whitepapers, or editing existing docx documents without corrupting formatting."
-version: 1.0.0
+version: 1.1.0
 required-capabilities: [filesystem.read, filesystem.write]
 required-tools: []
 optional-capabilities: [verification.run, web.research]
@@ -20,7 +20,7 @@ metadata:
 ## Overview
 
 Word document authoring requires structured OpenXML manipulation via libraries like `docx` (npm)
-or `python-docx`. Raw text dumping produces unreadable documents. Professional documents require
+or `python-docx` (checked 2026-10-23: npm docx 9.14.0, PyPI python-docx 1.2.0; refresh registry before installing). Raw text dumping produces unreadable documents. Professional documents require
 deliberate typographic scales, table geometry, header/footer pagination, and consistent paragraph spacing.
 
 ## Core Engineering Rules
@@ -77,9 +77,15 @@ const buffer = await Packer.toBuffer(doc);
 await fs.writeFile('specification.docx', buffer);
 ```
 
+## Skills in scope
+
+- `office-documents` — cross-format document pipelines (DOCX, XLSX, PPTX, PDF)
+- `pdf` — print-ready vector PDF rendering and archival exports
+- `doc-coauthoring` — collaborative drafting and cold-reader review before layout export
+
 ## Acceptance checks
 
-- Document validates cleanly as a standard OpenXML ZIP container without corruption.
-- Heading styles enforce `keepNext: true` to prevent orphaned headings across page breaks.
-- Tables have explicit column widths and repeat headers across page breaks.
-- Footers contain dynamic page numbers and margins are verified.
+- [ ] Document validates cleanly as a standard OpenXML `.docx` container without schema or repair warnings.
+- [ ] Heading styles enforce `keepNext: true` and consistent spacing so no heading is orphaned at the bottom of a page.
+- [ ] Tables declare explicit DXA or percentage column widths, cell padding, and `tblHeader: true` / `cantSplit: true` across page breaks.
+- [ ] Page geometry (A4/Letter margins) and dynamic running headers/footers ("Page X of Y") are verified.

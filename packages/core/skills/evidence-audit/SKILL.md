@@ -3,8 +3,8 @@ name: evidence-audit
 description: Evidence-led audit/fix rounds for any codebase in any language. Finds only defects that a runnable proof reproduces on current code, applies the narrowest in-scope patch, verifies with a second proof, promotes high-risk proofs to permanent regression tests, and reports exact validation results. Use whenever the user asks to audit, bug-hunt, "find real bugs in", "prove and fix", "continue the audit round on", or "what is actually broken in" a package, module, directory, or service, even without the word "audit", and for turning .temp_files proof scripts into regression tests. Do not use for a single already-reported bug, an unscoped security claim, or general refactoring.
 required-capabilities: [filesystem.read, filesystem.write, execution.shell, verification.run, version-control.manage]
 required-tools: []
-trigger: "description: Evidence-led audit/fix rounds for any codebase in any language. Finds only defects that a runnable proof reproduces on current code, applies the narrowest in-scope patch, verifies with a second proof, promotes high-risk proofs to permanent regression tests, and reports exact validation results. Use whenever the user asks to audit, bug-hunt, \"find real bugs in\", \"prove and fix\", \"continue the audit round on\", or \"what is actually broken in\" a package, module, directory, or service, even without the word \"audit\", and for turning .temp_files proof scripts into regression tests. Do not use for a single already-reported bug, an unscoped security claim, or general refactoring."
-version: 1.1.1
+trigger: "Evidence-led audit/fix rounds for any codebase in any language. Finds only defects that a runnable proof reproduces on current code, applies the narrowest in-scope patch, verifies with a second proof, promotes high-risk proofs to permanent regression tests, and reports exact validation results. Use whenever the user asks to audit, bug-hunt, \"find real bugs in\", \"prove and fix\", \"continue the audit round on\", or \"what is actually broken in\" a package, module, directory, or service, even without the word \"audit\", and for turning .temp_files proof scripts into regression tests. Do not use for a single already-reported bug, an unscoped security claim, or general refactoring."
+version: 1.1.2
 metadata:
   routing-group: quality
 ---
@@ -171,3 +171,10 @@ production fixes; audit-and-fix authorization remains distinct.
 ## Acceptance checks
 
 - Retain an executable before-proof, narrow fix and independent passing verification.
+
+## Skills in scope
+
+- `bug-hunter` — adversarial candidate triage and proof-driven defect classification.
+- `debugging` — root-cause localization when a reproduced defect spans multiple runtime seams.
+- `testing` — promoting high-risk `.temp_files` verifiers into durable repository regression suites.
+- `verify-before-done` — final serial verification gate before closing the audit round.

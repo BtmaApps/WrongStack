@@ -1,7 +1,7 @@
 ---
 name: internal-comms
 description: "Author clear, high-impact internal engineering communications including 3P status updates, blameless incident postmortems, architecture decision memos, and leadership briefs. Use when writing technical updates, sprint reports, incident reviews, or organizational engineering announcements."
-version: 1.0.0
+version: 1.1.0
 required-capabilities: [filesystem.read, filesystem.write]
 required-tools: []
 optional-capabilities: [verification.run, web.research]
@@ -20,7 +20,7 @@ metadata:
 ## Overview
 
 High-velocity engineering organizations thrive on crisp, transparent, and structured communication.
-This skill establishes standardized formats for internal engineering reports, eliminating verbose fluff
+This skill (reviewed 2026-10-23) establishes standardized formats for internal engineering reports, eliminating verbose fluff
 and highlighting actionable facts, metrics, blockers, and timelines.
 
 ## Core Communication Formats
@@ -77,9 +77,15 @@ Systemic exploration of triggers, defenses, and failure surfaces without persona
 One-page memo summarizing a strategic engineering choice for non-technical stakeholders or executives:
 Context, Options Evaluated, Financial & Resource Impact, Decision, and Immediate Next Steps.
 
+## Skills in scope
+
+- `incident-response` — live triage, mitigation, and postmortem evidence collection
+- `doc-coauthoring` — deep-dive RFCs, ADRs, and architecture specifications
+- `release-rollback` — deployment communication and rollback coordination
+
 ## Acceptance checks
 
-- Communication strictly matches the designated format (3P, Postmortem, Architecture Memo).
-- Jargon is demystified or tailored to the designated reader audience.
-- Problems and blockers include explicit owners, status, and unblocking asks.
-- Postmortems follow blameless philosophy and provide tracked preventive action items.
+- [ ] Communication strictly matches the designated template (3P Weekly Update, Blameless Postmortem, or Executive Decision Memo).
+- [ ] Claims and progress items are backed by concrete metrics, PR/ticket references, and UTC timestamps where applicable.
+- [ ] Problems, risks, and action items include explicit owners (`@handle`), priorities (`P0`/`P1`), and unblocking asks.
+- [ ] Postmortems maintain blameless systemic analysis and separate detection, mitigation, and prevention items.

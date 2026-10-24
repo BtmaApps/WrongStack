@@ -1,7 +1,7 @@
 ---
 name: algorithmic-art
 description: "Create generative, mathematical, and algorithmic art using p5.js, Canvas2D, or WebGPU shaders with seeded randomness and parameter controls. Use when authoring code-driven visual art, flow fields, particle simulations, or geometric patterns without AI aesthetic clichés."
-version: 1.0.0
+version: 1.1.0
 required-capabilities: [filesystem.read, filesystem.write]
 required-tools: []
 optional-capabilities: [verification.run, web.research]
@@ -20,7 +20,7 @@ metadata:
 ## Overview
 
 Algorithmic art expresses computational aesthetic movements through code rather than static pixels.
-Produce deterministic, seedable, high-craft generative pieces in standalone HTML/JS or p5.js
+Produce deterministic, seedable, high-craft generative pieces in standalone HTML/JS or p5.js (checked 2026-10-23: p5 2.3.4 stable on npm/CDN; verify 2.x async setup/preload changes when upgrading from 1.11.x)
 using mathematical rigor, vector fields, cellular automata, or parametric curves.
 Avoid generic AI visual clichés (e.g. flat purple/cyan neon blobs, uncalibrated concentric circles).
 
@@ -47,7 +47,7 @@ Avoid generic AI visual clichés (e.g. flat purple/cyan neon blobs, uncalibrated
 <head>
   <meta charset="utf-8">
   <title>Generative Artwork</title>
-  <script src="https://cdn.jsdelivr.net/npm/p5@1.11.0/lib/p5.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/p5@2.3.4/lib/p5.min.js"></script>
   <style>
     body { margin: 0; background: #0f1115; display: flex; justify-content: center; align-items: center; min-height: 100vh; overflow: hidden; }
     canvas { box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
@@ -75,9 +75,15 @@ Avoid generic AI visual clichés (e.g. flat purple/cyan neon blobs, uncalibrated
 </html>
 ```
 
+## Skills in scope
+
+- `threejs-3d` — 3D WebGL/WebGPU shaders, custom materials, and spatial scenes
+- `canvas-design` — static poster and print-ready vector/editorial compositions
+- `motion-design` — choreographed UI and SVG timeline animations
+
 ## Acceptance checks
 
-- Randomness is seed-driven; refreshing with the same seed reproduces the identical frame.
-- Algorithmic depth is verified through complex mathematical or emergent behavior.
-- High-resolution export mechanism (PNG/SVG/WebM) is functional and verified.
-- Visual output avoids default AI slop and respects intentional palette boundaries.
+- [ ] Randomness is strictly seed-driven (`randomSeed` / `noiseSeed` / PRNG); refreshing with the same seed reproduces the identical composition.
+- [ ] Algorithmic depth is verified through multi-octave vector fields, attractors, cellular automata, or emergent geometry rather than trivial loops.
+- [ ] High-resolution export mechanism (PNG/SVG/WebM) and keyboard controls (reseed, pause, save) are functional and verified.
+- [ ] Visual output avoids generic AI clichés and respects an intentional 3–5 color palette and optical texture.

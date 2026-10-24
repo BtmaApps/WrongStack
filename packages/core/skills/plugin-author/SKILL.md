@@ -20,7 +20,7 @@ metadata:
 
 ## Overview
 
-Implement the current Plugin/PluginAPI contracts from packages/core/src/types/plugin.ts.
+Implement the current Plugin/PluginAPI contracts from packages/contracts/src/types/plugin.ts.
 Plugin state must remain reachable for teardown and correctly scoped to its
 owner; “put everything at module scope” is not a safe universal rule.
 
@@ -76,16 +76,16 @@ Run project plugin test/typecheck/build commands and relevant host consumers.
 
 ## Before returning
 
-- Registered tool/hook contracts match current host source.
-- State ownership and cleanup verified, including partial setup.
-- Async work cannot publish after unload or unregister a successor.
-- Package exports, host wiring and official catalogs synchronized.
-- Actual checks and environment gaps reported.
+- [ ] Registered tool, hook, and health contracts match current `packages/contracts/src/types/plugin.ts` source.
+- [ ] Per-instance state ownership and teardown cleanup are verified, including partial setup and repeated close paths.
+- [ ] Async background work is generation-fenced so unloaded instances cannot publish results or unregister a successor's hooks/tools.
+- [ ] Package subpath exports, CLI host wiring, and official plugin catalogs are synchronized.
+- [ ] Plugin lifecycle tests, typecheck, and build verification results (plus any environment gaps) are reported.
 
 ## Skills in scope
 
-- typescript-strict — host interface compatibility.
-- node-modern — async resource ownership.
-- testing — lifecycle and integration checks.
-- prompt-engineering — clear tool descriptions.
-- verify-before-done — completion evidence.
+- `typescript-strict` — exact `Plugin` and `PluginAPI` type compatibility and schema narrowing
+- `node-modern` — `AbortController`, timer cleanup, and async resource lifecycle ownership
+- `testing` — multi-instance, failed-setup, reload, and stale-completion regression tests
+- `prompt-engineering` — unambiguous tool descriptions and parameter constraints for model invocation
+- `verify-before-done` — observable test, typecheck, and catalog verification before completion

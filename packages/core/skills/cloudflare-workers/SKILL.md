@@ -1,6 +1,6 @@
 ---
 name: cloudflare-workers
-version: 1.0.1
+version: 1.0.2
 description: "Build and maintain Cloudflare Workers with typed bindings, explicit compatibility and isolated validation. Use when implementing Workers handlers, integrating KV/R2/D1/Durable Objects/Queues or configuring Wrangler; deployment remains governed by the user task and target environment."
 trigger: "implementing Workers handlers, integrating KV/R2/D1/Durable Objects/Queues or configuring Wrangler; deployment remains governed by the user task and target environment."
 required-capabilities: [filesystem.read, filesystem.write]
@@ -20,7 +20,7 @@ paths: ["wrangler.{toml,json,jsonc}"]
 
 ## Overview
 
-Latest checked 2026-10-09: Wrangler 4.149.0 and workers-types 5.20261009.1.
+Latest checked 2026-10-23: Wrangler 4.152.0 and workers-types 5.20261023.1.
 Refresh before installation. Wrangler-generated types and compatibility dates
 should match the project's actual bindings and runtime, not a guessed Node API set.
 
@@ -49,6 +49,12 @@ should match the project's actual bindings and runtime, not a guessed Node API s
 5. For an authorized release, verify the exact environment, deployed version,
    health and rollback. Report local and live evidence separately.
 
+## Core Patterns & Pitfalls
+
+- **Storage Selection Matrix**: Match Cloudflare primitives to consistency needs—KV for read-heavy eventually consistent configuration/edge lookups, D1 for relational SQL queries, R2 for large unstructured blobs/streams, Queues for buffered background processing, and Durable Objects (SQLite-backed) for strongly consistent per-entity coordination, rate limiting, and WebSockets (`ctx.acceptWebSocket`).
+- **Stream & Subrequest Discipline**: Always consume or `await resp.body?.cancel()` unused upstream subrequest bodies so concurrent connection slots are freed, and wrap fire-and-forget telemetry/cache writes in `ctx.waitUntil(promise)`.
+- **Anti-pattern — Assuming Isolate Memory is Durable or Private**: Module-level variables may be evicted at any instant or reused across different users' requests on the same edge isolate; never store per-request auth context or uncommitted durable state in global variables.
+
 ## Sources
 
 [Workers best practices](https://developers.cloudflare.com/workers/best-practices/workers-best-practices/),
@@ -56,11 +62,14 @@ should match the project's actual bindings and runtime, not a guessed Node API s
 
 ## Acceptance checks
 
-- Check the real bindings, local Worker behavior and deployment target; label live verification separately.
+- [ ] `wrangler.jsonc` / `wrangler.toml` `compatibility_date`, flags, and generated `Env` binding types verified
+- [ ] Per-request state isolated from global isolate memory and background promises registered with `ctx.waitUntil()`
+- [ ] Upstream subrequest bodies consumed or cancelled and large payloads streamed without isolate memory spikes
+- [ ] Local workerd runtime tests (`wrangler dev` / Vitest pool workers) separated from live deployment verification
 
 ## Skills in scope
 
-- api-design — request contracts.
-- database-migrations — D1/schema evolution.
-- observability — runtime diagnostics.
-- ci-cd — reproducible deployment.
+- api-design — Edge HTTP caching headers, request validation, and streaming response contracts.
+- database-migrations — D1 SQLite schema migrations, batch queries, and backward-compatible rollouts.
+- observability — Workers Tail logs, Analytics Engine metrics, and OpenTelemetry trace export.
+- ci-cd — Wrangler version uploads, gradual deployments, and preview environment gates.

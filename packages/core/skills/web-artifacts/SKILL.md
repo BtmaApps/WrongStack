@@ -1,7 +1,7 @@
 ---
 name: web-artifacts
 description: "Build self-contained, interactive single-file or micro-bundled web artifacts, tools, calculators, dashboards, and prototypes with React, Tailwind CSS, and Lucide. Use when producing standalone interactive web applications or embeds that run frictionlessly in browsers without backend dependencies."
-version: 1.0.0
+version: 1.1.0
 required-capabilities: [filesystem.read, filesystem.write]
 required-tools: []
 optional-capabilities: [verification.run, browser.interact, web.research]
@@ -38,9 +38,9 @@ Instead, execute intentional product aesthetics:
 
 ## Tech Stack & Architecture
 
-- **Format**: Single-file HTML embedding React 19 (via CDN UMD/ESM or Babel Standalone) or modern vanilla web components.
-- **Styling**: Tailwind CSS via CDN script or pre-compiled scoped styles.
-- **Icons**: Lucide Icons (lucide.createIcons or standalone SVG embeds).
+- **Format**: Single-file HTML embedding React 19.3.1 (via ESM import map or bundled build) or modern vanilla web components (checked 2026-10-23).
+- **Styling**: Tailwind CSS 4.3.3 (`@tailwindcss/browser` CDN or pre-compiled scoped styles).
+- **Icons**: Lucide Icons (checked 2026-10-23: lucide-react 1.61.0 or standalone SVG embeds).
 - **State Architecture**: Keep all state in memory or synced to `localStorage`/`URLSearchParams` so user input survives reloads.
 - **Zero External Backend**: All computations, charting (SVG/Canvas), and exports (CSV, JSON, PNG) must run entirely client-side.
 
@@ -53,7 +53,7 @@ Instead, execute intentional product aesthetics:
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Interactive Web Artifact</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.3"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body class="bg-zinc-950 text-zinc-100 min-h-screen flex flex-col font-mono">
@@ -76,9 +76,15 @@ Instead, execute intentional product aesthetics:
 </html>
 ```
 
+## Skills in scope
+
+- `react-modern` — React 19 state derivation, actions, and effect hygiene
+- `design-system` — semantic CSS tokens and anti-slop component styling
+- `webapp-testing` — headless Playwright verification of interactive user flows
+
 ## Acceptance checks
 
-- Complete application runs locally from a single HTML file without local server or CORS failures.
-- Zero AI-slop visual tropes; layout and typography adhere to an intentional design personality.
-- All interactive controls (sliders, forms, buttons) trigger immediate, deterministic state updates.
-- Data export and persistence mechanisms function offline.
+- [ ] Complete application runs standalone from a single HTML file or micro-bundle without backend or CORS failures.
+- [ ] Zero AI-slop visual tropes; layout, surface hierarchy, and typography adhere to a deliberate design personality.
+- [ ] All interactive controls (sliders, forms, keyboard shortcuts, buttons) trigger immediate, deterministic state updates.
+- [ ] Client-side persistence (`localStorage` / URL state) and data export mechanisms function offline.

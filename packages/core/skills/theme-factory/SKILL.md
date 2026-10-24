@@ -1,7 +1,7 @@
 ---
 name: theme-factory
 description: "Apply curated, professional font pairings, chromatic palettes, and design themes to slide decks, web artifacts, landing pages, and documentation. Use when establishing a distinct visual identity, selecting cohesive color palettes, or applying thematic styling across user-facing artifacts."
-version: 1.0.0
+version: 1.1.0
 required-capabilities: [filesystem.read, filesystem.write]
 required-tools: []
 optional-capabilities: [verification.run, web.research]
@@ -21,7 +21,7 @@ metadata:
 
 Theme Factory delivers production-ready visual themes composed of exact hex palettes,
 type pairings, elevation scales, and semantic tokens. It eliminates bland default styling
-and ensures cohesive branding across web components, presentations, and documents.
+and ensures cohesive branding across web components, presentations, and documents (checked 2026-10-23: Tailwind CSS 4.3.3 `@theme` variables and WCAG 2.2 contrast standards).
 
 ## Curated Theme Library
 
@@ -62,15 +62,21 @@ and ensures cohesive branding across web components, presentations, and document
 }
 ```
 
-## Workflow
+## Workflow & Guardrails
 
-1. **Diagnose Context**: Assess tone (investor deck, developer tool, luxury publication, enterprise dashboard).
-2. **Select or Synthesize Theme**: Choose from the curated library or generate a harmonious custom theme with WCAG AA/AAA contrast ratios.
-3. **Export & Bind**: Inject tokens as CSS custom properties, Tailwind theme extensions, or PPTX master layouts.
+1. **Diagnose Context**: Assess tone (investor deck, developer tool, luxury publication, enterprise dashboard) and target lighting environment (dark-first vs. daylight-first).
+2. **Select or Synthesize Theme**: Choose from the curated library or generate a harmonious custom theme with verified WCAG 2.2 AA/AAA contrast ratios (`>= 4.5:1` normal text, `>= 3:1` large headings and UI boundaries).
+3. **Export & Bind**: Inject tokens as CSS custom properties (`@theme` in Tailwind CSS 4.3.3), semantic surface/text/border variables, or PPTX master layouts. Never scatter raw hex codes across leaf components.
+
+## Skills in scope
+
+- `design-system` — scalable token architecture, component variants, and Tailwind CSS 4 integration
+- `brand-guidelines` — official WrongStack obsidian/phosphor brand identity
+- `accessibility` — WCAG 2.2 AA/AAA contrast verification and forced-colors resilience
 
 ## Acceptance checks
 
-- Contrast ratios for text-to-background satisfy WCAG AA (minimum 4.5:1 for body, 3:1 for large headings).
-- Typography pairings specify distinct heading and body typefaces with concrete weights and tracking.
-- Theme tokens are fully mapped to semantic roles (background, surface, borders, primary text, accent).
-- Artifact reflects the selected theme consistently across all components.
+- [ ] Contrast ratios for text-to-background and interactive boundaries satisfy WCAG 2.2 AA (`>= 4.5:1` body, `>= 3:1` headings/UI).
+- [ ] Typography pairings specify distinct heading, body, and monospace typefaces with concrete weights, line-heights, and tracking.
+- [ ] Theme tokens are fully mapped to semantic roles (`canvas`, `surface`, `border`, `text-primary`, `text-secondary`, `accent`, `accent-fg`).
+- [ ] Artifact reflects the selected theme consistently across all components and states without raw hex overrides.

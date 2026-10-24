@@ -3,7 +3,7 @@ name: api-design
 description: |
   Use this skill when designing, implementing, or reviewing an HTTP API — endpoints, request and response shapes, errors, pagination, versioning, and authorization.
   Triggers: user says "API", "endpoint", "REST", "route", "status code", "pagination", "request body", "response shape", "OpenAPI", "versioning", "idempotency", "rate limit".
-version: 2.1.1
+version: 2.1.2
 required-capabilities: [filesystem.read]
 required-tools: []
 optional-capabilities: [filesystem.write, verification.run]
@@ -32,7 +32,7 @@ OpenAPI spec — follow them; consistency beats any rule below.
 1. **Pre-flight: Read existing repo API & live spec standards first.** Read neighbouring
    endpoints, validation libraries (`zod`, `valibot`, `typebox`), existing router (Hono,
    Fastify, Next.js), and the existing OpenAPI specification in the repo; current target is OpenAPI 3.2.1
-   (checked 2026-10-09 at https://spec.openapis.org/oas/latest.html). Query live documentation
+   (checked 2026-10-23 at https://spec.openapis.org/oas/latest.html). Query live documentation
    to verify protocol standards (such as RFC 9457 Problem Details) before designing new routes.
 2. Authorize every request against the specific object, not just "is logged
    in". Loading `/orders/:id` must check the caller may see that order
@@ -76,7 +76,7 @@ Content-Type: application/json
 
 201 Created
 Location: /v1/orders/ord_81f2
-{ "id": "ord_81f2", "status": "pending", "items": [...], "createdAt": "2026-09-15T10:00:00Z" }
+{ "id": "ord_81f2", "status": "pending", "items": [...], "createdAt": "2026-10-23T10:00:00Z" }
 ```
 
 ```http

@@ -2,7 +2,7 @@
 name: release-rollback
 description: "Plan and execute authorized release promotion or rollback with exact artifact and data compatibility. Use when deploying versions, changing traffic or recovering a bad release; do not equate reversing code with restoring data."
 trigger: "Plan and execute authorized release promotion or rollback with exact artifact and data compatibility. Use when deploying versions, changing traffic or recovering a bad release; do not equate reversing code with restoring data."
-version: 1.0.1
+version: 1.0.2
 required-capabilities: [filesystem.read]
 required-tools: []
 optional-capabilities: [filesystem.write, execution.shell, verification.run, web.research]
@@ -20,18 +20,24 @@ metadata:
 
 ## Overview
 
-Plan and execute authorized release promotion or rollback with exact artifact and data compatibility.
+Release promotion and rollback coordinate immutable build artifacts, configuration revisions, traffic shifting (rolling, blue/green, canary), and stateful schema/queue compatibility across versions `vN-1` and `vN`. Because reverting application code does not automatically undo database writes, schema drops, or emitted queue messages, every release requires a pre-verified rollback boundary before traffic moves.
 
 Read [promotion and recovery](references/promotion.md) for a consequential release. Use current platform rollout/version APIs and supported image/runtime targets.
 
 ## Rules
 
-1. Pin source revision, artifact digest/build id, config identity and target environment.
-2. Define user-facing success/failure signals, observation window and rollback trigger before promotion.
-3. Verify old/new code compatibility with current schema, messages and persistent state.
-4. Keep promotion idempotent and scoped; avoid overlapping deploy writers or conflicting traffic updates.
-5. Preserve a recoverable prior artifact/config and identify state that rollback cannot reverse.
-6. A release plan/check result does not authorize publishing; actual promotion and rollback follow current user authorization.
+1. Pin the exact current running version (`vN-1` git SHA, image digest / deployment version ID, and active config revision) before promoting `vN`.
+2. Define objective promotion gates and rollback triggers upfront: health/readiness endpoints, error-rate and p95 latency thresholds, queue consumer error rates, and the required observation window.
+3. Verify `vN-1` ↔ `vN` bidirectional compatibility across database schemas (expand-and-contract migrations), Redis/cache payload formats, and background job payloads so in-flight requests and rollback targets do not crash on newer records.
+4. Ensure a single deployment writer operates at a time; never overlap manual rollbacks with active CI/CD auto-deploy pipelines.
+5. Retain the `vN-1` immutable artifact, static assets (for cached HTML clients), and config snapshot so rollback is an immediate pointer/version switch rather than a slow rebuild from git.
+6. Separate local release preparation from live promotion or rollback; execute live traffic shifts only within the user's explicit authorization.
+
+## Core Patterns & Pitfalls
+
+- **Expand-and-Contract Rollback Safety**: Deploy backward-compatible additive schema changes (`expand`) first, promote application code `vN` while keeping `vN-1` able to read/write the table, and run destructive column/table drops (`contract`) only in a later release after the rollback window closes.
+- **Static Asset & Chunk Skew**: During rolling updates or rollbacks, browsers with cached HTML from `vN-1` (or `vN`) still request hashed JS/CSS chunks from that version; retain both versions' static bundles on the CDN/origin across the transition window.
+- **Anti-pattern — Rebuilding on Rollback**: Triggering a fresh CI build of an old git commit during an outage risks broken upstream registries, drifted unpinned dependencies, and 10+ minute recovery delays instead of switching to the already-built `vN-1` image digest or version ID.
 
 ## Workflow
 
@@ -43,11 +49,15 @@ Read [promotion and recovery](references/promotion.md) for a consequential relea
 
 ## Before returning
 
-Artifact/environment identity recorded; promotion evidence and recovery compatibility verified; live health and data limitations explicit.
+- [ ] Prior (`vN-1`) and target (`vN`) git SHAs, immutable artifact digests, and config revisions recorded
+- [ ] Schema, cache, and queue payload backward compatibility verified across `vN-1` and `vN`
+- [ ] Promotion health gates, observation window, and exact rollback command verified
+- [ ] Post-promotion or post-rollback live version identity and user-facing health confirmed
+- [ ] Any irreversible state changes (sent webhooks/emails, schema mutations, new records) reported explicitly
 
 ## Sources
 
-Versioned facts checked 2026-10-09; refresh authoritative sources before new installs/upgrades.
+Versioned facts checked 2026-10-23; refresh authoritative sources before new installs/upgrades.
 [Cloudflare deployment versions](https://developers.cloudflare.com/workers/configuration/versions-and-deployments/), [Kubernetes deployments](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/).
 
 ## Skills in scope

@@ -1,7 +1,7 @@
 ---
 name: design-system
 description: "Create and maintain coherent visual tokens, themes and shared component states using the existing project system or WrongStack Design Studio. Use when designing or substantially restyling interfaces, palettes, typography or themes; small UI fixes should extend the existing system without a kit migration."
-version: 2.5.0
+version: 2.5.1
 required-capabilities: [filesystem.read, filesystem.write]
 required-tools: []
 optional-capabilities: [verification.run, web.research]
@@ -21,7 +21,7 @@ paths: ["DESIGN.md", "design-tokens.*", "design_tokens.dart"]
 ## Overview
 
 Build from a real token source and verify the rendered result. Latest web target
-checked 2026-10-09: Tailwind CSS 4.3.3 with CSS-first theme variables.
+checked 2026-10-23: Tailwind CSS 4.3.3 with CSS-first theme variables.
 An existing theme is a valid source; Design Studio is a useful system generator,
 not a requirement to replace an established design. When `DESIGN.md` or a
 conventional token file (`src/index.css`, `src/theme/theme.ts`,
@@ -115,10 +115,11 @@ the user's chosen outcome.
 
 ## Before returning
 
-- Token source and imports verified; kit changes intentional.
-- Relevant component/data states implemented.
-- Scanner findings checked against actual source and brief.
-- Rendered and interaction evidence recorded, with unknowns explicit.
+- [ ] Token source (`DESIGN.md`, project theme file, or pinned kit) and app entrypoint imports are verified; any kit or token changes are intentional.
+- [ ] Semantic roles cover light/dark or supported themes without scattering raw hex or pixel literals across screens.
+- [ ] Loading, empty, error, disabled, focus-visible, and populated component states are implemented.
+- [ ] Scanner and `DESIGN.md` diff/verify findings were checked against the actual source and brief.
+- [ ] Rendered viewport, theme, contrast, and interaction evidence is recorded with any unverified surfaces stated explicitly.
 
 ## Sources
 
@@ -127,8 +128,8 @@ the user's chosen outcome.
 
 ## Skills in scope
 
-- design-craft — product direction and composition.
-- design-critique — rendered review.
-- accessibility — input/focus/conformance checks.
-- motion-design — motion roles and interruption.
-- react-modern — components consuming the theme.
+- `design-craft` — product-specific visual direction, content hierarchy, and composition
+- `design-critique` — scored rendered review separating token adherence from visual craft
+- `accessibility` — WCAG 2.2 contrast, target size, focus visibility, and forced-colors checks
+- `motion-design` — duration/easing tokens, choreography, and `prefers-reduced-motion` compliance
+- `react-modern` — component primitives and state architecture consuming the token system

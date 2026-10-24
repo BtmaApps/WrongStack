@@ -2,7 +2,7 @@
 name: i18n-localization
 description: "Implement localization with translated messages, locale-aware formatting and adaptable layouts. Use when supporting multiple languages, RTL or regional formats; preserve message identity and test realistic translated content rather than only replacing labels."
 trigger: "Implement localization with translated messages, locale-aware formatting and adaptable layouts. Use when supporting multiple languages, RTL or regional formats; preserve message identity and test realistic translated content rather than only replacing labels."
-version: 1.0.1
+version: 1.0.2
 required-capabilities: [filesystem.read]
 required-tools: []
 optional-capabilities: [filesystem.write, execution.shell, verification.run, web.research]
@@ -20,18 +20,24 @@ metadata:
 
 ## Overview
 
-Implement localization with translated messages, locale-aware formatting and adaptable layouts.
+Production internationalization (i18n) and localization (l10n) go beyond string dictionaries: they require ICU/plural-aware message formatting, standard `Intl` number/date/list/collation formatting, logical CSS properties for bidirectional (LTR/RTL) layouts, and SSR-safe locale resolution without cross-request cache pollution.
 
 Use current platform Intl and the project installed localization framework. Verify framework-specific server/client locale loading before changing packages.
 
 ## Rules
 
-1. Model language, locale, timezone and currency as separate choices with documented fallback.
-2. Use message/plural interpolation rather than concatenating translated fragments.
-3. Keep numeric/date values structured until display; store currency/timezone semantics intentionally.
-4. Design for expansion, RTL/bidirectional text, input methods and font glyph coverage.
-5. Translate accessible names, validation/errors, email/notifications and metadata as relevant.
-6. Avoid cache leakage across locale and avoid exposing private request data during server rendering.
+1. Model language/locale (`en-US`, `tr-TR`, `ar-SA`), user timezone, and billing/display currency as separate concepts with explicit fallback chains.
+2. Use full-sentence ICU / plural / select message interpolation (`one`, `few`, `many`, `other`) rather than concatenating translated fragments or assuming English word order.
+3. Keep numbers, timestamps (UTC / ISO-8601), and monetary amounts (integer minor units + ISO-4217 currency code) structured until display formatting via `Intl.NumberFormat` / `Intl.DateTimeFormat`.
+4. Build adaptable layouts using CSS logical properties (`margin-inline-start`, `padding-inline`, `inset-inline-end`, `text-align: start`), `dir="rtl"` / `dir="auto"` attributes, and 30–40% text expansion room.
+5. Localize `aria-label`, `alt` text, form validation errors, document `<title>` / `lang` / `hreflang` metadata, and transactional notifications.
+6. Vary HTTP/SSR caches by resolved locale (`Vary` / route prefix) and never store active request locale in a shared server singleton.
+
+## Core Patterns & Pitfalls
+
+- **Bidirectional Layout Safety**: Replace physical directional CSS (`left`/`right`, `ml-*`/`mr-*`, `pl-*`/`pr-*`) with logical properties (`ms-*`/`me-*`, `ps-*`/`pe-*`, `start`/`end`) and mirror directional navigation icons (chevrons, back arrows) in RTL while keeping media playback and checkmarks unmirrored.
+- **Locale-Sensitive Case & Sorting**: Use `str.toLocaleLowerCase(locale)` and `Intl.Collator(locale)` when upper/lowercasing or sorting user-visible text (e.g., Turkish dotted/dotless `İ`/`ı`), while keeping internal protocol tokens ASCII-invariant.
+- **Anti-pattern — Currency Conversion via Locale Switch**: Changing the UI language from `en-US` to `de-DE` must reformat `100 USD` as `100,00 $`, never silently relabel the amount as `100,00 €`.
 
 ## Workflow
 
@@ -43,16 +49,20 @@ Use current platform Intl and the project installed localization framework. Veri
 
 ## Before returning
 
-Locale/data semantics preserved; catalogs complete or gaps explicit; RTL/long text and accessibility checked; server/client locale consistent.
+- [ ] Language, locale, timezone, and currency kept distinct with explicit fallback behavior
+- [ ] Messages use complete parameterized/pluralized templates with no string concatenation
+- [ ] Layouts use logical CSS properties, set `<html lang dir>`, and survive 35%+ text expansion and RTL
+- [ ] Accessible labels (`aria-label`, `alt`), validation messages, and page metadata localized
+- [ ] Server rendering and caching isolated per locale with zero hydration mismatches
 
 ## Sources
 
-Versioned facts checked 2026-10-09; refresh authoritative sources before new installs/upgrades.
+Versioned facts checked 2026-10-23; refresh authoritative sources before new installs/upgrades.
 [Intl](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl), [W3C internationalization](https://www.w3.org/International/).
 
 ## Skills in scope
 
 - design-system — create and maintain coherent visual tokens, themes and shared component states using the existing project system or WrongStack Design Studio.
 - accessibility — implement and review accessible user interfaces with semantic controls, keyboard and focus behavior, readable content and assistive-technology checks.
-- testing — testing contracts and verification.
+- testing — verify plural categories, RTL layout reflow, missing-key fallbacks, and timezone/currency boundary formatting.
 - nextjs-modern — build, migrate, and debug Next.js 16 App Router applications with React 19, Server Components, Server Actions, explicit caching, and production deployment.

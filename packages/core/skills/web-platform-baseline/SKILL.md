@@ -3,7 +3,7 @@ name: web-platform-baseline
 description: |
   Use this skill before asserting that a CSS, HTML or accessibility capability is available, unavailable, or the right tool — it carries dated, refreshable platform facts and refuses to let stale knowledge be stated as current.
   Triggers: user says "container query", "can I use", "browser support", "modern CSS", ":has", "subgrid", "view transition", "popover", "dialog", "anchor positioning", "scroll-driven animation", "baseline", "polyfill", "is it supported", "fallback needed".
-version: 1.1.1
+version: 1.1.2
 required-capabilities: [filesystem.read]
 required-tools: [skill, search, fetch]
 optional-capabilities: [web.research]
@@ -38,7 +38,7 @@ asserted without a live check.
 Every reference file in this skill starts with a `verified:` date.
 
 ```
-<!-- verified: 2026-09-16 | sources: MDN, web.dev Baseline, caniuse -->
+<!-- verified: 2026-10-23 | sources: MDN, web.dev Baseline, WebDX web-features 3.44.0 -->
 ```
 
 Before you assert any fact from a reference:
@@ -136,7 +136,10 @@ data; do not refresh an entire reference file's date after checking only one row
 
 ## Acceptance checks
 
-- Verify browser support, semantics, accessible behavior and necessary fallbacks.
+- [ ] Every browser-support or Baseline availability claim cites a dated reference (`<= 90 days`) or a live verification from MDN, web.dev Baseline, or Can I Use.
+- [ ] Native CSS/HTML features (`<dialog>`, Popover, container queries, `:has()`, `subgrid`, `color-mix()`) are preferred over redundant JS libraries where supported.
+- [ ] Features in `Baseline Newly Available` or `Limited Availability` include an explicit `@supports` or semantic progressive-enhancement fallback.
+- [ ] Stale rows discovered in `references/*.md` were updated in-place with today's `verified:` date and named primary sources.
 
 ## Skills in scope
 

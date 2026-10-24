@@ -1,7 +1,7 @@
 ---
 name: office-documents
 description: "Create, edit and convert Word, Excel, PowerPoint and PDF artifacts with format-aware verification. Use when producing docx, xlsx, pptx or PDF files; preserve templates and actual document structure, and render or recalculate before delivery."
-version: 1.2.1
+version: 1.2.2
 required-capabilities: [filesystem.read, filesystem.write]
 required-tools: []
 optional-capabilities: [verification.run, web.research]
@@ -19,7 +19,7 @@ metadata:
 
 ## Overview
 
-Latest stable npm tools checked 2026-10-09: docx 9.9.0, ExcelJS 4.4.0,
+Latest stable npm tools checked 2026-10-23: docx 9.14.0, ExcelJS 4.4.0,
 PptxGenJS 4.0.1 and pdf-lib 1.17.1. Recheck versions and import/API compatibility
 before installation. A long interval between releases does not prove deprecation.
 
@@ -56,10 +56,11 @@ Do not force 16:9 slides or decorative cards onto an existing template.
 
 ## Before returning
 
-- Deliverable format and destination application identified.
-- Content, calculations and links checked against the supplied data.
-- Pages/slides rendered and inspected, or the exact rendering gap reported.
-- Final artifact path and editable source provided when requested.
+- [ ] Target format (`.docx`, `.xlsx`, `.pptx`, `.pdf`) and editing vs greenfield mode matched to the request
+- [ ] Spreadsheet cells store typed numeric/date values with recalculated formula results and zero `#REF!`/`#NAME?`/`#VALUE!` errors
+- [ ] Word and PDF artifacts use explicit page geometry, table column widths (`WidthType.DXA`), and clean page-break rules
+- [ ] PowerPoint slides respect the template aspect ratio with zero text overflow or overlapping bounding boxes
+- [ ] Rendered page/slide images and extracted text/formulas inspected before returning the final path
 
 ## Sources
 
@@ -70,6 +71,6 @@ Do not force 16:9 slides or decorative cards onto an existing template.
 
 ## Skills in scope
 
-- design-craft — hierarchy and typography.
-- data-governance — sensitive content and retention.
-- media-production — narrated or animated presentation exports.
+- design-craft — typographic hierarchy, color contrast, and visual layout discipline across slides and pages.
+- data-governance — scrubbing hidden document metadata, comments, and sensitive PII before export.
+- media-production — converting slide decks or document walkthroughs into narrated video presentations.

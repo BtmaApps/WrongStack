@@ -12,6 +12,9 @@
   "scripts": {
     "skill:route": "bun scripts/wrongstack-skill-engine.ts",
     "skill:list": "bun scripts/wrongstack-skill-engine.ts --list",
+    "skill:check-bundle": "bun packages/core/skills/skill-creator/scripts/check-bundle.ts",
+    "skill:check-versions": "bun packages/core/skills/tech-stack/scripts/sync-versions.mjs --check",
+    "skill:sync-versions": "bun packages/core/skills/tech-stack/scripts/sync-versions.mjs --write",
     "build": "bun scripts/build.mjs",
     "build:bun": "bun scripts/build.mjs",
     "build:binaries": "bun scripts/build-binaries.mjs",

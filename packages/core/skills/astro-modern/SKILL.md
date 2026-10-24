@@ -2,7 +2,7 @@
 name: astro-modern
 description: "Build and upgrade Astro content sites and applications with deliberate islands, content contracts and rendering modes. Use when implementing Astro pages, content collections or on-demand routes; avoid hydrating the entire page for small interactions."
 trigger: "Build and upgrade Astro content sites and applications with deliberate islands, content contracts and rendering modes. Use when implementing Astro pages, content collections or on-demand routes; avoid hydrating the entire page for small interactions."
-version: 1.0.1
+version: 1.0.2
 required-capabilities: [filesystem.read]
 required-tools: []
 optional-capabilities: [filesystem.write, execution.shell, verification.run, web.research]
@@ -21,18 +21,24 @@ paths: ["*.astro", "astro.config.*"]
 
 ## Overview
 
-Build and upgrade Astro content sites and applications with deliberate islands, content contracts and rendering modes.
+Astro defaults to zero-JavaScript server-rendered HTML with opt-in client islands (`client:load`, `client:visible`, `client:idle`, `client:only`), typed Content Layer collections, and route-level prerendering or on-demand server rendering. Keeping bundles lean requires pushing layout, data loading, and static markup into `.astro` components while isolating interactive widgets to explicit islands.
 
-Checked 2026-10-09: Astro 7.3.8. Verify the current runtime/adapter and UI integration versions before install or migration.
+Checked 2026-10-23: Astro 7.4.2. Verify the current runtime/adapter and UI integration versions before install or migration.
 
 ## Rules
 
-1. Decide static versus on-demand rendering from real data freshness and authentication needs.
+1. Decide static versus on-demand rendering (`prerender = false`) from real data freshness and authentication needs.
 2. Hydrate only interactive islands with the correct client directive and supported UI integration.
-3. Keep content schemas and routes explicit; labels/demo claims must reflect actual supplied content.
-4. Validate/authorize server actions/endpoints and isolate request-private data.
-5. Verify asset paths, image/font handling, links and metadata in the emitted deployment shape.
+3. Keep content schemas (`src/content.config.ts`) and routes explicit; labels/demo claims must reflect actual supplied content.
+4. Validate/authorize Astro Actions and server endpoints, and isolate request-private data.
+5. Verify asset paths, base-path configuration, image/font handling, links and metadata in the emitted deployment shape.
 6. Do not treat local development routing as proof that a static host or adapter supports the same behavior.
+
+## Core Patterns & Pitfalls
+
+- **Island Granularity**: Pass serializable props into narrow UI framework islands (`client:visible` for below-the-fold widgets, `client:load` for immediate controls) rather than wrapping entire page layouts in a hydrated React/Vue/Svelte tree.
+- **Content Layer & Actions**: Define Zod schemas in `src/content.config.ts` and validate user mutations through `defineAction()` in `src/actions/index.ts` with explicit input schemas and server auth checks.
+- **Anti-pattern — Unscoped Script/Style Leakage**: Inline `<script>` tags in `.astro` components execute in the browser and may need `astro:page-load` listener cleanup when View Transitions / ClientRouter is enabled.
 
 ## Workflow
 
@@ -44,16 +50,19 @@ Checked 2026-10-09: Astro 7.3.8. Verify the current runtime/adapter and UI integ
 
 ## Before returning
 
-Rendering/hydration choices intentional; content/route contracts checked; emitted artifact and deployment behavior distinguished.
+- [ ] Static vs on-demand (`prerender`) rendering mode matches route freshness and auth requirements
+- [ ] Client directives (`client:*`) applied only to interactive islands with serializable props
+- [ ] Content collection schemas and Astro Actions/endpoints validated at the boundary
+- [ ] Production build and adapter preview verified for asset paths, headers, and dynamic routes
 
 ## Sources
 
-Versioned facts checked 2026-10-09; refresh authoritative sources before new installs/upgrades.
+Versioned facts checked 2026-10-23; refresh authoritative sources before new installs/upgrades.
 [Astro docs](https://docs.astro.build/), [On-demand rendering](https://docs.astro.build/en/guides/on-demand-rendering/).
 
 ## Skills in scope
 
-- design-craft — design craft contracts and verification.
+- design-craft — establish visual direction, typography, composition, and responsive rhythm for Astro pages and landing sections.
 - web-performance — measure and improve web loading, responsiveness and visual stability with browser traces and representative workloads.
 - accessibility — implement and review accessible user interfaces with semantic controls, keyboard and focus behavior, readable content and assistive-technology checks.
 - ci-cd — build and repair reproducible CI and deployment workflows with explicit artifacts, permissions and release gates.

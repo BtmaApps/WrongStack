@@ -3,7 +3,7 @@ name: docker-deploy
 description: |
   Use this skill when writing or reviewing a Dockerfile, docker-compose setup, or container image build for a project, or when debugging a container that won't build, start, or stay healthy.
   Triggers: user says "docker", "Dockerfile", "container", "image", "docker compose", "containerize", "multi-stage", "distroless", "registry", "healthcheck", "image size".
-version: 2.1.1
+version: 2.1.2
 required-capabilities: [filesystem.read, filesystem.write, execution.shell]
 required-tools: []
 trigger: "Use this skill when writing or reviewing a Dockerfile, docker-compose setup, or container image build for a project, or when debugging a container that won't build, start, or stay healthy."
@@ -31,9 +31,9 @@ command, the start command, the port, and what the process needs at runtime
 
 1. **Pre-flight: Inspect repo manifests & live base image registries first.** Inspect `package.json`,
    lockfiles, and existing `Dockerfile` / `compose.yaml`. Query Docker Hub or live container registries
-   to find current stable base image tags (e.g. `node:26.11.1-bookworm-slim`, `postgres:18.6-alpine`)
+   to find current stable base image tags (e.g. `node:26.12.1-bookworm-slim`, `postgres:18.6-alpine`)
    before configuring builds. Latest stable PostgreSQL is 18.6 (19 is beta),
-   checked 2026-10-09 against https://www.postgresql.org/support/versioning/.
+   checked 2026-10-23 against https://www.postgresql.org/support/versioning/.
 2. Multi-stage builds: build with the toolchain and dev dependencies, ship a
    runtime stage with only production artifacts.
 3. Pin the base image to a specific version tag (optionally a digest); never
@@ -58,15 +58,15 @@ Node.js service with pnpm:
 
 ```dockerfile
 # syntax=docker/dockerfile:1
-FROM node:26.11.1-bookworm-slim AS build
+FROM node:26.12.1-bookworm-slim AS build
 WORKDIR /app
-RUN npm install --global pnpm@12.10.1
+RUN npm install --global pnpm@12.15.0
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 COPY . .
 RUN pnpm build && pnpm prune --prod
 
-FROM node:26.11.1-bookworm-slim AS runtime
+FROM node:26.12.1-bookworm-slim AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=build --chown=node:node /app/node_modules ./node_modules
@@ -143,7 +143,7 @@ volumes:
 
 ## Reproducibility and deployment proof
 
-For new Node targets, current stable is 26.11.1 as checked 2026-10-09; verify
+For new Node targets, current stable is 26.12.1 (LTS 24.22.1) as checked 2026-10-23; verify
 the official release schedule, available image tags and adapter support before
 choosing a base. Corepack availability varies by Node release: provision the
 declared package manager explicitly and pin its version. The example uses the checked stable target; verify tag availability

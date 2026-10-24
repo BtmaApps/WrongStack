@@ -63,12 +63,14 @@ metadata:
 
 ## Before returning
 
-The primary skill fits the action and technology; no hidden or unavailable skill
-was recommended; each completed phase has its own observed acceptance evidence.
+- [ ] Selected primary skill and supporting pipeline match the user's exact platform, action, and deliverable
+- [ ] Overlap boundaries resolved via `references/overlap-decisions.md` without loading redundant skills
+- [ ] Only skills available in the active session manifest were invoked or recommended
+- [ ] Each completed workflow phase satisfied its specialist acceptance checks with honest reporting of any unrun steps
 
 ## Skills in scope
 
-- tech-stack — stable versions, migration and compatibility.
-- codebase-navigation — find the actual implementation boundary.
-- debugging — diagnose an observed failure.
-- verify-before-done — verify the original completion claim.
+- tech-stack — live registry version verification, peer compatibility checks, and upgrade blocker analysis.
+- codebase-navigation — locating the owning package, entrypoint, and architectural seam before routing implementation work.
+- debugging — isolating root causes when a routed implementation or verification step hits an unexpected failure.
+- verify-before-done — running the final verification gate across all touched domains before returning.

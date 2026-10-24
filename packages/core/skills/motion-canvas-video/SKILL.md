@@ -1,6 +1,6 @@
 ---
 name: motion-canvas-video
-version: 1.0.1
+version: 1.0.2
 description: "Create exported TypeScript animations with Motion Canvas scenes, signals, generators and narration cues. Use when producing animated diagrams, code walkthroughs or precise 2D video timelines; use motion-design for interactive web UI and manim-video for mathematical scenes."
 trigger: "producing animated diagrams, code walkthroughs or precise 2D video timelines; use motion-design for interactive web UI and manim-video for mathematical scenes."
 required-capabilities: [filesystem.read, filesystem.write]
@@ -19,14 +19,14 @@ metadata:
 
 ## Overview
 
-Target Motion Canvas 3.17.2, verified 2026-10-09 for core, 2d, vite-plugin and
+Target Motion Canvas 3.17.2, verified 2026-10-23 for core, 2d, vite-plugin and
 ffmpeg packages. Motion Canvas is a video scene/timeline system; its JSX is
 not React and its generators are not browser animation hooks.
 
 ## Rules
 
 1. Verify all Motion Canvas package versions together and inspect the Vite plugin's
-   peer range. Version 3.17.2 declares Vite 4.x or 5.x; latest Vite is 8.3.4.
+   peer range. Version 3.17.2 declares Vite 4.x or 5.x; latest Vite is 8.3.5.
    Do not force this unsupported combination or silently claim all packages are
    current and compatible. Report the blocker; isolate a compatible video workspace
    only when that tradeoff is authorized, or choose another renderer.
@@ -57,10 +57,10 @@ not React and its generators are not browser animation hooks.
 
 ## Before returning
 
-- Package/peer compatibility reported; unsupported Vite upgrade not hidden.
-- Scene source and reproducible export instructions provided.
-- Output dimensions, fps, duration and audio streams checked.
-- Preview checks distinguished from final-file playback.
+- [ ] `@motion-canvas/*` package alignment and Vite peer compatibility (`4.x`/`5.x` vs Vite 8 blocker) verified and reported
+- [ ] Scene animations driven deterministically via `yield*`, `all()`, `sequence()`, `chain()`, and reactive signals (`createSignal`, `createRef`)
+- [ ] Narration cues synchronized via timeline events (`waitUntil`) with all fonts and assets resolved prior to render
+- [ ] Exported video artifact verified with `ffprobe` and playback for resolution, fps, duration, and audio sync
 
 ## Sources
 
@@ -70,6 +70,6 @@ not React and its generators are not browser animation hooks.
 
 ## Skills in scope
 
-- media-production — renderer choice and final assembly.
-- audio-studio — narration and soundtrack.
-- tech-stack — dependency compatibility.
+- media-production — multi-shot timeline assembly, FFmpeg H.264/ProRes encoding, and subtitle burn-in.
+- audio-studio — generating voiceover narration and background music matched to Motion Canvas scene cues.
+- tech-stack — managing isolated workspace dependencies when `@motion-canvas/vite-plugin` peer ranges lag the main app's Vite version.

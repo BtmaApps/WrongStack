@@ -182,13 +182,13 @@ narrow scope without repeatedly asking for the same decision.
 
 ## Before returning
 
-- Every `file:line` opened and confirmed — none from grep output alone
-- Every finding states a triggering input, a consequence, and the basis for the
+- [ ] Every `file:line` opened and confirmed — none from grep output alone
+- [ ] Every finding states a triggering input, a consequence, and the basis for the
   expected behaviour
-- Excluded paths honoured; test-file findings labelled as such
-- Severities pass the reachability and blast-radius checks; nothing rounded up
-- Scan: summary counts match the findings; `<nextsteps>` mirrors them in order
-- Cascade: fixes are minimal, unfixed findings listed with reasons, no mailbox
+- [ ] Excluded paths honoured; test-file findings labelled as such
+- [ ] Severities pass the reachability and blast-radius checks; nothing rounded up
+- [ ] Scan: summary counts match the findings; `<nextsteps>` mirrors them in order
+- [ ] Cascade: fixes are minimal, unfixed findings listed with reasons, no mailbox
   message sent
-- Proof-driven: one root cause, not a duplicate of a prior round; the choice,
+- [ ] Proof-driven: one root cause, not a duplicate of a prior round; the choice,
   rejected candidates, and coverage gaps are in the report

@@ -2,7 +2,7 @@
 name: java-spring
 description: "Build and upgrade Java/Spring services with explicit transaction, concurrency and deployment contracts. Use when implementing Spring Boot APIs, data access or jobs; verify JDK/framework/build-tool compatibility and preserve the application architecture."
 trigger: "Build and upgrade Java/Spring services with explicit transaction, concurrency and deployment contracts. Use when implementing Spring Boot APIs, data access or jobs; verify JDK/framework/build-tool compatibility and preserve the application architecture."
-version: 1.0.1
+version: 1.0.2
 required-capabilities: [filesystem.read]
 required-tools: []
 optional-capabilities: [filesystem.write, execution.shell, verification.run, web.research]
@@ -21,18 +21,24 @@ paths: ["application.{properties,yml,yaml}", "application-*.{properties,yml,yaml
 
 ## Overview
 
-Build and upgrade Java/Spring services with explicit transaction, concurrency and deployment contracts.
+Modern Java and Spring Boot services combine constructor-injected components, Jakarta Bean Validation (`@Valid`), Spring Security method/route authorization, Spring Data / JPA transaction boundaries (`@Transactional`), and bounded executors or virtual threads. Reliable Spring engineering requires respecting AOP proxy boundaries, preventing lazy-loading leaks into web controllers, and keeping database transactions free of slow external network calls.
 
-Checked 2026-10-09: JDK 27 GA and Spring Boot 4.1.1 stable. Spring Boot 4.2.0-M2 and JDK 28 are previews/early access. Gradle current release is 9.8.1; verify its JDK/plugin matrix.
+Checked 2026-10-23: JDK 27 GA and Spring Boot 4.1.2 stable. Spring Boot 4.2.0-RC1 and JDK 28 are previews/early access. Gradle current release is 9.8.2; verify its JDK/plugin matrix.
 
 ## Rules
 
-1. Inspect JDK release target, Maven/Gradle wrapper, framework BOM and dependency constraints.
-2. Define bean/request/thread ownership; singleton services must not hold mutable per-user state.
-3. Validate/authorize endpoints and separate persistence entities from public contracts.
-4. Verify transaction/proxy boundaries and rollback behavior; annotations do not apply identically to every call shape.
-5. Bound external I/O and executors and handle shutdown/cancellation deliberately.
-6. Check migration effects on serialization, reflection/native-image behavior and deployment runtime.
+1. Inspect JDK release target, Maven (`mvnw`) or Gradle (`gradlew`) wrapper, Spring Boot BOM, and dependency constraints.
+2. Use constructor injection (`final` fields) and keep singleton `@Service`/`@Component` beans stateless; never store per-request or per-user mutable state on a singleton bean.
+3. Validate/authorize endpoints (`@Valid`, `@PreAuthorize`/security filter chains) and map persistence `@Entity` classes to immutable Java `record` DTOs or projections before serialization.
+4. Verify `@Transactional` proxy boundaries and rollback rules: self-invocation within the same class bypasses the Spring AOP proxy, and checked exceptions do not trigger rollback unless `rollbackFor` is specified.
+5. Keep external HTTP/RPC calls outside open `@Transactional` database connections to prevent HikariCP connection pool starvation, and configure explicit connect/read timeouts.
+6. Check migration effects on Jackson serialization, GraalVM native-image reflection hints (if enabled), and graceful shutdown (`server.shutdown=graceful`).
+
+## Core Patterns & Pitfalls
+
+- **Transaction & Proxy Discipline**: Keep `@Transactional` methods `public` on externally called service boundaries (or prefer `TransactionTemplate.execute(...)` for fine-grained programmatic transactions), and fetch required associations via `@EntityGraph` or DTO projections rather than relying on `spring.jpa.open-in-view`.
+- **Virtual Threads & Pinning**: When `spring.threads.virtual.enabled=true` is active, avoid long blocking I/O inside `synchronized` blocks where older libraries might pin carrier threads; prefer `ReentrantLock` and bounded connection pools.
+- **Anti-pattern — Returning JPA `@Entity` Directly from `@RestController`**: Serializing managed JPA entities directly triggers N+1 lazy-loading queries, risks `LazyInitializationException` or infinite bidirectional JSON recursion, and exposes internal schema columns to mass-assignment or data leaks.
 
 ## Workflow
 
@@ -44,16 +50,20 @@ Checked 2026-10-09: JDK 27 GA and Spring Boot 4.1.1 stable. Spring Boot 4.2.0-M2
 
 ## Before returning
 
-GA/stable versus preview explicit; transaction/call boundaries tested; dependency/JDK compatibility and packaged runtime behavior recorded.
+- [ ] JDK version, Maven/Gradle wrapper, and Spring Boot stable BOM compatibility verified
+- [ ] Request/response DTOs (`record`) separated from JPA `@Entity` models with `@Valid` and security checks enforced
+- [ ] `@Transactional` proxy boundaries, rollback behavior, and N+1 query plans verified
+- [ ] External I/O bounded with timeouts and kept outside long database transactions
+- [ ] Maven/Gradle test suite, slice/integration tests, and packaged application startup verified
 
 ## Sources
 
-Versioned facts checked 2026-10-09; refresh authoritative sources before new installs/upgrades.
+Versioned facts checked 2026-10-23; refresh authoritative sources before new installs/upgrades.
 [JDK releases](https://jdk.java.net/), [Spring requirements](https://docs.spring.io/spring-boot/system-requirements.html).
 
 ## Skills in scope
 
-- api-design — api design contracts and verification.
+- api-design — `@RestController` contracts, `ProblemDetail` (RFC 9457) exception handling, and pagination.
 - database-development — implement database access, models and queries with explicit consistency, transactions and bounded results.
 - queues-jobs — implement reliable asynchronous jobs and message consumers with explicit delivery, retry and shutdown semantics.
-- testing — testing contracts and verification.
+- testing — `@WebMvcTest`, `@DataJpaTest`, Testcontainers, and transactional rollback verification.

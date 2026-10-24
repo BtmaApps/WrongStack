@@ -1,7 +1,7 @@
 ---
 name: xlsx
 description: "Engineer, format, audit, and calculate Excel spreadsheets (.xlsx) with dynamic formulas, financial models, freeze panes, and custom number formatting. Use when generating complex spreadsheets, budgets, KPI trackers, financial projections, or auditing Excel models for calculation errors."
-version: 1.0.0
+version: 1.1.0
 required-capabilities: [filesystem.read, filesystem.write]
 required-tools: []
 optional-capabilities: [verification.run, web.research]
@@ -21,7 +21,7 @@ metadata:
 
 High-quality spreadsheet engineering treats workbooks as verifiable software systems.
 Never store calculated numbers as static text strings. Separate input assumptions, raw data,
-and summary presentation. Use libraries like `exceljs` (npm) or `openpyxl` (Python) to produce
+and summary presentation. Use libraries like `exceljs` (npm) or `openpyxl` (Python; checked 2026-10-23: exceljs 4.4.0, openpyxl 3.1.5) to produce
 structured, professional workbooks with explicit number formatting, formulas, and navigation locks.
 
 ## Core Engineering Rules
@@ -75,9 +75,15 @@ headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E293B
 await workbook.xlsx.writeFile('financial_model.xlsx');
 ```
 
+## Skills in scope
+
+- `office-documents` — integrated DOCX, XLSX, PPTX, and PDF document workflows
+- `database-development` — structured schema normalization and query validation
+- `verify-before-done` — formula accuracy and boundary verification before delivery
+
 ## Acceptance checks
 
-- Numeric cells contain real numeric types with explicit display formats; no raw text strings.
-- All totals and aggregates are dynamic formulas rather than hardcoded calculated constants.
-- Columns are sized properly to prevent `###` value truncation across all rows.
-- Frozen panes are configured on data tables to preserve readable headers during scrolling.
+- [ ] Numeric, currency, percentage, and date cells store native typed values with explicit `numFmt` patterns; zero numbers are stored as text strings.
+- [ ] All totals, subtotals, and KPIs use dynamic uppercase Excel formulas (`SUM`, `XLOOKUP`, `IFERROR`) rather than hardcoded constants.
+- [ ] Column widths include safety padding so no cell truncates as `###`, and header rows have frozen panes configured.
+- [ ] Input assumption cells and calculated output cells are visually and structurally separated across sheets or styled ranges.

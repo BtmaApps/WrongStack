@@ -36,4 +36,7 @@ this compact body does not expand task scope or authorization.
 
 ## Acceptance checks
 
-- Verify defensive findings and fixes against scoped source evidence; state unresolved claims.
+- [ ] Every finding has a confirmed `file:line`, reachable condition, violated contract, and remediation
+- [ ] Scanner and audit hits filtered against surrounding validators and real reachability
+- [ ] Sensitive values redacted in reports and paired with rotation guidance
+- [ ] Defensive fixes verified with non-destructive tests and unresolved assumptions stated

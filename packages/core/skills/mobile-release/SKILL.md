@@ -2,7 +2,7 @@
 name: mobile-release
 description: "Prepare and verify signed mobile releases, test-channel distribution and store submission artifacts. Use when configuring iOS/Android signing, build variants or release delivery; distinguish build success, upload, review approval and live availability."
 trigger: "Prepare and verify signed mobile releases, test-channel distribution and store submission artifacts. Use when configuring iOS/Android signing, build variants or release delivery; distinguish build success, upload, review approval and live availability."
-version: 1.0.1
+version: 1.0.2
 required-capabilities: [filesystem.read]
 required-tools: []
 optional-capabilities: [filesystem.write, execution.shell, verification.run, web.research]
@@ -20,18 +20,24 @@ metadata:
 
 ## Overview
 
-Prepare and verify signed mobile releases, test-channel distribution and store submission artifacts.
+Mobile release engineering bridges source revisions to signed, store-compliant binaries (`.ipa` for App Store Connect / TestFlight, `.aab` / `.apk` for Google Play tracks) and runtime-compatible OTA bundles. Because mobile clients cannot be rolled back instantaneously once installed on user devices, every release requires strict version monotonic increments, verified entitlements/privacy manifests, and separation between build completion and store live availability.
 
 Refresh current Apple/Google submission requirements, framework SDK support and signing tooling before each release. Read [iOS delivery](references/ios.md) or [Android delivery](references/android.md) for the selected platform.
 
 ## Rules
 
-1. Pin bundle/application id, version/build number, environment, source revision and native runtime compatibility.
-2. Keep signing material and upload credentials in the approved vault/CI mechanism; never write them into source or logs.
-3. Build the exact production configuration and inspect entitlements/permissions, endpoints and embedded assets.
-4. Verify upgrade/install behavior, deep links and the primary journey in the signed build.
-5. OTA updates must match the supported native runtime and store policy; they cannot supply a missing native module.
-6. Publish or submit only within the authorized release task; a package build does not authorize a store upload.
+1. Pin bundle/application id, marketing version, monotonic build number (`CFBundleVersion` / `versionCode`), environment, source revision and native runtime compatibility.
+2. Keep signing certificates, provisioning profiles, keystores, and store API keys in the approved vault/CI mechanism; never write them into source or logs.
+3. Build the exact production configuration and inspect entitlements/permissions, iOS Privacy Manifest (`PrivacyInfo.xcprivacy`), Android Data Safety / target SDK declarations, and production API endpoints.
+4. Verify upgrade-over-previous-version behavior, universal/app links, push notification entitlements, and the primary user journey in the signed build.
+5. OTA updates (e.g., EAS Update) must match the supported `runtimeVersion` / native binary fingerprint and store policy; they cannot add or modify native code.
+6. Publish or submit only within the authorized release task; a local or CI archive build does not authorize a store upload or production rollout.
+
+## Core Patterns & Pitfalls
+
+- **Monotonic Build Numbers & Runtime Fingerprints**: Increment `CFBundleVersion` (iOS) and `versionCode` (Android) monotonically per upload, and tie OTA channels to a deterministic `runtimeVersion` so incompatible JS bundles never ship to older native shells.
+- **Symbolication & Crash Mapping**: Retain or upload dSYMs (iOS), R8/ProGuard mapping files (Android), and JS source maps alongside each build identifier so production crashes remain decodable.
+- **Anti-pattern — Debug Endpoints or Test Keys in Release Variants**: Verify that release build flavors strip development menus, localhost fallbacks, and sandbox billing/API keys before signing.
 
 ## Workflow
 
@@ -43,16 +49,20 @@ Refresh current Apple/Google submission requirements, framework SDK support and 
 
 ## Before returning
 
-Artifact/source/version identity recorded; signed build tested; secrets excluded; upload/review/live states reported separately.
+- [ ] Application/bundle ID, marketing version, build number, and git SHA recorded
+- [ ] Signing credentials, keystores, and store tokens kept outside source and terminal output
+- [ ] Entitlements, permission purpose strings, privacy manifest, and target SDK verified
+- [ ] Signed release artifact exercised (including upgrade path and deep links where applicable) and debug symbols archived
+- [ ] Build completion, TestFlight/internal-track upload, store review, and live rollout states reported separately
 
 ## Sources
 
-Versioned facts checked 2026-10-09; refresh authoritative sources before new installs/upgrades.
+Versioned facts checked 2026-10-23; refresh authoritative sources before new installs/upgrades.
 [Expo production builds](https://docs.expo.dev/build/introduction/), [App Store submission](https://developer.apple.com/app-store/submitting/), [Android release](https://developer.android.com/studio/publish).
 
 ## Skills in scope
 
-- react-native-expo — React Native/Expo platform integration.
-- flutter-mobile — Flutter lifecycle and platform integration.
-- ci-cd — reproducible artifact and hosted pipeline checks.
-- release-rollback — version promotion and recovery compatibility.
+- react-native-expo — EAS Build profiles, `runtimeVersion` policies, and config plugin native generation.
+- flutter-mobile — Flutter release flavors (`--release`, `--obfuscate`, `--split-debug-info`) and platform runner configuration.
+- ci-cd — automated signing workflows, artifact provenance, and release approval gates.
+- release-rollback — staged store rollout halts, compatible API versioning, and OTA rollback boundaries.

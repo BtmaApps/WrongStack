@@ -1,6 +1,6 @@
 # Testing (Compact)
 
-<!-- source-version: 2.2.1 -->
+<!-- source-version: 2.2.2 -->
 
 ## Selection card
 - Task: Write meaningful behavior and regression tests. / TR: Anlamlı davranış ve regresyon testleri yaz.

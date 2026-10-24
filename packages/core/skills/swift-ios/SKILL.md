@@ -2,7 +2,7 @@
 name: swift-ios
 description: "Build and upgrade native iOS applications with Swift, SwiftUI/UIKit and correct lifecycle/concurrency ownership. Use when implementing native screens, platform integrations or Swift migrations; verify toolchain, deployment target and device behavior separately."
 trigger: "Build and upgrade native iOS applications with Swift, SwiftUI/UIKit and correct lifecycle/concurrency ownership. Use when implementing native screens, platform integrations or Swift migrations; verify toolchain, deployment target and device behavior separately."
-version: 1.0.1
+version: 1.0.2
 required-capabilities: [filesystem.read]
 required-tools: []
 optional-capabilities: [filesystem.write, execution.shell, verification.run, web.research]
@@ -21,18 +21,24 @@ paths: ["*.swift", "Package.swift", "Info.plist"]
 
 ## Overview
 
-Build and upgrade native iOS applications with Swift, SwiftUI/UIKit and correct lifecycle/concurrency ownership.
+Modern iOS applications use Swift 6 strict concurrency (`@MainActor`, `Sendable`, actors, structured `Task` hierarchies) alongside SwiftUI's `@Observable` data flow and UIKit interoperability. Reliable iOS engineering requires aligning Swift language mode with the minimum deployment target, cancelling in-flight tasks on view disappearance, and checking actor hops across suspension points.
 
-Checked stable Swift target: 6.4.0 on 2026-10-09. Xcode/SDK, Swift language mode and minimum deployment OS are separate constraints; verify current supported combinations before migration.
+Checked stable Swift target: 6.4.1 on 2026-10-23. Xcode/SDK, Swift language mode and minimum deployment OS are separate constraints; verify current supported combinations before migration.
 
 ## Rules
 
-1. Inspect project/schemes, deployment targets, entitlements and package/toolchain pins.
-2. Keep UI state ownership explicit and isolate UI mutations to the appropriate actor.
-3. Scope Tasks, observers and delegates to lifecycle; cancellation and late completion must respect owner replacement.
-4. Use secure platform storage/permissions with denied/revoked states and server-side authorization.
-5. Match native navigation, dynamic type, safe areas and accessibility rather than copying desktop geometry.
+1. Inspect project/schemes, minimum deployment targets (`iOS`), entitlements, Privacy Manifest (`PrivacyInfo.xcprivacy`), and SwiftPM/CocoaPods pins.
+2. Keep UI state ownership explicit (`@State` with `@Observable` models or `@StateObject` with `ObservableObject`) and isolate UI mutations to `@MainActor`.
+3. Scope async work with SwiftUI `.task(id:)` or cancelled `Task` handles; check `Task.isCancelled` / `try Task.checkCancellation()` after suspension points so stale completions cannot overwrite newer state.
+4. Use Keychain for credentials, handle permission `.denied` / `.restricted` states gracefully, and keep authorization on the server.
+5. Match native `NavigationStack` / sheet transitions, Dynamic Type scaling, safe areas, keyboard avoidance, and VoiceOver traits/labels.
 6. Do not label a simulator build as signed-device or App Store release proof.
+
+## Core Patterns & Pitfalls
+
+- **SwiftUI `.task(id:)` Lifecycle**: Prefer `.task(id: selection)` over spawning unstructured `Task { ... }` inside `.onAppear` so SwiftUI automatically cancels and restarts async work when the view disappears or the identifier changes.
+- **Actor Reentrancy**: Actor state can change across any `await` suspension point. Re-validate cached invariants after `await` rather than assuming pre-await state still holds.
+- **Anti-pattern — Recreating Models in `View.init`**: Initializing reference-type models inside a SwiftUI `View`'s `init` without `@State` / `@StateObject` recreates the model and drops in-flight state on every parent re-evaluation.
 
 ## Workflow
 
@@ -44,11 +50,15 @@ Checked stable Swift target: 6.4.0 on 2026-10-09. Xcode/SDK, Swift language mode
 
 ## Before returning
 
-Toolchain/language/deployment targets explicit; actor/lifecycle state safe; simulator/device/signing evidence distinguished.
+- [ ] Swift version, language mode (Swift 5 vs Swift 6 concurrency), and minimum iOS deployment target verified
+- [ ] UI state mutations isolated to `@MainActor` with `Sendable` boundaries respected
+- [ ] Async work tied to `.task(id:)` or explicit cancellation handles and checked after `await`
+- [ ] Dynamic Type, safe areas, VoiceOver labels, and permission denial states verified
+- [ ] Simulator vs physical device vs signed archive evidence clearly distinguished
 
 ## Sources
 
-Versioned facts checked 2026-10-09; refresh authoritative sources before new installs/upgrades.
+Versioned facts checked 2026-10-23; refresh authoritative sources before new installs/upgrades.
 [Swift releases](https://www.swift.org/install/), [Apple development](https://developer.apple.com/documentation/).
 
 ## Skills in scope

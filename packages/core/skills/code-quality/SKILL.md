@@ -1,6 +1,6 @@
 ---
 name: code-quality
-version: 1.0.1
+version: 1.0.2
 description: "Find and remove unused code, ghost dependencies, unnecessary coupling and bundle waste with source-confirmed reachability. Use when cleaning exports or packages, reviewing Knip output or reducing dead code; use security-scanner for security findings and preserve public/dynamic entrypoints."
 trigger: "cleaning exports or packages, reviewing Knip output or reducing dead code; use security-scanner for security findings and preserve public/dynamic entrypoints."
 required-capabilities: [filesystem.read]
@@ -19,7 +19,7 @@ metadata:
 
 ## Overview
 
-Latest checked targets on 2026-10-09: Knip 6.41.0 and Biome 2.5.15.
+Latest checked targets on 2026-10-23: Knip 6.42.1 and Biome 2.6.2.
 Use the repo's configured tools and verify migration deltas before upgrading.
 Static reachability findings are candidates until real consumers are checked.
 
@@ -47,6 +47,21 @@ Static reachability findings are candidates until real consumers are checked.
 5. Rerun the quality scan; report resolved candidates, justified exclusions,
    unknown external usage and measured artifact changes where relevant.
 
+## Proof-driven round (/debloat, /deadcode, /excise)
+
+In a Proof-Driven Dead-Code Excisor round, target one cohesive unreachable unit
+per round. Prove zero static and dynamic reachability across incoming calls,
+dynamic imports, configuration/script references, and public package barrels
+before excision. If removing the candidate breaks typechecking, builds,
+architecture/public-API snapshots, or tests, revert immediately and record why
+the symbol remains live.
+
+## Core Patterns & Pitfalls
+
+- **False-Positive Reachability Traps**: Before deleting a symbol reported by Knip or static search, check `package.json` `exports`/`bin`/`scripts`, framework file-convention routes, dynamic `import()` strings, CLI command registries, DI containers, serialization hooks, and public API snapshot files.
+- **Barrel File (`index.ts`) Tree-Shaking**: Re-exporting heavy modules with top-level side effects through shared barrel files pulls unused transitive graphs into bundles; prefer narrow entrypoints and verify `"sideEffects"` accuracy.
+- **Anti-pattern — Silencing Scanners with Blanket Ignores**: Adding broad `ignore` globs to `knip.json` or `biome.json` hides genuine dependency drift and dead-code accumulation; configure narrow framework plugins or entrypoints instead.
+
 ## Sources
 
 [Knip issue resolution](https://knip.dev/guides/handling-issues),
@@ -54,11 +69,14 @@ Static reachability findings are candidates until real consumers are checked.
 
 ## Acceptance checks
 
-- Run the selected analyzer against the scoped source, confirm findings and verify behavioral checks after cleanup.
+- [ ] Static and dynamic reachability verified across source, configs, scripts, and public package exports
+- [ ] Public API contracts and pre-existing uncommitted work preserved untouched
+- [ ] Lockfile updated cleanly via the repository's package manager when unused dependencies are removed
+- [ ] Typecheck, linter, build, and test suites pass after excision with before/after analyzer diff recorded
 
 ## Skills in scope
 
-- codebase-navigation — actual consumers.
-- refactor-planner — coupling and staged structural changes.
-- testing — behavior preservation.
-- tech-stack — dependency justification.
+- codebase-navigation — tracing all static and dynamic callers, barrel re-exports, and entrypoint registrations.
+- refactor-planner — sequencing multi-step decoupling when dead code is entangled with live modules.
+- testing — verifying behavior preservation and removing orphaned tests only when their subject is truly retired.
+- tech-stack — auditing redundant, deprecated, or ghost dependencies in `package.json` and lockfiles.

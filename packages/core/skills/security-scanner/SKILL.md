@@ -66,6 +66,16 @@ Use local, non-destructive tests of defensive behavior where appropriate.
   committed credential is incomplete without the owner's rotation/revocation process.
 - Apply URL/origin policies and trusted service boundaries according to real deployment.
 
+## Proof-driven round (/sechunt, /secproof)
+
+When operating inside a Proof-Driven Security Hardener round, one round targets
+at most one reachable security flaw. First inspect repository manifests and
+lockfiles to confirm installed dependency versions and runtime boundaries. Build
+a deterministic, non-destructive local proof in the round's scratch directory
+that passes a valid-input control and fails on the violated security contract
+before editing production code. Apply the narrowest boundary fix, verify the
+same proof passes, and promote the defensive test into the project's test suite.
+
 ## Report
 
 | Severity | Location | Condition / impact | Evidence | Defensive fix |
@@ -78,11 +88,14 @@ result; do not claim the application is universally secure.
 
 ## Acceptance checks
 
-- Verify defensive findings and fixes against scoped source evidence; state unresolved claims.
+- [ ] Every reported finding includes an exact `file:line`, reachable entry path, violated security contract, impact severity, and concrete remediation.
+- [ ] Scanner and dependency-audit candidates were filtered against surrounding validators, auth checks, and lockfile reachability.
+- [ ] Sensitive credentials or tokens discovered in source/config are redacted in the report and paired with rotation/revocation guidance.
+- [ ] Defensive fixes (when authorized) are verified by non-destructive boundary tests, and unverified runtime assumptions are explicitly stated.
 
 ## Skills in scope
 
-- code-review — changed-contract review.
-- tech-stack — affected package versions.
-- data-governance — sensitive data handling.
-- testing — defensive regression checks.
+- `code-review` — changed-contract and trust-boundary review across diffs
+- `tech-stack` — affected dependency versions, lockfile resolution, and upstream advisories
+- `data-governance` — PII redaction, retention rules, and secret lifecycle handling
+- `testing` — non-destructive negative and boundary regression tests

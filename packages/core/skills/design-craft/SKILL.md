@@ -166,4 +166,16 @@ before claiming fidelity to a reference; source tokens alone do not establish it
 
 ## Acceptance checks
 
-- Inspect actual rendered widths and states; exercise interactions, keyboard focus and recovery.
+- [ ] `.design/brief.md` records the audience, primary task, token source/kit, content priority, and observable acceptance criteria.
+- [ ] Interface uses representative domain content and realistic lengths with zero fabricated logos, testimonials, or vanity metrics.
+- [ ] Loading, empty, error, disabled, overflow, and keyboard focus states are implemented and reachable.
+- [ ] Rendered surface was inspected across desktop (`1440px`), narrow (`390px`), and short viewports (plus supported themes), or unverified surfaces are explicitly noted.
+- [ ] All `design {action:"verify"}` and `design_reference {action:"inspect"}` FAIL findings are resolved and WARN items fixed or justified in `.design/review.md`.
+
+## Skills in scope
+
+- `design-patterns` — select measurable layout, navigation, data-display, form and feedback pattern ids per region.
+- `design-system` — materialize semantic tokens, themes and shared component primitives across surfaces.
+- `design-critique` — run a scored post-build visual, hierarchy and accessibility audit against the brief.
+- `design-to-code` — implement a supplied visual reference with iterative fidelity comparison.
+- `accessibility` — verify keyboard operability, focus visibility, contrast and screen-reader semantics.

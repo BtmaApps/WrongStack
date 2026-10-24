@@ -2,7 +2,7 @@
 name: design-assets
 description: "Prepare icons, SVGs, images, fonts and illustrations for product use with correct rights, formats and rendering. Use when importing, optimizing or generating design assets; preserve an established icon system rather than inventing incompatible replacements."
 trigger: "Prepare icons, SVGs, images, fonts and illustrations for product use with correct rights, formats and rendering. Use when importing, optimizing or generating design assets; preserve an established icon system rather than inventing incompatible replacements."
-version: 1.1.0
+version: 1.1.1
 required-capabilities: [filesystem.read]
 required-tools: []
 optional-capabilities: [filesystem.write, execution.shell, verification.run, web.research]
@@ -20,7 +20,7 @@ metadata:
 
 ## Overview
 
-Prepare icons, SVGs, images, fonts and illustrations for product use with correct rights, formats and rendering.
+Product design assets—icons, inline and sprite SVGs, responsive raster images (AVIF/WebP/PNG), web fonts, and custom illustrations—directly shape visual sharpness, layout stability (CLS), theme adaptability, and licensing compliance. Disciplined asset engineering keeps vector geometry clean, aligns icon stroke weights and optical grids across the entire surface, and sizes every image and font subset to its real rendered footprint.
 
 Choose current supported codecs and asset tools after inspecting the project and target platforms; verify generated/imported assets rather than assuming their suitability.
 
@@ -57,16 +57,20 @@ are evidence for measurement only; never ship them or the brand's illustrations.
 
 ## Before returning
 
-Rights/provenance recorded; actual assets inspected; theme/size/language variants checked; editable master preserved when required.
+- [ ] Asset license/provenance recorded and no fabricated third-party logos or unverified stock claims used
+- [ ] Every `<img>` declares intrinsic `width`/`height` (or `aspect-ratio`) with responsive `srcset`/`sizes` where appropriate
+- [ ] SVGs include a valid `viewBox`, apply `currentColor` for monochrome theming, and omit inline scripts or colliding IDs
+- [ ] Decorative icons carry `aria-hidden="true"` while semantic/interactive icons provide an accessible name
+- [ ] Web fonts subsetted to used weights/scripts with metric-compatible fallbacks and rendered in both light/dark themes
 
 ## Sources
 
-Versioned facts checked 2026-10-09; refresh authoritative sources before new installs/upgrades.
+Versioned facts checked 2026-10-23; refresh authoritative sources before new installs/upgrades.
 [SVG](https://developer.mozilla.org/en-US/docs/Web/SVG), [Responsive images](https://developer.mozilla.org/en-US/docs/Learn_web_development/HTML/Multimedia_and_embedding/Responsive_images).
 
 ## Skills in scope
 
-- design-system — tokens and shared component state.
-- design-craft — product-specific composition.
-- accessibility — keyboard and assistive interaction.
-- web-performance — loading and frame measurements.
+- design-system — aligning icon grids, stroke tokens, font stacks, and theme-adaptive color tokens.
+- design-craft — integrating photography, illustration, and typography into a cohesive visual hierarchy.
+- accessibility — alt-text authoring, icon-button accessible names, and contrast across image overlays.
+- web-performance — LCP hero image prioritization, AVIF/WebP byte budgets, and zero-CLS font/image loading.

@@ -52,6 +52,12 @@ locking, index creation and rollback behavior.
 6. Report migration commands, data verification, estimated production impact
    and the execution boundary.
 
+## Core Patterns & Pitfalls
+
+- **Zero-Downtime PostgreSQL Lock Discipline**: Set a bounded `lock_timeout` (e.g., `SET lock_timeout = '3s'`) before DDL so a blocked `ACCESS EXCLUSIVE` lock fails fast instead of queuing all application reads/writes behind it.
+- **Online Index & Constraint Creation**: Create indexes on live tables with `CREATE INDEX CONCURRENTLY` (outside a transaction block), and add foreign-key or `CHECK` constraints as `NOT VALID` first (which takes only a brief lock) followed by `VALIDATE CONSTRAINT` in a separate step.
+- **Anti-pattern — Renaming or Dropping Active Columns in One Deploy**: Dropping or renaming a column in the same deployment that updates application code breaks rolling pods (`vN-1`) and blocks instant application rollback; use the 4-phase expand → dual-write/backfill → switch reads → contract pattern.
+
 ## Sources
 
 [PostgreSQL ALTER TABLE](https://www.postgresql.org/docs/current/sql-altertable.html)
@@ -60,11 +66,14 @@ and exact version for operational decisions.
 
 ## Acceptance checks
 
-- Prove old/new application compatibility, backfill repeatability, migration ordering and a recovery path.
+- [ ] Generated SQL inspected for table rewrites, `ACCESS EXCLUSIVE` lock duration, and transactional DDL rules
+- [ ] Old (`vN-1`) and new (`vN`) application code remain compatible during rolling deployment overlap
+- [ ] Large backfills batched by primary-key cursor with idempotent restart and progress checkpoints
+- [ ] Migration tested against both an empty schema and representative existing data with rollback/forward-fix verified
 
 ## Skills in scope
 
-- data-governance — ownership, retention and classification.
-- api-design — compatibility for clients.
-- testing — migration and restart evidence.
-- observability — rollout signals.
+- data-governance — data retention, PII anonymization, and audit compliance during schema/backfill changes.
+- api-design — keeping public API payloads backward-compatible while underlying database columns evolve.
+- testing — automated up/down/backfill migration tests against realistic seed datasets.
+- observability — monitoring database lock waits, replication lag, and query latency during migration rollout.

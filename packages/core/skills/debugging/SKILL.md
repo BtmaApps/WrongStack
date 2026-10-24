@@ -142,7 +142,7 @@ out, every retry is aborted immediately, so the job fails after 30 s instead of
 retrying for 2 min.
 
 ## Evidence
-- `pnpm test retry.test.ts -t "retries after timeout"` failed with AbortError before the fix
+- `bun run test retry.test.ts -t "retries after timeout"` failed with AbortError before the fix
 - src/net/retry.ts:41 passes `options.signal` to every attempt
 
 ## Fix

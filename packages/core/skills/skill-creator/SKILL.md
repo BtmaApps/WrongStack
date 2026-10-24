@@ -1,7 +1,7 @@
 ---
 name: skill-creator
 description: "Create, improve and validate WrongStack SKILL.md bundles with precise discovery, progressive resources and current runtime contracts. Use when authoring skills, improving triggers or maintaining bundled skills; respect the requested destination and preserve existing audience and capability metadata."
-version: 1.4.1
+version: 1.4.2
 required-capabilities: [filesystem.read, filesystem.write]
 required-tools: []
 trigger: "authoring skills, improving triggers or maintaining bundled skills; respect the requested destination and preserve existing audience and capability metadata."
@@ -22,7 +22,7 @@ metadata:
 Skills guide the agent; the runtime owns tool schemas, permissions and execution.
 Write instructions that change useful decisions, then validate discovery,
 resources and behavior. The [Agent Skills specification](https://agentskills.io/specification)
-was reviewed on 2026-10-09; WrongStack adds audience and runtime capability fields.
+was reviewed on 2026-10-23; WrongStack adds audience and runtime capability fields.
 
 ## Rules
 
@@ -87,15 +87,15 @@ Use installed source to confirm enabled foreign layers and ordering.
 
 ## Before returning
 
-- Destination, name, description and audience correct.
-- Required surfaces exist; optional integrations have a real fallback.
-- Linked resources load and changed helpers execute successfully.
-- Behavioral checks distinguished from structural checks.
-- Catalogs synchronized; verification results and unknowns reported.
+- [ ] Destination path, lowercase kebab-case `name`, discriminating `description`, `trigger`, and `audience` metadata are verified.
+- [ ] Entrypoint stays within the 200-line ceiling and declares only genuine `required-capabilities` and `required-tools`.
+- [ ] All linked `references/*` files exist, load cleanly, and any condensed `SKILL.save.md` matches `<!-- source-version: ... -->`.
+- [ ] Behavioral activation and completion checks are distinguished from structural validator checks.
+- [ ] Bundle validator (`check-bundle.ts`) and version sync checks pass with zero errors, and any unknowns are reported.
 
 ## Skills in scope
 
-- prompt-engineering — discriminating triggers and instruction contracts.
-- testing — meaningful authoring and loading checks.
-- tech-stack — version verification.
-- output-standards — parser-compatible response formats.
+- `prompt-engineering` — discriminating trigger phrasing, instruction hierarchy, and anti-slop guardrails
+- `testing` — structural and behavioral skill discovery, loading, and contract regression tests
+- `tech-stack` — live registry verification for dated version snapshots inside skills
+- `output-standards` — parser-compatible report and checklist formatting

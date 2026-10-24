@@ -2,7 +2,7 @@
 name: mobile-design
 description: "Design and implement mobile interfaces for touch, keyboards, safe areas and native navigation. Use when creating phone/tablet/foldable screens or adapting web ideas to mobile; platform behavior and device evidence matter alongside visual tokens."
 trigger: "Design and implement mobile interfaces for touch, keyboards, safe areas and native navigation. Use when creating phone/tablet/foldable screens or adapting web ideas to mobile; platform behavior and device evidence matter alongside visual tokens."
-version: 1.1.0
+version: 1.1.1
 required-capabilities: [filesystem.read]
 required-tools: []
 optional-capabilities: [filesystem.write, execution.shell, verification.run, web.research]
@@ -20,7 +20,7 @@ metadata:
 
 ## Overview
 
-Design and implement mobile interfaces for touch, keyboards, safe areas and native navigation.
+Mobile interface design adapts user tasks to thumb zones, dynamic safe-area insets (notches, Dynamic Island, gesture bars), on-screen virtual keyboards, variable window size classes (compact phones, foldables, tablets), and native iOS HIG / Material 3 navigation idioms. High-craft mobile UI keeps primary actions reachable when the keyboard is open and respects OS-level Dynamic Type and gesture expectations.
 
 Use current iOS/Android guidance and the app supported OS/device matrix. Refresh platform/store requirements rather than assuming a framework SDK minimum is the store submission target.
 
@@ -59,16 +59,20 @@ viewports:[390, 320], surface:"app"}` with 0 FAIL. Native screens are outside
 
 ## Before returning
 
-Primary action remains reachable; navigation/keyboard/insets work; large text and assistive behavior checked; rendered device evidence recorded.
+- [ ] Primary interactive targets meet 44×44 pt (iOS) / 48×48 dp (Android) sizing with >= 8px separation
+- [ ] Safe-area insets (`SafeArea` / `env(safe-area-inset-*)`), keyboard open state, and 320–390px narrow widths verified with zero horizontal overflow
+- [ ] Platform back gesture/button, bottom sheet dismissal, and tab/stack navigation preserve user drafts
+- [ ] Dynamic Type / maximum OS font scaling and screen-reader (`VoiceOver` / `TalkBack`) labels verified
+- [ ] Observed device/simulator or browser-viewport evidence recorded transparently
 
 ## Sources
 
-Versioned facts checked 2026-10-09; refresh authoritative sources before new installs/upgrades.
+Versioned facts checked 2026-10-23; refresh authoritative sources before new installs/upgrades.
 [Android mobile design](https://developer.android.com/design/ui/mobile), [Apple HIG](https://developer.apple.com/design/human-interface-guidelines).
 
 ## Skills in scope
 
-- interaction-design — task/state transition design.
-- design-system — tokens and shared component state.
-- accessibility — keyboard and assistive interaction.
-- mobile-performance — release-device profiling.
+- interaction-design — form flows, optimistic/offline feedback states, and gesture-to-button fallbacks.
+- design-system — platform-adaptive spacing, typography scales, color roles, and component tokens.
+- accessibility — VoiceOver/TalkBack focus order, touch target minimums, and high-contrast legibility.
+- mobile-performance — keeping scroll lists, sheet transitions, and keyboard animations jank-free on real devices.

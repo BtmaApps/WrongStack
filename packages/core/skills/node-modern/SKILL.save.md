@@ -1,6 +1,6 @@
 # Modern Node.js (Compact)
 
-<!-- source-version: 2.1.2 -->
+<!-- source-version: 2.1.3 -->
 
 ## Selection card
 - Task: Node runtime APIs, ESM and async cancellation. / TR: Node çalışma zamanı API, ESM ve async iptal.
@@ -9,7 +9,7 @@
 
 ## Overview
 
-Current Node.js (v26.11.1 as checked 2026-10-09) ships natively what older code pulled from npm:
+Current Node.js (v26.12.1 Current / v24.22.1 LTS as checked 2026-10-23) ships natively what older code pulled from npm:
 native TypeScript type stripping (`node file.ts`), native `.env`
 loading (`node --env-file`), built-in SQLite (`node:sqlite`), global WebSocket,
 `Promise.withResolvers()`, global fetch, `AbortSignal.timeout`, `node:test`, Web Streams,

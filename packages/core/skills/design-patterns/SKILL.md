@@ -3,7 +3,7 @@ name: design-patterns
 description: |
   Model-independent catalog of UI design patterns, each expressed as anatomy, measurable ranges, use/avoid conditions, failure modes, acceptance checks and layout signals with a stable kebab-case id. Use to choose or adapt a layout, page section, navigation, data display, form flow or feedback state, and to name a pattern seen on a reference site.
   Triggers: "which layout should I use", "which pattern fits", "pattern for X", "landing page structure", "hero section", "pricing page", "dashboard layout", "admin console", "settings page", "onboarding flow", "checkout flow", "empty state", "loading state", "toast or banner", "bento grid", "sidebar or top nav", "command palette", "what pattern is this site using", "identify the layout of this reference".
-version: 1.0.0
+version: 1.0.1
 required-capabilities: [filesystem.read]
 required-tools: []
 optional-capabilities: [web.research, browser.interact]
@@ -135,9 +135,16 @@ Load a file with `skill({ name: "design-patterns", resource: "references/<file>.
 
 ## Acceptance checks
 
-- Every region names exactly one pattern id with a one-line reason and a rejected alternative.
-- No invariant anatomy part was removed; every deviation is a listed Variable.
-- The chosen pattern's Accept checks were observed on a rendered surface at
-  desktop, narrow and short viewports, or are explicitly reported as unverified.
-- No anatomy slot is filled with fabricated proof, metrics or logos.
-- Trend use is mapped to an evergreen id and its risk is stated.
+- [ ] Every region names exactly one pattern id with a one-line job/content/density reason and a rejected alternative.
+- [ ] No invariant anatomy part was removed; every customization is restricted to the pattern's declared Variables.
+- [ ] The chosen pattern's Accept checks were verified on a rendered surface at desktop, narrow (`320–390px`), and short (`600–700px`) viewports, or explicitly marked unverified.
+- [ ] Zero anatomy slots are filled with fabricated customer logos, testimonials, ratings, or metrics.
+- [ ] Any dated visual trend (`trend-*`) is mapped onto an evergreen pattern id with its usability trade-offs stated.
+
+## Skills in scope
+
+- `design-craft` — visual direction, typography, color hierarchy, composition and iterative build loop.
+- `design-system` — semantic design tokens, kits, themes and reusable component primitives.
+- `design-critique` — scored visual and structural audit of an existing or newly built surface.
+- `design-to-code` — faithful implementation of a supplied screenshot, mockup or live reference.
+- `design-reference-read` — extract measured design DNA from a reference URL or screenshot and map signals to these pattern ids.

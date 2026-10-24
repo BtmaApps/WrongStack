@@ -1,7 +1,7 @@
 ---
 name: micro-animation-gif
 description: "Generate compact, optimized animated GIFs for team chat (Slack/Discord), GitHub PRs, release notes, and UI micro-interactions using Pillow or FFmpeg. Use when creating animated emojis, loading spinners, badge animations, or lightweight UI demo loops under tight file-size constraints."
-version: 1.0.0
+version: 1.1.0
 required-capabilities: [filesystem.read, filesystem.write]
 required-tools: []
 optional-capabilities: [verification.run, web.research]
@@ -21,7 +21,7 @@ metadata:
 
 High-quality micro-animations convey user interface interactions, brand flair, and status updates
 without the bandwidth bloat of raw video files. This skill builds optimized looping GIFs
-using Python Pillow or FFmpeg with strict color quantization and byte-budget discipline.
+using Python Pillow or FFmpeg with strict color quantization and byte-budget discipline (checked 2026-10-23: Pillow 13.0.0 on PyPI, FFmpeg 9.0.2 stable, sharp 0.35.5 on npm).
 
 ## Dimension & File Budget Constraints
 
@@ -82,9 +82,15 @@ frames[0].save(
 2. **Quantization & Dithering**: Apply Floyd-Steinberg dithering only for gradients; disable dithering on solid flat shapes to dramatically shrink file size.
 3. **Disposal Mode**: Set `disposal=2` (restore to background) when animating transparent backgrounds to eliminate ghost trail artifacts.
 
+## Skills in scope
+
+- `media-production` — FFmpeg filtergraphs, Remotion, and full video encoding pipelines
+- `motion-design` — web UI micro-interactions, spring physics, and CSS/Motion transitions
+- `design-assets` — optimizing raster, vector, and animated assets for production web delivery
+
 ## Acceptance checks
 
-- Animated GIF loops seamlessly without jarring jump-cuts.
-- File size is strictly within target limits (< 128 KB for emoji, < 2 MB for demo clip).
-- Palette quantization is verified; transparent areas render without fringing or ghosting.
-- Playback framerate and timing are verified across standard image viewers.
+- [ ] Animated GIF loops seamlessly (`frame[N-1]` to `frame[0]`) without jarring jump-cuts or dropped frames.
+- [ ] File size is verified within target byte budgets (`< 128 KB` for 128x128 chat emoji, `< 2.0 MB` for PR demo clip).
+- [ ] Palette quantization and `disposal=2` transparency handling render cleanly without matte fringing or ghost trails.
+- [ ] Playback framerate (10–24 FPS) and dimensions are verified across standard image viewers.

@@ -1,6 +1,6 @@
 ---
 name: manim-video
-version: 1.0.1
+version: 1.0.2
 description: "Create mathematical, geometric and scientific videos with Manim Community in Python. Use when animating equations, graphs, transformations or educational explanations; distinguish Manim Community from ManimGL and deliver a rendered, inspected video."
 trigger: "animating equations, graphs, transformations or educational explanations; distinguish Manim Community from ManimGL and deliver a rendered, inspected video."
 required-capabilities: [filesystem.read, filesystem.write]
@@ -20,7 +20,7 @@ metadata:
 ## Overview
 
 Target Manim Community 0.22.0, checked against PyPI and stable documentation on
-2026-10-09. Confirm Python/system requirements from package metadata and the
+2026-10-23. Confirm Python/system requirements from package metadata and the
 installation guide. ManimGL is a different project with different APIs.
 
 ## Rules
@@ -76,10 +76,13 @@ This example avoids LaTeX; mathematical scenes should verify its availability.
 
 ## Acceptance checks
 
-- Render and play the final file; verify mathematical meaning, layout and duration.
+- [ ] Manim Community (`manim` 0.22.0) APIs used consistently without mixing incompatible `manimgl` imports or methods
+- [ ] Mathematical equations, coordinate axes, units, and step-by-step transformations verified for accuracy
+- [ ] LaTeX (`MathTex` / `Tex`) compilation, frame safe-area bounds, and updater removal (`remove_updater`) verified
+- [ ] Final video rendered, inspected with `ffprobe`, and played back to confirm resolution, fps, duration, and zero overlapping labels
 
 ## Skills in scope
 
-- media-production — narration, subtitles and final encoding.
-- audio-studio — spoken explanation.
-- tech-stack — Python and system dependency compatibility.
+- media-production — combining rendered Manim scenes with audio stems, captions, and FFmpeg final delivery.
+- audio-studio — generating spoken narration timed to mathematical proof steps and `self.wait()` pauses.
+- tech-stack — managing Python virtual environments, Cairo/Pango/FFmpeg/LaTeX system dependencies, and `pyproject.toml` pins.

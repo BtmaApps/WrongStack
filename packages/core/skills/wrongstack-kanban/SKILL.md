@@ -166,8 +166,9 @@ assignment's owner and reread state; do not continue mutating under a stale clai
 Keep work evidence tied to the checked source snapshot. A board persistence
 failure can be reported without pretending the completion gate accepted the card.
 
-## Related skills
+## Skills in scope
 
 - `sdd` — spec-driven development creates boards from task graphs
 - `bug-hunter` — findings can be tracked as cards
 - `multi-agent` — parallel dispatch through the Director's queue tool
+- `verify-before-done` — deterministic verification gate before transitioning Review cards to Done

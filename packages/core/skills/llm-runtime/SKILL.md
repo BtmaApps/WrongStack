@@ -1,7 +1,7 @@
 ---
 name: llm-runtime
 description: "Integrate, stream, and orchestrate frontier LLM APIs with robust structured outputs, tool call schemas, prompt caching, and resilient backoff handling. Use when implementing AI agent runtimes, tool-calling loops, streaming SSE endpoints, or optimizing token usage and model latency."
-version: 1.0.0
+version: 1.1.0
 required-capabilities: [filesystem.read, filesystem.write]
 required-tools: []
 optional-capabilities: [verification.run, web.research]
@@ -21,7 +21,7 @@ metadata:
 
 Frontier LLM integrations require production reliability: structured tool contracts,
 deterministic schema validation, streaming Server-Sent Events (SSE), prompt caching optimization,
-and graceful degradation during rate limits (HTTP 429) or transient gateway timeouts (HTTP 502/529).
+and graceful degradation during rate limits (HTTP 429) or transient gateway timeouts (HTTP 502/529). Checked 2026-10-23 stable SDK targets: openai 7.43.0, @anthropic-ai/sdk 1.2.0, @google/genai 2.31.0, Vercel AI SDK (ai) 7.0.152, and zod 4.6.7.
 
 ## Core Architecture Principles
 
@@ -73,9 +73,15 @@ export async function fetchWithBackoff(url: string, init: RequestInit, maxRetrie
 }
 ```
 
+## Skills in scope
+
+- `prompt-engineering` — system prompt architecture, few-shot calibration, and eval rubrics
+- `mcp-development` — Model Context Protocol servers, tool schemas, and transport security
+- `realtime-systems` — SSE and WebSocket streaming backpressure and reconnection contracts
+
 ## Acceptance checks
 
-- Tool definitions enforce strict JSON Schema contracts with no undeclared properties.
-- Streaming pipelines handle backpressure and abort cleanly via AbortSignal.
-- Rate-limiting (HTTP 429) triggers exponential backoff with full jitter.
-- Context window structure leverages prompt caching boundaries effectively.
+- [ ] Tool definitions and structured outputs enforce strict JSON Schema contracts (`additionalProperties: false`) validated at the boundary.
+- [ ] Streaming pipelines handle backpressure, partial tool-call deltas, and upstream cancellation via `AbortSignal`.
+- [ ] Rate-limiting (HTTP 429) and transient gateway errors (502/503/529) trigger bounded exponential backoff with jitter and `retry-after` support.
+- [ ] Context window ordering keeps static instructions and reference blocks prefix-stable to maximize prompt cache hits.

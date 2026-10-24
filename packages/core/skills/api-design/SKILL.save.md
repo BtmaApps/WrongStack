@@ -1,6 +1,6 @@
 # API Design (Compact)
 
-<!-- source-version: 2.1.1 -->
+<!-- source-version: 2.1.2 -->
 
 ## Selection card
 - Task: Define HTTP contracts, pagination and error schemas. / TR: HTTP sözleşmesi, sayfalama ve hata şeması tanımla.
@@ -20,7 +20,7 @@ OpenAPI spec — follow them; consistency beats any rule below.
 1. **Pre-flight: Read existing repo API & live spec standards first.** Read neighbouring
    endpoints, validation libraries (`zod`, `valibot`, `typebox`), existing router (Hono,
    Fastify, Next.js), and the existing OpenAPI specification in the repo; current target is OpenAPI 3.2.1
-   (checked 2026-10-09 at https://spec.openapis.org/oas/latest.html). Query live documentation
+   (checked 2026-10-23 at https://spec.openapis.org/oas/latest.html). Query live documentation
    to verify protocol standards (such as RFC 9457 Problem Details) before designing new routes.
 2. Authorize every request against the specific object, not just "is logged
    in". Loading `/orders/:id` must check the caller may see that order

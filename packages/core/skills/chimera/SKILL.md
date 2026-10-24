@@ -185,11 +185,11 @@ Before producing the final review, [Read the detailed workflow](references/repor
 
 ## Before returning the report
 
-- Zero files mutated — read-only held
-- Every `file:line` actually read and confirmed
-- Every finding states a breaking input and a consequence
-- Severities pass the ladder test; nothing rounded up
-- Chat history checked for prior discussion of each finding
-- Fix lines are patch instructions, standalone and context-free
-- Counts in Summary match the findings listed
-- `<nextsteps>` mirrors the findings in severity order
+- [ ] Zero files mutated — read-only held
+- [ ] Every `file:line` actually read and confirmed
+- [ ] Every finding states a breaking input and a consequence
+- [ ] Severities pass the ladder test; nothing rounded up
+- [ ] Chat history checked for prior discussion of each finding
+- [ ] Fix lines are patch instructions, standalone and context-free
+- [ ] Counts in Summary match the findings listed
+- [ ] `<nextsteps>` mirrors the findings in severity order

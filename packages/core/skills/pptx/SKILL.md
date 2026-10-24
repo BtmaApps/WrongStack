@@ -1,7 +1,7 @@
 ---
 name: pptx
 description: "Author and design high-impact PowerPoint presentations (.pptx) with modern 16:9 layouts, strong typographic hierarchy, visual cards, and zero wall-of-bullet-point slides. Use when creating pitch decks, technical briefings, executive presentations, or keynote slide decks."
-version: 1.0.0
+version: 1.1.0
 required-capabilities: [filesystem.read, filesystem.write]
 required-tools: []
 optional-capabilities: [verification.run, web.research]
@@ -21,7 +21,7 @@ metadata:
 
 Slide decks are visual instruments for persuasion and information density, not spoken teleprompters.
 Banish standard AI slide tropes: walls of generic bullet points, clip-art icons in colored circles,
-and center-aligned paragraph blobs. Use PptxGenJS (npm) or python-pptx to build structured,
+and center-aligned paragraph blobs. Use PptxGenJS (npm) or python-pptx (checked 2026-10-23: pptxgenjs 4.0.1, python-pptx 1.0.2) to build structured,
 16:9 widescreen decks with editorial typography, metric callouts, and clean card containers.
 
 ## Design & Storytelling Rules
@@ -86,9 +86,15 @@ slide.addText('Reduced by 85% following Cloudflare Workers edge KV migration.', 
 await pres.writeFile({ fileName: 'architecture_briefing.pptx' });
 ```
 
+## Skills in scope
+
+- `office-documents` — cross-format Office document generation and verification
+- `theme-factory` — cohesive slide color palettes and display/body font pairings
+- `brand-guidelines` — official WrongStack slide tokens, dark surfaces, and badge styling
+
 ## Acceptance checks
 
-- Presentation is strictly formatted in 16:9 widescreen layout.
-- Slides replace wall-of-bullet text with structured cards, visual metrics, and clear hierarchy.
-- Content elements respect safe margins with zero text clipping or overlapping boxes.
-- Output file opens seamlessly in Microsoft PowerPoint, Google Slides, and Apple Keynote.
+- [ ] Presentation is strictly formatted in 16:9 widescreen layout (`LAYOUT_16x9`) with `>= 0.8 in` outer safe margins.
+- [ ] Slides replace walls of bullet points with structured multi-column cards, high-contrast metric callouts, and clear visual hierarchy.
+- [ ] Every text box and shape has explicit `x`, `y`, `w`, `h` coordinates verified for zero text clipping or box collisions.
+- [ ] Output `.pptx` archive opens cleanly in PowerPoint, Google Slides, and Keynote with consistent fonts and colors.

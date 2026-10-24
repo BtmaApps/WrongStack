@@ -2,7 +2,7 @@
 name: php-laravel
 description: "Build and upgrade PHP/Laravel applications with validated requests, policy authorization and reliable jobs/data access. Use when implementing Laravel routes, Eloquent models or queues; preserve existing project conventions and runtime compatibility."
 trigger: "Build and upgrade PHP/Laravel applications with validated requests, policy authorization and reliable jobs/data access. Use when implementing Laravel routes, Eloquent models or queues; preserve existing project conventions and runtime compatibility."
-version: 1.0.1
+version: 1.0.2
 required-capabilities: [filesystem.read]
 required-tools: []
 optional-capabilities: [filesystem.write, execution.shell, verification.run, web.research]
@@ -21,18 +21,24 @@ paths: ["artisan", "routes/{web,api,console}.php", "app/Http/**/*.php", "app/Mod
 
 ## Overview
 
-Build and upgrade PHP/Laravel applications with validated requests, policy authorization and reliable jobs/data access.
+Modern PHP and Laravel applications pair Form Request validation, Gate/Policy object authorization, Eloquent ORM with strict eager loading (`Model::preventLazyLoading`), API Resources (`JsonResource`), and queued jobs (`ShouldQueue`). Reliable Laravel engineering requires explicit mass-assignment and serialization boundaries, transactional consistency (`DB::transaction` + `afterCommit`), and coordinated cache/worker reloads on deployment.
 
-Checked 2026-10-09: PHP 8.5.11 and Laravel 13.35.0. Verify Composer platform requirements, extensions and framework migration notes before combining current releases.
+Checked 2026-10-23: PHP 8.5.12 and Laravel 13.38.0. Verify Composer platform requirements, extensions and framework migration notes before combining current releases.
 
 ## Rules
 
-1. Inspect composer.json/lock, PHP extensions, environment and web/queue entrypoints.
-2. Use request validation and policy/object authorization; a middleware login check is not ownership permission.
-3. Map allowed persisted fields explicitly and serialize public resources rather than exposing entire models.
-4. Review Eloquent loading/query shape and transaction behavior for the actual request/job.
-5. Make jobs idempotent, bounded and restart-safe; a successful enqueue is not completed work.
-6. Coordinate route/config caches and queue-worker reload with deployment version identity.
+1. Inspect `composer.json`/`composer.lock`, PHP version and required extensions, runtime mode (PHP-FPM vs Laravel Octane), and web/queue entrypoints.
+2. Validate inputs via dedicated Form Requests (`$request->validated()`) and enforce object ownership via Policies (`$this->authorize()` / `Gate::authorize()`); route authentication middleware alone does not prove tenant/resource ownership.
+3. Pass explicit validated field subsets to Eloquent writes (never `$model->fill($request->all())`) and transform responses through API `JsonResource` classes rather than returning raw Eloquent models.
+4. Prevent N+1 queries with `with()` / `loadMissing()`, wrap multi-step writes in `DB::transaction()`, and dispatch side-effect jobs/events with `afterCommit()` so workers never read uncommitted rows.
+5. Make queued jobs idempotent, pass lightweight identifiers (`SerializesModels`) with explicit `$tries`, `$backoff`, `$timeout`, and `ShouldBeUnique` where needed.
+6. Coordinate `config:cache`, `route:cache`, and `queue:restart` (or Octane reload) with deployment rollouts, and never call `env()` outside `config/*.php` files.
+
+## Core Patterns & Pitfalls
+
+- **Transactions & `afterCommit` Jobs**: When dispatching a queued job inside a database transaction, chain `->afterCommit()` (or set `'after_commit' => true`) so a fast queue worker cannot fail with `ModelNotFoundException` before the outer transaction commits.
+- **Octane / Long-Running Worker Safety**: Avoid storing per-request state or current user references in static properties or singleton container bindings that persist across requests in Octane or queue workers.
+- **Anti-pattern — Calling `env()` in Application Code**: Once `php artisan config:cache` runs in production, `env()` returns `null` outside `config/*.php`; always read runtime configuration via `config('services.x.key')`.
 
 ## Workflow
 
@@ -44,16 +50,20 @@ Checked 2026-10-09: PHP 8.5.11 and Laravel 13.35.0. Verify Composer platform req
 
 ## Before returning
 
-Runtime/extensions and framework matrix clear; policy/serialization/jobs verified; cache/worker deployment behavior reported.
+- [ ] `composer.json` PHP/extension constraints and Laravel version compatibility verified
+- [ ] Form Request validation (`validated()`) and Policy/Gate object authorization enforced
+- [ ] Eloquent queries eager-loaded (`with`), transactions wrapped cleanly, and `JsonResource` used for output
+- [ ] Queued jobs configured with `afterCommit`, bounded `$tries`/`$timeout`, and idempotent handlers
+- [ ] No direct `env()` calls outside `config/*.php`; Pest/PHPUnit feature tests pass
 
 ## Sources
 
-Versioned facts checked 2026-10-09; refresh authoritative sources before new installs/upgrades.
+Versioned facts checked 2026-10-23; refresh authoritative sources before new installs/upgrades.
 [PHP releases](https://www.php.net/downloads.php), [Laravel docs](https://laravel.com/docs).
 
 ## Skills in scope
 
-- api-design — api design contracts and verification.
+- api-design — Laravel API Resources, status/error responses, rate limiting, and pagination contracts.
 - database-development — implement database access, models and queries with explicit consistency, transactions and bounded results.
 - queues-jobs — implement reliable asynchronous jobs and message consumers with explicit delivery, retry and shutdown semantics.
 - authentication-sessions — implement application sign-in, sessions and identity integration with explicit account/tenant authorization.

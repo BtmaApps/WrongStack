@@ -2,7 +2,7 @@
 name: interaction-design
 description: "Design and implement task-oriented interaction flows, forms, navigation and recovery states. Use when improving onboarding, complex workflows or interaction behavior; use design-system for tokens and design-craft for visual composition."
 trigger: "Design and implement task-oriented interaction flows, forms, navigation and recovery states. Use when improving onboarding, complex workflows or interaction behavior; use design-system for tokens and design-craft for visual composition."
-version: 1.1.0
+version: 1.1.1
 required-capabilities: [filesystem.read]
 required-tools: []
 optional-capabilities: [filesystem.write, execution.shell, verification.run, web.research]
@@ -20,7 +20,7 @@ metadata:
 
 ## Overview
 
-Design and implement task-oriented interaction flows, forms, navigation and recovery states.
+Interaction design turns user tasks into predictable, recoverable state machines across forms, multi-step wizards, inline edits, confirmation dialogs, and asynchronous mutations. High-craft interaction design ensures every action provides immediate feedback, prevents duplicate submissions, preserves user-entered drafts across errors or navigation, and maintains keyboard focus continuity from entry to completion.
 
 Use the current project design system and actual platform conventions. Refresh platform guidance before choosing a new interaction model.
 
@@ -63,16 +63,20 @@ disabled states too. Record each check as observed / not observed in `.design/re
 
 ## Before returning
 
-Main task and recovery paths work; focus and draft ownership are explicit; observed checks cite the route/state and unresolved gaps.
+- [ ] Complete state matrix (idle, pending, validation error, transient failure, empty, success) implemented and reachable
+- [ ] Pending mutations block duplicate submission while preserving user input and draft state on failure
+- [ ] Field errors bound via `aria-describedby` / `aria-invalid` with focus moved to the first invalid control on submit
+- [ ] Dialogs/drawers trap focus, close on `Escape`, and restore focus to the invoking trigger on close
+- [ ] Destructive actions guarded by explicit object-named confirmation or timed undo
 
 ## Sources
 
-Versioned facts checked 2026-10-09; refresh authoritative sources before new installs/upgrades.
+Versioned facts checked 2026-10-23; refresh authoritative sources before new installs/upgrades.
 [Android interaction guidance](https://developer.android.com/design/ui/mobile), [ARIA patterns](https://www.w3.org/WAI/ARIA/apg/patterns/).
 
 ## Skills in scope
 
-- design-system — tokens and shared component state.
-- design-craft — product-specific composition.
-- accessibility — keyboard and assistive interaction.
-- testing — behavioral and failure-path verification.
+- design-system — shared interactive state tokens (`hover`, `focus-visible`, `active`, `disabled`, `invalid`).
+- design-craft — visual hierarchy, form rhythm, and contextual copy for empty/error/confirmation states.
+- accessibility — keyboard navigation, focus management, `aria-live` status announcements, and target sizing.
+- testing — automated user-event tests covering validation errors, double-submit prevention, and retry recovery.

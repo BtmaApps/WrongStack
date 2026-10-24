@@ -38,7 +38,7 @@ this compact body does not expand task scope or authorization.
 
 ## Before returning
 
-- Delegation permitted and concurrency limits respected.
-- Shared writers isolated or serialized.
-- Every worker status reconciled; evidence checked.
-- Combined result validated; gaps and conflicting observations visible.
+- [ ] Delegation permitted and concurrency limits respected
+- [ ] Shared writers isolated or serialized before dispatch
+- [ ] Every worker status reconciled and evidence checked
+- [ ] Combined result validated; gaps and conflicting observations visible

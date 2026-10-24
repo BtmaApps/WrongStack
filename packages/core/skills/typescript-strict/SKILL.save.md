@@ -1,6 +1,6 @@
 # TypeScript Strict (Compact)
 
-<!-- source-version: 2.1.1 -->
+<!-- source-version: 2.1.2 -->
 
 ## Selection card
 - Task: TypeScript contracts and narrowing without any. / TR: any kullanmadan TypeScript sözleşmeleri ve daraltma.
@@ -9,7 +9,7 @@
 
 ## Overview
 
-Target TypeScript 7.0.2, verified from npm on 2026-10-09. Static types protect
+Target TypeScript 7.0.2, verified from npm on 2026-10-23. Static types protect
 compile-time contracts; external data still needs runtime validation. Work
 within the project strictness and module-resolution contract.
 

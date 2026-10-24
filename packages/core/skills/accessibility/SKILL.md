@@ -52,11 +52,22 @@ conformance target changes. A scanner score is not a conformance certificate.
    and design intent while improving operation.
 5. Recheck the task and stress empty/error/loading states and long labels.
 
+## Proof-driven round (/uipolish, /a11yhunt, /uihunt)
+
+In a Proof-Driven UI & Accessibility Ratchet round, address one measurable
+WCAG 2.2 AA, keyboard/focus, or layout defect per round. Capture a deterministic
+rendered measurement or failing component accessibility test (with a passing
+control) before editing production code, repair the owning primitive using the
+project's design tokens and semantic markup, and promote the regression check
+into the permanent test suite.
+
 ## Before returning
-- Findings include affected state, user impact and concrete fix.
-- Keyboard and focus journey checked.
-- Automated checks separated from assistive-technology evidence.
-- Standards/thresholds correctly scoped; remaining gaps stated.
+
+- [ ] Native semantic HTML elements (`<button>`, `<a>`, `<input>`, `<dialog>`, landmarks) preferred over generic `<div>` click handlers
+- [ ] Full keyboard journey (`Tab`, `Shift+Tab`, `Enter`, `Space`, `Escape`, arrow keys) verified with unobscured `:focus-visible` indicators
+- [ ] Programmatic labels (`<label>`, `aria-labelledby`), error descriptions (`aria-describedby`, `aria-invalid`), and live regions wired accurately
+- [ ] Text (4.5:1 / 3:1 large) and UI control (3:1) contrast, 24×24 CSS px target minimums, 200%/400% zoom reflow, and `prefers-reduced-motion` verified
+- [ ] Automated scanner results distinguished from manual keyboard and screen-reader verification
 
 ## Sources
 
@@ -65,6 +76,6 @@ conformance target changes. A scanner score is not a conformance certificate.
 
 ## Skills in scope
 
-- design-system — shared component tokens and states.
-- design-critique — rendered evidence.
-- testing — interaction regressions.
+- design-system — accessible color contrast pairs, focus-ring tokens, and semantic component primitives.
+- design-critique — rendered visual and WCAG 2.2 AA audit across desktop and mobile viewports.
+- testing — semantic locator queries (`getByRole`, `getByLabelText`) and keyboard interaction regression tests.

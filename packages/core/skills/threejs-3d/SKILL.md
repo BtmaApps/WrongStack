@@ -1,7 +1,7 @@
 ---
 name: threejs-3d
 description: "Build and optimize browser 3D scenes with Three.js, React Three Fiber, WebGPU or WebGL, TSL and glTF assets. Use when implementing cameras, materials, 3D interaction, model loading or renderer performance; preserve renderer compatibility and resource ownership."
-version: 1.2.1
+version: 1.2.2
 required-capabilities: [filesystem.read, filesystem.write]
 required-tools: []
 optional-capabilities: [verification.run, web.research]
@@ -20,8 +20,8 @@ paths: ["*.{glsl,wgsl,vert,frag}"]
 
 ## Overview
 
-Latest stable targets checked 2026-10-09: Three.js 0.186.1 (r186),
-@types/three 0.186.0, React Three Fiber 9.8.1 and Drei 10.7.9 with React 19.3.0.
+Latest stable targets checked 2026-10-23: Three.js 0.186.1 (r186),
+@types/three 0.186.0, React Three Fiber 9.8.2 and Drei 10.7.9 with React 19.3.1.
 Refresh these together before installation and check peer ranges.
 
 ## Rules
@@ -53,6 +53,12 @@ Refresh these together before installation and check peer ranges.
 5. Record cold-load size/time, frame performance and resource counts after repeated
    mount/unmount. Distinguish source correctness from rendered verification.
 
+## Core Patterns & Pitfalls
+
+- **Zero-Allocation Render Loop (`useFrame` / `requestAnimationFrame`)**: Pre-allocate scratch math objects (`const _vec3 = new THREE.Vector3()`, `Matrix4`, `Quaternion`) outside the frame loop and mutate refs directly (`meshRef.current.rotation.y += delta`); never call React `setState` or `new THREE.Vector3()` every frame.
+- **Draw-Call & GPU Memory Budgeting**: Cap canvas DPR (`dpr={[1, 2]}`), prefer `THREE.InstancedMesh` or `<Instances>` for repeated geometry, match color spaces (`SRGBColorSpace` for color textures, `NoColorSpace` for normal/roughness/metalness maps), and verify `renderer.info.memory` (`geometries`, `textures`) returns to baseline after unmount.
+- **Anti-pattern — Disposing Shared `useGLTF` Assets**: Calling `.dispose()` on geometries or materials returned directly from a shared `useGLTF` cache breaks every other mounted or future instance of that model unless the resource was explicitly cloned for local ownership.
+
 ## Sources
 
 [WebGPURenderer](https://threejs.org/docs/pages/WebGPURenderer.html),
@@ -60,11 +66,14 @@ Refresh these together before installation and check peer ranges.
 
 ## Acceptance checks
 
-- View the actual scene, test fallbacks and measure rendering/resources on the target device.
+- [ ] Three.js, `@types/three`, `@react-three/fiber`, and `@react-three/drei` peer versions aligned
+- [ ] Per-frame loops (`useFrame`) free of React state updates and heap object allocations
+- [ ] Owned geometries, materials, render targets, and event listeners disposed cleanly across mount/unmount cycles
+- [ ] DPR bounded (`[1, 2]`), Suspense/error fallbacks provided, and keyboard/reduced-motion alternatives preserved
 
 ## Skills in scope
 
-- react-modern — lifecycle and Suspense boundaries.
-- motion-design — DOM transitions around the canvas.
-- web-performance — download and frame profiling.
-- accessibility — equivalent interaction outside the scene.
+- react-modern — React 19 Suspense boundaries, ref lifecycle cleanup, and state coordination outside the canvas.
+- motion-design — coordinating DOM overlay transitions and scroll progress with 3D camera/scene states.
+- web-performance — glTF/KTX2 asset payload sizing, main-thread shader compile stalls, and frame pacing.
+- accessibility — `prefers-reduced-motion` camera stabilization and keyboard/DOM equivalents for 3D interactions.

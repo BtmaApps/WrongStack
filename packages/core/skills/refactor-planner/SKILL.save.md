@@ -36,7 +36,7 @@ this compact body does not expand task scope or authorization.
 
 ## Before returning
 
-- Dependency direction and consumer scope explicit.
-- Refactoring and intentional behavior changes distinguished.
-- Each checkpoint has a meaningful exit check and rollback.
-- Planning-only scope honored; authorized execution not abandoned at the plan.
+- [ ] Dependency direction and consumer scope explicit
+- [ ] Refactoring and intentional behavior changes distinguished
+- [ ] Each checkpoint has a meaningful exit check and rollback
+- [ ] Planning-only scope honored; authorized execution not abandoned at the plan

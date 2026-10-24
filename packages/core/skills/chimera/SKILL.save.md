@@ -48,4 +48,7 @@ this compact body does not expand task scope or authorization.
 
 ## Acceptance checks
 
-- Produce a read-only report with severity, source locations, evidence and separate proposed fixes.
+- [ ] Zero files mutated — read-only held
+- [ ] Every `file:line` actually read and confirmed with a breaking input and consequence
+- [ ] Severities pass the ladder test and chat history checked against re-litigation
+- [ ] Standalone patch fix instructions and `<nextsteps>` mirror the findings in severity order

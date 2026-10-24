@@ -1,7 +1,7 @@
 ---
 name: webapp-testing
 description: "Verify, test, and debug frontend web applications using Playwright with headless browser automation, DOM reconnaissance, screenshot diffs, and server lifecycle management. Use when validating UI user journeys, reproducing frontend bugs, testing form interactions, or verifying responsive layouts."
-version: 1.0.0
+version: 1.1.0
 required-capabilities: [filesystem.read, filesystem.write, execution.shell]
 required-tools: []
 optional-capabilities: [browser.interact, verification.run, web.research]
@@ -21,7 +21,7 @@ paths: ["playwright.config.*"]
 ## Overview
 
 Reliable web application testing moves beyond static markup checks to execute live browser runs.
-Use Playwright (in TypeScript or Python) with explicit server lifecycle management to test
+Use Playwright (checked 2026-10-23: `@playwright/test` 1.64.1 and Vitest 5.0.5) with explicit server lifecycle management to test
 dynamic client-side state, form submissions, accessibility roles, visual fidelity, and network boundaries.
 
 ## The Reconnaissance-First Protocol
@@ -75,9 +75,15 @@ test.describe('Checkout Flow Verification', () => {
 - **Clean State Isolation**: Use isolated browser contexts, clean cookies, or mock network fixtures for third-party payment/auth endpoints.
 - **Console & Network Error Audits**: Listen to `page.on('console', msg => ...)` and `page.on('pageerror', err => ...)` to fail tests if uncaught JavaScript exceptions fire.
 
+## Skills in scope
+
+- `testing` — unit, integration, and behavioral regression test design
+- `visual-regression` — deterministic screenshot baselines and Storybook visual checks
+- `accessibility` — automated and keyboard-driven WCAG 2.2 verification
+
 ## Acceptance checks
 
-- Test script executes cleanly and deterministically against the target web application.
-- Resilient semantic locators (`getByRole`, `getByLabel`, `getByTestId`) are used exclusively.
-- Zero arbitrary hardcoded sleep timers; assertions rely on auto-retrying locators.
-- Visual screenshots and console logs are recorded as test artifacts.
+- [ ] Test script executes cleanly and deterministically against the live target web application with proper server lifecycle management.
+- [ ] Resilient semantic locators (`getByRole`, `getByLabel`, `getByTestId`) are used instead of brittle CSS/XPath chains.
+- [ ] Zero arbitrary hardcoded sleep timers (`waitForTimeout`); assertions rely on web-first auto-retrying expectations.
+- [ ] Uncaught page errors, console errors, and visual screenshots are asserted and recorded as verification evidence.

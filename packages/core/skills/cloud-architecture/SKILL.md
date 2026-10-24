@@ -2,7 +2,7 @@
 name: cloud-architecture
 description: "Choose and design cloud services from concrete application, data, availability and operational requirements. Use when comparing AWS, Azure, GCP, Cloudflare or VPS architectures; preserve provider/account constraints and verify region-specific capabilities."
 trigger: "Choose and design cloud services from concrete application, data, availability and operational requirements. Use when comparing AWS, Azure, GCP, Cloudflare or VPS architectures; preserve provider/account constraints and verify region-specific capabilities."
-version: 1.0.1
+version: 1.0.2
 required-capabilities: [filesystem.read]
 required-tools: []
 optional-capabilities: [filesystem.write, execution.shell, verification.run, web.research]
@@ -20,18 +20,24 @@ metadata:
 
 ## Overview
 
-Choose and design cloud services from concrete application, data, availability and operational requirements.
+Cloud architecture translates concrete workload constraints (traffic shape, p95/p99 latency, data residency, RPO/RTO, team operational capacity, and budget) into explicit compute, storage, network, and IAM boundaries across AWS, GCP, Azure, Cloudflare Edge, or VPS topologies. Good architecture favors the simplest topology whose failure modes the team can actually operate and recover.
 
 Cloud products do not share one global latest version. Verify current service availability, quotas, runtime/SDK support and pricing from the selected provider before an architectural decision.
 
 ## Rules
 
-1. Start from workload, latency, consistency, recovery, compliance constraints and operating capacity.
-2. Compare concrete alternatives by data/identity/network boundaries and failure behavior, not provider marketing labels.
-3. Define accountable data ownership, regions, exposure and access paths.
-4. Estimate costs from explicit workload assumptions and dated provider rates; do not invent a monthly number.
-5. Choose the simplest supported deployment/managed service shape that meets the requirements.
-6. A design does not authorize account creation, provisioning, spending or production migration.
+1. Anchor every decision in stated workload metrics: request rate, payload size, statefulness, latency targets, RPO/RTO, compliance/residency, and team on-call capacity.
+2. Evaluate candidate topologies across concrete boundaries: compute execution limits (CPU/duration/memory), stateful connection pooling, cross-AZ/region egress, IAM identity blast radius, and single points of failure.
+3. Define data ownership, residency regions, public vs private network ingress/egress paths, and secret/key management explicitly.
+4. Build cost models from explicit unit drivers (compute GB-s / vCPU-hours, IOPS/storage GB, NAT/cross-AZ/egress GB, per-million requests) using dated provider pricing rather than guessed monthly totals.
+5. Prefer boring, well-supported managed primitives or single-stack deployments over prematurely distributed multi-cloud or microservice meshes.
+6. Keep architecture decisions distinct from live provisioning; an architecture recommendation never authorizes creating cloud accounts, incurring spend, or migrating live traffic without approval.
+
+## Core Patterns & Pitfalls
+
+- **Edge/Serverless vs Stateful Compute**: Match edge/serverless runtimes (Cloudflare Workers, Lambda, Cloud Run) to bursty, stateless, or edge-cached workloads, while pairing relational databases with connection pooling (Hyperdrive, RDS Proxy, PgBouncer) and keeping long-running CPU/stateful workloads on right-sized containers or VMs.
+- **Hidden Cost Multipliers**: Account for managed NAT Gateway per-GB processing, cross-AZ data transfer, high-cardinality observability ingestion, and per-request KMS/secret lookups that frequently dwarf base compute bills.
+- **Anti-pattern — Resume-Driven Complexity**: Recommending multi-region active-active databases or Kubernetes clusters for a single-team CRUD workload without a proven availability or regulatory requirement multiplies failure modes and operational toil.
 
 ## Workflow
 
@@ -43,11 +49,15 @@ Cloud products do not share one global latest version. Verify current service av
 
 ## Before returning
 
-Decision tied to requirements; provider/region facts sourced; cost assumptions visible; design versus provisioned/live outcome distinguished.
+- [ ] Workload, latency, RPO/RTO, compliance, and operational capacity constraints explicitly stated
+- [ ] Candidate options compared with clear trade-offs, failure domains, and rejected alternatives
+- [ ] Network exposure, IAM trust boundaries, and data residency/ownership mapped
+- [ ] Cost drivers itemized with dated provider assumptions (compute, storage, egress/NAT, observability)
+- [ ] Design recommendations clearly separated from authorized IaC provisioning or migration steps
 
 ## Sources
 
-Versioned facts checked 2026-10-09; refresh authoritative sources before new installs/upgrades.
+Versioned facts checked 2026-10-23; refresh authoritative sources before new installs/upgrades.
 [AWS framework](https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html), [Azure architecture](https://learn.microsoft.com/en-us/azure/architecture/), [Google Cloud framework](https://cloud.google.com/architecture/framework).
 
 ## Skills in scope

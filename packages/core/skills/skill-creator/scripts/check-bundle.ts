@@ -3,18 +3,18 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  isKnownRuntimeCapability,
+  missingRequiredRuntimeTools,
+  RUNTIME_CAPABILITY_MANIFEST,
+  runtimeToolReferencesFromText,
+} from '@wrongstack/contracts/types/runtime-capability-manifest';
 import { DefaultSkillLoader } from '../../../src/execution/skill-loader.js';
 import {
   parseSkillFrontmatter,
   stripFrontmatter,
   validateSkillDocument,
 } from '../../../src/skills/frontmatter.js';
-import {
-  isKnownRuntimeCapability,
-  missingRequiredRuntimeTools,
-  RUNTIME_CAPABILITY_MANIFEST,
-  runtimeToolReferencesFromText,
-} from '../../../src/types/runtime-capability-manifest.js';
 import { resolveWstackPaths } from '../../../src/utils/wstack-paths.js';
 
 // Read-only authoring check using the same parser, capabilities and loader as runtime.

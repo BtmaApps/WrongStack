@@ -1,8 +1,8 @@
 [
   {
     "package": "next",
-    "version": "16.4.0",
-    "latestTag": "16.4.0",
+    "version": "16.4.3",
+    "latestTag": "16.4.3",
     "selection": "latest stable tag",
     "engines": {
       "node": ">=20.9.0"
@@ -16,24 +16,24 @@
       "babel-plugin-react-compiler": "*"
     },
     "source": "https://registry.npmjs.org/next",
-    "checkedAt": "2026-10-09T18:57:28.434Z"
+    "checkedAt": "2026-10-23T20:36:06.166Z"
   },
   {
     "package": "react",
-    "version": "19.3.0",
-    "latestTag": "19.3.0",
+    "version": "19.3.1",
+    "latestTag": "19.3.1",
     "selection": "latest stable tag",
     "engines": {
       "node": ">=0.10.0"
     },
     "peerDependencies": {},
     "source": "https://registry.npmjs.org/react",
-    "checkedAt": "2026-10-09T18:57:28.471Z"
+    "checkedAt": "2026-10-23T20:36:06.166Z"
   },
   {
     "package": "motion",
-    "version": "14.0.0",
-    "latestTag": "14.0.0",
+    "version": "14.6.0",
+    "latestTag": "14.6.0",
     "selection": "latest stable tag",
     "engines": {},
     "peerDependencies": {
@@ -41,7 +41,7 @@
       "react-dom": "^18.0.0 || ^19.0.0"
     },
     "source": "https://registry.npmjs.org/motion",
-    "checkedAt": "2026-10-09T18:57:28.472Z"
+    "checkedAt": "2026-10-23T20:36:06.166Z"
   },
   {
     "package": "three",
@@ -51,12 +51,12 @@
     "engines": {},
     "peerDependencies": {},
     "source": "https://registry.npmjs.org/three",
-    "checkedAt": "2026-10-09T18:57:28.472Z"
+    "checkedAt": "2026-10-23T20:36:06.166Z"
   },
   {
     "package": "remotion",
-    "version": "4.0.534",
-    "latestTag": "4.0.534",
+    "version": "4.0.538",
+    "latestTag": "4.0.538",
     "selection": "latest stable tag",
     "engines": {},
     "peerDependencies": {
@@ -64,7 +64,7 @@
       "react-dom": ">=16.8.0"
     },
     "source": "https://registry.npmjs.org/remotion",
-    "checkedAt": "2026-10-09T18:57:28.790Z"
+    "checkedAt": "2026-10-23T20:36:06.477Z"
   },
   {
     "package": "@motion-canvas/core",
@@ -74,7 +74,7 @@
     "engines": {},
     "peerDependencies": {},
     "source": "https://registry.npmjs.org/%40motion-canvas%2Fcore",
-    "checkedAt": "2026-10-09T18:57:28.790Z"
+    "checkedAt": "2026-10-23T20:36:06.478Z"
   },
   {
     "package": "@motion-canvas/2d",
@@ -84,7 +84,7 @@
     "engines": {},
     "peerDependencies": {},
     "source": "https://registry.npmjs.org/%40motion-canvas%2F2d",
-    "checkedAt": "2026-10-09T18:57:28.790Z"
+    "checkedAt": "2026-10-23T20:36:06.478Z"
   },
   {
     "package": "@motion-canvas/vite-plugin",
@@ -96,7 +96,7 @@
       "vite": "4.x || 5.x"
     },
     "source": "https://registry.npmjs.org/%40motion-canvas%2Fvite-plugin",
-    "checkedAt": "2026-10-09T18:57:28.790Z"
+    "checkedAt": "2026-10-23T20:36:06.478Z"
   },
   {
     "package": "@motion-canvas/ffmpeg",
@@ -106,14 +106,16 @@
     "engines": {},
     "peerDependencies": {},
     "source": "https://registry.npmjs.org/%40motion-canvas%2Fffmpeg",
-    "checkedAt": "2026-10-09T18:57:29.036Z"
+    "checkedAt": "2026-10-23T20:36:07.004Z"
   },
   {
     "package": "expo",
-    "version": "57.0.27",
-    "latestTag": "57.0.27",
+    "version": "58.0.17",
+    "latestTag": "58.0.17",
     "selection": "latest stable tag",
-    "engines": {},
+    "engines": {
+      "node": "^22.13.0 || ^24.3.0 || ^26.0.0 || >=27.0.0"
+    },
     "peerDependencies": {
       "react": "*",
       "react-dom": "*",
@@ -124,39 +126,39 @@
       "react-native-webview": "*"
     },
     "source": "https://registry.npmjs.org/expo",
-    "checkedAt": "2026-10-09T18:57:29.037Z"
+    "checkedAt": "2026-10-23T20:36:07.004Z"
   },
   {
     "package": "react-native",
-    "version": "0.87.1",
-    "latestTag": "0.87.1",
+    "version": "0.88.0",
+    "latestTag": "0.88.0",
     "selection": "latest stable tag",
     "engines": {
       "node": "^22.13.0 || ^24.3.0 || >= 26.0.0"
     },
     "peerDependencies": {
-      "react": "^19.2.3",
+      "react": "^19.3.0",
       "@types/react": "^19.1.1"
     },
     "source": "https://registry.npmjs.org/react-native",
-    "checkedAt": "2026-10-09T18:57:29.037Z"
+    "checkedAt": "2026-10-23T20:36:07.004Z"
   },
   {
     "package": "vue",
-    "version": "3.5.43",
-    "latestTag": "3.5.43",
+    "version": "3.5.44",
+    "latestTag": "3.5.44",
     "selection": "latest stable tag",
     "engines": {},
     "peerDependencies": {
       "typescript": "*"
     },
     "source": "https://registry.npmjs.org/vue",
-    "checkedAt": "2026-10-09T18:57:29.037Z"
+    "checkedAt": "2026-10-23T20:36:07.004Z"
   },
   {
     "package": "nuxt",
-    "version": "4.6.0",
-    "latestTag": "4.6.0",
+    "version": "4.6.2",
+    "latestTag": "4.6.2",
     "selection": "latest stable tag",
     "engines": {
       "node": "^22.22.3 || ^24.15.0 || >=26.0.0"
@@ -167,7 +169,7 @@
       "@parcel/watcher": "^2.1.0"
     },
     "source": "https://registry.npmjs.org/nuxt",
-    "checkedAt": "2026-10-09T18:57:29.285Z"
+    "checkedAt": "2026-10-23T20:36:07.260Z"
   },
   {
     "package": "svelte",
@@ -179,12 +181,12 @@
     },
     "peerDependencies": {},
     "source": "https://registry.npmjs.org/svelte",
-    "checkedAt": "2026-10-09T18:57:29.285Z"
+    "checkedAt": "2026-10-23T20:36:07.261Z"
   },
   {
     "package": "@sveltejs/kit",
-    "version": "3.0.1",
-    "latestTag": "3.0.1",
+    "version": "3.1.0",
+    "latestTag": "3.1.0",
     "selection": "latest stable tag",
     "engines": {
       "node": ">=22.17"
@@ -197,12 +199,12 @@
       "@sveltejs/vite-plugin-svelte": "^7.0.0"
     },
     "source": "https://registry.npmjs.org/%40sveltejs%2Fkit",
-    "checkedAt": "2026-10-09T18:57:29.285Z"
+    "checkedAt": "2026-10-23T20:36:07.261Z"
   },
   {
     "package": "@angular/core",
-    "version": "22.2.2",
-    "latestTag": "22.2.2",
+    "version": "22.2.3",
+    "latestTag": "22.2.3",
     "selection": "latest stable tag",
     "engines": {
       "node": "^22.22.3 || ^24.15.0 || >=26.0.0"
@@ -210,36 +212,36 @@
     "peerDependencies": {
       "rxjs": "^6.5.3 || ^7.4.0",
       "zone.js": "~0.15.0 || ~0.16.0",
-      "@angular/compiler": "22.2.2"
+      "@angular/compiler": "22.2.3"
     },
     "source": "https://registry.npmjs.org/%40angular%2Fcore",
-    "checkedAt": "2026-10-09T18:57:29.285Z"
+    "checkedAt": "2026-10-23T20:36:07.261Z"
   },
   {
     "package": "astro",
-    "version": "7.3.8",
-    "latestTag": "7.3.8",
+    "version": "7.4.2",
+    "latestTag": "7.4.2",
     "selection": "latest stable tag",
     "engines": {
       "npm": ">=9.6.5",
-      "node": ">=22.12.0",
+      "node": ">=22.23.4",
       "pnpm": ">=7.1.0"
     },
     "peerDependencies": {
       "@astrojs/markdown-remark": "^7.3.0"
     },
     "source": "https://registry.npmjs.org/astro",
-    "checkedAt": "2026-10-09T18:57:29.537Z"
+    "checkedAt": "2026-10-23T20:36:07.521Z"
   },
   {
     "package": "fastify",
-    "version": "5.12.5",
-    "latestTag": "5.12.5",
+    "version": "5.12.7",
+    "latestTag": "5.12.7",
     "selection": "latest stable tag",
     "engines": {},
     "peerDependencies": {},
     "source": "https://registry.npmjs.org/fastify",
-    "checkedAt": "2026-10-09T18:57:29.538Z"
+    "checkedAt": "2026-10-23T20:36:07.521Z"
   },
   {
     "package": "express",
@@ -251,12 +253,12 @@
     },
     "peerDependencies": {},
     "source": "https://registry.npmjs.org/express",
-    "checkedAt": "2026-10-09T18:57:29.538Z"
+    "checkedAt": "2026-10-23T20:36:07.521Z"
   },
   {
     "package": "@modelcontextprotocol/sdk",
-    "version": "1.32.1",
-    "latestTag": "1.32.1",
+    "version": "1.32.2",
+    "latestTag": "1.32.2",
     "selection": "latest stable tag",
     "engines": {
       "node": ">=18"
@@ -266,20 +268,20 @@
       "@cfworker/json-schema": "^4.1.1"
     },
     "source": "https://registry.npmjs.org/%40modelcontextprotocol%2Fsdk",
-    "checkedAt": "2026-10-09T18:57:29.538Z"
+    "checkedAt": "2026-10-23T20:36:07.521Z"
   },
   {
     "package": "wrangler",
-    "version": "4.149.0",
-    "latestTag": "4.149.0",
+    "version": "4.152.0",
+    "latestTag": "4.152.0",
     "selection": "latest stable tag",
     "engines": {
       "node": ">=22.0.0"
     },
     "peerDependencies": {
-      "@cloudflare/workers-types": "^5.20261006.1"
+      "@cloudflare/workers-types": "^5.20261019.1"
     },
     "source": "https://registry.npmjs.org/wrangler",
-    "checkedAt": "2026-10-09T18:57:29.857Z"
+    "checkedAt": "2026-10-23T20:36:07.764Z"
   }
 ]

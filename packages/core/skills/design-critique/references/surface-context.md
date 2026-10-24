@@ -1,29 +1,22 @@
-**Classify the surface first.** Two axes are scored differently depending on it,
-and some are not scorable at all:
+# Surface Classification & Context-Specific Rubric Rules
 
-| Surface | Examples | What changes |
+**Classify the surface first.** Two axes (`Structure` and `Typography`) are scored differently depending on the surface archetype, and some axes are `n/a` in isolation:
+
+| Surface | Examples | How Rubric Scoring Changes |
 |---|---|---|
-| **Page** | landing, marketing, docs, article, onboarding | Nothing — every axis applies as written |
-| **App screen** | dashboard, console, table view, settings, editor chrome | *Structure*: "centered monotony" and "hero + three cards" do not apply; judge tile/lane rhythm and whether one element earns the focal point. *Typography*: the 60–75ch measure rule applies to prose blocks only, never to tables, labels or numeric cells |
-| **Kiosk / public terminal** | ticket machine, self-checkout, wayfinding panel, check-in screen | Every axis applies, **plus** the physical checks below — which no other surface needs and which outrank taste when they conflict |
-| **Component in isolation** | one primitive, one card | *Structure* and *Copy* are usually not scorable |
+| **Page** (`surface: "page"`) | Landing page, marketing site, documentation article, pricing page, editorial story, public onboarding | Every axis (`Structure`, `Typography`, `Color`, `Surface & depth`, `States & edges`, `Copy & voice`) applies as written. Prose measure (`60–75ch`), section rhythm variation, and focal hierarchy per screenful are strictly enforced. |
+| **App screen** (`surface: "app"`) | Dashboard, admin console, data table view, IDE/editor chrome, settings panel, split-pane inbox | **Structure**: "centered marketing monotony" and "hero + three cards" rules do not apply; instead, judge lane/panel alignment, toolbar density, sticky header/action placement, and whether primary anomalies or active selections earn the focal point. **Typography**: the `60–75ch` prose measure rule applies *only* to help text, descriptions, and comment threads — never penalize wide data tables, log viewers, or numeric grids (which require `tabular-nums`, right-aligned numbers, and left-aligned labels). |
+| **Kiosk / public terminal** | Ticket machine, self-checkout, clinic check-in, factory floor HMI, wayfinding display | Every craft axis applies, **plus** the 5 mandatory physical acceptance checks below — which no desktop/mobile surface requires and which outrank aesthetic preferences whenever they conflict. |
+| **Component in isolation** | Single button primitive, modal dialog, date picker, combobox, toast | **Structure** and **Copy & voice** are marked `n/a (isolated component)` unless the component is a self-contained composite card with domain copy. Focus the critique on `States & edges` (hover, focus-visible, active, disabled, loading, invalid, overflow), `Typography` (label truncation, icon-to-text optical alignment), `Color` (WCAG 2.2 contrast across themes), and `Surface & depth`. |
 
-**Kiosk is not a small page.** Its constraints are physical, and a rubric that
-only asks design questions will hand a kiosk a flattering score for the wrong
-reasons. Ask these as well, and treat a failure as blocking rather than craft:
+## Kiosk & Physical Terminal Acceptance Checks (Blocking)
 
-- **Readable at distance.** Can the primary state and the total/answer be read
-  from two metres, in glare? If the answer depends on leaning in, it fails.
-- **One cold finger.** Targets well above the 44px floor (64px+), spaced so a
-  mis-tap cannot select the neighbour. No hover, no drag, no long-press, no
-  dropdown.
-- **Recoverable.** Every destructive or committing step has a visible way back.
-  A stranded user cannot refresh, log in again, or email support.
-- **No session.** Nothing personal persists on screen, and the screen returns to
-  its start state on its own after inactivity.
-- **Standing, not sitting.** Content sits in the upper-middle band; nothing
-  essential lives at the very bottom of a tall panel.
+**A kiosk is not a large tablet page.** Its constraints are physical, environmental, and sessionless. A rubric that only asks desktop UI questions will hand a kiosk a flattering score for the wrong reasons. Evaluate all 5 physical checks below and treat any failure as **Blocking** rather than Craft:
 
-Score the six craft axes as usual, then report the physical checks as a separate
-pass/fail list. A kiosk that scores 4/5 on craft and fails "readable at distance"
-is a failing screen.
+1. **Readable at 2 Metres in Glare**: Can the primary system state, step prompt, and total/confirmation be read from two metres away under harsh overhead fluorescent or daylight glare? Body/label type below `20px–24px`, thin font weights (`300`/`400`), or low-contrast muted greys (`< 7:1` AAA) fail immediately.
+2. **One Cold / Gloved Finger**: Touch targets must sit well above the 44px mobile floor (`>= 64px × 64px` minimum, `80px+` for primary actions) with `>= 12px–16px` gap between adjacent buttons so a rushed or gloved tap cannot trigger a neighbor. Zero reliance on hover tooltips, drag-and-drop, two-finger pinch, long-press, or tiny native `<select>` dropdowns.
+3. **Always Recoverable Without Browser Chrome**: Every step — especially payment, printing, or destructive cancellation — must display an explicit, oversized `"Back"` or `"Start Over"` control on screen. A stranded kiosk user has no browser back button, URL bar, keyboard refresh, or support chat.
+4. **Strict Session Hygiene & Auto-Reset**: No personal data, receipt details, or prior customer inputs may persist after completion. An idle screen must show a visible countdown prompt (e.g., `"Still there? Resetting in 15s..."`) and automatically wipe state back to the attract/start screen on timeout.
+5. **Standing Ergonomics (Vertical Reach Band)**: Interactive controls must sit in the comfortable standing reach zone (roughly the middle-to-upper-middle vertical band of the display, accessible to both standing users and wheelchair users under ADA / EN 301 549 reach ranges). Never place primary `"Continue"` or `"Pay"` buttons flush against the bottom edge of a tall vertical totem panel.
+
+Score the six craft axes as usual, then report the five physical checks as an explicit `PASS` / `FAIL` list in the report header. A kiosk that scores `4/5` on visual craft and fails *"Readable at distance"* or *"Strict session hygiene"* is a failing screen.

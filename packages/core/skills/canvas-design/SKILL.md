@@ -1,7 +1,7 @@
 ---
 name: canvas-design
 description: "Design high-craft visual posters, graphic art, editorial layouts, and vector canvas documents in PDF or PNG. Use when creating posters, book covers, typographic prints, brand collateral, or graphic compositions governed by visual philosophy and strict layout grids."
-version: 1.0.0
+version: 1.1.0
 required-capabilities: [filesystem.read, filesystem.write]
 required-tools: []
 optional-capabilities: [verification.run, web.research]
@@ -40,16 +40,23 @@ Avoid generic marketing template aesthetics, centered card blobs, and unmotivate
 - **Editorial Literary**: High-contrast serifs, expansive margins, delicate hair-rule dividers, running heads, and footnote indexation.
 - **Minimal Constructivist**: Heavy geometric forms (circles, diagonal vectors, thick color blocks) paired with compact, technical data annotations.
 
-## Quality Standards
+## Quality Standards & Anti-Patterns
 
-- **Proportion & Aspect Ratio**: Explicit canvas sizing (A-series A2/A3/A4, 18x24 print, or 4:5 social ratio).
-- **Type Scale Ratio**: Avoid random font sizes; use a strict harmonic scale (e.g., Major Third 1.25 or Golden Ratio 1.618).
-- **Negative Space**: Treat empty space as an active sculptural element, not empty void to fill.
-- **Export Format**: Deliver high-DPI vector SVG, print-ready PDF, or crisp raster PNG (minimum 300 DPI for print).
+- **Proportion & Aspect Ratio**: Explicit canvas sizing (A-series A2/A3/A4, 18x24 print, or 4:5 social ratio) with a 3mm–5mm bleed zone and a 12mm–20mm safe inset margin so headlines and rules never clip at trim edges.
+- **Type Scale Ratio**: Avoid random font sizes; adhere to a strict harmonic scale (e.g., Major Third 1.25, Augmented Fourth 1.414, or Golden Ratio 1.618) with tight negative tracking (`-0.02em` to `-0.04em`) on display sizes and loose positive tracking (`+0.06em` to `+0.12em`) on micro-captions.
+- **Negative Space**: Treat empty space as an active sculptural element (at least 35%–50% of the canvas area), not an empty void to fill with decorative badges or background blobs.
+- **Anti-Patterns**: Never center every text block on a vertical axis, never layer low-contrast white text over unmasked busy photography, and never mix more than two typeface families on a single poster.
+- **Export Format**: Deliver high-DPI vector SVG, print-ready PDF, or crisp raster PNG (minimum 300 DPI for print; checked 2026-10-23: Playwright 1.64.1, pdf-lib 1.17.1, sharp 0.35.5).
+
+## Skills in scope
+
+- `pdf` — vector print-ready PDF generation and pagination geometry
+- `theme-factory` — curated typographic pairings and harmonic color systems
+- `brand-guidelines` — official WrongStack brand tokens and visual standards
 
 ## Acceptance checks
 
-- Visual manifesto is explicitly defined with movement name and formal rules.
-- Composition adheres strictly to an intentional typographic grid and harmonic scale.
-- Output contains high visual craft and eliminates unmotivated AI template tropes.
-- Rendered artifact (SVG/PDF/PNG) is verified for bleed, margin clipping, and resolution.
+- [ ] Visual manifesto is explicitly defined with movement name, grid geometry, and formal hierarchy rules.
+- [ ] Composition adheres strictly to an intentional multi-column or modular grid and harmonic type scale.
+- [ ] Output demonstrates high visual craft (optical alignment, intentional negative space) and eliminates AI template tropes.
+- [ ] Rendered artifact (SVG/PDF/PNG) is verified for bleed, safe-margin clearance, font embedding, and 300+ DPI resolution.

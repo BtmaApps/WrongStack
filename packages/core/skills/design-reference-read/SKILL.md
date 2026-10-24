@@ -136,12 +136,12 @@ as an opinion.
 
 ## Acceptance checks
 
-- `dna.md` exists for every page you cite, and its date and viewports are stated in the brief.
-- Every cited value is from the record or labelled as an image measurement.
-- Patterns are named by catalog id with at least two observed signals each.
-- Lessons follow the decision/evidence/apply form; none relies on adjectives alone.
-- For Borrow, the primary hue, display face, logo, imagery and copy are your own.
-- Limits from the record are repeated where they affect a decision.
+- [ ] `dna.md` exists for every cited reference page, with its extraction date and viewports (`1440`, `768`, `390`) recorded in `.design/brief.md`.
+- [ ] Every cited measurement comes directly from `dna.md` or is explicitly labeled `measured-from-image` with its pixel scale anchor.
+- [ ] Layout and section patterns are named by canonical `design-patterns` ids backed by at least two observed signals each.
+- [ ] Extracted lessons follow the `<slug>: <decision> — evidence: <measured value> — apply as: <change>` format without vague adjectives.
+- [ ] When intent is **Borrow**, the primary hue, display typeface, logo, imagery, and copy remain original to our product.
+- [ ] Measurement caveats from `dna.md` ("Limits of this measurement") are carried into the brief wherever they affect design decisions.
 
 ## Failure modes
 
@@ -153,3 +153,10 @@ as an opinion.
 | Copying the palette for "inspired by" | Borrow ratios and strategy, not hues |
 | Trusting a declared font that never loaded | Check `loaded`; the notes say when it is uncertain |
 | Naming bento/glass/brutalism from one cue | Two observed signals or "resembles" |
+
+## Skills in scope
+
+- `design-patterns` — map measured layout and section signals to canonical pattern ids and invariant anatomy checks.
+- `design-craft` — carry extracted lessons and brief decisions into the build and visual verification loop.
+- `design-system` — translate measured color roles, type scales, spacing units and radii into project tokens.
+- `design-to-code` — run iterative reference comparison when the intent is an exact visual match.

@@ -1,7 +1,7 @@
 ---
 name: media-production
 description: "Create and process finished videos with Remotion, Motion Canvas, Manim, FFmpeg or an available AI video provider. Use when producing a video, UI demo, explainer, subtitles, narration timeline or format conversion; select the renderer from the content rather than defaulting every video to one engine."
-version: 1.2.1
+version: 1.2.2
 required-capabilities: [filesystem.read, filesystem.write]
 required-tools: []
 optional-capabilities: [verification.run, web.research]
@@ -20,7 +20,7 @@ metadata:
 ## Overview
 
 Deliver a playable video with reproducible source and observed output checks.
-Latest stable targets checked 2026-10-09: Remotion 4.0.534, Motion Canvas 3.17.2,
+Latest stable targets checked 2026-10-23: Remotion 4.0.538, Motion Canvas 3.17.2,
 Manim Community 0.22.0 and FFmpeg 9.0.2. Refresh these before a new setup.
 
 ## Rules
@@ -65,12 +65,15 @@ Manim Community 0.22.0 and FFmpeg 9.0.2. Refresh these before a new setup.
 
 ## Acceptance checks
 
-- Render, probe and play the final video; verify dimensions, timing, streams, captions and audio.
+- [ ] Selected rendering engine (Remotion, Motion Canvas, Manim, FFmpeg) matches the visual content and project toolchain
+- [ ] All animations driven by deterministic frame/timeline indices rather than `setTimeout`, CSS transitions, or unseeded randomness
+- [ ] Boundary frames inspected at delivery resolution for text legibility, safe-area margins, and transition continuity
+- [ ] Final output verified via `ffprobe` (codec, `yuv420p` pixel format, resolution, fps, duration, audio streams) and playback
 
 ## Skills in scope
 
-- audio-studio — music and narration.
-- motion-canvas-video — generator-based animated scenes.
-- manim-video — mathematical and scientific scenes.
-- threejs-3d — real-time 3D assets and scene integration.
-- office-documents — related slide or document deliverables.
+- audio-studio — composing music tracks, TTS voiceover narration, and loudness-matched audio stems.
+- motion-canvas-video — generator-driven 2D vector diagrams and synchronized code walkthrough scenes.
+- manim-video — mathematical equations, geometric proofs, and scientific visualizations in Python.
+- threejs-3d — embedding WebGL/WebGPU 3D scenes inside frame-accurate video pipelines.
+- office-documents — companion slide decks, scripts, and PDF handouts.

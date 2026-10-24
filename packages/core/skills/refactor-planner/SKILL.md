@@ -63,14 +63,15 @@ parallel agents solely because the target contains many files.
 
 ## Before returning
 
-- Dependency direction and consumer scope explicit.
-- Refactoring and intentional behavior changes distinguished.
-- Each checkpoint has a meaningful exit check and rollback.
-- Planning-only scope honored; authorized execution not abandoned at the plan.
+- [ ] Dependency and caller graph derived from actual source imports and dynamic registrations
+- [ ] Behavior-preserving refactoring steps separated from intentional functional or API changes
+- [ ] Unprotected high-risk paths covered by characterization tests before structural moves
+- [ ] Every step leaves the repository buildable and testable with an explicit validation command and rollback path
+- [ ] Pre-existing uncommitted changes preserved untouched
 
 ## Skills in scope
 
-- codebase-navigation — trace dependencies and callers.
-- testing — characterization and contract checks.
-- code-quality — unused/coupled code assessment.
-- git-flow — reviewable commits when requested.
+- codebase-navigation — mapping static/dynamic import graphs, circular dependencies (SCCs), and public API consumers.
+- testing — authoring characterization and contract regression tests before moving coupled logic.
+- code-quality — identifying dead exports, unused dependencies, and barrel-file coupling during decomposition.
+- git-flow — structuring atomic, reviewable commits when multi-step commit history is requested.
