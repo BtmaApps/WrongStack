@@ -56,14 +56,21 @@ describe('F1-F12 application journey', () => {
     );
     try {
       await waitForJourney(() => signal !== undefined);
+      // A fixed settle is not a render barrier: when the event loop stalls past
+      // the settle deadline (loaded CI/coverage run), Ink's 20ms Esc flush and
+      // the settle timer expire in the same timers phase, so the assertion runs
+      // before React commits the frame. Poll for the frame instead; a panel
+      // that never opens/closes still fails at the timeout.
+      const untilFrame = (assertion: () => void) =>
+        vi.waitFor(assertion, { timeout: 5_000, interval: 20 });
       for (const [key, sequence, title] of panels) {
         view.stdin.write(sequence);
         await settle(150);
+        await untilFrame(() => expect(view.lastFrame(), `${key} opened`).toContain(title));
         const failure = view.stdout.frames
           .join('\n')
           .match(/(?:ERROR|Maximum update depth)[\s\S]{0,1400}/)?.[0];
         expect(failure, `${key} opened at ${columns}x${rows}`).toBeUndefined();
-        expect(view.lastFrame(), `${key} opened`).toContain(title);
         expect(signal?.aborted, `${key} did not abort work`).toBe(false);
         view.stdin.write('\x1b[B');
         view.stdin.write('\x1b[A');
@@ -75,7 +82,9 @@ describe('F1-F12 application journey', () => {
         await settle(100);
         view.stdin.write('\x1b');
         await settle(150);
-        expect(view.lastFrame(), `${key} closes with Esc`).not.toContain(title);
+        await untilFrame(() =>
+          expect(view.lastFrame(), `${key} closes with Esc`).not.toContain(title),
+        );
         expect(signal?.aborted, `${key} close did not abort work`).toBe(false);
       }
     } finally {
