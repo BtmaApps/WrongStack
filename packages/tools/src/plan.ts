@@ -135,6 +135,7 @@ export const planTool: Tool<PlanInput, PlanOutput> = {
     '- Use `taskify` to convert a plan item into a structured task (with type/priority/deps).\n' +
     '- Unfinished plan items cannot be removed or cleared; complete them first.\n' +
     '- Keep plans at the "why and what" level, and todos at the "how and next step" level.\n' +
+    '- Do not add speculative filler phases or re-open completed items; once all planned phases are done and verified, finish the turn immediately.\n' +
     '- Common templates: "new-feature", "bug-fix", "refactor", "release", "security-audit".\n\n' +
     'This tool is excellent for maintaining long-term direction across many turns within a session. Plans survive resume but are not shared across separate sessions.\n' +
     'Use `scope: "project"` to use a shared project-level plan file.',

@@ -163,7 +163,7 @@ export const execTool: Tool<ExecInput, ExecOutput> = {
   category: 'Shell',
   description:
     'Execute a command directly with argument validation and permission gating. Outside YOLO, the curated command roster applies; YOLO/YOLO+ accept other executables while explicit tools.exec.deny entries still refuse. ' +
-    'This is the **preferred** alternative to the `bash` tool for running development tools (node, npm, pnpm, tsc, git, tests, linters, etc.). ' +
+    'This is the **preferred** alternative to the `bash` tool for running development tools (git, cargo, go, pytest, python, node, bun, npm, pnpm, tsc, tests, linters, etc.). ' +
     'It is NOT a sandbox — several rostered commands (node, python, powershell, …) can run arbitrary code — so prefer least-privilege commands.',
   usageHint:
     'PREFERRED SHELL TOOL for most cases.\n\n' +

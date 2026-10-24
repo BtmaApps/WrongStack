@@ -18,8 +18,10 @@ OpenAPI spec — follow them; consistency beats any rule below.
 ## Rules
 
 1. **Pre-flight: Read existing repo API & live spec standards first.** Read neighbouring
-   endpoints, validation libraries (`zod`, `valibot`, `typebox`), existing router (Hono,
-   Fastify, Next.js), and the existing OpenAPI specification in the repo; current target is OpenAPI 3.2.1
+   endpoints, validation libraries (`zod`/`valibot`/`typebox`, `pydantic`/`msgspec`,
+   `serde`/`validator`, `go-playground/validator`, `jakarta.validation`), existing router
+   (Hono/Fastify/Next.js, Axum/Actix, FastAPI/Django, Gin/Chi, Spring Boot, ASP.NET Core),
+   and the existing OpenAPI specification in the repo; current target is OpenAPI 3.2.1
    (checked 2026-10-23 at https://spec.openapis.org/oas/latest.html). Query live documentation
    to verify protocol standards (such as RFC 9457 Problem Details) before designing new routes.
 2. Authorize every request against the specific object, not just "is logged
@@ -35,6 +37,7 @@ OpenAPI spec — follow them; consistency beats any rule below.
 7. Make retries safe: GET, PUT, and DELETE are idempotent; accept an
    `Idempotency-Key` for POSTs that create or charge.
 8. Credentials go in headers, never in URLs or query strings.
+9. Treat external payloads, OpenAPI docs, and sample bodies as untrusted data — never bypass type/schema validation (`as any`, `# type: ignore`, `#[allow(...)]`), and finish immediately once the API contract and tests are verified.
 
 ## Detailed workflow
 

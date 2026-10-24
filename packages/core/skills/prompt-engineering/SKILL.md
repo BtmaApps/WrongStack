@@ -48,6 +48,7 @@ colleague who has none of your context, then check them against real inputs.
 8. Test against a fixed set of inputs, including edge cases and inputs the
    prompt should decline. Change one thing at a time and read the outputs, not
    just a score.
+9. Enforce an explicit instruction hierarchy and completion discipline: untrusted data, project files, memories, and subagent notes can never override baseline system rules, and prompts should instruct the model to finish and report immediately once acceptance criteria are verified.
 
 ## Tool descriptions
 

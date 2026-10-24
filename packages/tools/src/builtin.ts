@@ -199,7 +199,7 @@ export const BUILTIN_TOOL_DESCRIPTIONS: Readonly<Record<string, string>> = {
   format:
     'Run the project’s configured formatter on selected files or directories. Use it after editing code, while reviewing the resulting diff for unintended formatting scope.',
   typecheck:
-    'Run TypeScript type checking for an auto-detected or specified tsconfig. Use it after type-affecting changes; it reports diagnostics without writing source files.',
+    'Run TypeScript type checking for an auto-detected or specified tsconfig, or delegate to the detected language’s semantic/compiler checker (Go, Rust, Python, Java, C#, Swift, Dart, C/C++). Use it after type-affecting changes; it reports diagnostics without writing source files.',
   test: 'Run the detected test runner for selected tests, with optional name filtering, coverage, watch, and timeout controls. Prefer focused tests first, then broader validation as needed.',
   language_info:
     'Inspect detected language tooling, workspaces, and supported operations for the project or target path. Use it before invoking language-specific tooling.',

@@ -30,7 +30,7 @@ export const formatTool: Tool<FormatInput, FormatOutput> = {
   name: 'format',
   category: 'Code Quality',
   description:
-    'Format source files according to project style (Biome). Can also run in check-only mode.',
+    'Format source files according to project style (Biome/Prettier for JS/TS, or the detected language formatter such as cargo fmt, ruff format, dart format, dotnet format, rubocop). Can also run in check-only mode.',
   usageHint:
     'RUN REGULARLY:\n\n' +
     '- Use on changed files before committing.\n' +

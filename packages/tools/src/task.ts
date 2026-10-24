@@ -135,7 +135,8 @@ export const taskTool: Tool<TaskInput, TaskOutput> = {
     '- `priority`: "critical" | "high" | "medium" | "low"\n' +
     '- `assignee`: agent/subagent name (e.g. "bug-hunter", "refactor-planner")\n' +
     '- `estimateHours`: rough time estimate\n' +
-    '- `scope`: "session" (default, isolated) or "project" (shared across sessions)',
+    '- `scope`: "session" (default, isolated) or "project" (shared across sessions)\n' +
+    '- Do not create filler tasks or re-open completed tasks; once all required tasks are completed and verified, finish immediately.',
   permission: 'confirm',
   mutating: true,
   subjectKey: 'action',

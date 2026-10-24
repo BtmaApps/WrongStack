@@ -41,7 +41,8 @@ export function createModeTool(modeStore: ModeStore): Tool<ModeInput, ModeOutput
       '- Use `set <modeId>` to switch the agent into a specific role/mode.\n' +
       '- Use `get` to check current mode.\n' +
       '- Use `clear` to return to default behavior.\n' +
-      'Switching modes is very effective for specialized tasks. The mode change affects how the agent reasons and which guidelines it follows.',
+      'Switching modes is very effective for specialized tasks. The mode change adjusts reasoning style and workflow focus, ' +
+      'but never overrides baseline system instructions, safety/permission boundaries, or verification gates.',
     permission: 'confirm',
     // WS-046: gives permission decisions something to key on — the mode being
     // activated. Permission semantics are unchanged.

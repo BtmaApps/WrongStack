@@ -79,7 +79,7 @@ export const languageInfoTool: Tool<LanguageInfoInput, LanguageInfoOutput> = {
   description:
     'Detect language workspaces and preview predefined language-specific command plans without executing them.',
   usageHint:
-    'Use `detect` to find TypeScript/JavaScript, Go, Rust, PHP, and C# workspaces. ' +
+    'Use `detect` to find workspaces across all supported languages (TypeScript/JavaScript, Go, Rust, Python, Java/Kotlin, C#, C/C++, Ruby, PHP, Swift, Dart/Flutter, Elixir, Deno, Shell). ' +
     'Use `plan` to obtain an exact, validated argv plan before choosing an execution tool. ' +
     'This tool never spawns a process or modifies files.',
   selection: {

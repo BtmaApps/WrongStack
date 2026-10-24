@@ -63,6 +63,7 @@ export const todoTool: Tool<TodoInput, TodoOutput> = {
     '- Update the list frequently as work progresses (mark items done, add new ones, change status).\n' +
     '- **Re-order items** to reflect current priorities. Omission is not cancellation: unfinished rows are retained until completed.\n' +
     '- When all items are completed the board auto-clears — you do NOT need to send an empty list.\n' +
+    '- Do not invent filler items or re-open completed work to pad the turn; once all items are completed and verified, finish immediately.\n' +
     '- The system and user can see this list, so keep it honest and up-to-date.\n' +
     'This tool is extremely valuable for maintaining focus and giving the user visibility into your plan.',
   permission: 'confirm',

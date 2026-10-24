@@ -30,7 +30,7 @@ export const lintTool: Tool<LintInput, LintOutput> = {
   name: 'lint',
   category: 'Code Quality',
   description:
-    'Run the project linter (primarily Biome in this repo). Detects style violations, potential bugs, and formatting issues.',
+    'Run the project linter (Biome/ESLint for JS/TS, or the detected language linter such as clippy, ruff, golangci-lint/go vet, rubocop, dotnet). Detects style violations, potential bugs, and formatting issues.',
   usageHint:
     'RUN OFTEN DURING DEVELOPMENT:\n\n' +
     '- `fix: true` will automatically correct what it can.\n' +

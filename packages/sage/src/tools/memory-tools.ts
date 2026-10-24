@@ -115,7 +115,7 @@ function memoryRememberTool(memory: SageServiceLike): Tool<RememberToolInput, Sa
       'WHEN TO USE:\n' +
       '- Project conventions discovered during a task (build tool, lint rules, code style)\n' +
       '- Architecture decisions made (chose X over Y, decided to use pattern Z)\n' +
-      '- User preferences expressed (prefers short names, always uses pnpm)\n' +
+      '- User preferences expressed (prefers short names, preferred package manager or test runner)\n' +
       '- Anti-patterns / warnings identified (never do X, avoid pattern Y)\n' +
       '- Bug root-causes and file/symbol notes useful across sessions\n\n' +
       'PREFER DURABLE PROJECT REFERENCES:\n' +

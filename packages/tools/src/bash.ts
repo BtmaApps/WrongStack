@@ -19,7 +19,7 @@ export const bashTool: Tool<BashInput, BashOutput> = {
   usageHint:
     'SECURITY WARNING: This tool runs with the full privileges of the current user.\n\n' +
     'Best practices for the model:\n' +
-    '- Strongly prefer `exec` for known safe commands (node, npm, pnpm, tsc, git, etc.).\n' +
+    '- Strongly prefer `exec` for known safe commands (git, cargo, go, pytest, node, bun, npm, pnpm, tsc, etc.).\n' +
     '- Use bash only when you genuinely need shell features (pipes, redirection, complex one-liners).\n' +
     '- Prefer single focused commands over huge `&&` chains.\n' +
     '- Use `background: true` only for long-running processes (dev servers, watchers). Its output goes to the `log_file` in the result; `read` it to see how the process is doing.\n' +

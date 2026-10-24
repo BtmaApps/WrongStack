@@ -53,7 +53,7 @@ export function rememberTool(memory: MemoryStore): Tool<RememberInput, RememberO
       'WHEN TO USE:\n' +
       '- Project conventions discovered during a task (build tool, lint rules, code style)\n' +
       '- Architecture decisions made (chose X over Y, decided to use pattern Z)\n' +
-      '- User preferences expressed (prefers short names, always uses pnpm)\n' +
+      '- User preferences expressed (prefers short names, preferred package manager or test runner)\n' +
       '- Anti-patterns identified (never do X, avoid pattern Y)\n' +
       '- File/location references useful across sessions\n\n' +
       'WHEN NOT TO USE:\n' +
