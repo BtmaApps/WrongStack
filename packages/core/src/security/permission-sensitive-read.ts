@@ -233,7 +233,13 @@ function realpathOfNearestExisting(p: string): string {
   const tail: string[] = [];
   for (;;) {
     try {
-      return tail.length === 0 ? realpathSync(probe) : path.join(realpathSync(probe), ...tail);
+      // `.native`, not the JS `realpathSync`: on Windows only the native call
+      // expands an 8.3 short name (`WRONGS~1` → `.wrongstack`). The JS version
+      // keeps the alias verbatim, so `~/WRONGS~1/config.json` — the same file —
+      // never matched the root and was read silently. Matches the probe in
+      // agent-state-sensitivity.ts, which already used `.native`.
+      const real = realpathSync.native(probe);
+      return tail.length === 0 ? real : path.join(real, ...tail);
     } catch {
       const parent = path.dirname(probe);
       if (parent === probe) return expandHome(p);
@@ -278,7 +284,10 @@ export function isInsideAgentStateRoot(absPath: string): boolean {
     realRoot = normalizeForCompare(realpathOfNearestExisting(path.resolve(wstackGlobalRoot())));
     agentStateRootRealCache.set(lexicalRoot, realRoot);
   }
-  if (!realRoot || realRoot === lexicalRoot) return false;
+  // No `realRoot === lexicalRoot` short-circuit: an unlinked root says nothing
+  // about the SUBJECT, which can still reach the root through an alias spelling
+  // (8.3 short name, a link elsewhere) that only its own realpath reveals.
+  if (!realRoot) return false;
   const realTarget = normalizeForCompare(realpathOfNearestExisting(absPath));
   return realTarget === realRoot || realTarget.startsWith(`${realRoot}/`);
 }

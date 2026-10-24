@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-24T09:23:14.884Z",
+  "generatedAt": "2026-10-24T09:26:06.930Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 38,
     "sourceFiles": 5256,
-    "testFiles": 4651,
-    "sourceLines": 1149767,
+    "testFiles": 4653,
+    "sourceLines": 1149776,
     "workspaceEdges": 140,
     "moduleEdges": 17311,
     "nonCommandSlashImports": 0,
@@ -249,7 +249,7 @@
       "name": "@wrongstack/core",
       "dir": "packages/core",
       "sourceFiles": 1166,
-      "testFiles": 1022,
+      "testFiles": 1024,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -264,7 +264,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 1022
+          "testFiles": 1024
         }
       ]
     },
@@ -10150,6 +10150,18 @@
       },
       {
         "file": "packages/core/tests/sandbox/windows-native.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/security/agent-state-root-native-realpath.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/security/agent-state-root-shortname.test.ts",
         "projects": [
           "root-node"
         ]
