@@ -24,21 +24,17 @@
         "export * from '@wrongstack/contracts/kernel';",
         "export * from '@wrongstack/contracts/types';",
         "export type { CacheStats, LastRequestCacheStats, ProviderCacheStats, TokenCounter, } from '@wrongstack/contracts/types/token-counter';",
-        "export type { CascadeAgentKind, ChimeraCascadeNeededPayload, ChimeraReviewCompletePayload, ChimeraReviewNeededPayload, ResolvedChimeraConfig, ReviewContextBundle, } from './plugins/chimera-plugin.js';",
-        "export type { ChimeraFinding, ChimeraFindingLocation, ChimeraFindingOrigin, ChimeraFindingResolution, FindingEventType, FindingLifecycleEvent, FindingSeverity, FindingSource, FindingStatus, ResolutionOutcome, } from './plugins/review-finding-types.js';",
         "export type { Compactor, CompactReport } from '@wrongstack/contracts/types/compactor';",
         "export type { FallbackChain, FallbackChainEntry, ProviderHealth, } from './core/fallback-profile-manager.js';",
         "export type { FileEventRecord } from '@wrongstack/contracts/types/file-event-record';",
         "export type { Logger, LogLevel } from '@wrongstack/contracts/types/logger';",
         "export type { ModelsDevModel, ModelsDevPayload, ModelsDevProvider, ModelsRegistry, ResolvedModel, ResolvedProvider, WireFamily, } from '@wrongstack/contracts/types/models-registry';",
         "export type { ProviderRunner, RunProviderOptions, } from '@wrongstack/contracts/types/provider-runner';",
-        "export type { ReportEventType, ReportLifecycleStatus, ReviewReport, ReviewReportCounts, ReviewReportEvent, ReviewReportFile, } from './plugins/review-report-types.js';",
         "export type { RotatableSecretVault, SecretVault } from '@wrongstack/contracts/types/secret-vault';",
         "export type { SecretScrubber } from '@wrongstack/contracts/types/secret-scrubber';",
         "export type { SessionLiveStatus, SessionRegistryEntry, } from './session-catalog/session-registry.js';",
         "export type { ToolWrapper } from './registry/tool-registry.js';",
         "export { Agent, type AgentInit, type AgentInput, type AgentPipelines, createDefaultPipelines, DEFAULT_MAX_ITERATIONS, type RunResult, type ToolCallPipelinePayload, type UserInputPayload, } from './core/agent.js';",
-        "export { CHIMERA_REVIEW_PROMPT, createChimeraPlugin, resolveChimeraConfig, } from './plugins/chimera-plugin.js';",
         "export { CONTEXT_WINDOW_MODE_PINNED_META_KEY, CONTEXT_WINDOW_MODES, type ContextWindowAggressiveOn, type ContextWindowConfigLike, type ContextWindowMode, type ContextWindowModeId, type ContextWindowModeSelectionId, type ContextWindowPolicy, type ContextWindowThresholds, DEFAULT_CONTEXT_WINDOW_MODE_ID, DEPRECATED_CONTEXT_WINDOW_MODE_ALIASES, type DeprecatedContextWindowModeId, formatContextWindowModeList, getContextWindowMode, isContextWindowModeId, isContextWindowModeSelectionId, isDeprecatedContextWindowModeId, LARGE_WINDOW_DEEP_MODE_THRESHOLD, listContextWindowModes, normalizeContextWindowModeId, resolveContextWindowPolicy, } from '@wrongstack/contracts/types/context-window';",
         "export { Context, type ContextInit, type ProviderMemoryEvidence, type RunOptions, type TodoItem, } from './core/context.js';",
         "export { ConversationState, type ReadonlyConversationState, type StateChange, type StateChangeHandler, wrapAsState, } from './core/conversation-state.js';",
@@ -49,10 +45,8 @@
         "export { DefaultSecretScrubber } from './security/secret-scrubber.js';",
         "export { DefaultSystemPromptBuilder, type DefaultSystemPromptBuilderOptions, LAYER_1_IDENTITY, SYSTEM_BLOCK_SOURCE, type SystemBlockSource, } from './core/system-prompt-builder.js';",
         "export { DefaultTaskStore } from './tasking/task-store.js';",
-        "export { FINDING_STORE_FILE, type FindingStore, JsonlFindingStore, type ListOptions as FindingListOptions, type UpsertContext, type UpsertResult, } from './plugins/review-finding-store.js';",
         "export { FallbackProfileManager } from './core/fallback-profile-manager.js';",
         "export { InputBuilder, type InputBuilderEvent, type InputBuilderOptions, } from './core/input-builder.js';",
-        "export { JsonlReportStore, type ListReportsOptions, type PersistReportInput, REPORT_STORE_FILE, type ReportActor, type ReportStore, } from './plugins/review-report-store.js';",
         "export { KERNEL_API_VERSION, type LoadPluginsOptions, loadPlugins, type PluginHostHandle, type PluginLoadFailure, unloadPlugins, } from './plugin/loader.js';",
         "export { ProviderAuthRegistry } from './registry/provider-auth-registry.js';",
         "export { TRUST_POLICY_JSON_SCHEMA, TRUST_POLICY_LIMITS, TRUST_POLICY_SCHEMA_VERSION, type TrustPolicyDiagnostic, type TrustPolicyDiagnosticCode, type TrustPolicyValidationResult, validateTrustPolicy, } from './security/permission-policy-schema.js';",
@@ -64,27 +58,20 @@
         "export { buildBtwBlock, consumeBtwNotes, pendingBtwCount, setBtwNote, } from './core/btw.js';",
         "export { buildMailboxBlock, buildMailboxBtwAwarenessBlock, createMailboxChecker, injectPendingMailboxMessages, type MailboxDeliveryMode, type MailboxLoopOptions, } from './core/mailbox-loop.js';",
         "export { buildQueuedMessagesBlock, consumeQueuedMessagesUpdate, peekQueuedMessages, setQueuedMessagesSnapshot, } from './core/queued-messages.js';",
-        "export { buildReviewerModelPool, createAutoReviewPlugin, parseReviewSeverity, type ReviewerModelAssignment, selectRoundRobinReviewerAssignment, } from './plugins/auto-review-plugin.js';",
         "export { buildSessionNoteBlock, consumeSessionNotes, enqueueSessionNote, pendingSessionNoteCount, type SessionNote, type SessionNoteKind, } from './core/session-notes.js';",
         "export { countShellHooks, HookRegistry, type HookRunEnv, HookRunner, type HookRunnerOptions, hookMatcherMatches, type PreToolUseResult, type PromptResult, runShellHook, type ShellHookSpec, shellHooksEqual, } from './hooks/index.js';",
-        "export { createCloudConfigSyncPlugin } from './plugins/cloud-config-sync-plugin.js';",
         "export { createFallbackModelExtension, effectiveFallbackChain, type FallbackModelDeps, fallbackProfileChain, formatModelRef, normalizeModelRef, parseModelRef, runtimeFallbackChain, smartDefaultFallbackChain, } from './core/fallback-model.js';",
-        "export { createPromptsPlugin } from './plugins/prompts-plugin.js';",
-        "export { createSkillsPlugin } from './plugins/skills-plugin.js';",
-        "export { createSyncPlugin } from './plugins/sync-plugin.js';",
         "export { diffPluginConfig, type PluginConfigChange, type PluginConfigSource, type ResolvedPluginConfig, type ResolvePluginConfigInput, redactPluginConfig, resolvePluginConfig, resolvePluginManifestConfig, validatePluginConfigMetadata, } from './plugin/config.js';",
         "export { encryptedPrefixForVersion, noOpVault, parseEncryptedVersion, } from '@wrongstack/contracts/types/secret-vault';",
         "export { ensureGitignore, getPromptJournalEntries, type PromptCategory, type PromptJournalEntry, type PromptJournalFilter, type RecordPromptOptions, recordPromptJournalEntry, } from './prompts/index.js';",
         "export { evaluateModelCalendar, logicalCalendarTarget, type ModelBlackoutRule, type ModelCalendarDecision, } from './core/model-availability-calendar.js';",
         "export { evaluateToolKanbanBoundary, type ToolKanbanBoundaryEvaluation, } from './security/kanban-boundary.js';",
-        "export { executeFindingCommand, type FindingCommandContext, transitionReport, } from './plugins/review-finding-commands.js';",
         "export { expectDefined } from './utils/expect-defined.js';",
         "export { extractRunEnv, type RunEnv } from './core/run-env.js';",
         "export { getProjectSessionRegistry as getSessionRegistry, hasProjectSessionRegistry as hasSessionRegistry, ProjectSessionRegistry as SessionRegistry, } from './session-catalog/registry.js';",
         "export { getTermSize, isInteractive, isStdinTTY, isStdoutTTY, type OutputLineGuard, onResize, setOutputLineGuard, setRawMode, writeErr, writeOut, } from './utils/term.js';",
         "export { hashRequest, stableStringify, } from './replay/hash.js';",
         "export { isSystemSessionId, requireSessionId, SESSION_ID_REQUIRED, SessionIdRequiredError, SYSTEM_SESSION_PREFIX, systemSessionId, } from '@wrongstack/primitives';",
-        "export { persistReviewReport, type ReportIntegrationResult, type ReportReopenResult, type ReportSyncResult, syncReportCompletion, syncReportReopen, } from './plugins/review-report-integration.js';",
         "export { readBundledInstructionText, renderInstructionTemplate, } from './utils/instruction-file.js';",
         "export { runProviderWithRetry } from './core/provider-runner.js';",
         "export { safeParse, safeStringify, sanitizeJsonString, stripCodeFences, } from './utils/safe-json.js';",
@@ -92,7 +79,6 @@
         "export { type ContinuationInput, type ContinuationSource, detectContinueIntent, type ResolvedContinuation, resolveContinuation, } from './core/continue-intent.js';",
         "export { type ContinueDirective, makeContinueToNextIterationTool, parseContinueDirective, } from './core/continue-to-next-iteration.js';",
         "export { type DomainGlossaryOptions, renderDomainGlossary, } from './core/system-prompt-glossary.js';",
-        "export { type FindingsIntegrationResult, integrateFindings, } from './plugins/review-finding-integration.js';",
         "export { type InstructionBundle, type InstructionBundlePaths, loadInstructionBundle, mergeInstructionBundle, type SystemInstructionBundle, type SystemInstructionVariant, } from './core/instruction-bundle.js';",
         "export { type InstructionTemplateContext, renderInstructionLayer, } from './core/instruction-template.js';",
         "export { type NotificationChannel, type NotificationChannelStatus, type NotificationLevel, type NotificationMessage, type NotificationResult, type Notifier, type NotifierCounters, NotifierImpl, } from './notifications/index.js';",
@@ -112,7 +98,7 @@
       "source": "packages/core/src/core/index.ts",
       "declarations": [
         "export { // Exported so surfaces that need to *predict* the identity block (e.g. the // CLI's startup system-prompt menu, which shows a per-variant token count) // compose it exactly the way the builder does instead of re-implementing the // WS-016 project-append rule and drifting from it. buildIdentityLayer, DefaultSystemPromptBuilder, type DefaultSystemPromptBuilderOptions, type SystemBlockSource, } from './system-prompt-builder.js';",
-        "export { AGENT_COORDINATION, type AgentCoordinationPort, CHRONICLE_FILE_LINEAGE, HQ_MAILBOX_PUBLISHER_FACTORY, resolveAgentCoordination, resolveChronicleFileLineage, resolveHqMailboxPublisherFactory, } from './agent-coordination.js';",
+        "export { AGENT_COORDINATION, type AgentCoordinationPort, CHIMERA_REPORT_SESSION_RESOLVER, CHRONICLE_FILE_LINEAGE, HQ_MAILBOX_PUBLISHER_FACTORY, resolveAgentCoordination, resolveChimeraReportSessionResolver, resolveChronicleFileLineage, resolveHqMailboxPublisherFactory, } from './agent-coordination.js';",
         "export { Agent, type RunResult, type UserInputPayload, } from './agent.js';",
         "export { Context, type ContextInit, type ProviderMemoryEvidence, type RunOptions, type TodoItem, } from './context.js';",
         "export { ConversationState, type ReadonlyConversationState, type StateChange, type StateChangeHandler, wrapAsState, } from './conversation-state.js';",
@@ -121,6 +107,7 @@
         "export { activateSystemPromptPreset, activeSystemPromptPresetText, bundledPromptText, createSystemPromptPreset, deleteSystemPromptPreset, listSystemPromptPresets, type PromptValidationIssue, promptTextHash, readActiveSystemPromptPresets, readProjectSystemPromptPresets, readSystemPromptPreset, type SystemPromptPreset, saveSystemPromptPreset, validateSystemPromptPreset, } from './system-prompt-presets.js';",
         "export { buildBtwBlock, consumeBtwNotes, pendingBtwCount, setBtwNote, } from './btw.js';",
         "export { buildSessionNoteBlock, consumeSessionNotes, enqueueSessionNote, pendingSessionNoteCount, type SessionNote, type SessionNoteKind, } from './session-notes.js';",
+        "export { capSkillBody } from './system-prompt-skill-text.js';",
         "export { clearPendingNextSteps, hasNextStepsTag, MAX_PENDING_NEXT_STEPS, maybeAppendPendingNextSteps, type PendingNextStep, readPendingNextSteps, renderNextStepsBlock, writePendingNextSteps, } from './next-steps-slot.js';",
         "export { confirmObserverCount, markConfirmObserver, resetConfirmObserversForTest, } from './confirm-observers.js';",
         "export { countSystemPromptTokens, isSystemInstructionVariant, persistSystemPromptVariant, readSavedSystemPromptVariant, SYSTEM_PROMPT_VARIANT_OPTIONS, SYSTEM_PROMPT_VARIANTS, type SystemPromptVariantPaths, systemPromptVariantLabel, } from './system-prompt-variants.js';",
@@ -678,136 +665,12 @@
       },
       "source": "packages/core/src/plugin/index.ts",
       "declarations": [
-        "export type { ChimeraFinding, ChimeraFindingLocation, ChimeraFindingOrigin, ChimeraFindingResolution, FindingCategory, FindingConfidence, FindingEventType, FindingLifecycleEvent, FindingSeverity, FindingSource, FindingStatus, FindingVerification, FindingVerificationStatus, ResolutionOutcome, } from '../plugins/review-finding-types.js';",
         "export type { PluginAPI, PluginJev } from '@wrongstack/contracts/types/plugin';",
-        "export type { ReportActorKind, ReportEventType, ReportLifecycleStatus, ReviewReport, ReviewReportCounts, ReviewReportEvent, ReviewReportFile, } from '../plugins/review-report-types.js';",
         "export { DEFAULT_PLUGIN_DISCOVERY_IO, type DiscoveryIo, discoverExternalPlugins, type ExternalPluginCandidate, type PluginDiscoveryResult, resolvePluginEntryPath, resolvePluginTarget, type SkippedPluginCandidate, } from './discovery.js';",
-        "export { DEFAULT_SPECIALIST_TRIGGERS, matchSpecialistTriggers, type ResolvedSpecialistTriggerConfig, resolveSpecialistTriggerConfig, type SpecialistTriggerConfig, type SpecialistTriggerMatch, type SpecialistTriggerRule, specialistFireKey, specialistTaskText, } from '../plugins/specialist-trigger-rules.js';",
         "export { DefaultPluginAPI, definePlugin, type PluginAPIInit } from './api.js';",
-        "export { FINDING_STORE_FILE, type FindingStore, JsonlFindingStore, type ListOptions as FindingListOptions, resolveFindingStorePath, type UpsertContext, type UpsertResult, } from '../plugins/review-finding-store.js';",
-        "export { JsonlReportStore, type ListReportsOptions, type PersistReportInput, REPORT_STORE_FILE, type ReportStore, resolveReportStorePath, } from '../plugins/review-report-store.js';",
         "export { KERNEL_API_VERSION, type LoadPluginsOptions, loadPlugins, type PluginHostHandle, type PluginLoadFailure, unloadPlugins, } from './loader.js';",
-        "export { buildReviewerModelPool, createAutoReviewPlugin, parseReviewSeverity, type ReviewerModelAssignment, selectRoundRobinReviewerAssignment, } from '../plugins/auto-review-plugin.js';",
-        "export { classifyChimeraReviewSource, type FindingsIntegrationResult, integrateFindings, } from '../plugins/review-finding-integration.js';",
-        "export { createCloudConfigSyncPlugin } from '../plugins/cloud-config-sync-plugin.js';",
-        "export { createPromptsPlugin } from '../plugins/prompts-plugin.js';",
-        "export { createSkillsPlugin } from '../plugins/skills-plugin.js';",
-        "export { createSpecialistTriggerPlugin, type SpecialistNeededPayload, } from '../plugins/specialist-trigger-plugin.js';",
-        "export { createSyncPlugin } from '../plugins/sync-plugin.js';",
         "export { defaultPluginTrustPath, hashFileContents, normalizeTrustKey, type PluginTrustEntry, type PluginTrustStore, type PluginTrustVerification, pinPluginTrust, readPluginTrustStore, unpinPluginTrust, verifyPluginTrust, writePluginTrustStore, } from './trust.js';",
-        "export { diffPluginConfig, type PluginConfigChange, type PluginConfigSource, type PluginEnablementSource, pluginEntryMatchesName, type ResolvedPluginConfig, type ResolvedPluginEnablement, type ResolvePluginConfigInput, type ResolvePluginEnablementInput, redactPluginConfig, resolvePluginConfig, resolvePluginEnablement, resolvePluginManifestConfig, validatePluginConfigMetadata, } from './config.js';",
-        "export { emitReviewIfChanged, recordCompletedReview, recordStartedReview, } from '../plugins/review-claim-registry.js';",
-        "export { maybeCompactReviewStores, type ReviewStoreMaintenanceResult, } from '../plugins/review-store-maintenance.js';",
-        "export { persistReviewReport, type ReportIntegrationResult, type ReportReopenResult, type ReportSyncResult, syncReportCompletion, syncReportReopen, updateReviewReportEvidence, } from '../plugins/review-report-integration.js';",
-        "export { type CascadeAgentKind, type CascadeEvidenceCheckResult, type CascadeEvidenceStatus, CHIMERA_REVIEW_PROMPT, type ChimeraCascadeNeededPayload, type ChimeraReviewCompletePayload, type ChimeraReviewNeededPayload, createChimeraPlugin, type ReviewContextBundle, } from '../plugins/chimera-plugin.js';",
-        "export { type ParsedReviewReport, parseChimeraReviewReport, } from '../plugins/review-finding-parser.js';",
-        "export { type VerifyFindingsOptions, verifyFindingsAgainstDisk, } from '../plugins/review-finding-verification.js';"
-      ]
-    },
-    {
-      "subpath": "./plugins/review-report-store",
-      "target": {
-        "types": "./dist/plugins/review-report-store.d.ts",
-        "import": "./dist/plugins/review-report-store.js"
-      },
-      "source": "packages/core/src/plugins/review-report-store.ts",
-      "declarations": [
-        "export class JsonlReportStore",
-        "export const REPORT_DEFAULT_PAGE_SIZE",
-        "export const REPORT_RETENTION_MS",
-        "export const REPORT_STORE_FILE",
-        "export function resolveReportStorePath",
-        "export interface ListReportsOptions",
-        "export interface PersistReportInput",
-        "export interface ReportActor",
-        "export interface ReportStore"
-      ]
-    },
-    {
-      "subpath": "./plugins/review-finding-store",
-      "target": {
-        "types": "./dist/plugins/review-finding-store.d.ts",
-        "import": "./dist/plugins/review-finding-store.js"
-      },
-      "source": "packages/core/src/plugins/review-finding-store.ts",
-      "declarations": [
-        "export class JsonlFindingStore",
-        "export const FINDING_DEFAULT_PAGE_SIZE",
-        "export const FINDING_IGNORED_RETENTION_MS",
-        "export const FINDING_RESOLVED_RETENTION_MS",
-        "export const FINDING_STORE_FILE",
-        "export function resolveFindingStorePath",
-        "export interface CompactOptions",
-        "export interface FindingStore",
-        "export interface ListOptions",
-        "export interface UpsertContext",
-        "export interface UpsertResult"
-      ]
-    },
-    {
-      "subpath": "./plugins/review-finding-types",
-      "target": {
-        "types": "./dist/plugins/review-finding-types.d.ts",
-        "import": "./dist/plugins/review-finding-types.js"
-      },
-      "source": "packages/core/src/plugins/review-finding-types.ts",
-      "declarations": [
-        "export class FindingNotFoundError",
-        "export class FindingStoreLockError",
-        "export class InvalidTransitionError",
-        "export function computeFindingFingerprint",
-        "export function normalizeFingerprintTitle",
-        "export function validateResolution",
-        "export function validateTransition",
-        "export interface ChimeraFinding",
-        "export interface ChimeraFindingLocation",
-        "export interface ChimeraFindingOrigin",
-        "export interface ChimeraFindingResolution",
-        "export interface FindingLifecycleEvent",
-        "export interface FindingVerification",
-        "export type ActorKind",
-        "export type FindingCategory",
-        "export type FindingConfidence",
-        "export type FindingEventType",
-        "export type FindingSeverity",
-        "export type FindingSource",
-        "export type FindingStatus",
-        "export type FindingVerificationStatus",
-        "export type ResolutionOutcome"
-      ]
-    },
-    {
-      "subpath": "./plugins/review-report-types",
-      "target": {
-        "types": "./dist/plugins/review-report-types.d.ts",
-        "import": "./dist/plugins/review-report-types.js"
-      },
-      "source": "packages/core/src/plugins/review-report-types.ts",
-      "declarations": [
-        "export class InvalidReportTransitionError",
-        "export class ReportNotFoundError",
-        "export function reportEventTypeFor",
-        "export function validateReportTransition",
-        "export interface ReviewReport",
-        "export interface ReviewReportCounts",
-        "export interface ReviewReportEvent",
-        "export interface ReviewReportFile",
-        "export type ReportActorKind",
-        "export type ReportEventType",
-        "export type ReportLifecycleStatus"
-      ]
-    },
-    {
-      "subpath": "./plugins/review-report-integration",
-      "target": {
-        "types": "./dist/plugins/review-report-integration.d.ts",
-        "import": "./dist/plugins/review-report-integration.js"
-      },
-      "source": "packages/core/src/plugins/review-report-integration.ts",
-      "declarations": [
-        "export interface ReportIntegrationResult",
-        "export interface ReportReopenResult",
-        "export interface ReportSyncResult"
+        "export { diffPluginConfig, type PluginConfigChange, type PluginConfigSource, type PluginEnablementSource, pluginEntryMatchesName, type ResolvedPluginConfig, type ResolvedPluginEnablement, type ResolvePluginConfigInput, type ResolvePluginEnablementInput, redactPluginConfig, resolvePluginConfig, resolvePluginEnablement, resolvePluginManifestConfig, validatePluginConfigMetadata, } from './config.js';"
       ]
     },
     {
@@ -912,6 +775,7 @@
         "export { ERROR_DETAIL_MAX, sanitizeApiError, scrubErrorDetail, scrubErrorText, } from './error-sanitize.js';",
         "export { ReadOnlyPermissionPolicy, toolMutates } from './readonly-permission-policy.js';",
         "export { TRUST_POLICY_JSON_SCHEMA, TRUST_POLICY_LIMITS, TRUST_POLICY_SCHEMA_VERSION, type TrustPolicyDiagnostic, type TrustPolicyDiagnosticCode, type TrustPolicyValidationResult, validateTrustPolicy, } from './permission-policy-schema.js';",
+        "export { areSubagentsAllowed, setSessionSubagentPolicy, setSessionSubagentsAllowed, } from './session-subagent-policy.js';",
         "export { base32Decode, base32Encode, buildOtpAuthUri, generateRecoveryCodes, generateTotp, generateTotpSecret, hashRecoveryCode, verifyRecoveryCode, verifyTotp, verifyTotpCounter, } from './totp.js';",
         "export { capabilityDowngradesToConfirm, clampSubagentCapabilities, DANGEROUS_FOR_SUBAGENTS, getDangerousCapabilities, hasCapability, hasDangerousCapabilityForSubagents, ToolCapabilities, type ToolCapability, WIDE_SUBAGENT_CAPABILITIES, } from './capabilities.js';",
         "export { compilePermissionRules, matchedPermissionRule } from './permission-rules.js';",
@@ -1321,7 +1185,7 @@
       "classification": "agent-domain contract",
       "intendedOwner": "Core",
       "sourceFiles": 80,
-      "sourceLines": 16822
+      "sourceLines": 16849
     },
     {
       "directory": "design",
@@ -1391,14 +1255,7 @@
       "classification": "agent-domain contract",
       "intendedOwner": "Core plugin API",
       "sourceFiles": 10,
-      "sourceLines": 2783
-    },
-    {
-      "directory": "plugins",
-      "classification": "product feature",
-      "intendedOwner": "@wrongstack/plugins",
-      "sourceFiles": 31,
-      "sourceLines": 9981
+      "sourceLines": 2673
     },
     {
       "directory": "prompts",
@@ -1440,7 +1297,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime security subsystem",
       "sourceFiles": 40,
-      "sourceLines": 10211
+      "sourceLines": 10216
     },
     {
       "directory": "session-catalog",

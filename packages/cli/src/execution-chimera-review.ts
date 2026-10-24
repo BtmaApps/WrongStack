@@ -1,10 +1,5 @@
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
-import { effectiveFallbackChain, fallbackProfileChain } from '@wrongstack/core/agent';
-import {
-  areSubagentsAllowedForSession,
-  type ProviderModelStatusTracker,
-} from '@wrongstack/core/coordination';
 import {
   CHIMERA_REVIEW_PROMPT,
   type ChimeraReviewCompletePayload,
@@ -17,7 +12,12 @@ import {
   persistReviewReport,
   recordCompletedReview,
   verifyFindingsAgainstDisk,
-} from '@wrongstack/core/plugin';
+} from '@wrongstack/builtin-plugins';
+import { effectiveFallbackChain, fallbackProfileChain } from '@wrongstack/core/agent';
+import {
+  areSubagentsAllowedForSession,
+  type ProviderModelStatusTracker,
+} from '@wrongstack/core/coordination';
 import {
   buildChimeraReviewTaskDescription,
   isChimeraAllClearReview,

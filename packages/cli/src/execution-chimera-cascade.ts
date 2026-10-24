@@ -1,14 +1,14 @@
 import * as fsp from 'node:fs/promises';
 import * as path from 'node:path';
-import type { StopReason } from '@wrongstack/contracts/types';
 import type {
   CascadeAgentKind,
   CascadeEvidenceCheckResult,
   CascadeEvidenceStatus,
   ChimeraCascadeNeededPayload,
   ChimeraReviewNeededPayload,
-} from '@wrongstack/core/plugin';
-import { emitReviewIfChanged } from '@wrongstack/core/plugin';
+} from '@wrongstack/builtin-plugins';
+import { emitReviewIfChanged } from '@wrongstack/builtin-plugins';
+import type { StopReason } from '@wrongstack/contracts/types';
 import {
   CASCADE_EVIDENCE_COMMAND_TIMEOUT_MS,
   type CascadeEvidence,

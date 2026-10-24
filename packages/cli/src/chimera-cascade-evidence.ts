@@ -25,7 +25,10 @@
  */
 
 import { spawn } from 'node:child_process';
-import type { CascadeEvidenceCheckResult, CascadeEvidenceStatus } from '@wrongstack/core/plugin';
+import type {
+  CascadeEvidenceCheckResult,
+  CascadeEvidenceStatus,
+} from '@wrongstack/builtin-plugins';
 import { treeKill } from '@wrongstack/core/utils/tree-kill';
 import {
   buildWin32CmdShimInvocation,

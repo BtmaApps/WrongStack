@@ -72,6 +72,42 @@
     "packages/acp/src/version.ts": [
       "versionCoverage"
     ],
+    "packages/builtin-plugins/src/perf-command.ts": [
+      "buildPerfRunText",
+      "parsePerfArgs"
+    ],
+    "packages/builtin-plugins/src/review-finding-parser.ts": [
+      "extractStructuredFindingsBlock"
+    ],
+    "packages/builtin-plugins/src/review-finding-store.ts": [
+      "FINDING_IGNORED_RETENTION_MS",
+      "FINDING_RESOLVED_RETENTION_MS"
+    ],
+    "packages/builtin-plugins/src/review-finding-types.ts": [
+      "FindingNotFoundError",
+      "InvalidTransitionError",
+      "normalizeFingerprintTitle"
+    ],
+    "packages/builtin-plugins/src/review-finding-verification.ts": [
+      "extractFindingAnchor",
+      "resolveFindingPath"
+    ],
+    "packages/builtin-plugins/src/review-report-types.ts": [
+      "InvalidReportTransitionError"
+    ],
+    "packages/builtin-plugins/src/review-store-maintenance.ts": [
+      "resolveFindingNonTerminalRetentionMs",
+      "resolveNonTerminalRetentionMs",
+      "REVIEW_FINDING_NON_TERMINAL_RETENTION_MS",
+      "REVIEW_STORE_MAINTENANCE_FILE",
+      "REVIEW_STORE_NON_TERMINAL_RETENTION_MS"
+    ],
+    "packages/builtin-plugins/src/skills-plugin.ts": [
+      "buildSkillCommand"
+    ],
+    "packages/builtin-plugins/src/specialist-trigger-rules.ts": [
+      "toPosixPath"
+    ],
     "packages/chronicle/src/project-server-client.ts": [
       "resolveChronicleProjectServerUrl"
     ],
@@ -545,42 +581,6 @@
     "packages/core/src/mailbox-attach.ts": [
       "applySessionAffinityFilter",
       "resetMailboxHqPublishersForTests"
-    ],
-    "packages/core/src/plugins/perf-command.ts": [
-      "buildPerfRunText",
-      "parsePerfArgs"
-    ],
-    "packages/core/src/plugins/review-finding-parser.ts": [
-      "extractStructuredFindingsBlock"
-    ],
-    "packages/core/src/plugins/review-finding-store.ts": [
-      "FINDING_IGNORED_RETENTION_MS",
-      "FINDING_RESOLVED_RETENTION_MS"
-    ],
-    "packages/core/src/plugins/review-finding-types.ts": [
-      "FindingNotFoundError",
-      "InvalidTransitionError",
-      "normalizeFingerprintTitle"
-    ],
-    "packages/core/src/plugins/review-finding-verification.ts": [
-      "extractFindingAnchor",
-      "resolveFindingPath"
-    ],
-    "packages/core/src/plugins/review-report-types.ts": [
-      "InvalidReportTransitionError"
-    ],
-    "packages/core/src/plugins/review-store-maintenance.ts": [
-      "resolveFindingNonTerminalRetentionMs",
-      "resolveNonTerminalRetentionMs",
-      "REVIEW_FINDING_NON_TERMINAL_RETENTION_MS",
-      "REVIEW_STORE_MAINTENANCE_FILE",
-      "REVIEW_STORE_NON_TERMINAL_RETENTION_MS"
-    ],
-    "packages/core/src/plugins/skills-plugin.ts": [
-      "buildSkillCommand"
-    ],
-    "packages/core/src/plugins/specialist-trigger-rules.ts": [
-      "toPosixPath"
     ],
     "packages/core/src/quota/index.ts": [
       "reachedQuotaWindow",

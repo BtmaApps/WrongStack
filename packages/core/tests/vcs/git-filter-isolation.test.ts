@@ -9,10 +9,10 @@ import * as fsp from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { getChangedFiles } from '../../../builtin-plugins/src/auto-review-git.js';
+import { buildReviewContext } from '../../../builtin-plugins/src/review-context-builder.js';
 import { defaultRun as worktreeDefaultRun } from '../../../worktree/src/worktree-git.js';
 import { gitStatus } from '../../src/core/system-prompt-environment-probes.js';
-import { getChangedFiles } from '../../src/plugins/auto-review-git.js';
-import { buildReviewContext } from '../../src/plugins/review-context-builder.js';
 import { gitFilterIsolationEnv, vcsAdapter } from '../../src/vcs/vcs-adapter.js';
 import { removeProjectFixtureDirectory } from '../helpers/project-server-harness.js';
 

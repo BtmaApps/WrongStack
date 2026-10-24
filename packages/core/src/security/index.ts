@@ -98,6 +98,11 @@ export {
   restoreSessionPermissionOverrides,
   setSessionPermissionOverrides,
 } from './session-permission-overrides.js';
+export {
+  areSubagentsAllowed,
+  setSessionSubagentPolicy,
+  setSessionSubagentsAllowed,
+} from './session-subagent-policy.js';
 export { setSessionLeaderMetaResolver, subagentYoloPlus } from './session-yolo.js';
 export {
   base32Decode,

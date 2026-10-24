@@ -3,9 +3,12 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import {
+  buildSkillCommand,
+  buildSkillGeneratorCommand,
+} from '../../../builtin-plugins/src/skills-plugin.js';
 import { buildProgressiveSkillManifestText } from '../../src/core/system-prompt-skill-bodies.js';
 import { DefaultSkillLoader } from '../../src/execution/skill-loader.js';
-import { buildSkillCommand, buildSkillGeneratorCommand } from '../../src/plugins/skills-plugin.js';
 import { parseSkillFrontmatter, validateSkillDocument } from '../../src/skills/frontmatter.js';
 import { createSkillsShAdapter } from '../../src/skills/registry/skills-sh-adapter.js';
 import { generateSkillSkeleton } from '../../src/skills/skill-generator.js';

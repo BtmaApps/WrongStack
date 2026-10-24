@@ -13,13 +13,13 @@
  * mocked so no real LLM calls happen.
  */
 
-import { EventBus } from '@wrongstack/contracts/kernel';
 import type {
   ChimeraCascadeNeededPayload,
   ChimeraReviewCompletePayload,
   ReviewContextBundle,
-} from '@wrongstack/core/plugin';
-import { createAutoReviewPlugin } from '@wrongstack/core/plugin';
+} from '@wrongstack/builtin-plugins';
+import { createAutoReviewPlugin } from '@wrongstack/builtin-plugins';
+import { EventBus } from '@wrongstack/contracts/kernel';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ── A Critical review report with a security finding (SQL injection) ──

@@ -117,26 +117,6 @@
       "types": "./dist/plugin/index.d.ts",
       "import": "./dist/plugin/index.js"
     },
-    "./plugins/review-report-store": {
-      "types": "./dist/plugins/review-report-store.d.ts",
-      "import": "./dist/plugins/review-report-store.js"
-    },
-    "./plugins/review-finding-store": {
-      "types": "./dist/plugins/review-finding-store.d.ts",
-      "import": "./dist/plugins/review-finding-store.js"
-    },
-    "./plugins/review-finding-types": {
-      "types": "./dist/plugins/review-finding-types.d.ts",
-      "import": "./dist/plugins/review-finding-types.js"
-    },
-    "./plugins/review-report-types": {
-      "types": "./dist/plugins/review-report-types.d.ts",
-      "import": "./dist/plugins/review-report-types.js"
-    },
-    "./plugins/review-report-integration": {
-      "types": "./dist/plugins/review-report-integration.d.ts",
-      "import": "./dist/plugins/review-report-integration.js"
-    },
     "./storage": {
       "types": "./dist/storage/index.d.ts",
       "import": "./dist/storage/index.js",

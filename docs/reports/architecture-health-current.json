@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-24T14:49:33.538Z",
+  "generatedAt": "2026-10-24T14:49:58.293Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -11,12 +11,12 @@
     ]
   },
   "summary": {
-    "packages": 43,
-    "sourceFiles": 5287,
+    "packages": 44,
+    "sourceFiles": 5289,
     "testFiles": 4654,
-    "sourceLines": 1150928,
-    "workspaceEdges": 198,
-    "moduleEdges": 16000,
+    "sourceLines": 1150925,
+    "workspaceEdges": 205,
+    "moduleEdges": 15921,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 3,
@@ -41,7 +41,6 @@
       "observability",
       "performance",
       "plugin",
-      "plugins",
       "prompts",
       "quota",
       "registry",
@@ -72,7 +71,6 @@
       "observability",
       "performance",
       "plugin",
-      "plugins",
       "prompts",
       "quota",
       "registry",
@@ -138,6 +136,30 @@
       ]
     },
     {
+      "name": "@wrongstack/builtin-plugins",
+      "dir": "packages/builtin-plugins",
+      "sourceFiles": 33,
+      "testFiles": 27,
+      "workspaceDependencies": [
+        "@wrongstack/contracts",
+        "@wrongstack/core",
+        "@wrongstack/kanban",
+        "@wrongstack/primitives"
+      ],
+      "tsconfigs": [
+        {
+          "path": "packages/builtin-plugins/tsconfig.json",
+          "error": null,
+          "testFiles": 0
+        },
+        {
+          "path": "packages/builtin-plugins/tsconfig.test.json",
+          "error": null,
+          "testFiles": 27
+        }
+      ]
+    },
+    {
       "name": "@wrongstack/chronicle",
       "dir": "packages/chronicle",
       "sourceFiles": 52,
@@ -165,10 +187,11 @@
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
       "sourceFiles": 676,
-      "testFiles": 669,
+      "testFiles": 671,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
+        "@wrongstack/builtin-plugins",
         "@wrongstack/chronicle",
         "@wrongstack/codebase-index-mcp",
         "@wrongstack/contracts",
@@ -215,7 +238,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 669
+          "testFiles": 671
         }
       ]
     },
@@ -289,8 +312,8 @@
     {
       "name": "@wrongstack/core",
       "dir": "packages/core",
-      "sourceFiles": 896,
-      "testFiles": 897,
+      "sourceFiles": 865,
+      "testFiles": 868,
       "workspaceDependencies": [
         "@wrongstack/contracts",
         "@wrongstack/kanban",
@@ -306,7 +329,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 897
+          "testFiles": 868
         }
       ]
     },
@@ -676,6 +699,7 @@
       "sourceFiles": 35,
       "testFiles": 34,
       "workspaceDependencies": [
+        "@wrongstack/builtin-plugins",
         "@wrongstack/chronicle",
         "@wrongstack/contracts",
         "@wrongstack/core",
@@ -1068,6 +1092,7 @@
       "sourceFiles": 304,
       "testFiles": 308,
       "workspaceDependencies": [
+        "@wrongstack/builtin-plugins",
         "@wrongstack/chronicle",
         "@wrongstack/contracts",
         "@wrongstack/core",
@@ -2121,6 +2146,168 @@
       },
       {
         "file": "packages/bench/tests/transcript-mine.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/builtin-plugins/tests/auto-review-plugin.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/builtin-plugins/tests/cascade-severity.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/builtin-plugins/tests/chimera-plugin.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/builtin-plugins/tests/cloud-config-sync-plugin-read-error.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/builtin-plugins/tests/cloud-config-sync-plugin.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/builtin-plugins/tests/git-output-utf8-chunks.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/builtin-plugins/tests/perf-command.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/builtin-plugins/tests/prompts-plugin.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/builtin-plugins/tests/review-changed-files-quoted-paths.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/builtin-plugins/tests/review-claim-registry-stamp-failure.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/builtin-plugins/tests/review-claim-registry.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/builtin-plugins/tests/review-claim-store-lock-race.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/builtin-plugins/tests/review-context-builder.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/builtin-plugins/tests/review-finding-commands.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/builtin-plugins/tests/review-finding-compact.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/builtin-plugins/tests/review-finding-e2e.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/builtin-plugins/tests/review-finding-integration.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/builtin-plugins/tests/review-finding-parser.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/builtin-plugins/tests/review-finding-store.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/builtin-plugins/tests/review-finding-types.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/builtin-plugins/tests/review-finding-verification.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/builtin-plugins/tests/review-report-store.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/builtin-plugins/tests/review-store-maintenance.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/builtin-plugins/tests/skills-plugin.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/builtin-plugins/tests/specialist-trigger-plugin.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/builtin-plugins/tests/specialist-trigger-rules.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/builtin-plugins/tests/sync-plugin.test.ts",
         "projects": [
           "root-node"
         ]
@@ -5072,6 +5259,12 @@
         ]
       },
       {
+        "file": "packages/cli/tests/slash-commands/git-plugin-extra.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/cli/tests/slash-commands/kanban-lifecycle-diagnostics.test.ts",
         "projects": [
           "root-node"
@@ -5127,6 +5320,12 @@
       },
       {
         "file": "packages/cli/tests/slash-commands/memory-triage-proposals.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/slash-commands/plan-plugin-extra.test.ts",
         "projects": [
           "root-node"
         ]
@@ -9519,180 +9718,6 @@
       },
       {
         "file": "packages/core/tests/plugin/trust.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/plugins/auto-review-plugin.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/plugins/cascade-severity.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/plugins/chimera-plugin.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/plugins/cloud-config-sync-plugin-read-error.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/plugins/cloud-config-sync-plugin.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/plugins/git-output-utf8-chunks.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/plugins/git-plugin-extra.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/plugins/perf-command.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/plugins/plan-plugin-extra.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/plugins/prompts-plugin.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/plugins/review-changed-files-quoted-paths.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/plugins/review-claim-registry-stamp-failure.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/plugins/review-claim-registry.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/plugins/review-claim-store-lock-race.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/plugins/review-context-builder.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/plugins/review-finding-commands.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/plugins/review-finding-compact.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/plugins/review-finding-e2e.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/plugins/review-finding-integration.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/plugins/review-finding-parser.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/plugins/review-finding-store.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/plugins/review-finding-types.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/plugins/review-finding-verification.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/plugins/review-report-store.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/plugins/review-store-maintenance.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/plugins/skills-plugin.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/plugins/specialist-trigger-plugin.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/plugins/specialist-trigger-rules.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/plugins/sync-plugin.test.ts",
         "projects": [
           "root-node"
         ]
@@ -29805,6 +29830,78 @@
       "name": "versionCoverage"
     },
     {
+      "file": "packages/builtin-plugins/src/perf-command.ts",
+      "name": "buildPerfRunText"
+    },
+    {
+      "file": "packages/builtin-plugins/src/perf-command.ts",
+      "name": "parsePerfArgs"
+    },
+    {
+      "file": "packages/builtin-plugins/src/review-finding-parser.ts",
+      "name": "extractStructuredFindingsBlock"
+    },
+    {
+      "file": "packages/builtin-plugins/src/review-finding-store.ts",
+      "name": "FINDING_IGNORED_RETENTION_MS"
+    },
+    {
+      "file": "packages/builtin-plugins/src/review-finding-store.ts",
+      "name": "FINDING_RESOLVED_RETENTION_MS"
+    },
+    {
+      "file": "packages/builtin-plugins/src/review-finding-types.ts",
+      "name": "FindingNotFoundError"
+    },
+    {
+      "file": "packages/builtin-plugins/src/review-finding-types.ts",
+      "name": "InvalidTransitionError"
+    },
+    {
+      "file": "packages/builtin-plugins/src/review-finding-types.ts",
+      "name": "normalizeFingerprintTitle"
+    },
+    {
+      "file": "packages/builtin-plugins/src/review-finding-verification.ts",
+      "name": "extractFindingAnchor"
+    },
+    {
+      "file": "packages/builtin-plugins/src/review-finding-verification.ts",
+      "name": "resolveFindingPath"
+    },
+    {
+      "file": "packages/builtin-plugins/src/review-report-types.ts",
+      "name": "InvalidReportTransitionError"
+    },
+    {
+      "file": "packages/builtin-plugins/src/review-store-maintenance.ts",
+      "name": "resolveFindingNonTerminalRetentionMs"
+    },
+    {
+      "file": "packages/builtin-plugins/src/review-store-maintenance.ts",
+      "name": "resolveNonTerminalRetentionMs"
+    },
+    {
+      "file": "packages/builtin-plugins/src/review-store-maintenance.ts",
+      "name": "REVIEW_FINDING_NON_TERMINAL_RETENTION_MS"
+    },
+    {
+      "file": "packages/builtin-plugins/src/review-store-maintenance.ts",
+      "name": "REVIEW_STORE_MAINTENANCE_FILE"
+    },
+    {
+      "file": "packages/builtin-plugins/src/review-store-maintenance.ts",
+      "name": "REVIEW_STORE_NON_TERMINAL_RETENTION_MS"
+    },
+    {
+      "file": "packages/builtin-plugins/src/skills-plugin.ts",
+      "name": "buildSkillCommand"
+    },
+    {
+      "file": "packages/builtin-plugins/src/specialist-trigger-rules.ts",
+      "name": "toPosixPath"
+    },
+    {
       "file": "packages/chronicle/src/project-server-client.ts",
       "name": "resolveChronicleProjectServerUrl"
     },
@@ -30715,78 +30812,6 @@
     {
       "file": "packages/core/src/mailbox-attach.ts",
       "name": "resetMailboxHqPublishersForTests"
-    },
-    {
-      "file": "packages/core/src/plugins/perf-command.ts",
-      "name": "buildPerfRunText"
-    },
-    {
-      "file": "packages/core/src/plugins/perf-command.ts",
-      "name": "parsePerfArgs"
-    },
-    {
-      "file": "packages/core/src/plugins/review-finding-parser.ts",
-      "name": "extractStructuredFindingsBlock"
-    },
-    {
-      "file": "packages/core/src/plugins/review-finding-store.ts",
-      "name": "FINDING_IGNORED_RETENTION_MS"
-    },
-    {
-      "file": "packages/core/src/plugins/review-finding-store.ts",
-      "name": "FINDING_RESOLVED_RETENTION_MS"
-    },
-    {
-      "file": "packages/core/src/plugins/review-finding-types.ts",
-      "name": "FindingNotFoundError"
-    },
-    {
-      "file": "packages/core/src/plugins/review-finding-types.ts",
-      "name": "InvalidTransitionError"
-    },
-    {
-      "file": "packages/core/src/plugins/review-finding-types.ts",
-      "name": "normalizeFingerprintTitle"
-    },
-    {
-      "file": "packages/core/src/plugins/review-finding-verification.ts",
-      "name": "extractFindingAnchor"
-    },
-    {
-      "file": "packages/core/src/plugins/review-finding-verification.ts",
-      "name": "resolveFindingPath"
-    },
-    {
-      "file": "packages/core/src/plugins/review-report-types.ts",
-      "name": "InvalidReportTransitionError"
-    },
-    {
-      "file": "packages/core/src/plugins/review-store-maintenance.ts",
-      "name": "resolveFindingNonTerminalRetentionMs"
-    },
-    {
-      "file": "packages/core/src/plugins/review-store-maintenance.ts",
-      "name": "resolveNonTerminalRetentionMs"
-    },
-    {
-      "file": "packages/core/src/plugins/review-store-maintenance.ts",
-      "name": "REVIEW_FINDING_NON_TERMINAL_RETENTION_MS"
-    },
-    {
-      "file": "packages/core/src/plugins/review-store-maintenance.ts",
-      "name": "REVIEW_STORE_MAINTENANCE_FILE"
-    },
-    {
-      "file": "packages/core/src/plugins/review-store-maintenance.ts",
-      "name": "REVIEW_STORE_NON_TERMINAL_RETENTION_MS"
-    },
-    {
-      "file": "packages/core/src/plugins/skills-plugin.ts",
-      "name": "buildSkillCommand"
-    },
-    {
-      "file": "packages/core/src/plugins/specialist-trigger-rules.ts",
-      "name": "toPosixPath"
     },
     {
       "file": "packages/core/src/quota/index.ts",

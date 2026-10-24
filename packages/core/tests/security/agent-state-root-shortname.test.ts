@@ -19,7 +19,7 @@ import { spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import type { Tool } from '../../src/types/tool.js';
+import type { Tool } from '@wrongstack/contracts/types/tool';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { Context } from '../../src/core/context.js';
 import { AutoApprovePermissionPolicy } from '../../src/security/auto-approve-policy.js';

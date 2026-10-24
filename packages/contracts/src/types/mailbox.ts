@@ -96,6 +96,15 @@ export interface MailboxSessionAffinityContext {
   allowUnscoped?: boolean | undefined;
 }
 
+/**
+ * Builds the chimera report → session lookup for one project directory. The
+ * report store lives in `@wrongstack/builtin-plugins`, above core's mailbox
+ * wiring, so hosts bind this factory.
+ */
+export type ChimeraReportSessionResolverFactory = (
+  projectDir: string,
+) => (reportId: string) => Promise<string | undefined>;
+
 /** Live status row for one agent registered with the coordination mailbox. */
 export interface MailboxAgentStatus {
   agentId: string;

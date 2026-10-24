@@ -100,6 +100,20 @@
         "typescript": "^7.0.2",
       },
     },
+    "packages/builtin-plugins": {
+      "name": "@wrongstack/builtin-plugins",
+      "version": "1.1.16",
+      "dependencies": {
+        "@wrongstack/contracts": "workspace:*",
+        "@wrongstack/core": "workspace:*",
+        "@wrongstack/kanban": "workspace:*",
+        "@wrongstack/primitives": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/node": "^22.20.5",
+        "typescript": "^7.0.2",
+      },
+    },
     "packages/chronicle": {
       "name": "@wrongstack/chronicle",
       "version": "1.1.16",
@@ -124,6 +138,7 @@
       "dependencies": {
         "@wrongstack/acp": "workspace:*",
         "@wrongstack/bench": "workspace:*",
+        "@wrongstack/builtin-plugins": "workspace:*",
         "@wrongstack/chronicle": "workspace:*",
         "@wrongstack/codebase-index-mcp": "workspace:*",
         "@wrongstack/contracts": "workspace:*",
@@ -463,6 +478,7 @@
       "name": "@wrongstack/runtime",
       "version": "1.1.16",
       "dependencies": {
+        "@wrongstack/builtin-plugins": "workspace:*",
         "@wrongstack/chronicle": "workspace:*",
         "@wrongstack/contracts": "workspace:*",
         "@wrongstack/core": "workspace:*",
@@ -873,6 +889,7 @@
       "name": "@wrongstack/webui-server",
       "version": "1.1.16",
       "dependencies": {
+        "@wrongstack/builtin-plugins": "workspace:*",
         "@wrongstack/chronicle": "workspace:*",
         "@wrongstack/contracts": "workspace:*",
         "@wrongstack/core": "workspace:*",
@@ -1722,6 +1739,8 @@
     "@wrongstack/acp": ["@wrongstack/acp@workspace:packages/acp"],
 
     "@wrongstack/bench": ["@wrongstack/bench@workspace:packages/bench"],
+
+    "@wrongstack/builtin-plugins": ["@wrongstack/builtin-plugins@workspace:packages/builtin-plugins"],
 
     "@wrongstack/chronicle": ["@wrongstack/chronicle@workspace:packages/chronicle"],
 

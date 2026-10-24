@@ -51,6 +51,7 @@
   "dependencies": {
     "@wrongstack/acp": "workspace:*",
     "@wrongstack/bench": "workspace:*",
+    "@wrongstack/builtin-plugins": "workspace:*",
     "@wrongstack/chronicle": "workspace:*",
     "@wrongstack/codebase-index-mcp": "workspace:*",
     "@wrongstack/contracts": "workspace:*",

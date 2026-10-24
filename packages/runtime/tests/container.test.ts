@@ -4,7 +4,12 @@ import * as path from 'node:path';
 import { Container, EventBus, TOKENS } from '@wrongstack/contracts/kernel';
 import type { SessionStore } from '@wrongstack/contracts/types';
 import { ProviderError } from '@wrongstack/contracts/types';
-import { FallbackProfileManager, HQ_MAILBOX_PUBLISHER_FACTORY } from '@wrongstack/core/agent';
+import { JsonlReportStore } from '@wrongstack/builtin-plugins';
+import {
+  CHIMERA_REPORT_SESSION_RESOLVER,
+  FallbackProfileManager,
+  HQ_MAILBOX_PUBLISHER_FACTORY,
+} from '@wrongstack/core/agent';
 import { createHqPublisherFromEnv } from '@wrongstack/hq';
 import { DirectoryPermissionPolicy } from '@wrongstack/core/security';
 import { DefaultConfigStore, getSessionRegistry } from '@wrongstack/core/storage';
@@ -81,6 +86,38 @@ describe('createDefaultContainer', () => {
       modelsRegistry: mockModels,
     });
     expect(c.resolve(HQ_MAILBOX_PUBLISHER_FACTORY)).toBe(createHqPublisherFromEnv);
+  });
+
+  it('binds the chimera report session resolver for mailbox session affinity', async () => {
+    // Core's mailbox wiring resolves this from the container; unbound,
+    // report-scoped chimera mail without a session id is never placed.
+    const c = createDefaultContainer({
+      config: mockConfig,
+      wpaths: mockWpaths,
+      logger: mockLogger,
+      modelsRegistry: mockModels,
+    });
+    const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'wrongstack-runtime-reports-'));
+    try {
+      await new JsonlReportStore(projectDir).persist({
+        id: 'report-1',
+        sessionId: 'session-1',
+        agentId: 'agent-1',
+        reviewerModel: 'reviewer-model',
+        source: 'chimera',
+        reviewStatus: 'success',
+        files: [],
+        counts: { critical: 0, high: 0, medium: 0, low: 0 },
+        totalFindings: 0,
+        unparseableCount: 0,
+        rawText: '',
+      });
+      const resolveSession = c.resolve(CHIMERA_REPORT_SESSION_RESOLVER)(projectDir);
+      expect(await resolveSession('report-1')).toBe('session-1');
+      expect(await resolveSession('missing-report')).toBeUndefined();
+    } finally {
+      fs.rmSync(projectDir, { recursive: true, force: true });
+    }
   });
 
   it('binds ConfigStore with the provided config', () => {

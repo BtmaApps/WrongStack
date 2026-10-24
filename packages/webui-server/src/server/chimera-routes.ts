@@ -27,7 +27,7 @@ import {
   type ReviewReportEvent,
   syncReportCompletion,
   syncReportReopen,
-} from '@wrongstack/core/plugin';
+} from '@wrongstack/builtin-plugins';
 import { toErrorMessage } from '@wrongstack/core/utils';
 import type { WebSocket } from 'ws';
 import type { WSClientMessage } from './types.js';

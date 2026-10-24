@@ -1,3 +1,5 @@
+import { createChimeraReportSessionResolver } from '@wrongstack/builtin-plugins';
+import { readChronicleFileLineage } from '@wrongstack/chronicle';
 import { Container, type EventBus, TOKENS } from '@wrongstack/contracts/kernel';
 import {
   type Config,
@@ -7,15 +9,14 @@ import {
 } from '@wrongstack/contracts/types';
 import {
   AGENT_COORDINATION,
+  CHIMERA_REPORT_SESSION_RESOLVER,
+  CHRONICLE_FILE_LINEAGE,
   DefaultSystemPromptBuilder,
   type DefaultSystemPromptBuilderOptions,
-  CHRONICLE_FILE_LINEAGE,
   FallbackProfileManager,
   HQ_MAILBOX_PUBLISHER_FACTORY,
 } from '@wrongstack/core/agent';
-import { readChronicleFileLineage } from '@wrongstack/chronicle';
 import { defaultAgentCoordination } from '@wrongstack/core/agent-coordination';
-import { createHqPublisherFromEnv } from '@wrongstack/hq';
 import { ProviderModelStatusTracker } from '@wrongstack/core/coordination';
 // PR-C1 (66c4eb68): execution/ and infrastructure/ symbols come from the
 // published subpaths now that types/index.ts no longer re-exports them.
@@ -38,6 +39,7 @@ import {
 } from '@wrongstack/core/storage';
 import { createTypeSafeCriterionJudge, resolveTypeSafeJudge } from '@wrongstack/core/typesafe';
 import { toErrorMessage, type WstackPaths } from '@wrongstack/core/utils';
+import { createHqPublisherFromEnv } from '@wrongstack/hq';
 import { setKanbanCriterionJudge } from '@wrongstack/kanban';
 import { createProjectSageMemoryPort, isSqliteAvailable } from '@wrongstack/sage';
 import {
@@ -100,6 +102,8 @@ export function createDefaultContainer(opts: CreateContainerOptions): Container 
   container.bind(HQ_MAILBOX_PUBLISHER_FACTORY, () => createHqPublisherFromEnv);
   // Review provenance reads the Chronicle file-lineage projection.
   container.bind(CHRONICLE_FILE_LINEAGE, () => readChronicleFileLineage);
+  // Mailbox session affinity resolves report-scoped chimera mail to a session.
+  container.bind(CHIMERA_REPORT_SESSION_RESOLVER, () => createChimeraReportSessionResolver);
   container.bind(TOKENS.SecretScrubber, () => new DefaultSecretScrubber());
   container.bind(TOKENS.RetryPolicy, () => new DefaultRetryPolicy());
   // Wire the compactor into the recovery chain so a 413 / context-overflow

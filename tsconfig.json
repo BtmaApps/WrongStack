@@ -8,6 +8,7 @@
     { "path": "./packages/goal" },
     { "path": "./packages/chronicle" },
     { "path": "./packages/worktree" },
+    { "path": "./packages/builtin-plugins" },
     { "path": "./packages/plugin-sdk" },
     { "path": "./packages/vector-memory" },
     { "path": "./packages/webui-protocol" },

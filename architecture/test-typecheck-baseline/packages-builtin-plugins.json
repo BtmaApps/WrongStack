@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "project": "packages/builtin-plugins",
+  "hashAlgorithm": "sha256-64bit",
+  "diagnostics": {
+    "207ef8464260c003": 1,
+    "89151f68e53c3302": 1,
+    "229cb105188230d5": 2,
+    "6ac31987e92cb06f": 1,
+    "92c6426e8f844416": 1
+  }
+}

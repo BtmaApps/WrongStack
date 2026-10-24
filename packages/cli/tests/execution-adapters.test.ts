@@ -20,7 +20,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@wrongstack/core/agent', () => ({ effectiveFallbackChain: mocks.fallbackChain }));
-vi.mock('@wrongstack/core/plugin', () => ({ updateReviewReportEvidence: mocks.evidence }));
+vi.mock('@wrongstack/builtin-plugins', () => ({ updateReviewReportEvidence: mocks.evidence }));
 vi.mock('@wrongstack/worktree', () => ({ listGitWorktrees: mocks.worktrees }));
 vi.mock('@wrongstack/core/coordination', () => ({
   LeaderAutoWakeController: class {

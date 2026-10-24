@@ -1,5 +1,5 @@
+import { updateReviewReportEvidence } from '@wrongstack/builtin-plugins';
 import { effectiveFallbackChain } from '@wrongstack/core/agent';
-import { updateReviewReportEvidence } from '@wrongstack/core/plugin';
 import { buildMutatingAgentLadder } from './chimera-reviewer-policy.js';
 import { createChimeraWorkRegistry } from './chimera-work-registry.js';
 import type { ExecuteDeps } from './execute-deps.js';

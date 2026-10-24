@@ -99,14 +99,6 @@ const coreEntries = entryMap([
   'src/utils/heap-watchdog.ts',
   'src/execution/prompt-enhancer.ts',
   'src/execution/index.ts',
-  // Chimera review-report store: webui-server reads it per session tab, and
-  // the core-api policy forbids new root-barrel imports — so it ships as its
-  // own narrow entry next to the other dependency-free ones.
-  'src/plugins/review-report-store.ts',
-  'src/plugins/review-finding-store.ts',
-  'src/plugins/review-finding-types.ts',
-  'src/plugins/review-report-types.ts',
-  'src/plugins/review-report-integration.ts',
   'src/design/index.ts',
   'src/coordination/index.ts',
   'src/coordination/agents/index.ts',
@@ -407,6 +399,11 @@ const profiles = {
     // Shared chunk, so protocol constants and guards keep one identity.
     splitting: true,
     chunkNames: '[name]-[hash]',
+  },
+  // Chimera/auto-review and the other built-in plugins, extracted from core
+  // (src/plugins) on 2026-10-24.
+  '@wrongstack/builtin-plugins': {
+    entries: { index: 'src/index.ts' },
   },
   // Git-worktree isolation, extracted from core (src/worktree) on 2026-10-24.
   '@wrongstack/worktree': {

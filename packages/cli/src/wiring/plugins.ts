@@ -228,31 +228,31 @@ export interface PluginsWiringDeps {
  */
 export const BUILTIN_PLUGIN_FACTORIES: (() => Promise<Plugin>)[] = [
   async () => {
-    const { createPromptsPlugin } = await import('@wrongstack/core/plugin');
+    const { createPromptsPlugin } = await import('@wrongstack/builtin-plugins');
     return createPromptsPlugin();
   },
   async () => {
-    const { createSyncPlugin } = await import('@wrongstack/core/plugin');
+    const { createSyncPlugin } = await import('@wrongstack/builtin-plugins');
     return createSyncPlugin();
   },
   async () => {
-    const { createCloudConfigSyncPlugin } = await import('@wrongstack/core/plugin');
+    const { createCloudConfigSyncPlugin } = await import('@wrongstack/builtin-plugins');
     return createCloudConfigSyncPlugin();
   },
   async () => {
-    const { createChimeraPlugin } = await import('@wrongstack/core/plugin');
+    const { createChimeraPlugin } = await import('@wrongstack/builtin-plugins');
     return createChimeraPlugin();
   },
   async () => {
-    const { createAutoReviewPlugin } = await import('@wrongstack/core/plugin');
+    const { createAutoReviewPlugin } = await import('@wrongstack/builtin-plugins');
     return createAutoReviewPlugin();
   },
   async () => {
-    const { createSpecialistTriggerPlugin } = await import('@wrongstack/core/plugin');
+    const { createSpecialistTriggerPlugin } = await import('@wrongstack/builtin-plugins');
     return createSpecialistTriggerPlugin();
   },
   async () => {
-    const { createSkillsPlugin } = await import('@wrongstack/core/plugin');
+    const { createSkillsPlugin } = await import('@wrongstack/builtin-plugins');
     return createSkillsPlugin();
   },
   // ── Workspace plugins (@wrongstack/plugins subpath exports) ──────────

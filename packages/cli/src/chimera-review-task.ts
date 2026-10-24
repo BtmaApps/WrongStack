@@ -2,8 +2,8 @@ import type {
   CascadeAgentKind,
   ChimeraCascadeNeededPayload,
   ChimeraReviewNeededPayload,
-} from '@wrongstack/core/plugin';
-import { parseReviewSeverity } from '@wrongstack/core/plugin';
+} from '@wrongstack/builtin-plugins';
+import { parseReviewSeverity } from '@wrongstack/builtin-plugins';
 
 // Plain .slice() operates on UTF-16 code units and can split a surrogate pair.
 export function truncateAtCodePointBoundary(text: string, maxCodeUnits: number): string {

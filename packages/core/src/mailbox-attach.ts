@@ -35,12 +35,14 @@ import {
   type MailboxSessionAffinityContext,
 } from './coordination/mailbox-types.js';
 import { getSharedProjectMailbox } from './coordination/remote-mailbox.js';
-import { resolveHqMailboxPublisherFactory } from './core/agent-coordination.js';
+import {
+  resolveChimeraReportSessionResolver,
+  resolveHqMailboxPublisherFactory,
+} from './core/agent-coordination.js';
 import type { AgentInternals } from './core/agent-internals.js';
 import { setBtwNote } from './core/btw.js';
 import { buildFleetPulseBlock, fleetPulseSignature } from './core/fleet-pulse.js';
 import { buildMailboxBtwAwarenessBlock, createMailboxChecker } from './core/mailbox-loop.js';
-import { JsonlReportStore } from './plugins/review-report-store.js';
 import { toErrorMessage } from './utils/error.js';
 import { wstackGlobalRoot } from './utils/wstack-paths.js';
 
@@ -294,11 +296,11 @@ function attachMailboxCheckerInner(
   // in a single batched call — preserving both the batching optimization
   // and the invariant that a message is never marked "read by agent X"
   // when agent X actually dropped it.
-  const reportStore = new JsonlReportStore(
-    resolveProjectDir(a.ctx.projectRoot, wstackGlobalRoot()),
-  );
+  const reportSessionResolver = resolveChimeraReportSessionResolver(a.container);
   const sessionAffinityCtx: MailboxSessionAffinityContext = {
-    resolveChimeraReportSessionId: async (reportId) => (await reportStore.get(reportId))?.sessionId,
+    resolveChimeraReportSessionId: reportSessionResolver?.(
+      resolveProjectDir(a.ctx.projectRoot, wstackGlobalRoot()),
+    ),
   };
   /**
    * Filter messages by session affinity. Shared by inline and awareness

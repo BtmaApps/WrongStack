@@ -25,7 +25,6 @@
     "observability": { "classification": "infrastructure", "targetOwner": "runtime-pilot" },
     "performance": { "classification": "infrastructure", "targetOwner": "runtime-review-required" },
     "plugin": { "classification": "contract-and-loader", "targetOwner": "contracts-or-core" },
-    "plugins": { "classification": "product-feature", "targetOwner": "plugins" },
     "prompts": { "classification": "feature", "targetOwner": "core-review-required" },
     "quota": { "classification": "agent-domain", "targetOwner": "core" },
     "registry": { "classification": "agent-domain", "targetOwner": "core" },

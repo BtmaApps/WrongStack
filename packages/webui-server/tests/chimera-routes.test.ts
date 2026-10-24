@@ -1,16 +1,16 @@
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { JsonlFindingStore, JsonlReportStore } from '@wrongstack/core/plugin';
+import { JsonlFindingStore, JsonlReportStore } from '@wrongstack/builtin-plugins';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { WebSocket } from 'ws';
 import {
+  type ChimeraRouteHandlers,
   createChimeraRouteHandlers,
   handleChimeraRoute,
   isPendingChimeraReport,
   listChimeraReportsForSession,
   queryAllChimeraReports,
-  type ChimeraRouteHandlers,
 } from '../src/server/chimera-routes.js';
 
 describe('isPendingChimeraReport', () => {

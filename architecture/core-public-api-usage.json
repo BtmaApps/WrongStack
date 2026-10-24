@@ -4,9 +4,9 @@
   "rootImportFiles": 0,
   "bySpecifier": {
     "@wrongstack/core/agent": {
-      "files": 425,
-      "typeOnly": 324,
-      "runtimeOrMixed": 125
+      "files": 439,
+      "typeOnly": 334,
+      "runtimeOrMixed": 129
     },
     "@wrongstack/core/agent-catalog": {
       "files": 24,
@@ -29,9 +29,9 @@
       "runtimeOrMixed": 12
     },
     "@wrongstack/core/coordination": {
-      "files": 296,
+      "files": 298,
       "typeOnly": 113,
-      "runtimeOrMixed": 254
+      "runtimeOrMixed": 256
     },
     "@wrongstack/core/coordination/agent-subagent-runner.js": {
       "files": 2,
@@ -49,9 +49,9 @@
       "runtimeOrMixed": 15
     },
     "@wrongstack/core/execution": {
-      "files": 93,
+      "files": 95,
       "typeOnly": 24,
-      "runtimeOrMixed": 84
+      "runtimeOrMixed": 86
     },
     "@wrongstack/core/execution/refine-decisions": {
       "files": 2,
@@ -94,14 +94,14 @@
       "runtimeOrMixed": 13
     },
     "@wrongstack/core/performance": {
-      "files": 1,
+      "files": 3,
       "typeOnly": 0,
-      "runtimeOrMixed": 1
+      "runtimeOrMixed": 3
     },
     "@wrongstack/core/plugin": {
-      "files": 32,
-      "typeOnly": 17,
-      "runtimeOrMixed": 27
+      "files": 21,
+      "typeOnly": 11,
+      "runtimeOrMixed": 11
     },
     "@wrongstack/core/prompts": {
       "files": 7,
@@ -134,9 +134,9 @@
       "runtimeOrMixed": 12
     },
     "@wrongstack/core/security": {
-      "files": 232,
+      "files": 239,
       "typeOnly": 31,
-      "runtimeOrMixed": 204
+      "runtimeOrMixed": 211
     },
     "@wrongstack/core/session-catalog": {
       "files": 13,
@@ -149,9 +149,9 @@
       "runtimeOrMixed": 6
     },
     "@wrongstack/core/skills": {
-      "files": 33,
-      "typeOnly": 3,
-      "runtimeOrMixed": 30
+      "files": 38,
+      "typeOnly": 5,
+      "runtimeOrMixed": 35
     },
     "@wrongstack/core/statusline": {
       "files": 27,
@@ -159,9 +159,9 @@
       "runtimeOrMixed": 30
     },
     "@wrongstack/core/storage": {
-      "files": 158,
-      "typeOnly": 40,
-      "runtimeOrMixed": 148
+      "files": 167,
+      "typeOnly": 43,
+      "runtimeOrMixed": 154
     },
     "@wrongstack/core/tasking": {
       "files": 43,
@@ -174,9 +174,9 @@
       "runtimeOrMixed": 23
     },
     "@wrongstack/core/utils": {
-      "files": 878,
-      "typeOnly": 66,
-      "runtimeOrMixed": 850
+      "files": 893,
+      "typeOnly": 69,
+      "runtimeOrMixed": 864
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -262,6 +262,90 @@
     {
       "specifier": "@wrongstack/core/agent",
       "file": "packages/acp/tests/server-agent-turn.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/builtin-plugins/src/auto-review-config.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/builtin-plugins/src/auto-review-plugin.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/builtin-plugins/src/chimera-plugin.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/builtin-plugins/src/cloud-config-sync-plugin.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/builtin-plugins/src/hunt-commands.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/builtin-plugins/src/perf-command.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/builtin-plugins/src/prompts-command.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/builtin-plugins/src/skills-plugin-authoring.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/builtin-plugins/src/skills-plugin-registry.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/builtin-plugins/src/skills-plugin.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/builtin-plugins/src/sync-plugin.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/builtin-plugins/tests/perf-command.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/builtin-plugins/tests/prompts-plugin.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/builtin-plugins/tests/sync-plugin.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -3051,6 +3135,18 @@
     },
     {
       "specifier": "@wrongstack/core/coordination",
+      "file": "packages/builtin-plugins/tests/auto-review-plugin.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/coordination",
+      "file": "packages/builtin-plugins/tests/git-output-utf8-chunks.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/coordination",
       "file": "packages/cli/src/acp-hq-telemetry.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -4917,6 +5013,18 @@
     },
     {
       "specifier": "@wrongstack/core/execution",
+      "file": "packages/builtin-plugins/src/prompts-plugin.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/execution",
+      "file": "packages/builtin-plugins/tests/prompts-plugin.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/execution",
       "file": "packages/cli/src/acp-server-agent.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -6357,51 +6465,21 @@
     },
     {
       "specifier": "@wrongstack/core/performance",
+      "file": "packages/builtin-plugins/src/perf-command.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/performance",
+      "file": "packages/builtin-plugins/tests/perf-command.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/performance",
       "file": "packages/webui/tests/lib/perf-run-message.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/plugin",
-      "file": "packages/cli/src/chimera-cascade-evidence.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/plugin",
-      "file": "packages/cli/src/chimera-review-task.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/plugin",
-      "file": "packages/cli/src/chimera-reviewer-policy.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/plugin",
-      "file": "packages/cli/src/execution-chimera-cascade.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/plugin",
-      "file": "packages/cli/src/execution-chimera-handlers.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/plugin",
-      "file": "packages/cli/src/execution-chimera-review.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/plugin",
-      "file": "packages/cli/src/execution-specialist-trigger.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
     },
     {
       "specifier": "@wrongstack/core/plugin",
@@ -6413,12 +6491,6 @@
       "specifier": "@wrongstack/core/plugin",
       "file": "packages/cli/src/plugin-management.ts",
       "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/plugin",
-      "file": "packages/cli/src/slash-commands/review.ts",
-      "typeOnly": 1,
       "runtimeOrMixed": 1
     },
     {
@@ -6436,12 +6508,6 @@
     {
       "specifier": "@wrongstack/core/plugin",
       "file": "packages/cli/src/wiring/plugins.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 8
-    },
-    {
-      "specifier": "@wrongstack/core/plugin",
-      "file": "packages/cli/tests/cascade-e2e.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 1
     },
@@ -6531,12 +6597,6 @@
     },
     {
       "specifier": "@wrongstack/core/plugin",
-      "file": "packages/webui-server/src/server/chimera-routes.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/plugin",
       "file": "packages/webui-server/src/server/context-meta.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -6544,12 +6604,6 @@
     {
       "specifier": "@wrongstack/core/plugin",
       "file": "packages/webui-server/src/server/pref-helpers.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/plugin",
-      "file": "packages/webui-server/tests/chimera-routes.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -8205,6 +8259,48 @@
     },
     {
       "specifier": "@wrongstack/core/security",
+      "file": "packages/builtin-plugins/src/auto-review-plugin.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/builtin-plugins/src/cloud-config-sync-plugin.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/builtin-plugins/src/hunt-commands.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/builtin-plugins/src/perf-command.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/builtin-plugins/src/review-finding-store.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/builtin-plugins/src/review-report-store.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/builtin-plugins/src/specialist-trigger-plugin.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
       "file": "packages/chronicle/src/journal.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -9633,6 +9729,36 @@
     },
     {
       "specifier": "@wrongstack/core/skills",
+      "file": "packages/builtin-plugins/src/skills-plugin-authoring.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/skills",
+      "file": "packages/builtin-plugins/src/skills-plugin-diagnostics.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/skills",
+      "file": "packages/builtin-plugins/src/skills-plugin-registry.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/skills",
+      "file": "packages/builtin-plugins/src/skills-plugin.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/skills",
+      "file": "packages/builtin-plugins/tests/skills-plugin.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/skills",
       "file": "packages/cli/src/acp-leader/acp-leader-skills.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -9994,6 +10120,60 @@
     {
       "specifier": "@wrongstack/core/storage",
       "file": "apps/desktop/src/main/main.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/storage",
+      "file": "packages/builtin-plugins/src/cloud-config-sync-plugin.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/storage",
+      "file": "packages/builtin-plugins/src/hunt-commands.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/storage",
+      "file": "packages/builtin-plugins/src/perf-command.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/storage",
+      "file": "packages/builtin-plugins/src/prompts-command.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/storage",
+      "file": "packages/builtin-plugins/src/prompts-plugin.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/storage",
+      "file": "packages/builtin-plugins/src/sync-plugin.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/storage",
+      "file": "packages/builtin-plugins/tests/perf-command.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/storage",
+      "file": "packages/builtin-plugins/tests/prompts-plugin.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/storage",
+      "file": "packages/builtin-plugins/tests/sync-plugin.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -11513,6 +11693,96 @@
       "specifier": "@wrongstack/core/utils",
       "file": "packages/bench/tests/trace-eval.test.ts",
       "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/builtin-plugins/src/auto-review-plugin.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/builtin-plugins/src/chimera-plugin.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/builtin-plugins/src/cloud-config-sync-plugin.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/builtin-plugins/src/prompts-command.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/builtin-plugins/src/prompts-plugin.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/builtin-plugins/src/review-claim-store-lock.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/builtin-plugins/src/review-finding-store.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/builtin-plugins/src/review-finding-transition.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/builtin-plugins/src/review-report-store.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/builtin-plugins/src/review-store-maintenance.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/builtin-plugins/src/skills-plugin-authoring.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/builtin-plugins/src/skills-plugin-registry.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/builtin-plugins/src/skills-plugin.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/builtin-plugins/src/specialist-trigger-rules.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/builtin-plugins/src/sync-plugin.ts",
+      "typeOnly": 1,
       "runtimeOrMixed": 1
     },
     {

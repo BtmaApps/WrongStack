@@ -45,8 +45,7 @@
       "areas": [
         "core",
         "execution",
-        "plugin",
-        "plugins"
+        "plugin"
       ]
     },
     "features": {

@@ -1,11 +1,14 @@
 import type { Container, Token } from '@wrongstack/contracts/kernel/container';
 import type { TextBlock } from '@wrongstack/contracts/types/blocks';
+import type { ChronicleFileLineageReader } from '@wrongstack/contracts/types/chronicle-metrics';
 import type { FleetConfig } from '@wrongstack/contracts/types/config';
 import type { AgentContext } from '@wrongstack/contracts/types/context';
-import type { Logger } from '@wrongstack/contracts/types/logger';
-import type { ChronicleFileLineageReader } from '@wrongstack/contracts/types/chronicle-metrics';
 import type { MailboxHqPublisherFactory } from '@wrongstack/contracts/types/hq-mailbox-publisher';
-import type { MailboxMessage } from '@wrongstack/contracts/types/mailbox';
+import type { Logger } from '@wrongstack/contracts/types/logger';
+import type {
+  ChimeraReportSessionResolverFactory,
+  MailboxMessage,
+} from '@wrongstack/contracts/types/mailbox';
 
 /**
  * Coordination the agent loop drives every iteration: the inbox checker,
@@ -93,6 +96,27 @@ export function resolveChronicleFileLineage(
   try {
     return typeof container?.has === 'function' && container.has(CHRONICLE_FILE_LINEAGE)
       ? container.resolve(CHRONICLE_FILE_LINEAGE)
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Chimera report → session lookup for the mailbox session-affinity filter.
+ * The report store lives in `@wrongstack/builtin-plugins`, so hosts bind the
+ * factory; unbound, report-scoped mail without a session id stays unresolved.
+ */
+export const CHIMERA_REPORT_SESSION_RESOLVER = Symbol.for(
+  '@wrongstack/core/agent#ChimeraReportSessionResolver',
+) as Token<ChimeraReportSessionResolverFactory>;
+
+export function resolveChimeraReportSessionResolver(
+  container: Pick<Container, 'has' | 'resolve'> | undefined,
+): ChimeraReportSessionResolverFactory | undefined {
+  try {
+    return typeof container?.has === 'function' && container.has(CHIMERA_REPORT_SESSION_RESOLVER)
+      ? container.resolve(CHIMERA_REPORT_SESSION_RESOLVER)
       : undefined;
   } catch {
     return undefined;

@@ -11,9 +11,11 @@ export {
 export {
   AGENT_COORDINATION,
   type AgentCoordinationPort,
+  CHIMERA_REPORT_SESSION_RESOLVER,
   CHRONICLE_FILE_LINEAGE,
   HQ_MAILBOX_PUBLISHER_FACTORY,
   resolveAgentCoordination,
+  resolveChimeraReportSessionResolver,
   resolveChronicleFileLineage,
   resolveHqMailboxPublisherFactory,
 } from './agent-coordination.js';
@@ -156,6 +158,7 @@ export {
   validateSystemPromptPreset,
 } from './system-prompt-presets.js';
 export { fenceIfUntrusted, isSkillHiddenFromPrompt } from './system-prompt-skill-bodies.js';
+export { capSkillBody } from './system-prompt-skill-text.js';
 export {
   countSystemPromptTokens,
   isSystemInstructionVariant,
