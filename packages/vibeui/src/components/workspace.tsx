@@ -27,6 +27,7 @@ import {
   X,
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { hasAgentWork } from '../lib/agent-state';
 import { uiVersion } from '../lib/build-info';
 import { escapeClosesPanels } from '../lib/component-guards';
 import { groupTranscript } from '../lib/transcript-view';
@@ -48,22 +49,28 @@ import { DetailSwitch, usePresentation } from './presentation-mode';
 import { ProviderManager } from './provider-manager';
 import { ProviderQuotas } from './provider-quotas';
 import { ResourceHub, type ResourceTab } from './resource-hub';
+import { RoamingMascot } from './roaming-mascot';
 import { SessionActions } from './session-actions';
 import { SessionWorkStatus } from './session-work-status';
 import { StartSpace } from './start-space';
+import { StopAllDialog } from './stop-all-dialog';
+import { StreamMeter } from './stream-meter';
 import { ToolInspector } from './tool-inspector';
-import { VibeMark } from './vibe-visuals';
+import { VibeBuddy, VibeMark } from './vibe-visuals';
 import { WorkingActivity } from './working-activity';
 import { WorkspaceNotes } from './workspace-notes';
 import { WorkspacePanel } from './workspace-panel';
+import { useWorkspacePreferences, WorkspaceViewMenu } from './workspace-preferences';
 
 export function Workspace() {
   const { mode: presentation } = usePresentation();
+  const { preferences, update: updatePreferences } = useWorkspacePreferences();
   const controller = useSession();
   const { state, connection, ready, modelPending, switchSession, switchModel, notice, send } =
     controller;
   const [sidebar, setSidebar] = useState(false);
-  const [panel, setPanel] = useState(true);
+  const [panel, setPanel] = useState(false);
+  const [conversationOptions, setConversationOptions] = useState(false);
   const [inspectedToolId, setInspectedToolId] = useState('');
   const [settings, setSettings] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
@@ -72,6 +79,7 @@ export function Workspace() {
   const [filesOpen, setFilesOpen] = useState(false);
   const [providersOpen, setProvidersOpen] = useState(false);
   const [sessionsOpen, setSessionsOpen] = useState(false);
+  const [stopConfirm, setStopConfirm] = useState(false);
   const [resources, setResources] = useState<ResourceTab | null>(null);
   const [commandOpen, setCommandOpen] = useState(false);
   const [conversationSearch, setConversationSearch] = useState(false);
@@ -94,6 +102,11 @@ export function Workspace() {
   const scroll = useRef<HTMLElement>(null);
   const stick = useRef(true);
   const copyTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => {
+    setPanel(preferences.view === 'studio' && window.innerWidth >= 1100);
+    setSidebar(false);
+    setConversationOptions(false);
+  }, [preferences.view]);
 
   useEffect(() => {
     try {
@@ -182,6 +195,10 @@ export function Workspace() {
   );
   const activeSession = state.sessions.find((s) => s.id === state.id);
   const inspectedTool = state.tools.find((tool) => tool.id === inspectedToolId);
+  const requestStop = () => {
+    if (!controller.hasActiveWork || !ready || connection !== 'open') return;
+    setStopConfirm(true);
+  };
   const commands: WorkspaceCommand[] = [
     {
       id: 'guide',
@@ -271,9 +288,7 @@ export function Workspace() {
       title: 'Stop all tasks',
       detail: 'Stop this session and its agents; pause queued messages',
       disabled: !controller.hasActiveWork || !ready || connection !== 'open',
-      run: () => {
-        controller.stopAll();
-      },
+      run: requestStop,
     },
     ...state.sessions.map((session) => ({
       id: `session-${session.id}`,
@@ -320,7 +335,10 @@ export function Workspace() {
         setFilesOpen(true);
       }}
     >
-      <div className={`vibe-shell ${sidebar ? 'sidebar-open' : ''} ${panel ? 'panel-open' : ''}`}>
+      <div
+        data-view={preferences.view}
+        className={`vibe-shell ${sidebar ? 'sidebar-open' : ''} ${panel ? 'panel-open' : ''}`}
+      >
         {sidebar && (
           <button
             type="button"
@@ -544,12 +562,60 @@ export function Workspace() {
               >
                 <Menu size={18} />
               </button>
+              {preferences.view === 'cozy' ? (
+                <RoamingMascot
+                  working={controller.hasActiveWork}
+                  connected={connection === 'open'}
+                  outcome={state.runOutcome}
+                  attention={state.agents.some(
+                    (agent) =>
+                      hasAgentWork(agent) &&
+                      [
+                        'failed',
+                        'error',
+                        'stopped',
+                        'interrupted',
+                        'cancelled',
+                        'aborted',
+                      ].includes(agent.status),
+                  )}
+                  onFiles={() => setFilesOpen(true)}
+                  onIdeas={() => setResources('prompts')}
+                  onMemory={() => setResources('memory')}
+                  onNewChat={() => switchSession()}
+                  newChatLocked={locked}
+                />
+              ) : (
+                preferences.view === 'focus' && (
+                  <span className="cozy-brand">
+                    <VibeBuddy small />
+                  </span>
+                )
+              )}
               <Folder size={15} />
               <span>{state.project || 'Workspace'}</span>
               <span className="breadcrumb">/</span>
               <strong>{activeSession?.title || 'New session'}</strong>
             </div>
             <div className="header-actions">
+              <WorkspaceViewMenu
+                onChoose={() => {
+                  setSidebar(false);
+                  setPanel(false);
+                }}
+              />
+              {preferences.view !== 'studio' && (
+                <button
+                  type="button"
+                  className={`icon-button ${conversationOptions ? 'is-active' : ''}`}
+                  aria-label="Conversation options"
+                  title="Conversation options"
+                  aria-expanded={conversationOptions}
+                  onClick={() => setConversationOptions(!conversationOptions)}
+                >
+                  <Settings2 size={16} />
+                </button>
+              )}
               <button
                 type="button"
                 className="icon-button"
@@ -584,99 +650,130 @@ export function Workspace() {
               </button>
             </div>
           </header>
-          <div className="experience-bar">
-            <span>
-              <Sparkles size={13} /> Your creative workspace
-            </span>
-            <div>
-              <DetailSwitch />
-              <button type="button" className="experience-guide" onClick={() => setGuideOpen(true)}>
-                <Compass size={14} />
-                <span>Quick tour</span>
+          {preferences.view === 'studio' && (
+            <div className="experience-bar">
+              <span>
+                <Sparkles size={13} /> Your creative workspace
+              </span>
+              <div>
+                <DetailSwitch />
+                <button
+                  type="button"
+                  className="experience-guide"
+                  onClick={() => setGuideOpen(true)}
+                >
+                  <Compass size={14} />
+                  <span>Quick tour</span>
+                </button>
+              </div>
+            </div>
+          )}
+          {preferences.view === 'cozy' && preferences.shortcuts && (
+            <nav className="cozy-shortcuts" aria-label="Handy shortcuts">
+              <span>A little help?</span>
+              <button type="button" onClick={() => setFilesOpen(true)}>
+                <Folder size={14} /> My files
               </button>
-            </div>
-          </div>
-          <div className="session-toolbar">
-            <div className="model-controls">
-              <ModelPicker
-                models={state.models}
-                providers={state.providers}
-                provider={state.provider}
-                model={state.model}
-                locked={locked}
-                pending={modelPending}
-                onChoose={chooseModel}
-                onSettings={setProvidersOpen}
-                onRefresh={refreshModels}
-              />
-              <EffortSelect state={state} disabled={locked} onChange={controller.setEffort} />
-            </div>
-            <button
-              type="button"
-              aria-label="View context"
-              onClick={() => setContextOpen(true)}
-              className="context-summary"
-              title={`${state.tokens.toLocaleString()} / ${state.maxContext.toLocaleString()} context tokens${state.cache ? ` · cache hit ${Math.round((state.cache.lastHitRatio ?? state.cache.hitRatio) * 100)}%` : ''}`}
-            >
-              <span className="context-track">
-                <span style={{ width: `${Math.min(100, state.load * 100)}%` }} />
-              </span>
-              <span className="context-label">
-                {presentation === 'simple' ? (
-                  <>Conversation space · {Math.round(state.load * 100)}%</>
-                ) : (
-                  <>
-                    {Intl.NumberFormat('en', {
-                      notation: 'compact',
-                      maximumFractionDigits: 1,
-                    }).format(state.tokens)}{' '}
-                    /{' '}
-                    {Intl.NumberFormat('en', {
-                      notation: 'compact',
-                      maximumFractionDigits: 1,
-                    }).format(state.maxContext)}{' '}
-                    <span className="context-percentage"> · {Math.round(state.load * 100)}%</span>
-                    {state.cache && (
-                      <span className="context-cache">
-                        {' '}
-                        · cache{' '}
-                        {Math.round((state.cache.lastHitRatio ?? state.cache.hitRatio) * 100)}%
-                      </span>
-                    )}
-                  </>
-                )}
-              </span>
-            </button>
-            {typeof state.prefs.autonomy === 'string' && (
+              <button type="button" onClick={() => setResources('prompts')}>
+                <BookOpen size={14} /> Ideas & skills
+              </button>
+              <button type="button" onClick={() => setResources('memory')}>
+                <Brain size={14} /> Memory
+              </button>
               <button
                 type="button"
-                className="runtime-chip"
-                aria-label="Agent settings"
-                onClick={() => setSettings(true)}
+                className="icon-button"
+                aria-label="Hide quick shortcuts"
+                title="Tuck these away"
+                onClick={() => updatePreferences({ shortcuts: false })}
               >
-                {state.mode || 'Default'} · {state.prefs.autonomy}
-                {state.prefs.yoloPlus === true
-                  ? ' · YOLO+'
-                  : state.prefs.yolo === true
-                    ? ' · YOLO'
-                    : ''}
+                <X size={13} />
               </button>
-            )}
-            {liveAgents.length > 0 && (
+            </nav>
+          )}
+          {(preferences.view === 'studio' || conversationOptions) && (
+            <div className="session-toolbar">
+              <div className="model-controls">
+                <ModelPicker
+                  models={state.models}
+                  providers={state.providers}
+                  provider={state.provider}
+                  model={state.model}
+                  locked={locked}
+                  pending={modelPending}
+                  onChoose={chooseModel}
+                  onSettings={setProvidersOpen}
+                  onRefresh={refreshModels}
+                />
+                <EffortSelect state={state} disabled={locked} onChange={controller.setEffort} />
+              </div>
               <button
                 type="button"
-                className="agent-count"
-                aria-label="View agents"
-                title={`${liveAgents.length} active ${liveAgents.length === 1 ? 'agent' : 'agents'}`}
-                onClick={() => {
-                  setPanel(true);
-                  setAgentView((value) => value + 1);
-                }}
+                aria-label="View context"
+                onClick={() => setContextOpen(true)}
+                className="context-summary"
+                title={`${state.tokens.toLocaleString()} / ${state.maxContext.toLocaleString()} context tokens${state.cache ? ` · cache hit ${Math.round((state.cache.lastHitRatio ?? state.cache.hitRatio) * 100)}%` : ''}`}
               >
-                <Users size={13} /> {liveAgents.length}
+                <span className="context-track">
+                  <span style={{ width: `${Math.min(100, state.load * 100)}%` }} />
+                </span>
+                <span className="context-label">
+                  {presentation === 'simple' ? (
+                    <>Conversation space · {Math.round(state.load * 100)}%</>
+                  ) : (
+                    <>
+                      {Intl.NumberFormat('en', {
+                        notation: 'compact',
+                        maximumFractionDigits: 1,
+                      }).format(state.tokens)}{' '}
+                      /{' '}
+                      {Intl.NumberFormat('en', {
+                        notation: 'compact',
+                        maximumFractionDigits: 1,
+                      }).format(state.maxContext)}{' '}
+                      <span className="context-percentage"> · {Math.round(state.load * 100)}%</span>
+                      {state.cache && (
+                        <span className="context-cache">
+                          {' '}
+                          · cache{' '}
+                          {Math.round((state.cache.lastHitRatio ?? state.cache.hitRatio) * 100)}%
+                        </span>
+                      )}
+                    </>
+                  )}
+                </span>
               </button>
-            )}
-          </div>
+              {typeof state.prefs.autonomy === 'string' && (
+                <button
+                  type="button"
+                  className="runtime-chip"
+                  aria-label="Agent settings"
+                  onClick={() => setSettings(true)}
+                >
+                  {state.mode || 'Default'} · {state.prefs.autonomy}
+                  {state.prefs.yoloPlus === true
+                    ? ' · YOLO+'
+                    : state.prefs.yolo === true
+                      ? ' · YOLO'
+                      : ''}
+                </button>
+              )}
+              {liveAgents.length > 0 && (
+                <button
+                  type="button"
+                  className="agent-count"
+                  aria-label="View agents"
+                  title={`${liveAgents.length} active ${liveAgents.length === 1 ? 'agent' : 'agents'}`}
+                  onClick={() => {
+                    setPanel(true);
+                    setAgentView((value) => value + 1);
+                  }}
+                >
+                  <Users size={13} /> {liveAgents.length}
+                </button>
+              )}
+            </div>
+          )}
           {controller.sessionTransition && (
             <div className="notice" role="status">
               Switching session: {controller.sessionTransition}. Input stays locked until the new
@@ -877,6 +974,7 @@ export function Workspace() {
                 })}
                 {state.running && (
                   <WorkingActivity
+                    compact={preferences.view !== 'studio'}
                     tools={state.tools}
                     onInspect={setInspectedToolId}
                     onViewActivity={() => {
@@ -892,7 +990,7 @@ export function Workspace() {
               state={state}
               connected={connection === 'open'}
               canStop={ready && !controller.sessionTransition}
-              onStop={controller.stopAll}
+              onStop={requestStop}
               onWatch={() => {
                 setPanel(true);
                 setAgentView((value) => value + 1);
@@ -913,19 +1011,31 @@ export function Workspace() {
               Latest
             </button>
           )}
+          <StreamMeter activity={state.streamActivity} running={state.running} />
           <Composer
             key={`${state.id || 'connecting'}-${controller.clearGeneration}`}
             controller={controller}
             onDraftChange={setHasDraft}
+            onStopRequest={requestStop}
           />
         </div>
         {panel && (
-          <WorkspacePanel
-            controller={controller}
-            revealAgents={agentView}
-            requestedView={panelRequest}
-            onClose={() => setPanel(false)}
-          />
+          <>
+            {preferences.view !== 'studio' && (
+              <button
+                type="button"
+                className="workspace-backdrop"
+                aria-label="Close workspace panel"
+                onClick={() => setPanel(false)}
+              />
+            )}
+            <WorkspacePanel
+              controller={controller}
+              revealAgents={agentView}
+              requestedView={panelRequest}
+              onClose={() => setPanel(false)}
+            />
+          </>
         )}
         {inspectedTool && (
           <ToolInspector
@@ -970,6 +1080,15 @@ export function Workspace() {
           onSettings={() => {
             setGuideOpen(false);
             setSettings(true);
+          }}
+        />
+        <StopAllDialog
+          open={stopConfirm}
+          leaderRunning={state.running}
+          agentNames={liveAgents.map((agent) => agent.name || agent.id)}
+          onCancel={() => setStopConfirm(false)}
+          onConfirm={() => {
+            if (controller.stopAll()) setStopConfirm(false);
           }}
         />
         <ContextDialog controller={controller} open={contextOpen} onOpenChange={setContextOpen} />

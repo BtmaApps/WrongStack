@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { PresentationProvider } from '../components/presentation-mode';
+import { WorkspacePreferencesProvider } from '../components/workspace-preferences';
 import '@xyflow/react/dist/style.css';
 import './globals.css';
 
@@ -18,7 +19,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         {backendPort && <meta name="wrongstack-ws-url" content={`ws://127.0.0.1:${backendPort}`} />}
       </head>
       <body>
-        <PresentationProvider>{children}</PresentationProvider>
+        <PresentationProvider>
+          <WorkspacePreferencesProvider>{children}</WorkspacePreferencesProvider>
+        </PresentationProvider>
       </body>
     </html>
   );

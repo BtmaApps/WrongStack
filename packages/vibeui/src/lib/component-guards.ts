@@ -74,6 +74,34 @@ export function inputQueueLabel(waiting: number): string {
     : `${waiting} more questions are waiting after this one.`;
 }
 
+/** The pending session open an error frame just abandoned. */
+export type PendingOpKind = 'clear' | 'switch' | 'restore';
+
+/**
+ * Immediate message for a pending open an error frame just abandoned. The 30s
+ * deadline stays the path for silence; an explicit failure must explain itself
+ * now instead of leaving a locked UI that quietly unlocks.
+ */
+export function pendingOpFailureNotice(kind: PendingOpKind): string {
+  if (kind === 'clear') return 'Clear did not complete. The conversation is unchanged; try again.';
+  if (kind === 'switch') return 'The session did not switch. Check for errors and try again.';
+  return 'The session could not be restored. Reload to retry.';
+}
+
+/**
+ * Notice after a successful compaction when messages are left waiting in a
+ * paused queue: keeps the reducer's compaction summary and adds the one fact
+ * the user needs — the queue stays paused until they resume it.
+ */
+export function compactionQueueNotice(queued: number, paused: boolean, base: string): string {
+  if (!paused || queued <= 0) return base;
+  const suffix =
+    queued === 1
+      ? '1 queued message is paused — resume the queue to continue.'
+      : `${queued} queued messages are paused — resume the queue to continue.`;
+  return base ? `${base} ${suffix}` : suffix;
+}
+
 /**
  * Whether a document-level Escape should collapse the side panels. Escape that
  * a field already handled, or that was pressed while typing, belongs to that

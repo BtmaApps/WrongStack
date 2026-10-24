@@ -4,6 +4,7 @@ import type { ProtocolEnvelope } from '@wrongstack/webui-protocol';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { isActiveAgent } from './agent-state';
 import type { Artifact } from './artifacts';
+import { compactionQueueNotice, pendingOpFailureNotice } from './component-guards';
 import { clientId } from './ids';
 import {
   draftKey,
@@ -38,6 +39,21 @@ export interface DraftRequest {
   text?: string;
   reference?: string;
   images?: Attachment[];
+}
+
+/** Keep a confirmed stop on screen until the user starts another run. */
+function holdStopped(state: SessionState): SessionState {
+  return {
+    ...state,
+    running: false,
+    runOutcome: state.runOutcome === 'error' ? state.runOutcome : 'aborted',
+    agents: state.agents.map((agent) =>
+      isActiveAgent(agent.status) ? { ...agent, status: 'stopped', currentTool: '' } : agent,
+    ),
+    tools: state.tools.map((tool) =>
+      tool.status === 'running' ? { ...tool, status: 'interrupted' } : tool,
+    ),
+  };
 }
 
 export function useSession() {
@@ -75,6 +91,8 @@ export function useSession() {
   const pendingSwitch = useRef(new SessionSwitch<ProtocolEnvelope>());
   const previewTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const pendingModel = useRef(false);
+  /** Session whose Stop all was confirmed. Later frames must not mark it running again. */
+  const stopping = useRef('');
   const [modelPending, setModelPending] = useState(false);
   const modelTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
@@ -152,10 +170,16 @@ export function useSession() {
         // re-lock the UI.
         const { pending, held } = pendingSwitch.current.cancel();
         if (pending) {
+          const kind = clearingSession.current
+            ? 'clear'
+            : transition.current
+              ? 'switch'
+              : 'restore';
           clearingSession.current = '';
           transition.current = '';
           setSessionTransition('');
           setReady(true);
+          notice(pendingOpFailureNotice(kind));
         }
         if (held) handle(held);
       }
@@ -171,24 +195,37 @@ export function useSession() {
         isActiveAgent(agent.status),
       ).length;
       update((s) => {
-        const next = reduceFrame(s, frame);
-        if (frame.type !== 'run.result') return next;
-        const owned =
-          typeof p.requestId === 'string' && ownedRuns.current.get(next.id) === p.requestId;
-        return owned
-          ? next
-          : {
+        let next = reduceFrame(s, frame);
+        if (frame.type === 'run.result') {
+          const owned =
+            typeof p.requestId === 'string' && ownedRuns.current.get(next.id) === p.requestId;
+          if (!owned) {
+            next = {
               ...next,
               messages: next.messages.map((message) =>
                 message.autoEligible ? { ...message, autoEligible: false } : message,
               ),
             };
+          }
+        }
+        if (stopping.current && next.id && stopping.current !== next.id) stopping.current = '';
+        if (stopping.current && stopping.current === next.id) return holdStopped(next);
+        return next;
       });
       for (const listener of listeners.current) listener(frame);
       if (frame.type === 'context.compacted' || opFailed) {
         compacting.current = false;
         setCompactPending(false);
         clearTimeout(compactTimeout.current);
+      }
+      if (frame.type === 'context.compacted') {
+        const queued = queueRef.current.filter(
+          (item) => item.sessionId === current.current.id,
+        ).length;
+        update((s) => ({
+          ...s,
+          notice: compactionQueueNotice(queued, pausedRef.current.get(s.id) === true, s.notice),
+        }));
       }
       if ((frame.type === 'error' || frame.type === 'run.result') && current.current.runFailure) {
         const expectedStop =
@@ -334,6 +371,7 @@ export function useSession() {
         return false;
       }
       ownedRuns.current.set(s.id, id);
+      stopping.current = '';
       update((previous) => ({
         ...previous,
         running: true,
@@ -494,17 +532,28 @@ export function useSession() {
       setQueuePaused(s.id, true);
       steering.current = null;
       ownedRuns.current.delete(s.id);
-      update((previous) => ({
-        ...previous,
-        messages: previous.messages.map((message) =>
-          message.autoEligible ? { ...message, autoEligible: false } : message,
-        ),
-      }));
-      if (!send('abort', { sessionId: s.id })) {
+      const subagentIds = s.agents
+        .filter((agent) => isActiveAgent(agent.status))
+        .map((agent) => agent.id);
+      if (
+        !send('abort', {
+          sessionId: s.id,
+          ...(subagentIds.length ? { subagentIds } : {}),
+        })
+      ) {
         notice('Stop could not be sent. Reconnect and try again. The message queue is paused.');
         return false;
       }
-      notice('Stop requested for this session and its agents. The message queue is paused.');
+      stopping.current = s.id;
+      update((previous) =>
+        holdStopped({
+          ...previous,
+          notice: 'Stopped. The leader and its agents are stopped. The message queue is paused.',
+          messages: previous.messages.map((message) =>
+            message.autoEligible ? { ...message, autoEligible: false } : message,
+          ),
+        }),
+      );
       return true;
     },
     clearGeneration,

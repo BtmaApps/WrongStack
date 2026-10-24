@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   canRestoreDraft,
+  compactionQueueNotice,
   draftAfterSave,
   escapeClosesPanels,
   inputQueueLabel,
   listReplyEffect,
+  pendingOpFailureNotice,
   readSavedDraft,
 } from '../src/lib/component-guards';
 
@@ -79,5 +81,40 @@ describe('Escape and the side panels (workspace.tsx)', () => {
     expect(escapeClosesPanels(key({ tagName: 'BUTTON' }))).toBe(true);
     expect(escapeClosesPanels(key({ tagName: 'BODY' }))).toBe(true);
     expect(escapeClosesPanels({ key: 'Enter', defaultPrevented: false, target: null })).toBe(false);
+  });
+});
+
+describe('compaction and the paused queue (use-session.ts)', () => {
+  it('appends the paused-queue fact to the compaction summary', () => {
+    expect(compactionQueueNotice(3, true, 'Context compacted: 900 → 400 tokens.')).toBe(
+      'Context compacted: 900 → 400 tokens. 3 queued messages are paused — resume the queue to continue.',
+    );
+  });
+  it('uses the singular for one queued message and works without a summary', () => {
+    expect(compactionQueueNotice(1, true, '')).toBe(
+      '1 queued message is paused — resume the queue to continue.',
+    );
+  });
+  it('says nothing when the queue is empty or already running', () => {
+    expect(compactionQueueNotice(0, true, 'Context compacted: 900 → 400 tokens.')).toBe(
+      'Context compacted: 900 → 400 tokens.',
+    );
+    expect(compactionQueueNotice(2, false, 'Context compacted: 900 → 400 tokens.')).toBe(
+      'Context compacted: 900 → 400 tokens.',
+    );
+  });
+});
+
+describe('abandoned pending open (use-session.ts)', () => {
+  it('explains each failed open immediately instead of staying silent', () => {
+    expect(pendingOpFailureNotice('clear')).toBe(
+      'Clear did not complete. The conversation is unchanged; try again.',
+    );
+    expect(pendingOpFailureNotice('switch')).toBe(
+      'The session did not switch. Check for errors and try again.',
+    );
+    expect(pendingOpFailureNotice('restore')).toBe(
+      'The session could not be restored. Reload to retry.',
+    );
   });
 });

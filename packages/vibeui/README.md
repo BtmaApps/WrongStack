@@ -34,6 +34,32 @@ derive their WebSocket endpoint from the page origin or the host-injected meta.
 
 ## Scope
 
+- First visits open in Cozy chat. The view menu also offers Just chat and Studio;
+  switching views preserves the session and current draft. Inspiration cards,
+  quick shortcuts and introductions are optional and remembered on this device.
+  Introductions can be tucked away individually and restored. Cozy resource and
+  memory browsing uses one pane at a time; Files offers single/split reading.
+  Conversation controls sit behind an explicit options button outside Studio.
+  Running work keeps its stop controls; recent tool details unfold on demand.
+  Cozy settings keep assistant behavior inside an optional advanced section;
+  settings search opens all containing groups when jumping to a hidden control.
+  Library and Memory share a persistent Cards / List choice for roomier or denser
+  browsing. Simple dialogs keep technical detail switches out of the header.
+- Stacky is a five-block companion inspired by the orange/pink mark. In Cozy
+  chat it takes occasional walks along the spare gutter, outside the reading and
+  composing areas. Typing, focus, open surfaces and hidden tabs pause movement;
+  small layouts and reduced motion keep it docked. Its menu and the view menu
+  offer Wander / Sit quietly / Sleep, persisted on this device. Just chat has no
+  roaming companion. All animations and observers are cleaned up when disabled.
+  Clicking Stacky opens a small playground with a high five, a brief dance and a
+  stretch. Reactions expire automatically and pause walking; quiet/reduced-motion
+  modes answer with a still smile. These are local interactions and never send a
+  chat message or change a running task.
+  Play / Help / Comfort tabs keep this popup compact. Help opens Files, Library
+  and Memory while preserving the draft, and the header moon hides Stacky in one
+  click. Walks reverse through the middle stop and adapt their duration to the
+  distance. Expressions distinguish active work, completion, stopped work and
+  errors, including worker failures after the leader finishes.
 - Visual starting points for websites, small apps and project improvements. An
   optional idea and style choice prepare an editable message, appended to any
   existing draft without sending. A quick tour explains the workflow and links
@@ -68,6 +94,15 @@ derive their WebSocket endpoint from the page origin or the host-injected meta.
   stops the countdown. Replays and observer tabs never auto-submit.
 - Files open in a standalone modal: content on the left, directory/search on the
   right. Changed files open a diff/before/after modal; plan/task/to-do views are read-only.
+- File discovery adds type filters, card/tree views, folder breadcrumbs and
+  downloading a copy of the selected preview. Keep handy pins up to eight file
+  shortcuts per project; five recently opened files help you pick up where you
+  left off. This shelf folds away and remembers its state on this device, stores
+  paths only, and never changes project files. Clearing recent shortcuts keeps
+  pinned files. Cozy Library keeps Ideas, Skills and Memory in front; More reveals
+  Tools and Connections. Library search combines categories and favorites.
+  Memory offers kind shortcuts, readable knowledge cards, copying
+  and insertion into the current draft without sending or changing stored records.
 - Tool activity, passive text/image/diff previews and an Agents view with task,
   provider/model, status, iteration/tool counts and bounded live transcripts.
   Inactive workers are hidden by default. Task, model and latest output come first;
@@ -139,5 +174,8 @@ queueing, file references, model warnings, workspace views, drafts, reconnection
 and responsive layouts without making model calls. It also covers prompt variables,
 shared library writes, stale skill replies, tool toggles, rejected MCP changes,
 instruction revision conflicts, quick-action keyboard navigation and extra prefs.
+File shortcuts are checked across reloads and project changes, including clearing
+recent items, unpinning and folding the shelf away. Cozy Library's optional
+sections and file shortcuts are exercised at 320px and 390px widths.
 Screenshots are written to
 `.temp_files/vibeui/`. Live account/model discovery is a separate check.

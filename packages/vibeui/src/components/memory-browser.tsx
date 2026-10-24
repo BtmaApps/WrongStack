@@ -1,21 +1,55 @@
 'use client';
 
 import { Background, Controls, type Edge, type Node, Position, ReactFlow } from '@xyflow/react';
-import { ArrowLeft, RefreshCw, Search, SlidersHorizontal } from 'lucide-react';
+import {
+  ArrowLeft,
+  ArrowUpRight,
+  BookOpen,
+  Brain,
+  Check,
+  Copy,
+  Heart,
+  Lightbulb,
+  RefreshCw,
+  Search,
+  SlidersHorizontal,
+} from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { listReplyEffect } from '../lib/component-guards';
+import { memoryKindLabel } from '../lib/explorer-view';
 import { directMemoryEdges, memoryDate } from '../lib/memory-view';
 import { record, rows, text } from '../lib/session';
+import { useCopyText } from '../lib/use-copy-text';
 import { usePanelRequests } from '../lib/use-panel-requests';
 import type { SessionController } from '../lib/use-session';
 import { CodePanel } from './code-panel';
 import { MarkdownContent } from './markdown-content';
 import { usePresentation } from './presentation-mode';
 import { EmptyArtwork } from './vibe-visuals';
+import { CollectionViewSwitch, useWorkspacePreferences } from './workspace-preferences';
 
-export function MemoryBrowser({ controller }: { controller: SessionController }) {
+function KnowledgeSymbol({ kind }: { kind: string }) {
+  const Icon =
+    kind === 'preference'
+      ? Heart
+      : kind === 'decision'
+        ? Lightbulb
+        : kind === 'convention'
+          ? BookOpen
+          : Brain;
+  return <Icon size={15} aria-hidden="true" />;
+}
+
+export function MemoryBrowser({
+  controller,
+  onUse,
+}: {
+  controller: SessionController;
+  onUse: () => void;
+}) {
   const { request, busy, error } = usePanelRequests(controller);
   const { mode } = usePresentation();
+  const { preferences } = useWorkspacePreferences();
   const [query, setQuery] = useState('');
   const [kind, setKind] = useState('all');
   const [status, setStatus] = useState('active');
@@ -31,6 +65,7 @@ export function MemoryBrowser({ controller }: { controller: SessionController })
   const selectionEpoch = useRef(0);
   const [view, setView] = useState<'records' | 'graph'>('records');
   const [graph, setGraph] = useState<Record<string, unknown> | null>(null);
+  const clipboard = useCopyText(text(selected?.id));
   const epoch = useRef(0);
   const offline = controller.connection !== 'open';
   const load = useCallback(
@@ -151,7 +186,35 @@ export function MemoryBrowser({ controller }: { controller: SessionController })
     return { nodes, edges };
   }, [graph, selected, direct, visibleRelations]);
   return (
-    <section className="memory-browser" aria-label="Memory browser">
+    <section
+      className="memory-browser"
+      data-selected={Boolean(selected)}
+      aria-label="Memory browser"
+    >
+      <div className="memory-overview">
+        <span className="knowledge-orbit" aria-hidden="true">
+          <Brain size={27} />
+          <i />
+          <i />
+          <i />
+        </span>
+        <div>
+          <strong>
+            {busy
+              ? 'Finding your knowledge…'
+              : `${total.toLocaleString()} ${total === 1 ? 'memory' : 'memories'} found`}
+          </strong>
+          <p>
+            {items.length} on this page ·{' '}
+            {status === 'active'
+              ? 'Current project knowledge'
+              : status === 'all'
+                ? 'All saved statuses'
+                : `${status} knowledge`}
+          </p>
+        </div>
+        <span className="explorer-badge">Read only</span>
+      </div>
       <div className="memory-toolbar">
         <label className="file-search">
           <Search size={15} />
@@ -183,6 +246,44 @@ export function MemoryBrowser({ controller }: { controller: SessionController })
           <RefreshCw size={15} />
         </button>
       </div>
+      <fieldset
+        hidden={preferences.view !== 'studio' && !filtersOpen}
+        className="explorer-filters memory-quick-filters"
+        aria-label="Memory shortcuts"
+      >
+        {(
+          [
+            ['all', 'All knowledge'],
+            ['preference', 'Preferences'],
+            ['decision', 'Decisions'],
+            ['convention', 'Project habits'],
+          ] as const
+        ).map(([value, label]) => (
+          <button
+            type="button"
+            key={value}
+            aria-pressed={kind === value}
+            disabled={busy || offline}
+            onClick={() => setKind(value)}
+          >
+            <KnowledgeSymbol kind={value} />
+            {label}
+          </button>
+        ))}
+        {(query || kind !== 'all' || status !== 'active') && (
+          <button
+            type="button"
+            disabled={busy || offline}
+            onClick={() => {
+              setQuery('');
+              setKind('all');
+              setStatus('active');
+            }}
+          >
+            Clear memory search and filters
+          </button>
+        )}
+      </fieldset>
       <div className="memory-filters" id="memory-filters" hidden={!filtersOpen}>
         <select
           aria-label="Memory kind"
@@ -234,11 +335,16 @@ export function MemoryBrowser({ controller }: { controller: SessionController })
           </button>
         )}
       </div>
-      <p className="fine-print" role="status">
+      <p className="sr-only" role="status">
         {busy
           ? 'Loading memory…'
           : `${total.toLocaleString()} matching memories · ${items.length} on this page`}
       </p>
+      {!selected && (
+        <div className="memory-collection-view">
+          <CollectionViewSwitch />
+        </div>
+      )}
       {error && (
         <p className="form-error" role="alert">
           {error}
@@ -250,20 +356,46 @@ export function MemoryBrowser({ controller }: { controller: SessionController })
           {items.map((item) => (
             <button
               type="button"
-              className="hub-row"
+              className="hub-row memory-card"
               key={text(item.id)}
               aria-current={selected?.id === item.id ? 'true' : undefined}
               disabled={busy || offline}
               onClick={() => void pick(item)}
             >
-              <strong>{text(item.text).slice(0, 110)}</strong>
+              <span className="memory-card-heading">
+                <span className="memory-kind">
+                  <KnowledgeSymbol kind={text(item.kind)} />
+                  {memoryKindLabel(item.kind)}
+                </span>
+                <span className="memory-state" data-status={text(item.status)}>
+                  {text(item.status) || 'Status not reported'}
+                </span>
+              </span>
+              <strong>{text(item.text).slice(0, 160)}</strong>
               <small>
-                {text(item.kind).replaceAll('_', ' ')} · {text(item.scope)} · {text(item.status)}
+                {text(item.scope) ? `${text(item.scope)} knowledge` : 'Saved knowledge'}
               </small>
+              {Array.isArray(item.tags) && (
+                <span className="memory-card-tags">
+                  {item.tags
+                    .filter((tag): tag is string => typeof tag === 'string')
+                    .slice(0, 2)
+                    .map((tag) => (
+                      <span key={tag}>#{tag}</span>
+                    ))}
+                </span>
+              )}
             </button>
           ))}
           {!busy && !items.length && !error && (
-            <p className="panel-hint">No memories match these filters.</p>
+            <div className="explorer-no-results">
+              <Brain size={28} />
+              <strong>No memories match these filters.</strong>
+              <p>
+                Try a broader search or choose All knowledge. Saved preferences and project
+                decisions will appear here.
+              </p>
+            </div>
           )}
         </nav>
         <div className="memory-detail">
@@ -281,7 +413,10 @@ export function MemoryBrowser({ controller }: { controller: SessionController })
                 >
                   <ArrowLeft size={14} /> All memories
                 </button>
-                <strong>{text(selected.kind).replaceAll('_', ' ')} memory</strong>
+                <strong className="memory-kind">
+                  <KnowledgeSymbol kind={text(selected.kind)} />
+                  {memoryKindLabel(selected.kind)} memory
+                </strong>
                 <div className="detail-switch">
                   <button
                     type="button"
@@ -342,6 +477,44 @@ export function MemoryBrowser({ controller }: { controller: SessionController })
                   <div className="memory-tags">
                     {Array.isArray(selected.tags) &&
                       selected.tags.map((tag) => <span key={String(tag)}>{String(tag)}</span>)}
+                  </div>
+                  <div className="memory-reuse">
+                    <div>
+                      <strong>Bring this into the conversation</strong>
+                      <p>Add this knowledge to your draft. You decide when to send it.</p>
+                    </div>
+                    <div>
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        aria-label="Copy memory"
+                        onClick={() => void clipboard.copy(text(selected.text))}
+                        disabled={!text(selected.text)}
+                      >
+                        {clipboard.status === 'copied' ? <Check size={14} /> : <Copy size={14} />}{' '}
+                        Copy
+                      </button>
+                      <button
+                        type="button"
+                        className="primary-button"
+                        disabled={busy || offline || !text(selected.text)}
+                        onClick={() => {
+                          controller.prepareDraft(
+                            `Please take this project knowledge into account:\n\n${text(selected.text)}`,
+                          );
+                          onUse();
+                        }}
+                      >
+                        Use in message <ArrowUpRight size={14} />
+                      </button>
+                    </div>
+                    {clipboard.status !== 'idle' && (
+                      <p role="status">
+                        {clipboard.status === 'copied'
+                          ? 'Memory copied.'
+                          : 'Could not copy. Select the memory text to copy it manually.'}
+                      </p>
+                    )}
                   </div>
                   {mode === 'extended' && (
                     <>

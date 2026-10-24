@@ -71,8 +71,11 @@ export function SettingsSearch({ children }: { children: ReactNode }) {
               key={label}
               onClick={() => {
                 search('');
-                const group = element.closest('details');
-                if (group) group.open = true;
+                let ancestor = element.parentElement;
+                while (ancestor) {
+                  if (ancestor instanceof HTMLDetailsElement) ancestor.open = true;
+                  ancestor = ancestor.parentElement;
+                }
                 requestAnimationFrame(() => {
                   element.scrollIntoView({ block: 'center' });
                   element

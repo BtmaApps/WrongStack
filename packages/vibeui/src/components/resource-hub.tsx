@@ -1,16 +1,31 @@
 'use client';
 
-import { ArrowLeft, BookOpen, RefreshCw, Star } from 'lucide-react';
+import {
+  ArrowLeft,
+  ArrowUpRight,
+  BookOpen,
+  Brain,
+  ChevronDown,
+  ChevronRight,
+  Layers,
+  Plug,
+  RefreshCw,
+  Search,
+  Sparkles,
+  Star,
+  Wrench,
+  X,
+} from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { Tabs } from 'radix-ui';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { filterResources } from '../lib/explorer-view';
 import {
   fillPrompt,
   promptSlug,
   promptVariables,
   resourceDetails,
   resourceId,
-  resourceMatches,
 } from '../lib/resource-model';
 import { rows, text } from '../lib/session';
 import { usePanelRequests } from '../lib/use-panel-requests';
@@ -20,6 +35,11 @@ import { Modal } from './dialogs';
 import { MarkdownContent } from './markdown-content';
 import { usePresentation } from './presentation-mode';
 import { EmptyArtwork } from './vibe-visuals';
+import {
+  CollectionViewSwitch,
+  FriendlyIntro,
+  useWorkspacePreferences,
+} from './workspace-preferences';
 
 const MemoryBrowser = dynamic(
   () => import('./memory-browser').then((module) => module.MemoryBrowser),
@@ -34,6 +54,37 @@ const TITLES: Record<ResourceTab, string> = {
   mcp: 'MCP',
   memory: 'Memory',
 };
+const SECTIONS = {
+  prompts: {
+    icon: Sparkles,
+    title: 'A head start for your next idea',
+    description: 'Reusable starting points. Pick one, make it yours, then add it to your message.',
+  },
+  skills: {
+    icon: Layers,
+    title: 'The right know-how for the job',
+    description:
+      'Skills give your assistant a focused way to approach a task. Choose one to see how it helps.',
+  },
+  tools: {
+    icon: Wrench,
+    title: 'See what your assistant can do',
+    description:
+      'Browse the tools available to this workspace and understand what each one can read or change.',
+  },
+  mcp: {
+    icon: Plug,
+    title: 'Your connected services',
+    description:
+      'Connections bring extra tools into your workspace. Check their status or reconnect a service here.',
+  },
+  memory: {
+    icon: Brain,
+    title: 'Good ideas deserve to be remembered',
+    description:
+      'Explore project knowledge, preferences and decisions your assistant has kept for future conversations.',
+  },
+};
 export function ResourceHub({
   controller,
   initialTab,
@@ -45,12 +96,21 @@ export function ResourceHub({
 }) {
   const { state, connection, prepareDraft } = controller;
   const { mode } = usePresentation();
+  const { preferences } = useWorkspacePreferences();
+  const [collectionsChoice, setCollections] = useState<boolean | null>(null);
+  const collectionsOpen = collectionsChoice ?? preferences.view === 'studio';
   const { request, busy, error, setError } = usePanelRequests(controller);
   const [tab, setTab] = useState<ResourceTab>(initialTab);
+  const [extraSections, setExtraSections] = useState(
+    initialTab === 'tools' || initialTab === 'mcp',
+  );
+  const allSections = preferences.view === 'studio' || extraSections;
   const [items, setItems] = useState<Record<string, unknown>[]>([]);
   const [selected, setSelected] = useState('');
   const [detail, setDetail] = useState<Record<string, unknown> | null>(null);
   const [query, setQuery] = useState('');
+  const [category, setCategory] = useState('');
+  const [favorites, setFavorites] = useState(false);
   const [enabled, setEnabled] = useState(true);
   const [values, setValues] = useState<Record<string, string>>({});
   const [creating, setCreating] = useState(false);
@@ -74,6 +134,8 @@ export function ResourceHub({
     setSelected('');
     setDetail(null);
     setQuery('');
+    setCategory('');
+    setFavorites(false);
     setCreating(false);
     setEnabled(true);
     void load(tab);
@@ -120,16 +182,27 @@ export function ResourceHub({
   const variables = promptVariables(detail?.variables);
   const titleTaken = items.some((item) => item.slug === promptSlug(title));
   const canUse = Boolean(detail) && !variables.some((v) => v.required && !values[v.name]?.trim());
+  const visibleItems = filterResources(items, query, category, favorites);
+  const categories = [...new Set(items.map((item) => text(item.category)).filter(Boolean))].sort();
+  const SectionIcon = SECTIONS[tab].icon;
   return (
     <Modal
       open
       onOpenChange={(open) => {
         if (!open) onClose();
       }}
-      title="Workspace resources"
+      title={
+        preferences.view === 'studio'
+          ? 'Workspace resources'
+          : tab === 'memory'
+            ? 'Things worth remembering'
+            : tab === 'mcp' || tab === 'tools'
+              ? 'A few helpful extras'
+              : 'Your little library'
+      }
       detailToggle
       icon={<BookOpen size={20} />}
-      description="Prompts and capabilities for this workspace."
+      description="A library of ideas, know-how and remembered knowledge."
       headerActions={
         tab !== 'memory' && (
           <button
@@ -146,16 +219,66 @@ export function ResourceHub({
       }
       wide
     >
-      <Tabs.Root value={tab} onValueChange={(value) => setTab(value as ResourceTab)}>
+      <Tabs.Root
+        className="resource-shell"
+        value={tab}
+        onValueChange={(value) => setTab(value as ResourceTab)}
+      >
         <div className="hub-toolbar">
           <Tabs.List className="diff-tabs" aria-label="Resource sections">
-            {Object.entries(TITLES).map(([key, label]) => (
-              <Tabs.Trigger value={key} key={key} disabled={busy}>
-                {label}
-              </Tabs.Trigger>
-            ))}
+            {Object.entries(TITLES)
+              .filter(([key]) => allSections || (key !== 'tools' && key !== 'mcp'))
+              .map(([key, label]) => (
+                <Tabs.Trigger value={key} key={key} disabled={busy}>
+                  {(() => {
+                    const Icon = SECTIONS[key as ResourceTab].icon;
+                    return <Icon size={14} aria-hidden="true" />;
+                  })()}
+                  {preferences.view !== 'studio' && key === 'prompts'
+                    ? 'Ideas'
+                    : preferences.view !== 'studio' && key === 'mcp'
+                      ? 'Connections'
+                      : label}
+                </Tabs.Trigger>
+              ))}
           </Tabs.List>
+          {preferences.view !== 'studio' && (
+            <button
+              type="button"
+              className="library-more"
+              aria-label={
+                allSections ? 'Show fewer library sections' : 'Show more library sections'
+              }
+              aria-expanded={allSections}
+              disabled={busy}
+              onClick={() => {
+                if (allSections && (tab === 'tools' || tab === 'mcp')) setTab('prompts');
+                setExtraSections(!allSections);
+              }}
+            >
+              {allSections ? 'Less' : 'More'}
+              <ChevronDown size={12} />
+            </button>
+          )}
         </div>
+        <FriendlyIntro
+          id={`resources-${tab}`}
+          label={TITLES[tab].toLowerCase()}
+          className="resource-intro"
+        >
+          <span className="explorer-intro-icon">
+            <SectionIcon size={25} />
+          </span>
+          <div>
+            <h2>{SECTIONS[tab].title}</h2>
+            <p>{SECTIONS[tab].description}</p>
+          </div>
+          {tab !== 'memory' && (
+            <span className="explorer-count">
+              {busy ? 'Loading…' : `${items.length} ${TITLES[tab].toLowerCase()}`}
+            </span>
+          )}
+        </FriendlyIntro>
         <Tabs.Content value={tab}>
           {error && (
             <p role="alert" className="form-error">
@@ -173,19 +296,112 @@ export function ResourceHub({
               {TITLES[tab]} are disabled or unavailable in this workspace.
             </p>
           )}
-          <input
-            className="context-search resource-search"
-            data-has-selection={Boolean(row) || creating}
+          <div
+            className="resource-discovery"
+            data-selected={Boolean(row) || creating}
             hidden={tab === 'memory'}
-            aria-label="Search resources"
-            placeholder={`Search ${TITLES[tab].toLowerCase()}…`}
-            value={query}
-            onChange={(event) => {
-              setQuery(event.target.value);
-            }}
-          />
+          >
+            <div className="resource-search-wrap">
+              <Search size={15} aria-hidden="true" />
+              <input
+                className="context-search resource-search"
+                data-has-selection={Boolean(row) || creating}
+                hidden={tab === 'memory'}
+                aria-label="Search resources"
+                placeholder={`Search ${TITLES[tab].toLowerCase()}…`}
+                value={query}
+                onChange={(event) => {
+                  setQuery(event.target.value);
+                }}
+              />
+              {query && (
+                <button
+                  type="button"
+                  className="icon-button"
+                  aria-label="Clear resource search"
+                  onClick={() => setQuery('')}
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+            {(tab === 'prompts' || categories.length > 0) && (
+              <>
+                <button
+                  type="button"
+                  className="explorer-filter-toggle"
+                  aria-expanded={collectionsOpen}
+                  aria-controls="library-filters"
+                  onClick={() => setCollections(!collectionsOpen)}
+                >
+                  <Layers size={13} /> Browse collections{' '}
+                  {favorites ? '· favorites' : category ? `· ${category}` : ''}
+                  <ChevronRight size={13} />
+                </button>
+                <fieldset
+                  hidden={!collectionsOpen}
+                  id="library-filters"
+                  className="explorer-filters library-filters"
+                  aria-label="Library filters"
+                >
+                  <button
+                    type="button"
+                    aria-pressed={!category && !favorites}
+                    onClick={() => {
+                      setCategory('');
+                      setFavorites(false);
+                    }}
+                  >
+                    Everything
+                  </button>
+                  {tab === 'prompts' && (
+                    <button
+                      type="button"
+                      aria-pressed={favorites}
+                      onClick={() => setFavorites(!favorites)}
+                    >
+                      <Star size={13} /> Favorites only{' '}
+                      <small>{items.filter((item) => item.favorite === true).length}</small>
+                    </button>
+                  )}
+                  {categories.slice(0, 8).map((value) => (
+                    <button
+                      type="button"
+                      key={value}
+                      aria-label={`Category: ${value}`}
+                      aria-pressed={category === value}
+                      onClick={() => setCategory(category === value ? '' : value)}
+                    >
+                      {value.replaceAll('-', ' ').replaceAll('_', ' ')}
+                    </button>
+                  ))}
+                  {(category || favorites || query) && (
+                    <button
+                      type="button"
+                      className="explorer-clear"
+                      onClick={() => {
+                        setCategory('');
+                        setFavorites(false);
+                        setQuery('');
+                      }}
+                    >
+                      Reset library filters
+                    </button>
+                  )}
+                </fieldset>
+              </>
+            )}
+            <div className="collection-result-bar">
+              <p className="explorer-results" role="status">
+                {busy
+                  ? 'Finding your resources…'
+                  : `${visibleItems.length} of ${items.length} ${TITLES[tab].toLowerCase()}`}
+              </p>
+              <CollectionViewSwitch />
+            </div>
+          </div>
           {tab === 'memory' ? (
-            <MemoryBrowser controller={controller} />
+            <MemoryBrowser controller={controller} onUse={onClose} />
           ) : (
             <div className="hub-layout" data-selected={Boolean(row) || creating}>
               <nav className="hub-list" aria-label={`${TITLES[tab]} list`}>
@@ -203,17 +419,19 @@ export function ResourceHub({
                     Save a prompt
                   </button>
                 )}
-                {items
-                  .filter((item) => resourceMatches(item, query))
-                  .map((item) => (
-                    <button
-                      type="button"
-                      className="hub-row"
-                      key={resourceId(tab, item)}
-                      aria-current={selected === resourceId(tab, item) ? 'true' : undefined}
-                      disabled={busy || offline}
-                      onClick={() => void pick(item)}
-                    >
+                {visibleItems.map((item) => (
+                  <button
+                    type="button"
+                    className="hub-row resource-card"
+                    key={resourceId(tab, item)}
+                    aria-current={selected === resourceId(tab, item) ? 'true' : undefined}
+                    disabled={busy || offline}
+                    onClick={() => void pick(item)}
+                  >
+                    <span className="resource-card-symbol">
+                      <SectionIcon size={17} aria-hidden="true" />
+                    </span>
+                    <span className="resource-card-copy">
                       <strong>
                         {text(item.title) || text(item.name)}
                         {item.favorite === true && <Star size={11} />}
@@ -230,10 +448,34 @@ export function ResourceHub({
                           {item.mutating === true ? 'Can change files or state' : 'Read / utility'}
                         </small>
                       )}
-                    </button>
-                  ))}
-                {!busy && !items.some((item) => resourceMatches(item, query)) && (
-                  <p className="panel-hint">No matching {TITLES[tab].toLowerCase()}.</p>
+                      {text(item.category) && (
+                        <span className="explorer-badge">
+                          {text(item.category).replaceAll('-', ' ').replaceAll('_', ' ')}
+                        </span>
+                      )}
+                    </span>
+                    <ChevronRight size={13} className="resource-card-arrow" aria-hidden="true" />
+                  </button>
+                ))}
+                {!busy && !visibleItems.length && (
+                  <div className="explorer-no-results">
+                    <Search size={24} />
+                    <strong>No matching {TITLES[tab].toLowerCase()}.</strong>
+                    <p>Try another word or clear the filters to see more.</p>
+                    {(query || category || favorites) && (
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        onClick={() => {
+                          setQuery('');
+                          setCategory('');
+                          setFavorites(false);
+                        }}
+                      >
+                        Show all resources
+                      </button>
+                    )}
+                  </div>
                 )}
               </nav>
               <section className="hub-detail" aria-label="Selected resource">
@@ -310,7 +552,34 @@ export function ResourceHub({
                 ) : !row ? (
                   <div className="file-empty">
                     <EmptyArtwork kind={tab === 'tools' || tab === 'mcp' ? 'activity' : 'files'} />
-                    <p>Choose a resource to inspect it.</p>
+                    <h3>
+                      {tab === 'prompts' ? 'Your next idea starts here' : 'Find the right support'}
+                    </h3>
+                    <p>
+                      {tab === 'prompts'
+                        ? 'Choose a starting point to read it, fill in your details and make it yours.'
+                        : 'Choose a card to learn what it does and how it fits your project.'}
+                    </p>
+                    {categories.length > 0 && (
+                      <div className="resource-spotlights">
+                        {categories.slice(0, 3).map((value) => (
+                          <button
+                            type="button"
+                            key={value}
+                            disabled={busy || offline}
+                            onClick={() => {
+                              setCategory(value);
+                              setQuery('');
+                              setFavorites(false);
+                            }}
+                          >
+                            <SectionIcon size={17} />
+                            <span>Explore {value.replaceAll('-', ' ').replaceAll('_', ' ')}</span>
+                            <ArrowUpRight size={14} />
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <>

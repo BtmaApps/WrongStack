@@ -1,8 +1,9 @@
 'use client';
 
-import { ArrowDown, ArrowUpRight, Check, Folder, Sparkles } from 'lucide-react';
+import { ArrowDown, ArrowUpRight, Check, ChevronDown, Folder, Sparkles, X } from 'lucide-react';
 import { useState } from 'react';
-import { WorkspaceArtwork } from './vibe-visuals';
+import { VibeBuddy, WorkspaceArtwork } from './vibe-visuals';
+import { useWorkspacePreferences } from './workspace-preferences';
 
 const starters = [
   {
@@ -121,125 +122,158 @@ export function StartSpace({
   onConnect: () => void;
 }) {
   const [selected, setSelected] = useState(0);
+  const { preferences, update } = useWorkspacePreferences();
+  const ideasOpen = preferences.ideas && preferences.view !== 'focus';
   const [idea, setIdea] = useState('');
   const [direction, setDirection] = useState('');
   const starter = starters[selected]!;
   return (
     <div className="welcome launchpad">
-      <div className="launch-hero">
-        <div className="launch-intro">
-          <div className="launch-kicker">
-            <span />
-            <span>SMALL IDEAS. REAL POSSIBILITIES.</span>
-          </div>
+      {preferences.view !== 'studio' && (
+        <div className="cozy-greeting">
+          <VibeBuddy />
+          <span className="cozy-hello">Hey, make yourself at home.</span>
           <h1>
-            What are we building<span className="launch-title-accent"> today?</span>
+            A little idea <span className="launch-title-accent">is enough.</span>
           </h1>
           <p>
-            You bring the idea. We’ll help with the how.
+            Tell me what you have in mind.
             <br />
-            No technical vocabulary required.
+            We’ll figure out the rest, one little step at a time.
           </p>
         </div>
-        <div className="launch-orbit" aria-hidden="true">
-          <div className="orbit-ring" />
-          <div className="orbit-ring orbit-ring-two" />
-          <WorkspaceArtwork />
-          <span className="orbit-caption">
-            <Sparkles size={12} /> From “what if” to “here it is”
-          </span>
-        </div>
-      </div>
-      <div className="launch-section-heading">
-        <h2>Pick a starting point</h2>
-        <span>Or just write your own idea below</span>
-      </div>
-      <fieldset className="concept-grid" aria-label="Choose a starting point">
-        {starters.map((item, index) => (
-          <button
-            key={item.id}
-            type="button"
-            className={`concept-card ${selected === index ? 'is-selected' : ''}`}
-            aria-pressed={selected === index}
-            onClick={() => {
-              setSelected(index);
-              setDirection('');
-            }}
-          >
-            <ConceptPreview kind={item.id} />
-            <div className="concept-card-copy">
-              <span className="concept-card-title">
-                <strong>{item.title}</strong>
-                <span className="concept-choice">
-                  {selected === index ? <Check size={12} /> : <ArrowUpRight size={13} />}
-                </span>
-              </span>
-              <small>{item.detail}</small>
+      )}
+      {preferences.view === 'studio' && (
+        <div className="launch-hero">
+          <div className="launch-intro">
+            <div className="launch-kicker">
+              <span />
+              <span>SMALL IDEAS. REAL POSSIBILITIES.</span>
             </div>
-          </button>
-        ))}
-      </fieldset>
-      <form
-        className="idea-builder"
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (!canPrepare) return;
-          const brief = [
-            starter.prompt,
-            idea.trim() ? `: ${idea.trim()}` : '.',
-            direction ? `\nDirection: ${direction}.` : '',
-            '\nFirst, ask me a few simple questions to understand what I need. Explain your suggestions in everyday language and agree on a small first step with me before changing files.',
-          ].join('');
-          onPrepare(brief);
-        }}
-      >
-        <div className="idea-builder-heading">
-          <span className="idea-step">YOUR IDEA, IN YOUR WORDS</span>
-          <span>Make it yours</span>
+            <h1>
+              What are we building<span className="launch-title-accent"> today?</span>
+            </h1>
+            <p>
+              You bring the idea. We’ll help with the how.
+              <br />
+              No technical vocabulary required.
+            </p>
+          </div>
+          <div className="launch-orbit" aria-hidden="true">
+            <div className="orbit-ring" />
+            <div className="orbit-ring orbit-ring-two" />
+            <WorkspaceArtwork />
+            <span className="orbit-caption">
+              <Sparkles size={12} /> From “what if” to “here it is”
+            </span>
+          </div>
         </div>
-        <label htmlFor="project-idea">
-          {starter.label} <span>(optional)</span>
-        </label>
-        <input
-          id="project-idea"
-          value={idea}
-          maxLength={1600}
-          onChange={(event) => setIdea(event.target.value)}
-          placeholder={starter.placeholder}
-        />
-        <fieldset className="idea-directions" aria-label="Choose a direction">
-          {starter.directions.map((item) => (
+      )}
+      {preferences.view !== 'focus' && (
+        <button
+          type="button"
+          className="inspiration-toggle"
+          aria-expanded={ideasOpen}
+          aria-controls="inspiration-content"
+          onClick={() => update({ ideas: !ideasOpen })}
+        >
+          <Sparkles size={15} />
+          <span>{ideasOpen ? 'Tuck the ideas away' : 'Need a little inspiration?'}</span>
+          {ideasOpen ? <X size={14} /> : <ChevronDown size={14} />}
+        </button>
+      )}
+      <div className="inspiration-content" id="inspiration-content" data-open={ideasOpen}>
+        <div className="launch-section-heading">
+          <h2>Pick a starting point</h2>
+          <span>Or just write your own idea below</span>
+        </div>
+        <fieldset className="concept-grid" aria-label="Choose a starting point">
+          {starters.map((item, index) => (
             <button
-              key={item}
+              key={item.id}
               type="button"
-              aria-pressed={direction === item}
-              onClick={() => setDirection(direction === item ? '' : item)}
+              className={`concept-card ${selected === index ? 'is-selected' : ''}`}
+              aria-pressed={selected === index}
+              onClick={() => {
+                setSelected(index);
+                setDirection('');
+              }}
             >
-              {direction === item && <Check size={12} />}
-              {item}
+              <ConceptPreview kind={item.id} />
+              <div className="concept-card-copy">
+                <span className="concept-card-title">
+                  <strong>{item.title}</strong>
+                  <span className="concept-choice">
+                    {selected === index ? <Check size={12} /> : <ArrowUpRight size={13} />}
+                  </span>
+                </span>
+                <small>{item.detail}</small>
+              </div>
             </button>
           ))}
         </fieldset>
-        <div className="idea-builder-footer">
-          <p>
-            <Sparkles size={13} /> A starting point you can edit before sending.
-          </p>
-          <button type="submit" className="primary-button" disabled={!canPrepare}>
-            Add to my message <ArrowDown size={14} />
-          </button>
+        <form
+          className="idea-builder"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!canPrepare) return;
+            const brief = [
+              starter.prompt,
+              idea.trim() ? `: ${idea.trim()}` : '.',
+              direction ? `\nDirection: ${direction}.` : '',
+              '\nFirst, ask me a few simple questions to understand what I need. Explain your suggestions in everyday language and agree on a small first step with me before changing files.',
+            ].join('');
+            onPrepare(brief);
+          }}
+        >
+          <div className="idea-builder-heading">
+            <span className="idea-step">YOUR IDEA, IN YOUR WORDS</span>
+            <span>Make it yours</span>
+          </div>
+          <label htmlFor="project-idea">
+            {starter.label} <span>(optional)</span>
+          </label>
+          <input
+            id="project-idea"
+            value={idea}
+            maxLength={1600}
+            onChange={(event) => setIdea(event.target.value)}
+            placeholder={starter.placeholder}
+          />
+          <fieldset className="idea-directions" aria-label="Choose a direction">
+            {starter.directions.map((item) => (
+              <button
+                key={item}
+                type="button"
+                aria-pressed={direction === item}
+                onClick={() => setDirection(direction === item ? '' : item)}
+              >
+                {direction === item && <Check size={12} />}
+                {item}
+              </button>
+            ))}
+          </fieldset>
+          <div className="idea-builder-footer">
+            <p>
+              <Sparkles size={13} /> A starting point you can edit before sending.
+            </p>
+            <button type="submit" className="primary-button" disabled={!canPrepare}>
+              Add to my message <ArrowDown size={14} />
+            </button>
+          </div>
+          {!canPrepare && (
+            <p className="idea-availability" role="status">
+              Your starting point will be available when the conversation finishes loading.
+            </p>
+          )}
+        </form>
+        <div className="launch-footer">
+          <span>
+            <Folder size={13} />
+            {project || 'Waiting for your workspace'}
+          </span>
+          <span>Describe it. Shape it. Make it happen.</span>
         </div>
-        {!canPrepare && (
-          <p className="idea-availability" role="status">
-            Your starting point will be available when the conversation finishes loading.
-          </p>
-        )}
-      </form>
-      <div className="launch-footer">
-        <span>
-          <Folder size={13} />
-          {project || 'Waiting for your workspace'}
-        </span>
-        <span>Describe it. Shape it. Make it happen.</span>
       </div>
       {needsProvider && (
         <div className="launch-connect">

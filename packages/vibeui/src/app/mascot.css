@@ -1,0 +1,443 @@
+:root {
+  --mascot-orange: oklch(0.79 0.17 72);
+  --mascot-pink: oklch(0.66 0.245 12);
+  --mascot-ink: oklch(0.22 0.025 20);
+}
+.stacky-orange {
+  fill: var(--mascot-orange);
+}
+.stacky-pink {
+  fill: var(--mascot-pink);
+}
+.stacky-feet {
+  stroke: var(--mascot-ink);
+}
+.stacky-home {
+  display: inline-block;
+  position: relative;
+  width: 44px;
+  height: 34px;
+  flex: 0 0 44px;
+  z-index: 18;
+}
+.header-project > .stacky-home {
+  overflow: visible;
+  max-width: none;
+}
+.stacky-companion {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 88px;
+  height: 64px;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  transform: translate(0, 0) scale(0.5);
+  transform-origin: top left;
+  background: transparent;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.stacky-companion:hover {
+  background: color-mix(in oklch, var(--mascot-orange) 6%, transparent);
+}
+.stacky-companion:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 4px;
+}
+.stacky-companion > .stacky-performer {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.stacky-companion .vibe-buddy {
+  display: block;
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 3px 4px oklch(0.1 0 0 / 0.1));
+}
+.stacky-menu {
+  z-index: 65;
+  width: min(265px, calc(100vw - 24px));
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 14px;
+  background: var(--base);
+  color: var(--text);
+  box-shadow: var(--shadow);
+  max-height: min(620px, 80dvh);
+  overflow-y: auto;
+}
+.stacky-menu-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.stacky-menu-heading > strong {
+  font-size: var(--type-md);
+  font-weight: 550;
+}
+.stacky-menu-actions {
+  display: flex;
+  flex-direction: row-reverse;
+  gap: 2px;
+}
+.stacky-menu-actions > .icon-button {
+  width: 27px;
+  height: 27px;
+}
+.stacky-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  margin: 0 0 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--corner-pill);
+  background: var(--raised);
+}
+.stacky-tabs > button {
+  flex: 1;
+  padding: 7px 6px;
+  border-radius: var(--corner-pill);
+  color: var(--muted);
+  font-size: var(--type-xs);
+}
+.stacky-tabs > :where(button[data-state="active"]) {
+  background: var(--base);
+  color: var(--accent);
+}
+.stacky-help {
+  display: grid;
+  gap: 7px;
+}
+.stacky-help > p,
+.stacky-comfort-note {
+  color: var(--muted);
+  font-size: var(--type-2xs);
+  line-height: 1.75;
+  margin: 5px 0 10px;
+}
+.stacky-help > button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--corner-lg);
+  padding: 12px;
+  text-align: left;
+  background: var(--raised);
+}
+.stacky-help > :where(button:hover) {
+  border-color: var(--accent);
+}
+.stacky-help :where(svg) {
+  flex-shrink: 0;
+  color: var(--accent);
+}
+.stacky-help :where(strong) {
+  display: block;
+  font-weight: 500;
+  font-size: var(--type-sm);
+}
+.stacky-help :where(small) {
+  display: block;
+  color: var(--muted);
+  margin-top: 4px;
+  font-size: var(--type-2xs);
+  line-height: 1.6;
+}
+.stacky-menu > p {
+  color: var(--muted);
+  font-size: var(--type-xs);
+  line-height: 1.7;
+  margin: 7px 0 12px;
+}
+.stacky-new-chat {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin: 0 0 12px;
+  border: 1px solid color-mix(in oklch, var(--accent) 40%, var(--border));
+  border-radius: var(--corner-pill);
+  padding: 10px 14px;
+  text-align: left;
+  background: color-mix(in oklch, var(--accent) 9%, var(--raised));
+}
+.stacky-new-chat:where(:hover:not(:disabled)) {
+  background: color-mix(in oklch, var(--accent) 15%, var(--raised));
+}
+.stacky-new-chat:disabled {
+  opacity: 0.55;
+}
+.stacky-new-chat :where(svg) {
+  flex-shrink: 0;
+  color: var(--accent);
+}
+.stacky-new-chat :where(strong) {
+  display: block;
+  font-weight: 550;
+  font-size: var(--type-sm);
+}
+.stacky-new-chat :where(small) {
+  display: block;
+  color: var(--muted);
+  margin-top: 3px;
+  font-size: var(--type-2xs);
+  line-height: 1.6;
+}
+.stacky-menu > small {
+  display: block;
+  color: var(--faint);
+  font-size: var(--type-2xs);
+  line-height: 1.6;
+  margin-top: 12px;
+}
+.stacky-playground {
+  padding: 10px;
+  margin: 10px 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background:
+    radial-gradient(
+      ellipse at 50% 0%,
+      color-mix(in oklch, var(--mascot-orange) 9%, transparent),
+      transparent 75%
+    ),
+    var(--raised);
+}
+.stacky-highfive {
+  display: block;
+  width: 100%;
+  height: 110px;
+  border-radius: 9px;
+  padding: 0;
+}
+.stacky-highfive:hover {
+  background: color-mix(in oklch, var(--mascot-pink) 4%, transparent);
+}
+.stacky-highfive > .stacky-performer {
+  display: block;
+  width: 164px;
+  max-width: 100%;
+  height: 110px;
+  margin: auto;
+}
+.stacky-highfive .vibe-buddy {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.stacky-playground .stacky-reaction-text {
+  text-align: center;
+  font-size: var(--type-2xs);
+  color: var(--muted);
+  line-height: 1.6;
+  min-height: 34px;
+  margin: 0 0 8px;
+}
+.stacky-tricks {
+  display: flex;
+  gap: 6px;
+}
+.stacky-tricks > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  flex: 1;
+  padding: 7px 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--corner-pill);
+  font-size: var(--type-2xs);
+  color: var(--muted);
+  background: var(--base);
+}
+.stacky-tricks > button:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.stacky-choices {
+  display: grid;
+  gap: 6px;
+}
+.stacky-choices > button {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  text-align: left;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--corner-md);
+  font-size: var(--type-xs);
+  color: var(--muted);
+}
+.stacky-choices > :where(button[aria-pressed="true"]) {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: color-mix(in oklch, var(--accent) 5%, var(--raised));
+}
+.stacky-choices > :where(button:hover) {
+  background: var(--raised);
+}
+.mascot-preference {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 0 0;
+  font-size: var(--type-xs);
+  color: var(--muted);
+}
+.mascot-preference > span {
+  flex: 1;
+}
+.mascot-preference small {
+  display: block;
+  font-size: var(--type-2xs);
+  line-height: 1.7;
+  margin-top: 4px;
+  color: var(--faint);
+}
+.mascot-preference > select {
+  max-width: 145px;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--corner-md);
+  padding: 7px;
+  font-size: var(--type-xs);
+  background: var(--raised);
+  color: var(--text);
+}
+:root[data-mascot="off"] .vibe-buddy {
+  display: none;
+}
+:root[data-mascot="quiet"] .buddy-body,
+:root[data-mascot="off"] .buddy-body {
+  animation: none;
+}
+:root[data-mascot="quiet"] :where(.stacky-menu button, .stacky-companion) {
+  transition: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .stacky-menu :where(button),
+  .stacky-companion {
+    transition: none;
+  }
+}
+@media (max-width: 760px) {
+  .vibe-shell:not([data-view="studio"]) .header-project > .stacky-home {
+    display: inline-block;
+    max-width: none;
+    overflow: visible;
+  }
+  .vibe-shell:not([data-view="studio"])
+    .header-project:has(.stacky-home)
+    > span:not(.stacky-home, .cozy-brand) {
+    max-width: 80px;
+  }
+}
+@media (max-width: 370px) {
+  .vibe-shell:not([data-view="studio"])
+    .header-project:has(.stacky-home)
+    > span:not(.stacky-home, .cozy-brand) {
+    max-width: 55px;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .stacky-home[data-moving="true"] .stacky-block {
+    animation: stacky-step 650ms ease-in-out infinite alternate;
+  }
+  .stacky-home[data-moving="true"] .stacky-pink-block {
+    animation: stacky-step 650ms ease-in-out infinite alternate-reverse;
+  }
+  .stacky-home[data-roaming="true"] .stacky-eyes {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: stacky-blink 7s linear infinite;
+  }
+  .stacky-performer[data-playful="true"][data-gesture="dance"] .buddy-body {
+    transform-box: fill-box;
+    transform-origin: center bottom;
+    animation: stacky-cheer 650ms ease-in-out 2 alternate;
+  }
+  .stacky-performer[data-playful="true"][data-gesture="dance"] .stacky-block {
+    animation: stacky-step 350ms ease-in-out 4 alternate;
+  }
+  .stacky-performer[data-playful="true"][data-gesture="highfive"] .stacky-highfive-hand {
+    transform-box: fill-box;
+    transform-origin: bottom right;
+    animation: stacky-wave 300ms ease-in-out 4 alternate;
+  }
+  .stacky-performer[data-playful="true"][data-gesture="stretch"] .buddy-body {
+    transform-box: fill-box;
+    transform-origin: center bottom;
+    animation: stacky-stretch 1400ms ease both;
+  }
+  .stacky-performer[data-playful="true"] .stacky-reaction-spark {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: stacky-spark 1500ms ease both;
+  }
+}
+@keyframes stacky-step {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-3px);
+  }
+}
+@keyframes stacky-blink {
+  0%,
+  44%,
+  48%,
+  100% {
+    transform: scaleY(1);
+  }
+  46% {
+    transform: scaleY(0.12);
+  }
+}
+@keyframes stacky-cheer {
+  from {
+    transform: rotate(-3deg);
+  }
+  to {
+    transform: rotate(3deg) translateY(-3px);
+  }
+}
+@keyframes stacky-wave {
+  from {
+    transform: rotate(-12deg);
+  }
+  to {
+    transform: rotate(14deg);
+  }
+}
+@keyframes stacky-stretch {
+  0%,
+  100% {
+    transform: scale(1, 1);
+  }
+  45%,
+  65% {
+    transform: scale(1.07, 0.83) translateY(2px);
+  }
+}
+@keyframes stacky-spark {
+  0% {
+    transform: translateY(5px) scale(0.7);
+    opacity: 0;
+  }
+  25%,
+  65% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-5px) scale(1.05);
+    opacity: 0;
+  }
+}

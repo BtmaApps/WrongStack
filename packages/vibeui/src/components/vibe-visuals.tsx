@@ -1,4 +1,103 @@
+import type { MascotGesture, MascotMood } from '../lib/mascot';
+
 /** Small, decorative SVGs share the current palette and never carry runtime state alone. */
+export function VibeBuddy({
+  small = false,
+  mood = 'idle',
+  gesture,
+}: {
+  small?: boolean;
+  mood?: MascotMood;
+  gesture?: MascotGesture;
+}) {
+  return (
+    <svg
+      className={`vibe-buddy ${small ? 'buddy-small' : ''}`}
+      viewBox="0 0 164 92"
+      fill="none"
+      aria-hidden="true"
+    >
+      <ellipse cx="82" cy="77" rx="72" ry="3" fill="var(--text)" opacity="0.07" />
+      <g className="buddy-body">
+        {[4, 68, 100, 132].map((x, index) => (
+          <g className="stacky-block" key={x} style={{ animationDelay: `${index * -0.13}s` }}>
+            <rect x={x} y="22" width="28" height="28" rx="3" className="stacky-orange" />
+            <path
+              d={`M${x + 8} 52v4m12-4v4`}
+              className="stacky-feet"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+          </g>
+        ))}
+        <g className="stacky-pink-block">
+          <rect x="36" y="36" width="28" height="28" rx="4" className="stacky-pink" />
+          <g className="stacky-eyes">
+            {mood === 'attention' && !gesture && (
+              <path
+                d="m42 44 5-2m7 0 5 2"
+                stroke="var(--mascot-ink)"
+                strokeWidth="1.4"
+                strokeLinecap="round"
+              />
+            )}
+            {mood === 'done' || gesture ? (
+              <path
+                d="m42 49 3-3 3 3m5 0 3-3 3 3"
+                stroke="var(--mascot-ink)"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+              />
+            ) : (
+              <path
+                d={mood === 'offline' ? 'M42 49h5m7 0h5' : 'M44 47v3m12-3v3'}
+                stroke="var(--mascot-ink)"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+              />
+            )}
+          </g>
+          <path
+            d={
+              gesture
+                ? 'M46 55q4 6 8 0'
+                : mood === 'offline' || mood === 'stopped' || mood === 'attention'
+                  ? 'M47 56h7'
+                  : mood === 'working'
+                    ? 'M48 56q3 2 6-1'
+                    : 'M46 55q4 6 8 0'
+            }
+            stroke="var(--mascot-ink)"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+          />
+          <path d="M43 65v4m14-4v4" className="stacky-feet" strokeWidth="2" strokeLinecap="round" />
+          {gesture === 'highfive' && (
+            <g className="stacky-highfive-hand">
+              <path
+                d="m37 52-9-10m0 0v-5m0 5-5-2m5 2 4-4"
+                stroke="var(--mascot-ink)"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+            </g>
+          )}
+        </g>
+      </g>
+      {mood === 'done' && <path d="m83 4 2 5 5 2-5 2-2 5-2-5-5-2 5-2Z" className="stacky-orange" />}
+      {gesture && (
+        <g className="stacky-reaction-spark">
+          {gesture === 'highfive' ? (
+            <path d="M48 13c-7-8-17 3 0 13 17-10 7-21 0-13Z" className="stacky-pink" />
+          ) : (
+            <path d="m48 10 3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1Z" className="stacky-orange" />
+          )}
+        </g>
+      )}
+    </svg>
+  );
+}
+
 export function VibeMark({ className = '' }: { className?: string }) {
   return (
     <svg className={`vibe-mark ${className}`} viewBox="0 0 32 32" fill="none" aria-hidden="true">

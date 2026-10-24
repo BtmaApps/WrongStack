@@ -32,9 +32,12 @@ function fitDraft(element: HTMLTextAreaElement) {
 export function Composer({
   controller,
   onDraftChange,
+  onStopRequest,
 }: {
   controller: SessionController;
   onDraftChange?: (hasDraft: boolean) => void;
+  /** Ask before stopping. Falls back to an immediate stop when omitted. */
+  onStopRequest?: () => void;
 }) {
   const { state, connection, ready, modelPending, send, submit, queue, removeQueued, notice } =
     controller;
@@ -459,7 +462,7 @@ export function Composer({
                 className="stop-button"
                 disabled={connection !== 'open' || !ready}
                 title="Stop this session and all its agents. Queued messages stay paused."
-                onClick={controller.stopAll}
+                onClick={onStopRequest ?? controller.stopAll}
               >
                 <Square size={12} fill="currentColor" />
                 Stop all

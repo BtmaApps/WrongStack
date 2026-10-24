@@ -129,7 +129,7 @@ let providerAccounts = [
 const frame = (socket, type, payload) => {
   if (socket.readyState === 1) socket.send(JSON.stringify({ type, payload }));
 };
-const session = (socket, sessionId = 'session-one', replayMessages) =>
+const session = (socket, sessionId = 'session-one', replayMessages, cwd = 'D:/workspace/studio') =>
   frame(socket, 'session.start', {
     sessionId,
     provider: 'fixture',
@@ -140,7 +140,7 @@ const session = (socket, sessionId = 'session-one', replayMessages) =>
     effortSupported: true,
     projectReasoningEffort: 'high',
     projectName: 'VibeUI Studio',
-    cwd: 'D:/workspace/studio',
+    cwd,
     maxContext: selectedModel === 'small-model' ? 4096 : 128000,
     ...(replayMessages ? { replayMessages } : {}),
   });
@@ -207,7 +207,10 @@ wss.on('connection', (socket) => {
       });
     if (message.type === 'memory.sage.listPage') {
       const matching = memoryRecords.filter(
-        (item) => !p.query || item.text.toLowerCase().includes(p.query.toLowerCase()),
+        (item) =>
+          (!p.query || item.text.toLowerCase().includes(p.query.toLowerCase())) &&
+          (!p.kind || p.kind === 'all' || item.kind === p.kind) &&
+          (!p.statuses || p.statuses.includes(item.status)),
       );
       frame(socket, 'memory.sage.listPage', {
         requestId: p.requestId,
@@ -490,6 +493,12 @@ wss.on('connection', (socket) => {
             children: [{ name: 'app.tsx', path: 'src/app.tsx', type: 'file' }],
           },
           { name: 'notes.md', path: 'notes.md', type: 'file' },
+          {
+            name: 'assets',
+            path: 'assets',
+            type: 'directory',
+            children: [{ name: 'cover.png', path: 'assets/cover.png', type: 'file' }],
+          },
         ],
       });
     if (message.type === 'session.rename') {
@@ -518,6 +527,12 @@ wss.on('connection', (socket) => {
       });
     if (message.type === 'session.subscribe')
       frame(socket, 'session.run_state', { sessionId: p.sessionIds[0], isRunning: false });
+    if (message.type === 'files.image')
+      frame(socket, 'files.image', {
+        ...p,
+        dataUrl:
+          'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=',
+      });
     if (message.type === 'providers.list')
       frame(socket, 'provider.catalog', {
         providers: [
@@ -725,12 +740,29 @@ const origin = `http://127.0.0.1:${server.address().port}`;
 const browser = await chromium.launch({ headless: true });
 const errors = [];
 const themeContrasts = [];
+const useStudioFixture = (page) =>
+  page.addInitScript(() => {
+    if (window.top !== window) return;
+    const key = 'wrongstack.vibeui.workspace-view.v1';
+    if (!localStorage.getItem(key))
+      localStorage.setItem(
+        key,
+        JSON.stringify({
+          view: 'studio',
+          ideas: true,
+          shortcuts: true,
+          guidance: true,
+          hiddenIntros: [],
+        }),
+      );
+  });
 try {
   const page = await browser.newPage({
     viewport: { width: 1512, height: 982 },
     deviceScaleFactor: 1,
   });
   page.setDefaultTimeout(10_000);
+  await useStudioFixture(page);
   const auditTheme = async () => {
     const report = await page.evaluate(() => {
       const style = getComputedStyle(document.documentElement);
@@ -804,6 +836,613 @@ try {
   page.on('console', (message) => {
     if (message.type() === 'error') errors.push(message.text());
   });
+  // File shortcuts survive reloads and belong only to their project.
+  {
+    const shelfPage = await browser.newPage({ viewport: { width: 1512, height: 982 } });
+    shelfPage.setDefaultTimeout(10_000);
+    shelfPage.on('pageerror', (error) => errors.push(error.message));
+    shelfPage.on('console', (entry) => {
+      if (entry.type() === 'error') errors.push(entry.text());
+    });
+    const openFiles = () =>
+      shelfPage
+        .locator('.header-actions')
+        .getByRole('button', { name: 'Files', exact: true })
+        .click();
+    try {
+      await shelfPage.goto(origin);
+      await shelfPage.getByText('Ready', { exact: true }).waitFor();
+      await openFiles();
+      let files = shelfPage.getByRole('dialog');
+      await files.getByRole('button', { name: 'notes.md', exact: true }).click();
+      await files.getByRole('button', { name: 'Pin this file', exact: true }).click();
+      await expect(
+        files.getByRole('button', { name: 'Unpin this file', exact: true }),
+      ).toHaveAttribute('aria-pressed', 'true');
+      await shelfPage.getByRole('button', { name: 'Close dialog', exact: true }).click();
+      await shelfPage.reload();
+      await shelfPage.getByText('Ready', { exact: true }).waitFor();
+      await openFiles();
+      files = shelfPage.getByRole('dialog');
+      await expect(
+        files.getByRole('navigation', { name: 'Pinned files', exact: true }),
+      ).toBeVisible();
+      await files.getByRole('button', { name: 'Open pinned notes.md', exact: true }).click();
+      await expect(files.getByText('A concise project report.', { exact: true })).toBeVisible();
+      await files.getByRole('button', { name: 'Browse files', exact: true }).click();
+      const shelfSocket = [...clients].at(-1);
+      session(shelfSocket, 'other-files-project', [], 'D:/workspace/another');
+      await expect
+        .poll(() =>
+          shelfPage.evaluate(
+            () => JSON.parse(localStorage.getItem('wrongstack.vibeui.active-session.v1')).id,
+          ),
+        )
+        .toBe('other-files-project');
+      await expect(files.getByRole('button', { name: 'notes.md', exact: true })).toBeVisible();
+      await expect(
+        files.getByRole('navigation', { name: 'Pinned files', exact: true }),
+      ).toHaveCount(0);
+      await expect(
+        files.getByRole('navigation', { name: 'Recent files', exact: true }),
+      ).toHaveCount(0);
+      session(shelfSocket, 'session-one', [], 'D:/workspace/studio');
+      await expect
+        .poll(() =>
+          shelfPage.evaluate(
+            () => JSON.parse(localStorage.getItem('wrongstack.vibeui.active-session.v1')).id,
+          ),
+        )
+        .toBe('session-one');
+      await expect(
+        files.getByRole('navigation', { name: 'Pinned files', exact: true }),
+      ).toBeVisible();
+      await files.getByRole('button', { name: 'Unpin notes.md', exact: true }).click();
+      await expect(
+        files.getByRole('navigation', { name: 'Pinned files', exact: true }),
+      ).toHaveCount(0);
+      await expect(
+        files.getByRole('button', { name: 'Open recent notes.md', exact: true }),
+      ).toBeVisible();
+      assert.equal(received.filter((message) => message.type === 'user_message').length, 0);
+    } finally {
+      await shelfPage.close();
+    }
+  }
+  // Stacky uses the real animation path and remains outside the reading/composing areas.
+  {
+    const mascotPage = await browser.newPage({ viewport: { width: 1512, height: 982 } });
+    mascotPage.setDefaultTimeout(10_000);
+    mascotPage.on('pageerror', (error) => errors.push(error.message));
+    mascotPage.on('console', (entry) => {
+      if (entry.type() === 'error') errors.push(entry.text());
+    });
+    try {
+      await mascotPage.goto(origin);
+      await mascotPage.getByText('Ready', { exact: true }).waitFor();
+      const actor = mascotPage.getByRole('button', { name: 'Meet Stacky', exact: true });
+      const home = mascotPage.locator('.stacky-home');
+      await expect(actor).toBeVisible();
+      const helperDraft = mascotPage.getByRole('textbox', { name: 'Message', exact: true });
+      await helperDraft.fill('Keep my next idea.');
+      const helperMenu = mascotPage.getByRole('dialog', { name: 'Stacky companion', exact: true });
+      await actor.click();
+      await expect(
+        helperMenu.getByRole('button', { name: 'Sit quietly', exact: true }),
+      ).toHaveCount(0);
+      const newChat = helperMenu.getByRole('button', { name: /^New chat/ });
+      await expect(newChat).toBeVisible();
+      await helperMenu.getByRole('tab', { name: 'Help', exact: true }).click();
+      await mascotPage.screenshot({
+        path: join(output, 'stacky-help.png'),
+        animations: 'disabled',
+      });
+      for (const width of [320, 390]) {
+        await mascotPage.setViewportSize({ width, height: 844 });
+        assert.equal(
+          await mascotPage.evaluate(() => document.documentElement.scrollWidth > innerWidth),
+          false,
+        );
+        const menuBox = await helperMenu.boundingBox();
+        assert.ok(
+          menuBox.x >= 0 && menuBox.x + menuBox.width <= width,
+          `Stacky menu fits at ${width}px`,
+        );
+        await mascotPage.screenshot({
+          path: join(output, `stacky-menu-${width}.png`),
+          animations: 'disabled',
+        });
+      }
+      await mascotPage.setViewportSize({ width: 1512, height: 982 });
+      await helperMenu.getByRole('button', { name: /^My files/ }).click();
+      await expect(mascotPage.getByRole('dialog').locator('.file-manager')).toBeVisible();
+      await expect(home).toHaveAttribute('data-roaming', 'false');
+      await mascotPage.getByRole('button', { name: 'Close dialog', exact: true }).click();
+      await expect(helperDraft).toHaveValue('Keep my next idea.');
+      await actor.click();
+      await helperMenu.getByRole('tab', { name: 'Help', exact: true }).click();
+      await helperMenu.getByRole('button', { name: /^Ideas & skills/ }).click();
+      await mascotPage
+        .getByRole('dialog')
+        .getByRole('button', { name: /Review a target/ })
+        .waitFor();
+      await mascotPage.getByRole('button', { name: 'Close dialog', exact: true }).click();
+      await actor.click();
+      await helperMenu.getByRole('tab', { name: 'Help', exact: true }).click();
+      await helperMenu.getByRole('button', { name: /^Memory/ }).click();
+      await mascotPage
+        .getByRole('dialog')
+        .getByRole('button', { name: /Use Bun for package scripts/ })
+        .waitFor();
+      await mascotPage.getByRole('button', { name: 'Close dialog', exact: true }).click();
+      await expect(helperDraft).toHaveValue('Keep my next idea.');
+      assert.equal(
+        received.filter((entry) => entry.type === 'user_message').length,
+        0,
+        'Stacky shortcuts never send the draft',
+      );
+      await helperDraft.fill('');
+      await mascotPage.clock.install();
+      await actor.click();
+      const stackyMenu = mascotPage.getByRole('dialog', { name: 'Stacky companion', exact: true });
+      await stackyMenu
+        .getByRole('button', { name: 'Give Stacky a high five', exact: true })
+        .click();
+      await stackyMenu.getByText('Right back at you!', { exact: true }).waitFor();
+      await expect(home).toHaveAttribute('data-gesture', 'highfive');
+      await expect(home).toHaveAttribute('data-moving', 'false');
+      await mascotPage.screenshot({
+        path: join(output, 'stacky-highfive.png'),
+        animations: 'allow',
+      });
+      await stackyMenu.getByRole('button', { name: 'Little dance', exact: true }).click();
+      await stackyMenu.getByText('A tiny dance, just for you.', { exact: true }).waitFor();
+      await expect(home).toHaveAttribute('data-gesture', 'dance');
+      await stackyMenu.getByRole('button', { name: 'Big stretch', exact: true }).click();
+      await expect(home).toHaveAttribute('data-gesture', 'stretch');
+      await mascotPage.clock.fastForward(2500);
+      await expect(home).toHaveAttribute('data-gesture', 'none');
+      await stackyMenu.getByText('Tap me for a high five.', { exact: true }).waitFor();
+      await stackyMenu.getByRole('tab', { name: 'Comfort', exact: true }).click();
+      await mascotPage.getByRole('button', { name: 'Sit quietly', exact: true }).click();
+      await expect(home).toHaveAttribute('data-roaming', 'false');
+      await actor.click();
+      await stackyMenu
+        .getByRole('button', { name: 'Give Stacky a high five', exact: true })
+        .click();
+      await stackyMenu.getByText('A quiet little smile, just for you.', { exact: true }).waitFor();
+      assert.equal(
+        await stackyMenu
+          .locator('.stacky-playground')
+          .evaluate((element) => element.getAnimations({ subtree: true }).length),
+        0,
+        'Quiet mode responds without decorative motion',
+      );
+      await mascotPage.clock.fastForward(2500);
+      await stackyMenu.getByRole('tab', { name: 'Comfort', exact: true }).click();
+      await mascotPage.getByRole('button', { name: 'Wander a little', exact: true }).click();
+      await mascotPage.getByRole('heading', { name: 'A little idea is enough.' }).click();
+      await expect(home).toHaveAttribute('data-roaming', 'true');
+      await mascotPage.clock.fastForward(10_100);
+      await expect(home).toHaveAttribute('data-moving', 'true');
+      await actor.evaluate((element) => {
+        for (const animation of element.getAnimations()) animation.finish();
+      });
+      await mascotPage.clock.runFor(50);
+      await expect(home).toHaveAttribute('data-moving', 'false');
+      const bounds = await mascotPage.evaluate(() => {
+        const actor = document.querySelector('.stacky-companion').getBoundingClientRect();
+        const workspace = document.querySelector('.main-workspace').getBoundingClientRect();
+        const composer = document.querySelector('.composer-area').getBoundingClientRect();
+        const readingLeft = workspace.left + (workspace.width - 848) / 2;
+        return {
+          actor: { x: actor.x, y: actor.y, right: actor.right, bottom: actor.bottom },
+          workspace: { x: workspace.x, y: workspace.y },
+          composerTop: composer.top,
+          readingLeft,
+        };
+      });
+      assert.ok(
+        bounds.actor.x >= bounds.workspace.x && bounds.actor.right < bounds.readingLeft,
+        'Stacky stays in the spare gutter',
+      );
+      assert.ok(bounds.actor.bottom < bounds.composerTop, 'Stacky never covers the composer');
+      await mascotPage.screenshot({
+        path: join(output, 'stacky-roaming.png'),
+        animations: 'allow',
+      });
+      await mascotPage
+        .getByRole('textbox', { name: 'Message', exact: true })
+        .fill('Keep my idea while Stacky rests.');
+      await expect(home).toHaveAttribute('data-roaming', 'false');
+      const paused = await actor.boundingBox();
+      await mascotPage.clock.fastForward(11_000);
+      assert.deepEqual(await actor.boundingBox(), paused, 'Typing pauses roaming');
+      assert.equal(await actor.evaluate((element) => element.getAnimations().length), 0);
+      await actor.click();
+      await mascotPage.getByRole('button', { name: 'Put Stacky to sleep', exact: true }).click();
+      await expect(actor).toHaveCount(0);
+      await mascotPage.reload();
+      await mascotPage.getByText('Ready', { exact: true }).waitFor();
+      await expect(actor).toHaveCount(0);
+      await mascotPage.getByRole('button', { name: 'Change workspace view', exact: true }).click();
+      await mascotPage
+        .getByRole('combobox', { name: 'Little mascot', exact: true })
+        .selectOption('quiet');
+      await mascotPage.getByRole('button', { name: 'Close view options', exact: true }).click();
+      await expect(actor).toBeVisible();
+      await expect(home).toHaveAttribute('data-roaming', 'false');
+      await mascotPage.emulateMedia({ reducedMotion: 'reduce' });
+      await mascotPage.getByRole('button', { name: 'Change workspace view', exact: true }).click();
+      await mascotPage
+        .getByRole('combobox', { name: 'Little mascot', exact: true })
+        .selectOption('roam');
+      await mascotPage.getByRole('button', { name: 'Close view options', exact: true }).click();
+      await mascotPage.getByRole('heading', { name: 'A little idea is enough.' }).click();
+      await expect(home).toHaveAttribute('data-roaming', 'false');
+      assert.equal(
+        await actor.evaluate((element) => element.getAnimations({ subtree: true }).length),
+        0,
+        'Reduced motion disables walking and decorative animations',
+      );
+      await actor.click();
+      await stackyMenu.getByRole('button', { name: 'Big stretch', exact: true }).click();
+      await stackyMenu.getByText('A quiet little smile, just for you.', { exact: true }).waitFor();
+      assert.equal(
+        await stackyMenu
+          .locator('.stacky-playground')
+          .evaluate((element) => element.getAnimations({ subtree: true }).length),
+        0,
+        'Reduced motion also applies to requested tricks',
+      );
+      await stackyMenu.getByRole('button', { name: 'Close Stacky menu', exact: true }).click();
+      await mascotPage.setViewportSize({ width: 390, height: 844 });
+      await expect(actor).toBeInViewport();
+      assert.equal(
+        await mascotPage.evaluate(() => document.documentElement.scrollWidth > innerWidth),
+        false,
+      );
+      await mascotPage.screenshot({
+        path: join(output, 'stacky-mobile.png'),
+        animations: 'disabled',
+      });
+      const mascotSocket = [...clients].at(-1);
+      frame(mascotSocket, 'provider.text_delta', {
+        sessionId: 'session-one',
+        text: 'Checking the idea.',
+      });
+      await expect(home).toHaveAttribute('data-mood', 'working');
+      frame(mascotSocket, 'error', {
+        sessionId: 'session-one',
+        phase: 'provider',
+        message: 'Mascot state fixture: needs another look.',
+      });
+      await expect(home).toHaveAttribute('data-mood', 'attention');
+      frame(mascotSocket, 'run.result', {
+        sessionId: 'session-one',
+        status: 'aborted',
+        iterations: 1,
+      });
+      await expect(home).toHaveAttribute('data-mood', 'stopped');
+      frame(mascotSocket, 'run.result', {
+        sessionId: 'session-one',
+        status: 'done',
+        iterations: 1,
+      });
+      await expect(home).toHaveAttribute('data-mood', 'done');
+      frame(mascotSocket, 'agent.status_changed', {
+        sessionId: 'session-one',
+        subagentId: 'mascot-worker',
+        agentName: 'Checking',
+        status: 'failed',
+      });
+      await expect(home).toHaveAttribute('data-mood', 'attention');
+      frame(mascotSocket, 'agent.status_changed', {
+        sessionId: 'session-one',
+        subagentId: 'mascot-worker',
+        agentName: 'Checking',
+        status: 'running',
+      });
+      await expect(home).toHaveAttribute('data-mood', 'working');
+      frame(mascotSocket, 'agent.status_changed', {
+        sessionId: 'session-one',
+        subagentId: 'mascot-worker',
+        agentName: 'Checking',
+        status: 'failed',
+      });
+      await expect(home).toHaveAttribute('data-mood', 'attention');
+      await mascotPage.getByRole('button', { name: 'Change workspace view', exact: true }).click();
+      await mascotPage.getByRole('button', { name: /^Just chat/ }).click();
+      await expect(actor).toHaveCount(0);
+    } finally {
+      await mascotPage.close();
+    }
+  }
+  // A fresh browser starts with a friendly chat; optional surfaces never own the draft.
+  {
+    const cozy = await browser.newPage({ viewport: { width: 1512, height: 982 } });
+    cozy.setDefaultTimeout(10_000);
+    cozy.on('pageerror', (error) => errors.push(error.message));
+    cozy.on('console', (entry) => {
+      if (entry.type() === 'error') errors.push(entry.text());
+    });
+    try {
+      await cozy.goto(origin);
+      await cozy.getByText('Ready', { exact: true }).waitFor();
+      const draft = cozy.getByRole('textbox', { name: 'Message', exact: true });
+      const shell = cozy.locator('.vibe-shell');
+      await expect(shell).toHaveAttribute('data-view', 'cozy');
+      await expect(cozy.locator('.session-sidebar')).not.toBeInViewport();
+      assert.equal(await cozy.locator('aside.workspace-panel').count(), 0);
+      await expect(
+        cozy.getByRole('combobox', { name: 'Reasoning effort', exact: true }),
+      ).toHaveCount(0);
+      await expect(cozy.getByRole('heading', { name: 'A little idea is enough.' })).toBeVisible();
+      await expect(cozy.getByRole('group', { name: 'Choose a starting point' })).not.toBeVisible();
+      await cozy.screenshot({
+        path: join(output, 'cozy-chat-desktop.png'),
+        animations: 'disabled',
+      });
+      await cozy.getByRole('button', { name: 'Need a little inspiration?', exact: true }).click();
+      await cozy.getByLabel('What is your website for?').fill('A tiny garden diary');
+      await cozy.getByRole('button', { name: 'Tuck the ideas away', exact: true }).click();
+      await cozy.getByRole('button', { name: 'Need a little inspiration?', exact: true }).click();
+      await expect(cozy.getByLabel('What is your website for?')).toHaveValue('A tiny garden diary');
+      await cozy.getByRole('button', { name: 'Tuck the ideas away', exact: true }).click();
+      await draft.fill('Keep my little draft.');
+      const changeView = async (name) => {
+        await cozy.getByRole('button', { name: 'Change workspace view', exact: true }).click();
+        await cozy
+          .getByRole('dialog', { name: 'Make yourself at home' })
+          .getByRole('button', { name: new RegExp(`^${name}`) })
+          .click();
+      };
+      await cozy.getByRole('button', { name: 'Hide quick shortcuts', exact: true }).click();
+      await changeView('Just chat');
+      await expect(shell).toHaveAttribute('data-view', 'focus');
+      await expect(draft).toHaveValue('Keep my little draft.');
+      await expect(cozy.getByRole('navigation', { name: 'Handy shortcuts' })).toHaveCount(0);
+      await cozy.reload();
+      await cozy.getByText('Ready', { exact: true }).waitFor();
+      await expect(shell).toHaveAttribute('data-view', 'focus');
+      await expect(draft).toHaveValue('Keep my little draft.');
+      await cozy.screenshot({
+        path: join(output, 'just-chat-desktop.png'),
+        animations: 'disabled',
+      });
+      await changeView('Studio');
+      await expect(cozy.locator('.session-sidebar')).toBeInViewport();
+      await expect(cozy.locator('aside.workspace-panel')).toBeVisible();
+      await cozy.getByRole('button', { name: 'Close workspace', exact: true }).click();
+      await changeView('Cozy chat');
+      await expect(cozy.locator('aside.workspace-panel')).toHaveCount(0);
+      await expect(draft).toHaveValue('Keep my little draft.');
+      await expect(cozy.getByRole('navigation', { name: 'Handy shortcuts' })).toHaveCount(0);
+      await cozy.getByRole('button', { name: 'Change workspace view', exact: true }).click();
+      await cozy.getByRole('checkbox', { name: 'Quick shortcuts', exact: true }).check();
+      await cozy.getByRole('checkbox', { name: 'Helpful introductions', exact: true }).uncheck();
+      await cozy.getByRole('button', { name: 'Close view options', exact: true }).click();
+      await cozy
+        .locator('.header-actions')
+        .getByRole('button', { name: 'Files', exact: true })
+        .click();
+      await expect(cozy.getByRole('heading', { name: 'Your project, within reach' })).toHaveCount(
+        0,
+      );
+      await cozy.getByRole('button', { name: 'Close dialog', exact: true }).click();
+      await cozy.getByRole('button', { name: 'Change workspace view', exact: true }).click();
+      await cozy.getByRole('checkbox', { name: 'Helpful introductions', exact: true }).check();
+      await cozy.getByRole('button', { name: 'Close view options', exact: true }).click();
+      await cozy
+        .locator('.header-actions')
+        .getByRole('button', { name: 'Files', exact: true })
+        .click();
+      const files = cozy.getByRole('dialog');
+      await expect(files.locator('.file-manager')).toHaveAttribute('data-layout', 'single');
+      await expect(files.getByRole('button', { name: 'notes.md', exact: true })).toBeVisible();
+      await expect(files.getByRole('group', { name: 'File types' })).not.toBeVisible();
+      await files.getByRole('button', { name: 'Hide files introduction', exact: true }).click();
+      await cozy.getByRole('button', { name: 'Close dialog', exact: true }).click();
+      await cozy
+        .locator('.header-actions')
+        .getByRole('button', { name: 'Files', exact: true })
+        .click();
+      await files.getByRole('button', { name: 'Show files introduction', exact: true }).click();
+      await files.getByRole('button', { name: 'Find by file type', exact: true }).click();
+      await files
+        .getByRole('group', { name: 'File types' })
+        .getByRole('button', { name: /^Documents/ })
+        .click();
+      await files.getByRole('button', { name: 'notes.md', exact: true }).click();
+      await files.getByRole('button', { name: 'Pin this file', exact: true }).click();
+      await expect(
+        files.getByRole('button', { name: 'Unpin this file', exact: true }),
+      ).toHaveAttribute('aria-pressed', 'true');
+      await expect(
+        files.getByRole('complementary', { name: 'Directories and files' }),
+      ).not.toBeVisible();
+      await expect(files.getByRole('button', { name: 'Browse files', exact: true })).toBeVisible();
+      await files.getByRole('button', { name: 'Use split file view', exact: true }).click();
+      await expect(
+        files.getByRole('complementary', { name: 'Directories and files' }),
+      ).toBeVisible();
+      await files
+        .locator('.file-content')
+        .getByRole('button', { name: 'Use single file view', exact: true })
+        .click();
+      await files.getByRole('button', { name: 'Browse files', exact: true }).click();
+      await expect(
+        files.getByRole('navigation', { name: 'Pinned files', exact: true }),
+      ).toBeVisible();
+      await files.getByRole('button', { name: 'Clear search and filters', exact: true }).click();
+      await files.getByRole('button', { name: 'src/app.tsx', exact: true }).click();
+      await expect(files.getByRole('button', { name: 'Pin this file', exact: true })).toBeEnabled();
+      await files.getByRole('button', { name: 'Browse files', exact: true }).click();
+      await expect(
+        files.getByRole('button', { name: 'Open recent src/app.tsx', exact: true }),
+      ).toBeVisible();
+      for (const width of [320, 390]) {
+        await cozy.setViewportSize({ width, height: 844 });
+        assert.equal(
+          await files.evaluate((element) => element.scrollWidth > element.clientWidth),
+          false,
+          `Handy files fit at ${width}px`,
+        );
+        await expect(
+          files.getByRole('button', { name: 'Open pinned notes.md', exact: true }),
+        ).toBeVisible();
+        await cozy.screenshot({
+          path: join(output, `handy-files-${width}.png`),
+          animations: 'disabled',
+        });
+      }
+      await cozy.setViewportSize({ width: 1512, height: 982 });
+      await files.getByRole('button', { name: 'Clear recent shortcuts', exact: true }).click();
+      await expect(
+        files.getByRole('navigation', { name: 'Recent files', exact: true }),
+      ).toHaveCount(0);
+      await expect(
+        files.getByRole('navigation', { name: 'Pinned files', exact: true }),
+      ).toBeVisible();
+      await files.locator('.file-shelf > summary').click();
+      await expect(files.locator('.file-shelf')).not.toHaveAttribute('open', '');
+      await cozy.getByRole('button', { name: 'Close dialog', exact: true }).click();
+      await cozy
+        .locator('.header-actions')
+        .getByRole('button', { name: 'Files', exact: true })
+        .click();
+      await expect(files.locator('.file-shelf')).not.toHaveAttribute('open', '');
+      await files.locator('.file-shelf > summary').click();
+      await cozy.screenshot({ path: join(output, 'cozy-files.png'), animations: 'disabled' });
+      await cozy.getByRole('button', { name: 'Close dialog', exact: true }).click();
+      await cozy.getByRole('button', { name: 'Ideas & skills', exact: true }).click();
+      const library = cozy.getByRole('dialog');
+      await expect(library.getByRole('group', { name: 'Library filters' })).not.toBeVisible();
+      await expect(library.getByRole('tab', { name: 'Tools', exact: true })).toHaveCount(0);
+      await expect(library.getByRole('tab', { name: 'Connections', exact: true })).toHaveCount(0);
+      await library
+        .getByRole('button', { name: 'Show more library sections', exact: true })
+        .click();
+      await expect(library.getByRole('tab', { name: 'Tools', exact: true })).toBeVisible();
+      await library.getByRole('tab', { name: 'Connections', exact: true }).click();
+      await expect(library.getByRole('tab', { name: 'Connections', exact: true })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      );
+      for (const width of [320, 390]) {
+        await cozy.setViewportSize({ width, height: 844 });
+        assert.equal(
+          await library.evaluate((element) => element.scrollWidth > element.clientWidth),
+          false,
+          `Expanded library sections fit at ${width}px`,
+        );
+        await expect(
+          library.getByRole('button', { name: 'Show fewer library sections', exact: true }),
+        ).toBeVisible();
+      }
+      await cozy.setViewportSize({ width: 1512, height: 982 });
+      await library
+        .getByRole('button', { name: 'Show fewer library sections', exact: true })
+        .click();
+      await expect(library.getByRole('tab', { name: 'Ideas', exact: true })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      );
+      await expect(library.getByRole('tab', { name: 'Connections', exact: true })).toHaveCount(0);
+      await library
+        .getByRole('group', { name: 'Collection display' })
+        .getByRole('button', { name: 'List', exact: true })
+        .click();
+      await expect(cozy.locator('html')).toHaveAttribute('data-collection-view', 'list');
+      await library.getByRole('button', { name: /Review a target/ }).click();
+      await expect(library.getByRole('navigation', { name: 'Prompts list' })).not.toBeVisible();
+      await library.getByRole('button', { name: 'All prompts', exact: true }).click();
+      await expect(library.getByRole('navigation', { name: 'Prompts list' })).toBeVisible();
+      await cozy.screenshot({ path: join(output, 'cozy-library.png'), animations: 'disabled' });
+      await cozy.getByRole('button', { name: 'Close dialog', exact: true }).click();
+      await cozy
+        .getByRole('navigation', { name: 'Handy shortcuts' })
+        .getByRole('button', { name: 'Memory', exact: true })
+        .click();
+      const memories = cozy.getByRole('dialog');
+      await expect(
+        memories
+          .getByRole('group', { name: 'Collection display' })
+          .getByRole('button', { name: 'List', exact: true }),
+      ).toHaveAttribute('aria-pressed', 'true');
+      await memories
+        .getByRole('group', { name: 'Collection display' })
+        .getByRole('button', { name: 'Cards', exact: true })
+        .click();
+      await memories.getByRole('button', { name: /Use Bun for package scripts/ }).click();
+      await expect(memories.getByRole('navigation', { name: 'Memory records' })).not.toBeVisible();
+      await memories.getByRole('button', { name: 'All memories', exact: true }).click();
+      await expect(memories.getByRole('navigation', { name: 'Memory records' })).toBeVisible();
+      await cozy.getByRole('button', { name: 'Close dialog', exact: true }).click();
+      await cozy.keyboard.press('Control+,');
+      const cozySettings = cozy.getByRole('dialog', { name: 'Settings', exact: true });
+      await expect(
+        cozySettings.getByRole('combobox', { name: 'Working mode', exact: true }),
+      ).toHaveCount(0);
+      await expect(cozySettings.locator('.modal-heading .detail-switch')).toHaveCount(0);
+      await cozy.screenshot({ path: join(output, 'cozy-settings.png'), animations: 'disabled' });
+      await cozySettings
+        .getByRole('textbox', { name: 'Search settings', exact: true })
+        .fill('Compaction strategy');
+      await cozySettings
+        .getByRole('region', { name: 'Matching settings' })
+        .getByRole('button', { name: /^Compaction strategy/ })
+        .click();
+      await expect(
+        cozySettings.getByRole('combobox', { name: 'Compaction strategy', exact: true }),
+      ).toBeVisible();
+      await cozySettings.getByText('A little more control', { exact: true }).click();
+      await expect(
+        cozySettings.getByRole('combobox', { name: 'Compaction strategy', exact: true }),
+      ).toHaveCount(0);
+      await cozy.getByRole('button', { name: 'Close dialog', exact: true }).click();
+      for (const width of [320, 390, 768]) {
+        await cozy.setViewportSize({ width, height: 844 });
+        assert.equal(
+          await cozy.evaluate(() => document.documentElement.scrollWidth > innerWidth),
+          false,
+          `Cozy chat fits at ${width}px`,
+        );
+        await cozy.screenshot({
+          path: join(output, `cozy-chat-${width}.png`),
+          animations: 'disabled',
+        });
+      }
+      await cozy.setViewportSize({ width: 1512, height: 982 });
+      const cozySocket = [...clients].at(-1);
+      frame(cozySocket, 'provider.text_delta', {
+        sessionId: 'session-one',
+        text: 'Taking a look at your idea.',
+      });
+      frame(cozySocket, 'tool.started', {
+        sessionId: 'session-one',
+        id: 'cozy-tool',
+        name: 'read_file',
+        input: { path: 'notes.md' },
+      });
+      await cozy.getByRole('button', { name: 'Stop all', exact: true }).waitFor();
+      await expect(cozy.getByRole('list', { name: 'Recent tool calls' })).not.toBeVisible();
+      await cozy.getByText('A peek behind the scenes', { exact: true }).click();
+      await expect(cozy.getByRole('list', { name: 'Recent tool calls' })).toBeVisible();
+      await changeView('Just chat');
+      await expect(cozy.getByRole('button', { name: 'Stop all', exact: true })).toBeVisible();
+      await expect(draft).toHaveValue('Keep my little draft.');
+      await cozy.getByRole('button', { name: 'Stop all', exact: true }).click();
+      await cozy.getByText('Work stopped', { exact: true }).waitFor();
+      assert.equal(
+        received.filter((entry) => entry.type === 'user_message').length,
+        0,
+        'Appearance changes and cozy browsing never send a message',
+      );
+    } finally {
+      await cozy.close();
+    }
+  }
   await page.goto(origin);
   await page.getByRole('button', { name: 'Send message', exact: true }).waitFor();
   await page.getByText('What are we building').waitFor();
@@ -830,6 +1469,21 @@ try {
   await launchMessage.fill('');
   await page.getByRole('button', { name: /Make this project better/ }).click();
   await page.getByRole('button', { name: 'More visual', exact: true }).click();
+  assert.equal(
+    await page
+      .getByRole('button', { name: 'More visual', exact: true })
+      .getAttribute('aria-pressed'),
+    'true',
+    'Selecting a direction marks it pressed',
+  );
+  await page.getByRole('button', { name: 'More visual', exact: true }).click();
+  assert.equal(
+    await page
+      .getByRole('button', { name: 'More visual', exact: true })
+      .getAttribute('aria-pressed'),
+    'false',
+    'Clicking the selected direction again clears it',
+  );
   await page.getByRole('button', { name: /A beautiful website/ }).click();
   assert.equal(
     await page
@@ -859,11 +1513,28 @@ try {
   );
   await page.getByRole('button', { name: 'Quick tour', exact: true }).click();
   await page.getByRole('heading', { name: 'A little help getting started' }).waitFor();
+  for (const step of [
+    'Tell us what you have in mind',
+    'Show the feeling you’re after',
+    'Review, then keep shaping',
+  ]) {
+    await expect(page.getByText(step, { exact: true })).toBeVisible();
+  }
+  await expect(
+    page.getByText(
+      '“I’d like a welcoming website for my flower shop. Help me figure out what it needs.”',
+      { exact: true },
+    ),
+  ).toBeVisible();
   await page.screenshot({
     path: join(output, 'getting-started-desktop.png'),
     animations: 'disabled',
   });
   await captureNarrowDialog('getting-started');
+  await page.getByRole('button', { name: 'Close dialog', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'A little help getting started' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Quick tour', exact: true }).click();
+  await page.getByRole('heading', { name: 'A little help getting started' }).waitFor();
   await page.getByRole('button', { name: 'Let’s make something', exact: true }).click();
   await expect(launchMessage).toBeFocused();
   await page.getByRole('button', { name: 'Quick tour', exact: true }).click();
@@ -1835,9 +2506,62 @@ try {
   await page.getByRole('button', { name: 'Project notes', exact: true }).click();
   await page.getByText('A concise project report.', { exact: true }).waitFor();
   await page.locator('.header-actions').getByRole('button', { name: 'Files', exact: true }).click();
+  const fileHub = page.getByRole('dialog');
+  await fileHub.getByRole('button', { name: 'Close selected file', exact: true }).click();
+  const fileTypes = fileHub.getByRole('group', { name: 'File types', exact: true });
+  await fileHub.getByRole('button', { name: 'notes.md', exact: true }).waitFor();
+  await fileTypes.getByRole('button', { name: /^Documents/ }).click();
+  await expect(
+    fileHub.getByRole('navigation', { name: 'Project file tree' }).getByRole('button'),
+  ).toHaveCount(1);
+  await fileHub.getByRole('textbox', { name: 'Search project files', exact: true }).fill('app');
+  await fileHub.getByText('No files match this search.', { exact: false }).waitFor();
+  await fileHub.getByRole('button', { name: 'Clear search and filters', exact: true }).click();
+  await fileHub.getByRole('button', { name: 'Show file cards', exact: true }).click();
+  await expect(
+    fileHub
+      .getByRole('button', { name: 'src/app.tsx', exact: true })
+      .getByText('app.tsx', { exact: true }),
+  ).toBeVisible();
+  await expect(
+    fileHub.getByRole('navigation', { name: 'Project file tree' }).getByRole('button'),
+  ).toHaveCount(3);
+  await page.screenshot({
+    path: join(output, 'file-manager-discovery.png'),
+    animations: 'disabled',
+  });
+  for (const width of [320, 390, 768]) {
+    await page.setViewportSize({ width, height: 844 });
+    assert.equal(
+      await fileHub.evaluate((element) => element.scrollWidth > element.clientWidth),
+      false,
+      `File discovery fits at ${width}px`,
+    );
+    await page.screenshot({
+      path: join(output, `file-manager-discovery-${width}.png`),
+      animations: 'disabled',
+    });
+  }
+  await page.setViewportSize({ width: 1512, height: 982 });
+  await fileTypes.getByRole('button', { name: /^Images/ }).click();
+  await fileHub.getByRole('button', { name: 'assets/cover.png', exact: true }).click();
+  await expect(fileHub.locator('.file-preview-image')).toBeVisible();
+  await fileHub
+    .getByRole('navigation', { name: 'File location' })
+    .getByRole('button', { name: 'Project', exact: true })
+    .click();
   await page.getByRole('textbox', { name: 'Search project files', exact: true }).fill('app');
   await page.getByRole('button', { name: 'src/app.tsx', exact: true }).click();
   await page.getByRole('dialog').getByText('A concise project report.', { exact: true }).waitFor();
+  const fileDownload = page.waitForEvent('download');
+  await fileHub.getByRole('button', { name: 'Save a copy', exact: true }).click();
+  const savedCopy = await fileDownload;
+  assert.equal(savedCopy.suggestedFilename(), 'app.tsx');
+  await savedCopy.saveAs(join(output, 'downloaded-app.tsx'));
+  assert.equal(
+    await readFile(join(output, 'downloaded-app.tsx'), 'utf8'),
+    'A concise project report.',
+  );
   await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
   await page
     .getByRole('dialog')
@@ -1918,6 +2642,24 @@ try {
   );
   await hub.getByRole('button', { name: 'Favorite', exact: true }).click();
   await hub.getByRole('button', { name: 'Unfavorite', exact: true }).waitFor();
+  await hub.getByRole('button', { name: /^Favorites only/ }).click();
+  await expect(
+    hub
+      .getByRole('navigation', { name: 'Prompts list' })
+      .getByRole('button', { name: /Review a target/ }),
+  ).toHaveCount(1);
+  await hub
+    .getByRole('textbox', { name: 'Search resources', exact: true })
+    .fill('nothing-matches-this');
+  await hub.getByRole('button', { name: 'Show all resources', exact: true }).click();
+  await hub.getByRole('button', { name: 'Category: quality', exact: true }).click();
+  await expect(
+    hub
+      .getByRole('navigation', { name: 'Prompts list' })
+      .getByRole('button', { name: /FluidFlow/ }),
+  ).toHaveCount(0);
+  await hub.getByRole('button', { name: 'Reset library filters', exact: true }).click();
+  await page.screenshot({ path: join(output, 'library-discovery.png'), animations: 'disabled' });
   await hub
     .getByRole('textbox', { name: 'Prompt variable target', exact: true })
     .fill('src/app.tsx');
@@ -1980,7 +2722,7 @@ try {
   await page.waitForFunction(
     () => document.querySelector('textarea[aria-label="Message"]')?.value === '$testing',
   );
-  await message.fill('');
+  await message.fill('Preserve my unsent idea.');
   await page
     .locator('.workspace-navigation')
     .getByRole('button', { name: 'Tools & MCP', exact: true })
@@ -2002,6 +2744,30 @@ try {
   await hub.getByRole('button', { name: 'Enable connection', exact: true }).click();
   await hub.getByRole('button', { name: 'Reconnect', exact: true }).click();
   await hub.getByRole('tab', { name: 'Memory', exact: true }).click();
+  const memoryList = hub.getByRole('navigation', { name: 'Memory records', exact: true });
+  await memoryList.getByRole('button', { name: /Use Bun for package scripts/ }).waitFor();
+  await hub.getByRole('button', { name: 'Preferences', exact: true }).click();
+  await expect(memoryList.getByRole('button')).toHaveCount(1);
+  await expect(memoryList.getByRole('button', { name: /Keep interfaces focused/ })).toBeVisible();
+  await expect(hub.locator('.memory-overview')).toContainText('1 memory found');
+  await hub.getByRole('button', { name: 'Decisions', exact: true }).click();
+  await hub.getByText('No memories match these filters.', { exact: true }).waitFor();
+  await hub.getByRole('button', { name: 'All knowledge', exact: true }).click();
+  await expect(memoryList.getByRole('button')).toHaveCount(2);
+  await page.screenshot({ path: join(output, 'memory-discovery.png'), animations: 'disabled' });
+  for (const width of [320, 390, 768]) {
+    await page.setViewportSize({ width, height: 844 });
+    assert.equal(
+      await hub.evaluate((element) => element.scrollWidth > element.clientWidth),
+      false,
+      `Memory discovery fits at ${width}px`,
+    );
+    await page.screenshot({
+      path: join(output, `memory-discovery-${width}.png`),
+      animations: 'disabled',
+    });
+  }
+  await page.setViewportSize({ width: 1512, height: 982 });
   assert.equal(await hub.getByLabel('Memory kind', { exact: true }).isVisible(), false);
   await hub.getByRole('button', { name: 'Filters', exact: true }).click();
   await hub.getByLabel('Memory kind', { exact: true }).waitFor();
@@ -2072,8 +2838,29 @@ try {
   await hub.getByText('No direct memory relationships recorded.', { exact: true }).waitFor();
   assert.equal(await hub.getByRole('button', { name: 'Show graph', exact: true }).count(), 0);
   await hub.getByRole('textbox', { name: 'Search memory', exact: true }).fill('focused');
-  await hub.getByRole('button', { name: /Keep interfaces focused/ }).waitFor();
-  await hub.getByRole('button', { name: 'Close dialog', exact: true }).click();
+  await expect(memoryList.getByRole('button')).toHaveCount(1);
+  await memoryList.getByRole('button', { name: /Keep interfaces focused/ }).click();
+  await hub.getByRole('button', { name: 'Copy memory', exact: true }).click();
+  await hub.getByText('Memory copied.', { exact: true }).waitFor();
+  assert.equal(
+    await page.evaluate(() => navigator.clipboard.readText()),
+    'Keep interfaces focused.',
+  );
+  await page.evaluate(() => {
+    navigator.clipboard.writeText = async () => {
+      throw new Error('Fixture clipboard unavailable');
+    };
+  });
+  await hub.getByRole('button', { name: 'Copy memory', exact: true }).click();
+  await hub
+    .getByText('Could not copy. Select the memory text to copy it manually.', { exact: true })
+    .waitFor();
+  await page.evaluate(() => {
+    delete navigator.clipboard.writeText;
+  });
+  await hub.getByRole('button', { name: 'Use in message', exact: true }).click();
+  await expect(message).toHaveValue(/Preserve my unsent idea\.[\s\S]*Keep interfaces focused\./);
+  await message.fill('');
   assert.equal(
     received.filter((m) => m.type === 'user_message').length,
     chatCountBeforeResources,
@@ -2681,6 +3468,7 @@ try {
   // (reconnect backoff, notices, copy feedback) for the rest of the run.
   {
     const faultPage = await browser.newPage({ viewport: { width: 1512, height: 982 } });
+    await useStudioFixture(faultPage);
     faultPage.setDefaultTimeout(10_000);
     faultPage.on('pageerror', (error) => errors.push(error.message));
     faultPage.on('console', (entry) => {
@@ -3053,7 +3841,8 @@ try {
       'Workspace grouping second note',
       'Workspace grouping final note',
     ]) {
-      frame(client, 'error', { sessionId: 'session-one', message: text });
+      // Only errors in a run phase become transcript notes; request errors are notices.
+      frame(client, 'error', { sessionId: 'session-one', message: text, phase: 'provider' });
     }
   }
   const notes = page.locator('.workspace-notes').last();

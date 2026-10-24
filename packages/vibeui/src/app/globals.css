@@ -1,6 +1,9 @@
 @import "tailwindcss";
 @import "./design-tokens.css";
 @import "./start-space.css";
+@import "./explorer-surfaces.css";
+@import "./cozy-workspace.css";
+@import "./mascot.css";
 
 @theme {
   --font-sans: "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;

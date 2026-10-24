@@ -8,9 +8,10 @@ import { inputQueueLabel } from '../lib/component-guards';
 import type { InputRequest } from '../lib/session';
 import type { SessionController } from '../lib/use-session';
 import { CodePanel } from './code-panel';
-import { DetailSwitch } from './presentation-mode';
+import { DetailSwitch, usePresentation } from './presentation-mode';
 import { RuntimeControls } from './runtime-controls';
 import { SettingsSearch } from './settings-search';
+import { useWorkspacePreferences } from './workspace-preferences';
 
 export function Modal({
   open,
@@ -41,6 +42,8 @@ export function Modal({
   detailToggle?: boolean;
   onEscapeKeyDown?: (event: KeyboardEvent) => void;
 }) {
+  const { preferences } = useWorkspacePreferences();
+  const { mode } = usePresentation();
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
@@ -63,7 +66,9 @@ export function Modal({
               <div className="modal-heading-text">
                 <Dialog.Title>{title}</Dialog.Title>
                 <Dialog.Description className="modal-description">{description}</Dialog.Description>
-                {detailToggle && <DetailSwitch />}
+                {detailToggle && (preferences.view === 'studio' || mode === 'extended') && (
+                  <DetailSwitch />
+                )}
               </div>
             </div>
             {(dismissible || headerActions) && (
@@ -110,6 +115,18 @@ export function Settings({
   onInstructions: () => void;
 }) {
   const { state, connection } = controller;
+  const { preferences } = useWorkspacePreferences();
+  const personalInstructions = (
+    <div className="settings-row">
+      <span>
+        <strong>Personal instructions</strong>
+        <small>Your global agent rules, shared across projects.</small>
+      </span>
+      <button type="button" className="secondary-button" onClick={onInstructions}>
+        Edit instructions
+      </button>
+    </div>
+  );
   return (
     <Modal
       open={open}
@@ -130,7 +147,7 @@ export function Settings({
       drawer
     >
       <SettingsSearch>
-        {open && <RuntimeControls controller={controller} />}
+        {open && preferences.view === 'studio' && <RuntimeControls controller={controller} />}
         <div className="settings-row">
           <span>
             <strong>Appearance</strong>
@@ -184,15 +201,29 @@ export function Settings({
             Manage
           </button>
         </div>
-        <div className="settings-row">
-          <span>
-            <strong>Personal instructions</strong>
-            <small>Your global agent rules, shared across projects.</small>
-          </span>
-          <button type="button" className="secondary-button" onClick={onInstructions}>
-            Edit instructions
-          </button>
-        </div>
+        {preferences.view === 'studio' ? (
+          personalInstructions
+        ) : (
+          <details className="advanced-settings">
+            <summary>
+              <Settings2 size={16} />
+              <span>A little more control</span>
+              <small>Only if you need it</small>
+            </summary>
+            <div className="advanced-settings-body">
+              <p>
+                These settings change how your assistant works. Your everyday chat is ready without
+                changing them.
+              </p>
+              <div className="settings-detail-choice">
+                <span>How much detail would you like?</span>
+                <DetailSwitch />
+              </div>
+              {open && <RuntimeControls controller={controller} />}
+              {personalInstructions}
+            </div>
+          </details>
+        )}
       </SettingsSearch>
       <p className="fine-print">
         VibeUI v{uiVersion} · WrongStack{' '}

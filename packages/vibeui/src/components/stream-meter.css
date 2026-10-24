@@ -1,0 +1,112 @@
+.stream-meter {
+  --meter-accent: var(--accent);
+  --meter-text: var(--text);
+  --meter-bg: var(--raised);
+}
+/* The waveform only moves while actual model deltas are arriving. */
+.stream-meter {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  min-width: 0;
+  padding: 10px 14px;
+  margin: 6px 10px;
+  border: 1px solid color-mix(in srgb, var(--meter-accent) 42%, transparent);
+  border-radius: 10px;
+  color: var(--meter-text);
+  background: color-mix(in srgb, var(--meter-accent) 8%, var(--meter-bg));
+  box-shadow: 0 0 24px -15px var(--meter-accent);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.stream-meter__signal {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 22px;
+  color: var(--meter-accent);
+}
+.stream-meter__signal i {
+  display: block;
+  width: 3px;
+  height: 6px;
+  border-radius: 3px;
+  background: currentColor;
+  opacity: 0.4;
+}
+.stream-meter__signal i:nth-child(2n) {
+  height: 14px;
+}
+.stream-meter__signal i:nth-child(3n) {
+  height: 21px;
+}
+.stream-meter[data-receiving="true"] .stream-meter__signal i {
+  opacity: 1;
+  animation: stream-meter-wave 0.7s ease-in-out infinite alternate;
+}
+.stream-meter__signal i:nth-child(2n) {
+  animation-delay: -0.4s;
+}
+.stream-meter__signal i:nth-child(3n) {
+  animation-delay: -0.2s;
+}
+.stream-meter__phase {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 125px;
+  font-weight: 600;
+}
+.stream-meter__phase::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--meter-accent);
+}
+.stream-meter[data-active="true"] .stream-meter__phase::before {
+  animation: stream-meter-pulse 1.6s ease-in-out infinite;
+}
+.stream-meter__count {
+  font-weight: 700;
+  white-space: nowrap;
+}
+.stream-meter__speed {
+  color: var(--meter-accent);
+  font-size: 17px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+.stream-meter__elapsed {
+  opacity: 0.7;
+  white-space: nowrap;
+}
+@keyframes stream-meter-wave {
+  from {
+    transform: scaleY(0.35);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+@keyframes stream-meter-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stream-meter[data-receiving="true"] .stream-meter__signal i,
+  .stream-meter[data-active="true"] .stream-meter__phase::before {
+    animation: none;
+  }
+}
+@media (max-width: 480px) {
+  .stream-meter {
+    gap: 6px 12px;
+    padding: 8px 10px;
+  }
+  .stream-meter__phase {
+    flex-basis: calc(100% - 70px);
+  }
+}
