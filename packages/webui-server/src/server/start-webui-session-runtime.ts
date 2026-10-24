@@ -10,11 +10,18 @@ type SessionWriterLike = SessionWriter | null | undefined;
 
 export function stopSessionFleet(
   sessionId: string,
-  stopSessionFleetHook?: ((sessionId: string) => void | Promise<void>) | undefined,
+  stopSessionFleetHook?:
+    | ((sessionId: string, subagentIds?: readonly string[]) => void | Promise<void>)
+    | undefined,
+  subagentIds?: readonly string[],
 ): void {
   if (!sessionId || !stopSessionFleetHook) return;
   try {
-    void Promise.resolve(stopSessionFleetHook(sessionId)).catch((err) => {
+    const pending =
+      subagentIds && subagentIds.length > 0
+        ? stopSessionFleetHook(sessionId, subagentIds)
+        : stopSessionFleetHook(sessionId);
+    void Promise.resolve(pending).catch((err) => {
       console.warn(
         JSON.stringify({
           level: 'warn',
@@ -32,7 +39,7 @@ export function stopSessionFleet(
 
 export function createRunLockControl(
   sessionRunLocks: Map<string, AbortController>,
-  stopFleet: (sessionId: string) => void,
+  stopFleet: (sessionId: string, subagentIds?: readonly string[]) => void,
 ) {
   return {
     get: (sessionId: string): AbortController | null => sessionRunLocks.get(sessionId) ?? null,
@@ -46,11 +53,12 @@ export function createRunLockControl(
       sessionRunLocks.delete(sessionId);
     },
     sessionIds: () => [...sessionRunLocks.keys()],
-    abortRunLock: (sessionId?: string) => {
+    abortRunLock: (sessionId?: string, subagentIds?: readonly string[]) => {
       if (sessionId) {
         sessionRunLocks.get(sessionId)?.abort();
         sessionRunLocks.delete(sessionId);
-        stopFleet(sessionId);
+        if (subagentIds && subagentIds.length > 0) stopFleet(sessionId, subagentIds);
+        else stopFleet(sessionId);
         return;
       }
       const running = [...sessionRunLocks.keys()];

@@ -329,6 +329,25 @@ describe('embedded-host-adapters', () => {
         expect(message.payload.phase).toBe('abort');
       });
 
+      it('forwards the agents this screen still lists when aborting', () => {
+        const stopSessionFleet = vi.fn();
+        const ctx = conversationCtx({
+          getAgent: () => ({ ctx: { meta: {}, session: { id: 'sess_a' } } }),
+          hasSession: () => true,
+          getSessionId: () => 'sess_a',
+          stopSessionFleet,
+        });
+        const routes = createEmbeddedConversationRoutes(ctx);
+        routes.abort(
+          {} as never,
+          {
+            type: 'abort',
+            payload: { sessionId: 'sess_a', subagentIds: ['worker-a', '', 'worker-a', 'worker-b'] },
+          } as never,
+        );
+        expect(stopSessionFleet).toHaveBeenCalledWith('sess_a', ['worker-a', 'worker-b']);
+      });
+
       /** Turn setup must be serialised against session transitions. Passing no
        *  gate leaves createConversationOperations on a pass-through. */
       it('runs turn setup through the gate it is handed', async () => {

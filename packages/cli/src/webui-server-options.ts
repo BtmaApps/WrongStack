@@ -76,10 +76,13 @@ export interface CliWebUIOptions {
    * on; anything started with `spawn_subagent` + `assign_task` keeps running
    * because nothing asked it to stop — so a tab's Stop button silenced the
    * leader while its fleet ground on. The CLI owns the Director, so it
-   * supplies the cascade. Session-scoped by contract: with four tabs live,
-   * stopping one must never reach into another's fleet.
+   * supplies the cascade. `subagentIds` are workers this screen still lists.
+   * Session-scoped by contract: with four tabs live, stopping one must never
+   * reach into another's fleet. The extra ids are only the ones this tab sent.
    */
-  stopSessionFleet?: ((sessionId: string) => void | Promise<void>) | undefined;
+  stopSessionFleet?:
+    | ((sessionId: string, subagentIds?: readonly string[]) => void | Promise<void>)
+    | undefined;
   /**
    * The host's interrupt seam. HQ addresses the root conversation through the
    * CLI host's own publisher, whose "abort leader" calls `abortLeader()`; the

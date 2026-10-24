@@ -270,8 +270,8 @@ export async function startWebUI(
    * particular, so both accessors now require the session id and the pointer
    * is gone.
    */
-  const runLockControl = createRunLockControl(_sessionRunLocks, (id) =>
-    stopSessionFleet(id, opts.stopSessionFleet),
+  const runLockControl = createRunLockControl(_sessionRunLocks, (id, subagentIds) =>
+    stopSessionFleet(id, opts.stopSessionFleet, subagentIds),
   );
 
   const pendingConfirms = new Map<string, PendingConfirm>();

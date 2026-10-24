@@ -54,8 +54,12 @@ export interface ConversationRunControl {
   begin(ws: WebSocket | undefined, sessionId: string): AbortController | undefined;
   /** Release the controller for the given session after the run completes. */
   end(ws: WebSocket | undefined, sessionId: string, controller: AbortController): void;
-  /** Abort only the run belonging to `sessionId`, leaving other sessions intact. */
-  abort(ws: WebSocket, sessionId: string): void;
+  /**
+   * Abort only the run belonging to `sessionId`, leaving other sessions intact.
+   * `subagentIds` are workers this screen still shows, including ones whose
+   * spawn stamp is an older session and would otherwise keep running.
+   */
+  abort(ws: WebSocket, sessionId: string, subagentIds?: readonly string[]): void;
 }
 
 export interface ConversationOperationsContext {
@@ -131,6 +135,17 @@ export interface ConversationOperations extends ConversationRouteHandlers {
  * otherwise sail through `?? current` fallbacks and produce broadcasts every
  * client drops).
  */
+function requestedSubagentIds(msg: WSClientMessage): string[] {
+  const payload = msg.payload;
+  const raw =
+    payload && typeof payload === 'object'
+      ? (payload as { subagentIds?: unknown }).subagentIds
+      : undefined;
+  if (!Array.isArray(raw)) return [];
+  const ids = raw.filter((id): id is string => typeof id === 'string' && id.length > 0);
+  return [...new Set(ids)].slice(0, 64);
+}
+
 function requestedSessionId(msg: WSClientMessage): string | undefined {
   const payload = msg.payload;
   return payload &&
@@ -555,7 +570,9 @@ export function createConversationOperations(
     abort: (ws, msg) => {
       if (!ensureCurrentSession(ws, msg, 'abort')) return;
       const sessionId = requestedSessionId(msg) ?? ctx.getSessionId();
-      ctx.runControl.abort(ws, sessionId);
+      const subagentIds = requestedSubagentIds(msg);
+      if (subagentIds.length > 0) ctx.runControl.abort(ws, sessionId, subagentIds);
+      else ctx.runControl.abort(ws, sessionId);
       ctx.notifyAbort(ws, {
         type: 'error',
         payload: sessionPayload({ sessionId, phase: 'abort', message: 'User aborted' }),

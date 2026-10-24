@@ -104,12 +104,17 @@ export interface WebUIOptions {
    * because nothing asked it to stop — so a tab's Stop button silenced the
    * leader while its fleet ground on in the background. The host owns the
    * Director, so it supplies the cascade; the webui server only knows WHICH
-   * session was stopped.
+   * session was stopped. `subagentIds` are workers the screen still lists,
+   * including ones whose spawn stamp is not this session. Absent or empty
+   * keeps the session-only sweep.
    *
    * Session-scoped by contract: with four tabs live, stopping one tab must
-   * never reach into another tab's fleet.
+   * never reach into another tab's fleet. The extra ids are only the ones
+   * this tab sent.
    */
-  stopSessionFleet?: ((sessionId: string) => void | Promise<void>) | undefined;
+  stopSessionFleet?:
+    | ((sessionId: string, subagentIds?: readonly string[]) => void | Promise<void>)
+    | undefined;
 }
 
 export interface BackendServices {

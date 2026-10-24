@@ -91,8 +91,13 @@ export interface RouteContextsParams {
    * the session routes (a tab started displaying a session).
    */
   autoWake?: import('@wrongstack/webui-server').WebuiLeaderAutoWakeHost | undefined;
-  /** Stop the subagents one session spawned, when that session is aborted. */
-  stopSessionFleet?: ((sessionId: string) => void | Promise<void>) | undefined;
+  /**
+   * Stop the subagents one session spawned, when that session is aborted.
+   * The optional ids are workers this screen still lists.
+   */
+  stopSessionFleet?:
+    | ((sessionId: string, subagentIds?: readonly string[]) => void | Promise<void>)
+    | undefined;
   send: (ws: WebSocket, msg: WSServerMessage) => void;
   broadcast: (msg: WSServerMessage) => void;
   /**

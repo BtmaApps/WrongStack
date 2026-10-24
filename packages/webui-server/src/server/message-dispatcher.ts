@@ -84,6 +84,11 @@ interface RunLockControl {
   delete(sessionId: string): void;
   /** Snapshot of every session id that currently holds a run lock. */
   sessionIds(): string[];
+  /**
+   * Abort the session run and its fleet. Present on the standalone host lock.
+   * `subagentIds` are workers the screen still shows.
+   */
+  abortRunLock?(sessionId?: string, subagentIds?: readonly string[]): void;
 }
 interface MessageDispatcherOptions {
   state: WebuiMutableState;
@@ -265,7 +270,11 @@ export function createMessageDispatcher(
         // for the same session may already have installed a newer one.
         if (runLock.get(key) === controller) runLock.set(null, key);
       },
-      abort: (_ws, sessionId) => {
+      abort: (_ws, sessionId, subagentIds) => {
+        if (runLock.abortRunLock) {
+          runLock.abortRunLock(sessionId || undefined, subagentIds);
+          return;
+        }
         if (sessionId) {
           // Session-scoped abort NEVER reaches another tab's run.
           runLock.get(sessionId)?.abort();

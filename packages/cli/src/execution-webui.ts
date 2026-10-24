@@ -112,7 +112,15 @@ export async function runExecutionWebui(deps: ExecuteDeps): Promise<number> {
       // workers it is BLOCKED on; anything started with `spawn_subagent` +
       // `assign_task` keeps going unless asked to stop. Scoped to the
       // session so one tab's Stop never reaches another tab's fleet.
-      stopSessionFleet: (sessionId: string) => getDirector?.()?.terminateSession(sessionId),
+      stopSessionFleet: (sessionId: string, subagentIds?: readonly string[]) => {
+        const director = getDirector?.();
+        if (!director) return;
+        const shown = (subagentIds ?? []).filter((id) => id.length > 0 && id !== 'leader');
+        return Promise.all([
+          director.terminateSession(sessionId),
+          ...shown.map((id) => director.terminate(id).catch(() => undefined)),
+        ]).then(() => undefined);
+      },
       // HQ's per-tab abort fleet / abort agent / spawn, same scoping.
       hqFleetControl: createHqFleetControl(
         () => getDirector?.() ?? null,

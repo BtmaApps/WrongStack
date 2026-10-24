@@ -205,7 +205,9 @@ export interface EmbeddedConversationContext extends EmbeddedHostTransport {
    * aborted: killing the leader's controller only unwinds workers it is
    * blocked on, so async ones keep running unless someone asks them to stop.
    */
-  stopSessionFleet?: ((sessionId: string) => void | Promise<void>) | undefined;
+  stopSessionFleet?:
+    | ((sessionId: string, subagentIds?: readonly string[]) => void | Promise<void>)
+    | undefined;
   /**
    * The host's session-transition serialiser, SHARED with the session routes.
    *
@@ -275,13 +277,15 @@ export function createEmbeddedConversationRoutes(
         if (ctx.abortControllers.get(sessionId) === controller)
           ctx.abortControllers.delete(sessionId);
       },
-      abort: (_ws, sessionId) => {
+      abort: (_ws, sessionId, subagentIds) => {
         ctx.abortControllers.get(sessionId)?.abort();
         // Stopping a run means stopping the work, and this session's subagents
         // are part of it. Session-scoped so one tab's Stop never reaches
-        // another tab's fleet. Fire-and-forget: the run is already aborted and
-        // a teardown failure must not surface instead of the stop.
-        stopFleet(ctx, sessionId);
+        // another tab's fleet. Ids from the screen cover workers stamped with
+        // an older session, which a session-only sweep would leave running.
+        // Fire-and-forget: the run is already aborted and a teardown failure
+        // must not surface instead of the stop.
+        stopFleet(ctx, sessionId, subagentIds);
       },
     },
     pendingConfirms: ctx.pendingConfirms,
@@ -318,10 +322,17 @@ export function createEmbeddedConversationRoutes(
 }
 
 /** Best-effort cascade of a session stop into the fleet it spawned. */
-function stopFleet(ctx: EmbeddedConversationContext, sessionId: string): void {
+function stopFleet(
+  ctx: EmbeddedConversationContext,
+  sessionId: string,
+  subagentIds?: readonly string[],
+): void {
   if (!sessionId || !ctx.stopSessionFleet) return;
   try {
-    void Promise.resolve(ctx.stopSessionFleet(sessionId)).catch(() => undefined);
+    const stop = ctx.stopSessionFleet;
+    const pending =
+      subagentIds && subagentIds.length > 0 ? stop(sessionId, subagentIds) : stop(sessionId);
+    void Promise.resolve(pending).catch(() => undefined);
   } catch {
     // A synchronous throw from the host hook is best-effort too.
   }

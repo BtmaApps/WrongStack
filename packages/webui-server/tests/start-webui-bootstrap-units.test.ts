@@ -380,6 +380,9 @@ describe('start-webui-session-runtime', () => {
     stopSessionFleet('s1', hook);
     expect(hook).toHaveBeenCalledWith('s1');
     stopSessionFleet('', hook);
+    const listed = vi.fn();
+    stopSessionFleet('s1', listed, ['worker-a']);
+    expect(listed).toHaveBeenCalledWith('s1', ['worker-a']);
   });
 
   it('createRunLockControl manages run locks and handles abort', () => {
@@ -401,6 +404,9 @@ describe('start-webui-session-runtime', () => {
 
     manager.abortRunLock('s2');
     expect(stopFleet).toHaveBeenCalledWith('s2');
+    manager.set(ctrl2, 's2');
+    manager.abortRunLock('s2', ['worker-a']);
+    expect(stopFleet).toHaveBeenCalledWith('s2', ['worker-a']);
 
     manager.set(ctrl1, 's1');
     manager.abortRunLock();
