@@ -8,7 +8,7 @@ import {
   SMOKE_CONFIG_DEFAULTS,
 } from '@wrongstack/bench';
 
-export const DEFAULT_BENCH_MODELS_FILE = 'bench.config.json';
+const DEFAULT_BENCH_MODELS_FILE = 'bench.config.json';
 
 export interface ResolveBenchRunConfigInput {
   suiteId: string;

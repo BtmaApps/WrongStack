@@ -33,8 +33,8 @@ export interface ReadPipedStdinOptions {
   maxBytes?: number | undefined;
 }
 
-export const PIPED_STDIN_FIRST_BYTE_TIMEOUT_MS = 3_000;
-export const PIPED_STDIN_MAX_BYTES = 2 * 1024 * 1024;
+const PIPED_STDIN_FIRST_BYTE_TIMEOUT_MS = 3_000;
+const PIPED_STDIN_MAX_BYTES = 2 * 1024 * 1024;
 
 const EMPTY: PipedStdinResult = { text: '', truncated: false, timedOut: false };
 

@@ -29,7 +29,6 @@ import {
   type ChronicleVerifyResult,
 } from './types.js';
 
-export type { ChronicleRetentionCheckpoint } from './journal-partitions.js';
 export {
   collectPartitions,
   readRetentionCheckpoint,

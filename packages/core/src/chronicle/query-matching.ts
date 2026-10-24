@@ -56,21 +56,21 @@ export function matches(event: ChronicleEvent, query: ChronicleQuery): boolean {
   return true;
 }
 
-export function equal<T>(expected: T | undefined, actual: T | undefined): boolean {
+function equal<T>(expected: T | undefined, actual: T | undefined): boolean {
   return expected === undefined || expected === actual;
 }
 
-export function normalize(value: string | undefined): string | undefined {
+function normalize(value: string | undefined): string | undefined {
   return value?.replaceAll('\\', '/').toLocaleLowerCase();
 }
 
-export function lineContains(event: ChronicleEvent, line: number): boolean {
+function lineContains(event: ChronicleEvent, line: number): boolean {
   const start = event.resource?.lineStart;
   const end = event.resource?.lineEnd ?? start;
   return start !== undefined && end !== undefined && line >= start && line <= end;
 }
 
-export function objectContains(
+function objectContains(
   actual: Record<string, unknown> | undefined,
   expected: Record<string, unknown>,
 ): boolean {
@@ -92,7 +92,7 @@ export function readPath(value: Record<string, unknown>, key: string): unknown {
     );
 }
 
-export function deepEqual(left: unknown, right: unknown): boolean {
+function deepEqual(left: unknown, right: unknown): boolean {
   return stableStringify(left) === stableStringify(right);
 }
 
@@ -162,7 +162,7 @@ export function decodeCursor(
   }
 }
 
-export function isCursor(value: unknown): value is ChronicleCursor {
+function isCursor(value: unknown): value is ChronicleCursor {
   if (!value || typeof value !== 'object') return false;
   const cursor = value as Partial<ChronicleCursor>;
   const after = cursor.after as Partial<ChronicleOrderKey> | undefined;
@@ -196,7 +196,7 @@ export function isCursor(value: unknown): value is ChronicleCursor {
   return true;
 }
 
-export function stableStringify(value: unknown): string {
+function stableStringify(value: unknown): string {
   if (value === null || typeof value !== 'object') return JSON.stringify(value);
   if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
   const object = value as Record<string, unknown>;
@@ -251,7 +251,7 @@ export function isChronicleEvent(value: unknown): value is ChronicleEvent {
   );
 }
 
-export function isRuntime(value: unknown): boolean {
+function isRuntime(value: unknown): boolean {
   return (
     value === undefined ||
     (isRecord(value) &&
@@ -260,7 +260,7 @@ export function isRuntime(value: unknown): boolean {
   );
 }
 
-export function isResource(value: unknown): boolean {
+function isResource(value: unknown): boolean {
   if (value === undefined) return true;
   if (
     !isRecord(value) ||
@@ -284,25 +284,22 @@ export function isResource(value: unknown): boolean {
   );
 }
 
-export function optionalStrings(value: Record<string, unknown>, keys: readonly string[]): boolean {
+function optionalStrings(value: Record<string, unknown>, keys: readonly string[]): boolean {
   return keys.every((key) => value[key] === undefined || typeof value[key] === 'string');
 }
 
-export function optionalFiniteNumbers(
-  value: Record<string, unknown>,
-  keys: readonly string[],
-): boolean {
+function optionalFiniteNumbers(value: Record<string, unknown>, keys: readonly string[]): boolean {
   return keys.every(
     (key) =>
       value[key] === undefined || (typeof value[key] === 'number' && Number.isFinite(value[key])),
   );
 }
 
-export function isStringRecord(value: unknown): value is Record<string, string> {
+function isStringRecord(value: unknown): value is Record<string, string> {
   return isRecord(value) && Object.values(value).every((entry) => typeof entry === 'string');
 }
 
-export function isRecord(value: unknown): value is Record<string, unknown> {
+function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
 }
 

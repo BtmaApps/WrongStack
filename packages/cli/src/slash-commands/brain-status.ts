@@ -23,7 +23,7 @@ function councilRoundsSummary(snapshot: {
 
 import type { SlashCommandContext } from './command-context.js';
 
-export function fmtAge(at: number): string {
+function fmtAge(at: number): string {
   const s = Math.max(0, Math.round((Date.now() - at) / 1000));
   if (s < 60) return `${s}s ago`;
   // Promote at the rounding boundary: 59m50s is "1h ago", not "60m ago".

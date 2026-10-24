@@ -52,7 +52,7 @@ export function buildProjectsMenu(
   return menu;
 }
 
-export function buildSessionMenu(
+function buildSessionMenu(
   runtime: DesktopRuntimeRecord,
   index: number,
   actions: ProjectMenuActions,

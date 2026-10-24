@@ -13,7 +13,7 @@
 import type { SubcommandDeps } from './subcommands/contracts.js';
 import { restoreFlags } from './subcommands/flags.js';
 
-export const PROJECT_MCP_SERVERS = [
+const PROJECT_MCP_SERVERS = [
   'mailbox',
   'kanban',
   'codebase-index',

@@ -6,6 +6,7 @@ import type {
   DesktopWindowState,
 } from '../shared/types.js';
 import { samePath } from './runtime-project-manifest.js';
+import { MIN_WINDOW_HEIGHT, MIN_WINDOW_WIDTH } from './state/constants.js';
 
 export interface DesktopProjectSessionState {
   runtimeId?: string | undefined;
@@ -29,10 +30,6 @@ export interface RuntimeInternal extends DesktopRuntimeRecord {
    */
   lastActivityAt: number;
 }
-
-export const MIN_WINDOW_WIDTH = 760;
-
-export const MIN_WINDOW_HEIGHT = 520;
 
 /**
  * Which runtimes the idle sweep may reclaim.

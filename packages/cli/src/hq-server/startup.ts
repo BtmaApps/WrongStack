@@ -9,7 +9,7 @@
 
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import { writeHqRuntimeFile } from '@wrongstack/core/hq';
+import { writeHqRuntimeFile } from '@wrongstack/hq';
 import { terminalLink, terminalText } from '../terminal-format.js';
 import * as HqServerUtils from './utils.js';
 
@@ -23,7 +23,7 @@ export interface HqRuntimeMarker {
 
 // ── Runtime marker ─────────────────────────────────────────────────────────
 
-export const hqRuntimeMarkerPath = HqServerUtils.hqRuntimeMarkerPath;
+const hqRuntimeMarkerPath = HqServerUtils.hqRuntimeMarkerPath;
 
 /**
  * Write `<dataDir>/runtime.json` so auto-discovering clients on this machine

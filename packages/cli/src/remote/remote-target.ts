@@ -188,7 +188,7 @@ export function parseProbe(output: string): ProbeResult {
 }
 
 /** The remote file a version's build lives in. */
-export function remoteBinaryPath(version: string): string {
+function remoteBinaryPath(version: string): string {
   return `${REMOTE_BIN_DIR}/${shQuote(`wstack-${version}`)}`;
 }
 

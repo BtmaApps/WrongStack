@@ -3,7 +3,7 @@ import type { DatabaseSync } from 'node:sqlite';
 
 export const SQLITE_FIXED_OVERHEAD_BYTES = 16 * 1024 * 1024;
 export const MIN_SQLITE_PAGE_BUDGET_BYTES = 64 * 1024;
-export const MAX_WAL_RESERVE_BYTES = 32 * 1024 * 1024;
+const MAX_WAL_RESERVE_BYTES = 32 * 1024 * 1024;
 export const WAL_AUTOCHECKPOINT_PAGES = 2_000;
 export const WAL_SIZE_LIMIT_BYTES = 16 * 1024 * 1024;
 

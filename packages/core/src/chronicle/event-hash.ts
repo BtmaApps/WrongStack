@@ -25,7 +25,7 @@ export const GENESIS_HASH = '0'.repeat(64);
  * `JSON.stringify(event)` in V8 property order. The stored bytes are a record;
  * the preimage is always re-derived from the parsed event.
  */
-export function stableStringify(value: unknown): string {
+function stableStringify(value: unknown): string {
   if (value === null || typeof value !== 'object') return JSON.stringify(value);
   if (Array.isArray(value)) {
     return `[${value.map((item) => (item === undefined ? 'null' : stableStringify(item))).join(',')}]`;

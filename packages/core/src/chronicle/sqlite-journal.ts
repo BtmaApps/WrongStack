@@ -32,10 +32,8 @@ import {
 } from './types.js';
 
 export type {
-  ChronicleImportSink,
   ChronicleQuarantinedFamily,
   ChronicleSqliteJournalOptions,
-  ChronicleSqlitePurgeOptions,
 } from './sqlite-journal-core.js';
 export {
   CHRONICLE_SQLITE_FILE,

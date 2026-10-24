@@ -8,8 +8,8 @@ import * as fs from 'node:fs/promises';
 import type * as http from 'node:http';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import type { HqEventEnvelope, HqPersistence, HqTranscriptEntry } from '@wrongstack/core/hq';
-import { resolveHqDataDir } from '@wrongstack/core/hq';
+import type { HqEventEnvelope, HqPersistence, HqTranscriptEntry } from '@wrongstack/hq';
+import { resolveHqDataDir } from '@wrongstack/hq';
 import { isSafeSessionId as coreIsSafeSessionId } from '@wrongstack/core/utils';
 
 // ── Constants ──────────────────────────────────────────────────────────────
@@ -206,7 +206,7 @@ export function isSafeSessionId(value: string): boolean {
 }
 
 /** Normalize display host — "0.0.0.0" prints as "127.0.0.1" for user-facing URLs. */
-export function displayHost(host: string): string {
+function displayHost(host: string): string {
   return host === '0.0.0.0' ? '127.0.0.1' : host;
 }
 

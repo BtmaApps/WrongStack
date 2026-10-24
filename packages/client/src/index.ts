@@ -17,7 +17,7 @@ export type {
   WrongStackErrorKind,
   WrongStackErrorModel,
 } from '@wrongstack/webui-protocol';
-export { type WebSocketConstructor, type WebSocketLike, WrongStackClient } from './client.js';
+export { WrongStackClient } from './client.js';
 export type {
   ConfirmRequest,
   ConnectionState,

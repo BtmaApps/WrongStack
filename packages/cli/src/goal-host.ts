@@ -32,7 +32,7 @@ import {
   prepareGoalGraphForResume,
   prepareGoalWorkspace,
   verifyGoalProject,
-} from '@wrongstack/core/goal';
+} from '@wrongstack/goal';
 
 import { WorktreeManager } from '@wrongstack/core/worktree';
 
@@ -58,7 +58,7 @@ import type {
 } from './goal-host-types.js';
 import { createWorktreeCommandHost } from './worktree-command-host.js';
 
-export type { GoalHostDeps, GoalHostHooks } from './goal-host-types.js';
+export type { GoalHostDeps } from './goal-host-types.js';
 
 /** Default parallel-phase concurrency once worktree isolation is available. */
 const WORKTREE_PHASE_CONCURRENCY = 4;

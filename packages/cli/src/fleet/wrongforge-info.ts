@@ -28,7 +28,7 @@ export interface WrongForgeInfo {
   modelDetails?: { id: string; description: string; effortLevels: string[] }[] | undefined;
 }
 
-export function wrongForgeInfoCacheFile(): string {
+function wrongForgeInfoCacheFile(): string {
   return path.join(wstackGlobalRoot(), 'cache', 'wrongforge-info.json');
 }
 
@@ -91,7 +91,7 @@ export function writeWrongForgeInfoCache(
   }
 }
 
-export async function fetchWrongForgeInfo(
+async function fetchWrongForgeInfo(
   ep: WrongForgeEndpoint,
   opts: { fetchImpl?: typeof fetch | undefined; signal?: AbortSignal | undefined } = {},
 ): Promise<WrongForgeInfo> {

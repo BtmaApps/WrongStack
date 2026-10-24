@@ -21,8 +21,6 @@ import {
 import { WrongStackError } from './errors.js';
 import { type ConfirmDecision, RUN_EVENT_TYPES, Run, type RunEvent } from './run.js';
 
-export type { WebSocketConstructor, WebSocketLike } from './connection.js';
-
 type Listener = (payload: unknown) => void;
 type StateListener = (state: ConnectionState, error: WrongStackError | undefined) => void;
 
