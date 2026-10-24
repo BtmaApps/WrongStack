@@ -1,3 +1,11 @@
+export {
+  reduceStreamActivity,
+  STREAM_ACTIVITY_WINDOW_MS,
+  type StreamActivity,
+  startStreamActivity,
+  streamActivityView,
+} from '@wrongstack/contracts/types/stream-activity';
+
 export type {
   AutomationCIResult,
   AutomationPullRequestPlan,

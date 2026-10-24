@@ -1,3 +1,7 @@
+import {
+  reduceStreamActivity,
+  startStreamActivity,
+} from '@wrongstack/contracts/types/stream-activity';
 import type { Action } from '../app-action-type.js';
 import type { State } from '../app-state.js';
 import type { HistoryEntry } from '../history-entry.js';
@@ -19,6 +23,7 @@ const conversationActionTypes = [
   'clearInput',
   'clearHistory',
   'streamDelta',
+  'streamActivityFrame',
   'streamReset',
   'status',
   'interrupt',
@@ -196,6 +201,7 @@ export function reduceConversation(state: State, action: ConversationAction): St
         queue: [],
         nextQueueId: 1,
         streamingText: '',
+        streamActivity: null,
         toolStream: null,
         runningTools: new Map(),
         status: 'idle',
@@ -286,6 +292,10 @@ export function reduceConversation(state: State, action: ConversationAction): St
     case 'streamDelta':
       return {
         ...state,
+        streamActivity: reduceStreamActivity(state.streamActivity ?? null, {
+          type: 'provider.text_delta',
+          payload: { text: action.delta },
+        }),
         streamingText: retainStreamTail(
           state.streamingText,
           action.delta,
@@ -294,6 +304,11 @@ export function reduceConversation(state: State, action: ConversationAction): St
       };
     case 'streamReset':
       return { ...state, streamingText: '' };
+    case 'streamActivityFrame':
+      return {
+        ...state,
+        streamActivity: reduceStreamActivity(state.streamActivity ?? null, action.frame),
+      };
     case 'status':
       // Going idle means the stream has finished — clear any lingering
       // debug-stream stats so the statusline doesn't show stale "🐛 stream".
@@ -304,12 +319,22 @@ export function reduceConversation(state: State, action: ConversationAction): St
         return {
           ...state,
           status: 'idle',
+          streamActivity: state.streamActivity
+            ? { ...state.streamActivity, endedAt: state.streamActivity.endedAt ?? Date.now() }
+            : null,
           debugStreamStats: null,
           ...(state.runningTools.size > 0 ? { runningTools: new Map() } : {}),
           ...(state.toolStream !== null ? { toolStream: null } : {}),
         };
       }
-      return { ...state, status: action.status };
+      return {
+        ...state,
+        status: action.status,
+        streamActivity:
+          state.status === 'idle'
+            ? startStreamActivity(Date.now())
+            : (state.streamActivity ?? null),
+      };
     case 'interrupt':
       return { ...state, interrupts: state.interrupts + 1 };
     case 'steerStart':

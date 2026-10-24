@@ -310,6 +310,7 @@ export const ALLOWED_ACTION_TYPES = defineActionTypes([
   'steerConsume',
   'steerStart',
   'streamDelta',
+  'streamActivityFrame',
   'streamReset',
   'themePickerClose',
   'themePickerHint',

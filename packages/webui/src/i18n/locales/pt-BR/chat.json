@@ -1,4 +1,16 @@
 {
+  "streamActivity": {
+    "label": "Atividade de saída do modelo",
+    "description": "Tokens e velocidade são estimados pelo texto recebido, incluindo o raciocínio (4 caracteres por token). Ao concluir, são usados os dados do provedor, se disponíveis.",
+    "tokens": "{{value}} tokens",
+    "finished": "Concluído",
+    "thinking": "Raciocinando",
+    "receiving": "Recebendo",
+    "tools": "Executando ferramentas",
+    "waiting": "Aguardando o modelo",
+    "working": "Trabalhando",
+    "paused": "Pausado"
+  },
   "emptyState": {
     "title": "Inicie uma conversa",
     "subtitle": "Envie uma mensagem para começar."

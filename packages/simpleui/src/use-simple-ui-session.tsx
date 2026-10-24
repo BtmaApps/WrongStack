@@ -1,3 +1,4 @@
+import { reduceStreamActivity, type StreamActivity } from '@wrongstack/webui-protocol';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FallbackPendingProjection } from './fallback-modal.js';
 import { useAgentView } from './hooks/use-agent-view.js';
@@ -53,6 +54,10 @@ export function useSimpleUiSession() {
   const [userInputRequests, setUserInputRequests] = useState<PendingUserInputRequest[]>([]);
   const [fallbackPending, setFallbackPending] = useState<FallbackPendingProjection | null>(null);
   const [running, setRunning] = useState(false);
+  const streamActivityRef = useRef<StreamActivity | null>(null);
+  const onStreamFrame = useCallback((frame: { type: string; payload?: unknown }) => {
+    streamActivityRef.current = reduceStreamActivity(streamActivityRef.current, frame);
+  }, []);
   const [resumeProgress, setResumeProgress] = useState<ResumeProgressInfo | null>(null);
   const [activity, setActivity] = useState('');
   const { notice, showNotice: setNotice } = useStatusNotice();
@@ -226,6 +231,7 @@ export function useSimpleUiSession() {
   } = useStickyScroll({ messages, activity, pendingConfirm });
 
   const handlerDeps: MessageHandlerDeps = {
+    onStreamFrame,
     prefsRef,
     draftRef,
     fileRefsRef,
@@ -502,6 +508,7 @@ export function useSimpleUiSession() {
     onScrollSticky,
     toolCalls,
     activity,
+    streamActivityRef,
     resumeProgress,
     copyAssistantMessage,
     selectNextStep,

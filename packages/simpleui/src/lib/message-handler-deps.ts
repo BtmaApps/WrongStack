@@ -37,6 +37,7 @@ import type { WorklistStore } from './worklist-store.js';
 
 /** Session lifecycle: transcript, run state, session identity and context. */
 export interface SessionHandlerSlice {
+  onStreamFrame?: ((message: { type: string; payload?: unknown }) => void) | undefined;
   sessionIdRef: { current: string | null };
   messagesRef: { current: ChatMessage[] };
   runningRef: { current: boolean };

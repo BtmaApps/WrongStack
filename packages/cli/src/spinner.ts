@@ -1,3 +1,8 @@
+import { stripVTControlCharacters } from 'node:util';
+import {
+  type StreamActivity,
+  streamActivityView,
+} from '@wrongstack/contracts/types/stream-activity';
 import { color } from '@wrongstack/core/utils';
 import { fmtTok } from './utils.js';
 
@@ -28,6 +33,7 @@ export class Spinner {
   private context?: ContextInfo | undefined;
   private readonly out: NodeJS.WriteStream;
   private readonly enabled: boolean;
+  private readonly activity: (() => StreamActivity | null) | undefined;
 
   /**
    * @param out    Stream the spinner writes to (default stderr).
@@ -38,9 +44,13 @@ export class Spinner {
    *   it leaks the input row into scrollback and paints a stray
    *   "thinking… ctx" tracker at the very bottom). Defaults to TTY detection.
    */
-  constructor(out: NodeJS.WriteStream = process.stderr, opts?: { enabled?: boolean | undefined }) {
+  constructor(
+    out: NodeJS.WriteStream = process.stderr,
+    opts?: { enabled?: boolean | undefined; activity?: () => StreamActivity | null },
+  ) {
     this.out = out;
     this.enabled = (opts?.enabled ?? Boolean(out.isTTY)) && !process.env.NO_COLOR;
+    this.activity = opts?.activity;
   }
 
   start(label: string): void {
@@ -79,8 +89,20 @@ export class Spinner {
   private render(): void {
     const elapsed = ((Date.now() - this.startedAt) / 1000).toFixed(1);
     let line = `${color.amber(FRAMES[this.frame] ?? '')} ${this.label} ${color.dim(`${elapsed}s`)}`;
+    const activity = this.activity?.();
+    if (activity) {
+      const view = streamActivityView(activity);
+      line += color.cyan(`  ↑ ${view.countLabel} · ${view.speedLabel}`);
+    }
     if (this.context && this.context.max > 0) {
       line += '  ' + renderContextChip(this.context);
+    }
+    const width = Math.max(1, (this.out.columns || 80) - 1);
+    const plain = stripVTControlCharacters(line);
+    if (plain.length > width) {
+      const view = activity ? streamActivityView(activity) : null;
+      const compact = view ? `${view.countLabel} · ${view.speedLabel} · ${elapsed}s` : plain;
+      line = color.cyan(compact.slice(0, width));
     }
     this.clearLine();
     this.out.write(line);

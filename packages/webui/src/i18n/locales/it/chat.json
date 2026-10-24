@@ -1,4 +1,16 @@
 {
+  "streamActivity": {
+    "label": "Attività di output del modello",
+    "description": "Token e velocità sono stimati dal testo ricevuto, incluso il ragionamento (4 caratteri per token). Al termine si usano i dati del fornitore, se disponibili.",
+    "tokens": "{{value}} token",
+    "finished": "Terminato",
+    "thinking": "Ragionamento",
+    "receiving": "Ricezione",
+    "tools": "Esecuzione strumenti",
+    "waiting": "In attesa del modello",
+    "working": "In corso",
+    "paused": "In pausa"
+  },
   "emptyState": {
     "title": "Inizia una conversazione",
     "subtitle": "Invia un messaggio per iniziare."

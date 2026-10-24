@@ -1,6 +1,7 @@
 // State, Action, and supporting types extracted from app-reducer.ts.
 // This file has NO React or Ink dependencies — pure type definitions.
 import type { AutonomyStage, FleetChatVerbosity } from '@wrongstack/contracts/types';
+import type { StreamActivity } from '@wrongstack/contracts/types/stream-activity';
 import type { WorktreeTimelineEvent } from '@wrongstack/contracts/types/worktree-timeline';
 import type { SddBoardSnapshot } from '@wrongstack/sdd';
 import type { PanelState } from './app-panel-state.js';
@@ -87,6 +88,7 @@ export type State = PanelState & {
    */
   bashMode: boolean;
   streamingText: string;
+  streamActivity?: StreamActivity | null;
   /**
    * Live tail of the currently streaming tool's stdout/progress text. Mirrors
    * the assistant `streamingText` pattern but is keyed by tool_use id so the

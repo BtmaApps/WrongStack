@@ -268,6 +268,7 @@
     "changesGroup": "Änderungen ({{count}})",
     "commitPlaceholder": "Commit-Nachricht (Strg+Enter)...",
     "commitPlaceholderEmpty": "Änderungen stagen, um zu committen...",
+    "commitMessage": "Commit-Nachricht",
     "commitButton": "Committen",
     "commitButtonCount": "Committen ({{count}})"
   },
@@ -862,6 +863,7 @@
     "claude": "Claude",
     "priority": "Priorität",
     "placeholder": "{{label}} → an diese Sitzung…",
+    "messageDraft": "Nachrichtenentwurf",
     "send": "Senden",
     "sendHint": "⌘/Ctrl+Enter zum Senden · beim nächsten Iterationsschritt des Agenten sichtbar",
     "msgType": {
@@ -1084,6 +1086,7 @@
     "resultPlaceholder": "Synthetisches Tool-Ergebnis, das dem Agent statt der Ausführung zugeführt wird",
     "markError": "als Fehler markieren",
     "reasonPlaceholder": "Grund (Audit-Log)",
+    "reason": "Grund",
     "queueInjection": "Injektion einreihen",
     "controllerInjection": "Controller-Injektion"
   },
@@ -1114,6 +1117,7 @@
     "runDefault": "Run-Standard",
     "useRunDefault": "Run-Standard verwenden",
     "filterPlaceholder": "Modelle filtern…",
+    "filterModelsAria": "Modelle suchen",
     "loading": "Modelle werden geladen…",
     "noMatch": "Kein Treffer"
   },
@@ -1164,6 +1168,7 @@
     "retry": "Erneut versuchen",
     "assign": "Zuweisen",
     "assignTitle": "Agent zuweisen",
+    "assignToAgent": "Agenten zuweisen",
     "unassigned": "Nicht zugewiesen",
     "statusPending": "Ausstehend",
     "statusInProgress": "In Arbeit",
@@ -1488,6 +1493,7 @@
     "showRawTitle": "Raw-Markdown-Quelle zeigen",
     "editTitle": "Diesen Prompt bearbeiten & erneut senden",
     "editLabel": "Bearbeiten",
+    "editMessage": "Nachricht bearbeiten",
     "unpinTitle": "Lösen",
     "pinTitle": "Diese Antwort anheften",
     "pinnedLabel": "Angeheftet",
@@ -1647,6 +1653,7 @@
     "dependsOn": "Hängt ab von",
     "blocks": "Blockiert",
     "newWorkerPlaceholder": "Neuer Worker-Name…",
+    "reassignToAgent": "An Agenten neu zuweisen",
     "confirmStop": "Diese laufende Task stoppen?",
     "confirmDelete": "Diese Task aus dem Run löschen?",
     "retryTitle": "Diese Task zurück in pending einreihen",
@@ -1712,6 +1719,7 @@
     "minRequiredMet": "Erforderliche Mindestfragen erfüllt ✓",
     "minRequiredRemaining": "Noch {{count}} erforderlich",
     "answerPlaceholder": "Frage beantworten…",
+    "reply": "Antwort",
     "changePlaceholder": "Änderung anfordern…",
     "resumeBanner": "Interview aus einer vorherigen Sitzung fortgesetzt — dort weitermachen, wo du aufgehört hast.",
     "openLiveBoard": "Live-Board öffnen",
@@ -1754,6 +1762,7 @@
     "confirmDeleteFile": "Datei \"{{name}}\" löschen? Dies kann nicht rückgängig gemacht werden.",
     "rename": "Umbenennen",
     "renameTitle": "Neuen Namen eingeben",
+    "newNameLabel": "Neuer Name",
     "sortByName": "Name",
     "sortByNameTitle": "Nach Name sortieren (Standard)",
     "sortBySize": "Größe",
@@ -2037,6 +2046,7 @@
     "installHeading": "Skill Installieren",
     "installHint": "GitHub-Repo-Referenz (owner/repo) oder vollständige URL eingeben.",
     "installPlaceholder": "z. B. wrongstack/skill-name oder https://github.com/owner/repo",
+    "installReference": "Skill-Referenz",
     "installScope": "Installations-Scope:",
     "installBtn": "Installieren",
     "installedMsg": "Installiert: {{names}}",
@@ -2643,6 +2653,7 @@
     "workerModel": "Worker-Modell",
     "setModelForTask": "Modell für diesen Task festlegen…",
     "newWorkerName": "Neuer Worker-Name",
+    "reassignToAgent": "An Agenten neu zuweisen",
     "duration": "Dauer",
     "liveRun": "Live-Lauf",
     "lastResult": "Letztes Ergebnis",
@@ -2654,6 +2665,7 @@
     "noOutstanding": "Keine offenen Überprüfungs- oder Zerlegungsprobleme auf diesem Board.",
     "kanban": "Kanban",
     "newBoard": "Neues Board",
+    "newBoardTitle": "Neuer Board-Titel",
     "createBoard": "Board erstellen",
     "deleteTask": "Task löschen",
     "runFailed": "Ausführung fehlgeschlagen",
@@ -2662,6 +2674,7 @@
     "parkedReason": "Nach {{attempts}} abgelehnten Abschlüssen geparkt: {{reason}} Ein unveränderter erneuter Versuch wird wieder abgelehnt.",
     "splitPendingApproval": "Aufteilung wartet auf Genehmigung",
     "newTask": "Neuer Task",
+    "newTaskTitle": "Neuer Task-Titel",
     "addTask": "Task hinzufügen",
     "duplicateBoard": "Board duplizieren",
     "boardHistory": "Board-Verlauf",
@@ -2808,6 +2821,7 @@
     "selectRoleEmpty": "Rolle zum Prüfen oder Bearbeiten auswählen",
     "captureLearned": "Gelerntes erfassen",
     "teachThisAgent": "Diesen Agenten lehren",
+    "teachingNotes": "Lehrnotizen",
     "teachPlaceholder": "Beschreiben, was dieser Agent besser machen soll … z. B. „Dieser Agent soll Versionen immer von npm prüfen, bevor er sie empfiehlt“",
     "heading": "Agenten-Roster",
     "headerSummary": "{{customized}} angepasst · {{entries}} gelernte Einträge",
@@ -2989,8 +3003,10 @@
     "size": "Größe",
     "sessionCaptures": "Sitzungserfassungen",
     "editIdentity": "identity.md bearbeiten",
+    "roleIdentity": "Rollenidentität",
     "editLearned": "learned.md bearbeiten",
     "editConfig": "config.json bearbeiten",
+    "roleConfigJson": "Rollenkonfiguration (JSON)",
     "reviewEntries": "Einträge prüfen ({{count}})",
     "reviewLearnedEntries": "Gelernte Einträge prüfen ({{kept}}/{{total}} behalten)",
     "applySelection": "Auswahl anwenden",
@@ -3002,6 +3018,7 @@
     "teach": "Beibringen",
     "llmImprove": "LLM-Verbesserung",
     "improve": "Verbessern",
+    "improvementPrompt": "Verbesserungs-Prompt",
     "dismiss": "Ausblenden"
   },
   "taskIntel": {
@@ -3433,8 +3450,12 @@
     "off": "Aus",
     "limits": "Limits",
     "workingHours": "Arbeitszeiten",
+    "timezone": "Zeitzone",
+    "availableFrom": "Verfügbar ab",
+    "availableUntil": "Verfügbar bis",
     "enforce": "Erzwingen",
     "advisory": "Empfehlend",
+    "availabilityMode": "Verfügbarkeitsmodus",
     "cancel": "Abbrechen",
     "useProjectDefaultModel": "Projektstandardmodell verwenden",
     "addAllowedModel": "Erlaubtes Modell hinzufügen",
@@ -3698,7 +3719,8 @@
     "taskActivityKind": "Art der Aufgabenaktivität",
     "taskActivityOutcome": "Ergebnis der Aufgabenaktivität",
     "recordTaskDecisionOrOutcome": "Aufgabenentscheidung oder -ergebnis erfassen",
-    "taskActivityDetails": "Details zur Aufgabenaktivität"
+    "taskActivityDetails": "Details zur Aufgabenaktivität",
+    "activityNote": "Aktivitätsnotiz"
   },
   "availability": {
     "europeKiev": "Europe/Kiev",
@@ -3707,7 +3729,12 @@
     "applyThisScheduleToTheWhole": "Diesen Zeitplan auf den gesamten Anbieter anwenden",
     "doNotUseDuringSelectedTimes": "Zu den gewählten Zeiten nicht verwenden",
     "useOnlyDuringSelectedTimes": "Nur zu den gewählten Zeiten verwenden",
-    "addSchedule": "Zeitplan hinzufügen"
+    "addSchedule": "Zeitplan hinzufügen",
+    "ruleEnabled": "Regel aktiviert",
+    "timezone": "Zeitzone",
+    "ruleMode": "Regelmodus",
+    "appliesTo": "Gilt für",
+    "mode": "Modus"
   },
   "kanbanDecomp": {
     "decomposition": "Zerlegung",
@@ -3842,7 +3869,8 @@
     "cameWent": "Kam / ging"
   },
   "modelSchema": {
-    "modelId": "model-id"
+    "modelId": "model-id",
+    "schemaJson": "Schema-JSON"
   },
   "oauth": {
     "httpLocalhostCallbackCode": "http://localhost:.../callback?code=…"
@@ -3852,7 +3880,8 @@
     "anthropic": "Anthropic",
     "openai": "OpenAI",
     "openaiCompatible": "OpenAI-kompatibel",
-    "google": "Google"
+    "google": "Google",
+    "family": "Anbieterfamilie"
   },
   "providerKey": {
     "url": "URL:",
@@ -4102,7 +4131,8 @@
     "subagentModelsRoutingNote": "Das /setmodel-Routing bleibt unangetastet — eine dort geroutete Rolle behält ihr Modell."
   },
   "chipMultiSelect": {
-    "filter": "Filtern…"
+    "filter": "Filtern…",
+    "filterOptions": "Optionen filtern"
   },
   "chroniclePipelineStrip": {
     "chronicleOwnership": "Chronicle-Zuständigkeit",
@@ -4129,7 +4159,9 @@
   },
   "kanbanTaskCompletionChecks": {
     "addAVerifiableCompletionCheck": "Überprüfbare Abschlussprüfung hinzufügen…",
-    "completionChecks": "Abschlussprüfungen"
+    "completionChecks": "Abschlussprüfungen",
+    "checkStatus": "Prüfstatus",
+    "newCheck": "Neue Prüfung"
   },
   "deleteMemoryDialog": {
     "sageWillMarkTheRecordDeleted": "SAGE markiert den Datensatz als gelöscht, entfernt Graph-Kanten und bereinigt Verweise aus verwandten Einträgen. Der Datensatz bleibt im Audit-Trail, kann aber von dieser Seite aus nicht wiederhergestellt werden.",
@@ -4139,12 +4171,14 @@
   "modelPickDialog": {
     "navigateEnterSelectEscClose": "↑/↓ navigieren · Enter auswählen · Esc schließen",
     "searchPlaceholder": "Anbieter oder Modell suchen…",
+    "searchModelsAria": "Modelle suchen",
     "favoritesOnly": "Nur Favoriten anzeigen",
     "filterByProvider": "Nach Anbieter filtern"
   },
   "modelSelectDialog": {
     "fallbackProfiles": "Fallback-Profile",
-    "noFallbackProfilesConfigured": "Keine Fallback-Profile konfiguriert."
+    "noFallbackProfilesConfigured": "Keine Fallback-Profile konfiguriert.",
+    "searchModelsAria": "Modelle suchen"
   },
   "sddBoardView": {
     "openTheMirroredKanbanBoardSForThisRunOnePerDependencyWave": "Die gespiegelten Kanban-Boards für diesen Lauf öffnen (eines pro Abhängigkeitswelle)"
@@ -4393,6 +4427,7 @@
     "missingAnswers_other": "{{count}} erforderliche Antworten fehlen",
     "submitTimeout": "Keine Bestätigung erhalten — prüfe die Verbindung und wiederhole oder brich ab.",
     "answerRequired": "Antwort erforderlich: {{prompt}}",
+    "answer": "Antwort",
     "sendFailed": "Antworten konnten nicht gesendet werden. Prüfe die Verbindung und versuche es erneut.",
     "cancelRequested": "Abbruch angefordert — er hat den Agenten bei getrennter Verbindung möglicherweise nicht erreicht.",
     "cancelFailed": "Abbrechen nicht möglich — prüfe die Verbindung und versuche es erneut.",
@@ -4844,6 +4879,7 @@
     "openInHub": "Im Chimera-Hub öffnen",
     "filterBySession": "Nach Sitzung filtern",
     "filterByStatus": "Nach Status filtern",
+    "searchReportsAria": "Berichte durchsuchen",
     "rawReportMarkdown": "Roher Bericht als Markdown",
     "notePlaceholder": "Eine Beobachtung, einen Fix-PR-Link oder eine Triage-Notiz erfassen...",
     "selectReportTitle": "Chimera-Review-Bericht auswählen"

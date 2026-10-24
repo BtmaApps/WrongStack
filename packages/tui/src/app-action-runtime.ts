@@ -47,6 +47,7 @@ export type AppActionRuntime =
       keepCheckpoints?: boolean | undefined;
     }
   | { type: 'streamDelta'; delta: string }
+  | { type: 'streamActivityFrame'; frame: { type: string; payload?: unknown } }
   | { type: 'streamReset' }
   | { type: 'status'; status: State['status'] }
   | { type: 'interrupt' }

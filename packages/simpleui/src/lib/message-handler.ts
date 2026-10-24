@@ -220,6 +220,7 @@ export function createMessageHandler(deps: MessageHandlerDeps): ServerMessageHan
     ) {
       return;
     }
+    deps.onStreamFrame?.(message);
     const projectedNotice = projectStatusNotice(message);
     if (projectedNotice) {
       setNotice({ ...projectedNotice, id: messageId('notice') });

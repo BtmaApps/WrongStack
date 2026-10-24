@@ -28,6 +28,7 @@ import { ContextBreakdownModal } from '../ContextBreakdownModal';
 import { ContextWindowEditor } from '../context-editor/ContextWindowEditor';
 import { ProviderWaitingRoom } from '../ProviderWaitingRoom';
 import { SearchOverlay } from '../SearchOverlay';
+import { StreamMeter } from '../StreamMeter';
 import { ToolStatsModal } from '../ToolStatsModal';
 import { WelcomeScreen } from '../WelcomeScreen';
 import { shouldAutoClearSubagentFocus } from './AgentTabs';
@@ -344,11 +345,6 @@ export function ChatView() {
                               {state.iteration.max > 0 ? `/${state.iteration.max}` : ''}
                             </span>
                           )}
-                          {state.runningStatus.speedLabel && (
-                            <span className="text-xs text-muted-foreground/80 tabular-nums">
-                              · {state.runningStatus.speedLabel}
-                            </span>
-                          )}
                         </div>
                       </div>
                     </div>
@@ -438,6 +434,7 @@ export function ChatView() {
               <div className="max-w-6xl mx-auto">
                 <BackgroundShellStrip />
                 <TerminalStrip />
+                <StreamMeter />
                 <ChatInput onOpenBreakdown={() => state.setBreakdownOpen(true)} />
               </div>
             </div>

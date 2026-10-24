@@ -1,5 +1,10 @@
 import { randomBytes } from 'node:crypto';
 import type { EventBus } from '@wrongstack/contracts/kernel';
+import {
+  reduceStreamActivity,
+  type StreamActivity,
+  streamActivityView,
+} from '@wrongstack/contracts/types/stream-activity';
 import { color, sanitizeTerminalText, writeErr } from '@wrongstack/core/utils';
 import { Spinner } from '../spinner.js';
 
@@ -32,10 +37,12 @@ export interface EventWiring {
 /** Wire CLI spinner, live streaming, and client.status emission. */
 export function wireEventWiring(deps: WireEventWiringDeps): EventWiring {
   const { evOn, events, renderer, projectSlug, getActiveModeId, getProvider, getModel } = deps;
+  let streamActivity: StreamActivity | null = null;
   // `enabled` overrides the spinner's own TTY check, so keep it here: a bare
   // `!tuiOwnsScreen` animated 80ms `\x1b[2K` frames into piped / CI stderr.
   const spinner = new Spinner(process.stderr, {
     enabled: !deps.tuiOwnsScreen && process.stderr.isTTY === true,
+    activity: () => streamActivity,
   });
   let lastInputTokens = 0;
   let effectiveMaxContext = 0;
@@ -88,25 +95,55 @@ export function wireEventWiring(deps: WireEventWiringDeps): EventWiring {
     });
   };
 
-  evOn('provider.response', (e: { sessionId?: string | undefined; usage?: { input?: number } }) => {
-    if (!isCurrentSession(e.sessionId)) return;
-    lastInputTokens = e.usage?.input ?? 0;
-    updateSpinnerContext();
-    spinner.stop();
-  });
+  evOn(
+    'provider.response',
+    (e: { sessionId?: string | undefined; usage?: { input?: number; output?: number } }) => {
+      if (!isCurrentSession(e.sessionId)) return;
+      lastInputTokens = e.usage?.input ?? 0;
+      updateSpinnerContext();
+      spinner.stop();
+      streamActivity = reduceStreamActivity(streamActivity, {
+        type: 'provider.response',
+        payload: e,
+      });
+      if (streamActivity && !deps.tuiOwnsScreen && process.stderr.isTTY === true) {
+        closeStreamingLine();
+        const view = streamActivityView(streamActivity);
+        writeErr(color.dim(`  ↑ ${view.countLabel} · ${view.speedLabel} · ${view.elapsedLabel}\n`));
+      }
+    },
+  );
 
-  evOn('iteration.started', (e: { sessionId?: string | undefined }) => {
+  evOn('iteration.started', (e: { sessionId?: string | undefined; index?: number }) => {
     if (!isCurrentSession(e.sessionId)) return;
+    if (e.index === 1) streamActivity = null;
+    streamActivity = reduceStreamActivity(streamActivity, { type: 'iteration.started' });
     updateSpinnerContext();
     spinner.start(color.dim(`${getProvider()}/${getModel()} thinking…`));
   });
   evOn('error', (e: { sessionId?: string | undefined }) => {
     if (!isCurrentSession(e.sessionId)) return;
     spinner.stop();
+    streamActivity = reduceStreamActivity(streamActivity, { type: 'run.result' });
+  });
+
+  evOn('session.ended', (e: { sessionId?: string | undefined }) => {
+    if (isCurrentSession(e.sessionId)) streamActivity = null;
+  });
+  evOn('provider.thinking_delta', (p: { sessionId?: string | undefined; text: string }) => {
+    if (!isCurrentSession(p.sessionId)) return;
+    streamActivity = reduceStreamActivity(streamActivity, {
+      type: 'provider.thinking_delta',
+      payload: p,
+    });
   });
 
   evOn('provider.text_delta', (p: { sessionId?: string | undefined; text: string }) => {
     if (!isCurrentSession(p.sessionId)) return;
+    streamActivity = reduceStreamActivity(streamActivity, {
+      type: 'provider.text_delta',
+      payload: p,
+    });
     if (!streamingActive) {
       spinner.stop();
       streamingActive = true;

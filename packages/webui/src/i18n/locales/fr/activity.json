@@ -268,6 +268,7 @@
     "changesGroup": "Modifications ({{count}})",
     "commitPlaceholder": "Message de commit (Ctrl+Entrée)...",
     "commitPlaceholderEmpty": "Stagez des modifications pour committer...",
+    "commitMessage": "Message de commit",
     "commitButton": "Committer",
     "commitButtonCount": "Committer ({{count}})"
   },
@@ -862,6 +863,7 @@
     "claude": "Claude",
     "priority": "Priorité",
     "placeholder": "{{label}} → cette session…",
+    "messageDraft": "Brouillon de message",
     "send": "Envoyer",
     "sendHint": "⌘/Ctrl+Entrée pour envoyer · visible à la prochaine itération de l'agent",
     "msgType": {
@@ -1084,6 +1086,7 @@
     "resultPlaceholder": "Résultat d'outil synthétique fourni à l'agent au lieu d'exécuter l'outil",
     "markError": "marquer comme erreur",
     "reasonPlaceholder": "raison (journal d'audit)",
+    "reason": "Motif",
     "queueInjection": "File d'injection",
     "controllerInjection": "injection contrôleur"
   },
@@ -1114,6 +1117,7 @@
     "runDefault": "Par défaut du run",
     "useRunDefault": "Utiliser le défaut du run",
     "filterPlaceholder": "Filtrer les modèles…",
+    "filterModelsAria": "Rechercher des modèles",
     "loading": "Chargement des modèles…",
     "noMatch": "Aucune correspondance"
   },
@@ -1164,6 +1168,7 @@
     "retry": "Réessayer",
     "assign": "Affecter",
     "assignTitle": "Affecter un agent",
+    "assignToAgent": "Affecter à un agent",
     "unassigned": "Non affecté",
     "statusPending": "En attente",
     "statusInProgress": "En cours",
@@ -1488,6 +1493,7 @@
     "showRawTitle": "Afficher la source markdown brute",
     "editTitle": "Modifier et renvoyer ce prompt",
     "editLabel": "Modifier",
+    "editMessage": "Modifier le message",
     "unpinTitle": "Détacher",
     "pinTitle": "Épingler cette réponse",
     "pinnedLabel": "Épinglé",
@@ -1647,6 +1653,7 @@
     "dependsOn": "Dépend de",
     "blocks": "Bloque",
     "newWorkerPlaceholder": "Nom du nouveau worker…",
+    "reassignToAgent": "Réaffecter à un agent",
     "confirmStop": "Arrêter cette tâche en cours ?",
     "confirmDelete": "Supprimer cette tâche du run ?",
     "retryTitle": "Remettre cette tâche en pending",
@@ -1712,6 +1719,7 @@
     "minRequiredMet": "Questions minimales atteintes ✓",
     "minRequiredRemaining": "Encore {{count}} requise(s)",
     "answerPlaceholder": "Répondre à la question…",
+    "reply": "Réponse",
     "changePlaceholder": "Demander un changement…",
     "resumeBanner": "Entretien repris d'une session précédente — continuez là où vous vous êtes arrêté.",
     "openLiveBoard": "Ouvrir le board live",
@@ -1754,6 +1762,7 @@
     "confirmDeleteFile": "Supprimer le fichier \"{{name}}\" ? Cette action est irréversible.",
     "rename": "Renommer",
     "renameTitle": "Entrer le nouveau nom",
+    "newNameLabel": "Nouveau nom",
     "sortByName": "Nom",
     "sortByNameTitle": "Trier par nom (par défaut)",
     "sortBySize": "Taille",
@@ -2037,6 +2046,7 @@
     "installHeading": "Installer la Compétence",
     "installHint": "Entrez une référence de dépôt GitHub (owner/repo) ou une URL complète.",
     "installPlaceholder": "ex. wrongstack/skill-name ou https://github.com/owner/repo",
+    "installReference": "Référence de compétence",
     "installScope": "Portée d'installation :",
     "installBtn": "Installer",
     "installedMsg": "Installée : {{names}}",
@@ -2643,6 +2653,7 @@
     "workerModel": "Modèle worker",
     "setModelForTask": "Définir le modèle pour cette tâche…",
     "newWorkerName": "Nouveau nom de worker",
+    "reassignToAgent": "Réaffecter à un agent",
     "duration": "Durée",
     "liveRun": "Exécution en direct",
     "lastResult": "Dernier résultat",
@@ -2654,6 +2665,7 @@
     "noOutstanding": "Aucun problème de vérification ou de décomposition en suspens sur ce tableau.",
     "kanban": "Kanban",
     "newBoard": "Nouveau tableau",
+    "newBoardTitle": "Titre du nouveau tableau",
     "createBoard": "Créer un tableau",
     "deleteTask": "Supprimer la tâche",
     "runFailed": "exécution échouée",
@@ -2662,6 +2674,7 @@
     "parkedReason": "Mise en pause après {{attempts}} achèvement(s) refusé(s) : {{reason}} La réessayer sans modification sera refusé à nouveau.",
     "splitPendingApproval": "division en attente d'approbation",
     "newTask": "Nouvelle tâche",
+    "newTaskTitle": "Titre de la nouvelle tâche",
     "addTask": "Ajouter une tâche",
     "duplicateBoard": "Dupliquer le tableau",
     "boardHistory": "Historique du tableau",
@@ -2808,6 +2821,7 @@
     "selectRoleEmpty": "Sélectionnez un rôle à inspecter ou modifier",
     "captureLearned": "Capturer l'apprentissage",
     "teachThisAgent": "Enseigner à cet agent",
+    "teachingNotes": "Notes d'enseignement",
     "teachPlaceholder": "Décrivez ce que vous voulez que cet agent fasse mieux… p. ex. « Cet agent doit toujours vérifier les versions sur npm avant de recommander »",
     "heading": "Effectif d'agents",
     "headerSummary": "{{customized}} personnalisés · {{entries}} entrées apprises",
@@ -2989,8 +3003,10 @@
     "size": "Taille",
     "sessionCaptures": "Captures de session",
     "editIdentity": "Modifier identity.md",
+    "roleIdentity": "Identité du rôle",
     "editLearned": "Modifier learned.md",
     "editConfig": "Modifier config.json",
+    "roleConfigJson": "JSON de configuration du rôle",
     "reviewEntries": "Examiner les entrées ({{count}})",
     "reviewLearnedEntries": "Examiner les entrées apprises ({{kept}}/{{total}} conservées)",
     "applySelection": "Appliquer la sélection",
@@ -3002,6 +3018,7 @@
     "teach": "Enseigner",
     "llmImprove": "Amélioration LLM",
     "improve": "Améliorer",
+    "improvementPrompt": "Prompt d'amélioration",
     "dismiss": "Ignorer"
   },
   "taskIntel": {
@@ -3433,8 +3450,12 @@
     "off": "Désactivé",
     "limits": "Limites",
     "workingHours": "Heures de travail",
+    "timezone": "Fuseau horaire",
+    "availableFrom": "Disponible à partir de",
+    "availableUntil": "Disponible jusqu'à",
     "enforce": "Imposer",
     "advisory": "Indicatif",
+    "availabilityMode": "Mode de disponibilité",
     "cancel": "Annuler",
     "useProjectDefaultModel": "Utiliser le modèle par défaut du projet",
     "addAllowedModel": "Ajouter un modèle autorisé",
@@ -3698,7 +3719,8 @@
     "taskActivityKind": "Type d'activité de tâche",
     "taskActivityOutcome": "Résultat de l'activité de tâche",
     "recordTaskDecisionOrOutcome": "Enregistrer la décision ou le résultat de la tâche",
-    "taskActivityDetails": "Détails de l'activité de tâche"
+    "taskActivityDetails": "Détails de l'activité de tâche",
+    "activityNote": "Note d'activité"
   },
   "availability": {
     "europeKiev": "Europe/Kiev",
@@ -3707,7 +3729,12 @@
     "applyThisScheduleToTheWhole": "Appliquer cet horaire à tout le fournisseur",
     "doNotUseDuringSelectedTimes": "Ne pas utiliser aux heures sélectionnées",
     "useOnlyDuringSelectedTimes": "Utiliser uniquement aux heures sélectionnées",
-    "addSchedule": "Ajouter un horaire"
+    "addSchedule": "Ajouter un horaire",
+    "ruleEnabled": "Règle activée",
+    "timezone": "Fuseau horaire",
+    "ruleMode": "Mode de règle",
+    "appliesTo": "S'applique à",
+    "mode": "Mode"
   },
   "kanbanDecomp": {
     "decomposition": "Décomposition",
@@ -3842,7 +3869,8 @@
     "cameWent": "Entré / sorti"
   },
   "modelSchema": {
-    "modelId": "model-id"
+    "modelId": "model-id",
+    "schemaJson": "JSON du schéma"
   },
   "oauth": {
     "httpLocalhostCallbackCode": "http://localhost:.../callback?code=…"
@@ -3852,7 +3880,8 @@
     "anthropic": "Anthropic",
     "openai": "OpenAI",
     "openaiCompatible": "Compatible OpenAI",
-    "google": "Google"
+    "google": "Google",
+    "family": "Famille de fournisseurs"
   },
   "providerKey": {
     "url": "URL :",
@@ -4102,7 +4131,8 @@
     "subagentModelsRoutingNote": "Le routage /setmodel reste inchangé — un rôle que vous y avez routé garde son modèle."
   },
   "chipMultiSelect": {
-    "filter": "Filtrer…"
+    "filter": "Filtrer…",
+    "filterOptions": "Filtrer les options"
   },
   "chroniclePipelineStrip": {
     "chronicleOwnership": "Propriété de Chronicle",
@@ -4129,7 +4159,9 @@
   },
   "kanbanTaskCompletionChecks": {
     "addAVerifiableCompletionCheck": "Ajouter une vérification d'achèvement vérifiable…",
-    "completionChecks": "Vérifications d'achèvement"
+    "completionChecks": "Vérifications d'achèvement",
+    "checkStatus": "État de la vérification",
+    "newCheck": "Nouvelle vérification"
   },
   "deleteMemoryDialog": {
     "sageWillMarkTheRecordDeleted": "SAGE marquera l'enregistrement comme supprimé, retirera les arêtes du graphe et nettoiera les références des mémoires liées. L'enregistrement reste dans la piste d'audit mais ne peut pas être restauré depuis cette page.",
@@ -4139,12 +4171,14 @@
   "modelPickDialog": {
     "navigateEnterSelectEscClose": "↑/↓ naviguer · Entrée sélectionner · Échap fermer",
     "searchPlaceholder": "Rechercher un fournisseur ou un modèle…",
+    "searchModelsAria": "Rechercher des modèles",
     "favoritesOnly": "Afficher uniquement les favoris",
     "filterByProvider": "Filtrer par fournisseur"
   },
   "modelSelectDialog": {
     "fallbackProfiles": "Profils de repli",
-    "noFallbackProfilesConfigured": "Aucun profil de repli configuré."
+    "noFallbackProfilesConfigured": "Aucun profil de repli configuré.",
+    "searchModelsAria": "Rechercher des modèles"
   },
   "sddBoardView": {
     "openTheMirroredKanbanBoardSForThisRunOnePerDependencyWave": "Ouvrir le(s) tableau(x) kanban miroir de cette exécution (un par vague de dépendances)"
@@ -4393,6 +4427,7 @@
     "missingAnswers_other": "{{count}} réponses obligatoires manquantes",
     "submitTimeout": "Aucune confirmation reçue — vérifiez la connexion, puis réessayez ou annulez.",
     "answerRequired": "Réponse obligatoire : {{prompt}}",
+    "answer": "Réponse",
     "sendFailed": "Impossible d'envoyer les réponses. Vérifiez la connexion et réessayez.",
     "cancelRequested": "Annulation demandée — elle n'a peut-être pas atteint l'agent pendant la coupure.",
     "cancelFailed": "Impossible d'annuler — vérifiez la connexion et réessayez.",
@@ -4844,6 +4879,7 @@
     "openInHub": "Ouvrir dans Chimera Hub",
     "filterBySession": "Filtrer par session",
     "filterByStatus": "Filtrer par statut",
+    "searchReportsAria": "Rechercher des rapports",
     "rawReportMarkdown": "Rapport brut en Markdown",
     "notePlaceholder": "Consignez une observation, un lien de PR de correction ou une note de triage...",
     "selectReportTitle": "Sélectionner un rapport de revue Chimera"

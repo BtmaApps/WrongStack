@@ -268,6 +268,7 @@
     "changesGroup": "Mudanças ({{count}})",
     "commitPlaceholder": "Mensagem de commit (Ctrl+Enter)...",
     "commitPlaceholderEmpty": "Faça stage de mudanças para commitar...",
+    "commitMessage": "Mensagem de commit",
     "commitButton": "Commitar",
     "commitButtonCount": "Commitar ({{count}})"
   },
@@ -862,6 +863,7 @@
     "claude": "Claude",
     "priority": "Prioridade",
     "placeholder": "{{label}} → esta sessão…",
+    "messageDraft": "Rascunho de mensagem",
     "send": "Enviar",
     "sendHint": "⌘/Ctrl+Enter para enviar · visível na próxima iteração do agente",
     "msgType": {
@@ -1084,6 +1086,7 @@
     "resultPlaceholder": "Resultado sintético fornecido ao agente em vez de executar a ferramenta",
     "markError": "marcar como erro",
     "reasonPlaceholder": "motivo (log de auditoria)",
+    "reason": "Motivo",
     "queueInjection": "Enfileirar injeção",
     "controllerInjection": "injeção controlador"
   },
@@ -1114,6 +1117,7 @@
     "runDefault": "Padrão do run",
     "useRunDefault": "Usar padrão do run",
     "filterPlaceholder": "Filtrar modelos…",
+    "filterModelsAria": "Pesquisar modelos",
     "loading": "Carregando modelos…",
     "noMatch": "Sem correspondência"
   },
@@ -1164,6 +1168,7 @@
     "retry": "Tentar novamente",
     "assign": "Atribuir",
     "assignTitle": "Atribuir agente",
+    "assignToAgent": "Atribuir a um agente",
     "unassigned": "Não atribuído",
     "statusPending": "Pendente",
     "statusInProgress": "Em andamento",
@@ -1488,6 +1493,7 @@
     "showRawTitle": "Mostrar fonte markdown bruta",
     "editTitle": "Editar e reenviar este prompt",
     "editLabel": "Editar",
+    "editMessage": "Editar mensagem",
     "unpinTitle": "Desafixar",
     "pinTitle": "Fixar esta resposta",
     "pinnedLabel": "Fixado",
@@ -1647,6 +1653,7 @@
     "dependsOn": "Depende de",
     "blocks": "Bloqueia",
     "newWorkerPlaceholder": "Nome do novo worker…",
+    "reassignToAgent": "Reatribuir a um agente",
     "confirmStop": "Parar esta tarefa em execução?",
     "confirmDelete": "Excluir esta tarefa do run?",
     "retryTitle": "Recolocar esta tarefa em pending",
@@ -1712,6 +1719,7 @@
     "minRequiredMet": "Perguntas mínimas atendidas ✓",
     "minRequiredRemaining": "Mais {{count}} necessária(s)",
     "answerPlaceholder": "Responda à pergunta…",
+    "reply": "Resposta",
     "changePlaceholder": "Pedir uma mudança…",
     "resumeBanner": "Entrevista retomada de uma sessão anterior — continue de onde parou.",
     "openLiveBoard": "Abrir board ao vivo",
@@ -1754,6 +1762,7 @@
     "confirmDeleteFile": "Excluir o arquivo \"{{name}}\"? Esta ação não pode ser desfeita.",
     "rename": "Renomear",
     "renameTitle": "Digite o novo nome",
+    "newNameLabel": "Novo nome",
     "sortByName": "Nome",
     "sortByNameTitle": "Ordenar por nome (padrão)",
     "sortBySize": "Tamanho",
@@ -2037,6 +2046,7 @@
     "installHeading": "Instalar Habilidade",
     "installHint": "Insira uma referência de repo GitHub (owner/repo) ou URL completa.",
     "installPlaceholder": "ex. wrongstack/skill-name ou https://github.com/owner/repo",
+    "installReference": "Referência de habilidade",
     "installScope": "Escopo de instalação:",
     "installBtn": "Instalar",
     "installedMsg": "Instalada: {{names}}",
@@ -2643,6 +2653,7 @@
     "workerModel": "Modelo do worker",
     "setModelForTask": "Definir modelo para esta tarefa…",
     "newWorkerName": "Novo nome do worker",
+    "reassignToAgent": "Reatribuir a um agente",
     "duration": "Duração",
     "liveRun": "Execução ao vivo",
     "lastResult": "Último resultado",
@@ -2654,6 +2665,7 @@
     "noOutstanding": "Nenhuma verificação pendente ou questão de decomposição neste quadro.",
     "kanban": "Kanban",
     "newBoard": "Novo quadro",
+    "newBoardTitle": "Título do novo quadro",
     "createBoard": "Criar quadro",
     "deleteTask": "Excluir tarefa",
     "runFailed": "execução falhou",
@@ -2662,6 +2674,7 @@
     "parkedReason": "Estacionada após {{attempts}} conclusão(ões) recusada(s): {{reason}} Tentar de novo sem alterações será recusado outra vez.",
     "splitPendingApproval": "divisão pendente de aprovação",
     "newTask": "Nova tarefa",
+    "newTaskTitle": "Título da nova tarefa",
     "addTask": "Adicionar tarefa",
     "duplicateBoard": "Duplicar quadro",
     "boardHistory": "Histórico do quadro",
@@ -2808,6 +2821,7 @@
     "selectRoleEmpty": "Selecione um papel para inspecionar ou editar",
     "captureLearned": "Capturar aprendido",
     "teachThisAgent": "Ensinar este agente",
+    "teachingNotes": "Notas de ensino",
     "teachPlaceholder": "Descreva o que você quer que este agente faça melhor… ex.: 'Este agente deve sempre verificar versões no npm antes de recomendar'",
     "heading": "Elenco de agentes",
     "headerSummary": "{{customized}} personalizados · {{entries}} entradas aprendidas",
@@ -2989,8 +3003,10 @@
     "size": "Tamanho",
     "sessionCaptures": "Capturas de sessão",
     "editIdentity": "Editar identity.md",
+    "roleIdentity": "Identidade da função",
     "editLearned": "Editar learned.md",
     "editConfig": "Editar config.json",
+    "roleConfigJson": "JSON de configuração da função",
     "reviewEntries": "Revisar entradas ({{count}})",
     "reviewLearnedEntries": "Revisar entradas aprendidas ({{kept}}/{{total}} mantidas)",
     "applySelection": "Aplicar seleção",
@@ -3002,6 +3018,7 @@
     "teach": "Ensinar",
     "llmImprove": "Melhoria por LLM",
     "improve": "Melhorar",
+    "improvementPrompt": "Prompt de melhoria",
     "dismiss": "Dispensar"
   },
   "taskIntel": {
@@ -3433,8 +3450,12 @@
     "off": "Desativado",
     "limits": "Limites",
     "workingHours": "Horário de trabalho",
+    "timezone": "Fuso horário",
+    "availableFrom": "Disponível a partir de",
+    "availableUntil": "Disponível até",
     "enforce": "Aplicar",
     "advisory": "Consultivo",
+    "availabilityMode": "Modo de disponibilidade",
     "cancel": "Cancelar",
     "useProjectDefaultModel": "Usar o modelo padrão do projeto",
     "addAllowedModel": "Adicionar modelo permitido",
@@ -3698,7 +3719,8 @@
     "taskActivityKind": "Tipo de atividade da tarefa",
     "taskActivityOutcome": "Resultado da atividade da tarefa",
     "recordTaskDecisionOrOutcome": "Registrar a decisão ou o resultado da tarefa",
-    "taskActivityDetails": "Detalhes da atividade da tarefa"
+    "taskActivityDetails": "Detalhes da atividade da tarefa",
+    "activityNote": "Nota de atividade"
   },
   "availability": {
     "europeKiev": "Europe/Kiev",
@@ -3707,7 +3729,12 @@
     "applyThisScheduleToTheWhole": "Aplicar este agendamento a todo o provedor",
     "doNotUseDuringSelectedTimes": "Não usar nos horários selecionados",
     "useOnlyDuringSelectedTimes": "Usar apenas nos horários selecionados",
-    "addSchedule": "Adicionar agendamento"
+    "addSchedule": "Adicionar agendamento",
+    "ruleEnabled": "Regra ativada",
+    "timezone": "Fuso horário",
+    "ruleMode": "Modo da regra",
+    "appliesTo": "Aplica-se a",
+    "mode": "Modo"
   },
   "kanbanDecomp": {
     "decomposition": "Decomposição",
@@ -3842,7 +3869,8 @@
     "cameWent": "Entrou / saiu"
   },
   "modelSchema": {
-    "modelId": "model-id"
+    "modelId": "model-id",
+    "schemaJson": "JSON do esquema"
   },
   "oauth": {
     "httpLocalhostCallbackCode": "http://localhost:.../callback?code=…"
@@ -3852,7 +3880,8 @@
     "anthropic": "Anthropic",
     "openai": "OpenAI",
     "openaiCompatible": "Compatível com OpenAI",
-    "google": "Google"
+    "google": "Google",
+    "family": "Família de provedor"
   },
   "providerKey": {
     "url": "URL:",
@@ -4102,7 +4131,8 @@
     "subagentModelsRoutingNote": "O roteamento do /setmodel fica intacto — um papel que você roteou lá mantém seu modelo."
   },
   "chipMultiSelect": {
-    "filter": "Filtrar…"
+    "filter": "Filtrar…",
+    "filterOptions": "Filtrar opções"
   },
   "chroniclePipelineStrip": {
     "chronicleOwnership": "Propriedade do Chronicle",
@@ -4129,7 +4159,9 @@
   },
   "kanbanTaskCompletionChecks": {
     "addAVerifiableCompletionCheck": "Adicionar uma verificação de conclusão verificável…",
-    "completionChecks": "Verificações de conclusão"
+    "completionChecks": "Verificações de conclusão",
+    "checkStatus": "Status da verificação",
+    "newCheck": "Nova verificação"
   },
   "deleteMemoryDialog": {
     "sageWillMarkTheRecordDeleted": "O SAGE marcará o registro como excluído, removerá as arestas do grafo e limpará as referências das memórias relacionadas. O registro permanece na trilha de auditoria, mas não pode ser restaurado nesta página.",
@@ -4139,12 +4171,14 @@
   "modelPickDialog": {
     "navigateEnterSelectEscClose": "↑/↓ navegar · Enter selecionar · Esc fechar",
     "searchPlaceholder": "Pesquisar provedor ou modelo…",
+    "searchModelsAria": "Pesquisar modelos",
     "favoritesOnly": "Mostrar apenas favoritos",
     "filterByProvider": "Filtrar por provedor"
   },
   "modelSelectDialog": {
     "fallbackProfiles": "Perfis de fallback",
-    "noFallbackProfilesConfigured": "Nenhum perfil de fallback configurado."
+    "noFallbackProfilesConfigured": "Nenhum perfil de fallback configurado.",
+    "searchModelsAria": "Pesquisar modelos"
   },
   "sddBoardView": {
     "openTheMirroredKanbanBoardSForThisRunOnePerDependencyWave": "Abrir os quadros kanban espelhados desta execução (um por onda de dependências)"
@@ -4393,6 +4427,7 @@
     "missingAnswers_other": "Faltam {{count}} respostas obrigatórias",
     "submitTimeout": "Nenhuma confirmação recebida — verifique a conexão, então tente novamente ou cancele.",
     "answerRequired": "Resposta obrigatória: {{prompt}}",
+    "answer": "Resposta",
     "sendFailed": "Não foi possível enviar as respostas. Verifique a conexão e tente novamente.",
     "cancelRequested": "Cancelamento solicitado — pode não ter chegado ao agente com a conexão fora.",
     "cancelFailed": "Não foi possível cancelar — verifique a conexão e tente novamente.",
@@ -4844,6 +4879,7 @@
     "openInHub": "Abrir no Chimera Hub",
     "filterBySession": "Filtrar por sessão",
     "filterByStatus": "Filtrar por status",
+    "searchReportsAria": "Pesquisar relatórios",
     "rawReportMarkdown": "Markdown do relatório bruto",
     "notePlaceholder": "Registre uma observação, link de PR de correção ou nota de triagem...",
     "selectReportTitle": "Selecione um relatório de revisão do Chimera"

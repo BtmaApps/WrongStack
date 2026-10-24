@@ -227,10 +227,12 @@ export function useProviderEventBridge({
       scheduleFlush();
     });
     const offToolStart = events.on('tool.started', (e) => {
+      dispatch({ type: 'streamActivityFrame', frame: { type: 'tool.started' } });
       dispatch({ type: 'toolStarted', id: e.id, name: e.name });
       dispatch({ type: 'leaderToolStart', name: e.name });
     });
     const offIterStart = events.on('iteration.started', () => {
+      dispatch({ type: 'streamActivityFrame', frame: { type: 'iteration.started' } });
       dispatch({ type: 'leaderIterStart' });
     });
     const offIterEnd = events.on('iteration.completed', () => {
@@ -266,6 +268,7 @@ export function useProviderEventBridge({
       scheduleFlush();
     });
     const offTool = events.on('tool.executed', (e) => {
+      dispatch({ type: 'streamActivityFrame', frame: { type: 'tool.executed' } });
       recordToolExecuted(e.outputBytes);
       // Flush any coalesced tool stream before the completed entry lands.
       if (pendingToolStream) {
@@ -380,6 +383,9 @@ export function useProviderEventBridge({
     // flushes have already done so.
     const offProvResp = events.on('provider.response', (e) => {
       if (activeRunGenerationRef.current !== sessionGenerationRef.current) return;
+      if (flushTimerRef.current) clearTimeout(flushTimerRef.current);
+      flush();
+      dispatch({ type: 'streamActivityFrame', frame: { type: 'provider.response', payload: e } });
       recordProviderResponse();
       const segments = canonicalStreamSegments(e.content ?? []);
       const fallbackText = contentBlocksText(e.content);

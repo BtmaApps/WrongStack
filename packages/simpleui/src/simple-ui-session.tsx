@@ -16,6 +16,7 @@ import { SessionAgentStrip } from './session-agent-strip.js';
 import { SessionMailboxDrawer } from './session-mailbox-drawer.js';
 import { SessionModals } from './session-modals.js';
 import { SessionTopbar } from './session-topbar.js';
+import { StreamMeter } from './stream-meter.js';
 import { ToolSidebar } from './tool-sidebar.js';
 import { UpdateBanner } from './update-banner.js';
 import { useSimpleUiSession } from './use-simple-ui-session.js';
@@ -52,6 +53,7 @@ export function SimpleUiSession() {
     onScrollSticky,
     toolCalls,
     activity,
+    streamActivityRef,
     resumeProgress,
     copyAssistantMessage,
     selectNextStep,
@@ -310,6 +312,7 @@ export function SimpleUiSession() {
       {agentView.leaderSelected && (
         <ErrorBoundary>
           <footer className="composer-wrap">
+            <StreamMeter activityRef={streamActivityRef} running={running} />
             <Composer
               composer={composer}
               skillSocket={socketRef.current}

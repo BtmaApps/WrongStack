@@ -268,6 +268,7 @@
     "changesGroup": "Değişiklikler ({{count}})",
     "commitPlaceholder": "İşleme mesajı (Ctrl+Enter)...",
     "commitPlaceholderEmpty": "İşlemek için değişiklikleri hazırlayın...",
+    "commitMessage": "İşleme mesajı",
     "commitButton": "İşle",
     "commitButtonCount": "İşle ({{count}})"
   },
@@ -862,6 +863,7 @@
     "claude": "Claude",
     "priority": "Öncelik",
     "placeholder": "{{label}} → bu oturuma…",
+    "messageDraft": "Mesaj taslağı",
     "send": "Gönder",
     "sendHint": "⌘/Ctrl+Enter ile gönder · vekilin bir sonraki yinelemesinde görülür",
     "msgType": {
@@ -1084,6 +1086,7 @@
     "resultPlaceholder": "Aracı çalıştırmak yerine vekile beslenen sentetik araç sonucu",
     "markError": "hata olarak işaretle",
     "reasonPlaceholder": "neden (denetim günlüğü)",
+    "reason": "Neden",
     "queueInjection": "Enjeksiyonu sıraya al",
     "controllerInjection": "kontrolör enjeksiyonu"
   },
@@ -1114,6 +1117,7 @@
     "runDefault": "Çalıştırma varsayılanı",
     "useRunDefault": "Çalıştırma varsayılanını kullan",
     "filterPlaceholder": "Modelleri filtrele…",
+    "filterModelsAria": "Modelleri ara",
     "loading": "Modeller yükleniyor…",
     "noMatch": "Eşleşme yok"
   },
@@ -1164,6 +1168,7 @@
     "retry": "Yeniden dene",
     "assign": "Ata",
     "assignTitle": "Aracı ata",
+    "assignToAgent": "Ajana ata",
     "unassigned": "Atanmamış",
     "statusPending": "Bekliyor",
     "statusInProgress": "Devam ediyor",
@@ -1550,6 +1555,7 @@
     "showRawTitle": "Ham markdown kaynağını göster",
     "editTitle": "Bu komutu düzenle ve yeniden gönder",
     "editLabel": "Düzenle",
+    "editMessage": "Mesajı düzenle",
     "unpinTitle": "Sabitlemeyi kaldır",
     "pinTitle": "Bu yanıtı sabitle",
     "pinnedLabel": "Sabitlendi",
@@ -1709,6 +1715,7 @@
     "dependsOn": "Bağımlı olduğu",
     "blocks": "Engellediği",
     "newWorkerPlaceholder": "Yeni işçi adı…",
+    "reassignToAgent": "Ajanı yeniden ata",
     "confirmStop": "Bu çalışan görev durdurulsun mu?",
     "confirmDelete": "Bu görev çalışmadan silinsin mi?",
     "retryTitle": "Bu görevi beklemeye yeniden kuyruğa al",
@@ -1774,6 +1781,7 @@
     "minRequiredMet": "Gereken asgari soru tamamlandı ✓",
     "minRequiredRemaining": "{{count}} soru daha gerekli",
     "answerPlaceholder": "Soruyu cevapla…",
+    "reply": "Yanıt",
     "changePlaceholder": "Değişiklik iste…",
     "resumeBanner": "Önceki oturumdan görüşme sürdürüldü — kaldığınız yerden devam edin.",
     "openLiveBoard": "Canlı panoyu aç",
@@ -1816,6 +1824,7 @@
     "confirmDeleteFile": "\"{{name}}\" dosyası silinsin mi? Bu işlem geri alınamaz.",
     "rename": "Yeniden adlandır",
     "renameTitle": "Yeni ad girin",
+    "newNameLabel": "Yeni ad",
     "sortByName": "Ad",
     "sortByNameTitle": "Ada göre sırala (varsayılan)",
     "sortBySize": "Boyut",
@@ -2099,6 +2108,7 @@
     "installHeading": "Beceri Yükle",
     "installHint": "Bir GitHub depo referansı (owner/repo) veya tam URL girin.",
     "installPlaceholder": "örn. wrongstack/skill-name veya https://github.com/owner/repo",
+    "installReference": "Beceri referansı",
     "installScope": "Yükleme kapsamı:",
     "installBtn": "Yükle",
     "installedMsg": "Yüklendi: {{names}}",
@@ -2705,6 +2715,7 @@
     "workerModel": "İşçi modeli",
     "setModelForTask": "Bu görev için model ayarla…",
     "newWorkerName": "Yeni işçi adı",
+    "reassignToAgent": "Ajanı yeniden ata",
     "duration": "Süre",
     "liveRun": "Canlı çalışma",
     "lastResult": "Son sonuç",
@@ -2716,6 +2727,7 @@
     "noOutstanding": "Bu panoda bekleyen doğrulama veya ayrıştırma sorunu yok.",
     "kanban": "Kanban",
     "newBoard": "Yeni pano",
+    "newBoardTitle": "Yeni pano başlığı",
     "createBoard": "Pano oluştur",
     "deleteTask": "Görevi sil",
     "runFailed": "çalıştırma başarısız",
@@ -2724,6 +2736,7 @@
     "parkedReason": "{{attempts}} reddedilen tamamlamadan sonra park edildi: {{reason}} Değiştirmeden yeniden denemek yine reddedilir.",
     "splitPendingApproval": "bölme onay bekliyor",
     "newTask": "Yeni görev",
+    "newTaskTitle": "Yeni görev başlığı",
     "addTask": "Görev ekle",
     "duplicateBoard": "Panoyu çoğalt",
     "boardHistory": "Pano geçmişi",
@@ -2870,6 +2883,7 @@
     "selectRoleEmpty": "Denetlemek veya düzenlemek için bir rol seç",
     "captureLearned": "Öğrenileni yakala",
     "teachThisAgent": "Bu ajana öğret",
+    "teachingNotes": "Öğretim notları",
     "teachPlaceholder": "Bu ajanın neyi daha iyi yapmasını istediğini açıkla… örn. 'Bu ajan öneride bulunmadan önce her zaman npm'den sürümleri doğrulamalı'",
     "heading": "Ajan Kadrosu",
     "headerSummary": "{{customized}} özelleştirildi · {{entries}} öğrenilen kayıt",
@@ -3051,8 +3065,10 @@
     "size": "Boyut",
     "sessionCaptures": "Oturum Yakalamaları",
     "editIdentity": "identity.md dosyasını düzenle",
+    "roleIdentity": "Rol kimliği",
     "editLearned": "learned.md dosyasını düzenle",
     "editConfig": "config.json dosyasını düzenle",
+    "roleConfigJson": "Rol yapılandırma JSON'u",
     "reviewEntries": "Kayıtları gözden geçir ({{count}})",
     "reviewLearnedEntries": "Öğrenilen kayıtları gözden geçir ({{kept}}/{{total}} tutuldu)",
     "applySelection": "Seçimi uygula",
@@ -3064,6 +3080,7 @@
     "teach": "Öğret",
     "llmImprove": "LLM ile İyileştir",
     "improve": "İyileştir",
+    "improvementPrompt": "İyileştirme promptu",
     "dismiss": "Kapat"
   },
   "taskIntel": {
@@ -3495,8 +3512,12 @@
     "off": "Kapalı",
     "limits": "Sınırlar",
     "workingHours": "Çalışma saatleri",
+    "timezone": "Saat dilimi",
+    "availableFrom": "Kullanılabilir başlangıç saati",
+    "availableUntil": "Kullanılabilir bitiş saati",
     "enforce": "Zorunlu kıl",
     "advisory": "Tavsiye niteliğinde",
+    "availabilityMode": "Kullanılabilirlik modu",
     "cancel": "İptal",
     "useProjectDefaultModel": "Proje varsayılan modelini kullan",
     "addAllowedModel": "İzin verilen model ekle",
@@ -3760,7 +3781,8 @@
     "taskActivityKind": "Görev etkinliği türü",
     "taskActivityOutcome": "Görev etkinliği sonucu",
     "recordTaskDecisionOrOutcome": "Görev kararını veya sonucunu kaydet",
-    "taskActivityDetails": "Görev etkinliği ayrıntıları"
+    "taskActivityDetails": "Görev etkinliği ayrıntıları",
+    "activityNote": "Etkinlik notu"
   },
   "availability": {
     "europeKiev": "Europe/Kiev",
@@ -3769,7 +3791,12 @@
     "applyThisScheduleToTheWhole": "Bu zaman planını sağlayıcının tamamına uygula",
     "doNotUseDuringSelectedTimes": "Seçili saatlerde kullanma",
     "useOnlyDuringSelectedTimes": "Yalnızca seçili saatlerde kullan",
-    "addSchedule": "Zaman planı ekle"
+    "addSchedule": "Zaman planı ekle",
+    "ruleEnabled": "Kural etkin",
+    "timezone": "Saat dilimi",
+    "ruleMode": "Kural modu",
+    "appliesTo": "Şunlara uygulanır",
+    "mode": "Mod"
   },
   "kanbanDecomp": {
     "decomposition": "Ayrıştırma",
@@ -3904,7 +3931,8 @@
     "cameWent": "Giren / çıkan"
   },
   "modelSchema": {
-    "modelId": "model-id"
+    "modelId": "model-id",
+    "schemaJson": "Şema JSON'u"
   },
   "oauth": {
     "httpLocalhostCallbackCode": "http://localhost:.../callback?code=…"
@@ -3914,7 +3942,8 @@
     "anthropic": "Anthropic",
     "openai": "OpenAI",
     "openaiCompatible": "OpenAI Uyumlu",
-    "google": "Google"
+    "google": "Google",
+    "family": "Sağlayıcı ailesi"
   },
   "providerKey": {
     "url": "URL:",
@@ -4164,7 +4193,8 @@
     "subagentModelsRoutingNote": "/setmodel yönlendirmesine dokunulmaz — oraya yönlendirdiğiniz rol modelini korur."
   },
   "chipMultiSelect": {
-    "filter": "Filtrele…"
+    "filter": "Filtrele…",
+    "filterOptions": "Seçenekleri filtrele"
   },
   "chroniclePipelineStrip": {
     "chronicleOwnership": "Chronicle sahipliği",
@@ -4191,7 +4221,9 @@
   },
   "kanbanTaskCompletionChecks": {
     "addAVerifiableCompletionCheck": "Doğrulanabilir bir tamamlama kontrolü ekle…",
-    "completionChecks": "Tamamlama kontrolleri"
+    "completionChecks": "Tamamlama kontrolleri",
+    "checkStatus": "Kontrol durumu",
+    "newCheck": "Yeni kontrol"
   },
   "deleteMemoryDialog": {
     "sageWillMarkTheRecordDeleted": "SAGE kaydı silinmiş olarak işaretler, graf kenarlarını kaldırır ve ilgili belleklerdeki referansları temizler. Kayıt denetim izinde kalır ancak bu sayfadan geri yüklenemez.",
@@ -4201,12 +4233,14 @@
   "modelPickDialog": {
     "navigateEnterSelectEscClose": "↑/↓ gezin · Enter seç · Esc kapat",
     "searchPlaceholder": "Sağlayıcı veya model ara…",
+    "searchModelsAria": "Modelleri ara",
     "favoritesOnly": "Sadece favorileri göster",
     "filterByProvider": "Sağlayıcıya göre filtrele"
   },
   "modelSelectDialog": {
     "fallbackProfiles": "Yedek Profilleri",
-    "noFallbackProfilesConfigured": "Yapılandırılmış yedek profili yok."
+    "noFallbackProfilesConfigured": "Yapılandırılmış yedek profili yok.",
+    "searchModelsAria": "Modelleri ara"
   },
   "sddBoardView": {
     "openTheMirroredKanbanBoardSForThisRunOnePerDependencyWave": "Bu çalışma için yansıtılan kanban panolarını aç (bağımlılık dalgası başına bir tane)"
@@ -4393,6 +4427,7 @@
     "missingAnswers_other": "{{count}} gerekli yanıt eksik",
     "submitTimeout": "Onay alınamadı — bağlantıyı kontrol edip tekrar deneyin veya iptal edin.",
     "answerRequired": "Yanıt gerekli: {{prompt}}",
+    "answer": "Yanıt",
     "sendFailed": "Yanıtlar gönderilemedi. Bağlantıyı kontrol edip tekrar deneyin.",
     "cancelRequested": "İptal istendi — bağlantı kesikken ajana ulaşmamış olabilir.",
     "cancelFailed": "İptal edilemedi — bağlantıyı kontrol edip tekrar deneyin.",
@@ -4844,6 +4879,7 @@
     "openInHub": "Chimera Hub'da aç",
     "filterBySession": "Oturuma göre filtrele",
     "filterByStatus": "Duruma göre filtrele",
+    "searchReportsAria": "Raporları ara",
     "rawReportMarkdown": "Ham Rapor Markdown",
     "notePlaceholder": "Bir gözlem, düzeltme PR bağlantısı veya triyaj notu kaydedin...",
     "selectReportTitle": "Bir Chimera İnceleme Raporu seçin"

@@ -1,4 +1,16 @@
 {
+  "streamActivity": {
+    "label": "Model çıktı etkinliği",
+    "description": "Canlı token sayısı ve hız, düşünme metni dahil alınan metinden tahmin edilir (token başına 4 karakter). Tamamlanan çağrılarda varsa sağlayıcının kullanım verisi kullanılır.",
+    "tokens": "{{value}} token",
+    "finished": "Tamamlandı",
+    "thinking": "Düşünüyor",
+    "receiving": "Yanıt alınıyor",
+    "tools": "Araçlar çalışıyor",
+    "waiting": "Model bekleniyor",
+    "working": "Çalışıyor",
+    "paused": "Duraklatıldı"
+  },
   "emptyState": {
     "title": "Sohbet başlat",
     "subtitle": "Başlamak için bir mesaj gönder."

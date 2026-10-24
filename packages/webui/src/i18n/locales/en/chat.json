@@ -1,4 +1,16 @@
 {
+  "streamActivity": {
+    "label": "Model output activity",
+    "description": "Live tokens and speed are estimates from received text (4 characters per token), including thinking. Completed counts use provider usage when available.",
+    "tokens": "{{value}} tokens",
+    "finished": "Finished",
+    "thinking": "Thinking",
+    "receiving": "Receiving",
+    "tools": "Running tools",
+    "waiting": "Waiting for model",
+    "working": "Working",
+    "paused": "Paused"
+  },
   "emptyState": {
     "title": "Start a conversation",
     "subtitle": "Send a message to begin."

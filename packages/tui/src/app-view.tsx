@@ -22,6 +22,7 @@ import {
 } from './components/monitor-shell.js';
 import { usePlanPanelData } from './components/plan-panel.js';
 import { ScrollableHistory } from './components/scrollable-history.js';
+import { StreamActivityLine } from './components/stream-activity-line.js';
 import { useProviderQuotaCard } from './hooks/use-provider-quota.js';
 import {
   useSidebarConnections,
@@ -177,6 +178,7 @@ export function AppView({ host, runtime }: AppViewProps): React.ReactElement {
     runtime.termRows -
       runtime.statusBarRows -
       effectiveInputHeight -
+      (!hideInput && state.streamActivity ? 1 : 0) -
       backgroundStripRows(backgroundStrip) -
       1,
   );
@@ -330,6 +332,13 @@ export function AppView({ host, runtime }: AppViewProps): React.ReactElement {
                 ) : null}
                 {!hideInput ? (
                   <BackgroundStrip fleet={state.fleet} width={mainColumnWidth} />
+                ) : null}
+                {!hideInput ? (
+                  <StreamActivityLine
+                    activity={state.streamActivity}
+                    width={mainColumnWidth}
+                    running={state.status !== 'idle'}
+                  />
                 ) : null}
                 <Input
                   selectionMode={selectionMode}

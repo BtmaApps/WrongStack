@@ -1,4 +1,5 @@
 import { Writable } from 'node:stream';
+import { reduceStreamActivity } from '@wrongstack/contracts/types/stream-activity';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Spinner } from '../src/spinner.js';
 
@@ -32,6 +33,27 @@ class MockStream extends Writable {
 }
 
 describe('Spinner', () => {
+  it('shows received thinking tokens and speed from the shared activity clock', () => {
+    const now = Date.now();
+    const activity = reduceStreamActivity(
+      null,
+      { type: 'provider.thinking_delta', payload: { text: 'a'.repeat(40) } },
+      now,
+    );
+    const output = new MockStream();
+    Object.assign(output, { columns: 32 });
+    const live = new Spinner(output as never as NodeJS.WriteStream, {
+      enabled: true,
+      activity: () => activity,
+    });
+    try {
+      live.start('Thinking');
+      expect(output.writes.join('')).toContain('≈10 tokens');
+      expect(output.writes.join('')).toContain('≈10 tok/s');
+    } finally {
+      live.stop();
+    }
+  });
   let stream: MockStream;
   let spinner: Spinner;
 

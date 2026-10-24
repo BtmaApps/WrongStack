@@ -1,4 +1,16 @@
 {
+  "streamActivity": {
+    "label": "Modellausgabe",
+    "description": "Tokenanzahl und Geschwindigkeit werden aus empfangenem Text einschließlich Denktext geschätzt (4 Zeichen pro Token). Abgeschlossene Aufrufe verwenden verfügbare Anbieterangaben.",
+    "tokens": "{{value}} Tokens",
+    "finished": "Beendet",
+    "thinking": "Denkt nach",
+    "receiving": "Empfängt",
+    "tools": "Werkzeuge werden ausgeführt",
+    "waiting": "Warten auf das Modell",
+    "working": "In Arbeit",
+    "paused": "Pausiert"
+  },
   "emptyState": {
     "title": "Konversation starten",
     "subtitle": "Sende eine Nachricht, um zu beginnen."

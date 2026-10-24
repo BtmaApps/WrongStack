@@ -1,5 +1,6 @@
 import { useCallback, useEffect } from 'react';
 import { installFaviconVisibilityReset } from '@/lib/favicon';
+import { observeStreamActivity } from '@/lib/stream-activity';
 import type { WrongStackWebSocketClient, WSSendOptions } from '@/lib/ws-client';
 import { getWSClient } from '@/lib/ws-client';
 import { foregroundSessionId } from '@/lib/ws-client-utils';
@@ -34,7 +35,9 @@ function installHandlers(ws: WrongStackWebSocketClient): () => void {
         // requestId when the server echoes it back, instead of falling back
         // to a type-keyed FIFO that can swallow a different tab's reply.
         if (ws.consumeSuppressedChatEcho(type, message)) return;
+        if (type !== 'session.start') observeStreamActivity(message);
         handler(message);
+        if (type === 'session.start') observeStreamActivity(message);
       }),
     );
   }

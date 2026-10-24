@@ -276,6 +276,7 @@
     "changesGroup": "Changes ({{count}})",
     "commitPlaceholder": "Commit message (Ctrl+Enter)...",
     "commitPlaceholderEmpty": "Stage changes to commit...",
+    "commitMessage": "Commit message",
     "commitButton": "Commit",
     "commitButtonCount": "Commit ({{count}})"
   },
@@ -870,6 +871,7 @@
     "claude": "Claude",
     "priority": "Priority",
     "placeholder": "{{label}} → this session…",
+    "messageDraft": "Message draft",
     "send": "Send",
     "sendHint": "⌘/Ctrl+Enter to send · seen on the agent's next iteration",
     "msgType": {
@@ -1097,6 +1099,7 @@
     "resultPlaceholder": "Synthetic tool result fed to the agent in place of running the tool",
     "markError": "mark as error",
     "reasonPlaceholder": "reason (audit log)",
+    "reason": "Reason",
     "queueInjection": "Queue injection",
     "controllerInjection": "controller injection"
   },
@@ -1119,6 +1122,7 @@
     "runDefault": "Run default",
     "useRunDefault": "Use run default",
     "filterPlaceholder": "Filter models…",
+    "filterModelsAria": "Search models",
     "loading": "Loading models…",
     "noMatch": "No match"
   },
@@ -1169,6 +1173,7 @@
     "retry": "Retry",
     "assign": "Assign",
     "assignTitle": "Assign agent",
+    "assignToAgent": "Assign to agent",
     "unassigned": "Unassigned",
     "statusPending": "Pending",
     "statusInProgress": "In Progress",
@@ -1555,6 +1560,7 @@
     "showRawTitle": "Show raw markdown source",
     "editTitle": "Edit & resend this prompt",
     "editLabel": "Edit",
+    "editMessage": "Edit message",
     "unpinTitle": "Unpin",
     "pinTitle": "Pin this answer",
     "pinnedLabel": "Pinned",
@@ -1714,6 +1720,7 @@
     "dependsOn": "Depends on",
     "blocks": "Blocks",
     "newWorkerPlaceholder": "New worker name…",
+    "reassignToAgent": "Reassign to agent",
     "confirmStop": "Stop this running task?",
     "confirmDelete": "Delete this task from the run?",
     "retryTitle": "Requeue this task to pending",
@@ -1779,6 +1786,7 @@
     "minRequiredMet": "Minimum questions met ✓",
     "minRequiredRemaining": "{{count}} more required",
     "answerPlaceholder": "Answer the question…",
+    "reply": "Reply",
     "changePlaceholder": "Request a change…",
     "resumeBanner": "Resumed interview from a previous session — continue where you left off.",
     "openLiveBoard": "Open live board",
@@ -1821,6 +1829,7 @@
     "confirmDeleteFile": "Delete file \"{{name}}\"? This cannot be undone.",
     "rename": "Rename",
     "renameTitle": "Enter new name",
+    "newNameLabel": "New name",
     "sortByName": "Name",
     "sortByNameTitle": "Sort by name (default)",
     "sortBySize": "Size",
@@ -2104,6 +2113,7 @@
     "installHeading": "Install Skill",
     "installHint": "Enter a GitHub repository reference (owner/repo) or full URL.",
     "installPlaceholder": "e.g. wrongstack/skill-name or https://github.com/owner/repo",
+    "installReference": "Skill reference",
     "installScope": "Install scope:",
     "installBtn": "Install",
     "installedMsg": "Installed: {{names}}",
@@ -2705,6 +2715,7 @@
     "workerModel": "Worker model",
     "setModelForTask": "Set model for this task…",
     "newWorkerName": "New worker name",
+    "reassignToAgent": "Reassign to agent",
     "duration": "Duration",
     "liveRun": "Live run",
     "lastResult": "Last result",
@@ -2716,6 +2727,7 @@
     "noOutstanding": "No outstanding verification or decomposition issues on this board.",
     "kanban": "Kanban",
     "newBoard": "New board",
+    "newBoardTitle": "New board title",
     "createBoard": "Create board",
     "deleteTask": "Delete task",
     "runFailed": "run failed",
@@ -2724,6 +2736,7 @@
     "parkedReason": "Parked after {{attempts}} refused completion(s): {{reason}} Retrying it unchanged will refuse again.",
     "splitPendingApproval": "split pending approval",
     "newTask": "New task",
+    "newTaskTitle": "New task title",
     "addTask": "Add task",
     "duplicateBoard": "Duplicate board",
     "boardHistory": "Board history",
@@ -2870,6 +2883,7 @@
     "selectRoleEmpty": "Select a role to inspect or edit",
     "captureLearned": "Capture learned",
     "teachThisAgent": "Teach this agent",
+    "teachingNotes": "Teaching notes",
     "teachPlaceholder": "Describe what you want this agent to do better… e.g. 'This agent should always verify versions from npm before recommending'",
     "heading": "Agent Roster",
     "headerSummary": "{{customized}} customized · {{entries}} learned entries",
@@ -3051,8 +3065,10 @@
     "size": "Size",
     "sessionCaptures": "Session Captures",
     "editIdentity": "Edit identity.md",
+    "roleIdentity": "Role identity",
     "editLearned": "Edit learned.md",
     "editConfig": "Edit config.json",
+    "roleConfigJson": "Role configuration JSON",
     "reviewEntries": "Review entries ({{count}})",
     "reviewLearnedEntries": "Review learned entries ({{kept}}/{{total}} kept)",
     "applySelection": "Apply selection",
@@ -3064,6 +3080,7 @@
     "teach": "Teach",
     "llmImprove": "LLM Improve",
     "improve": "Improve",
+    "improvementPrompt": "Improvement prompt",
     "dismiss": "Dismiss"
   },
   "taskIntel": {
@@ -3495,8 +3512,12 @@
     "off": "Off",
     "limits": "Limits",
     "workingHours": "Working hours",
+    "timezone": "Timezone",
+    "availableFrom": "Available from",
+    "availableUntil": "Available until",
     "enforce": "Enforce",
     "advisory": "Advisory",
+    "availabilityMode": "Availability mode",
     "cancel": "Cancel",
     "useProjectDefaultModel": "Use project default model",
     "addAllowedModel": "Add allowed model",
@@ -3760,7 +3781,8 @@
     "taskActivityKind": "Task activity kind",
     "taskActivityOutcome": "Task activity outcome",
     "recordTaskDecisionOrOutcome": "Record task decision or outcome",
-    "taskActivityDetails": "Task activity details"
+    "taskActivityDetails": "Task activity details",
+    "activityNote": "Activity note"
   },
   "availability": {
     "europeKiev": "Europe/Kiev",
@@ -3769,7 +3791,12 @@
     "applyThisScheduleToTheWhole": "Apply this schedule to the whole provider",
     "doNotUseDuringSelectedTimes": "Do not use during selected times",
     "useOnlyDuringSelectedTimes": "Use only during selected times",
-    "addSchedule": "Add schedule"
+    "addSchedule": "Add schedule",
+    "ruleEnabled": "Rule enabled",
+    "timezone": "Timezone",
+    "ruleMode": "Rule mode",
+    "appliesTo": "Applies to",
+    "mode": "Mode"
   },
   "kanbanDecomp": {
     "decomposition": "Decomposition",
@@ -3904,7 +3931,8 @@
     "cameWent": "Came / went"
   },
   "modelSchema": {
-    "modelId": "model-id"
+    "modelId": "model-id",
+    "schemaJson": "Schema JSON"
   },
   "oauth": {
     "httpLocalhostCallbackCode": "http://localhost:.../callback?code=…"
@@ -3914,7 +3942,8 @@
     "anthropic": "Anthropic",
     "openai": "OpenAI",
     "openaiCompatible": "OpenAI Compatible",
-    "google": "Google"
+    "google": "Google",
+    "family": "Provider family"
   },
   "providerKey": {
     "url": "URL:",
@@ -4164,7 +4193,8 @@
     "subagentModelsRoutingNote": "/setmodel routing is untouched — a role you routed there keeps its model."
   },
   "chipMultiSelect": {
-    "filter": "Filter…"
+    "filter": "Filter…",
+    "filterOptions": "Filter options"
   },
   "chroniclePipelineStrip": {
     "chronicleOwnership": "Chronicle ownership",
@@ -4191,7 +4221,9 @@
   },
   "kanbanTaskCompletionChecks": {
     "addAVerifiableCompletionCheck": "Add a verifiable completion check…",
-    "completionChecks": "Completion checks"
+    "completionChecks": "Completion checks",
+    "checkStatus": "Check status",
+    "newCheck": "New check"
   },
   "deleteMemoryDialog": {
     "sageWillMarkTheRecordDeleted": "SAGE will mark the record deleted, remove graph edges, and clean references from related memories. The record remains in the audit trail but cannot be restored from this page.",
@@ -4201,12 +4233,14 @@
   "modelPickDialog": {
     "navigateEnterSelectEscClose": "↑/↓ navigate · Enter select · Esc close",
     "searchPlaceholder": "Search provider or model…",
+    "searchModelsAria": "Search models",
     "favoritesOnly": "Show favorites only",
     "filterByProvider": "Filter by provider"
   },
   "modelSelectDialog": {
     "fallbackProfiles": "Fallback Profiles",
-    "noFallbackProfilesConfigured": "No fallback profiles configured."
+    "noFallbackProfilesConfigured": "No fallback profiles configured.",
+    "searchModelsAria": "Search models"
   },
   "sddBoardView": {
     "openTheMirroredKanbanBoardSForThisRunOnePerDependencyWave": "Open the mirrored kanban board(s) for this run (one per dependency wave)"
@@ -4393,6 +4427,7 @@
     "missingAnswers_other": "{{count}} required answers missing",
     "submitTimeout": "No confirmation received — check the connection, then retry or cancel.",
     "answerRequired": "Answer required: {{prompt}}",
+    "answer": "Answer",
     "sendFailed": "Could not send the answers. Check the connection and try again.",
     "cancelRequested": "Cancel requested — it may not have reached the agent while the connection is down.",
     "cancelFailed": "Could not cancel — check the connection and try again.",
@@ -4844,6 +4879,7 @@
     "openInHub": "Open in Chimera Hub",
     "filterBySession": "Filter by session",
     "filterByStatus": "Filter by status",
+    "searchReportsAria": "Search reports",
     "rawReportMarkdown": "Raw Report Markdown",
     "notePlaceholder": "Record an observation, fix PR link, or triage note...",
     "selectReportTitle": "Select a Chimera Review Report"
