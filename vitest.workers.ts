@@ -23,7 +23,7 @@
 const WATCH_ARGS = new Set(['--watch', '-w', '--watch=true']);
 
 /** Argv tokens that put Vitest in single-run mode. */
-const RUN_ARGS = new Set(['run', '--run', '--run=true', '--watch=false']);
+const RUN_ARGS = new Set(['run', '--run', '--run=true', '--watch=false', '-w=false']);
 
 /** Workers for watch mode — also the default when the mode is not stated. */
 const WATCH_MAX_WORKERS = 2;
