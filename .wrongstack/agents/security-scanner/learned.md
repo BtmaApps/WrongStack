@@ -4,14 +4,34 @@
 
 ## What to avoid
 
-<!-- learned-stamp: category=warning; capturedAt=2026-10-22T08:30:24.973Z; skill=security-scanner -->
+<!-- learned-stamp: category=warning; capturedAt=2026-10-24T14:25:44.453Z; skill=security-scanner; applied=1; wins=1; skipped=1; skippedWins=1 -->
+- **Always treat `packages/core/src/security/capabilities.ts` as a re-export shim of `packages/primitives/src/tool-capabilities.ts` and review clamp changes at the enforcement site `packages/agent-catalog/src/project-agent-roster.ts` (`applyProjectAgentConfig`, merged-then-clamped around ) — the capability definitions and the subagent-spawn gate no longer live in the same package, so a diff touching only the shim file can never be evidence the clamp still fires.**
+  - *Why:* Known failure mode — skipping this has caused real defects in this codebase. The cost of getting it wrong outweighs the cost of the check.
+  - *How:* `packages/core/src/security/capabilities.ts`
+  - *How:* `packages/primitives/src/tool-capabilities.ts`
+  - *How:* `packages/agent-catalog/src/project-agent-roster.ts`
+  - *How:* `applyProjectAgentConfig`
+
+<!-- learned-stamp: category=warning; capturedAt=2026-10-24T16:05:18.332Z; skill=security-scanner; skipped=1; skippedWins=1 -->
+- **When a capability/security file collapses to a re-export shim, its diff can never reveal dropped exports — diff the shim's re-export list against the canonical module's export surface instead (here `packages/core/src/security/capabilities.ts` vs `packages/primitives/src/tool-capabilities.ts`), and verify the clamp predicate at its enforcement site reached through the facade: `project-agent-identity.ts` re-exports `applyProjectAgentConfig` from `packages/agent-catalog/src/project-agent-roster.ts` (merged-then-clamped at the `allowedCapabilities` branch). Close the loop with `bun x vitest run packages/core/tests/security/capability-clamp.test.ts --maxWorkers=1`.**
+  - *Why:* Known failure mode — skipping this has caused real defects in this codebase. The cost of getting it wrong outweighs the cost of the check.
+  - *How:* `packages/core/src/security/capabilities.ts`
+  - *How:* `packages/primitives/src/tool-capabilities.ts`
+  - *How:* `project-agent-identity.ts`
+  - *How:* `applyProjectAgentConfig`
+  - *How:* `packages/agent-catalog/src/project-agent-roster.ts`
+  - *How:* `allowedCapabilities`
+  - *How:* `bun x vitest run packages/core/tests/security/capability-clamp.test.ts --maxWorkers=1`
+  - *How:* `packages/core/tests/security/capability-clamp.test.ts`
+
+<!-- learned-stamp: category=warning; capturedAt=2026-10-22T08:30:24.973Z; skill=security-scanner; skipped=4; skippedWins=4 -->
 - **When testing redaction, trust only in-process boolean assertions (`out.includes(credential)`) over displayed tool output — the host output gate rewrites displayed text and can make a leaking string look redacted; print booleans, never the credential or its container.**
   - *Why:* Known failure mode — skipping this has caused real defects in this codebase. The cost of getting it wrong outweighs the cost of the check.
   - *How:* `out.includes(credential)`
 
 ## What to do
 
-<!-- learned-stamp: category=convention; capturedAt=2026-10-13T19:43:54.323Z; skill=security-scanner; skipped=3; skippedWins=3 -->
+<!-- learned-stamp: category=convention; capturedAt=2026-10-13T19:43:54.323Z; skill=security-scanner; skipped=7; skippedWins=7 -->
 - **Always check how a module memoizes a secret before treating a removed `__resetIpcEndpointSecretForTests()` in `packages/persistence/tests/ipc-endpoint-secret.test.ts` as a lost isolation guarantee — `ipcEndpointSecret()` in `packages/persistence/src/ipc-endpoint-secret.ts` caches by `{ file, secret }`, so redirecting the `_ipcEndpointSecretOps.file` seam to a different path already forces a fresh read.**
   - *Why:* Established convention for this codebase — skipping it risks regressions, merge friction, or out-of-sync state with peers.
   - *How:* `__resetIpcEndpointSecretForTests()`
@@ -21,8 +41,14 @@
   - *How:* `{ file, secret }`
   - *How:* `_ipcEndpointSecretOps.file`
 
-<!-- learned-stamp: category=convention; capturedAt=2026-10-13T19:43:54.323Z; skill=security-scanner; applied=1; wins=1; skipped=2; skippedWins=2 -->
-- **When a security test asserts redaction, always require an explicit `not.toContain(<secret body>)` alongside any `toContain('[credential]')` — a truncation-plus-placeholder assertion still passes if the redaction regex collapses to the bare `wsg_` prefix; `packages/governance/src/sanitize.ts` is the function to keep pinned that way. ```bash bun x vitest run packages/governance/tests/credential-lease-controller.test.ts packages/persistence/tests/ipc-endpoint-secret.test.ts --maxWorkers=1 ```**
+<!-- learned-stamp: category=convention; capturedAt=2026-10-24T17:36:56.532Z; skill=security-scanner -->
+- **When a monorepo package extraction "moves" credential/security modules, prove the move was content-identical before treating it as a no-op: `git show HEAD:<old-path>` into a temp file, then `git diff --no-index` against the new path, and confirm the brute-force throttle's ordering (check-before-lookup) at the live enforcement site — then sweep consumers for stale doc comments claiming the old entry point, which are common and are not imports.**
+  - *Why:* Established convention for this codebase — skipping it risks regressions, merge friction, or out-of-sync state with peers.
+  - *How:* `git show HEAD:<old-path>`
+  - *How:* `git diff --no-index`
+
+<!-- learned-stamp: category=convention; capturedAt=2026-10-13T19:43:54.323Z; skill=security-scanner; applied=1; wins=1; skipped=6; skippedWins=6 -->
+- **When a security test asserts redaction, always require an explicit `not.toContain(<secret body>)` alongside any `toContain('[credential]')` — a truncation-plus-placeholder assertion still passes if the redaction regex collapses to the bare `wsg_` prefix; `packages/governance/src/sanitize.ts` is the function to keep pinned that way.**
   - *Why:* Established convention for this codebase — skipping it risks regressions, merge friction, or out-of-sync state with peers.
   - *How:* `not.toContain(<secret body>)`
   - *How:* `toContain('[credential]')`
@@ -31,30 +57,5 @@
   - *How:* `packages/governance/tests/credential-lease-controller.test.ts`
   - *How:* `packages/persistence/tests/ipc-endpoint-secret.test.ts`
 
-## Patterns to follow
-
-<!-- learned-stamp: category=pattern; capturedAt=2026-10-22T08:19:04.479Z; skill=security-scanner; applied=1; wins=1 -->
-- **- When reviewing a new scrubber pattern's token class, probe a token containing every excluded alphabet variant (`-`, `_` for base64url): a class gap plus a non-consuming lookahead boundary produces a *partial* redaction that leaks the tail, which a standard-alphabet test cannot catch. Anchor: `packages/core/src/security/secret-scrubber-patterns.ts`. - Verify scrubber regex/anchor behavior empirically with `bun -e "import { DefaultSecretScrubber } from './packages/core/src/security/secret-scrubber.ts'; …"` instead of static reasoning — anchor pre-scan case handling is not visible from the pattern table and static reading produced one false hypothesis in practice. - When a new pattern carries a length cap, probe an over-cap token before reporting coverage: over-cap credentials pass wholly unredacted, and the cap is an intentional trade-off that should be named in the report rather than counted as a match. - Test probes of base64 behavior must confirm the fixture actually contains the special chars under test (`+`, `/`) — `String.indexOf` coerces a regex argument to a literal string and silently returns -1, making the condition vacuous; use `String.search(/[+/]/)`.**
-  - *Why:* This project's chosen approach — alternatives were considered and either conflict with existing architecture or were rejected for known reasons.
-  - *How:* `-`
-  - *How:* `_`
-  - *How:* `packages/core/src/security/secret-scrubber-patterns.ts`
-  - *How:* `bun -e "import { DefaultSecretScrubber } from './packages/core/src/security/secret-scrubber.ts'; …"`
-  - *How:* `+`
-  - *How:* `/`
-  - *How:* `String.indexOf`
-  - *How:* `String.search(/[+/]/)`
-  - *How:* `./packages/core/src/security/secret-scrubber.ts`
-
-<!-- learned-stamp: category=pattern; capturedAt=2026-10-22T08:30:24.973Z; skill=security-scanner -->
-- **When adding a pattern to `packages/core/src/security/secret-scrubber-patterns.ts` whose regex matches more spellings than its anchor literals admit (e.g. per-letter case classes), verify the anchor pre-scan in `packages/core/src/security/secret-scrubber.ts` (`ANCHOR_PRESCAN`, case-sensitive) admits the pattern's full match surface — a case-insensitive scheme needs a case-insensitive pre-scan word like `BEARER_WORD`, and a mixed-casing test in `packages/core/tests/security/secret-scrubber-credential-shapes.test.ts` asserting `not.toContain(<credential>)`.**
-  - *Why:* This project's chosen approach — alternatives were considered and either conflict with existing architecture or were rejected for known reasons.
-  - *How:* `packages/core/src/security/secret-scrubber-patterns.ts`
-  - *How:* `packages/core/src/security/secret-scrubber.ts`
-  - *How:* `ANCHOR_PRESCAN`
-  - *How:* `BEARER_WORD`
-  - *How:* `packages/core/tests/security/secret-scrubber-credential-shapes.test.ts`
-  - *How:* `not.toContain(<credential>)`
-
 ---
-*Last capture: 2026-10-22T08:30:24.973Z · 5 entries*
+*Last capture: 2026-10-24T17:36:56.532Z · 6 entries*

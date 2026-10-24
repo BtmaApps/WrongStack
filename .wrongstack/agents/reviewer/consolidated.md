@@ -2,6 +2,7 @@
 
 ## Evidence and Review Coverage
 
+- Scope reviews to the assigned target files/diff and their direct callers; return your verdict immediately once the assigned surface is verified instead of expanding into an unrequested repo-wide audit.
 - Review current on-disk source, not only handed-off diffs or snippets. External edits may have added or superseded relevant code. Resolve every finding to a live `file:line` citation.
 - Before reviewing claimed work, prove it exists with `git status -- <target paths>` and `rg` for feature identifiers. If target changes are absent, request changes; reserve “needs verification” for present but unchecked code.
 - Trace changed contracts end to end: producers, validators, consumers, production wiring, persistence or replay paths, and tests. Mock-only behavior does not prove production correctness.
@@ -29,7 +30,6 @@
 - Clamp environment-derived timer delays to `2_147_483_647` after finite/minimum validation; larger Node delays may fire almost immediately.
 - Validate parser rewrites and generated text against the consuming grammar, including quoting, comments, spacing, bracket depth, and path rules.
 - Search event literals across types, production writers, loaders, replay logic, and summary folds. Legacy-load and replay branches must not double-apply events.
-- For telemetry at resource admission, verify it fires once on the first attempt, only after successful spawn, and degrades when the hook is absent. The delegation pattern is `dir.onSpawnRouted?.(...)` inside `handoffCount === 0` in `packages/core/src/coordination/delegation/run-delegation.ts`.
 - In never-throw wrappers, contain observer callback failures inside notification code.
 - Before alleging lost error logging, enumerate throw sites, catch boundaries, and upstream warnings.
 

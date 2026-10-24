@@ -12,5 +12,5 @@
 
 ## Types and builds
 
-- After changing strings, run `pnpm --filter @keep-operating/webui exec tsc --noEmit` (or the repository’s `pnpm typecheck`). Type received translators as `(key: string, opts?: Record<string, unknown>) => string` or `TFunction`; fix the prop declaration rather than adding an inline `(t as any)` cast, because the gate matches `t: (`.
+- After changing strings, run `bun run --filter @wrongstack/webui typecheck`. Type received translators as `(key: string, opts?: Record<string, unknown>) => string` or `TFunction`; fix the prop declaration rather than adding an inline `(t as any)` cast, because the gate matches `t: (`.
 - Read the package profile block in `scripts/build-package.mjs` before inferring `main`, `types`, or `bin`; it, not `package.json` or neighboring packages, defines the emitted `./dist/<name>.js` shapes.

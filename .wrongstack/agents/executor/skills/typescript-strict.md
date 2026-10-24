@@ -4,7 +4,7 @@
 
 ## Windows Checks
 
-- Run repo-wide checks with `pnpm exec <tool> ... > .temp_files\<name>.log 2>&1`, then inspect using `type`/`findstr`. Do not use `tail`, `grep` pipes, `/d/...` `cd` paths, or bare `tsc`/tool names.
+- Run targeted checks first; when capturing long check output on Windows, use `bun ... > .temp_files\<name>.log 2>&1`, then inspect using `type`/`findstr`. Do not use `tail`, `grep` pipes, `/d/...` `cd` paths, or bare `tsc`/tool names.
 
 ## Shared-Tree Testing
 

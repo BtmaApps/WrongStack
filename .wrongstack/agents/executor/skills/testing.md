@@ -1,8 +1,8 @@
 ## Commands
 
-- Run `vitest` and `biome` only as `pnpm exec <tool>`, with `cwd` set to the package directory; avoid `test`, `lint`, and `format`, which fail with `Executable not found in $PATH`.
-- Before a mechanical, source-driven fixture migration, save `pnpm exec vitest run <pkg> --no-color > .temp_files\baseline.log`, then edit only failures proven by that run. Keep direct state-injection fixtures unchanged.
-- Run the MCP after-suite with `pnpm exec vitest run packages/mcp --no-color` from the repo root on Windows cmd. Compare like-for-like totals and require failed→passed, the same 4 skips, and no deleted or weakened tests; the proven migration moved 830→854 passed and 24→0 failed.
+- Run `vitest` and `biome` via Bun (`bun --bun run vitest run <test-file>`, `bunx biome check <file>`). Prefer targeted test files over full-suite runs on narrow tasks.
+- Before a mechanical, source-driven fixture migration, save `bun --bun run vitest run <pkg> --no-color > .temp_files\baseline.log`, then edit only failures proven by that run. Keep direct state-injection fixtures unchanged.
+- Run the MCP after-suite with `bun --bun run vitest run packages/mcp --no-color` from the repo root on Windows cmd. Compare like-for-like totals and require failed→passed, the same 4 skips, and no deleted or weakened tests; the proven migration moved 830→854 passed and 24→0 failed.
 - Review working-tree hunks with `git diff -- <files>` via `exec`; do not use the `diff` tool's files-only mode, which does not provide hunks.
 
 ## MCP fixtures

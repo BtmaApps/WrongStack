@@ -1,5 +1,4 @@
 ## Gate narrowing
-- When replacing root-wide containment in `packages/core/src/security/agent-state-sensitivity.ts` with a name/subtree classifier, enumerate the credential filenames actually written—grep `packages/persistence/src/file-permissions.ts`, `packages/persistence/src/ipc-endpoint-secret.ts`, and `packages/core/src/hq/auth-store.ts`—and assert each against the new predicate; `ipc-endpoint.secret` and `runtime.json` carry no obvious secret word and are the likeliest misses. [applied 9×, 9 ok]
 - After such a narrowing, treat a green run as missing coverage: confirm the fixtures in `tests/security/yolo-risk-state-root.test.ts` and `packages/core/tests/security/agent-state-sensitivity.test.ts` still exercise distinct rules, then add cases for dropped paths. [applied 3×, 3 ok]
 
 ## Live-predicate checks

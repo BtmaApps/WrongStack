@@ -10,8 +10,6 @@
 
 ## Mailbox `unreadCount` Collisions
 
-- `unreadCount` is highly collision-prone (`packages/webui-hq/src/domain/mailbox-grouping.ts` fields, `packages/cli/src/hq-server/snapshot.ts`, `packages/telegram/src/index.ts` locals). Close real consumers via `sqlite-mailbox-query(\.js)?` and the `delegateUnreadCount`/`delegateQuery` aliases in `packages/core/src/coordination/sqlite-mailbox.ts`, then follow `.unreadCount(` calls on Mailbox-typed objects (e.g. `packages/mailbox-mcp/src/adapter.ts`, `packages/cli/src/fleet/host-acp.ts`).
-
 ## Desktop Runtime Facade
 
 - Treat `apps/desktop/src/main/runtime-manager.ts` as a re-export facade for `runtime-manager-state.js`, `runtime-manager-paths.js`, `runtime-process.js`, `runtime-project-manifest.js`. Close consumers with `runtime-manager(\.js)?` (covering `from`/`import()`/`require`) plus `new\s+DesktopRuntimeManager\s*\(` for construction sites — grepping sibling module specifiers directly undercounts (consumers like `apps/desktop/src/main/webui/controller.ts` and `apps/desktop/src/main/runtime/operations.ts` import through the facade).

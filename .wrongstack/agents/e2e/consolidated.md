@@ -7,5 +7,5 @@
 
 ## Formatting Checks (Biome)
 
-- Confirm that "formatting-only" e2e diffs match the tooling by running `pnpm exec biome format <files>`. Plain `format` is read-only, `--write` mutates, and this repo's biome rejects `--check`.
+- Confirm that "formatting-only" e2e diffs match the tooling by running `bunx biome format <files>`. Plain `format` is read-only, `--write` mutates, and this repo's biome rejects `--check`.
 - Import lines like `{ expect,test }` (no space after the comma) mean a non-formatter tool touched the file. Such files will fail the biome format gate.

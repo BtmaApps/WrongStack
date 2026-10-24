@@ -11,8 +11,6 @@
 
 ## Core Coordination
 
-- `instantiateRosterConfig` is defined more than once. The shared helper lives in `packages/core/src/coordination/director-input-helpers.ts`, but `packages/core/src/coordination/delegate-tool.ts` also defines a private 4-arg variant with the same name that applies `applyRosterBudget` and `FLEET_ROSTER_BUDGETS` timeout derivation. Before changing spawn-id or budget behavior, grep `function instantiateRosterConfig` across `packages/core/src/coordination/` and determine whether each caller uses the shared helper or the injected-parameter path via `buildKanbanSubagentConfig`.
-
 ## Canonical Module Homes
 
 - `parseNextSteps` and `stripNextStepsBlock` belong to `@wrongstack/tools/next-steps`. `packages/webui/src/components/NextStepsBar.tsx` only re-exports them for back-compat — a UI-component import path does not mean the parser logic lives there or should be edited there. Check the `@wrongstack/tools` package first when the parser itself needs changing.

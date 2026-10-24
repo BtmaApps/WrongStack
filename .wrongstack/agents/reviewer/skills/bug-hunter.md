@@ -1,11 +1,14 @@
-## Kanban completion fail-closed throws
+## Fleet memory-companion timers
+- Before judging any timeout claim in `packages/cli/src/fleet/host-memory-companion.ts`, pin it to one of three budgets: `withinIoBudget` = `ioTimeoutMs ?? 30_000`; `spawnBounded` startup = `Math.min(config.timeoutMs ?? 60_000, 60_000)`; probe watchdog/task = constrained `workerConfig.timeoutMs` — a doc's "deadline" wording can mean any of the three. [applied 1×, 1 ok]
+- Treat `constrainMemoryCompanion` (`packages/cli/src/fleet/memory-companion-policy.ts`) as idempotent — per-key positive-finite honor with fixed defaults — so nesting it around an already-constrained `workerConfig` at spawn is safe, not a double-clamp bug.
 
-- Treat every `STALE_WRITE_PREFIX` throw from `packages/kanban/src/verification/` as a retry signal, not a bug. `verificationStateFingerprint` in `packages/kanban/src/verification/task-inputs.ts` hashes the full descendant/dependency task tree plus board policy, excluding only `updatedAt`, `notes`, `links`, `labels`, `order`, `dueDate`, and assignment `heartbeatAt`/`leaseExpiresAt` — so any concurrent write during gate→verify→finalize intentionally fails closed with "Re-run the completion gate".
-- Do not flag `assertAcceptedContractUnchanged` in `packages/kanban/src/manager/lifecycle/accepted-contract.ts` as a regression: it fires only for managed boards with `currentStage === 'done'`, compares input fingerprints (statuses excluded) plus `[check.id, check.status]` outcomes, and fresh reports with `verdict === 'passed'` escape via the passed-verdict branch.
-- When such a throw is the sole anomaly in the diff, return `{ "findings": [] }`. Only report it if the trigger conditions above are violated or the throw surfaces outside the verification lifecycle.
+## Kanban fail-closed throws
+- Classify `STALE_WRITE_PREFIX` throws from `packages/kanban/src/verification/` as intentional retry signals, not bugs: `verificationStateFingerprint` (`packages/kanban/src/verification/task-inputs.ts`) hashes the full descendant/dependency tree plus board policy, excluding only `updatedAt`, `notes`, `links`, `labels`, `order`, `dueDate`, and assignment `heartbeatAt`/`leaseExpiresAt`.
+- Do not flag `assertAcceptedContractUnchanged` (`packages/kanban/src/manager/lifecycle/accepted-contract.ts`) as a regression: it fires only on managed boards at `currentStage === 'done'`, compares input fingerprints (statuses excluded) plus `[check.id, check.status]` outcomes, and fresh `verdict === 'passed'` reports escape via the passed-verdict branch.
 
-## Default assertions in tests
+## Resolver-default assertion flips
+- Judge flipped assertions under `packages/core/tests/**` by the operator the resolver currently computes in `packages/core/src/plugins/*-config.ts` — never by config types, JSDoc, test names, or historical comments.
+- For `cfg.x ?? DEFAULT`, classify the explicit `'off'` case and the omitted-key case independently before calling a flip a bug (e.g. `cascadeOn` `off`→`high`, default-on `enabled`); read operators like `enabled: cfg.enabled !== false` exactly as written.
 
-- Judge flipped assertions under `packages/core/tests/**` by the default the resolver's current operator computes in `packages/core/src/plugins/*-config.ts` — not by config types, JSDoc, or historical comments. For `cfg.x ?? DEFAULT`, evaluate the explicit `'off'` case and the omitted-key case independently before classifying a flip such as `cascadeOn` `off`→`high` or a default-on `enabled` as a regression.
-- Read operators like `enabled: cfg.enabled !== false` exactly as written; do not infer intent from surrounding test names.
-- When a flip matches a documented default in the resolver, treat it as expected behavior and exclude it from findings.
+## Finding discipline
+- If the sole diff anomaly is one of the verified-expected behaviors above, file a finding only when a stated condition fails: a `STALE_WRITE_PREFIX` throw escapes verification retry, the contract check fires off a managed board's `'done'` stage or blocks a fresh passed verdict, or a flip contradicts the operator's actual computation — otherwise record it as verified-expected and move on.

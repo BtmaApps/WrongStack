@@ -11,9 +11,9 @@
 ## Vitest Mock Typing
 
 - Explicitly annotate a hoisted Vitest mock factory’s return type when later calls to `mockReturnValue` or `mockResolvedValue` provide a richer value; otherwise, Vitest’s inferred factory type can cause TS2345 or TS2322 errors.
-- Use `vi.fn((): any => null)` rather than `vi.fn(() => null)` for a synchronous nullable mock.
-- Use `vi.fn(async (): Promise<any> => null)` rather than `vi.fn(async () => null)` for a single-value async mock.
-- Use `vi.fn(async (): Promise<any[]> => [])` rather than `vi.fn(async () => [])` for an async array mock; the unannotated form infers `never[]`.
+- Use `vi.fn((): unknown => null)` (or the concrete nullable type `T | null`) rather than `vi.fn(() => null)` for a synchronous nullable mock; never use `: any`.
+- Use `vi.fn(async (): Promise<unknown> => null)` rather than `vi.fn(async () => null)` for a single-value async mock.
+- Use `vi.fn(async (): Promise<unknown[]> => [])` rather than `vi.fn(async () => [])` for an async array mock; the unannotated form infers `never[]`.
 - This pattern is especially relevant to the slash-command tests in `packages/cli/tests/kanban-slash-coverage.test.ts` and `packages/cli/tests/memory-slash-coverage.test.ts`.
 
 ## WebUI Kanban Test Isolation

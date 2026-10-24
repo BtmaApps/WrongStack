@@ -4,21 +4,6 @@
 
 ## What to do
 
-<!-- learned-stamp: category=convention; capturedAt=2026-10-18T09:42:50.640Z; skill=audit-log -->
-- **Before reporting a live unhandled rejection in `packages/mcp` or `packages/acp`, check these containment anchors: `EventBus.emit` isolates every listener throw (`packages/core/src/kernel/events.ts`), `recordRegistryOperation` isolates operation listeners (`packages/mcp/src/registry-operations.ts`), and crash shields recover+log unhandled rejections in CLI/desktop hosts (`packages/cli/src/cli-entry-point.ts` `runCliProcess`, `apps/desktop/src/main/main.ts` `boot`, `packages/tools/src/process-guardian.ts`) — a genuine escape is fatal only in third-party embeds without shields.**
-  - *Why:* Established convention for this codebase — skipping it risks regressions, merge friction, or out-of-sync state with peers.
-  - *How:* `packages/mcp`
-  - *How:* `packages/acp`
-  - *How:* `EventBus.emit`
-  - *How:* `packages/core/src/kernel/events.ts`
-  - *How:* `recordRegistryOperation`
-  - *How:* `packages/mcp/src/registry-operations.ts`
-  - *How:* `packages/cli/src/cli-entry-point.ts`
-  - *How:* `runCliProcess`
-  - *How:* `apps/desktop/src/main/main.ts`
-  - *How:* `boot`
-  - *How:* `packages/tools/src/process-guardian.ts`
-
 <!-- learned-stamp: category=convention; capturedAt=2026-10-18T09:42:50.640Z; skill=bug-hunter -->
 - **When no process-execution tool is registered, replicate `.temp_files/core_fire_and_forget_scan/scan.mjs` semantics exactly via grep + reads — its CALLBACK regex is literal (`\.on\(` does NOT match `.onMessage(`, `.onClose(`, `createServer(`, `.addXxxListener(`) and its two-arg `.then` exclusion (scan.mjs:46) only recognizes arrow-function second args, so identifier handlers like `then(resolve, reject)` are flagged despite being contained. Reproduce both quirks or the hit set diverges from the scanner's.**
   - *Why:* Established convention for this codebase — skipping it risks regressions, merge friction, or out-of-sync state with peers.
@@ -48,4 +33,4 @@
   - *How:* `catch`
 
 ---
-*Last capture: 2026-10-18T09:42:50.640Z · 3 entries*
+*Last capture: 2026-10-18T09:42:50.640Z · 2 entries*

@@ -33,8 +33,6 @@
 ## Project Contracts
 
 - In `packages/webui/src/hooks/ws-handlers/goal-handlers.ts`, accept keyless broadcasts before goal-id filtering, including `goal.error` and `goal.stopped` when `host.graph` is null.
-- Distinguish hard merge failures from unresolved conflicts: conflicts park completed phases with `integrationStatus: 'needs_review'`; inspect `packages/core/src/goal/phase-orchestrator-queries.ts`.
-- In `packages/core/src/goal/phase-task-execution.ts`, bound post-timeout settlement with an unref’d five-second grace race; record fulfilled tasks as completed even when the host is stopped. Verify with `bunx vitest run packages/core/tests/goal`.
 - Sandbox `Tool` gates in `packages/core/src/sandbox/wrap.ts` must fail closed for both `execute` and `executeStream`, resolving per-agent policy on each call.
 - Preserve mutate-then-`appendHistory` ordering and fresh under-lock reads around `generateSuggestions` in `packages/requirement-intake/src/service.ts`.
 - For MCP connection races, verify refusal state clears before suspension, stale-generation writes are blocked, and `stop()` advances generation before clearing `connecting`.
@@ -42,4 +40,3 @@
 - Evaluate rotation arithmetic over reachable counts and branches, not expression appearance; confirm parser modifier flags before alleging reverse-navigation bugs.
 - In `packages/plugin-sdk/src/runtime/h1-state.ts`, track released callback identities and test exact cleanup counts. In `packages/vector-memory/src/sage-port-wrapper.ts`, preserve fluent returns with `result === target ? delegated : result`.
 - Inspect `packages/core/src/kernel/events/*.ts` before declaring event fields missing. Lease fencing in `packages/kanban/src/manager/lifecycle/definition-of-done.ts` must compare against live `task.assignment`.
-- Validate transformed fixtures against equivalently transformed expectations. UTF-8 truncation in `packages/core/src/chronicle/tool-adapter.ts` must preserve decoded validity and the byte budget without dangling multibyte fragments.

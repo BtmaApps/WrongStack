@@ -1,22 +1,22 @@
 ## Execution Conventions
 
-- Invoke repository-local tools through `pnpm exec <tool>`. For `vitest` and `biome`, set `cwd` to the target package; wrapper commands such as `test`, `lint`, and `format` may fail because binaries are not globally available.
-- On Windows `cmd`, capture repo-wide checks with `pnpm exec <tool> ... > .temp_files\<name>.log 2>&1` and inspect them using `type` or `findstr`. Do not rely on `tail`, `grep` pipes, `/d/...` `cd` paths, or bare `tsc`.
+- Invoke repository-local tools through `bun` (`bun --bun run vitest run <test-file>`, `bunx biome check <file>`, `bun run --filter <pkg> build`). Prefer targeted test and lint runs for the touched files/package instead of repo-wide suites on narrow tasks.
+- On Windows `cmd`, capture long check outputs with `bun ... > .temp_files\<name>.log 2>&1` and inspect them using `type` or `findstr`. Do not rely on `tail`, `grep` pipes, `/d/...` `cd` paths, or bare `tsc`.
 - Use `exec` with `git diff -- <files>` for working-tree hunk review; the `diff` tool's files-only mode does not provide usable hunks.
 - Write a new test and observe its expected failure before implementing the fix when working on shared, frequently modified files. Stash/revert red-green cycles can overwrite concurrent changes.
 
 ## Test and Migration Verification
 
-- Before a mechanical fixture migration caused by changed source behavior, capture a baseline with `pnpm exec vitest run <pkg> --no-color > .temp_files\baseline.log`. Edit only fixtures proven broken; fixtures that bypass the changed code path must remain untouched.
+- Before a mechanical fixture migration caused by changed source behavior, capture a baseline with `bun --bun run vitest run <pkg> --no-color > .temp_files\baseline.log`. Edit only fixtures proven broken; fixtures that bypass the changed code path must remain untouched.
 - Prove fixture migrations with a baseline-versus-after Vitest pair: total tests and skips should remain stable while expected failures become passes, demonstrating that no test was weakened, skipped, or deleted.
 - In a shared dirty tree, do not attribute a red coverage gate entirely to your change. Parse `packages/mcp/coverage/coverage-final.json` (`s`, `b`, and `fn` maps), map uncovered lines to source, and compare them with `git diff -- <file>`.
 - When changing a store or configuration default, search the full test tree for every consumer. Toggle and emission tests can pin defaults implicitly, including `packages/webui/tests/components/chimera-settings-panel.test.tsx`.
 
 ## Generated Plugin Data
 
-- Do not hand-edit the `pluginCatalog` block in `website/src/data/runtime-catalog.ts`; regenerate it with `pnpm run plugins:manifest:generate` using `scripts/generate-plugin-projections.mjs`.
+- Do not hand-edit the `pluginCatalog` block in `website/src/data/runtime-catalog.ts`; regenerate it with `bun run plugins:manifest:generate` using `scripts/generate-plugin-projections.mjs`.
 - Ensure `packages/plugins/dist` reflects current source before running the plugin generator.
-- Run generators through `pnpm run <script-name>`, not `pnpm exec node <script>`, because scripts may depend on `npm_execpath`.
+- Run generators through `bun run <script-name>`, not bare `node <script>`, when scripts depend on workspace environment setup.
 - Treat `website/src/data/plugin-details-part-*.ts` as hand-maintained; no generator writes those files.
 
 ## Safe Generator Execution
@@ -32,7 +32,7 @@
 
 ## Test Type-Checking
 
-- For `packages/kanban/tests`, run `pnpm exec tsc --noEmit --pretty false -p packages/kanban/tsconfig.test.json` to catch strict test issues such as incomplete fixtures and optional collection access.
+- For `packages/kanban/tests`, run `bunx tsc --noEmit --pretty false -p packages/kanban/tsconfig.test.json` to catch strict test issues such as incomplete fixtures and optional collection access.
 - Use `node scripts/check-test-typecheck.mjs --json` to identify newly introduced test diagnostics; raw `tsc` output may be dominated by baseline noise and cross-package path leakage.
 - When mocking Node `fs/promises`, derive path arguments from the real signature with `Parameters<typeof fs.readFile>[0]` or `Parameters<typeof fs.writeFile>[0]`, then narrow `typeof path === 'string'` before string-only operations.
 

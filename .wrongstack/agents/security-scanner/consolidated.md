@@ -8,7 +8,6 @@
 
 ## Gate Narrowing and Coverage
 
-- When a security gate narrows from a broad containment check (e.g. `isInsideAgentStateRoot` over the whole root in `packages/core/src/security/permission-helpers.ts`) to a name/subtree classifier, enumerate the credential filenames the codebase actually writes — grep `packages/persistence/src/file-permissions.ts`, `packages/persistence/src/ipc-endpoint-secret.ts`, and `packages/core/src/hq/auth-store.ts` for secret paths — and assert each against the new predicate. Names like `ipc-endpoint.secret` and `runtime.json` carry no obvious secret word and are the most likely to be missed.
 - Treat a passing security test as missing coverage when the gate it covers was narrowed: fixtures pinning both halves of a new predicate (e.g. `packages/core/tests/security/agent-state-sensitivity.test.ts`) do not prove the write gate still covers credential filenames the new list forgot. Confirm each pre-existing fixture still exercises a distinct rule and add cases for paths that lost coverage.
 
 ## Fail-Closed Ordering
