@@ -256,12 +256,15 @@ export type State = PanelState & {
   bugHuntContinue: {
     completedRounds: number;
     totalRounds?: number | undefined;
+    label?: string | undefined;
     resolve: (decision: 'yes' | 'stop') => void;
   } | null;
   /** Visible, non-blocking progress card for the currently running bug-hunt round. */
   bugHuntRunning: {
     currentRound: number;
     totalRounds?: number | undefined;
+    commandName?: string | undefined;
+    label?: string | undefined;
   } | null;
   /**
    * Monotonic re-arm key for the context chip: the statusline and `/context`
