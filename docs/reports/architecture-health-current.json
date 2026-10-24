@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-24T14:49:58.293Z",
+  "generatedAt": "2026-10-24T17:07:58.944Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,7 +13,7 @@
   "summary": {
     "packages": 44,
     "sourceFiles": 5289,
-    "testFiles": 4654,
+    "testFiles": 4655,
     "sourceLines": 1150925,
     "workspaceEdges": 205,
     "moduleEdges": 15921,
@@ -313,7 +313,7 @@
       "name": "@wrongstack/core",
       "dir": "packages/core",
       "sourceFiles": 865,
-      "testFiles": 868,
+      "testFiles": 869,
       "workspaceDependencies": [
         "@wrongstack/contracts",
         "@wrongstack/kanban",
@@ -329,7 +329,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 868
+          "testFiles": 869
         }
       ]
     },
@@ -6952,6 +6952,12 @@
       },
       {
         "file": "packages/core/tests/architecture/vitest-daemon-reaper.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/architecture/vitest-source-alias-coverage.test.ts",
         "projects": [
           "root-node"
         ]

@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-24T14:49:58.293Z
+**Generated:** 2026-10-24T17:07:58.944Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -10,7 +10,7 @@
 | Workspace packages | 44 |
 | Production source files | 5289 |
 | Production source lines | 1150925 |
-| Test files | 4654 |
+| Test files | 4655 |
 | Workspace dependency edges | 205 |
 | Relative module edges | 15921 |
 | Non-command slash imports | 0 |
@@ -35,7 +35,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/client | 7 | 3 | @wrongstack/webui-protocol |
 | @wrongstack/codebase-index-mcp | 6 | 5 | @wrongstack/contracts, @wrongstack/core, @wrongstack/mcp, @wrongstack/tools |
 | @wrongstack/contracts | 124 | 2 | @wrongstack/kanban, @wrongstack/primitives |
-| @wrongstack/core | 865 | 868 | @wrongstack/contracts, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
+| @wrongstack/core | 865 | 869 | @wrongstack/contracts, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/desktop | 48 | 35 | @wrongstack/contracts, @wrongstack/core, @wrongstack/webui, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/goal | 22 | 22 | @wrongstack/contracts, @wrongstack/core, @wrongstack/worktree |
 | @wrongstack/governance | 45 | 37 | @wrongstack/persistence |
