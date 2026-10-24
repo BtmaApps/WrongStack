@@ -34,6 +34,11 @@ derive their WebSocket endpoint from the page origin or the host-injected meta.
 
 ## Scope
 
+- Visual starting points for websites, small apps and project improvements. An
+  optional idea and style choice prepare an editable message, appended to any
+  existing draft without sending. A quick tour explains the workflow and links
+  directly to Changes, Settings and the composer. Simple / Extended is available
+  in the workspace header; Simple labels conversation capacity in everyday terms.
 - Streaming chat, Markdown/code, stop, a bounded per-session queue with pause,
   reorder, edit and remove. Steer stops the active run and sends the new direction
   first after its termination is acknowledged.

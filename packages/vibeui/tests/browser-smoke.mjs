@@ -810,12 +810,94 @@ try {
   await page.getByText('Ready', { exact: true }).waitFor();
   await page.locator('.workspace-artwork').waitFor();
   assert.equal(await page.locator('.workspace-artwork').getAttribute('aria-hidden'), 'true');
+  // The friendly launchpad prepares editable messages, preserving the user's work.
+  const launchMessage = page.getByRole('textbox', { name: 'Message', exact: true });
+  const sentBeforeLaunch = received.filter((entry) => entry.type === 'user_message').length;
+  await launchMessage.fill('Keep my own idea too.');
+  await page.getByRole('button', { name: /A useful little app/ }).click();
+  await page.getByLabel('What should your app help people do?').fill('Track my reading goals');
+  await page.getByRole('button', { name: 'Playful & friendly', exact: true }).click();
+  await page.getByRole('button', { name: 'Add to my message', exact: true }).click();
+  await expect(launchMessage).toHaveValue(
+    /Keep my own idea too\.[\s\S]*Track my reading goals[\s\S]*Playful & friendly/,
+  );
+  await expect(launchMessage).toBeFocused();
+  assert.equal(
+    received.filter((entry) => entry.type === 'user_message').length,
+    sentBeforeLaunch,
+    'A starter never sends or starts work',
+  );
+  await launchMessage.fill('');
+  await page.getByRole('button', { name: /Make this project better/ }).click();
+  await page.getByRole('button', { name: 'More visual', exact: true }).click();
+  await page.getByRole('button', { name: /A beautiful website/ }).click();
+  assert.equal(
+    await page
+      .getByRole('button', { name: 'Clean & minimal', exact: true })
+      .getAttribute('aria-pressed'),
+    'false',
+    'Changing the project type clears the previous direction',
+  );
+  await page.getByLabel('What is your website for?').fill('   ');
+  await page.getByRole('button', { name: 'Add to my message', exact: true }).click();
+  await expect(launchMessage).toHaveValue(/^Help me create a website\.\nFirst, ask me/);
+  assert.equal(received.filter((entry) => entry.type === 'user_message').length, sentBeforeLaunch);
+  await launchMessage.fill('');
+  await page.getByLabel('What is your website for?').fill('');
+  const experience = page.locator('.experience-bar');
+  await experience.getByRole('button', { name: 'Extended', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'View context', exact: true })).toContainText(
+    '128K',
+  );
+  assert.equal(
+    await page.evaluate(() => localStorage.getItem('wrongstack.vibeui.detail')),
+    'extended',
+  );
+  await experience.getByRole('button', { name: 'Simple', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'View context', exact: true })).toContainText(
+    'Conversation space',
+  );
+  await page.getByRole('button', { name: 'Quick tour', exact: true }).click();
+  await page.getByRole('heading', { name: 'A little help getting started' }).waitFor();
+  await page.screenshot({
+    path: join(output, 'getting-started-desktop.png'),
+    animations: 'disabled',
+  });
+  await captureNarrowDialog('getting-started');
+  await page.getByRole('button', { name: 'Let’s make something', exact: true }).click();
+  await expect(launchMessage).toBeFocused();
+  await page.getByRole('button', { name: 'Quick tour', exact: true }).click();
+  await page.getByRole('button', { name: 'See changes', exact: true }).click();
+  await expect(page.getByRole('tab', { name: /Changes/ })).toHaveAttribute('data-state', 'active');
+  await page.getByRole('tab', { name: 'Activity', exact: true }).click();
+  await page.getByRole('button', { name: 'Quick tour', exact: true }).click();
+  await page.getByRole('button', { name: 'Adjust my experience', exact: true }).click();
+  await page.getByRole('heading', { name: 'Settings', exact: true }).waitFor();
+  await page.getByRole('button', { name: 'Close dialog', exact: true }).click();
+  await page.locator('.conversation').evaluate((element) => {
+    element.scrollTop = 0;
+  });
+  await expect(page.getByRole('button', { name: 'Latest', exact: true })).toHaveCount(0);
   await page.screenshot({
     path: join(output, 'welcome-desktop-dark.png'),
     fullPage: true,
     animations: 'disabled',
   });
+  await page.getByRole('button', { name: 'Use light theme', exact: true }).click();
+  await page.screenshot({
+    path: join(output, 'welcome-desktop-light.png'),
+    animations: 'disabled',
+  });
+  await page.getByRole('button', { name: 'Use dark theme', exact: true }).click();
   await page.emulateMedia({ reducedMotion: 'reduce' });
+  assert.equal(
+    await page
+      .locator('.concept-chart i')
+      .first()
+      .evaluate((element) => getComputedStyle(element).animationName),
+    'none',
+    'Reduced motion disables the new concept animations',
+  );
   assert.equal(
     await page
       .locator('.art-main-panel')
@@ -830,6 +912,9 @@ try {
   await page.getByRole('button', { name: 'Toggle workspace', exact: true }).click();
   for (const width of [320, 390, 768]) {
     await page.setViewportSize({ width, height: 844 });
+    await page.locator('.conversation').evaluate((element) => {
+      element.scrollTop = 0;
+    });
     assert.equal(
       await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
       false,

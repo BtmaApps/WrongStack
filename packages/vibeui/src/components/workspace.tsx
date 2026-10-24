@@ -2,11 +2,11 @@
 
 import {
   ArrowDown,
-  ArrowUpRight,
   BookOpen,
   Brain,
   Check,
   Command,
+  Compass,
   Copy,
   FileDiff,
   Folder,
@@ -40,17 +40,19 @@ import { ContextDialog } from './context-dialog';
 import { ConversationSearch } from './conversation-search';
 import { Modal, PendingInteractions, Settings } from './dialogs';
 import { FileBrowser } from './file-browser';
+import { GettingStarted } from './getting-started';
 import { InstructionsEditor } from './instructions-editor';
 import { MarkdownContent } from './markdown-content';
 import { EffortSelect, ModelPicker } from './model-picker';
-import { usePresentation } from './presentation-mode';
+import { DetailSwitch, usePresentation } from './presentation-mode';
 import { ProviderManager } from './provider-manager';
 import { ProviderQuotas } from './provider-quotas';
 import { ResourceHub, type ResourceTab } from './resource-hub';
 import { SessionActions } from './session-actions';
 import { SessionWorkStatus } from './session-work-status';
+import { StartSpace } from './start-space';
 import { ToolInspector } from './tool-inspector';
-import { VibeMark, WorkspaceArtwork } from './vibe-visuals';
+import { VibeMark } from './vibe-visuals';
 import { WorkingActivity } from './working-activity';
 import { WorkspaceNotes } from './workspace-notes';
 import { WorkspacePanel } from './workspace-panel';
@@ -64,6 +66,7 @@ export function Workspace() {
   const [panel, setPanel] = useState(true);
   const [inspectedToolId, setInspectedToolId] = useState('');
   const [settings, setSettings] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
   const [contextOpen, setContextOpen] = useState(false);
   const [agentView, setAgentView] = useState(0);
   const [filesOpen, setFilesOpen] = useState(false);
@@ -180,6 +183,12 @@ export function Workspace() {
   const activeSession = state.sessions.find((s) => s.id === state.id);
   const inspectedTool = state.tools.find((tool) => tool.id === inspectedToolId);
   const commands: WorkspaceCommand[] = [
+    {
+      id: 'guide',
+      title: 'Getting started',
+      detail: 'A friendly guide to your creative workspace',
+      run: () => setGuideOpen(true),
+    },
     {
       id: 'chat',
       title: 'Focus message',
@@ -501,6 +510,15 @@ export function Workspace() {
               <button
                 type="button"
                 className="icon-button"
+                aria-label="Getting started"
+                title="Getting started"
+                onClick={() => setGuideOpen(true)}
+              >
+                <Compass size={16} />
+              </button>
+              <button
+                type="button"
+                className="icon-button"
                 aria-label={`Use ${theme === 'dark' ? 'light' : 'dark'} theme`}
                 onClick={toggleTheme}
               >
@@ -566,6 +584,18 @@ export function Workspace() {
               </button>
             </div>
           </header>
+          <div className="experience-bar">
+            <span>
+              <Sparkles size={13} /> Your creative workspace
+            </span>
+            <div>
+              <DetailSwitch />
+              <button type="button" className="experience-guide" onClick={() => setGuideOpen(true)}>
+                <Compass size={14} />
+                <span>Quick tour</span>
+              </button>
+            </div>
+          </div>
           <div className="session-toolbar">
             <div className="model-controls">
               <ModelPicker
@@ -592,19 +622,28 @@ export function Workspace() {
                 <span style={{ width: `${Math.min(100, state.load * 100)}%` }} />
               </span>
               <span className="context-label">
-                {Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(
-                  state.tokens,
-                )}{' '}
-                /{' '}
-                {Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(
-                  state.maxContext,
-                )}{' '}
-                <span className="context-percentage"> · {Math.round(state.load * 100)}%</span>
-                {state.cache && (
-                  <span className="context-cache">
-                    {' '}
-                    · cache {Math.round((state.cache.lastHitRatio ?? state.cache.hitRatio) * 100)}%
-                  </span>
+                {presentation === 'simple' ? (
+                  <>Conversation space · {Math.round(state.load * 100)}%</>
+                ) : (
+                  <>
+                    {Intl.NumberFormat('en', {
+                      notation: 'compact',
+                      maximumFractionDigits: 1,
+                    }).format(state.tokens)}{' '}
+                    /{' '}
+                    {Intl.NumberFormat('en', {
+                      notation: 'compact',
+                      maximumFractionDigits: 1,
+                    }).format(state.maxContext)}{' '}
+                    <span className="context-percentage"> · {Math.round(state.load * 100)}%</span>
+                    {state.cache && (
+                      <span className="context-cache">
+                        {' '}
+                        · cache{' '}
+                        {Math.round((state.cache.lastHitRatio ?? state.cache.hitRatio) * 100)}%
+                      </span>
+                    )}
+                  </>
                 )}
               </span>
             </button>
@@ -668,76 +707,19 @@ export function Workspace() {
             }}
           >
             {!state.messages.length ? (
-              <div className="welcome">
-                <WorkspaceArtwork />
-                <div className="welcome-symbol">
-                  <VibeMark />
-                </div>
-                <div className="eyebrow">A LITTLE SPACE TO MAKE SOMETHING</div>
-                <h1>
-                  What are we building<span> today?</span>
-                </h1>
-                <p>
-                  Start with an idea, a rough edge, or a thing that should exist.
-                  <br />
-                  We’ll take it from there.
-                </p>
-                <div className="starter-grid">
-                  {[
-                    {
-                      title: 'Build something',
-                      icon: Plus,
-                      detail: 'Turn an idea into a first version',
-                      prompt: 'Help me build a new feature. First ask me what I have in mind.',
-                    },
-                    {
-                      title: 'Find the issue',
-                      icon: Search,
-                      detail: 'Make sense of what’s going wrong',
-                      prompt: 'Help me investigate an issue. First ask what behavior I am seeing.',
-                    },
-                    {
-                      title: 'Explore this project',
-                      icon: Folder,
-                      detail: 'Get the lay of the land',
-                      prompt:
-                        'Explore this project and explain its structure and main entry points. Do not modify files.',
-                    },
-                  ].map((starter, index) => (
-                    <button
-                      type="button"
-                      key={starter.title}
-                      disabled={!ready || connection !== 'open' || !state.model}
-                      onClick={() => controller.submit(starter.prompt, [])}
-                    >
-                      <div className="starter-card-heading">
-                        <span className="starter-icon">
-                          <starter.icon size={18} strokeWidth={1.6} />
-                        </span>
-                        <span className="starter-number">0{index + 1}</span>
-                      </div>
-                      <strong>{starter.title}</strong>
-                      <span className="starter-description">
-                        <small>{starter.detail}</small>
-                        <ArrowUpRight size={15} />
-                      </span>
-                    </button>
-                  ))}
-                </div>
-                <span className="welcome-project">
-                  <Folder size={13} />
-                  {state.project || 'Waiting for your workspace'}
-                </span>
-                {ready && !state.model && (
-                  <button
-                    type="button"
-                    className="primary-button"
-                    onClick={() => setProvidersOpen(true)}
-                  >
-                    Connect your first provider
-                  </button>
-                )}
-              </div>
+              <StartSpace
+                key={state.id || 'connecting'}
+                project={state.project}
+                canPrepare={
+                  ready &&
+                  Boolean(state.id) &&
+                  connection === 'open' &&
+                  !controller.sessionTransition
+                }
+                needsProvider={ready && !state.model}
+                onPrepare={controller.prepareDraft}
+                onConnect={() => setProvidersOpen(true)}
+              />
             ) : (
               <div className="transcript">
                 {groupTranscript(
@@ -917,7 +899,7 @@ export function Workspace() {
               }}
             />
           </main>
-          {showLatest && (
+          {showLatest && state.messages.length > 0 && (
             <button
               type="button"
               className="jump-latest"
@@ -967,6 +949,27 @@ export function Workspace() {
           onInstructions={() => {
             setSettings(false);
             setInstructionsOpen(true);
+          }}
+        />
+        <GettingStarted
+          open={guideOpen}
+          onOpenChange={setGuideOpen}
+          onFocus={() => {
+            setGuideOpen(false);
+            requestAnimationFrame(() =>
+              document
+                .querySelector<HTMLTextAreaElement>('textarea[aria-label="Message"]')
+                ?.focus(),
+            );
+          }}
+          onChanges={() => {
+            setGuideOpen(false);
+            setPanel(true);
+            setPanelRequest((value) => ({ tab: 'changes', key: value.key + 1 }));
+          }}
+          onSettings={() => {
+            setGuideOpen(false);
+            setSettings(true);
           }}
         />
         <ContextDialog controller={controller} open={contextOpen} onOpenChange={setContextOpen} />

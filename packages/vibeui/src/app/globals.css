@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "./design-tokens.css";
+@import "./start-space.css";
 
 @theme {
   --font-sans: "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
