@@ -1,12 +1,12 @@
+import { rmSync } from 'node:fs';
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { EventBus } from '@wrongstack/contracts/kernel/events';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { removeProjectFixtureDirectory } from '../../core/tests/helpers/project-server-harness.js';
 import type { MailboxMessage } from '../src/mailbox-types.js';
 import { SqliteMailbox } from '../src/sqlite-mailbox.js';
-
-import { removeProjectFixtureDirectory } from '../../core/tests/helpers/project-server-harness.js';
 
 let dir: string;
 let mb: SqliteMailbox;
@@ -423,6 +423,47 @@ describe('SqliteMailbox autoCompact — combined and edge cases', () => {
     expect(result).toHaveProperty('totalRemoved');
     expect(result).toHaveProperty('remaining');
     expect(typeof result.totalRemoved).toBe('number');
+  });
+});
+
+// ── close lifecycle ───────────────────────────────────────────────────────
+
+describe('SqliteMailbox close lifecycle', () => {
+  it.skipIf(process.platform !== 'win32')(
+    'closes SQLite synchronously when no compaction is active even if the caller does not await',
+    () => {
+      void mb.close();
+
+      expect(() => rmSync(dir, { recursive: true, force: true })).not.toThrow();
+    },
+  );
+
+  it('drains an in-flight autoCompact across concurrent close calls', async () => {
+    let releaseStatuses!: () => void;
+    const statusesReady = new Promise<void>((resolve) => {
+      releaseStatuses = resolve;
+    });
+    vi.spyOn(mb, 'getAgentStatuses').mockImplementation(async () => {
+      await statusesReady;
+      return [];
+    });
+
+    const compaction = mb.autoCompact();
+    const firstClose = mb.close();
+    const secondClose = mb.close();
+    let secondCloseSettled = false;
+    void secondClose.then(() => {
+      secondCloseSettled = true;
+    });
+
+    await Promise.resolve();
+    expect(secondCloseSettled).toBe(false);
+    releaseStatuses();
+    await expect(Promise.all([compaction, firstClose, secondClose])).resolves.toEqual([
+      expect.objectContaining({ totalRemoved: 0, remaining: 0 }),
+      undefined,
+      undefined,
+    ]);
   });
 });
 

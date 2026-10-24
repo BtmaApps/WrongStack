@@ -32,6 +32,26 @@
       "fingerprint": "5ff5b6ad8219d119"
     },
     {
+      "file": "packages/chronicle/tests/metrics-store-sqlite-source.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "1b4c70186dfe382c"
+    },
+    {
+      "file": "packages/chronicle/tests/metrics-store.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "2dcf51c9176eed57"
+    },
+    {
+      "file": "packages/chronicle/tests/metrics-token-attribution.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "830552a86ae53e38"
+    },
+    {
+      "file": "packages/chronicle/tests/project-server-auth-gate.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "b6bed90afffce85b"
+    },
+    {
       "file": "packages/cli/tests/auth-panel-tui-e2e.test.ts",
       "kind": "skipIf",
       "fingerprint": "6ec5e9ce19834641"
@@ -92,26 +112,6 @@
       "fingerprint": "bc732f7e132831e5"
     },
     {
-      "file": "packages/chronicle/tests/metrics-store-sqlite-source.test.ts",
-      "kind": "skipIf",
-      "fingerprint": "1b4c70186dfe382c"
-    },
-    {
-      "file": "packages/chronicle/tests/metrics-store.test.ts",
-      "kind": "skipIf",
-      "fingerprint": "2dcf51c9176eed57"
-    },
-    {
-      "file": "packages/chronicle/tests/metrics-token-attribution.test.ts",
-      "kind": "skipIf",
-      "fingerprint": "830552a86ae53e38"
-    },
-    {
-      "file": "packages/chronicle/tests/project-server-auth-gate.test.ts",
-      "kind": "skipIf",
-      "fingerprint": "b6bed90afffce85b"
-    },
-    {
       "file": "packages/coordination/tests/coordinator-integration-coverage.test.ts",
       "kind": "todo",
       "fingerprint": "1b3cd7293e3e53b8"
@@ -122,6 +122,11 @@
       "fingerprint": "598f7328e65776de"
     },
     {
+      "file": "packages/coordination/tests/mailbox-autocompact.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "cd2c701bcf93d49a"
+    },
+    {
       "file": "packages/coordination/tests/mailbox-project-server-auth-gate.test.ts",
       "kind": "skipIf",
       "fingerprint": "6bdd4173c55aff28"
@@ -130,16 +135,6 @@
       "file": "packages/coordination/tests/package-author-tracker.test.ts",
       "kind": "skipIf",
       "fingerprint": "6c1dfd9f1895e5c4"
-    },
-    {
-      "file": "packages/goal/tests/project-verifier-timeout.test.ts",
-      "kind": "skipIf",
-      "fingerprint": "2f2518778f9e6ff8"
-    },
-    {
-      "file": "packages/hq/tests/auth-store.test.ts",
-      "kind": "skipIf",
-      "fingerprint": "c29fd7d333f936b3"
     },
     {
       "file": "packages/core/tests/infrastructure/path-resolver.test.ts",
@@ -247,14 +242,14 @@
       "fingerprint": "ce77eb6e6cf8860f"
     },
     {
-      "file": "packages/worktree/tests/worktree-manager.test.ts",
+      "file": "packages/goal/tests/project-verifier-timeout.test.ts",
       "kind": "skipIf",
-      "fingerprint": "5fa25ae1a877547c"
+      "fingerprint": "2f2518778f9e6ff8"
     },
     {
-      "file": "packages/worktree/tests/worktree-manager.test.ts",
+      "file": "packages/hq/tests/auth-store.test.ts",
       "kind": "skipIf",
-      "fingerprint": "a869eae099367227"
+      "fingerprint": "c29fd7d333f936b3"
     },
     {
       "file": "packages/kanban/tests/project-server-auth-gate.test.ts",
@@ -975,6 +970,16 @@
       "file": "packages/webui-server/tests/wrongtrace-webui-gate.test.ts",
       "kind": "skipIf",
       "fingerprint": "dfcfaa2f1bf75b6f"
+    },
+    {
+      "file": "packages/worktree/tests/worktree-manager.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "5fa25ae1a877547c"
+    },
+    {
+      "file": "packages/worktree/tests/worktree-manager.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "a869eae099367227"
     },
     {
       "file": "packages/wrongtrace/src/__tests__/client.test.ts",

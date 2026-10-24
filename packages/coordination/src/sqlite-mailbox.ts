@@ -110,6 +110,7 @@ export class SqliteMailbox implements Mailbox {
   private readonly lastClientHeartbeat = new Map<string, number>();
   private autoCompactTimer: NodeJS.Timeout | null = null;
   private autoCompactInFlight: Promise<AutoCompactResult> | undefined;
+  private closePromise: Promise<void> | undefined;
   private closed = false;
 
   constructor(
@@ -662,11 +663,22 @@ export class SqliteMailbox implements Mailbox {
   }
 
   async close(): Promise<void> {
+    if (this.closePromise !== undefined) return this.closePromise;
     if (this.closed) return;
     this.closed = true;
     if (this.autoCompactTimer !== null) clearInterval(this.autoCompactTimer);
     this.autoCompactTimer = null;
-    this.db.close();
+    const inFlightCompaction = this.autoCompactInFlight;
+    if (inFlightCompaction === undefined) {
+      // Preserve the historical close contract for callers that do not await:
+      // with no owned async work, the SQLite handle is released before return.
+      this.db.close();
+      return;
+    }
+    // autoCompact yields after reading agent status, then resumes with more
+    // SQLite work. All concurrent close callers share this one drain.
+    this.closePromise = inFlightCompaction.then(() => undefined).finally(() => this.db.close());
+    return this.closePromise;
   }
 
   private sqliteMailboxQueryHost(): SqliteMailboxQueryHost {
