@@ -1,11 +1,11 @@
 /** Curated public release copy; the version guard requires a refresh on every release. */
 export const releaseHighlights = {
-  version: '1.1.14',
-  title: 'Map the codebase. Trace the change.',
+  version: '1.1.16',
+  title: 'Prove it. Fix it. Ship it.',
   summary:
-    'Four new tools connect repository structure, change impact, execution flows and onboarding. CodeMap 2.0 makes those relationships navigable, while a durable mission anchor keeps follow-ups aligned with the user’s request.',
+    'Six proof-driven hunt modes run beside /bughunt: each loads its playbook skills, proves one defect per round with a failing reproduction on current code, fixes it surgically and clears a verify-before-done quality gate. Kanban git_diff check notes now fail closed on malformed input.',
   socialDescription:
-    'WrongStack 1.1.14: polyglot codebase intelligence, four new tools, CodeMap 2.0 and durable mission continuity, with Git isolation and release security fixes.',
+    'WrongStack 1.1.16: six proof-driven hunt modes beside /bughunt, fail-closed kanban git_diff check notes and single-run vitest worker sizing.',
   cards: [
     {
       title: 'Repository atlas and change impact',

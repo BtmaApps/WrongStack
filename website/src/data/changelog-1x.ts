@@ -1,21 +1,32 @@
-// Changelog — 1.x era (1.1.15 → 1.0.0).
+// Changelog — 1.x era (1.1.16 → 1.0.0).
 // Historical entries mirror CHANGELOG.md release notes. The 1.0.37 entry was
 // written from committed runtime/source evidence (git history and packages), not
 // the root CHANGELOG, which had not been extended when it landed. 1.1.0 absorbs
 // the 1.0.38 bump, which was never published.
 // The 1.1.5 entry summarizes the commits in v1.1.4..v1.1.5, the 1.1.6 entry
 // those in v1.1.5..v1.1.6, and the 1.1.7 entry those in v1.1.6..v1.1.7.
-// The 1.1.13, 1.1.14 and 1.1.15 entries mirror the tagged release notes.
+// The 1.1.13, 1.1.14 and 1.1.15 entries mirror the tagged release notes; the
+// 1.1.16 entry summarizes v1.1.15..v1.1.16.
 // Split out of src/lib/utils.ts.
 
 import type { ChangelogEntry } from './changelog-types';
 
 export const changelog1x: ChangelogEntry[] = [
   {
+    version: '1.1.16',
+    date: '2026-10-24',
+    tagline: 'Proof-driven hunt modes and fail-closed kanban checks',
+    latest: true,
+    highlights: [
+      'Six proof-driven hunt modes beside /bughunt — /sechunt, /racehunt, /debloat, /uipolish, /typehunt and /testgap — each run an evidence-based cycle: load the playbook skills, prove one defect per round with a failing reproduction on current code, fix it surgically, and clear a verify-before-done quality gate',
+      'Kanban git_diff check notes fail closed on malformed input, so unverifiable card evidence can no longer pass as a completed check',
+      'Vitest worker sizing treats -w=false as single-run',
+    ],
+  },
+  {
     version: '1.1.15',
     date: '2026-10-23',
     tagline: 'Git correctness, capability-gated media and SAGE verify-on-mutation',
-    latest: true,
     highlights: [
       'Porcelain paths are scoped to subdirectory projects, commits include only the staged index, C-quoted diff paths are decoded and incomplete VCS file lists are refused',
       'Image and PDF parts reach only models whose capabilities accept them, and media bytes stay out of secret scrubbing',
