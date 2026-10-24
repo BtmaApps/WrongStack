@@ -4,7 +4,7 @@ import { expect, it } from 'vitest';
 import {
   DEFAULT_SESSION_LOGGING_CONFIG,
   DEFAULT_TOOLS_CONFIG,
-} from '../../packages/core/src/types/default-config';
+} from '../../packages/contracts/src/types/default-config';
 import { settingGroups } from '../src/data/content-reference';
 
 const fields = settingGroups.flatMap((group) => group.fields);
