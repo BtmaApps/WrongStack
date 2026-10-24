@@ -1,29 +1,29 @@
 /** Curated public release copy; the version guard requires a refresh on every release. */
 export const releaseHighlights = {
-  version: '1.1.16',
-  title: 'Prove it. Fix it. Ship it.',
+  version: '1.2.0',
+  title: 'See the work. Shape the workspace.',
   summary:
-    'Six proof-driven hunt modes run beside /bughunt: each loads its playbook skills, proves one defect per round with a failing reproduction on current code, fixes it surgically and clears a verify-before-done quality gate. Kanban git_diff check notes now fail closed on malformed input.',
+    'Live model-output activity now reaches the CLI, TUI, SimpleUI and WebUI with shared token, speed and phase readouts. VibeUI adds Cozy, Just chat and Studio views, a personal file shelf and richer explorers, while stronger trust boundaries and companion budgets keep agent work grounded and productive.',
   socialDescription:
-    'WrongStack 1.1.16: six proof-driven hunt modes beside /bughunt, fail-closed kanban git_diff check notes and single-run vitest worker sizing.',
+    'WrongStack 1.2.0: live model-output activity across four interfaces, a calmer VibeUI with file shortcuts, practical companion budgets and stronger trust boundaries.',
   cards: [
     {
-      title: 'Repository atlas and change impact',
-      body: 'codebase-atlas maps hubs and Louvain subsystem communities; codebase-diff-impact connects a change to the parts of the repository it can affect.',
-      href: '/tools/codebase-atlas',
-      linkLabel: 'Explore the codebase atlas',
+      title: 'Live output, one shared language',
+      body: 'CLI, TUI, SimpleUI and WebUI show estimated live tokens, throughput, elapsed time and model or tool phases. Provider usage reconciles completed responses when available.',
+      href: '/interfaces',
+      linkLabel: 'Compare the interfaces',
     },
     {
-      title: 'Execution flows and onboarding',
-      body: 'codebase-flow-trace follows execution paths. codebase-onboard builds a dependency-ordered architectural tour from hubs, subsystem clusters and primary flows.',
-      href: '/tools/codebase-flow-trace',
-      linkLabel: 'Inspect execution flow tracing',
+      title: 'A VibeUI that fits your pace',
+      body: 'Choose Cozy chat, Just chat or Studio without losing your session or draft. Pin handy files, revisit recent work and browse Library and Memory in richer views.',
+      href: '/interfaces',
+      linkLabel: 'Explore VibeUI and the surfaces',
     },
     {
-      title: 'CodeMap 2.0',
-      body: 'Navigate shortest paths, inspect hop-based blast-radius rings, collapse subsystem clusters and start a guided tour or execution-flow trace from the WebUI.',
-      href: '/features/code-intelligence',
-      linkLabel: 'See code intelligence in context',
+      title: 'Agents with clearer boundaries',
+      body: 'Companions get practical working budgets, while memories, repository content, skills and queued previews stay untrusted evidence—not authority over your request or safety rules.',
+      href: '/security',
+      linkLabel: 'Review the security model',
     },
   ],
 } as const;

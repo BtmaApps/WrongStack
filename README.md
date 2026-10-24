@@ -55,24 +55,33 @@ suite. Memory, tools, providers, permissions, and the multi-agent runtime are al
 first-party and work together, on your machine, with no upstream agent to phone
 home to.
 
-### What's new in 1.1.15
+### What's new in 1.2.0
 
-- **Git correctness:** subdirectory projects get correctly scoped paths,
-  commits carry only the staged index, and incomplete file lists are refused.
-- **Capability-gated media:** image and PDF parts reach only models that
-  accept them.
-- **SAGE verify-on-mutation:** edits re-check the memories anchored to the
-  changed files.
-- **Sealed companions:** resident companions stay out of supervision, pulses
-  and worker lanes.
+- **Live model-output activity:** CLI, TUI, SimpleUI and WebUI share live token
+  estimates, throughput, elapsed time and waiting/thinking/receiving/tool phases.
+  Provider usage replaces estimates after completed responses when available.
+- **A calmer VibeUI:** Cozy chat, Just chat and Studio views preserve the active
+  session and draft. Visual starters, a quick tour, richer Library and Memory
+  views, and the optional Stacky companion make the workspace easier to navigate.
+- **Files within reach:** VibeUI adds pinned and recent file shortcuts, type
+  filters, card/tree and single/split views, breadcrumbs and preview downloads.
+- **Companions with room to work:** Explore, Memory and Skill companions inherit
+  practical role budgets, with bounded repository orientation and deeper
+  source-backed memory verification.
+- **Stronger operating boundaries:** untrusted repository and memory content
+  cannot override the active request or safety rules; WrongForge queue waits
+  time out cleanly and shutdown cancels owned remote tasks.
 
-1.1.14 added polyglot codebase intelligence, CodeMap 2.0 and durable mission
-continuity; 1.1.13 added durable MCP tasks, browser element selection, automation
-environments and refreshed runtimes; 1.1.11 added standalone-binary updates, smarter delegation and skills that
-follow the work; 1.1.10 added a measured design layer, DESIGN.md interchange
-and prompt detail levels; 1.1.9 added the SAGE doctor, daemon-owned memory maintenance and AST
-security profiles for twelve more languages; 1.1.8 was a hardening release
-across the daemon, MCP, security gates, VibeUI and Desktop.
+1.1.16 added six proof-driven hunt modes beside `/bughunt`; 1.1.15 fixed Git
+correctness, capability-gated media, SAGE verify-on-mutation and sealed
+companions; 1.1.14 added polyglot codebase intelligence, CodeMap 2.0 and durable
+mission continuity; 1.1.13 added durable MCP tasks, browser element selection,
+automation environments and refreshed runtimes; 1.1.11 added standalone-binary
+updates, smarter delegation and skills that follow the work; 1.1.10 added a
+measured design layer, DESIGN.md interchange and prompt detail levels; 1.1.9
+added the SAGE doctor, daemon-owned memory maintenance and AST security profiles
+for twelve more languages; 1.1.8 was a hardening release across the daemon, MCP,
+security gates, VibeUI and Desktop.
 
 Highlights from **1.1.7**:
 
@@ -352,7 +361,11 @@ full WebUI, built with Next.js and Radix UI and served as prebuilt assets by the
 same host on port 3476. It adds a queued composer with Queue / Steer / BTW,
 provider and account setup, files and diff modals, a live Agents view, provider
 quotas, SAGE memory with a relationship graph and Simple / Extended context
-views. Terminal, browser streams and automation editing stay in the WebUI. See
+views. Cozy chat, Just chat and Studio views preserve the session and draft;
+visual starters, a quick tour, an optional Stacky companion, pinned/recent file
+shortcuts and richer Library and Memory explorers make work easier to navigate.
+Stop-all aborts the active run and its visible workers. Terminal, browser streams
+and automation editing stay in the WebUI. See
 [`packages/vibeui/README.md`](packages/vibeui/README.md).
 
 ---
@@ -366,7 +379,7 @@ required**. Each row links to its full write-up in
 
 | Capability | What you get |
 |------------|--------------|
-| [Tools & code intelligence](docs/capabilities.md#tools--code-intelligence) | 74 built-in tools, a SQLite/FTS5 codebase index with call-graph navigation, dead-code cleanup with rollback, and [ToolFlow](docs/toolflow.md) for scripted tool batches |
+| [Tools & code intelligence](docs/capabilities.md#tools--code-intelligence) | 78 built-in tools, a SQLite/FTS5 codebase index with call-graph navigation, dead-code cleanup with rollback, and [ToolFlow](docs/toolflow.md) for scripted tool batches |
 | [Autonomy & goals](docs/capabilities.md#autonomy--goals) | Scheduled automation jobs, `/goal` loops governed by the Brain, project goal tracking, `/nextsteps`, YOLO/YOLO+ and `/solo` |
 | [Multi-agent fleet + Director](docs/capabilities.md#multi-agent-fleet--director) | A specialist roster under a Director; each subagent has its own budget and a replayable transcript |
 | [Self-improving roster agents](docs/capabilities.md#self-improving-roster-agents) | Roles learn project-specific practice per skill and load the useful parts on the next spawn |
@@ -431,7 +444,7 @@ Full walk-through: [`docs/architecture.md`](docs/architecture.md).
 
 ## Status
 
-- **v1.1.15** — current repository version; semver from 1.0.0 onward
+- **v1.2.0** — current repository version; semver from 1.0.0 onward
 - Distribution: GitHub Releases only (standalone `wstack` binaries + Desktop); npm publishing is retired and the existing npm versions are frozen
 - Full release verification: `bun run release:check` before pushing the `vX.Y.Z` release tag
 - Coverage thresholds (root Vitest): ≥76% lines / ≥75% functions / ≥66% branches / ≥75% statements

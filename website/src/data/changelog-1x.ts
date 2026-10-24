@@ -1,4 +1,4 @@
-// Changelog — 1.x era (1.1.16 → 1.0.0).
+// Changelog — 1.x era (1.2.0 → 1.0.0).
 // Historical entries mirror CHANGELOG.md release notes. The 1.0.37 entry was
 // written from committed runtime/source evidence (git history and packages), not
 // the root CHANGELOG, which had not been extended when it landed. 1.1.0 absorbs
@@ -6,17 +6,32 @@
 // The 1.1.5 entry summarizes the commits in v1.1.4..v1.1.5, the 1.1.6 entry
 // those in v1.1.5..v1.1.6, and the 1.1.7 entry those in v1.1.6..v1.1.7.
 // The 1.1.13, 1.1.14 and 1.1.15 entries mirror the tagged release notes; the
-// 1.1.16 entry summarizes v1.1.15..v1.1.16.
+// 1.1.16 and 1.2.0 entries summarize v1.1.15..v1.1.16 and v1.1.16..1.2.0.
 // Split out of src/lib/utils.ts.
 
 import type { ChangelogEntry } from './changelog-types';
 
 export const changelog1x: ChangelogEntry[] = [
   {
+    version: '1.2.0',
+    date: '2026-10-24',
+    tagline: 'Live model-output activity, a calmer VibeUI and stronger agent boundaries',
+    latest: true,
+    highlights: [
+      'CLI, TUI, SimpleUI and WebUI share live model-output token estimates, throughput, elapsed time and waiting, thinking, receiving or tool-running phases; provider usage reconciles completed responses when available',
+      'VibeUI opens in Cozy chat and adds Just chat and Studio views, visual starters, a quick tour, optional Stacky interactions, persistent workspace preferences and run-wide stop-all controls',
+      'VibeUI file discovery gains type filters, card/tree and single/split views, breadcrumbs, preview downloads, eight pinned shortcuts and five recent files; Library and Memory gain richer searchable views',
+      'Explore, Memory and Skill companions inherit practical role budgets, bounded repository orientation and deeper source navigation, while explicit positive configuration still wins',
+      'WrongForge queue waits have a configurable 120-second default timeout; owned remote tasks are cancelled on timeout or shutdown, and single-shot runs abort on SIGTERM',
+      'Untrusted-input rules now cover repository content, memories, skills, queued previews and fallback candidates, preventing stored or generated text from overriding the active request and safety rules',
+      'WebUI closes accessible-name and heading-hierarchy gaps; aborting a run stops its displayed subagents, TechStack reads package.json workspaces, and mailbox, SAGE, diff and design-gate edge cases are fixed',
+      'Focused workspace packages take over contracts, coordination, agent catalog, built-in plugins, Chronicle, worktree, HQ, goal and management functionality',
+    ],
+  },
+  {
     version: '1.1.16',
     date: '2026-10-24',
     tagline: 'Proof-driven hunt modes and fail-closed kanban checks',
-    latest: true,
     highlights: [
       'Six proof-driven hunt modes beside /bughunt — /sechunt, /racehunt, /debloat, /uipolish, /typehunt and /testgap — each run an evidence-based cycle: load the playbook skills, prove one defect per round with a failing reproduction on current code, fix it surgically, and clear a verify-before-done quality gate',
       'Kanban git_diff check notes fail closed on malformed input, so unverifiable card evidence can no longer pass as a completed check',

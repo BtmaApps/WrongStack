@@ -5,6 +5,54 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] — 2026-10-24
+
+A visibility and workspace release: live model-output activity reaches terminal
+and browser workspaces, VibeUI gains calmer views and richer file browsing, and
+companions receive useful working budgets. Instruction trust boundaries and
+remote-task lifecycle handling are strengthened throughout.
+
+### Added
+
+- **Live model-output activity.** CLI, TUI, SimpleUI and WebUI show a shared view of received model output: estimated live token counts and speed, elapsed time, and waiting, thinking, receiving or tool-running phases. Completed responses use provider usage when available; tool output is never counted as model output.
+- **Cozy VibeUI workspaces.** Cozy chat is the first-visit default, with Just chat and Studio views that preserve the session and draft. Visual starters and a quick tour help begin a task without sending a prepared prompt automatically. Optional introductions, resource cards and the roaming Stacky companion respect saved preferences and reduced motion.
+- **VibeUI file shelf and explorers.** Pin up to eight project files, revisit five recent files, filter by type, switch card/tree and single/split views, follow folder breadcrumbs and download a previewed copy. Library and Memory gain persistent cards/list layouts, search, favorites, kind shortcuts and draft insertion without changing stored records.
+- **WrongForge queue limits.** `providers.wrongforge.queueTimeoutMs` bounds time spent waiting for capacity (120 seconds by default), separately from execution time.
+
+### Changed
+
+- **Companion working budgets.** Explore, Memory and Skill companions inherit practical role budgets instead of discarding useful work at single-lookup limits. Explore can use bounded repository orientation surveys; memory verification can follow relevant symbols and callers. Explicit positive configuration still wins.
+- **Run-wide stopping.** VibeUI's stop-all dialog aborts the active run together with the workers shown on screen, and the WebUI stops subagents still displayed when their run is aborted.
+- **Package boundaries.** Contracts, coordination, agent catalog, built-in plugins, Chronicle, worktree, HQ, goal and management functionality move into focused workspace packages, keeping Core composed over explicit package APIs.
+- **Project environment detection.** Deno, Gradle Kotlin, CMake, Make, Swift, Dart/Flutter and .NET markers join language detection, and the tool coach includes the `language` toolchain check among verification tools.
+
+### Fixed
+
+- **WrongForge lifecycle.** Queue timeouts cancel the owned remote task, interruption waits briefly for cancellation during shutdown, and single-shot runs abort on SIGTERM and retain the error kind in JSON output.
+- **WebUI accessibility.** Placeholder-only form controls receive translated accessible names, dashboard headings keep their hierarchy, and a static regression gate covers unlabeled controls, non-interactive click targets and heading skips.
+- **Runtime and interfaces.** TechStack reads `package.json` workspaces, learned agent directives and anchors exclude fenced JSON, mailbox close drains in-flight auto-compaction, SAGE connection elections stop after client closure, `/dev/null` diff counts are corrected, and the design gate steers only once.
+- **Website toolchain.** The website npm lockfile is refreshed and dependency CI audits that lockfile rather than the root Bun lockfile.
+
+### Security
+
+- **Untrusted-input boundaries.** Agent, goal, delegation, review and fallback instructions consistently treat repository content, memories, skills, queued previews, tool results and candidate model names as untrusted evidence rather than authority. Stored memories must be checked against current source and cannot override baseline rules, safety gates or the active request.
+- **Filesystem boundaries.** WebUI file mutations refuse case-variant spellings of the project root, and agent-state reads recognize Windows 8.3 short names.
+- **Dependencies.** `undici` and `fast-uri` move past the October security advisories.
+
+## [1.1.16] — 2026-10-24
+
+Six proof-driven hunt modes join `/bughunt`, with fail-closed Kanban evidence
+checks and corrected single-run test worker sizing.
+
+### Added
+
+- **Proof-driven hunt modes.** `/sechunt`, `/racehunt`, `/debloat`, `/uipolish`, `/typehunt` and `/testgap` load their playbook skills, prove one defect per round with a failing reproduction on current code, apply a surgical fix and clear a verify-before-done quality gate.
+
+### Fixed
+
+- **Kanban evidence.** `git_diff` check notes fail closed on malformed input instead of accepting unverifiable evidence as a completed check.
+- **Test workers.** Vitest worker sizing treats `-w=false` as single-run.
+
 ## [1.1.15] — 2026-10-23
 
 A correctness release: Git paths in subdirectory projects, capability-gated
