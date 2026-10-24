@@ -268,10 +268,18 @@ describe.skipIf(!DAEMON_UP)('runtime light-subagent WrongTrace gate (SDD-path)',
 
       if (!wt.isAvailable) return;
 
-      const locks = await wt.listLocks();
-      const held = locks.find((l) => sameLockPath(l.path, PROBE_KEY));
       // The lock must actually be claimed; `if (held)` let a missing claim pass.
-      expect(held?.owner).toBe(`wrongstack:${SESSION}`);
+      // Poll, don't sample once: the pre-flight waits on the daemon's
+      // friction query (~4s on a large DB), so under load the HookRunner's 5s
+      // in-process budget can expire first. The runner then fails open and
+      // returns while the claim is still in flight — it lands moments later
+      // (postToolUse awaits it via the pending-claim map).
+      await expect
+        .poll(
+          async () => (await wt.listLocks()).find((l) => sameLockPath(l.path, PROBE_KEY))?.owner,
+          { timeout: 20_000, interval: 250 },
+        )
+        .toBe(`wrongstack:${SESSION}`);
     } finally {
       // preToolUse has already claimed the lock with the hooks' default 900s
       // TTL, so a failing assertion above used to strand it on the daemon

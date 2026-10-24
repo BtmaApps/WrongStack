@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-24T21:02:46.253Z",
+  "generatedAt": "2026-10-24T21:26:50.805Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,7 +13,7 @@
   "summary": {
     "packages": 46,
     "sourceFiles": 5313,
-    "testFiles": 4669,
+    "testFiles": 4672,
     "sourceLines": 1154399,
     "workspaceEdges": 228,
     "moduleEdges": 15808,
@@ -1046,7 +1046,7 @@
       "name": "@wrongstack/vibeui",
       "dir": "packages/vibeui",
       "sourceFiles": 68,
-      "testFiles": 20,
+      "testFiles": 23,
       "workspaceDependencies": [
         "@wrongstack/webui-protocol"
       ],
@@ -1059,7 +1059,7 @@
         {
           "path": "packages/vibeui/tsconfig.test.json",
           "error": null,
-          "testFiles": 20
+          "testFiles": 23
         }
       ]
     },
@@ -23848,6 +23848,12 @@
         ]
       },
       {
+        "file": "packages/vibeui/tests/file-shelf-view.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/vibeui/tests/file-shelf.test.ts",
         "projects": [
           "root-node"
@@ -23872,6 +23878,12 @@
         ]
       },
       {
+        "file": "packages/vibeui/tests/roaming-mascot.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/vibeui/tests/runtime-surfaces.test.ts",
         "projects": [
           "root-node"
@@ -23891,6 +23903,12 @@
       },
       {
         "file": "packages/vibeui/tests/session.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/vibeui/tests/stop-all-dialog.test.ts",
         "projects": [
           "root-node"
         ]

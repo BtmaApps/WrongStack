@@ -116,6 +116,10 @@ describe('startDeferredHttpListen', () => {
       logger,
     });
 
-    expect(boundPort).toBe(48_701);
+    // The pre-bind probe checks real ports, so another process holding 48701
+    // legitimately moves the ladder further; what matters is that the bind
+    // settled past the poisoned port.
+    expect(boundPort).toBeGreaterThan(48_700);
+    expect(server.attempts.some(([port]) => port === 48_700)).toBe(true);
   });
 });
