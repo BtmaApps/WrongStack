@@ -24,7 +24,7 @@ import * as path from 'node:path';
 import {
   chronicleProjectServerEndpoint,
   chronicleProjectServerMetadataPath,
-} from '@wrongstack/core/chronicle';
+} from '@wrongstack/chronicle';
 import {
   mailboxProjectServerEndpoint,
   mailboxProjectServerMetadataPath,

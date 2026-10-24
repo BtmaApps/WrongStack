@@ -60,6 +60,7 @@ function loadPackage(packagePath: string): Map<string, string> {
 const PACKAGES = {
   core: 'packages/core',
   contracts: 'packages/contracts',
+  chronicle: 'packages/chronicle',
   tools: 'packages/tools',
   webui: 'packages/webui-server',
   kanban: 'packages/kanban',
@@ -70,6 +71,7 @@ const PACKAGES = {
 const PKG_FILES: Record<keyof typeof PACKAGES, Map<string, string>> = {
   core: loadPackage(PACKAGES.core),
   contracts: loadPackage(PACKAGES.contracts),
+  chronicle: loadPackage(PACKAGES.chronicle),
   tools: loadPackage(PACKAGES.tools),
   webui: loadPackage(PACKAGES.webui),
   kanban: loadPackage(PACKAGES.kanban),
@@ -173,26 +175,20 @@ describe('RAM-leak caps (audit 2026-07-31)', () => {
     expect(value, file).toBe('32 * 1024 * 1024');
   });
 
-  it('core/file-observer: MAX_RECENT_TOOL_MUTATIONS = 500', () => {
-    const { value, file } = readConst(
-      'core',
-      'chronicle/file-observer.ts:MAX_RECENT_TOOL_MUTATIONS',
-    );
+  it('chronicle/file-observer: MAX_RECENT_TOOL_MUTATIONS = 500', () => {
+    const { value, file } = readConst('chronicle', 'file-observer.ts:MAX_RECENT_TOOL_MUTATIONS');
     expect(value, file).toBe('500');
   });
 
-  it('core/file-observer: SCAN_HASH_CONCURRENCY = 32', () => {
-    const { value, file } = readConst(
-      'core',
-      'chronicle/file-observer-scan.ts:SCAN_HASH_CONCURRENCY',
-    );
+  it('chronicle/file-observer: SCAN_HASH_CONCURRENCY = 32', () => {
+    const { value, file } = readConst('chronicle', 'file-observer-scan.ts:SCAN_HASH_CONCURRENCY');
     expect(value, file).toBe('32');
   });
 
-  it('core/file-observer: DEFAULT_FULL_RESCAN_MIN_INTERVAL_MS = 30_000', () => {
+  it('chronicle/file-observer: DEFAULT_FULL_RESCAN_MIN_INTERVAL_MS = 30_000', () => {
     const { value, file } = readConst(
-      'core',
-      'chronicle/file-observer.ts:DEFAULT_FULL_RESCAN_MIN_INTERVAL_MS',
+      'chronicle',
+      'file-observer.ts:DEFAULT_FULL_RESCAN_MIN_INTERVAL_MS',
     );
     expect(value, file).toBe('30_000');
   });

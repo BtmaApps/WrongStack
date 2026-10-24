@@ -203,10 +203,6 @@
       "types": "./dist/performance/index.d.ts",
       "import": "./dist/performance/index.js"
     },
-    "./chronicle": {
-      "types": "./dist/chronicle/index.d.ts",
-      "import": "./dist/chronicle/index.js"
-    },
     "./worktree": {
       "types": "./dist/worktree/index.d.ts",
       "import": "./dist/worktree/index.js"

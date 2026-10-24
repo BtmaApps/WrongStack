@@ -372,7 +372,7 @@ export interface SlashCommandContext extends SlashFleetCommandContext, SlashSddG
    * in-process event-bridge Map is used as fallback.
    */
   getChronicle?:
-    | (() => import('@wrongstack/core/chronicle').ChronicleMetricsStore | undefined)
+    | (() => import('@wrongstack/chronicle').ChronicleMetricsStore | undefined)
     | undefined;
   /**
    * Optional accessor for the in-process per-tool usage Map populated by

@@ -5,7 +5,7 @@ const { createChronicleProjectAccess } = vi.hoisted(() => ({
   createChronicleProjectAccess: vi.fn(),
 }));
 
-vi.mock('@wrongstack/core/chronicle', () => ({ createChronicleProjectAccess }));
+vi.mock('@wrongstack/chronicle', () => ({ createChronicleProjectAccess }));
 
 import { chronicleCmd } from '../../src/subcommands/handlers/chronicle.js';
 

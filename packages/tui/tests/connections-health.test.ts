@@ -38,7 +38,7 @@ vi.mock('@wrongstack/runtime/governance-bootstrap', () => ({
   readGovernanceDaemonOperatorStatus: mocks.readGovernanceDaemonOperatorStatus,
 }));
 
-vi.mock('@wrongstack/core/chronicle', () => ({
+vi.mock('@wrongstack/chronicle', () => ({
   createChronicleProjectAccess: mocks.createChronicleProjectAccess,
 }));
 

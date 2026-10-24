@@ -23,7 +23,7 @@ const {
   };
 });
 
-vi.mock('@wrongstack/core/chronicle', () => ({
+vi.mock('@wrongstack/chronicle', () => ({
   chronicleProjectServerMetadataPath,
   compactChronicleSqlite,
   createChronicleProjectAccess,

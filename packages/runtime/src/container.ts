@@ -9,9 +9,11 @@ import {
   AGENT_COORDINATION,
   DefaultSystemPromptBuilder,
   type DefaultSystemPromptBuilderOptions,
+  CHRONICLE_FILE_LINEAGE,
   FallbackProfileManager,
   HQ_MAILBOX_PUBLISHER_FACTORY,
 } from '@wrongstack/core/agent';
+import { readChronicleFileLineage } from '@wrongstack/chronicle';
 import { defaultAgentCoordination } from '@wrongstack/core/agent-coordination';
 import { createHqPublisherFromEnv } from '@wrongstack/hq';
 import { ProviderModelStatusTracker } from '@wrongstack/core/coordination';
@@ -96,6 +98,8 @@ export function createDefaultContainer(opts: CreateContainerOptions): Container 
   container.bind(AGENT_COORDINATION, () => defaultAgentCoordination);
   // HQ mirror of the project mailbox; returns undefined while HQ is off.
   container.bind(HQ_MAILBOX_PUBLISHER_FACTORY, () => createHqPublisherFromEnv);
+  // Review provenance reads the Chronicle file-lineage projection.
+  container.bind(CHRONICLE_FILE_LINEAGE, () => readChronicleFileLineage);
   container.bind(TOKENS.SecretScrubber, () => new DefaultSecretScrubber());
   container.bind(TOKENS.RetryPolicy, () => new DefaultRetryPolicy());
   // Wire the compactor into the recovery chain so a 413 / context-overflow

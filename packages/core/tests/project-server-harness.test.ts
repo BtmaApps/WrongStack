@@ -51,7 +51,7 @@ import {
 import {
   chronicleProjectServerEndpoint,
   chronicleProjectServerMetadataPath,
-} from '../src/chronicle/project-server-endpoint.js';
+} from '../../chronicle/src/project-server-endpoint.js';
 import {
   mailboxProjectServerEndpoint,
   mailboxProjectServerMetadataPath,
@@ -247,7 +247,7 @@ const CASES: HarnessCase[] = [
   },
   {
     name: 'chronicle',
-    moduleUrl: '../../src/chronicle/project-server.ts',
+    moduleUrl: '../../../chronicle/src/project-server.ts',
     args: CHRONICLE_ARGS,
     endpoint: (root) => chronicleProjectServerEndpoint(root),
     metadataPath: (root) => chronicleProjectServerMetadataPath(root),
@@ -259,7 +259,7 @@ const CASES: HarnessCase[] = [
     watch: 'health', // file observer started at listen; exposed via health
     start: (root, nonce, shortIdle) =>
       importDaemonInstance(
-        '../../src/chronicle/project-server.ts',
+        '../../../chronicle/src/project-server.ts',
         CHRONICLE_ARGS(root),
         nonce,
         shortIdle ? 'WRONGSTACK_CHRONICLE_SERVER_IDLE_MS' : null,

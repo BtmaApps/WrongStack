@@ -160,7 +160,7 @@ describe('the shipped rules', () => {
     // Both were real false positives caught by scanning the rules against this
     // repository's 8632 tracked files before shipping them.
     expect(fires('packages/core/src/coordination/brain-ledger.ts')).toEqual([]);
-    expect(fires('packages/core/src/chronicle/metrics-schema.ts')).toEqual([]);
+    expect(fires('packages/chronicle/src/metrics-schema.ts')).toEqual([]);
   });
 
   it('names a role for every rule and a reason the woken agent can act on', () => {

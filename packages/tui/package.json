@@ -37,6 +37,7 @@
     "clean": "bun -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\""
   },
   "dependencies": {
+    "@wrongstack/chronicle": "workspace:*",
     "@wrongstack/contracts": "workspace:*",
     "@wrongstack/core": "workspace:*",
     "@wrongstack/goal": "workspace:*",

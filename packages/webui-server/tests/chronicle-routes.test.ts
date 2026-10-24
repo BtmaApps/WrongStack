@@ -1,4 +1,4 @@
-import type { ChronicleProjectAccess } from '@wrongstack/core/chronicle';
+import type { ChronicleProjectAccess } from '@wrongstack/chronicle';
 import { describe, expect, it, vi } from 'vitest';
 import type { WebSocket } from 'ws';
 import {

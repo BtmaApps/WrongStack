@@ -12,9 +12,9 @@
  */
 
 import type {
-  ChronicleMetricsStore,
   ChronicleUnderusedToolRow,
-} from '../chronicle/metrics-store.js';
+  ChronicleUnderusedToolsReader,
+} from '@wrongstack/contracts/types/chronicle-metrics';
 import type { ToolUsageSnapshot } from './event-bridge.js';
 
 export interface UnderusedToolCandidate {
@@ -52,7 +52,7 @@ export interface ToolUsageSource {
 }
 
 export interface CreateToolUsageSourceDeps {
-  chronicle?: ChronicleMetricsStore | undefined;
+  chronicle?: ChronicleUnderusedToolsReader | undefined;
   bridge?: ToolUsageSnapshot | undefined;
   /**
    * Wall-clock anchor for "days since last use". Defaults to `Date.now()`. Tests
@@ -68,7 +68,7 @@ function daysBetween(later: number, earlier: number): number {
 }
 
 function chronicleCandidates(
-  store: ChronicleMetricsStore,
+  store: ChronicleUnderusedToolsReader,
   opts: UnderusedQueryOptions,
   now: number,
 ): UnderusedToolCandidate[] {

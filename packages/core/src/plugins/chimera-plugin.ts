@@ -6,6 +6,7 @@ import type { EventBus } from '@wrongstack/contracts/kernel/events';
 import type { Plugin } from '@wrongstack/contracts/types/plugin';
 import type { SlashCommand } from '@wrongstack/contracts/types/slash-command';
 import { gitIsolationEnv } from '@wrongstack/primitives';
+import { resolveChronicleFileLineage } from '../core/agent-coordination.js';
 import { toErrorMessage } from '../utils/error.js';
 import { readBundledInstructionText } from '../utils/instruction-file.js';
 import { projectSlug } from '../utils/wstack-paths.js';
@@ -434,6 +435,7 @@ export function createChimeraPlugin(): Plugin {
             // ── Build enriched review context (diffs, siblings, commits) ──
             const bundle: ReviewContextBundle = await buildReviewContext({
               cwd,
+              fileLineage: resolveChronicleFileLineage(api.container),
               config: cfg,
               files: filesWithContent,
               cascadeOn: cfg.cascadeOn,

@@ -71,7 +71,6 @@ export {
   bootConfig,
   flagsToConfigPatch,
 } from './boot.js';
-export * from './chronicle/index.js';
 export {
   Agent,
   type AgentInit,

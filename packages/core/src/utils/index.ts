@@ -302,3 +302,4 @@ export { DEFAULT_WALK_IGNORE_DIRS, DEFAULT_WALK_IGNORE_SET } from './walk-ignore
 export { buildWin32CmdShimInvocation, type Win32CmdShimInvocation } from './win32-cmd.js';
 export { hardenWin32ExecutableSearch, NO_CWD_EXE_SEARCH_ENV } from './win32-exe-search.js';
 export * from './wstack-paths.js';
+export { createChroniclePromptManifest } from './chronicle-prompt-manifest.js';

@@ -63,10 +63,10 @@ const DAEMONS: readonly DaemonSpec[] = [
   },
   {
     name: 'chronicle',
-    endpointModule: 'packages/core/src/chronicle/project-server-endpoint.ts',
-    accessModule: 'packages/core/src/chronicle/project-access.ts',
+    endpointModule: 'packages/chronicle/src/project-server-endpoint.ts',
+    accessModule: 'packages/chronicle/src/project-access.ts',
     inlineEnv: 'WRONGSTACK_CHRONICLE_INLINE',
-    serverModule: 'packages/core/src/chronicle/project-server.ts',
+    serverModule: 'packages/chronicle/src/project-server.ts',
   },
   {
     name: 'codebase-index',
@@ -319,7 +319,7 @@ describe('project daemon boundary', () => {
   });
 
   it('routes chronicle telemetry into SQLite rather than a JSONL journal', async () => {
-    const identity = await readSource('packages/core/src/chronicle/identity.ts');
+    const identity = await readSource('packages/chronicle/src/identity.ts');
     const writesJsonl = /\.events\.jsonl/u.test(identity);
 
     // Chronicle is the one subsystem whose primary stream is still JSONL —

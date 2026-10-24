@@ -16,8 +16,8 @@
  */
 import { describe, expect, it } from 'vitest';
 import { checkUnixSocketPath } from '@wrongstack/persistence';
-import { chronicleProjectServerEndpoint } from '../../src/chronicle/project-server-endpoint.js';
-import { CHRONICLE_PROJECT_SERVER_PROTOCOL_VERSION } from '../../src/chronicle/project-server-protocol.js';
+import { chronicleProjectServerEndpoint } from '../../../chronicle/src/project-server-endpoint.js';
+import { CHRONICLE_PROJECT_SERVER_PROTOCOL_VERSION } from '../../../chronicle/src/project-server-protocol.js';
 import { mailboxProjectServerEndpoint } from '../../src/coordination/mailbox-project-server-endpoint.js';
 import { MAILBOX_PROJECT_SERVER_PROTOCOL_VERSION } from '../../src/coordination/mailbox-project-server-protocol.js';
 

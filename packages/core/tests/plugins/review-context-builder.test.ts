@@ -322,6 +322,67 @@ describe('buildReviewContext', () => {
     expect(result.fileProvenance).toBeUndefined();
   });
 
+  it('builds fileProvenance from the host-bound lineage reader', async () => {
+    // Chronicle lives above the review plugins; the composition root injects
+    // the lineage lookup. Path matching ignores case and separator style.
+    const asked: Array<readonly string[]> = [];
+    const result = await buildReviewContext({
+      cwd: tmpDir,
+      config: MOCK_CONFIG,
+      files: [
+        { path: 'src\\Initial.txt', status: 'modified', content: 'test' },
+        { path: 'untracked.txt', status: 'added', content: 'x' },
+      ],
+      fileLineage: async (projectRoot, paths) => {
+        expect(projectRoot).toBe(tmpDir);
+        asked.push(paths);
+        return [
+          {
+            path: 'src/initial.txt',
+            operation: 'modified',
+            occurredAt: '2026-10-24T00:00:00.000Z',
+            sessionId: 's1',
+            agentId: 'worker-1',
+            taskId: 'task-7',
+            boardId: '',
+            runId: '',
+            toolName: 'edit',
+            providerId: '',
+            modelId: '',
+            logicalRequestId: '',
+            promptManifestId: '',
+            provenanceConfidence: 'explicit',
+            source: 'external',
+          },
+        ];
+      },
+    });
+
+    expect(asked).toEqual([['src\\Initial.txt', 'untracked.txt']]);
+    expect(result.fileProvenance).toEqual([
+      {
+        path: 'src\\Initial.txt',
+        agentId: 'worker-1',
+        taskId: 'task-7',
+        eventType: 'file.external.modified',
+        observedAt: '2026-10-24T00:00:00.000Z',
+      },
+    ]);
+  });
+
+  it('leaves fileProvenance undefined when the lineage reader fails', async () => {
+    const result = await buildReviewContext({
+      cwd: tmpDir,
+      config: MOCK_CONFIG,
+      files: [{ path: 'initial.txt', status: 'modified', content: 'test' }],
+      fileLineage: async () => {
+        throw new Error('chronicle unavailable');
+      },
+    });
+
+    expect(result.fileProvenance).toBeUndefined();
+  });
+
   it('includes all P1 fields in the returned bundle shape', async () => {
     const result = await buildReviewContext({
       cwd: tmpDir,

@@ -3,6 +3,7 @@ import type { TextBlock } from '@wrongstack/contracts/types/blocks';
 import type { FleetConfig } from '@wrongstack/contracts/types/config';
 import type { AgentContext } from '@wrongstack/contracts/types/context';
 import type { Logger } from '@wrongstack/contracts/types/logger';
+import type { ChronicleFileLineageReader } from '@wrongstack/contracts/types/chronicle-metrics';
 import type { MailboxHqPublisherFactory } from '@wrongstack/contracts/types/hq-mailbox-publisher';
 import type { MailboxMessage } from '@wrongstack/contracts/types/mailbox';
 
@@ -72,6 +73,26 @@ export function resolveHqMailboxPublisherFactory(
   try {
     return typeof container?.has === 'function' && container.has(HQ_MAILBOX_PUBLISHER_FACTORY)
       ? container.resolve(HQ_MAILBOX_PUBLISHER_FACTORY)
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Chronicle file-lineage lookup used for review provenance. Chronicle lives
+ * above the review plugins, so hosts bind it; unbound means no provenance.
+ */
+export const CHRONICLE_FILE_LINEAGE = Symbol.for(
+  '@wrongstack/core/agent#ChronicleFileLineage',
+) as Token<ChronicleFileLineageReader>;
+
+export function resolveChronicleFileLineage(
+  container: Pick<Container, 'has' | 'resolve'> | undefined,
+): ChronicleFileLineageReader | undefined {
+  try {
+    return typeof container?.has === 'function' && container.has(CHRONICLE_FILE_LINEAGE)
+      ? container.resolve(CHRONICLE_FILE_LINEAGE)
       : undefined;
   } catch {
     return undefined;

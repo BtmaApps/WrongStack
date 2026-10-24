@@ -75,6 +75,7 @@ export function coreAliases(corePackageDir) {
   // `@wrongstack/hq` (extracted from core/src/hq) likewise.
   aliases['@wrongstack/hq'] = resolve(corePackageDir, '../hq/src');
   aliases['@wrongstack/goal'] = resolve(corePackageDir, '../goal/src');
+  aliases['@wrongstack/chronicle'] = resolve(corePackageDir, '../chronicle/src');
 
   // Bare alias LAST: prefix-matching means '@wrongstack/core' catches any
   // sub-path that wasn't explicitly aliased above, resolving to

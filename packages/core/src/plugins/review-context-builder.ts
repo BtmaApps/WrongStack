@@ -1,8 +1,10 @@
 import { spawn } from 'node:child_process';
 import type { KanbanTask } from '@wrongstack/kanban';
 import { gitIsolationEnv } from '@wrongstack/primitives';
-import type { ChronicleFileLineageRow } from '../chronicle/metrics-store.js';
-import { createChronicleProjectAccess } from '../chronicle/project-access.js';
+import type {
+  ChronicleFileLineageReader,
+  ChronicleFileLineageRow,
+} from '@wrongstack/contracts/types/chronicle-metrics';
 import type {
   ResolvedChimeraConfig,
   ReviewContextBundle,
@@ -137,6 +139,11 @@ export interface BuildReviewContextOptions {
    */
   activeTodos?: Array<{ id: string; content: string; status: string }> | undefined;
   /**
+   * Chronicle file-lineage lookup for provenance (host-bound, see
+   * `CHRONICLE_FILE_LINEAGE`). Absent: the bundle carries no provenance.
+   */
+  fileLineage?: ChronicleFileLineageReader | undefined;
+  /**
    * Cascade severity threshold from the auto-review plugin config.
    * Threaded into the bundle so execution.ts and the cascade listener
    * can decide whether findings warrant a follow-up agent. Absent for
@@ -229,7 +236,7 @@ export async function buildReviewContext(
   let fileProvenance: ReviewContextBundle['fileProvenance'];
   try {
     const paths = opts.files.map((f) => f.path);
-    fileProvenance = await findFileProvenance(cwd, paths);
+    fileProvenance = await findFileProvenance(cwd, paths, opts.fileLineage);
     if (fileProvenance.length === 0) fileProvenance = undefined;
   } catch {
     // chronicle not configured or journal unreadable — leave undefined
@@ -307,59 +314,31 @@ async function findActiveKanbanCard(
 // ---------------------------------------------------------------------------
 
 /**
- * Query the Chronicle journal for the most recent event touching each
- * changed file path. Returns agent/session/task attribution so the
- * reviewer knows WHO made the change and in what task context.
- *
- * Uses the canonical per-project Chronicle gateway. Best-effort: returns []
- * if Chronicle isn't available or the journal is empty.
+ * Most recent Chronicle event touching each changed file path: agent/task
+ * attribution so the reviewer knows WHO made the change and in what task
+ * context. The lineage reader is host-bound (`CHRONICLE_FILE_LINEAGE`); without
+ * one there is no provenance. Provenance enriches a review, it never gates one.
  */
 async function findFileProvenance(
   projectRoot: string,
   filePaths: string[],
+  readLineage: ChronicleFileLineageReader | undefined,
 ): Promise<NonNullable<ReviewContextBundle['fileProvenance']>> {
-  if (filePaths.length === 0) return [];
-
-  // Chronicle now raises rather than silently handing back a process-local
-  // journal, so obtaining the gateway is itself a failure point. Provenance
-  // enriches a review; it never gates one.
-  let access: ReturnType<typeof createChronicleProjectAccess>;
-  try {
-    access = createChronicleProjectAccess({ projectRoot });
-  } catch {
-    return [];
-  }
+  if (filePaths.length === 0 || !readLineage) return [];
+  const uniquePaths = [...new Set(filePaths)];
+  const rows = await readLineage(projectRoot, uniquePaths);
+  const byPath = new Map(rows.map((row) => [normalizeReviewPath(row.path), row] as const));
   const provenance: NonNullable<ReviewContextBundle['fileProvenance']> = [];
-  try {
-    // Read the derived SQLite lineage projection in one indexed query. The old
-    // loop performed one full reverse scan of every raw Chronicle partition
-    // per file — an 80-file review over a multi-GB journal could pin a CPU
-    // core and allocate Buffers/strings inside the TUI process for minutes.
-    const uniquePaths = [...new Set(filePaths)];
-    const result = await access.call('metrics', {
-      view: 'files',
-      refresh: false,
-      files: {
-        paths: uniquePaths,
-        latestPerPath: true,
-        limit: Math.min(10_000, uniquePaths.length),
-      },
+  for (const filePath of uniquePaths) {
+    const row = byPath.get(normalizeReviewPath(filePath));
+    if (!row) continue;
+    provenance.push({
+      path: filePath,
+      agentId: row.agentId || undefined,
+      taskId: row.taskId || undefined,
+      eventType: lineageEventType(row),
+      observedAt: row.occurredAt,
     });
-    const rows = result.data as ChronicleFileLineageRow[];
-    const byPath = new Map(rows.map((row) => [normalizeReviewPath(row.path), row] as const));
-    for (const filePath of uniquePaths) {
-      const row = byPath.get(normalizeReviewPath(filePath));
-      if (!row) continue;
-      provenance.push({
-        path: filePath,
-        agentId: row.agentId || undefined,
-        taskId: row.taskId || undefined,
-        eventType: lineageEventType(row),
-        observedAt: row.occurredAt,
-      });
-    }
-  } finally {
-    await access.close();
   }
   return provenance;
 }

@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 // `test` script runs vitest with --root ../.. from the package directory).
 const ROOT = path.resolve(fileURLToPath(new URL('../../../..', import.meta.url)));
 const SCAN_ROOTS = ['packages', 'apps'];
-const CHRONICLE_AUTHORITY = 'packages/core/src/chronicle/';
+const CHRONICLE_AUTHORITY = 'packages/chronicle/src/';
 
 async function productionTypeScriptFiles(root: string): Promise<string[]> {
   let entries;

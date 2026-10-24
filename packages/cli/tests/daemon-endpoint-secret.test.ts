@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { chronicleProjectServerEndpoint } from '@wrongstack/core/chronicle';
+import { chronicleProjectServerEndpoint } from '@wrongstack/chronicle';
 import { mailboxProjectServerEndpoint } from '@wrongstack/core/coordination';
 import { sessionCatalogProjectServerEndpoint } from '@wrongstack/core/session-catalog';
 import { governanceProjectServerEndpoint } from '@wrongstack/governance';

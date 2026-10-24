@@ -322,3 +322,4 @@ export {
   type ToolAuditLogOptions,
   type VerifyResult,
 } from './tool-audit-log.js';
+export { mapWithConcurrency } from './storage-concurrency.js';

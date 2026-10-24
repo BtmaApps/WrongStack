@@ -56,7 +56,7 @@ vi.mock('@wrongstack/core/session-catalog', () => ({
   },
 }));
 
-vi.mock('@wrongstack/core/chronicle', () => ({
+vi.mock('@wrongstack/chronicle', () => ({
   ChronicleProjectServerClient: class {
     endpoint = 'chronicle-endpoint';
     shutdown = mocks.chronicleShutdown;

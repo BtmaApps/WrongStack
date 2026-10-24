@@ -48,7 +48,7 @@ async function runDaemon(name) {
   switch (name) {
     // These modules start their server on import.
     case 'chronicle':
-      await import('../../packages/core/dist/chronicle/project-server.js');
+      await import('../../packages/chronicle/dist/project-server.js');
       return;
     case 'mailbox':
       await import('../../packages/core/dist/coordination/mailbox-project-server.js');

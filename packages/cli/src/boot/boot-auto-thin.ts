@@ -14,7 +14,7 @@
 
 import type { EventBus } from '@wrongstack/contracts/kernel';
 import type { AutoThinConfig, ConfigStore, DisabledToolMeta } from '@wrongstack/contracts/types';
-import type { ChronicleMetricsStore } from '@wrongstack/core/chronicle';
+import type { ChronicleMetricsStore } from '@wrongstack/chronicle';
 import {
   createToolUsageSource,
   filterUnderused,

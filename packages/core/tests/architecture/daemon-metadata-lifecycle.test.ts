@@ -35,7 +35,7 @@ const repoRoot = resolve(import.meta.dirname, '../../../..');
 /** Every per-project daemon that owns an endpoint + metadata file. */
 const DAEMONS = [
   'packages/core/src/coordination/mailbox-project-server.ts',
-  'packages/core/src/chronicle/project-server.ts',
+  'packages/chronicle/src/project-server.ts',
   'packages/sage/src/project-server.ts',
 ] as const;
 
@@ -52,7 +52,7 @@ function code(text: string): string {
 }
 
 describe('Chronicle shutdown acknowledgement', () => {
-  const body = code(source('packages/core/src/chronicle/project-server.ts'));
+  const body = code(source('packages/chronicle/src/project-server.ts'));
 
   it('flushes the shutdown response before stopping the server', () => {
     expect(body).toMatch(

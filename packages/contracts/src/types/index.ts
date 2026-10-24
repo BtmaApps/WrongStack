@@ -288,6 +288,13 @@ export type {
 } from './image-generation.js';
 // ── input-reader (2 symbols) ──
 export type { InputReader, PromptOption, ReadKeyOptions } from './input-reader.js';
+// ── chronicle-metrics (4 symbols) ──
+export type {
+  ChronicleFileLineageReader,
+  ChronicleFileLineageRow,
+  ChronicleUnderusedToolRow,
+  ChronicleUnderusedToolsReader,
+} from './chronicle-metrics.js';
 // ── hq-mailbox-publisher (5 symbols) ──
 export type {
   HqMailboxEventAction,

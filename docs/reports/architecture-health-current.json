@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-24T14:47:45.495Z",
+  "generatedAt": "2026-10-24T14:49:08.068Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -11,12 +11,12 @@
     ]
   },
   "summary": {
-    "packages": 41,
-    "sourceFiles": 5283,
+    "packages": 42,
+    "sourceFiles": 5286,
     "testFiles": 4654,
-    "sourceLines": 1150819,
-    "workspaceEdges": 184,
-    "moduleEdges": 16021,
+    "sourceLines": 1150922,
+    "workspaceEdges": 192,
+    "moduleEdges": 16004,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 3,
@@ -24,15 +24,11 @@
     "testsWithMultipleTypechecks": 0,
     "testOnlyExports": 970
   },
-  "errors": [
-    "packages/vibeui/src/components/workspace.tsx: hotspot grew from 1100 to 1103 lines; review and update the ratchet in the same change",
-    "packages/vibeui/src/components/workspace.tsx: relative import fan-out increased from 27 to 29; review and update the ratchet in the same change"
-  ],
+  "errors": [],
   "packageCycles": [],
   "coreAreas": {
     "actual": [
       "brain",
-      "chronicle",
       "coordination",
       "core",
       "design",
@@ -65,7 +61,6 @@
     ],
     "registered": [
       "brain",
-      "chronicle",
       "coordination",
       "core",
       "design",
@@ -145,6 +140,30 @@
       ]
     },
     {
+      "name": "@wrongstack/chronicle",
+      "dir": "packages/chronicle",
+      "sourceFiles": 52,
+      "testFiles": 43,
+      "workspaceDependencies": [
+        "@wrongstack/contracts",
+        "@wrongstack/core",
+        "@wrongstack/persistence",
+        "@wrongstack/primitives"
+      ],
+      "tsconfigs": [
+        {
+          "path": "packages/chronicle/tsconfig.json",
+          "error": null,
+          "testFiles": 0
+        },
+        {
+          "path": "packages/chronicle/tsconfig.test.json",
+          "error": null,
+          "testFiles": 43
+        }
+      ]
+    },
+    {
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
       "sourceFiles": 676,
@@ -152,6 +171,7 @@
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
+        "@wrongstack/chronicle",
         "@wrongstack/codebase-index-mcp",
         "@wrongstack/contracts",
         "@wrongstack/core",
@@ -248,7 +268,7 @@
     {
       "name": "@wrongstack/contracts",
       "dir": "packages/contracts",
-      "sourceFiles": 123,
+      "sourceFiles": 124,
       "testFiles": 2,
       "workspaceDependencies": [
         "@wrongstack/kanban",
@@ -270,8 +290,8 @@
     {
       "name": "@wrongstack/core",
       "dir": "packages/core",
-      "sourceFiles": 954,
-      "testFiles": 942,
+      "sourceFiles": 904,
+      "testFiles": 899,
       "workspaceDependencies": [
         "@wrongstack/contracts",
         "@wrongstack/kanban",
@@ -287,7 +307,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 942
+          "testFiles": 899
         }
       ]
     },
@@ -656,6 +676,7 @@
       "sourceFiles": 35,
       "testFiles": 34,
       "workspaceDependencies": [
+        "@wrongstack/chronicle",
         "@wrongstack/contracts",
         "@wrongstack/core",
         "@wrongstack/governance",
@@ -883,6 +904,7 @@
       "sourceFiles": 496,
       "testFiles": 429,
       "workspaceDependencies": [
+        "@wrongstack/chronicle",
         "@wrongstack/contracts",
         "@wrongstack/core",
         "@wrongstack/goal",
@@ -1045,6 +1067,7 @@
       "sourceFiles": 304,
       "testFiles": 308,
       "workspaceDependencies": [
+        "@wrongstack/chronicle",
         "@wrongstack/contracts",
         "@wrongstack/core",
         "@wrongstack/goal",
@@ -2074,6 +2097,264 @@
       },
       {
         "file": "packages/bench/tests/transcript-mine.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/chronicle/tests/chronicle-project-server-client.gaps.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/chronicle/tests/chronicle-silent-client.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/chronicle/tests/chronicle-stop-drain.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/chronicle/tests/counter-sink.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/chronicle/tests/decision-adapter.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/chronicle/tests/domain-adapter.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/chronicle/tests/file-observer-io.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/chronicle/tests/file-observer.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/chronicle/tests/file-tool-stats.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/chronicle/tests/health-monitor.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/chronicle/tests/identity.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/chronicle/tests/journal.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/chronicle/tests/legacy-journal-import.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/chronicle/tests/metrics-limit-clamp.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/chronicle/tests/metrics-retention.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/chronicle/tests/metrics-store-sqlite-source.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/chronicle/tests/metrics-store.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/chronicle/tests/metrics-token-attribution.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/chronicle/tests/network-telemetry-stop-inflight.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/chronicle/tests/network-telemetry.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/chronicle/tests/payload-codec.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/chronicle/tests/process-adapter.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/chronicle/tests/project-access-open-retry.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/chronicle/tests/project-access.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/chronicle/tests/project-server-auth-gate.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/chronicle/tests/project-server-client-close.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/chronicle/tests/project-server-client-entrypoint-transient.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/chronicle/tests/project-server-client.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/chronicle/tests/prompt-manifest.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/chronicle/tests/provider-adapter.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/chronicle/tests/query.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/chronicle/tests/remote-journal-batch-bound.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/chronicle/tests/review-adapter.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/chronicle/tests/rollup-adapter.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/chronicle/tests/rollup-gauge-window.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/chronicle/tests/sqlite-compaction.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/chronicle/tests/sqlite-journal.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/chronicle/tests/sqlite-query-page-order.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/chronicle/tests/sqlite-query-parity.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/chronicle/tests/store-constructor-fault.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/chronicle/tests/stream-adapter.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/chronicle/tests/tool-adapter.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/chronicle/tests/tool-daily.test.ts",
         "projects": [
           "root-node"
         ]
@@ -6508,264 +6789,6 @@
       },
       {
         "file": "packages/core/tests/boot/cleanup-stale-projects.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/chronicle-project-server-client.gaps.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/chronicle-silent-client.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/chronicle-stop-drain.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/chronicle/counter-sink.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/chronicle/decision-adapter.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/chronicle/domain-adapter.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/chronicle/file-observer-io.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/chronicle/file-observer.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/chronicle/file-tool-stats.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/chronicle/health-monitor.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/chronicle/identity.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/chronicle/journal.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/chronicle/legacy-journal-import.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/chronicle/metrics-limit-clamp.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/chronicle/metrics-retention.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/chronicle/metrics-store-sqlite-source.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/chronicle/metrics-store.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/chronicle/metrics-token-attribution.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/chronicle/network-telemetry-stop-inflight.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/chronicle/network-telemetry.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/chronicle/payload-codec.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/chronicle/process-adapter.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/chronicle/project-access-open-retry.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/chronicle/project-access.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/chronicle/project-server-auth-gate.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/chronicle/project-server-client-close.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/chronicle/project-server-client-entrypoint-transient.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/chronicle/project-server-client.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/chronicle/prompt-manifest.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/chronicle/provider-adapter.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/chronicle/query.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/chronicle/remote-journal-batch-bound.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/chronicle/review-adapter.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/chronicle/rollup-adapter.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/chronicle/rollup-gauge-window.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/chronicle/sqlite-compaction.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/chronicle/sqlite-journal.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/chronicle/sqlite-query-page-order.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/chronicle/sqlite-query-parity.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/chronicle/store-constructor-fault.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/chronicle/stream-adapter.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/chronicle/tool-adapter.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/chronicle/tool-daily.test.ts",
         "projects": [
           "root-node"
         ]
@@ -29281,14 +29304,14 @@
       "relativeImports": 23
     },
     {
+      "file": "packages/chronicle/src/project-server-client.ts",
+      "lines": 705,
+      "relativeImports": 5
+    },
+    {
       "file": "packages/cli/src/fleet/host-skill-companion.ts",
       "lines": 754,
       "relativeImports": 3
-    },
-    {
-      "file": "packages/core/src/chronicle/project-server-client.ts",
-      "lines": 705,
-      "relativeImports": 5
     },
     {
       "file": "packages/core/src/coordination/agent-monitor.ts",
@@ -29423,7 +29446,7 @@
       "relativeImports": 23
     },
     {
-      "file": "packages/core/src/chronicle/project-server-client.ts",
+      "file": "packages/chronicle/src/project-server-client.ts",
       "lines": 705,
       "relativeImports": 5
     },
@@ -29438,9 +29461,9 @@
       "relativeImports": 18
     },
     {
-      "file": "packages/core/src/chronicle/project-server.ts",
+      "file": "packages/chronicle/src/project-server.ts",
       "lines": 700,
-      "relativeImports": 21
+      "relativeImports": 17
     },
     {
       "file": "packages/core/src/coordination/subagent-budget.ts",
@@ -29756,6 +29779,14 @@
     {
       "file": "packages/acp/src/version.ts",
       "name": "versionCoverage"
+    },
+    {
+      "file": "packages/chronicle/src/project-server-client.ts",
+      "name": "resolveChronicleProjectServerUrl"
+    },
+    {
+      "file": "packages/chronicle/src/sqlite-compaction.ts",
+      "name": "chronicleSqliteAllocatedBytes"
     },
     {
       "file": "packages/cli/src/acp-leader/acp-leader-provider.ts",
@@ -30388,14 +30419,6 @@
     {
       "file": "packages/contracts/src/types/runtime-capability-manifest.ts",
       "name": "runtimeCapabilityForTool"
-    },
-    {
-      "file": "packages/core/src/chronicle/project-server-client.ts",
-      "name": "resolveChronicleProjectServerUrl"
-    },
-    {
-      "file": "packages/core/src/chronicle/sqlite-compaction.ts",
-      "name": "chronicleSqliteAllocatedBytes"
     },
     {
       "file": "packages/core/src/coordination/agents/agent-prompts.ts",

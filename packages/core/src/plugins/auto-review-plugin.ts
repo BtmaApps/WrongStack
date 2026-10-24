@@ -3,6 +3,7 @@ import * as path from 'node:path';
 import type { EventMap } from '@wrongstack/contracts/kernel/events';
 import type { Plugin } from '@wrongstack/contracts/types/plugin';
 import type { SlashCommand } from '@wrongstack/contracts/types/slash-command';
+import { resolveChronicleFileLineage } from '../core/agent-coordination.js';
 import { areSubagentsAllowed } from '../security/session-subagent-policy.js';
 import { toErrorMessage } from '../utils/error.js';
 import {
@@ -358,6 +359,7 @@ export function createAutoReviewPlugin(): Plugin {
 
           const bundle = await buildReviewContext({
             cwd,
+            fileLineage: resolveChronicleFileLineage(api.container),
             config: {
               enabled: true,
               provider: cfg.provider,
@@ -484,6 +486,7 @@ export function createAutoReviewPlugin(): Plugin {
 
             const bundle = await buildReviewContext({
               cwd,
+              fileLineage: resolveChronicleFileLineage(api.container),
               config: {
                 enabled: true,
                 provider: cfg.provider,

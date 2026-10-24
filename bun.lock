@@ -100,6 +100,20 @@
         "typescript": "^7.0.2",
       },
     },
+    "packages/chronicle": {
+      "name": "@wrongstack/chronicle",
+      "version": "1.1.16",
+      "dependencies": {
+        "@wrongstack/contracts": "workspace:*",
+        "@wrongstack/core": "workspace:*",
+        "@wrongstack/persistence": "workspace:*",
+        "@wrongstack/primitives": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/node": "^22.20.5",
+        "typescript": "^7.0.2",
+      },
+    },
     "packages/cli": {
       "name": "@wrongstack/cli",
       "version": "1.1.16",
@@ -110,6 +124,7 @@
       "dependencies": {
         "@wrongstack/acp": "workspace:*",
         "@wrongstack/bench": "workspace:*",
+        "@wrongstack/chronicle": "workspace:*",
         "@wrongstack/codebase-index-mcp": "workspace:*",
         "@wrongstack/contracts": "workspace:*",
         "@wrongstack/core": "workspace:*",
@@ -446,6 +461,7 @@
       "name": "@wrongstack/runtime",
       "version": "1.1.16",
       "dependencies": {
+        "@wrongstack/chronicle": "workspace:*",
         "@wrongstack/contracts": "workspace:*",
         "@wrongstack/core": "workspace:*",
         "@wrongstack/governance": "workspace:*",
@@ -614,6 +630,7 @@
       "name": "@wrongstack/tui",
       "version": "1.1.16",
       "dependencies": {
+        "@wrongstack/chronicle": "workspace:*",
         "@wrongstack/contracts": "workspace:*",
         "@wrongstack/core": "workspace:*",
         "@wrongstack/goal": "workspace:*",
@@ -853,6 +870,7 @@
       "name": "@wrongstack/webui-server",
       "version": "1.1.16",
       "dependencies": {
+        "@wrongstack/chronicle": "workspace:*",
         "@wrongstack/contracts": "workspace:*",
         "@wrongstack/core": "workspace:*",
         "@wrongstack/goal": "workspace:*",
@@ -1688,6 +1706,8 @@
     "@wrongstack/acp": ["@wrongstack/acp@workspace:packages/acp"],
 
     "@wrongstack/bench": ["@wrongstack/bench@workspace:packages/bench"],
+
+    "@wrongstack/chronicle": ["@wrongstack/chronicle@workspace:packages/chronicle"],
 
     "@wrongstack/cli": ["@wrongstack/cli@workspace:packages/cli"],
 

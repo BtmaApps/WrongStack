@@ -11,7 +11,7 @@ import {
 } from '@wrongstack/contracts/types/provider-output-caps';
 import type { ProviderStatusTrackerPort } from '@wrongstack/contracts/types/provider-status';
 import type { RetryPolicy } from '@wrongstack/contracts/types/retry-policy';
-import { createChroniclePromptManifest } from '../chronicle/prompt-manifest.js';
+import { createChroniclePromptManifest } from '../utils/chronicle-prompt-manifest.js';
 import { runWithNetworkTelemetry } from '../observability/network-telemetry.js';
 import { scrubErrorText } from '../security/error-sanitize.js';
 import { adaptDocumentsForModel } from '../utils/document-blocks.js';

@@ -114,7 +114,7 @@ const CHILD_ENV_EXEMPT: Record<string, string> = {
   'webui-server/src/server/open-browser.ts': REASON_OPERATOR_TOOL,
   'webui-server/src/server/frontend-static-serve.ts': REASON_OPERATOR_TOOL,
   // ── Trusted wstack daemons ──
-  'core/src/chronicle/project-server-client.ts': REASON_TRUSTED_DAEMON,
+  'chronicle/src/project-server-client.ts': REASON_TRUSTED_DAEMON,
   'core/src/session-catalog/client.ts': REASON_TRUSTED_DAEMON,
   'core/src/coordination/single-instance-mailbox.ts': REASON_TRUSTED_DAEMON,
   'core/src/coordination/mailbox-project-server-client.ts': REASON_TRUSTED_DAEMON,

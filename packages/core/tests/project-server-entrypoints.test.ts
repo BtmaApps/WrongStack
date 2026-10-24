@@ -10,7 +10,7 @@ afterEach(() => {
 describe('project server entrypoint argument guards', () => {
   it('rejects a Chronicle server launch without project identity arguments', async () => {
     process.argv = [process.execPath, 'chronicle-project-server'];
-    await expect(import('../src/chronicle/project-server.js')).rejects.toThrow(
+    await expect(import('../../chronicle/src/project-server.js')).rejects.toThrow(
       'Chronicle project server requires --project-root',
     );
   });

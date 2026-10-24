@@ -4,7 +4,7 @@
 // it re-armed the daemon spawn and connected again, so a closed client came
 // back to life. The endpoint here accepts and never sends `hello`; spawns are
 // stubbed. From src the Chronicle resolver looks for
-// src/chronicle/project-server.js, so fs.existsSync (its documented test seam)
+// chronicle/src/project-server.js, so fs.existsSync (its documented test seam)
 // reports that one path present.
 import { mkdtempSync, rmSync } from 'node:fs';
 import { expect, it, vi } from 'vitest';
@@ -20,8 +20,8 @@ vi.mock('node:fs', async (importOriginal) => {
 import * as net from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { ChronicleProjectServerClient } from '../src/chronicle/project-server-client.js';
-import { chronicleProjectServerEndpoint } from '../src/chronicle/project-server-endpoint.js';
+import { ChronicleProjectServerClient } from '../../chronicle/src/project-server-client.js';
+import { chronicleProjectServerEndpoint } from '../../chronicle/src/project-server-endpoint.js';
 import { SessionCatalogProjectClient } from '../src/session-catalog/client.js';
 import { sessionCatalogProjectServerEndpoint } from '../src/session-catalog/endpoint.js';
 

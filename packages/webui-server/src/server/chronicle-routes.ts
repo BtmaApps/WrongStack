@@ -4,7 +4,7 @@ import {
   type ChronicleProjectAccess,
   type ChronicleQuery,
   createChronicleProjectAccess,
-} from '@wrongstack/core/chronicle';
+} from '@wrongstack/chronicle';
 import { toErrorMessage } from '@wrongstack/core/utils';
 import type { WebSocket } from 'ws';
 import type { WSClientMessage, WSServerMessage } from './types.js';

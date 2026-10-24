@@ -2,7 +2,7 @@ import {
   chronicleProjectServerEndpoint,
   createChronicleProjectAccess,
   resolveChronicleProjectServerOptions,
-} from '@wrongstack/core/chronicle';
+} from '@wrongstack/chronicle';
 import {
   isMailboxProjectServerAvailable,
   MailboxProjectServerConnection,

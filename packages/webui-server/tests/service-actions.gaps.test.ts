@@ -13,7 +13,7 @@ vi.mock('@wrongstack/sage', () => ({
   isSageProjectServerAvailable: vi.fn(() => false),
   SageProjectServerConnection: vi.fn(),
 }));
-vi.mock('@wrongstack/core/chronicle', () => ({
+vi.mock('@wrongstack/chronicle', () => ({
   ChronicleProjectServerClient: vi.fn(),
   createChronicleProjectAccess: vi.fn(),
   resolveChronicleProjectServerOptions: vi.fn(() => ({ projectRoot: '/proj', endpoint: 'pipe' })),
@@ -31,7 +31,7 @@ vi.mock('@wrongstack/tools', () => ({
   shutdownCodebaseIndexServer: vi.fn(),
 }));
 
-import * as chronicle from '@wrongstack/core/chronicle';
+import * as chronicle from '@wrongstack/chronicle';
 import * as coordination from '@wrongstack/core/coordination';
 import * as sessionCatalog from '@wrongstack/core/session-catalog';
 import * as kanban from '@wrongstack/kanban';

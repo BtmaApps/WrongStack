@@ -72,6 +72,12 @@
     "packages/acp/src/version.ts": [
       "versionCoverage"
     ],
+    "packages/chronicle/src/project-server-client.ts": [
+      "resolveChronicleProjectServerUrl"
+    ],
+    "packages/chronicle/src/sqlite-compaction.ts": [
+      "chronicleSqliteAllocatedBytes"
+    ],
     "packages/cli/src/acp-leader/acp-leader-provider.ts": [
       "AcpLeaderProvider"
     ],
@@ -402,12 +408,6 @@
       "normalizeRuntimeToolName",
       "runtimeCapabilityForTool"
     ],
-    "packages/core/src/chronicle/project-server-client.ts": [
-      "resolveChronicleProjectServerUrl"
-    ],
-    "packages/core/src/chronicle/sqlite-compaction.ts": [
-      "chronicleSqliteAllocatedBytes"
-    ],
     "packages/core/src/coordination/agents/agent-prompts.ts": [
       "agentPromptCacheSize"
     ],
@@ -530,50 +530,6 @@
     "packages/core/src/execution/tool-error-taxonomy.ts": [
       "classifiedToolErrorResult",
       "getToolErrorInfo"
-    ],
-    "packages/goal/src/phase-orchestrator-integration.ts": [
-      "markPhaseMergeFailed"
-    ],
-    "packages/hq/src/alerts-config.ts": [
-      "emptyHqAlertsConfig",
-      "HQ_ALERTS_CONFIG_VERSION",
-      "hqAlertsConfigFilePath",
-      "mutateHqAlertsConfig",
-      "writeHqAlertsConfig"
-    ],
-    "packages/hq/src/approval-bridge.ts": [
-      "approvalGrantExpiry",
-      "DEFAULT_ALWAYS_APPROVAL_TTL_MS"
-    ],
-    "packages/hq/src/auth-revocation.ts": [
-      "sessionAffectedByRevocation"
-    ],
-    "packages/hq/src/auth-store.ts": [
-      "defaultHqDataDir",
-      "emptyHqAuthFile",
-      "hqRuntimeFilePath",
-      "mintHqBrowserToken",
-      "writeHqAuthFile"
-    ],
-    "packages/hq/src/exposure.ts": [
-      "isOpenMode"
-    ],
-    "packages/hq/src/factory.ts": [
-      "resolveHqConfigFromEnv"
-    ],
-    "packages/hq/src/kanban-store.ts": [
-      "MAX_HQ_KANBAN_CACHE_PROJECTS"
-    ],
-    "packages/hq/src/mailbox-mapper.ts": [
-      "createMailboxSnapshotPayload",
-      "mapMailboxAgentToHqSummary",
-      "mapMailboxMessageToHqSummary"
-    ],
-    "packages/hq/src/protocol/core.ts": [
-      "KNOWN_HQ_CLIENT_FRAME_TYPES"
-    ],
-    "packages/hq/src/redaction.ts": [
-      "redactHqValue"
     ],
     "packages/core/src/infrastructure/mcp-servers.ts": [
       "kanbanServer",
@@ -718,6 +674,9 @@
       "PROXY_EXCLUDED_PROVIDERS",
       "subscribeToProxyConfig"
     ],
+    "packages/goal/src/phase-orchestrator-integration.ts": [
+      "markPhaseMergeFailed"
+    ],
     "packages/governance/src/daemon-launcher.ts": [
       "launchGovernanceProjectDaemonWithRuntime"
     ],
@@ -763,6 +722,47 @@
     "packages/governance/src/workflow-state.ts": [
       "isSuccessfulWorkflowState",
       "isTerminalWorkflowState"
+    ],
+    "packages/hq/src/alerts-config.ts": [
+      "emptyHqAlertsConfig",
+      "HQ_ALERTS_CONFIG_VERSION",
+      "hqAlertsConfigFilePath",
+      "mutateHqAlertsConfig",
+      "writeHqAlertsConfig"
+    ],
+    "packages/hq/src/approval-bridge.ts": [
+      "approvalGrantExpiry",
+      "DEFAULT_ALWAYS_APPROVAL_TTL_MS"
+    ],
+    "packages/hq/src/auth-revocation.ts": [
+      "sessionAffectedByRevocation"
+    ],
+    "packages/hq/src/auth-store.ts": [
+      "defaultHqDataDir",
+      "emptyHqAuthFile",
+      "hqRuntimeFilePath",
+      "mintHqBrowserToken",
+      "writeHqAuthFile"
+    ],
+    "packages/hq/src/exposure.ts": [
+      "isOpenMode"
+    ],
+    "packages/hq/src/factory.ts": [
+      "resolveHqConfigFromEnv"
+    ],
+    "packages/hq/src/kanban-store.ts": [
+      "MAX_HQ_KANBAN_CACHE_PROJECTS"
+    ],
+    "packages/hq/src/mailbox-mapper.ts": [
+      "createMailboxSnapshotPayload",
+      "mapMailboxAgentToHqSummary",
+      "mapMailboxMessageToHqSummary"
+    ],
+    "packages/hq/src/protocol/core.ts": [
+      "KNOWN_HQ_CLIENT_FRAME_TYPES"
+    ],
+    "packages/hq/src/redaction.ts": [
+      "redactHqValue"
     ],
     "packages/kanban/src/manager/_internal.ts": [
       "compareTasksForWork",

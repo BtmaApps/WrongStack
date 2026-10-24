@@ -12,7 +12,6 @@
       },
       "source": "packages/core/src/index.ts",
       "declarations": [
-        "export * from './chronicle/index.js';",
         "export * from './observability/network-telemetry.js';",
         "export * from './observability/process-telemetry.js';",
         "export * from './prompts/index.js';",
@@ -114,7 +113,7 @@
       "source": "packages/core/src/core/index.ts",
       "declarations": [
         "export { // Exported so surfaces that need to *predict* the identity block (e.g. the // CLI's startup system-prompt menu, which shows a per-variant token count) // compose it exactly the way the builder does instead of re-implementing the // WS-016 project-append rule and drifting from it. buildIdentityLayer, DefaultSystemPromptBuilder, type DefaultSystemPromptBuilderOptions, type SystemBlockSource, } from './system-prompt-builder.js';",
-        "export { AGENT_COORDINATION, type AgentCoordinationPort, HQ_MAILBOX_PUBLISHER_FACTORY, resolveAgentCoordination, resolveHqMailboxPublisherFactory, } from './agent-coordination.js';",
+        "export { AGENT_COORDINATION, type AgentCoordinationPort, CHRONICLE_FILE_LINEAGE, HQ_MAILBOX_PUBLISHER_FACTORY, resolveAgentCoordination, resolveChronicleFileLineage, resolveHqMailboxPublisherFactory, } from './agent-coordination.js';",
         "export { Agent, type RunResult, type UserInputPayload, } from './agent.js';",
         "export { Context, type ContextInit, type ProviderMemoryEvidence, type RunOptions, type TodoItem, } from './context.js';",
         "export { ConversationState, type ReadonlyConversationState, type StateChange, type StateChangeHandler, wrapAsState, } from './conversation-state.js';",
@@ -304,6 +303,7 @@
         "export { cliSpawnArgs, isStandaloneBinary, moduleDirFor, moduleUrlFor, scriptSpawnArgs, standalonePackageDir, wrongstackPackageJsonPath, } from '@wrongstack/persistence';",
         "export { completePartialObject } from './json-repair.js';",
         "export { computeMessageTokens, estimateMessageTokens, estimateRequestTokens, estimateRequestTokensCalibrated, estimateTextTokens, estimateToolDefTokens, estimateToolInputTokens, estimateToolResultTokens, getCalibrationState, type RequestTokenBreakdown, recordActualUsage, resetCalibration, } from './token-estimate.js';",
+        "export { createChroniclePromptManifest } from './chronicle-prompt-manifest.js';",
         "export { createToolOutputSerializer, type ToolOutputSerializerOptions, } from './tool-output-serializer.js';",
         "export { decodeSessionIdStrict, isSafePathSegment, isSafeSessionId, MAX_PATH_SEGMENT_LENGTH, resolveContainedPath, } from './path-segment.js';",
         "export { defaultHeapLogPath, type HeapDiagnosticFields, type HeapDiagnosticValue, type HeapSample, type HeapWatchdogOptions, startHeapWatchdog, startSharedHeapWatchdog, takeHeapSample, } from './heap-watchdog.js';",
@@ -853,6 +853,7 @@
         "export { formatPlanTemplates, getPlanTemplate, listPlanTemplates, type PlanTemplate, } from './plan-templates.js';",
         "export { generateSessionId, sanitizeModel } from './session-id.js';",
         "export { getProjectSessionRegistry as getSessionRegistry, hasProjectSessionRegistry as hasSessionRegistry, ProjectSessionRegistry as SessionRegistry, } from '../session-catalog/registry.js';",
+        "export { mapWithConcurrency } from './storage-concurrency.js';",
         "export { orderSessionTree, type SessionTreeRow, sessionTreePrefix } from './session-tree.js';",
         "export { resolveSessionId, type SessionIdResolution, sessionIdResolutionError, } from './session-id-resolver.js';",
         "export { scrubPersistedSessionData, scrubPersistedSessionEvent, scrubPersistedSessionSummary, } from './session-read-scrubber.js';",
@@ -1209,44 +1210,6 @@
       ]
     },
     {
-      "subpath": "./chronicle",
-      "target": {
-        "types": "./dist/chronicle/index.d.ts",
-        "import": "./dist/chronicle/index.js"
-      },
-      "source": "packages/core/src/chronicle/index.ts",
-      "declarations": [
-        "export type { ChronicleEventSink } from './sink.js';",
-        "export { CHRONICLE_DETAIL_LEVELS, DEFAULT_CHRONICLE_DETAIL, isChronicleDetailLevel, resolveChronicleDetail, routeChronicleEvent, type ChronicleDetailLevel, type ChronicleRouting, } from './detail-policy.js';",
-        "export { CHRONICLE_FACET_FIELDS, findChroniclePartitions, ChronicleQueryEngine, type ChronicleQueryEngineOptions, type ChronicleSummary, type ChronicleSignalFamily, type ChronicleFacet, type ChronicleFacetValue, type ChronicleQuery, type ChronicleQueryResult, type ChronicleGraphEdge, type ChronicleGraphResult, type ChronicleRelationKind, } from './query.js';",
-        "export { CHRONICLE_PROJECT_SERVER_MAX_FRAME_CHARS, CHRONICLE_PROJECT_SERVER_PROTOCOL_VERSION, type ChronicleMetricsRequest, type ChronicleMetricsResponse, type ChronicleMetricsView, type ChronicleProjectServerHealth, type ChronicleProjectServerInfo, type ChronicleServerOperationName, type ChronicleServerOperations, } from './project-server-protocol.js';",
-        "export { CHRONICLE_SCHEMA_VERSION, type ChronicleCorrelation, type ChronicleEvent, type ChronicleEventInput, type ChronicleOutcome, type ChronicleResourceRef, type ChronicleRuntimeIdentity, type ChronicleScope, type ChronicleVerifyResult, } from './types.js';",
-        "export { ChronicleCompactionBusyError, compactChronicleSqlite, type ChronicleSqliteCompactionOptions, type ChronicleSqliteCompactionResult, } from './sqlite-compaction.js';",
-        "export { ChronicleJournal, GENESIS_HASH, type ChronicleJournalOptions, type ChronicleJournalStats, type ChroniclePurgeOptions, type ChroniclePurgeResult, } from './journal.js';",
-        "export { ChronicleMetricsStore, DEFAULT_METRICS_ROW_RETENTION_DAYS, isChronicleMetricsAvailable, type ChronicleMetricsRefreshResult, type ChronicleMetricsSummary, type ChronicleProviderDailyRow, type ChronicleTaskOutcomeRow, type ChronicleFileLineageRow, } from './metrics-store.js';",
-        "export { ChroniclePartitionRangeCache, type ChroniclePartitionRange, } from './partition-range-cache.js';",
-        "export { ChronicleProjectServerClient, ChronicleRemoteJournal, isChronicleProjectServerAvailable, type ChronicleProjectServerCallOptions, type ChronicleProjectServerClientOptions, } from './project-server-client.js';",
-        "export { ChronicleStorageQuotaError } from './sqlite-journal.js';",
-        "export { childChronicleContext, createChronicleContext, type ChronicleContext } from './context.js';",
-        "export { chroniclePayloadStoredBytes, decodeChroniclePayload, encodeChroniclePayload, type StoredChroniclePayload, } from './payload-codec.js';",
-        "export { chronicleProjectServerEndpoint, chronicleProjectServerKey, chronicleProjectServerMetadataPath, } from './project-server-endpoint.js';",
-        "export { createChronicleCounterSink, DEFAULT_COUNTER_WINDOW_MS, type ChronicleCounterSink, type ChronicleCounterSinkOptions, } from './counter-sink.js';",
-        "export { createChronicleEventJournal, createChronicleProjectAccess, resolveChronicleProjectServerOptions, type ChronicleEventJournalHandle, type ChronicleProjectAccess, type ChronicleProjectAccessOptions, } from './project-access.js';",
-        "export { createChroniclePromptManifest, type ChroniclePromptManifest } from './prompt-manifest.js';",
-        "export { resolveChronicleRuntimeLocation, type ChronicleRuntimeIdentityInput, type ChronicleRuntimeLocation, } from './identity.js';",
-        "export { startChronicleFileObserver, type ChronicleFileObserver, type ChronicleFileObserverOptions, type ChronicleToolMutationHint, } from './file-observer.js';",
-        "export { startChronicleHealthMonitor, type ChronicleHealthMonitorOptions, } from './health-monitor.js';",
-        "export { wireDecisionsToChronicle, type ChronicleDecisionAdapterOptions, } from './decision-adapter.js';",
-        "export { wireDomainEventsToChronicle, type ChronicleDomainAdapterOptions, } from './domain-adapter.js';",
-        "export { wireProcessesToChronicle, type ChronicleProcessAdapterOptions, } from './process-adapter.js';",
-        "export { wireProviderAttemptsToChronicle, type ChronicleProviderAdapterOptions, } from './provider-adapter.js';",
-        "export { wireProviderStreamsToChronicle, type ChronicleStreamAdapterOptions, } from './stream-adapter.js';",
-        "export { wireReviewFindingsToChronicle, type ChronicleReviewAdapterOptions, } from './review-adapter.js';",
-        "export { wireRollupsToChronicle, type ChronicleRollupAdapterOptions } from './rollup-adapter.js';",
-        "export { wireToolsToChronicle, type ChronicleToolAdapterOptions } from './tool-adapter.js';"
-      ]
-    },
-    {
       "subpath": "./worktree",
       "target": {
         "types": "./dist/worktree/index.d.ts",
@@ -1348,13 +1311,6 @@
       "sourceLines": 3949
     },
     {
-      "directory": "chronicle",
-      "classification": "storage/repository implementation",
-      "intendedOwner": "focused repository or runtime subsystem",
-      "sourceFiles": 51,
-      "sourceLines": 12672
-    },
-    {
       "directory": "coordination",
       "classification": "coordination implementation",
       "intendedOwner": "Core subpath until physical extraction is justified",
@@ -1366,7 +1322,7 @@
       "classification": "agent-domain contract",
       "intendedOwner": "Core",
       "sourceFiles": 80,
-      "sourceLines": 16799
+      "sourceLines": 16822
     },
     {
       "directory": "design",
@@ -1443,7 +1399,7 @@
       "classification": "product feature",
       "intendedOwner": "@wrongstack/plugins",
       "sourceFiles": 31,
-      "sourceLines": 9997
+      "sourceLines": 9981
     },
     {
       "directory": "prompts",
@@ -1485,7 +1441,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime security subsystem",
       "sourceFiles": 40,
-      "sourceLines": 10202
+      "sourceLines": 10211
     },
     {
       "directory": "session-catalog",
@@ -1513,7 +1469,7 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "repositories over dependency-free persistence",
       "sourceFiles": 118,
-      "sourceLines": 26249
+      "sourceLines": 26250
     },
     {
       "directory": "tasking",
@@ -1533,8 +1489,8 @@
       "directory": "utils",
       "classification": "kernel primitive",
       "intendedOwner": "split dependency-free primitives from concrete helpers",
-      "sourceFiles": 93,
-      "sourceLines": 15195
+      "sourceFiles": 94,
+      "sourceLines": 15354
     },
     {
       "directory": "vcs",

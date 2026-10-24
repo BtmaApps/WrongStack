@@ -7,7 +7,7 @@ import { mkdtempSync } from 'node:fs';
 import * as fs from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import * as path from 'node:path';
-import { chronicleProjectServerMetadataPath } from '@wrongstack/core/chronicle';
+import { chronicleProjectServerMetadataPath } from '@wrongstack/chronicle';
 import { KANBAN_PROJECT_SERVER_METADATA_FILE } from '@wrongstack/kanban';
 import { sageProjectServerMetadataPath } from '@wrongstack/sage';
 import { beforeEach, describe, expect, it, vi } from 'vitest';

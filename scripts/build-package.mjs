@@ -114,8 +114,6 @@ const coreEntries = entryMap([
   'src/registry/index.ts',
   'src/extension/index.ts',
   'src/plugin/index.ts',
-  'src/chronicle/index.ts',
-  'src/chronicle/project-server.ts',
   'src/session-catalog/index.ts',
   'src/session-catalog/project-server.ts',
   'src/storage/index.ts',
@@ -413,6 +411,15 @@ const profiles = {
   // Goal / phase orchestration, extracted from core (src/goal) on 2026-10-24.
   '@wrongstack/goal': {
     entries: { index: 'src/index.ts' },
+  },
+  // Chronicle journal, metrics projection and its per-project daemon,
+  // extracted from core (src/chronicle) on 2026-10-24. `project-server` is the
+  // daemon entry the client spawns: it must stay at the dist ROOT next to the
+  // chunks, because the client locates it relative to its own module URL.
+  '@wrongstack/chronicle': {
+    entries: { index: 'src/index.ts', 'project-server': 'src/project-server.ts' },
+    splitting: true,
+    chunkNames: '[name]-[hash]',
   },
   '@wrongstack/sage': {
     entries: {

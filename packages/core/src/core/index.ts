@@ -11,8 +11,10 @@ export {
 export {
   AGENT_COORDINATION,
   type AgentCoordinationPort,
+  CHRONICLE_FILE_LINEAGE,
   HQ_MAILBOX_PUBLISHER_FACTORY,
   resolveAgentCoordination,
+  resolveChronicleFileLineage,
   resolveHqMailboxPublisherFactory,
 } from './agent-coordination.js';
 export { keepsOwnContext } from './agent-owned-context.js';

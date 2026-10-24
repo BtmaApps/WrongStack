@@ -9,7 +9,7 @@
  * `@wrongstack/tools`).
  */
 
-import { createChronicleProjectAccess } from '@wrongstack/core/chronicle';
+import { createChronicleProjectAccess } from '@wrongstack/chronicle';
 import {
   isMailboxProjectServerAvailable,
   MailboxProjectServerConnection,

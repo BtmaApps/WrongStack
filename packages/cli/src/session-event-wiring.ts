@@ -11,7 +11,7 @@ import type {
   ChronicleEventJournalHandle,
   ChronicleEventSink,
   ChronicleFileObserver,
-} from '@wrongstack/core/chronicle';
+} from '@wrongstack/chronicle';
 import {
   createChronicleContext,
   createChronicleCounterSink,
@@ -26,7 +26,7 @@ import {
   wireReviewFindingsToChronicle,
   wireRollupsToChronicle,
   wireToolsToChronicle,
-} from '@wrongstack/core/chronicle';
+} from '@wrongstack/chronicle';
 import { recordFileAction } from '@wrongstack/core/coordination';
 import { startNetworkTelemetryMonitor } from '@wrongstack/core/observability';
 import { DefaultSecretScrubber } from '@wrongstack/core/security';
