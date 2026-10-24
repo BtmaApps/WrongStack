@@ -9,8 +9,8 @@
  * - verify result includes status, evidence, description
  */
 import { describe, expect, it } from 'vitest';
-import { GitDiffPlugin } from '../../../src/verification/plugins/git-diff.js';
 import type { KanbanCheck } from '../../../src/types.js';
+import { GitDiffPlugin } from '../../../src/verification/plugins/git-diff.js';
 import type { VerificationContext } from '../../../src/verification/verification-context.js';
 
 describe('GitDiffPlugin', () => {
@@ -264,6 +264,66 @@ describe('GitDiffPlugin', () => {
         }),
       );
       expect(result.status).toBe('passed');
+    });
+
+    // Regression (2026-10-23-r1-gitdiff-notes-shape): notes is stored board
+    // state parsed with JSON.parse — JSON that is valid but the wrong shape
+    // used to cross a bare `as {...}` cast and either threw a TypeError out
+    // of verify() (killing the whole verifyTaskCompletion run, which has no
+    // per-check catch) or silently coerced ("minChanges": "5" compared as a
+    // string). The plugin must fail closed with a structured check error
+    // instead, while valid configs and legacy free-text notes stay unchanged.
+    describe('notes shape guard', () => {
+      function changedTreeContext(): VerificationContext {
+        return mockContext({
+          diffSince: async () => [
+            { path: 'src/test.ts', operation: 'modify', linesAdded: 1, linesRemoved: 0 },
+          ],
+          gitStatus: async () => ({
+            clean: false,
+            untracked: 0,
+            unstaged: 1,
+            staged: 0,
+            files: ['src/test.ts'],
+          }),
+        });
+      }
+
+      it.each([
+        ['JSON null', 'null', 'must be a JSON object'],
+        ['JSON array', '[]', 'must be a JSON object'],
+        ['expectedFiles as string', '{"expectedFiles":"src/test.ts"}', '"expectedFiles"'],
+        ['expectedFiles with non-string element', '{"expectedFiles":[123]}', '"expectedFiles"'],
+        ['minChanges as string', '{"minChanges":"5"}', '"minChanges"'],
+        ['maxChanges as non-finite number', '{"maxChanges":null}', '"maxChanges"'],
+      ])('rejects %s with a structured check error', async (_label, notes, expectedFragment) => {
+        const result = await plugin.verify(mockCheck({ notes }), changedTreeContext());
+        expect(result.status).toBe('error');
+        expect(result.error).toContain(expectedFragment);
+      });
+
+      it('keeps the no-config behavior for non-JSON legacy notes', async () => {
+        const result = await plugin.verify(
+          mockCheck({ notes: 'still not json' }),
+          changedTreeContext(),
+        );
+        expect(result.status).toBe('passed');
+      });
+
+      it('keeps the documented verdicts for a valid config', async () => {
+        const passing = await plugin.verify(
+          mockCheck({ notes: JSON.stringify({ expectedFiles: ['src/test.ts'], minChanges: 1 }) }),
+          changedTreeContext(),
+        );
+        expect(passing.status).toBe('passed');
+
+        const failing = await plugin.verify(
+          mockCheck({ notes: JSON.stringify({ maxChanges: 0 }) }),
+          changedTreeContext(),
+        );
+        expect(failing.status).toBe('failed');
+        expect(failing.error).toContain('Expected at most 0 lines changed');
+      });
     });
 
     it('includes working tree status in evidence', async () => {

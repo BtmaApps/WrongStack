@@ -19,19 +19,26 @@ export class GitDiffPlugin implements VerifierPlugin {
     check: KanbanCheck,
     context: VerificationContext,
   ): Promise<KanbanVerificationCheckResult> {
-    // Parse config from notes JSON
-    let config: { expectedFiles?: string[]; minChanges?: number; maxChanges?: number } = {};
-    try {
-      if (check.notes?.trim()) {
-        config = JSON.parse(check.notes) as {
-          expectedFiles?: string[];
-          minChanges?: number;
-          maxChanges?: number;
-        };
-      }
-    } catch {
-      // not JSON
+    // Parse config from notes JSON. Non-JSON notes are legacy free text and
+    // mean "no config"; JSON that parses but violates the config shape is a
+    // misconfigured check and must fail closed as a structured check error.
+    // A bare `JSON.parse(...) as {...}` here let `notes: "null"` throw out of
+    // verify() — and since neither verifier-registry nor the completion
+    // protocol catches per-check, one corrupt note killed the entire
+    // verifyTaskCompletion run — while `{"expectedFiles": "src/x.ts"}`
+    // crashed on .filter and `{"minChanges": "5"}` silently coerced.
+    const notes = parseGitDiffNotesConfig(check.notes);
+    if (!notes.ok) {
+      return {
+        checkId: check.id,
+        description: check.description,
+        type: check.type,
+        status: 'error',
+        evidence: {},
+        error: notes.reason,
+      };
     }
+    const config = notes.config;
 
     let diff: Awaited<ReturnType<VerificationContext['diffSince']>>;
     try {
@@ -116,4 +123,71 @@ export class GitDiffPlugin implements VerifierPlugin {
       error: errors.length > 0 ? errors.join(' ') : undefined,
     };
   }
+}
+
+interface GitDiffNotesConfig {
+  expectedFiles?: string[];
+  minChanges?: number;
+  maxChanges?: number;
+}
+
+/**
+ * Runtime shape guard for the check-notes trust boundary. `check.notes` is
+ * stored board state authored by agents and humans, so its contents are not
+ * statically knowable. Free text that is not JSON keeps the legacy no-config
+ * behavior; JSON that parses but violates the config contract fails closed so
+ * a misconfigured expectation is surfaced as a check error instead of being
+ * silently dropped (degrading to the weaker existence-diff verdict) or thrown
+ * out of verify().
+ */
+function parseGitDiffNotesConfig(
+  notes: string | undefined,
+): { ok: true; config: GitDiffNotesConfig } | { ok: false; reason: string } {
+  if (!notes?.trim()) return { ok: true, config: {} };
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(notes);
+  } catch {
+    return { ok: true, config: {} };
+  }
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    return {
+      ok: false,
+      reason: `git_diff notes must be a JSON object with optional expectedFiles (string[]), minChanges (number), maxChanges (number); got ${JSON.stringify(parsed)}`,
+    };
+  }
+  const record = parsed as Record<string, unknown>;
+  const config: GitDiffNotesConfig = {};
+  if (record['expectedFiles'] !== undefined) {
+    const value = record['expectedFiles'];
+    if (!Array.isArray(value)) {
+      return {
+        ok: false,
+        reason: 'git_diff notes field "expectedFiles" must be an array of strings',
+      };
+    }
+    const files: string[] = [];
+    for (const entry of value) {
+      if (typeof entry !== 'string') {
+        return {
+          ok: false,
+          reason: 'git_diff notes field "expectedFiles" must be an array of strings',
+        };
+      }
+      files.push(entry);
+    }
+    config.expectedFiles = files;
+  }
+  for (const key of ['minChanges', 'maxChanges'] as const) {
+    const value = record[key];
+    if (value === undefined) continue;
+    if (typeof value !== 'number' || !Number.isFinite(value)) {
+      return {
+        ok: false,
+        reason: `git_diff notes field "${key}" must be a finite number`,
+      };
+    }
+    config[key] = value;
+  }
+  return { ok: true, config };
 }
