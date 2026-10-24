@@ -6,7 +6,6 @@
 
 ## Fleet budgets and documentation
 
-- When a doc claims a clamp changed direction or default—such as `tools.perIterationOutputCapBytes` in `docs/architecture/explore-companion-subagent.md`—resolve it against live enforcement in the same review, including sibling trees `packages/cli/src/fleet/` and `packages/core/src/coordination/`; do not rely on the scoped diff alone.
 - Before approving `applyRosterBudget(template)` in `packages/cli/src/fleet/host-explore-companion.ts`, read `applyRosterBudget` in `packages/core/src/coordination/fleet.ts` and require explicit per-agent budgets to survive the merge rather than be replaced by `FLEET_ROSTER_BUDGETS`; equal defaults do not prove equal semantics.
 
 ## SSE and MCP
