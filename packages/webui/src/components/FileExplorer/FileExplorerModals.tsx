@@ -265,6 +265,7 @@ export function CreatePromptModal({
               ? t('activity:fileExplorer.newFileNamePlaceholder')
               : t('activity:fileExplorer.newFolderNamePlaceholder')
           }
+          aria-label={t('activity:fileExplorer.newNameLabel')}
           className="w-full px-2 py-1 text-[11px] border rounded bg-background outline-none focus:ring-1 ring-primary"
         />
         <DialogFooter className="gap-2">
@@ -325,6 +326,7 @@ export function RenamePromptModal({
           type="text"
           value={renameValue}
           onChange={(e) => setRenameValue(e.target.value)}
+          aria-label={t('activity:fileExplorer.newNameLabel')}
           onKeyDown={(e) => {
             if (e.key === 'Enter') onConfirm();
           }}

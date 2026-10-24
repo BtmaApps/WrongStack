@@ -2,6 +2,7 @@ import type { ModelBlackoutRule } from '@wrongstack/core/models';
 import { Plus, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import type { ModelCandidate } from '@/hooks/useProviderModels';
+import { useAppTranslation } from '@/i18n';
 import {
   CALENDAR_DAYS as DAYS,
   isCalendarRuleActive,
@@ -9,7 +10,6 @@ import {
 } from '@/lib/model-calendar';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { useAppTranslation } from '@/i18n';
 
 function logicalTarget(provider: string, model: string) {
   if (provider !== 'omniroute') return { providerId: provider, model };
@@ -92,6 +92,7 @@ export function AvailabilityCalendarEditor({
             <input
               type="checkbox"
               checked={rule.enabled !== false}
+              aria-label={t('activity:availability.ruleEnabled')}
               onChange={(event) => patchRule(index, { enabled: event.target.checked })}
             />
             <code className="min-w-0 flex-1 truncate">
@@ -143,10 +144,12 @@ export function AvailabilityCalendarEditor({
               value={rule.timezone ?? timezone}
               onChange={(event) => patchRule(index, { timezone: event.target.value })}
               placeholder={t('activity:availability.europeKiev')}
+              aria-label={t('activity:availability.timezone')}
             />
           </div>
           <select
             value={rule.mode ?? 'blackout'}
+            aria-label={t('activity:availability.ruleMode')}
             onChange={(event) =>
               patchRule(index, { mode: event.target.value as 'blackout' | 'allow_only' })
             }
@@ -161,6 +164,7 @@ export function AvailabilityCalendarEditor({
       <div className="space-y-2 rounded-md border border-dashed p-2">
         <select
           value={target}
+          aria-label={t('activity:availability.appliesTo')}
           onChange={(event) => setTarget(event.target.value)}
           className="h-9 w-full rounded-md border bg-background px-2 font-mono text-xs"
         >
@@ -180,6 +184,7 @@ export function AvailabilityCalendarEditor({
         </label>
         <select
           value={mode}
+          aria-label={t('activity:availability.mode')}
           onChange={(event) => setMode(event.target.value as 'blackout' | 'allow_only')}
           className="h-9 w-full rounded-md border bg-background px-2 text-xs"
         >

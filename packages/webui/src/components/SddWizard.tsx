@@ -645,6 +645,7 @@ export function SddWizard({
             <textarea
               value={reply}
               onChange={(e) => setReply(e.target.value)}
+              aria-label={t('activity:sddWizard.reply')}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();

@@ -143,6 +143,7 @@ export function ServerDialog({
             <select
               className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
               value={transport}
+              aria-label={t('settings:mcp.fieldTransport')}
               onChange={(e) => setTransport(e.target.value)}
               disabled={isPrefill}
             >
@@ -201,6 +202,7 @@ export function ServerDialog({
               className="w-full h-20 px-3 py-2 rounded-md border border-input bg-background text-sm font-mono resize-none"
               value={env}
               onChange={(e) => setEnv(e.target.value)}
+              aria-label={t('settings:mcp.fieldEnv')}
               placeholder={`GITHUB_TOKEN=ghp_...\nAWS_REGION=us-east-1`}
               // Env stays editable even for a prefilled official server — this is
               // where the user pastes the credentials it requires before enabling.

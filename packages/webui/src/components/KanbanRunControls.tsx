@@ -176,6 +176,7 @@ export function RunTaskControls({
               if (e.key === 'Escape') setReassigning(false);
             }}
             placeholder={t('activity:kanban.newWorkerName')}
+            aria-label={t('activity:kanban.reassignToAgent')}
             className="min-w-0 flex-1 rounded-md border bg-background px-2 py-1.5 text-xs outline-none focus:border-primary"
           />
           <button

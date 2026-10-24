@@ -8,12 +8,12 @@
  * every few seconds to tail new activity.
  */
 
+import { Bot } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useAppTranslation, i18n } from '@/i18n';
+import { i18n, useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
 import { useMonitorStore } from '@/stores/monitor-store';
 import { WatchMessageBubble } from './WatchMessageBubble.js';
-import { Bot } from 'lucide-react';
 
 interface WatchEntry {
   ts: string;
@@ -409,6 +409,7 @@ export function SessionWatchPanel({
           <textarea
             value={draft}
             onChange={(ev) => setDraft(ev.target.value)}
+            aria-label={t('activity:sessionWatch.messageDraft')}
             onKeyDown={(ev) => {
               if (ev.key === 'Enter' && (ev.metaKey || ev.ctrlKey)) {
                 ev.preventDefault();

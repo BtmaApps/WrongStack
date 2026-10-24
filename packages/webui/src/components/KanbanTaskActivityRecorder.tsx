@@ -65,6 +65,7 @@ export function KanbanTaskActivityRecorder({
           onChange={(event) => onNoteChange(event.target.value)}
           onKeyDown={(event) => event.key === 'Enter' && onRecordActivity()}
           placeholder={t('activity:kanbanRecorder.whatWasDecidedAttemptedOrProduced')}
+          aria-label={t('activity:kanbanRecorder.activityNote')}
           className="h-8 min-w-0 flex-1 rounded-md border bg-background px-2 text-xs outline-none focus:border-primary"
         />
         <button

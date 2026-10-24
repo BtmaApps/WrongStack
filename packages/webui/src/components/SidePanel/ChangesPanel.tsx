@@ -459,6 +459,7 @@ export function ChangesPanel() {
             <div className="p-2 border-t border-border/70 bg-card/40 shrink-0 space-y-1.5">
               <div className="relative">
                 <textarea
+                  aria-label={t('activity:changes.commitMessage')}
                   value={commitMessage}
                   onChange={(e) => setCommitMessage(e.target.value)}
                   onKeyDown={(e) => {

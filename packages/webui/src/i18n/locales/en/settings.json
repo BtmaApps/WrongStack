@@ -258,6 +258,7 @@
     "addCustomTitle": "Add custom model",
     "addFromCatalog": "Add from catalog",
     "catalogSearchPlaceholder": "Search models.dev catalog…",
+    "catalogSearchAria": "Search models",
     "catalogSearchTitle": "Search models.dev catalog",
     "colActions": "Actions",
     "colCaps": "Capabilities",

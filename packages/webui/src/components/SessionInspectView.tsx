@@ -384,6 +384,7 @@ export function SessionInspectView() {
                     value={eventFilter}
                     onChange={(e) => setEventFilter(e.target.value)}
                     placeholder={t('activity:sessionInspect.filterEvents')}
+                    aria-label={t('activity:sessionInspect.filterEvents')}
                     className="h-7 w-36 border border-border/60 bg-background pl-7 pr-2 text-[11px] outline-none focus:border-primary"
                   />
                 </div>

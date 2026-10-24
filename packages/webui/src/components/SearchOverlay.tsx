@@ -226,6 +226,7 @@ export function SearchOverlay() {
         <input
           ref={inputRef}
           value={query}
+          aria-label={t('activity:search.placeholder')}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Escape') {

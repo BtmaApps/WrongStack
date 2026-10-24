@@ -203,6 +203,7 @@
     "addCustomTitle": "Benutzerdefiniertes Modell hinzufügen",
     "addFromCatalog": "Aus Katalog hinzufügen",
     "catalogSearchPlaceholder": "models.dev-Katalog durchsuchen…",
+    "catalogSearchAria": "Modelle suchen",
     "catalogSearchTitle": "models.dev-Katalog durchsuchen",
     "colActions": "Aktionen",
     "colCaps": "Fähigkeiten",

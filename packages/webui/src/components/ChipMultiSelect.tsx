@@ -101,6 +101,7 @@ export function ChipMultiSelect({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={t('activity:chipMultiSelect.filter')}
+              aria-label={t('activity:chipMultiSelect.filterOptions')}
               className="min-w-0 flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground"
             />
             {query && (

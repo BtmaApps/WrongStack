@@ -141,6 +141,7 @@ export function ModelCatalogPicker({ ws, onSelect, onClose }: ModelCatalogPicker
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={t('settings:providerModels.catalogSearchPlaceholder')}
+            aria-label={t('settings:providerModels.catalogSearchAria')}
             className="h-10 w-full rounded-md border border-border bg-background pl-9 pr-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
           />
         </div>

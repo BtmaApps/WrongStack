@@ -263,6 +263,7 @@ export const MessageBubble = memo(function MessageBubble({
                 <textarea
                   value={editValue}
                   onChange={(e) => setEditValue(e.target.value)}
+                  aria-label={t('activity:message.editMessage')}
                   onKeyDown={(e) => {
                     if (e.key === 'Escape') {
                       e.preventDefault();

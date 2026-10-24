@@ -522,6 +522,7 @@ export function CollabPanel({ sessionId, className }: CollabPanelProps): React.R
               value={injectReason}
               onChange={(e) => setInjectReason(e.target.value)}
               placeholder={t('activity:collab.reasonPlaceholder')}
+              aria-label={t('activity:collab.reason')}
               className="flex-1 px-2 py-1 rounded border border-border bg-background"
             />
           </div>

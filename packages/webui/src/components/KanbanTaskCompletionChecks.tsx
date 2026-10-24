@@ -38,6 +38,7 @@ export function KanbanTaskCompletionChecks({
             <span className="min-w-0 truncate">{check.description}</span>
             <select
               value={check.status}
+              aria-label={t('activity:kanbanTaskCompletionChecks.checkStatus')}
               onChange={(event) =>
                 sendKanban('kanban.task.check.update', {
                   boardId: board?.id,
@@ -62,6 +63,7 @@ export function KanbanTaskCompletionChecks({
             onChange={(event) => onNewCheckChange(event.target.value)}
             onKeyDown={(event) => event.key === 'Enter' && onAddCheck()}
             placeholder={t('activity:kanbanTaskCompletionChecks.addAVerifiableCompletionCheck')}
+            aria-label={t('activity:kanbanTaskCompletionChecks.newCheck')}
             className="h-8 min-w-0 flex-1 rounded-md border bg-background px-2 text-xs outline-none focus:border-primary"
           />
           <button

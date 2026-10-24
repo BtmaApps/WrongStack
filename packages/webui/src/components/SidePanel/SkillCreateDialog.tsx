@@ -143,6 +143,7 @@ export function SkillCreateDialog({ form }: { form: ReturnType<typeof useSkillCr
                 setCreateSuccess(null);
               }}
               placeholder={t('activity:skillsList.namePlaceholder')}
+              aria-label={t('activity:skillsList.nameLabel')}
               className="w-full rounded-md border border-border/70 bg-background/70 px-3 py-2 font-mono text-xs shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
             />
           </div>
@@ -163,6 +164,7 @@ export function SkillCreateDialog({ form }: { form: ReturnType<typeof useSkillCr
                 if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && !creating) handleCreateSkill();
               }}
               placeholder={t('activity:skillsList.descPlaceholder')}
+              aria-label={t('activity:skillsList.descLabel')}
               rows={4}
               className="w-full resize-y rounded-md border border-border/70 bg-background/70 px-3 py-2 text-xs shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
             />

@@ -564,6 +564,7 @@ export function SelfLearningDetail({
           value={teachInput}
           onChange={(e) => setTeachInput(e.target.value)}
           placeholder={t('activity:agentRoster.eGAlwaysUsePnpmForThisProject')}
+          aria-label={t('activity:agentRoster.teachingNotes')}
         />
         <div className="flex justify-between items-center">
           <button

@@ -102,6 +102,7 @@ export function ModelPicker({
             <input
               ref={inputRef}
               value={query}
+              aria-label={t('activity:model.filterModelsAria')}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={t('activity:model.filterPlaceholder')}
               className="min-w-0 flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground"

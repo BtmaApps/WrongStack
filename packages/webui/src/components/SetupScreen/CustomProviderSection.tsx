@@ -1,11 +1,11 @@
-import { toast } from '@/components/Toaster';
-import { useFieldKeyboardNav } from '@/hooks/useFieldKeyboardNav';
-import { getWSClient } from '@/lib/ws-client';
-import { cn } from '@/lib/utils';
-import { useConfigStore } from '@/stores';
-import { useAppTranslation } from '@/i18n';
 import { ChevronRight, Loader2, Plus } from 'lucide-react';
 import { useState } from 'react';
+import { toast } from '@/components/Toaster';
+import { useFieldKeyboardNav } from '@/hooks/useFieldKeyboardNav';
+import { useAppTranslation } from '@/i18n';
+import { cn } from '@/lib/utils';
+import { getWSClient } from '@/lib/ws-client';
+import { useConfigStore } from '@/stores';
 import { LOCAL_PRESET_FAMILY, LOCAL_SERVER_PRESETS } from '../SettingsPanel/local-presets';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -151,6 +151,7 @@ export function CustomProviderSection({
               <select
                 value={family}
                 onChange={(e) => setFamily(e.target.value)}
+                aria-label={t('setup:screen.custom.family')}
                 className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
                 ref={setFieldRef(1)}
                 onKeyDown={(e) => handleKeyDown(e, 1)}

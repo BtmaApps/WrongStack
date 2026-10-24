@@ -215,6 +215,7 @@ export function ModelSelectDialog({
               <input
                 autoFocus={mode === 'provider-model'}
                 value={query}
+                aria-label={t('activity:modelSelectDialog.searchModelsAria')}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'ArrowDown') {

@@ -231,6 +231,7 @@ function TuneEditor({ onTune }: { onTune: (tune: Record<string, string>) => void
         <input
           value={font}
           onChange={(e) => setFont(e.target.value)}
+          aria-label={t('activity:designStudio.font')}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && font.trim()) onTune({ font: font.trim() });
           }}

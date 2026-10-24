@@ -438,6 +438,7 @@ export function KanbanView({ onClose }: { onClose?: (() => void) | undefined }) 
                   if (e.key === 'Enter') createTask();
                 }}
                 placeholder={t('activity:kanban.newTask')}
+                aria-label={t('activity:kanban.newTaskTitle')}
                 className="h-8 w-[calc(100%-2.5rem)] min-w-0 flex-none rounded-md border bg-background px-2 text-sm outline-none focus:border-primary sm:w-56"
               />
               <button
@@ -562,9 +563,9 @@ export function KanbanView({ onClose }: { onClose?: (() => void) | undefined }) 
           {showHistory ? (
             <div className="h-full overflow-y-auto p-4">
               <div className="mx-auto max-w-2xl">
-                <h3 className="mb-3 text-sm font-semibold text-muted-foreground">
+                <h2 className="mb-3 text-sm font-semibold text-muted-foreground">
                   {t('activity:kanban.boardHistory')}
-                </h3>
+                </h2>
                 {boardHistory.length === 0 ? (
                   <p className="text-sm text-muted-foreground">{t('activity:kanban.noHistory')}</p>
                 ) : (

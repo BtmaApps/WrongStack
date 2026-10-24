@@ -421,10 +421,10 @@ export function AnalyticsDashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Category breakdown */}
             <div className="ws-panel rounded-xl border border-border/70 bg-card/75 p-4 shadow-sm">
-              <h3 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase text-muted-foreground">
+              <h2 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase text-muted-foreground">
                 <TrendingUp className="h-3.5 w-3.5 text-primary" />
                 {t('activity:analytics.eventsByCategory')}
-              </h3>
+              </h2>
               {categoryEntries.length === 0 ? (
                 <p className="text-xs text-muted-foreground">{t('activity:analytics.noEvents')}</p>
               ) : (
@@ -456,10 +456,10 @@ export function AnalyticsDashboard() {
 
             {/* Tool usage / Event breakdown */}
             <div className="ws-panel rounded-xl border border-border/70 bg-card/75 p-4 shadow-sm">
-              <h3 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase text-muted-foreground">
+              <h2 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase text-muted-foreground">
                 <BarChart3 className="h-3.5 w-3.5 text-warning" />
                 {t('activity:analytics.topEvents')}
-              </h3>
+              </h2>
               {eventEntries.length === 0 ? (
                 <p className="text-xs text-muted-foreground">{t('activity:analytics.noEvents')}</p>
               ) : (
@@ -494,10 +494,10 @@ export function AnalyticsDashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Session usage detail */}
             <div className="ws-panel rounded-xl border border-border/70 bg-card/75 p-4 shadow-sm">
-              <h3 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase text-muted-foreground">
+              <h2 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase text-muted-foreground">
                 <DollarSign className="h-3.5 w-3.5 text-primary" />
                 {t('activity:analytics.activeSessionUsage')}
-              </h3>
+              </h2>
               {stats ? (
                 <div className="grid grid-cols-2 gap-3 text-xs">
                   <div className="min-w-0 rounded-lg border border-border/70 bg-background/50 px-3 py-2">
@@ -572,10 +572,10 @@ export function AnalyticsDashboard() {
 
             {/* Error/warning indicator */}
             <div className="ws-panel rounded-xl border border-border/70 bg-card/75 p-4 shadow-sm">
-              <h3 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase text-muted-foreground">
+              <h2 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase text-muted-foreground">
                 <AlertTriangle className="h-3.5 w-3.5 text-warning" />
                 {t('activity:analytics.healthErrors')}
-              </h3>
+              </h2>
               <div className="space-y-2 text-xs">
                 {summary ? (
                   <>
@@ -617,10 +617,10 @@ export function AnalyticsDashboard() {
 
           {/* ── Row 4: Recent events stream ── */}
           <div className="ws-panel rounded-xl border border-border/70 bg-card/75 p-4 shadow-sm">
-            <h3 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase text-muted-foreground">
+            <h2 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase text-muted-foreground">
               <Activity className="h-3.5 w-3.5 text-primary" />
               {t('activity:analytics.recentEvents')}
-            </h3>
+            </h2>
             {events.length === 0 ? (
               <p className="text-xs text-muted-foreground">
                 {t('activity:analytics.noRecentEvents')}

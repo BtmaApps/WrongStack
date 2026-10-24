@@ -203,6 +203,7 @@
     "addCustomTitle": "Ajouter un modèle personnalisé",
     "addFromCatalog": "Ajouter depuis le catalogue",
     "catalogSearchPlaceholder": "Rechercher dans le catalogue models.dev…",
+    "catalogSearchAria": "Rechercher des modèles",
     "catalogSearchTitle": "Rechercher dans le catalogue models.dev",
     "colActions": "Actions",
     "colCaps": "Capacités",

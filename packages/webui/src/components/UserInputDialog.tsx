@@ -370,6 +370,7 @@ function Question({
         <textarea
           className="min-h-24 w-full rounded-md border bg-background p-3 text-sm"
           placeholder={question.placeholder}
+          aria-label={t('activity:userInput.answer')}
           value={value.text}
           onChange={(event) =>
             onChange({

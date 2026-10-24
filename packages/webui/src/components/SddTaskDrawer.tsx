@@ -310,6 +310,7 @@ export function SddTaskDrawer({
                   }
                 }}
                 placeholder={t('activity:sddTask.verifyPlaceholder')}
+                aria-label={t('activity:sddTask.verificationCmd')}
                 className="w-full rounded border border-border bg-background px-2 py-1 font-mono text-[11px] text-foreground"
               />
               <div className="flex gap-1">
@@ -423,6 +424,7 @@ export function SddTaskDrawer({
                 if (e.key === 'Escape') setReassigning(false);
               }}
               placeholder={t('activity:sddTask.newWorkerPlaceholder')}
+              aria-label={t('activity:sddTask.reassignToAgent')}
               className="min-w-0 flex-1 rounded-md border border-border/70 bg-background px-2 py-1.5 text-xs outline-none focus:border-primary/60"
             />
             <button

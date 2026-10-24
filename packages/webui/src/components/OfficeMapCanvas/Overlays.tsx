@@ -91,6 +91,7 @@ export function BroadcastComposer({
       <textarea
         value={draft}
         onChange={(ev) => onDraftChange(ev.target.value)}
+        aria-label={t('activity:office.broadcastToAll')}
         onKeyDown={handleKeyDown}
         rows={3}
         placeholder={t('activity:office.broadcastPlaceholder')}

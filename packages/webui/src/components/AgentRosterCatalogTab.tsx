@@ -64,6 +64,7 @@ export function RosterCatalogTab({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={t('activity:agentRoster.searchPlaceholder')}
+            aria-label={t('activity:agentRoster.searchPlaceholder')}
             className="flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground/50"
           />
           {searchQuery && (

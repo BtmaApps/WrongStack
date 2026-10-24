@@ -124,6 +124,7 @@ export function SkillInstallDialog({ form }: { form: ReturnType<typeof useSkillI
               if (e.key === 'Enter' && !installing) handleInstallSkill();
             }}
             placeholder={t('activity:skillsList.installPlaceholder')}
+            aria-label={t('activity:skillsList.installReference')}
             className="w-full rounded-md border border-border/70 bg-background/70 px-3 py-2 text-xs shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
           />
 

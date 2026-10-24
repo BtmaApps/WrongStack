@@ -83,6 +83,7 @@ export function ChimeraReviewsHeader({
           <input
             type="text"
             placeholder="Search reports..."
+            aria-label={t('activity:chimeraReport.searchReportsAria')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="rounded-lg border border-border bg-background pl-8 pr-3 py-1.5 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary w-40 sm:w-52"

@@ -1,6 +1,6 @@
-import { useAppTranslation } from '@/i18n';
 import type { KanbanBoardSummary } from '@wrongstack/kanban';
 import { ArrowLeft, Columns3, Plus, RefreshCw } from 'lucide-react';
+import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
 import { Pagination } from './ui/pagination';
 
@@ -78,6 +78,7 @@ export function KanbanBoardSidebar({
             if (event.key === 'Enter') onCreateBoard();
           }}
           placeholder={t('activity:kanban.newBoard')}
+          aria-label={t('activity:kanban.newBoardTitle')}
           className="min-w-0 flex-1 rounded-md border bg-background px-2 py-1.5 text-sm outline-none focus:border-primary"
         />
         <button

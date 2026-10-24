@@ -77,6 +77,7 @@ export function ModelPickDialog({
           <input
             autoFocus
             value={query}
+            aria-label={t('activity:modelPickDialog.searchModelsAria')}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'ArrowDown') {

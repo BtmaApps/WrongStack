@@ -206,6 +206,7 @@ export function TaskCard({
             (assigning ? (
               <select
                 defaultValue={task.assignee ?? ''}
+                aria-label={t('activity:task.assignToAgent')}
                 onChange={(e) => {
                   onAssign(task.id, e.target.value);
                   setAssigning(false);

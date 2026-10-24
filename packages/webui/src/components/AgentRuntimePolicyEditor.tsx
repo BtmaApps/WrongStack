@@ -347,11 +347,13 @@ export function AgentRuntimePolicyEditor({
                   patch({ availability: { ...config.availability!, timezone: event.target.value } })
                 }
                 placeholder={t('activity:runtimePolicy.europeKiev')}
+                aria-label={t('activity:runtimePolicy.timezone')}
                 className="h-8 rounded border border-border bg-background px-2 text-[10px]"
               />
               <input
                 type="time"
                 value={config.availability.start}
+                aria-label={t('activity:runtimePolicy.availableFrom')}
                 onChange={(event) =>
                   patch({ availability: { ...config.availability!, start: event.target.value } })
                 }
@@ -360,6 +362,7 @@ export function AgentRuntimePolicyEditor({
               <input
                 type="time"
                 value={config.availability.end}
+                aria-label={t('activity:runtimePolicy.availableUntil')}
                 onChange={(event) =>
                   patch({ availability: { ...config.availability!, end: event.target.value } })
                 }
@@ -367,6 +370,7 @@ export function AgentRuntimePolicyEditor({
               />
               <select
                 value={systemProtected ? 'advisory' : (config.availability.mode ?? 'enforce')}
+                aria-label={t('activity:runtimePolicy.availabilityMode')}
                 disabled={systemProtected}
                 onChange={(event) =>
                   patch({

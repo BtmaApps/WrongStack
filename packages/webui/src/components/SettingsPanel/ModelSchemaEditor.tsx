@@ -523,6 +523,7 @@ export function ModelSchemaEditor({
           <textarea
             value={rawText}
             onChange={(e) => setRawText(e.target.value)}
+            aria-label={t('activity:modelSchema.schemaJson')}
             rows={16}
             className="w-full rounded-md border border-border bg-muted/20 p-2 font-mono text-xs"
             spellCheck={false}

@@ -525,6 +525,7 @@ export function CustomRosterPanel({ projectRoot }: CustomRosterPanelProps) {
                     value={editContent}
                     onChange={(e) => setEditContent(e.target.value)}
                     placeholder='{ "tools": [...], "budget": {...} }'
+                    aria-label={t('activity:customRoster.roleConfigJson')}
                   />
                 ) : (
                   <textarea
@@ -534,6 +535,7 @@ export function CustomRosterPanel({ projectRoot }: CustomRosterPanelProps) {
                     placeholder={t('activity:customRoster.identityPlaceholder', {
                       role: selectedRole,
                     })}
+                    aria-label={t('activity:customRoster.roleIdentity')}
                   />
                 )}
               </div>
@@ -554,6 +556,7 @@ export function CustomRosterPanel({ projectRoot }: CustomRosterPanelProps) {
                 value={teachInput}
                 onChange={(e) => setTeachInput(e.target.value)}
                 placeholder={t('activity:customRoster.teachInputPlaceholder')}
+                aria-label={t('activity:agentRoster.teachingNotes')}
               />
               <div className="flex justify-between items-center">
                 <button
@@ -588,6 +591,7 @@ export function CustomRosterPanel({ projectRoot }: CustomRosterPanelProps) {
                 value={improvePrompt}
                 onChange={(e) => setImprovePrompt(e.target.value)}
                 placeholder={t('activity:agentRoster.teachPlaceholder')}
+                aria-label={t('activity:customRoster.improvementPrompt')}
               />
               <div className="flex justify-between items-center">
                 <button

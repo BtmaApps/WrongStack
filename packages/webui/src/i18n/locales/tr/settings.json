@@ -203,6 +203,7 @@
     "addCustomTitle": "Özel model ekle",
     "addFromCatalog": "Katalogdan ekle",
     "catalogSearchPlaceholder": "models.dev kataloğunda ara…",
+    "catalogSearchAria": "Modelleri ara",
     "catalogSearchTitle": "models.dev kataloğunda ara",
     "colActions": "İşlemler",
     "colCaps": "Yetenekler",

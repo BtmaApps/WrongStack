@@ -198,6 +198,7 @@ export function ProviderSavedProfiles({
           <select
             className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
             value={newProviderFamily}
+            aria-label={t('activity:provider.family')}
             onChange={(e) => setNewProviderFamily(e.target.value)}
             ref={addProviderNav.setFieldRef(1)}
             onKeyDown={(e) => addProviderNav.handleKeyDown(e, 1)}

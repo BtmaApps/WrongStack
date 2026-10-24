@@ -309,6 +309,7 @@ export function SkillsList({ className }: { className?: string }) {
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder={t('activity:skillsList.searchPlaceholder')}
+          aria-label={t('activity:skillsList.searchPlaceholder')}
           className="w-full rounded-md border border-border/70 bg-background/70 px-2 py-1.5 text-xs shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
         />
         <div className="flex gap-1 flex-wrap">

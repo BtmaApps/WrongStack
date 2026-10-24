@@ -201,6 +201,7 @@ export function ChatHeader({
                   }
                 }}
                 placeholder={t('chat:sessionNamePlaceholder')}
+                aria-label={t('chat:sessionNamePlaceholder')}
                 className="h-6 px-1.5 text-[11px] bg-background border border-primary/40 rounded-md focus:outline-none focus:ring-1 focus:ring-ring shrink-0 w-36"
               />
             ) : (
