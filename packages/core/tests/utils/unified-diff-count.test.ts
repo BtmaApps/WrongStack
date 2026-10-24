@@ -191,4 +191,46 @@ describe('compactDiff counts files, not file headers', () => {
     ].join('\n');
     expect(files(diff)).toBe('1');
   });
+
+  // `git diff` renders an ADDED file with `--- /dev/null` and a DELETED file
+  // with `+++ /dev/null`. `/dev/null` is not a path: keying it registered a
+  // second entry beside the real one from `diff --git`, so a one-file add
+  // reported files=2.
+  it('counts one file for a git diff that adds a file', () => {
+    const diff = [
+      'diff --git a/added.txt b/added.txt',
+      'new file mode 100644',
+      'index 0000000..905aa2b',
+      '--- /dev/null',
+      '+++ b/added.txt',
+      '@@ -0,0 +1,300 @@',
+      '+first',
+      ...pad(),
+    ].join('\n');
+    expect(files(diff)).toBe('1');
+  });
+
+  it('counts one file for a git diff that deletes a file', () => {
+    const diff = [
+      'diff --git a/gone.txt b/gone.txt',
+      'deleted file mode 100644',
+      'index 42a4ab2..0000000',
+      '--- a/gone.txt',
+      '+++ /dev/null',
+      '@@ -1,300 +0,0 @@',
+      '-first',
+      ...pad(),
+    ].join('\n');
+    expect(files(diff)).toBe('1');
+  });
+
+  // Boundary: a bare (no `diff --git`) add diff must still name the real file,
+  // not `/dev/null` — the fix falls through to the `+++ ` side, it does not
+  // simply drop the pair.
+  it('names the added file for a ---/+++ only add diff', () => {
+    const diff = ['--- /dev/null', '+++ b/new.ts', '@@ -0,0 +1,2 @@', '+a', '+b', ...pad()].join(
+      '\n',
+    );
+    expect(files(diff)).toBe('1');
+  });
 });

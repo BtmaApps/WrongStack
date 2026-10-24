@@ -47,7 +47,14 @@ function countDiffFiles(lines: string[]): number {
     }
     // Only a pair OUTSIDE a hunk is a header; inside one it is content.
     if (!inHunk && line.startsWith('--- ') && lines[i + 1]?.startsWith('+++ ')) {
-      files.add(key(line.slice(4)));
+      const from = line.slice(4);
+      const to = (lines[i + 1] ?? '').slice(4);
+      // `/dev/null` is git's marker for the absent side of an add
+      // (`--- /dev/null`) or a delete (`+++ /dev/null`); it is not a file.
+      // Keying it registered a second entry beside the real path from
+      // `diff --git`, so a one-file add reported files=2.
+      const path = from === '/dev/null' ? to : from;
+      if (path !== '/dev/null') files.add(key(path));
       i += 1;
     }
   }

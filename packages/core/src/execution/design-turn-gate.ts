@@ -40,6 +40,8 @@ export interface DesignGateState {
   /** Event counter; a write after the last inspect has a higher number. */
   seq: number;
   lastWriteSeq: number;
+  /** The last `seq` for which `beforeTurnEnd` already issued a steer in this run. */
+  lastSteeredSeq?: number | undefined;
   /** Survives runs: the page the model inspected (url or project file) stays known. */
   lastInspect?:
     | {
@@ -187,13 +189,24 @@ function createDesignTurnGateExtension(deps: {
     beforeRun(ctx) {
       // Writes are judged per run; the inspected URL stays known.
       const state = ctx.meta[STATE_KEY] as DesignGateState | undefined;
-      if (state) state.writes = [];
+      if (state) {
+        state.writes = [];
+        state.lastSteeredSeq = undefined;
+      }
     },
     async beforeTurnEnd(ctx) {
       const state = ctx.meta[STATE_KEY] as DesignGateState | undefined;
       if (!state || state.writes.length === 0) return undefined;
+      if (state.lastSteeredSeq === state.seq) return undefined;
       const config = await readDesignGateConfig(ctx.projectRoot);
-      return designGateSteer(state, config, deps.hasTool(DESIGN_INSPECT_TOOL), ctx.projectRoot);
+      const steer = designGateSteer(
+        state,
+        config,
+        deps.hasTool(DESIGN_INSPECT_TOOL),
+        ctx.projectRoot,
+      );
+      if (steer) state.lastSteeredSeq = state.seq;
+      return steer;
     },
   };
 }
