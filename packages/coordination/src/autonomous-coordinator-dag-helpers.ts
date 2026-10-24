@@ -1,7 +1,7 @@
 import type { GoalNode, KnowledgeGraph } from './knowledge-graph.js';
 import type { TaskDAG } from './task-dag.js';
 
-export function dagProgressKey(dag: TaskDAG): string {
+function dagProgressKey(dag: TaskDAG): string {
   const s = dag.stats();
   return `${s.pending}:${s.ready}:${s.running}:${s.done}:${s.failed}:${s.skipped}`;
 }
@@ -26,7 +26,7 @@ export function waitForDagProgress(dag: TaskDAG, timeoutMs: number): Promise<voi
   });
 }
 
-export function rebuildDagNode(dag: TaskDAG, goal: GoalNode, deps: string[]): void {
+function rebuildDagNode(dag: TaskDAG, goal: GoalNode, deps: string[]): void {
   dag.addNode(goal.id, goal.description, deps, { tags: goal.tags });
   if (goal.status === 'in_progress') {
     dag.start(goal.id, goal.assignee ?? 'unknown');

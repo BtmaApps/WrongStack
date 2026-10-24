@@ -23,14 +23,14 @@ export interface AuthPanelServiceDeps {
 
 // Strip SGR color/style sequences — the flows emit `color.*`-formatted text
 // for the terminal; the panel log renders plain text with its own styling.
-export const ANSI_RE = /\u001b\[[0-9;]*m/g;
+const ANSI_RE = /\u001b\[[0-9;]*m/g;
 
-export function stripAnsi(text: string): string {
+function stripAnsi(text: string): string {
   return text.replace(ANSI_RE, '');
 }
 
 /** Normalise a flow prompt ("  ? Label for this key [default]: ") for the modal. */
-export function cleanPrompt(prompt: string): string {
+function cleanPrompt(prompt: string): string {
   return stripAnsi(prompt)
     .replace(/[\r\n]+/g, ' ')
     .replace(/^\s*\?\s*/, '')
@@ -39,7 +39,7 @@ export function cleanPrompt(prompt: string): string {
 }
 
 /** Fan a multi-line renderer write out into individual trimmed log lines. */
-export function emitLines(io: AuthFlowIo, raw: string, prefix = ''): void {
+function emitLines(io: AuthFlowIo, raw: string, prefix = ''): void {
   for (const line of stripAnsi(raw).split(/\r?\n/)) {
     const text = line.trim();
     if (text.length > 0) io.onLog(prefix + text);
@@ -67,7 +67,7 @@ export function flowDeps(base: AuthPanelServiceDeps, io: AuthFlowIo): AuthMenuDe
   };
 }
 
-export function isCancel(err: unknown): boolean {
+function isCancel(err: unknown): boolean {
   return (
     (err instanceof Error && err.name === 'AbortError') ||
     (err instanceof DOMException && err.name === 'AbortError')

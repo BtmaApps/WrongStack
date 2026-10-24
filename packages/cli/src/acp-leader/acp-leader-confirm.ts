@@ -12,7 +12,7 @@ import type { PermissionPolicy, Tool } from '@wrongstack/contracts/types';
 import { confirmObserverCount } from '@wrongstack/core/agent';
 import { DEFAULT_ALWAYS_TRUST_TTL_MS, scopedApprovalPattern } from '@wrongstack/core/security';
 
-export const ACP_CONFIRM_TIMEOUT_MS = 120_000;
+const ACP_CONFIRM_TIMEOUT_MS = 120_000;
 
 type Answer = 'yes' | 'no' | 'always' | 'always-exact' | 'always-command' | 'always-tool' | 'deny';
 

@@ -27,7 +27,7 @@ import {
   persistReceipt,
 } from './sqlite-mailbox-rows.js';
 
-export const SQLITE_MAILBOX_SCHEMA_VERSION = 2;
+const SQLITE_MAILBOX_SCHEMA_VERSION = 2;
 
 export { loadDatabaseSync };
 

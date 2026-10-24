@@ -2,7 +2,7 @@ import type { SlashCommand } from '@wrongstack/contracts/types';
 import { type GoalSummary, PhaseStore } from '@wrongstack/goal';
 import type { SlashCommandContext } from './command-context.js';
 
-export function formatGoalSummary(goal: GoalSummary): string {
+function formatGoalSummary(goal: GoalSummary): string {
   return [
     `${goal.title} [${goal.id}]`,
     `Status: ${goal.status} · Progress: ${goal.percentComplete === null ? '—' : `${goal.percentComplete}%`} · Tasks: ${goal.completedTasks}/${goal.totalTasks} · Phases: ${goal.completedPhases}/${goal.totalPhases}`,

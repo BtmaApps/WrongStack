@@ -37,7 +37,7 @@ import { createCodebaseEmbeddingPort } from './codebase-embeddings.js';
  * (external watching is off by default) — incoming calls and impact analysis
  * then answered for a function body that no longer existed.
  */
-export function editedFilePaths(toolName: string, input: unknown, cwd: string): string[] {
+function editedFilePaths(toolName: string, input: unknown, cwd: string): string[] {
   const args = (input ?? {}) as Record<string, unknown>;
   const resolve = (value: unknown, base = cwd): string[] =>
     typeof value === 'string' && value.length > 0 ? [path.resolve(base, value)] : [];

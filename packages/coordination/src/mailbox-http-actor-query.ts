@@ -111,7 +111,7 @@ export async function unreadCountForActor(
   return messages.filter((message) => !isMessageCompletedForActor(message, actor.actorId)).length;
 }
 
-export function isMessageCompletedForActor(message: MailboxMessage, actorId: string): boolean {
+function isMessageCompletedForActor(message: MailboxMessage, actorId: string): boolean {
   const projection = message as Partial<MailboxMessageProjection>;
   if (projection.legacyGlobalCompletion === true) return true;
   const recipientState = projection.recipientState;

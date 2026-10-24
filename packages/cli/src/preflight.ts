@@ -99,7 +99,7 @@ export function applySessionShellDefault(): void {
  * callers get back the (possibly refreshed) `UpdateInfo`
  * so version-aware UI can render without re-fetching.
  */
-export async function applyPrintUpdateNotice(
+async function applyPrintUpdateNotice(
   initialUpdateInfo: UpdateInfo | undefined,
   config?: Config | undefined,
 ): Promise<UpdateInfo | undefined> {
@@ -114,7 +114,7 @@ export async function applyPrintUpdateNotice(
  * restarts. The default debug-stream callback is intentionally
  * left unset \u2014 see the module-level docstring for why.
  */
-export async function applyDebugStreamSeed(config: Config): Promise<void> {
+async function applyDebugStreamSeed(config: Config): Promise<void> {
   const { setDebugStreamEnabled } = await import('@wrongstack/providers');
   if (config.debugStream) {
     setDebugStreamEnabled(true);

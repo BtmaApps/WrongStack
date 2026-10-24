@@ -53,7 +53,7 @@ export function filterProviders(query: string, providers: ResolvedProvider[]): R
 }
 
 /** Preferred family display order; remaining families follow in insertion order. */
-export const PROVIDER_FAMILY_PREFERRED_ORDER = [
+const PROVIDER_FAMILY_PREFERRED_ORDER = [
   'anthropic',
   'anthropic-oauth',
   'openai',
@@ -70,7 +70,7 @@ export const PROVIDER_FAMILY_PREFERRED_ORDER = [
  * the raw-stdin loop so the selection index and the rendered cursor always
  * refer to the same provider.
  */
-export function orderProvidersForDisplay(filtered: ResolvedProvider[]): ResolvedProvider[] {
+function orderProvidersForDisplay(filtered: ResolvedProvider[]): ResolvedProvider[] {
   const families = new Map<string, ResolvedProvider[]>();
   for (const p of filtered) {
     const arr = families.get(p.family) ?? [];
@@ -186,7 +186,7 @@ export function renderLiveProviderList(
  */
 // Marker used to locate the query line within the rendered (boxed) frame.
 // renderLiveProviderList emits exactly one line containing this literal.
-export const QUERY_MARKER = 'Select provider:';
+const QUERY_MARKER = 'Select provider:';
 
 /**
  * Park the terminal cursor at the end of the live query text inside the
@@ -196,7 +196,7 @@ export const QUERY_MARKER = 'Select provider:';
  * is measured with stripAnsi so the box border + accent colors don't offset
  * the cursor.
  */
-export function cursorToQuery(frame: string, query: string): void {
+function cursorToQuery(frame: string, query: string): void {
   const rows = frame.split('\n');
   const lastIdx = rows.length - 1;
   const queryIdx = rows.findIndex((r) => r.includes(QUERY_MARKER));

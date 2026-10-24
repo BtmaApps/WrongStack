@@ -145,7 +145,7 @@ export interface PreparedDelegation {
   routing: DispatchLogEntry;
 }
 
-export const WAIT_LAUNCH_PREFACE = [
+const WAIT_LAUNCH_PREFACE = [
   'Launch-mode guidance (delegate): you were launched via the synchronous `delegate` tool, so the leader is blocked on this call for the full duration of your run.',
   'If, after inspecting the task, you judge it will run for tens of minutes or hours (multi-file refactor, monorepo audit, long-running build/test, sweeping migration), do NOT silently grind through it under the blocking call.',
   'Escalate to the leader with `session_note to="leader"` when that tool is registered (same-session, next iteration). Fall back to `mail_send` or `mailbox action=send` only for cross-session mail. Send a `steer` or `ask`, e.g. *"my task is going to run long, please spawn a subagent instead"*, so the leader can re-dispatch asynchronously via `spawn_subagent` + `assign_task`.',
@@ -153,14 +153,14 @@ export const WAIT_LAUNCH_PREFACE = [
   'If the task is short and bounded, just do it end-to-end — do not over-trigger the escalation for normal work.',
 ].join('\n\n');
 
-export const BACKGROUND_LAUNCH_PREFACE = [
+const BACKGROUND_LAUNCH_PREFACE = [
   'Launch-mode guidance (delegate): you were launched via `delegate` in background mode. The leader is NOT blocked on you — it keeps working, and your final result is delivered to it automatically when you finish.',
   'Do the task end-to-end within its boundary. Do not stop early just because the work is long; if it genuinely outgrows one worker, return a clean checkpoint with `completion:"partial"` and a concrete `remaining_work` so a fresh worker can continue.',
   'If you need a decision or parallel help from the leader mid-task, use `session_note to="leader"` (kind `ask` or `steer`) when that tool is registered; fall back to `mail_send` only for cross-session mail. Do not send your final result by mail — submitting it is enough.',
 ].join('\n\n');
 
 /** The worker-facing launch preface for a delegation mode. */
-export function launchPrefaceFor(mode: DelegateMode): string {
+function launchPrefaceFor(mode: DelegateMode): string {
   return mode === 'background' ? BACKGROUND_LAUNCH_PREFACE : WAIT_LAUNCH_PREFACE;
 }
 

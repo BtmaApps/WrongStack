@@ -103,7 +103,7 @@ export function buildDelegateSummary(role: string | undefined, result: TaskResul
 }
 
 /** Max characters of a delegation result persisted / delivered as an excerpt. */
-export const DELEGATION_RESULT_EXCERPT_CHARS = 4_000;
+const DELEGATION_RESULT_EXCERPT_CHARS = 4_000;
 
 /**
  * Bounded text rendering of a settled delegation, structured report first.

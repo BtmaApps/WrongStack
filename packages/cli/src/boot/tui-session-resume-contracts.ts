@@ -96,7 +96,7 @@ export interface SessionResumeResult {
 }
 
 /** Flatten a message's content to plain text (string form or text blocks). */
-export function messageText(content: unknown): string {
+function messageText(content: unknown): string {
   if (typeof content === 'string') return content;
   if (!Array.isArray(content)) return '';
   return content

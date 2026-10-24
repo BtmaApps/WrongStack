@@ -62,7 +62,7 @@ function renderLimitRow(
 }
 
 /** Render `/settings limits` — every limit, whether the user set it, and its range. */
-export function renderLimitsView(limits: LimitsConfig | undefined): string {
+function renderLimitsView(limits: LimitsConfig | undefined): string {
   const lines = [
     `${color.bold('Limits')}  ${color.dim('unset = no limit (the model / catalog decides)')}`,
   ];

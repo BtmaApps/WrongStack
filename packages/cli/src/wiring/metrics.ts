@@ -72,7 +72,7 @@ const MCP_DEGRADED_STATES = new Set<McpHealthState>([
  * servers. Details intentionally contain counts only: server names, commands,
  * URLs, and authentication configuration never enter `/health` or `/healthz`.
  */
-export function registerMcpHealthCheck(
+function registerMcpHealthCheck(
   healthRegistry: HealthRegistry | undefined,
   mcpRegistry: McpHealthSource,
 ): void {
@@ -135,7 +135,7 @@ export function registerMcpHealthCheck(
  * Bridge detailed registry telemetry into bounded-cardinality metrics. Server
  * names, reasons, commands, URLs, tool names, and arguments are never labels.
  */
-export function registerMcpMetrics(
+function registerMcpMetrics(
   metricsSink: MetricsSink | undefined,
   mcpRegistry: McpMetricsSource,
 ): () => void {

@@ -19,7 +19,7 @@ export interface SubagentEntry {
   sessionId: string;
 }
 
-export function findIdleSubagentInMap(
+function findIdleSubagentInMap(
   subagents: Map<string, SubagentEntry>,
   terminating: Set<string>,
 ): string | null {
@@ -75,7 +75,7 @@ export function takePendingPinnedTo(pendingTasks: TaskSpec[], subagentId: string
   return taken;
 }
 
-export function isIdleSubagentInMap(
+function isIdleSubagentInMap(
   subagents: Map<string, SubagentEntry>,
   terminating: Set<string>,
   id: string,

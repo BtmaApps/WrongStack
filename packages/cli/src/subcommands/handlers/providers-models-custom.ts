@@ -23,7 +23,7 @@ import {
 } from './providers-models-visibility.js';
 
 /** Parse `--key value` flags from a flat args array. */
-export function parseFlags(args: string[]): Record<string, string | boolean> {
+function parseFlags(args: string[]): Record<string, string | boolean> {
   const flags: Record<string, string | boolean> = {};
   for (let i = 0; i < args.length; i++) {
     const a = expectDefined(args[i]);
@@ -64,13 +64,13 @@ export function positionals(args: string[]): string[] {
   return out;
 }
 
-export function fmtPrice(usdPer1M: number | undefined): string {
+function fmtPrice(usdPer1M: number | undefined): string {
   if (usdPer1M === undefined) return color.dim('?');
   const value = usdPer1M >= 10 ? usdPer1M.toFixed(1) : usdPer1M.toFixed(2);
   return '$' + value;
 }
 
-export async function modelsResetCustomModel(
+async function modelsResetCustomModel(
   providerId: string,
   modelId: string,
   saved: ProviderConfig,
@@ -245,7 +245,7 @@ export async function modelsCaps(
 /**
  * Load → mutate → encrypt → atomic-write for the `models` section.
  */
-export async function mutateModelsConfig(
+async function mutateModelsConfig(
   deps: Parameters<SubcommandHandler>[1],
   mutator: (models: Record<string, CustomModelDefinition>) => void,
 ): Promise<void> {
@@ -286,7 +286,7 @@ export async function mutateModelsConfig(
 }
 
 /** Parse a human-readable size like "128k", "1M", "200000" into a number. */
-export function parseSizeFlag(raw: string | undefined): number | undefined {
+function parseSizeFlag(raw: string | undefined): number | undefined {
   if (!raw) return undefined;
   const s = raw.trim().toLowerCase();
   const match = /^(\d+(?:\.\d+)?)\s*(k|m|b)?$/.exec(s);
@@ -317,10 +317,7 @@ export function subcommandFlags(
 }
 
 /** Parse a boolean flag like "--tools" / "--no-tools". */
-export function parseBoolFlag(
-  flags: Record<string, string | boolean>,
-  key: string,
-): boolean | undefined {
+function parseBoolFlag(flags: Record<string, string | boolean>, key: string): boolean | undefined {
   if (flags[key] === true || flags[key] === 'true') return true;
   if (flags[`no-${key}`] !== undefined) return false;
   return undefined;

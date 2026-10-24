@@ -5,7 +5,7 @@ import { activeProfileConfigPath } from '../../profile-config-path.js';
 import { mutateConfigProviders } from '../../provider-config-utils.js';
 import type { SubcommandHandler } from '../contracts.js';
 
-export function aliasProviderId(configProviderId: string, cfg: ProviderConfig | undefined): string {
+function aliasProviderId(configProviderId: string, cfg: ProviderConfig | undefined): string {
   return cfg?.type && cfg.type !== configProviderId ? cfg.type : configProviderId;
 }
 
@@ -75,7 +75,7 @@ export function usesAccountCatalog(cfg: ProviderConfig | undefined): boolean {
   return active?.authMethod === 'oauth';
 }
 
-export function uniqueStrings(values: string[]): string[] {
+function uniqueStrings(values: string[]): string[] {
   return [...new Set(values.map((v) => v.trim()).filter(Boolean))];
 }
 

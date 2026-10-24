@@ -41,7 +41,7 @@ function parseInvocation(args: string): {
 }
 
 /** CLI-owned adapter over the package-owned security command implementation. */
-export function createCliSecurityCommand(
+function createCliSecurityCommand(
   host: SecurityCommandHost,
   backend: SecurityBackendCommand = createSecuritySlashCommand(),
 ): SlashCommand {

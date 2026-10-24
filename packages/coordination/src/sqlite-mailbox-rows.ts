@@ -46,8 +46,7 @@ export interface ReceiptRow {
  * permanently offline agent. The JSONL registry it replaced pruned these via
  * `Number.isFinite(Date.parse(...))`.
  */
-export const MALFORMED_TIMESTAMP =
-  "last_seen_at NOT GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T*'";
+const MALFORMED_TIMESTAMP = "last_seen_at NOT GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T*'";
 
 /**
  * Strip the message-level completion fields from a fan-out message before it

@@ -13,7 +13,7 @@ export interface DecomposedSubGoal {
   tags?: string[];
 }
 
-export function inferCategory(goal: string): FactCategory {
+function inferCategory(goal: string): FactCategory {
   const g = goal.toLowerCase();
   if (g.includes('security') || g.includes('secret') || g.includes('injection')) return 'security';
   if (g.includes('bug') || g.includes('fix') || g.includes('error')) return 'bug';

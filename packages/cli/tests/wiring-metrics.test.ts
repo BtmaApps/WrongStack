@@ -3,7 +3,7 @@ import * as path from 'node:path';
 import { EventBus } from '@wrongstack/contracts/kernel';
 import { InMemoryMetricsSink } from '@wrongstack/core/observability';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { registerMcpHealthCheck, registerMcpMetrics, setupMetrics } from '../src/wiring/metrics.js';
+import { registerMcpObservability, setupMetrics } from '../src/wiring/metrics.js';
 
 // We control startMetricsServer to assert wiring without binding a real socket.
 const startMetricsServerMock = vi.fn();
@@ -232,20 +232,19 @@ describe('setupMetrics', () => {
   });
 });
 
-describe('registerMcpHealthCheck', () => {
+describe('registerMcpHealthCheck (via registerMcpObservability)', () => {
   function captureCheck(servers: Array<{ name: string; state: string; enabled: boolean }>) {
     const register = vi.fn();
-    registerMcpHealthCheck(
-      { register } as never,
-      {
-        describe: () => servers.map((server) => ({ ...server, toolCount: 0, tools: [] })),
-      } as never,
-    );
+    registerMcpObservability({ register } as never, undefined, {
+      describe: () => servers.map((server) => ({ ...server, toolCount: 0, tools: [] })),
+    } as never);
     return register.mock.calls[0]![0] as { check(): Promise<{ status: string; detail: string }> };
   }
 
   it('does not register when health collection is disabled', () => {
-    expect(() => registerMcpHealthCheck(undefined, { describe: vi.fn() } as never)).not.toThrow();
+    expect(() =>
+      registerMcpObservability(undefined, undefined, { describe: vi.fn() } as never),
+    ).not.toThrow();
   });
 
   it('treats no configured servers and lazy dormant servers as healthy', async () => {
@@ -281,32 +280,26 @@ describe('registerMcpHealthCheck', () => {
 
   it('reports unhealthy when registry describe throws', async () => {
     const register = vi.fn();
-    registerMcpHealthCheck(
-      { register } as never,
-      {
-        describe: () => {
-          throw new Error('boom');
-        },
-      } as never,
-    );
+    registerMcpObservability({ register } as never, undefined, {
+      describe: () => {
+        throw new Error('boom');
+      },
+    } as never);
     const result = await (register.mock.calls[0]![0] as { check(): Promise<unknown> }).check();
     expect(result).toMatchObject({ status: 'unhealthy', detail: 'registry status unavailable' });
   });
 
   it('uses detailed operational health when available', async () => {
     const register = vi.fn();
-    registerMcpHealthCheck(
-      { register } as never,
-      {
-        describe: () => [],
-        operationalHealth: () => [
-          {
-            healthState: 'degraded',
-            failures: { transport: 1, protocol: 0, tool: 2 },
-          },
-        ],
-      } as never,
-    );
+    registerMcpObservability({ register } as never, undefined, {
+      describe: () => [],
+      operationalHealth: () => [
+        {
+          healthState: 'degraded',
+          failures: { transport: 1, protocol: 0, tool: 2 },
+        },
+      ],
+    } as never);
     const result = await (register.mock.calls[0]![0] as { check(): Promise<unknown> }).check();
     expect(result).toMatchObject({
       status: 'degraded',
@@ -316,7 +309,7 @@ describe('registerMcpHealthCheck', () => {
   });
 });
 
-describe('registerMcpMetrics', () => {
+describe('registerMcpMetrics (via registerMcpObservability)', () => {
   it('records bounded labels and never uses server names or reasons as labels', () => {
     const sink = new InMemoryMetricsSink();
     let listener: ((event: any) => void) | undefined;
@@ -329,7 +322,7 @@ describe('registerMcpMetrics', () => {
         };
       },
     } as never;
-    const unsubscribe = registerMcpMetrics(sink, source);
+    const unsubscribe = registerMcpObservability(undefined, sink, source);
     listener?.({
       serverName: 'tenant-secret-server',
       kind: 'failure',

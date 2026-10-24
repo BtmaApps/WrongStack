@@ -8,7 +8,7 @@
  * A leaf module (no imports) so every coordination file can ask it without
  * joining an import cycle.
  */
-export const EXTERNAL_AGENT_PROVIDERS: ReadonlySet<string> = new Set(['acp', 'wrongforge']);
+const EXTERNAL_AGENT_PROVIDERS: ReadonlySet<string> = new Set(['acp', 'wrongforge']);
 
 export function isExternalAgentProvider(provider: string | undefined): boolean {
   return provider !== undefined && EXTERNAL_AGENT_PROVIDERS.has(provider);

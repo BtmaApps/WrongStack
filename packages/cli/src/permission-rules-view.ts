@@ -46,7 +46,7 @@ function resourceText(rule: PermissionRule): string {
   return rule.resource === '*' ? 'any input' : rule.resource;
 }
 
-export function describePermissionRule(rule: PermissionRule): string {
+function describePermissionRule(rule: PermissionRule): string {
   return `#${rule.n} ${rule.effect} ${actionText(rule)} → ${resourceText(rule)} (${rule.source})`;
 }
 

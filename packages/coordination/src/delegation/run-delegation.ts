@@ -565,7 +565,7 @@ function continuationFor(
   return undefined;
 }
 
-export function buildHandoffTask(
+function buildHandoffTask(
   originalTask: string,
   continuation: DelegateContinuation,
   handoffCount: number,

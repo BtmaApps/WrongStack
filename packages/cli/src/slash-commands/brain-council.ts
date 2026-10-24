@@ -16,7 +16,7 @@ import { color } from '@wrongstack/core/utils';
 import type { SlashCommandContext } from './command-context.js';
 
 const COUNCIL_RISKS: ReadonlySet<string> = new Set(['medium', 'high', 'critical']);
-export const COUNCIL_DISTINCTNESS: ReadonlySet<string> = new Set(['none', 'model', 'provider']);
+const COUNCIL_DISTINCTNESS: ReadonlySet<string> = new Set(['none', 'model', 'provider']);
 
 const COUNCIL_NUMERIC_OPS: Record<string, string | undefined> = {
   timeout: 'perCallTimeoutMs',

@@ -280,7 +280,7 @@ export function buildEffortCommand(opts: SlashCommandContext): SlashCommand {
  * read → decrypt → mutate → encrypt → atomicWrite cycle as `/setmodel` and
  * `persistConfigSetting` so encrypted secrets round-trip byte-for-byte.
  */
-export async function patchSessionEffort(
+async function patchSessionEffort(
   effort: ReasoningEffort | undefined,
   paths: WstackPaths,
   activeProfile: string,

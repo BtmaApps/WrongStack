@@ -24,7 +24,7 @@ import { wstackGlobalRoot } from '@wrongstack/core/utils';
 import { type MailboxBridgeHandle, tryAcquireMailboxBridge } from '../mailbox-bridge-bootstrap.js';
 
 /** Where on ctx.meta the bootstrap handle lives. */
-export const MAILBOX_BRIDGE_META_KEY = 'mailboxBridge';
+const MAILBOX_BRIDGE_META_KEY = 'mailboxBridge';
 
 /**
  * Best-effort boot-time bridge bootstrap. Returns the handle
@@ -52,8 +52,8 @@ export async function bootstrapMailboxBridgeAtStartup(params: {
   }
   // Default to 'off' when the field is undefined — matches the docstring
   // on Config.features.mailboxBridge. The bridge serves EXTERNAL agents
-  // only; nothing inside WrongStack reads the handle we stash below
-  // (`readBootstrappedBridge` has no production caller), so spawning a
+  // only; nothing inside WrongStack reads the handle we stash below, so
+  // spawning a
   // detached ~130 MB CLI process on every boot was pure overhead for the
   // majority of users. Opt in with `features.mailboxBridge: "auto"`, or
   // start it on demand with `/mailbox-serve` / `wstack mailbox serve`.
@@ -114,19 +114,4 @@ export async function bootstrapMailboxBridgeAtStartup(params: {
     params.ctx.meta[MAILBOX_BRIDGE_META_KEY] = handle;
   }
   return handle;
-}
-
-/**
- * Read a previously-bootstrapped bridge handle from ctx.meta. Returns
- * null when no bootstrap ran (e.g. feature disabled, no projectRoot,
- * bootstrap failed and the caller didn't stash the failure stub).
- */
-export function readBootstrappedBridge(
-  meta: Record<string, unknown> | undefined,
-): MailboxBridgeHandle | null {
-  const v = meta?.[MAILBOX_BRIDGE_META_KEY];
-  if (!v || typeof v !== 'object') return null;
-  const h = v as MailboxBridgeHandle;
-  if (typeof h.source !== 'string' || typeof h.url !== 'string') return null;
-  return h;
 }

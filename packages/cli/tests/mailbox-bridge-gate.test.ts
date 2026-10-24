@@ -28,7 +28,7 @@ vi.mock('../src/mailbox-bridge-bootstrap.js', () => ({
     (tryAcquire as unknown as (...a: unknown[]) => unknown)(...args),
 }));
 
-const { bootstrapMailboxBridgeAtStartup, MAILBOX_BRIDGE_META_KEY } = await import(
+const { bootstrapMailboxBridgeAtStartup } = await import(
   '../src/wiring/mailbox-bridge-bootstrap.js'
 );
 
@@ -58,7 +58,7 @@ describe('bootstrapMailboxBridgeAtStartup gating', () => {
 
     expect(tryAcquire).not.toHaveBeenCalled();
     expect(handle).toBeNull();
-    expect(ctx.meta[MAILBOX_BRIDGE_META_KEY]).toBeUndefined();
+    expect(ctx.meta['mailboxBridge']).toBeUndefined();
   });
 
   it('does not acquire a bridge when the whole config is absent', async () => {
@@ -97,6 +97,6 @@ describe('bootstrapMailboxBridgeAtStartup gating', () => {
 
     expect(tryAcquire).toHaveBeenCalledTimes(1);
     expect(handle?.source).toBe('spawned');
-    expect(ctx.meta[MAILBOX_BRIDGE_META_KEY]).toBe(handle);
+    expect(ctx.meta['mailboxBridge']).toBe(handle);
   });
 });

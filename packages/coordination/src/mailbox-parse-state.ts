@@ -87,7 +87,7 @@ export function parseMailboxFile(raw: string): MailboxMessageProjection[] {
 }
 
 /** Build parse state from the complete raw contents of a mailbox file. */
-export function createMailboxParseState(raw: string): MailboxParseState {
+function createMailboxParseState(raw: string): MailboxParseState {
   const state: MailboxParseState = {
     messages: [],
     projections: [],
@@ -112,7 +112,7 @@ export function createMailboxParseState(raw: string): MailboxParseState {
  * neither the chunk nor the existing state are dropped, exactly as the
  * whole-file fold drops them.
  */
-export function ingestMailboxChunk(state: MailboxParseState, chunk: string): void {
+function ingestMailboxChunk(state: MailboxParseState, chunk: string): void {
   const firstNewIndex = state.messages.length;
   const ackRecords: AckRecord[] = [];
   // Indices of PRE-EXISTING messages whose projection is now stale. Newly
