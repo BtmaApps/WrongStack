@@ -80,8 +80,9 @@ export async function runSingleShotDispatch(ctx: SingleShotDispatchContext): Pro
   }
 
   const ctrl = new AbortController();
-  const onSigint = () => ctrl.abort();
-  process.on('SIGINT', onSigint);
+  const onSignal = () => ctrl.abort();
+  process.on('SIGINT', onSignal);
+  process.on('SIGTERM', onSignal);
   const interrupt = ctx.interruptController;
   const previousAbortLeader = interrupt?.abortLeader;
   if (interrupt !== undefined) {
@@ -165,7 +166,8 @@ export async function runSingleShotDispatch(ctx: SingleShotDispatchContext): Pro
     stopUsage?.();
     stopStream?.();
     budget?.dispose();
-    process.off('SIGINT', onSigint);
+    process.off('SIGINT', onSignal);
+    process.off('SIGTERM', onSignal);
     if (interrupt !== undefined && previousAbortLeader !== undefined) {
       interrupt.abortLeader = previousAbortLeader;
     }
@@ -205,6 +207,9 @@ export async function runSingleShotDispatch(ctx: SingleShotDispatchContext): Pro
       finalText: result.finalText ?? null,
       error: result.error
         ? {
+            ...(typeof result.error.context?.['kind'] === 'string'
+              ? { kind: result.error.context['kind'] }
+              : {}),
             code: result.error.code,
             subsystem: result.error.subsystem,
             severity: result.error.severity,

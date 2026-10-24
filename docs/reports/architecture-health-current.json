@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-24T19:20:45.726Z",
+  "generatedAt": "2026-10-24T19:59:54.620Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 46,
-    "sourceFiles": 5312,
-    "testFiles": 4668,
-    "sourceLines": 1154019,
+    "sourceFiles": 5313,
+    "testFiles": 4669,
+    "sourceLines": 1154163,
     "workspaceEdges": 228,
-    "moduleEdges": 15805,
+    "moduleEdges": 15808,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 3,
@@ -208,8 +208,8 @@
     {
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
-      "sourceFiles": 676,
-      "testFiles": 671,
+      "sourceFiles": 677,
+      "testFiles": 672,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/agent-catalog",
@@ -262,7 +262,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 671
+          "testFiles": 672
         }
       ]
     },
@@ -6683,6 +6683,12 @@
       },
       {
         "file": "packages/cli/tests/wrongforge-leader/wrongforge-leader-provider.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/wrongforge-leader/wrongforge-queue.test.ts",
         "projects": [
           "root-node"
         ]

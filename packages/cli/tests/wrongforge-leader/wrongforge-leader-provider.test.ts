@@ -19,6 +19,7 @@ interface Scripted {
   result: Record<string, unknown>;
   /** Answer the FIRST terminal-record GET with 503 (transient; undici never retries a status). */
   failRecordGetOnce?: boolean | undefined;
+  queued?: boolean | undefined;
 }
 
 /** WrongForge's task API, enough for the leader: info, tasks (async + wait), sessions, events. */
@@ -50,7 +51,7 @@ async function fakeWrongForge(script: Scripted) {
         if (typeof body['session_id'] === 'string') sessions.add(body['session_id']);
         const task = {
           id: lastId,
-          status: body['wait'] ? 'completed' : 'running',
+          status: script.queued ? 'queued' : body['wait'] ? 'completed' : 'running',
           ...(body['wait'] ? { result: { text: 'side answer', steps: 1, tool_calls: 0 } } : {}),
         };
         return send(body['wait'] ? 200 : 202, { task });
@@ -67,6 +68,17 @@ async function fakeWrongForge(script: Scripted) {
           : send(404, { error: { code: 'session_not_found', message: 'no' } });
       }
       if (url.pathname === `/v1/tasks/${lastId}/events`) {
+        if (script.queued) {
+          if (url.searchParams.get('after') !== '0') return;
+          return send(200, {
+            status: 'queued',
+            terminal: false,
+            next_after: 1,
+            events: [
+              { seq: 1, type: 'task.queued', data: { waiting_for: 'capacity', position: 3 } },
+            ],
+          });
+        }
         const events = script.events.map((e, i) => ({ seq: i + 1, ...e }));
         const after = Number(url.searchParams.get('after') ?? 0);
         const page = events.filter((e) => e.seq > after);
@@ -149,6 +161,33 @@ afterEach(async () => {
 });
 
 describe('WrongForge as the leader', () => {
+  it.each(['stream', 'complete'] as const)(
+    'cancels a queued %s task through the real HTTP transport',
+    async (method) => {
+      const wf = await fakeWrongForge({ queued: true, events: [], result: {} });
+      closers.push(wf.close);
+      process.env['WRONGFORGE_URL'] = wf.url;
+      const provider = new WrongForgeLeaderProvider({
+        bootConfig: {
+          providers: { wrongforge: { type: 'wrongforge', queueTimeoutMs: 50 } },
+        } as unknown as Config,
+        buildProvider: () => undefined,
+      });
+      const signal = new AbortController().signal;
+      const pending =
+        method === 'stream'
+          ? drain(provider.stream(req('OK'), { signal }))
+          : provider.complete(req('OK'), { signal });
+      await expect(pending).rejects.toMatchObject({
+        context: { kind: 'queue_timeout' },
+        retryable: false,
+      });
+      expect(wf.cancels).toEqual(['t1']);
+      expect(wf.submitted).toHaveLength(1);
+      expect(wf.submitted[0]).toMatchObject({ wait: false, task_id: expect.any(String) });
+    },
+  );
+
   it('forwards reasoning and cache controls for one-shot and leader requests', async () => {
     const wf = await fakeWrongForge({
       events: [],
@@ -283,7 +322,10 @@ describe('WrongForge as the leader', () => {
   });
 
   it('answers side requests as a one-step, tool-less WrongForge task', async () => {
-    const wf = await fakeWrongForge({ events: [], result: { text: '', steps: 0, tool_calls: 0 } });
+    const wf = await fakeWrongForge({
+      events: [],
+      result: { text: 'side answer', steps: 1, tool_calls: 0 },
+    });
     closers.push(wf.close);
     process.env['WRONGFORGE_URL'] = wf.url;
     const provider = new WrongForgeLeaderProvider({
@@ -299,7 +341,7 @@ describe('WrongForge as the leader', () => {
       { signal: new AbortController().signal },
     );
     expect(res.content).toEqual([{ type: 'text', text: 'side answer' }]);
-    expect(wf.submitted[0]).toMatchObject({ builtin_tools: [], max_steps: 1, wait: true });
+    expect(wf.submitted[0]).toMatchObject({ builtin_tools: [], max_steps: 1, wait: false });
     expect(wf.submitted[0]).not.toHaveProperty('session_id');
     expect(String(wf.submitted[0]?.['prompt'])).toContain('Title it.');
   });

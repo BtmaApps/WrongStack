@@ -62,6 +62,8 @@ export interface ProviderApiKey {
 
 export interface ProviderConfig {
   type: string;
+  /** WrongForge queue wait limit in milliseconds (default 120000); excludes execution time. */
+  queueTimeoutMs?: number | undefined;
   /** Explicit per-profile native routing settings take precedence over environment fallbacks. */
   cloud?: NativeCloudSettings | undefined;
   /**

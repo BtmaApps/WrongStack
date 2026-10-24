@@ -39,6 +39,38 @@ interface ShutdownHandle {
   get cleanupStarted(): boolean;
 }
 
+const pendingRemoteWork = new Set<Promise<void>>();
+
+/** Keep signal shutdown from cutting off an owned remote task's cancellation. */
+export function deferShutdownForRemoteWork(): () => void {
+  let release!: () => void;
+  const pending = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  pendingRemoteWork.add(pending);
+  return () => {
+    pendingRemoteWork.delete(pending);
+    release();
+  };
+}
+
+async function drainRemoteWork(): Promise<void> {
+  if (pendingRemoteWork.size === 0) return;
+  let deadline: ReturnType<typeof setTimeout> | undefined;
+  try {
+    // Remote cancellation has a 2s HTTP deadline; a broken caller must still
+    // not hold the process forever. The normal 500ms exit grace follows this.
+    await Promise.race([
+      Promise.all([...pendingRemoteWork]),
+      new Promise<void>((resolve) => {
+        deadline = setTimeout(resolve, 2500);
+      }),
+    ]);
+  } finally {
+    clearTimeout(deadline);
+  }
+}
+
 /**
  * Build a graceful-shutdown handle. Pass the cleanup function; the wrapper
  * installs signal handlers that call it once and let the event loop drain.
@@ -59,8 +91,9 @@ export function createGracefulShutdown(cleanup: ShutdownCleanup): ShutdownHandle
       .catch(() => {
         /* swallow — a stuck cleanup cannot wedge the exit path */
       })
-      .finally(() => {
+      .finally(async () => {
         if (force) {
+          await drainRemoteWork();
           // SIGINT/SIGTERM path: set exitCode and let Node drain naturally,
           // then force exit after a 500ms grace. Matches cli-entry-point.ts.
           process.exitCode = exitCode;

@@ -50,12 +50,9 @@ import {
 } from '../acp-leader/acp-leader-stream.js';
 import { acpBtwBlock } from '../fleet/acp-turn-reminders.js';
 import {
-  cancelTask,
   chooseModel,
-  followTask,
   resolveWrongForgeEndpoint,
   safeWfId,
-  terminalTaskRecord,
   toProgress,
   WfAborted,
   type WfCall,
@@ -73,6 +70,7 @@ import {
 } from '../fleet/wrongforge-info.js';
 import { reportWrongForgeQuota } from '../fleet/wrongforge-quota.js';
 import { wrongForgeRuntime } from '../fleet/wrongforge-runtime.js';
+import { runWrongForgeTask, WfQueueTimeout } from '../fleet/wrongforge-task.js';
 import { type LeaderGateway, startLeaderGateway } from './wrongforge-leader-gateway.js';
 
 export const WRONGFORGE_LEADER_PROVIDER_ID = WRONGFORGE_AGENT_ID;
@@ -166,6 +164,14 @@ function flatten(req: Request): string {
 
 function providerError(err: unknown, id: string): ProviderError {
   if (err instanceof ProviderError) return err;
+  if (err instanceof WfQueueTimeout) {
+    const error = new ProviderError(`WrongForge: ${err.message}`, 408, false, id, {
+      kind: 'timeout',
+      body: { message: err.message },
+    });
+    Object.assign(error.context ?? {}, { kind: 'queue_timeout', queueTimeoutMs: err.timeoutMs });
+    return error;
+  }
   const make = (message: string, status: number, retryable: boolean, kind: ProviderErrorKind) =>
     new ProviderError(`WrongForge: ${message}`, status, retryable, id, { kind });
   if (err instanceof WfAborted) return make('the turn was cancelled', 499, false, 'unknown');
@@ -301,9 +307,8 @@ export class WrongForgeLeaderProvider implements Provider {
       const info = await this.info(call, signal);
       const model = this.model(req.model, info);
       const host = acpLeaderHost();
-      const { task } = await call<{ task: WfTaskRecord }>(
-        'POST',
-        '/v1/tasks',
+      const task = await runWrongForgeTask(
+        call,
         {
           prompt: flatten(req),
           workdir: host?.projectRoot ?? process.cwd(),
@@ -311,10 +316,9 @@ export class WrongForgeLeaderProvider implements Provider {
           max_steps: 1,
           builtin_tools: [],
           ...wrongForgeRuntime(req.reasoning, req.cache, info),
-          wait: true,
-          cancel_on_disconnect: true,
         },
         signal,
+        { queueTimeoutMs: this.config().providers?.[this.id]?.queueTimeoutMs },
       );
       const failure = taskError(task, this.id);
       if (failure) throw failure;
@@ -387,16 +391,9 @@ export class WrongForgeLeaderProvider implements Provider {
     });
 
     yield { type: 'message_start', model: model ?? req.model };
-    let taskId: string | undefined;
-    const onAbort = () => {
-      if (taskId) cancelTask(call, taskId, 'interrupted in WrongStack');
-    };
-    opts.signal.addEventListener('abort', onAbort, { once: true });
-
     const run = (async () => {
-      const { task } = await call<{ task: WfTaskRecord }>(
-        'POST',
-        '/v1/tasks',
+      const done = await runWrongForgeTask(
+        call,
         {
           prompt: this.promptText(req, joinedBefore, gateway),
           session_id: leader.wfSessionId,
@@ -411,36 +408,35 @@ export class WrongForgeLeaderProvider implements Provider {
           ...(routed ? { builtin_tools: WRONGFORGE_READ_SIDE_TOOLS } : {}),
         },
         opts.signal,
+        {
+          queueTimeoutMs: this.config().providers?.[this.id]?.queueTimeoutMs,
+          onCreated: () => {
+            leader.joined = true;
+          },
+          onEvent: (ev) => {
+            if (ev.type === 'task.heartbeat' || ev.type === 'step.finished') {
+              void reportWrongForgeQuota({ providerId: this.id, fetchImpl: this.opts.fetchImpl });
+            }
+            // `wstack_*` calls are the session's own tool calls: the gateway
+            // settles their cards (`runTool` with `announce`). Only WrongForge's
+            // own tools need one here.
+            const external = ev.data['external'] === true;
+            for (const p of toProgress(ev)) {
+              if (p.type === 'message') blocks.text(p.text);
+              else if (p.type === 'tool_call') {
+                blocks.close();
+                if (!external) cards.update(p.toolCall);
+              } else if (p.type === 'tool_call_update' && !external) cards.update(p.toolCall);
+            }
+            if (ev.type === 'step.finished' && typeof ev.data['context_tokens'] === 'number') {
+              this.observeContext(leader, req.cache?.sessionId, {
+                used: ev.data['context_tokens'],
+                size: this.capabilities.maxContext,
+              });
+            }
+          },
+        },
       );
-      taskId = task.id;
-      leader.joined = true;
-      if (opts.signal.aborted) {
-        cancelTask(call, taskId, 'interrupted in WrongStack');
-        throw new WfAborted();
-      }
-      for await (const ev of followTask(call, task.id, opts.signal)) {
-        if (ev.type === 'task.heartbeat' || ev.type === 'step.finished') {
-          void reportWrongForgeQuota({ providerId: this.id, fetchImpl: this.opts.fetchImpl });
-        }
-        // `wstack_*` calls are the session's own tool calls: the gateway
-        // settles their cards (`runTool` with `announce`). Only WrongForge's
-        // own tools need one here.
-        const external = ev.data['external'] === true;
-        for (const p of toProgress(ev)) {
-          if (p.type === 'message') blocks.text(p.text);
-          else if (p.type === 'tool_call') {
-            blocks.close();
-            if (!external) cards.update(p.toolCall);
-          } else if (p.type === 'tool_call_update' && !external) cards.update(p.toolCall);
-        }
-        if (ev.type === 'step.finished' && typeof ev.data['context_tokens'] === 'number') {
-          this.observeContext(leader, req.cache?.sessionId, {
-            used: ev.data['context_tokens'],
-            size: this.capabilities.maxContext,
-          });
-        }
-      }
-      const done = await terminalTaskRecord(call, task.id, opts.signal);
       blocks.close();
       const failure = taskError(done, this.id);
       if (failure) throw failure;
@@ -467,7 +463,6 @@ export class WrongForgeLeaderProvider implements Provider {
     try {
       yield* queue.drain();
     } finally {
-      opts.signal.removeEventListener('abort', onAbort);
       await run;
       void reportWrongForgeQuota({ providerId: this.id, fetchImpl: this.opts.fetchImpl });
     }

@@ -252,10 +252,13 @@ export async function terminalTaskRecord(
 }
 
 /** Ask WrongForge to stop a task; best effort. */
-export function cancelTask(call: WfCall, taskId: string, reason: string): void {
-  void call('POST', `/v1/tasks/${encodeURIComponent(taskId)}/cancel`, { reason }).catch(
-    () => undefined,
-  );
+export async function cancelTask(call: WfCall, taskId: string, reason: string): Promise<void> {
+  await call(
+    'POST',
+    `/v1/tasks/${encodeURIComponent(taskId)}/cancel`,
+    { reason },
+    AbortSignal.timeout(2_000),
+  ).catch(() => undefined);
 }
 
 /**
