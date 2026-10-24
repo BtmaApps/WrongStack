@@ -359,7 +359,7 @@ export const toolCatalog = [
   {
     name: 'typecheck',
     summary:
-      'Run TypeScript type checking for an auto-detected or specified tsconfig. Use it after type-affecting changes; it reports diagnostics without writing source files.',
+      'Run TypeScript type checking for an auto-detected or specified tsconfig, or delegate to the detected language’s semantic/compiler checker (Go, Rust, Python, Java, C#, Swift, Dart, C/C++). Use it after type-affecting changes; it reports diagnostics without writing source files.',
     permission: 'confirm',
     mutating: false,
     category: 'Quality & language',

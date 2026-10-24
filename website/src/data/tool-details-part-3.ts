@@ -119,7 +119,7 @@ export const toolDetailsPart3: Record<string, ToolDetail> = {
   },
   typecheck: {
     longDescription:
-      'Run TypeScript type checking for an auto-detected or specified tsconfig. Use it after type-affecting changes; it reports diagnostics without writing source files.',
+      'Run TypeScript type checking for an auto-detected or specified tsconfig, or delegate to the detected language’s semantic/compiler checker (Go, Rust, Python, Java, C#, Swift, Dart, C/C++). Use it after type-affecting changes; it reports diagnostics without writing source files.',
     params: [
       {
         name: 'project',

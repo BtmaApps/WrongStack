@@ -386,7 +386,7 @@ export const toolDetailsPart2: Record<string, ToolDetail> = {
       },
     ],
     doNotUseWhen: [
-      'the command is an allowlisted single binary (node, git, pnpm, tsc) needing no shell expansion or pipelines.',
+      'the command is an allowlisted single binary (git, cargo, go, pytest, node, bun, pnpm, tsc) needing no shell expansion or pipelines.',
     ],
     useInstead: ['exec'],
     notes: [
