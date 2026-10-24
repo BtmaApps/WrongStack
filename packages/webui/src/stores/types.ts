@@ -1,5 +1,5 @@
 import type { Usage } from '@wrongstack/core/types';
-import type { BugHuntLimit } from '@/lib/bug-hunt-message';
+import type { BugHuntLimit, BugHuntMode } from '@/lib/bug-hunt-message';
 import type { PerfRunMetric, PerfRunMode } from '@/lib/perf-run-message';
 
 // ============================================
@@ -68,6 +68,7 @@ export interface ChatMessage {
         scope: string;
         maxBugs: BugHuntLimit;
         currentRound: number;
+        mode?: BugHuntMode | undefined;
       }
     | undefined;
   /** The same treatment for a built-in performance ratchet round: the full
