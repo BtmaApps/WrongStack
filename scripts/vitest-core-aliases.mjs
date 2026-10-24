@@ -69,6 +69,12 @@ export function coreAliases(corePackageDir) {
     aliases[key] = value;
   }
 
+  // `@wrongstack/primitives` (utils + security helpers, extracted from core)
+  // resolves from source the same way; core's own shim files import it by
+  // package name. Without this alias the specifier resolves to dist/, so the
+  // source files are never instrumented and the zero-statement coverage
+  // ratchet flags them as uncovered.
+  aliases['@wrongstack/primitives'] = resolve(corePackageDir, '../primitives/src');
   // `@wrongstack/contracts` (types + kernel, extracted from core) resolves
   // from source the same way; core's own files import it by package name.
   aliases['@wrongstack/contracts'] = resolve(corePackageDir, '../contracts/src');
