@@ -94,4 +94,40 @@ describe('verifyGoalProject', () => {
       output: '[lint] lint failed',
     });
   });
+
+  it('verifies Rust (Cargo.toml) and Go (go.mod) projects when package.json is absent', async () => {
+    await fs.writeFile(path.join(dir, 'Cargo.toml'), '[package]\nname = "demo"');
+    execFile.mockImplementation((_command, _args, _options, callback) => {
+      callback(null, '', '');
+    });
+
+    await expect(verifyGoalProject({ cwd: dir })).resolves.toEqual({ ok: true });
+    expect(execFile).toHaveBeenCalledOnce();
+    const cargoArgs = execFile.mock.calls[0]?.[1] as string[];
+    expect(cargoArgs.join(' ')).toContain('check');
+
+    await fs.rm(path.join(dir, 'Cargo.toml'));
+    execFile.mockReset();
+    await fs.writeFile(path.join(dir, 'go.mod'), 'module example.com/demo');
+    execFile.mockImplementation((_command, _args, _options, callback) => {
+      callback(new Error('exit 1'), '', 'vet error');
+    });
+
+    await expect(verifyGoalProject({ cwd: dir })).resolves.toEqual({
+      ok: false,
+      output: '[go vet] vet error',
+    });
+
+    await fs.rm(path.join(dir, 'go.mod'));
+    execFile.mockReset();
+    await fs.writeFile(path.join(dir, 'pyproject.toml'), '[project]\nname = "demo"');
+    execFile.mockImplementation((_command, _args, _options, callback) => {
+      callback(null, '', '');
+    });
+
+    await expect(verifyGoalProject({ cwd: dir })).resolves.toEqual({ ok: true });
+    expect(execFile).toHaveBeenCalledOnce();
+    const ruffArgs = execFile.mock.calls[0]?.[1] as string[];
+    expect(ruffArgs.join(' ')).toContain('check');
+  });
 });

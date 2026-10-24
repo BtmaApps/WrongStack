@@ -1,10 +1,8 @@
 import { execFile } from 'node:child_process';
 import * as fsp from 'node:fs/promises';
 import * as path from 'node:path';
-import { buildChildEnv } from '@wrongstack/core/utils';
-import { toErrorMessage } from '@wrongstack/core/utils';
+import { buildChildEnv, buildWin32CmdShimInvocation, toErrorMessage } from '@wrongstack/core/utils';
 import { treeKill } from '@wrongstack/core/utils/tree-kill';
-import { buildWin32CmdShimInvocation } from '@wrongstack/core/utils';
 
 export interface GoalProjectVerifierOptions {
   cwd: string;
@@ -124,11 +122,145 @@ async function runStep(
   });
 }
 
-/** Run the same narrow package-script verification contract for every Goal host. */
+async function runBinary(
+  command: string,
+  args: readonly string[],
+  cwd: string,
+  timeoutMs: number,
+  label: string,
+): Promise<{ ok: boolean; output: string; missingBinary?: boolean }> {
+  const invocation =
+    process.platform === 'win32'
+      ? buildWin32CmdShimInvocation(command, [...args])
+      : { command, args: [...args], windowsVerbatimArguments: false };
+  return new Promise((resolve) => {
+    let settled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const child = execFile(
+      invocation.command,
+      invocation.args,
+      {
+        cwd,
+        windowsHide: true,
+        windowsVerbatimArguments: invocation.windowsVerbatimArguments,
+        env: buildChildEnv(),
+        maxBuffer: 8 * 1024 * 1024,
+      },
+      (err, stdout, stderr) => {
+        settled = true;
+        clearTimeout(timer);
+        const output = `${stdout}${stderr}`.trim();
+        if (!err) {
+          resolve({ ok: true, output });
+          return;
+        }
+        const code = (err as NodeJS.ErrnoException).code;
+        if (code === 'ENOENT') {
+          resolve({
+            ok: true,
+            output: `verify skipped: ${command} not found`,
+            missingBinary: true,
+          });
+          return;
+        }
+        resolve({
+          ok: false,
+          output: output || `${label} could not complete: ${toErrorMessage(err)}`,
+        });
+      },
+    );
+    if (settled) return;
+    timer = setTimeout(() => {
+      treeKill(child);
+      child.stdout?.destroy();
+      child.stderr?.destroy();
+    }, timeoutMs);
+  });
+}
+
+/** Run the same narrow package-script or native toolchain verification contract for every Goal host. */
 export async function verifyGoalProject(
   options: GoalProjectVerifierOptions,
 ): Promise<GoalProjectVerificationResult> {
   const root = options.projectRoot ?? options.cwd;
+  const timeoutMs = options.timeoutMs ?? 120_000;
+  const hasPackageJson =
+    (await exists(path.join(options.cwd, 'package.json'))) ||
+    (await exists(path.join(root, 'package.json')));
+
+  if (!hasPackageJson) {
+    if (
+      (await exists(path.join(options.cwd, 'Cargo.toml'))) ||
+      (await exists(path.join(root, 'Cargo.toml')))
+    ) {
+      const targetDir = (await exists(path.join(options.cwd, 'Cargo.toml'))) ? options.cwd : root;
+      const res = await runBinary(
+        'cargo',
+        ['check', '--quiet'],
+        targetDir,
+        timeoutMs,
+        'cargo check',
+      );
+      if (res.missingBinary) return { ok: true, skipped: true, output: res.output };
+      return res.ok ? { ok: true } : { ok: false, output: `[cargo check] ${res.output}` };
+    }
+    if (
+      (await exists(path.join(options.cwd, 'go.mod'))) ||
+      (await exists(path.join(root, 'go.mod')))
+    ) {
+      const targetDir = (await exists(path.join(options.cwd, 'go.mod'))) ? options.cwd : root;
+      const res = await runBinary('go', ['vet', './...'], targetDir, timeoutMs, 'go vet');
+      if (res.missingBinary) return { ok: true, skipped: true, output: res.output };
+      return res.ok ? { ok: true } : { ok: false, output: `[go vet] ${res.output}` };
+    }
+    if (
+      (await exists(path.join(options.cwd, 'pyproject.toml'))) ||
+      (await exists(path.join(root, 'pyproject.toml')))
+    ) {
+      const targetDir = (await exists(path.join(options.cwd, 'pyproject.toml')))
+        ? options.cwd
+        : root;
+      const res = await runBinary(
+        'ruff',
+        ['check', '--quiet', '.'],
+        targetDir,
+        timeoutMs,
+        'ruff check',
+      );
+      if (res.missingBinary) return { ok: true, skipped: true, output: res.output };
+      return res.ok ? { ok: true } : { ok: false, output: `[ruff check] ${res.output}` };
+    }
+    if (
+      (await exists(path.join(options.cwd, 'Package.swift'))) ||
+      (await exists(path.join(root, 'Package.swift')))
+    ) {
+      const targetDir = (await exists(path.join(options.cwd, 'Package.swift')))
+        ? options.cwd
+        : root;
+      const res = await runBinary('swift', ['build'], targetDir, timeoutMs, 'swift build');
+      if (res.missingBinary) return { ok: true, skipped: true, output: res.output };
+      return res.ok ? { ok: true } : { ok: false, output: `[swift build] ${res.output}` };
+    }
+    if (
+      (await exists(path.join(options.cwd, 'pubspec.yaml'))) ||
+      (await exists(path.join(root, 'pubspec.yaml')))
+    ) {
+      const targetDir = (await exists(path.join(options.cwd, 'pubspec.yaml'))) ? options.cwd : root;
+      const res = await runBinary('dart', ['analyze'], targetDir, timeoutMs, 'dart analyze');
+      if (res.missingBinary) return { ok: true, skipped: true, output: res.output };
+      return res.ok ? { ok: true } : { ok: false, output: `[dart analyze] ${res.output}` };
+    }
+    if (
+      (await exists(path.join(options.cwd, 'mix.exs'))) ||
+      (await exists(path.join(root, 'mix.exs')))
+    ) {
+      const targetDir = (await exists(path.join(options.cwd, 'mix.exs'))) ? options.cwd : root;
+      const res = await runBinary('mix', ['compile'], targetDir, timeoutMs, 'mix compile');
+      if (res.missingBinary) return { ok: true, skipped: true, output: res.output };
+      return res.ok ? { ok: true } : { ok: false, output: `[mix compile] ${res.output}` };
+    }
+  }
+
   if (
     !(await exists(path.join(options.cwd, 'node_modules'))) &&
     !(await exists(path.join(root, 'node_modules')))

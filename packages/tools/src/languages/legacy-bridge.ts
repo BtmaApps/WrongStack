@@ -28,6 +28,23 @@ const NON_JS_MARKERS: ReadonlyArray<{ filename: string; language: LanguageProfil
   { filename: 'composer.json', language: 'php' },
 ];
 
+const NON_JS_SECONDARY_MARKERS: ReadonlyArray<{ filename: string; language: LanguageProfileId }> = [
+  { filename: 'pyproject.toml', language: 'python' },
+  { filename: 'requirements.txt', language: 'python' },
+  { filename: 'setup.py', language: 'python' },
+  { filename: 'Pipfile', language: 'python' },
+  { filename: 'pom.xml', language: 'java' },
+  { filename: 'build.gradle', language: 'java' },
+  { filename: 'build.gradle.kts', language: 'java' },
+  { filename: 'Gemfile', language: 'ruby' },
+  { filename: 'Package.swift', language: 'swift' },
+  { filename: 'pubspec.yaml', language: 'dart' },
+  { filename: 'mix.exs', language: 'elixir' },
+  { filename: 'deno.json', language: 'deno' },
+  { filename: 'deno.jsonc', language: 'deno' },
+  { filename: 'CMakeLists.txt', language: 'cpp' },
+];
+
 const NON_JS_SUFFIXES: ReadonlyArray<{ suffix: string; language: LanguageProfileId }> = [
   { suffix: '.csproj', language: 'csharp' },
   { suffix: '.fsproj', language: 'csharp' },
@@ -78,6 +95,23 @@ export async function detectNonJsEcosystem(
         }
       } catch {
         // not a directory or not readable
+      }
+      let hasPackageJson = false;
+      try {
+        const pkgStat = await fs.stat(path.join(dir, 'package.json'));
+        hasPackageJson = pkgStat.isFile();
+      } catch {
+        // no package.json
+      }
+      if (!hasPackageJson) {
+        for (const marker of NON_JS_SECONDARY_MARKERS) {
+          try {
+            const s = await fs.stat(path.join(dir, marker.filename));
+            if (s.isFile()) return marker.language;
+          } catch {
+            // not present
+          }
+        }
       }
       if (path.relative(root, dir) === '') break;
       const parent = path.dirname(dir);

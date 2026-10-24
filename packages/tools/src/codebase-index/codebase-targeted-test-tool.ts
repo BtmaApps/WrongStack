@@ -118,8 +118,17 @@ export async function selectTestRunner(
   projectRoot: string,
   suites: readonly string[],
 ): Promise<{ cmd: string; args: string[] }> {
-  const runnerOf = (suite: string): 'go' | 'pytest' | 'js' =>
-    suite.endsWith('_test.go') ? 'go' : suite.endsWith('.py') ? 'pytest' : 'js';
+  const runnerOf = (
+    suite: string,
+  ): 'go' | 'pytest' | 'cargo' | 'rspec' | 'phpunit' | 'dart' | 'js' => {
+    if (suite.endsWith('_test.go')) return 'go';
+    if (suite.endsWith('.py')) return 'pytest';
+    if (suite.endsWith('.rs')) return 'cargo';
+    if (suite.endsWith('.rb')) return 'rspec';
+    if (suite.endsWith('.php')) return 'phpunit';
+    if (suite.endsWith('.dart')) return 'dart';
+    return 'js';
+  };
   const runners = new Set(suites.map(runnerOf));
   if (runners.size > 1) {
     throw new ToolValidationError({
@@ -133,6 +142,21 @@ export async function selectTestRunner(
     return { cmd: 'go', args: ['test', ...packages.map((p) => (p === './.' ? '.' : p))] };
   }
   if (runner === 'pytest') return { cmd: 'pytest', args: [...suites] };
+  if (runner === 'cargo') {
+    const integrationTargets = suites
+      .map((s) => /^tests\/([^/]+)\.rs$/.exec(s)?.[1])
+      .filter((t): t is string => Boolean(t));
+    if (integrationTargets.length === suites.length && integrationTargets.length > 0) {
+      return {
+        cmd: 'cargo',
+        args: ['test', ...integrationTargets.flatMap((t) => ['--test', t])],
+      };
+    }
+    return { cmd: 'cargo', args: ['test'] };
+  }
+  if (runner === 'rspec') return { cmd: 'rspec', args: [...suites] };
+  if (runner === 'phpunit') return { cmd: 'phpunit', args: [...suites] };
+  if (runner === 'dart') return { cmd: 'dart', args: ['test', ...suites] };
   // `--no`: stdin is not a TTY, so npx would otherwise assume --yes and
   // download + run whatever the registry serves as the runner's name.
   return { cmd: 'npx', args: ['--no', '--', ...(await jsRunnerArgs(projectRoot)), ...suites] };

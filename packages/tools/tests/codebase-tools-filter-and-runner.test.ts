@@ -127,6 +127,29 @@ describe('selectTestRunner', () => {
     ).resolves.toEqual({ cmd: 'go', args: ['test', './pkg', '.'] });
   });
 
+  it('selects cargo, rspec, phpunit, and dart for polyglot test suites', async () => {
+    await expect(selectTestRunner(root, ['tests/integration.rs'])).resolves.toEqual({
+      cmd: 'cargo',
+      args: ['test', '--test', 'integration'],
+    });
+    await expect(selectTestRunner(root, ['src/lib_test.rs'])).resolves.toEqual({
+      cmd: 'cargo',
+      args: ['test'],
+    });
+    await expect(selectTestRunner(root, ['spec/user_spec.rb'])).resolves.toEqual({
+      cmd: 'rspec',
+      args: ['spec/user_spec.rb'],
+    });
+    await expect(selectTestRunner(root, ['tests/UserTest.php'])).resolves.toEqual({
+      cmd: 'phpunit',
+      args: ['tests/UserTest.php'],
+    });
+    await expect(selectTestRunner(root, ['test/widget_test.dart'])).resolves.toEqual({
+      cmd: 'dart',
+      args: ['test', 'test/widget_test.dart'],
+    });
+  });
+
   it('uses jest when the project depends on jest and not vitest', async () => {
     await fs.writeFile(
       path.join(root, 'package.json'),

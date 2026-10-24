@@ -89,6 +89,12 @@ async function php(): Promise<void> {
 async function csharp(): Promise<void> {
   await fs.writeFile(path.join(root, 'App.csproj'), '<Project/>');
 }
+async function python(): Promise<void> {
+  await fs.writeFile(path.join(root, 'pyproject.toml'), '[project]\nname = "x"');
+}
+async function java(): Promise<void> {
+  await fs.writeFile(path.join(root, 'pom.xml'), '<project/>');
+}
 
 const _NPM_AUDIT = JSON.stringify({
   vulnerabilities: {
@@ -265,6 +271,20 @@ describe('testTool — non-JS delegation', () => {
     await csharp();
     const r = await testTool.execute({}, ctx(), opts);
     expect(r.runner).toBe('csharp');
+    expect(spawnMocks.spawnStream).toHaveBeenCalledOnce();
+  });
+  it('Python (pyproject.toml)', async () => {
+    spawnMocks.spawnStream.mockImplementation(fakeSpawn('2 passed in 0.1s'));
+    await python();
+    const r = await testTool.execute({}, ctx(), opts);
+    expect(r.runner).toBe('python');
+    expect(spawnMocks.spawnStream).toHaveBeenCalledOnce();
+  });
+  it('Java (pom.xml)', async () => {
+    spawnMocks.spawnStream.mockImplementation(fakeSpawn('BUILD SUCCESS'));
+    await java();
+    const r = await testTool.execute({}, ctx(), opts);
+    expect(r.runner).toBe('java');
     expect(spawnMocks.spawnStream).toHaveBeenCalledOnce();
   });
   it('bypasses bridge when explicit runner', async () => {
