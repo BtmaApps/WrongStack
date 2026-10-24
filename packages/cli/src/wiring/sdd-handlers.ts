@@ -61,11 +61,11 @@ export function createSddHandlers(
       return 'No task graph found for the current SDD session.';
     }
     const agentCore = await import('@wrongstack/core/agent');
-    const worktreeCore = await import('@wrongstack/core/worktree');
+    const worktreeCore = await import('@wrongstack/worktree');
     const sddApi = await import('@wrongstack/sdd');
 
     // Per-task git-worktree isolation.
-    let worktrees: import('@wrongstack/core/worktree').WorktreeManager | undefined;
+    let worktrees: import('@wrongstack/worktree').WorktreeManager | undefined;
     if (process.env['WRONGSTACK_SDD_WORKTREES'] !== '0') {
       const inGit = await new Promise<boolean>((resolve) => {
         let resolved = false;

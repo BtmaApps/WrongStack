@@ -34,7 +34,7 @@ import {
   verifyGoalProject,
 } from '@wrongstack/goal';
 
-import { WorktreeManager } from '@wrongstack/core/worktree';
+import { WorktreeManager } from '@wrongstack/worktree';
 
 /** Tasks share one phase worktree, so concurrency is opt-in rather than implicit. */
 const DEFAULT_TASK_CONCURRENCY = 1;

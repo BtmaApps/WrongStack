@@ -1,7 +1,7 @@
 import type { TaskNode } from '@wrongstack/contracts/types/task-graph';
 import type { TaskTracker } from '@wrongstack/core/tasking';
 import { toErrorMessage } from '@wrongstack/core/utils';
-import type { WorktreeHandle } from '@wrongstack/core/worktree';
+import type { WorktreeHandle } from '@wrongstack/worktree';
 import type { NormalizedGoalOptions } from './phase-orchestrator-types.js';
 import type { PhaseEventMap, PhaseEventName, PhaseExecutionContext, PhaseNode } from './types.js';
 export interface PhaseTaskExecutionHost {

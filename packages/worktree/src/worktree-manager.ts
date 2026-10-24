@@ -1,7 +1,7 @@
 import { mkdir } from 'node:fs/promises';
 import { basename, join, resolve, sep } from 'node:path';
 import type { WorktreeManagerPort } from '@wrongstack/contracts/types/worktree';
-import { toErrorMessage } from '../utils/error.js';
+import { toErrorMessage } from '@wrongstack/core/utils';
 import { NOTHING_TO_COMMIT } from './worktree-conflict-resolution-contracts.js';
 import { parseConflictPaths } from './worktree-git.js';
 import {

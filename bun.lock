@@ -157,6 +157,7 @@
         "@wrongstack/webui-hq": "workspace:*",
         "@wrongstack/webui-protocol": "workspace:*",
         "@wrongstack/webui-server": "workspace:*",
+        "@wrongstack/worktree": "workspace:*",
         "@wrongstack/wrongtrace": "workspace:*",
         "ws": "^8.22.0",
       },
@@ -240,6 +241,7 @@
       "dependencies": {
         "@wrongstack/contracts": "workspace:*",
         "@wrongstack/core": "workspace:*",
+        "@wrongstack/worktree": "workspace:*",
       },
       "devDependencies": {
         "@types/node": "^22.20.5",
@@ -523,6 +525,7 @@
         "@wrongstack/kanban": "workspace:*",
         "@wrongstack/primitives": "workspace:*",
         "@wrongstack/requirement-intake": "workspace:*",
+        "@wrongstack/worktree": "workspace:*",
       },
       "devDependencies": {
         "@types/node": "^26.6.5",
@@ -887,12 +890,25 @@
         "@wrongstack/tools": "workspace:*",
         "@wrongstack/vector-memory": "workspace:*",
         "@wrongstack/webui-protocol": "workspace:*",
+        "@wrongstack/worktree": "workspace:*",
         "@wrongstack/wrongtrace": "workspace:*",
         "ws": "^8.22.0",
       },
       "devDependencies": {
         "@types/node": "^26.6.5",
         "@types/ws": "^8.18.1",
+        "typescript": "^7.0.2",
+      },
+    },
+    "packages/worktree": {
+      "name": "@wrongstack/worktree",
+      "version": "1.1.16",
+      "dependencies": {
+        "@wrongstack/contracts": "workspace:*",
+        "@wrongstack/core": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/node": "^22.20.5",
         "typescript": "^7.0.2",
       },
     },
@@ -1782,6 +1798,8 @@
     "@wrongstack/webui-protocol": ["@wrongstack/webui-protocol@workspace:packages/webui-protocol"],
 
     "@wrongstack/webui-server": ["@wrongstack/webui-server@workspace:packages/webui-server"],
+
+    "@wrongstack/worktree": ["@wrongstack/worktree@workspace:packages/worktree"],
 
     "@wrongstack/wrongtrace": ["@wrongstack/wrongtrace@workspace:packages/wrongtrace"],
 

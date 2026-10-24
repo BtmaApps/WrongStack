@@ -203,9 +203,9 @@
       "types": "./dist/performance/index.d.ts",
       "import": "./dist/performance/index.js"
     },
-    "./worktree": {
-      "types": "./dist/worktree/index.d.ts",
-      "import": "./dist/worktree/index.js"
+    "./vcs": {
+      "types": "./dist/vcs/index.d.ts",
+      "import": "./dist/vcs/index.js"
     },
     "./hooks": {
       "types": "./dist/hooks/index.d.ts",

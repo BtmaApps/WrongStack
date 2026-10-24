@@ -13,7 +13,7 @@
  */
 import type { EventBus } from '@wrongstack/contracts/kernel';
 import { toErrorMessage } from '@wrongstack/core/utils';
-import { WorktreeManager } from '@wrongstack/core/worktree';
+import { WorktreeManager } from '@wrongstack/worktree';
 import { gitText, isGitRepo } from './goal-commands.js';
 
 export type WorktreeAction = 'list' | 'merge' | 'prune' | 'clean';

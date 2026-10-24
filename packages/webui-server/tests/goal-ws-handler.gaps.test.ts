@@ -108,7 +108,7 @@ vi.mock('@wrongstack/goal', async (importOriginal) => {
     PhaseStore,
   };
 });
-vi.mock('@wrongstack/core/worktree', () => ({
+vi.mock('@wrongstack/worktree', () => ({
   WorktreeManager: vi.fn(),
 }));
 vi.mock('../src/server/git-process.js', () => ({

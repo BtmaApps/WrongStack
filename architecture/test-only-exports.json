@@ -666,9 +666,6 @@
     "packages/core/src/utils/wstack-paths.ts": [
       "bootstrapProfileName"
     ],
-    "packages/core/src/vcs/vcs-adapter.ts": [
-      "normalizeVcsPath"
-    ],
     "packages/core/src/wiring/proxy-rewrite.ts": [
       "__resetProxyConfigForTests",
       "PROXY_EXCLUDED_PROVIDERS",

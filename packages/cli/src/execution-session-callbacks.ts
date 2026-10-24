@@ -1,5 +1,5 @@
 import type { SessionSummary } from '@wrongstack/contracts/types';
-import { listGitWorktrees } from '@wrongstack/core/worktree';
+import { listGitWorktrees } from '@wrongstack/worktree';
 import { getLiveSessions } from './boot/tui-live-sessions.js';
 import type { TuiRuntimeState } from './boot/tui-runtime-state.js';
 import { selectPickerSessions } from './boot/tui-session-stub-enrich.js';

@@ -128,7 +128,7 @@ const coreEntries = entryMap([
   'src/tasking/index.ts',
   'src/prompts/index.ts',
   'src/performance/index.ts',
-  'src/worktree/index.ts',
+  'src/vcs/index.ts',
   'src/hooks/index.ts',
   'src/replay/index.ts',
   // WrongProxy / WrongTrace rewriter. Listed here so esbuild emits
@@ -407,6 +407,10 @@ const profiles = {
     // Shared chunk, so protocol constants and guards keep one identity.
     splitting: true,
     chunkNames: '[name]-[hash]',
+  },
+  // Git-worktree isolation, extracted from core (src/worktree) on 2026-10-24.
+  '@wrongstack/worktree': {
+    entries: { index: 'src/index.ts' },
   },
   // Goal / phase orchestration, extracted from core (src/goal) on 2026-10-24.
   '@wrongstack/goal': {

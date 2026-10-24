@@ -1,12 +1,12 @@
 export { type GitWorktreeEntry, listGitWorktrees } from './git-worktree-list.js';
 export {
-  WorktreeManager,
-  assertSafePath,
-  type WorktreeHandle,
-  type WorktreeStatus,
-  type WorktreeManagerOptions,
   type AllocateOpts,
+  assertSafePath,
   type MergeOpts,
   type MergeResult,
   type RunResult as WorktreeRunResult,
+  type WorktreeHandle,
+  WorktreeManager,
+  type WorktreeManagerOptions,
+  type WorktreeStatus,
 } from './worktree-manager.js';

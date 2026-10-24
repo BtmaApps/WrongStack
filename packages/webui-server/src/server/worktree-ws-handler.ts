@@ -8,7 +8,7 @@ import {
   type WorktreeTimelineEvent,
 } from '@wrongstack/contracts/types/worktree-timeline';
 import { toErrorMessage } from '@wrongstack/core/utils';
-import { WorktreeManager } from '@wrongstack/core/worktree';
+import { WorktreeManager } from '@wrongstack/worktree';
 import { cleanupStaleSddWorktrees } from '@wrongstack/sdd';
 import type { WebSocket } from 'ws';
 import type { WorktreeHandleView, WorktreeOrphanView, WSServerMessage } from './types.js';

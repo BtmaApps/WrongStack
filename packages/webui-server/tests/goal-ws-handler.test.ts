@@ -81,7 +81,7 @@ vi.mock('@wrongstack/core/coordination', () => ({
   assignNickname: vi.fn(() => ({ key: 'nick-1', display: 'alice (1)' })),
 }));
 
-vi.mock('@wrongstack/core/worktree', () => {
+vi.mock('@wrongstack/worktree', () => {
   class FakeWorktreeManager {
     currentBase = vi.fn(async () => ({ branch: 'main', sha: 'abc' }));
     cleanupAllManaged = vi.fn(async () => undefined);

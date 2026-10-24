@@ -92,22 +92,22 @@
       "fingerprint": "bc732f7e132831e5"
     },
     {
-      "file": "packages/core/tests/chronicle/metrics-store-sqlite-source.test.ts",
+      "file": "packages/chronicle/tests/metrics-store-sqlite-source.test.ts",
       "kind": "skipIf",
       "fingerprint": "1b4c70186dfe382c"
     },
     {
-      "file": "packages/core/tests/chronicle/metrics-store.test.ts",
+      "file": "packages/chronicle/tests/metrics-store.test.ts",
       "kind": "skipIf",
       "fingerprint": "2dcf51c9176eed57"
     },
     {
-      "file": "packages/core/tests/chronicle/metrics-token-attribution.test.ts",
+      "file": "packages/chronicle/tests/metrics-token-attribution.test.ts",
       "kind": "skipIf",
       "fingerprint": "830552a86ae53e38"
     },
     {
-      "file": "packages/core/tests/chronicle/project-server-auth-gate.test.ts",
+      "file": "packages/chronicle/tests/project-server-auth-gate.test.ts",
       "kind": "skipIf",
       "fingerprint": "b6bed90afffce85b"
     },
@@ -132,12 +132,12 @@
       "fingerprint": "6c1dfd9f1895e5c4"
     },
     {
-      "file": "packages/core/tests/goal/project-verifier-timeout.test.ts",
+      "file": "packages/goal/tests/project-verifier-timeout.test.ts",
       "kind": "skipIf",
       "fingerprint": "2f2518778f9e6ff8"
     },
     {
-      "file": "packages/core/tests/hq/auth-store.test.ts",
+      "file": "packages/hq/tests/auth-store.test.ts",
       "kind": "skipIf",
       "fingerprint": "c29fd7d333f936b3"
     },
@@ -247,12 +247,12 @@
       "fingerprint": "ce77eb6e6cf8860f"
     },
     {
-      "file": "packages/core/tests/worktree/worktree-manager.test.ts",
+      "file": "packages/worktree/tests/worktree-manager.test.ts",
       "kind": "skipIf",
       "fingerprint": "5fa25ae1a877547c"
     },
     {
-      "file": "packages/core/tests/worktree/worktree-manager.test.ts",
+      "file": "packages/worktree/tests/worktree-manager.test.ts",
       "kind": "skipIf",
       "fingerprint": "a869eae099367227"
     },

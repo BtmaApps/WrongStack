@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { GoalRunPersistence, prepareGoalGraphForResume } from '../src/goal-run-lifecycle.js';
 import { PhaseGraphBuilder } from '../src/phase-graph-builder.js';
-import type { WorktreeManager } from '@wrongstack/core/worktree';
+import type { WorktreeManager } from '@wrongstack/worktree';
 
 async function graph() {
   return new PhaseGraphBuilder({

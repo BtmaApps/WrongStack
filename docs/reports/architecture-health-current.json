@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-24T14:49:08.068Z",
+  "generatedAt": "2026-10-24T14:49:33.538Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -11,18 +11,18 @@
     ]
   },
   "summary": {
-    "packages": 42,
-    "sourceFiles": 5286,
+    "packages": 43,
+    "sourceFiles": 5287,
     "testFiles": 4654,
-    "sourceLines": 1150922,
-    "workspaceEdges": 192,
-    "moduleEdges": 16004,
+    "sourceLines": 1150928,
+    "workspaceEdges": 198,
+    "moduleEdges": 16000,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 3,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 0,
-    "testOnlyExports": 970
+    "testOnlyExports": 969
   },
   "errors": [],
   "packageCycles": [],
@@ -56,8 +56,7 @@
       "typesafe",
       "utils",
       "vcs",
-      "wiring",
-      "worktree"
+      "wiring"
     ],
     "registered": [
       "brain",
@@ -88,8 +87,7 @@
       "typesafe",
       "utils",
       "vcs",
-      "wiring",
-      "worktree"
+      "wiring"
     ],
     "unclassified": [],
     "stale": []
@@ -205,6 +203,7 @@
         "@wrongstack/webui-hq",
         "@wrongstack/webui-protocol",
         "@wrongstack/webui-server",
+        "@wrongstack/worktree",
         "@wrongstack/wrongtrace"
       ],
       "tsconfigs": [
@@ -290,8 +289,8 @@
     {
       "name": "@wrongstack/core",
       "dir": "packages/core",
-      "sourceFiles": 904,
-      "testFiles": 899,
+      "sourceFiles": 896,
+      "testFiles": 897,
       "workspaceDependencies": [
         "@wrongstack/contracts",
         "@wrongstack/kanban",
@@ -307,7 +306,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 899
+          "testFiles": 897
         }
       ]
     },
@@ -343,7 +342,8 @@
       "testFiles": 22,
       "workspaceDependencies": [
         "@wrongstack/contracts",
-        "@wrongstack/core"
+        "@wrongstack/core",
+        "@wrongstack/worktree"
       ],
       "tsconfigs": [
         {
@@ -760,7 +760,8 @@
         "@wrongstack/core",
         "@wrongstack/kanban",
         "@wrongstack/primitives",
-        "@wrongstack/requirement-intake"
+        "@wrongstack/requirement-intake",
+        "@wrongstack/worktree"
       ],
       "tsconfigs": [
         {
@@ -1084,6 +1085,7 @@
         "@wrongstack/tools",
         "@wrongstack/vector-memory",
         "@wrongstack/webui-protocol",
+        "@wrongstack/worktree",
         "@wrongstack/wrongtrace"
       ],
       "tsconfigs": [
@@ -1096,6 +1098,28 @@
           "path": "packages/webui-server/tsconfig.test.json",
           "error": null,
           "testFiles": 308
+        }
+      ]
+    },
+    {
+      "name": "@wrongstack/worktree",
+      "dir": "packages/worktree",
+      "sourceFiles": 9,
+      "testFiles": 2,
+      "workspaceDependencies": [
+        "@wrongstack/contracts",
+        "@wrongstack/core"
+      ],
+      "tsconfigs": [
+        {
+          "path": "packages/worktree/tsconfig.json",
+          "error": null,
+          "testFiles": 0
+        },
+        {
+          "path": "packages/worktree/tsconfig.test.json",
+          "error": null,
+          "testFiles": 2
         }
       ]
     },
@@ -7928,12 +7952,6 @@
         ]
       },
       {
-        "file": "packages/core/tests/coordination/worktree-task-runner.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
         "file": "packages/core/tests/coordinator-stop.test.ts",
         "projects": [
           "root-node"
@@ -11817,12 +11835,6 @@
       },
       {
         "file": "packages/core/tests/wiring/proxy-rewrite.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/core/tests/worktree/worktree-manager.test.ts",
         "projects": [
           "root-node"
         ]
@@ -29060,6 +29072,18 @@
         ]
       },
       {
+        "file": "packages/worktree/tests/worktree-manager.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/worktree/tests/worktree-task-runner.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/wrongtrace/src/__tests__/agent-helpers.test.ts",
         "projects": [
           "root-node"
@@ -30923,10 +30947,6 @@
     {
       "file": "packages/core/src/utils/wstack-paths.ts",
       "name": "bootstrapProfileName"
-    },
-    {
-      "file": "packages/core/src/vcs/vcs-adapter.ts",
-      "name": "normalizeVcsPath"
     },
     {
       "file": "packages/core/src/wiring/proxy-rewrite.ts",

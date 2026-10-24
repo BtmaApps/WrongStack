@@ -8,7 +8,7 @@
  */
 import * as path from 'node:path';
 import type { SessionSummary } from '@wrongstack/contracts/types';
-import type { GitWorktreeEntry } from '@wrongstack/core/worktree';
+import type { GitWorktreeEntry } from '@wrongstack/worktree';
 
 export interface WorktreeRef {
   root: string;

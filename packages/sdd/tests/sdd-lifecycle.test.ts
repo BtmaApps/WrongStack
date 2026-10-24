@@ -19,7 +19,7 @@ const worktree = vi.hoisted(() => ({
   revertCommits: vi.fn(),
 }));
 
-vi.mock('@wrongstack/core/worktree', () => ({
+vi.mock('@wrongstack/worktree', () => ({
   WorktreeManager: class {
     cleanupAllManaged = worktree.cleanupAllManaged;
     cleanupStale = worktree.cleanupStale;

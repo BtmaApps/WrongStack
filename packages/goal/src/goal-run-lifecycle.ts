@@ -1,4 +1,4 @@
-import type { WorktreeManager } from '@wrongstack/core/worktree';
+import type { WorktreeManager } from '@wrongstack/worktree';
 import type { PhaseStore } from './phase-store.js';
 import type { PhaseGraph } from './types.js';
 

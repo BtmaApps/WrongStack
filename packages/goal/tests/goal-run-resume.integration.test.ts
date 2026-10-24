@@ -8,7 +8,7 @@ import { prepareGoalGraphForResume } from '../src/goal-run-lifecycle.js';
 import { PhaseGraphBuilder } from '../src/phase-graph-builder.js';
 import { PhaseOrchestrator } from '../src/phase-orchestrator.js';
 import { GoalRunLeaseBusyError, PhaseStore } from '../src/phase-store.js';
-import { WorktreeManager } from '@wrongstack/core/worktree';
+import { WorktreeManager } from '@wrongstack/worktree';
 
 import { removeProjectFixtureDirectory } from '../../core/tests/helpers/project-server-harness.js';
 

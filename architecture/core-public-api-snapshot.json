@@ -89,7 +89,6 @@
         "export { runProviderWithRetry } from './core/provider-runner.js';",
         "export { safeParse, safeStringify, sanitizeJsonString, stripCodeFences, } from './utils/safe-json.js';",
         "export { type AfterIterationHook, type AfterRunHook, type AfterToolExecutionHook, type AgentExtension, type BeforeIterationHook, type BeforeRunHook, type BeforeToolExecutionHook, type BeforeTurnEndHook, ExtensionRegistry, type OnErrorHook, type ProviderRunnerWrapper, } from './extension/index.js';",
-        "export { type AllocateOpts, assertSafePath, type MergeOpts, type MergeResult, type WorktreeHandle, WorktreeManager, type WorktreeManagerOptions, type WorktreeRunResult, type WorktreeStatus, } from './worktree/index.js';",
         "export { type ContinuationInput, type ContinuationSource, detectContinueIntent, type ResolvedContinuation, resolveContinuation, } from './core/continue-intent.js';",
         "export { type ContinueDirective, makeContinueToNextIterationTool, parseContinueDirective, } from './core/continue-to-next-iteration.js';",
         "export { type DomainGlossaryOptions, renderDomainGlossary, } from './core/system-prompt-glossary.js';",
@@ -1210,15 +1209,15 @@
       ]
     },
     {
-      "subpath": "./worktree",
+      "subpath": "./vcs",
       "target": {
-        "types": "./dist/worktree/index.d.ts",
-        "import": "./dist/worktree/index.js"
+        "types": "./dist/vcs/index.d.ts",
+        "import": "./dist/vcs/index.js"
       },
-      "source": "packages/core/src/worktree/index.ts",
+      "source": "packages/core/src/vcs/index.ts",
       "declarations": [
-        "export { WorktreeManager, assertSafePath, type WorktreeHandle, type WorktreeStatus, type WorktreeManagerOptions, type AllocateOpts, type MergeOpts, type MergeResult, type RunResult as WorktreeRunResult, } from './worktree-manager.js';",
-        "export { type GitWorktreeEntry, listGitWorktrees } from './git-worktree-list.js';"
+        "export { detectVcs, GIT_ISOLATION_ARGS, gitFilterIsolationEnv, HG_ISOLATED_ENV, normalizeVcsPath, openVcs, type VcsAdapter, type VcsKind, type VcsOptions, vcsAdapter, } from './vcs-adapter.js';",
+        "export { runVcs, type VcsRunner, type VcsRunOptions, type VcsRunResult } from './vcs-runner.js';"
       ]
     },
     {
@@ -1496,8 +1495,8 @@
       "directory": "vcs",
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime or focused VCS implementation",
-      "sourceFiles": 2,
-      "sourceLines": 387
+      "sourceFiles": 3,
+      "sourceLines": 405
     },
     {
       "directory": "wiring",
@@ -1505,13 +1504,6 @@
       "intendedOwner": "Runtime or focused infrastructure package",
       "sourceFiles": 1,
       "sourceLines": 529
-    },
-    {
-      "directory": "worktree",
-      "classification": "concrete runtime default",
-      "intendedOwner": "Runtime or focused worktree implementation",
-      "sourceFiles": 9,
-      "sourceLines": 1553
     }
   ]
 }

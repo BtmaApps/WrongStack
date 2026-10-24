@@ -8,10 +8,10 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import type { SessionEvent } from '@wrongstack/contracts/types/session';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { listGitWorktrees } from '../../../worktree/src/git-worktree-list.js';
 import { DefaultSessionStore } from '../../src/index.js';
 import { summarizeSessionEvents } from '../../src/storage/session-store/summary-builder.js';
 import { orderSessionTree, sessionTreePrefix } from '../../src/storage/session-tree.js';
-import { listGitWorktrees } from '../../src/worktree/git-worktree-list.js';
 
 const s = (id: string, forkedFrom?: string) => ({ id, ...(forkedFrom ? { forkedFrom } : {}) });
 

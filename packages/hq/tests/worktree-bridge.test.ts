@@ -180,7 +180,7 @@ describe('startWorktreeTelemetryBridge', () => {
   });
 
   it('mergeBranch detects squash merge conflicts even when git merge --squash exits 0', async () => {
-    const { WorktreeManager } = await import('../../core/src/worktree/worktree-manager.js');
+    const { WorktreeManager } = await import('../../worktree/src/worktree-manager.js');
     const calls: string[][] = [];
     const wm = new WorktreeManager({
       projectRoot: '/tmp/wt-repo',

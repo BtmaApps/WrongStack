@@ -12,7 +12,7 @@
 import * as fsp from 'node:fs/promises';
 import * as path from 'node:path';
 import { toErrorMessage } from '@wrongstack/core/utils';
-import { WorktreeManager } from '@wrongstack/core/worktree';
+import { WorktreeManager } from '@wrongstack/worktree';
 import {
   deleteKanbanWorkflowState,
   kanbanWorkflowId,

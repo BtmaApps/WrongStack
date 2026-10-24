@@ -7,10 +7,10 @@ import {
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { WebSocket } from 'ws';
 
-vi.mock('@wrongstack/core/worktree', () => ({ WorktreeManager: vi.fn() }));
+vi.mock('@wrongstack/worktree', () => ({ WorktreeManager: vi.fn() }));
 vi.mock('@wrongstack/sdd', () => ({ cleanupStaleSddWorktrees: vi.fn() }));
 
-import { WorktreeManager } from '@wrongstack/core/worktree';
+import { WorktreeManager } from '@wrongstack/worktree';
 import { cleanupStaleSddWorktrees } from '@wrongstack/sdd';
 import { WorktreeWebSocketHandler } from '../src/server/worktree-ws-handler.js';
 

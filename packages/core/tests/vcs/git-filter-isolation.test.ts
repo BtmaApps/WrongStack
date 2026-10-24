@@ -9,11 +9,11 @@ import * as fsp from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { defaultRun as worktreeDefaultRun } from '../../../worktree/src/worktree-git.js';
 import { gitStatus } from '../../src/core/system-prompt-environment-probes.js';
 import { getChangedFiles } from '../../src/plugins/auto-review-git.js';
 import { buildReviewContext } from '../../src/plugins/review-context-builder.js';
 import { gitFilterIsolationEnv, vcsAdapter } from '../../src/vcs/vcs-adapter.js';
-import { defaultRun as worktreeDefaultRun } from '../../src/worktree/worktree-git.js';
 import { removeProjectFixtureDirectory } from '../helpers/project-server-harness.js';
 
 const MARKERS = ['clean-ran.txt', 'process-ran.txt'];

@@ -5,7 +5,7 @@ import { ToolValidationError } from '@wrongstack/contracts/types';
 import type { Agent } from '@wrongstack/core/agent';
 import type { AgentFactory, BrainArbiter } from '@wrongstack/core/coordination';
 import { DefaultTaskStore, type TaskStore, TaskTracker } from '@wrongstack/core/tasking';
-import { WorktreeManager } from '@wrongstack/core/worktree';
+import { WorktreeManager } from '@wrongstack/worktree';
 import {
   cleanupStaleSddWorktrees,
   createKanbanSddSessionPersistence,

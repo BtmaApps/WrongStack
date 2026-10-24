@@ -5,7 +5,7 @@ import * as path from 'node:path';
 import { promisify } from 'node:util';
 import { EventBus } from '@wrongstack/contracts/kernel';
 import { GoalRunLeaseBusyError } from '@wrongstack/goal';
-import { WorktreeManager } from '@wrongstack/core/worktree';
+import { WorktreeManager } from '@wrongstack/worktree';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { removeProjectFixtureDirectory } from '../../core/tests/helpers/project-server-harness.js';
 import { createWorktreeCommandHost } from '../src/worktree-command-host.js';

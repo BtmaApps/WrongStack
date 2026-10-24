@@ -4,7 +4,7 @@ import type { TaskNode } from '@wrongstack/contracts/types/task-graph';
 import { noOpLogger } from '@wrongstack/core/infrastructure';
 import { DefaultTaskStore, TaskTracker } from '@wrongstack/core/tasking';
 import { toErrorMessage } from '@wrongstack/core/utils';
-import type { WorktreeHandle, WorktreeManager } from '@wrongstack/core/worktree';
+import type { WorktreeHandle, WorktreeManager } from '@wrongstack/worktree';
 import {
   addPhaseTask,
   findPhaseOfTaskInGraph,

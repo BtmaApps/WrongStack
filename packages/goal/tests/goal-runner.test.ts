@@ -2,7 +2,7 @@ import { EventBus } from '@wrongstack/contracts/kernel/events';
 import { describe, expect, it, vi } from 'vitest';
 import { createGoalRunnerFromTaskGraph, GoalRunner } from '../src/goal-runner.js';
 import type { PhaseTemplate } from '../src/types.js';
-import type { WorktreeHandle, WorktreeManager } from '@wrongstack/core/worktree';
+import type { WorktreeHandle, WorktreeManager } from '@wrongstack/worktree';
 
 function fakeWorktrees() {
   const calls: string[] = [];

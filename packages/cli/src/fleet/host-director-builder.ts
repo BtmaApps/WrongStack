@@ -7,7 +7,7 @@ import {
   type FleetWorktreePolicy,
   HARD_MAX_SPAWN_DEPTH,
 } from '@wrongstack/core/coordination';
-import { WorktreeManager } from '@wrongstack/core/worktree';
+import { WorktreeManager } from '@wrongstack/worktree';
 
 import { resolveFleetWorktreePolicy } from './host-helpers.js';
 import type { MultiAgentDeps, MultiAgentHostOptions } from './host-types.js';

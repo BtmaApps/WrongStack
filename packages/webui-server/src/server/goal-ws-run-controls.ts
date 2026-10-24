@@ -8,7 +8,7 @@ import {
   prepareGoalWorkspace,
 } from '@wrongstack/goal';
 import { toErrorMessage } from '@wrongstack/core/utils';
-import { WorktreeManager } from '@wrongstack/core/worktree';
+import { WorktreeManager } from '@wrongstack/worktree';
 import { isGitWorkTree } from './git-process.js';
 import { commitsSince } from './goal-ws-run-controls-contracts.js';
 export interface GoalWsRunControlsHost {

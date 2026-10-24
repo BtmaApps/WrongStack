@@ -14,7 +14,7 @@ import type { SecretScrubber, TaskGraph } from '@wrongstack/contracts/types';
 import type { Agent } from '@wrongstack/core/agent';
 import type { AgentFactory } from '@wrongstack/core/coordination';
 import type { TaskTracker } from '@wrongstack/core/tasking';
-import type { WorktreeManager } from '@wrongstack/core/worktree';
+import type { WorktreeManager } from '@wrongstack/worktree';
 import {
   drainKanbanWorkflowCommands,
   kanbanWorkflowId,

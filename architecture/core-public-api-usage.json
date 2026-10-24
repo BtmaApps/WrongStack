@@ -29,9 +29,9 @@
       "runtimeOrMixed": 12
     },
     "@wrongstack/core/coordination": {
-      "files": 295,
+      "files": 296,
       "typeOnly": 113,
-      "runtimeOrMixed": 253
+      "runtimeOrMixed": 254
     },
     "@wrongstack/core/coordination/agent-subagent-runner.js": {
       "files": 2,
@@ -174,9 +174,9 @@
       "runtimeOrMixed": 23
     },
     "@wrongstack/core/utils": {
-      "files": 877,
+      "files": 878,
       "typeOnly": 66,
-      "runtimeOrMixed": 849
+      "runtimeOrMixed": 850
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -223,15 +223,15 @@
       "typeOnly": 0,
       "runtimeOrMixed": 17
     },
+    "@wrongstack/core/vcs": {
+      "files": 1,
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
     "@wrongstack/core/wiring/proxy-rewrite": {
       "files": 21,
       "typeOnly": 3,
       "runtimeOrMixed": 21
-    },
-    "@wrongstack/core/worktree": {
-      "files": 33,
-      "typeOnly": 17,
-      "runtimeOrMixed": 17
     }
   },
   "usages": [
@@ -4804,6 +4804,12 @@
     {
       "specifier": "@wrongstack/core/coordination",
       "file": "packages/webui/tests/hooks/sdd-brain-chat-routing.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/coordination",
+      "file": "packages/worktree/tests/worktree-task-runner.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -16622,6 +16628,12 @@
       "runtimeOrMixed": 1
     },
     {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/worktree/src/worktree-manager.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
       "specifier": "@wrongstack/core/utils/child-env",
       "file": "packages/plugin-sdk/src/runtime/index.ts",
       "typeOnly": 0,
@@ -17066,6 +17078,12 @@
       "runtimeOrMixed": 1
     },
     {
+      "specifier": "@wrongstack/core/vcs",
+      "file": "packages/worktree/src/worktree-git.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
       "specifier": "@wrongstack/core/wiring/proxy-rewrite",
       "file": "packages/cli/src/cli-main-boot.ts",
       "typeOnly": 0,
@@ -17188,204 +17206,6 @@
     {
       "specifier": "@wrongstack/core/wiring/proxy-rewrite",
       "file": "packages/webui-server/tests/wrongproxy-prefs-e2e.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/worktree",
-      "file": "packages/cli/src/boot/worktree-sessions.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/worktree",
-      "file": "packages/cli/src/execution-session-callbacks.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/worktree",
-      "file": "packages/cli/src/fleet/host-director-builder.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/worktree",
-      "file": "packages/cli/src/goal-host.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/worktree",
-      "file": "packages/cli/src/wiring/sdd-handlers.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 2
-    },
-    {
-      "specifier": "@wrongstack/core/worktree",
-      "file": "packages/cli/src/worktree-command-host.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/worktree",
-      "file": "packages/cli/tests/worktree-command-host.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/worktree",
-      "file": "packages/goal/src/goal-run-lifecycle.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/worktree",
-      "file": "packages/goal/src/goal-workspace.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/worktree",
-      "file": "packages/goal/src/phase-orchestrator-integration.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/worktree",
-      "file": "packages/goal/src/phase-orchestrator.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/worktree",
-      "file": "packages/goal/src/phase-task-execution.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/worktree",
-      "file": "packages/goal/src/types.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/worktree",
-      "file": "packages/goal/tests/goal-run-lifecycle.test.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/worktree",
-      "file": "packages/goal/tests/goal-run-resume.integration.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/worktree",
-      "file": "packages/goal/tests/goal-runner.test.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/worktree",
-      "file": "packages/goal/tests/phase-orchestrator-extra.test.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/worktree",
-      "file": "packages/goal/tests/phase-orchestrator.test.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/worktree",
-      "file": "packages/sdd/src/sdd-lifecycle.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/worktree",
-      "file": "packages/sdd/src/sdd-parallel-controls.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/worktree",
-      "file": "packages/sdd/src/sdd-parallel-run-state.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/worktree",
-      "file": "packages/sdd/src/sdd-parallel-run-types.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/worktree",
-      "file": "packages/sdd/src/sdd-worktree-integration.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/worktree",
-      "file": "packages/sdd/src/start-sdd-run.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/worktree",
-      "file": "packages/sdd/tests/sdd-worktree-integration.test.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/worktree",
-      "file": "packages/webui-server/src/server/goal-run.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/worktree",
-      "file": "packages/webui-server/src/server/goal-ws-handler-internals.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/worktree",
-      "file": "packages/webui-server/src/server/goal-ws-handler.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/worktree",
-      "file": "packages/webui-server/src/server/goal-ws-run-controls.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/worktree",
-      "file": "packages/webui-server/src/server/sdd-wizard-wiring.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/worktree",
-      "file": "packages/webui-server/src/server/worktree-ws-handler.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/worktree",
-      "file": "packages/webui-server/tests/worktree-ws-handler.gaps.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/worktree",
-      "file": "packages/webui-server/tests/worktree-ws-handler.timeline.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     }

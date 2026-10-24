@@ -6,9 +6,9 @@ import type {
   SubagentRunOutcome,
   TaskSpec,
 } from '@wrongstack/contracts/types/multi-agent';
+import type { WorktreeHandle, WorktreeManagerPort } from '@wrongstack/contracts/types/worktree';
 import { ToolCapabilities } from '../security/capabilities.js';
 import { toErrorMessage } from '../utils/error.js';
-import type { WorktreeHandle, WorktreeManager } from '../worktree/worktree-manager.js';
 import { isExternalAgentProvider } from './external-agent-provider.js';
 
 export type FleetWorktreePolicy = NonNullable<FleetConfig['worktrees']>;
@@ -38,7 +38,7 @@ export interface WorktreeTaskStateUpdate {
 
 export interface WorktreeTaskRunnerOptions {
   runner: SubagentRunner;
-  worktrees?: WorktreeManager | undefined;
+  worktrees?: WorktreeManagerPort | undefined;
   policy?: FleetWorktreePolicy | undefined;
   conflictResolver?:
     | ((info: {

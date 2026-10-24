@@ -15,7 +15,7 @@ import {
   parseConflictPaths,
   type RunResult,
   WorktreeManager,
-} from '../../src/worktree/worktree-manager.js';
+} from '../src/worktree-manager.js';
 
 /** Records every git invocation and returns scripted results. */
 function stubRunner(

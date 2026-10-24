@@ -5,15 +5,15 @@ import type {
   SubagentRunOutcome,
   TaskSpec,
 } from '@wrongstack/contracts/types/multi-agent';
-import { describe, expect, it, vi } from 'vitest';
 import {
   resolveSubagentWorktreeDecision,
   subagentNeedsWorktree,
   WorktreeIntegrationError,
   wrapSubagentRunnerWithWorktrees,
-} from '../../src/coordination/worktree-task-runner.js';
-import type { RunResult } from '../../src/worktree/worktree-manager.js';
-import { WorktreeManager } from '../../src/worktree/worktree-manager.js';
+} from '@wrongstack/core/coordination';
+import { describe, expect, it, vi } from 'vitest';
+import type { RunResult } from '../src/worktree-manager.js';
+import { WorktreeManager } from '../src/worktree-manager.js';
 
 function stubRunner(
   script: (args: string[]) => RunResult = () => ({ code: 0, stdout: '', stderr: '' }),

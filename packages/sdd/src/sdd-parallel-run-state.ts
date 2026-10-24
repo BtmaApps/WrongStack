@@ -12,7 +12,7 @@ import {
   makeAgentSubagentRunner,
   withDisabledToolFiltering,
 } from '@wrongstack/core/coordination';
-import type { WorktreeHandle } from '@wrongstack/core/worktree';
+import type { WorktreeHandle } from '@wrongstack/worktree';
 import { requireSessionId } from '@wrongstack/primitives';
 import type { SddParallelControlsHost } from './sdd-parallel-controls.js';
 import type {

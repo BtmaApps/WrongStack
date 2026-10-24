@@ -8,8 +8,7 @@
  * @module worktree/worktree-git
  */
 import { resolve, sep } from 'node:path';
-import { gitFilterIsolationEnv } from '../vcs/vcs-adapter.js';
-import { runVcs } from '../vcs/vcs-runner.js';
+import { gitFilterIsolationEnv, runVcs } from '@wrongstack/core/vcs';
 import type { RunResult } from './worktree-types.js';
 
 const MAX_SLUG = 40;

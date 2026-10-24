@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { PhaseGraphBuilder } from '../src/phase-graph-builder.js';
 import { PhaseOrchestrator } from '../src/phase-orchestrator.js';
 import type { PhaseExecutionContext, PhaseGraph } from '../src/types.js';
-import type { WorktreeHandle, WorktreeManager } from '@wrongstack/core/worktree';
+import type { WorktreeHandle, WorktreeManager } from '@wrongstack/worktree';
 
 /**
  * Records every call and hands out one active handle per owner. `conflictOn`

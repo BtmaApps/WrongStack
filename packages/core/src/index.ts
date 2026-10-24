@@ -458,14 +458,3 @@ export {
   writeErr,
   writeOut,
 } from './utils/term.js';
-export {
-  type AllocateOpts,
-  assertSafePath,
-  type MergeOpts,
-  type MergeResult,
-  type WorktreeHandle,
-  WorktreeManager,
-  type WorktreeManagerOptions,
-  type WorktreeRunResult,
-  type WorktreeStatus,
-} from './worktree/index.js';

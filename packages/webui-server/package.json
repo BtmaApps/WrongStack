@@ -63,6 +63,7 @@
     "@wrongstack/tools": "workspace:*",
     "@wrongstack/vector-memory": "workspace:*",
     "@wrongstack/webui-protocol": "workspace:*",
+    "@wrongstack/worktree": "workspace:*",
     "@wrongstack/wrongtrace": "workspace:*",
     "ws": "^8.22.0"
   },

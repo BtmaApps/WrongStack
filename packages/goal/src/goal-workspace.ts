@@ -1,5 +1,5 @@
 import type { EventBus } from '@wrongstack/contracts/kernel/events';
-import { WorktreeManager } from '@wrongstack/core/worktree';
+import { WorktreeManager } from '@wrongstack/worktree';
 import type { PhaseGraph } from './types.js';
 
 /** Each goal integrates its phases into its own branch, never another goal's tree. */

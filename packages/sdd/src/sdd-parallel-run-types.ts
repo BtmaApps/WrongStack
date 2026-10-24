@@ -3,7 +3,7 @@ import type { TaskGraph, TaskNode, TaskProgress, TaskResult } from '@wrongstack/
 import type { Agent } from '@wrongstack/core/agent';
 import type { AgentFactory } from '@wrongstack/core/coordination';
 import type { TaskTracker } from '@wrongstack/core/tasking';
-import type { WorktreeManager } from '@wrongstack/core/worktree';
+import type { WorktreeManager } from '@wrongstack/worktree';
 import type { TaskBatch } from './sdd-task-decomposer.js';
 /** A sub-task produced by splitting a parent task (see `splitTask`). */
 export interface SddSubtaskSpec {

@@ -342,7 +342,7 @@ export interface GoalOptions {
    * isolated worktree and branch, then is squash-merged back into the base
    * branch in order. Without it, behavior is unchanged and uses the shared working tree.
    */
-  worktrees?: import('@wrongstack/core/worktree').WorktreeManager | undefined;
+  worktrees?: import('@wrongstack/worktree').WorktreeManager | undefined;
 }
 
 // ─── Phase Filter / Sort ────────────────────────────────────────────────────

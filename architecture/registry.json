@@ -46,8 +46,7 @@
     "typesafe": { "classification": "infrastructure", "targetOwner": "core" },
     "utils": { "classification": "primitive-review-required", "targetOwner": "contracts-or-core" },
     "vcs": { "classification": "infrastructure", "targetOwner": "runtime-review-required" },
-    "wiring": { "classification": "infrastructure", "targetOwner": "runtime-review-required" },
-    "worktree": { "classification": "host-runtime", "targetOwner": "runtime-review-required" }
+    "wiring": { "classification": "infrastructure", "targetOwner": "runtime-review-required" }
   },
   "testProjects": [
     {

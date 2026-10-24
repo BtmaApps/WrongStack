@@ -38,7 +38,8 @@
     "@wrongstack/core": "workspace:*",
     "@wrongstack/kanban": "workspace:*",
     "@wrongstack/primitives": "workspace:*",
-    "@wrongstack/requirement-intake": "workspace:*"
+    "@wrongstack/requirement-intake": "workspace:*",
+    "@wrongstack/worktree": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^26.6.5",

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { PhaseGraphBuilder } from '../src/phase-graph-builder.js';
 import { PhaseOrchestrator } from '../src/phase-orchestrator.js';
 import type { PhaseGraph } from '../src/types.js';
-import type { WorktreeHandle, WorktreeManager } from '@wrongstack/core/worktree';
+import type { WorktreeHandle, WorktreeManager } from '@wrongstack/worktree';
 
 async function singlePhase(): Promise<PhaseGraph> {
   return new PhaseGraphBuilder({

@@ -36,7 +36,8 @@
   },
   "dependencies": {
     "@wrongstack/contracts": "workspace:*",
-    "@wrongstack/core": "workspace:*"
+    "@wrongstack/core": "workspace:*",
+    "@wrongstack/worktree": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",

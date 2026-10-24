@@ -10,7 +10,7 @@ import type {
   PhaseStore,
   PhaseTemplate,
 } from '@wrongstack/goal';
-import type { WorktreeManager } from '@wrongstack/core/worktree';
+import type { WorktreeManager } from '@wrongstack/worktree';
 import type { WebSocket } from 'ws';
 import type { GoalWsRunControlsHost } from './goal-ws-run-controls.js';
 

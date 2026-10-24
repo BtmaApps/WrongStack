@@ -11,7 +11,7 @@
  */
 import type { Logger } from '@wrongstack/contracts/types/logger';
 import { toErrorMessage } from '@wrongstack/core/utils';
-import type { WorktreeHandle, WorktreeManager } from '@wrongstack/core/worktree';
+import type { WorktreeHandle, WorktreeManager } from '@wrongstack/worktree';
 import { setIntegrationMetadata } from './phase-orchestrator-queries.js';
 import type {
   PhaseEventMap,

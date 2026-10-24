@@ -1,5 +1,5 @@
 import type { DefaultMultiAgentCoordinator } from '@wrongstack/core/coordination';
-import type { WorktreeHandle } from '@wrongstack/core/worktree';
+import type { WorktreeHandle } from '@wrongstack/worktree';
 import { splitGraphNode } from './graph-split.js';
 import type { SddParallelRunOptions, SddSubtaskSpec } from './sdd-parallel-run-types.js';
 export interface SddParallelControlsHost {

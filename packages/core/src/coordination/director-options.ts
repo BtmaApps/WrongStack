@@ -8,8 +8,8 @@ import type {
   TaskSpec,
 } from '@wrongstack/contracts/types/multi-agent';
 import type { SessionWriter } from '@wrongstack/contracts/types/session';
+import type { WorktreeManagerPort } from '@wrongstack/contracts/types/worktree';
 import type { BrainArbiter } from '../brain/brain.js';
-import type { WorktreeManager } from '../worktree/worktree-manager.js';
 import type { DispatchLogEntry } from './agents/dispatch-log.js';
 import type { DispatchClassifier } from './dispatcher.js';
 import type { FleetManager } from './fleet-manager.js';
@@ -120,7 +120,7 @@ export interface DirectorOptions {
   /** Per-task model matrix. */
   modelMatrix?: ModelMatrixSource | undefined;
   /** Optional git-worktree manager for Director fleet isolation. */
-  worktrees?: WorktreeManager | undefined;
+  worktrees?: WorktreeManagerPort | undefined;
   /** Worktree policy. Defaults to `auto` when `worktrees` is provided. */
   worktreePolicy?: FleetWorktreePolicy | undefined;
   /** Optional guarded merge-conflict resolver. */

@@ -84,6 +84,7 @@
     "@wrongstack/webui-hq": "workspace:*",
     "@wrongstack/webui-protocol": "workspace:*",
     "@wrongstack/webui-server": "workspace:*",
+    "@wrongstack/worktree": "workspace:*",
     "@wrongstack/wrongtrace": "workspace:*",
     "ws": "^8.22.0"
   },
