@@ -657,6 +657,27 @@ describe('project agent self-learning lifecycle', () => {
       expect(second.status).toBe('quality_rejected');
       expect(parseStructuredLearnedEntries('executor', projectRoot)).toHaveLength(1);
     });
+
+    it('strips trailing fenced JSON verdict blocks after ## LEARNED without leaking them into what or how', () => {
+      const output = [
+        '## LEARNED',
+        'Always resolve the reviewed surface against `packages/webui/src/lib/ws-client-connection.ts` on disk before judging a call-site contract.',
+        '',
+        '```json',
+        '{',
+        '  "findings": []',
+        '}',
+        '```',
+      ].join('\n');
+      const result = captureLearnedFromAgentOutputDetailed(output, 'reviewer', projectRoot, true);
+      expect(result.status).toBe('captured');
+      const entries = parseStructuredLearnedEntries('reviewer', projectRoot);
+      expect(entries).toHaveLength(1);
+      expect(entries[0]!.what).not.toContain('findings');
+      expect(entries[0]!.what).not.toContain('```');
+      expect(entries[0]!.how).toContain('`packages/webui/src/lib/ws-client-connection.ts`');
+      expect(entries[0]!.how).not.toContain('findings');
+    });
   });
 
   // ── Structured instruction list: merge + reformat on every capture ────────

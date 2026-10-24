@@ -246,22 +246,32 @@ function deriveWhy(category: LearnedEntryCategory, text: string): string {
   return `${base} Project signals: ${signals.join('; ')}.`;
 }
 
+function isLeakedFenceAnchor(inner: string): boolean {
+  return (
+    inner.includes('`') ||
+    /^(?:json|jsonc|yaml|yml|ts|tsx|js|jsx|sh|bash|text|markdown|md)\s*[[{]/i.test(inner)
+  );
+}
+
 function extractHow(text: string): string {
   const anchors = new Set<string>();
-  const backticked = text.match(/`([^`]+)`/g) ?? [];
+  const stripped = text.replace(/```[\s\S]*?```/g, ' ');
+  const backticked = stripped.match(/(?<!`)`([^`\n]+)`(?!`)/g) ?? [];
   for (const raw of backticked) {
-    const inner = raw.replace(/`/g, '').trim();
-    if (inner.length > 0 && inner.length <= 120) anchors.add(inner);
+    const inner = raw.slice(1, -1).trim();
+    if (inner.length > 0 && inner.length <= 120 && !isLeakedFenceAnchor(inner)) {
+      anchors.add(inner);
+    }
   }
   // Extension alternation is longest-first. Regex alternation is first-match,
   // so listing `js` before `json` truncated every `foo.json` anchor to
   // `foo.js` — a path that does not exist, handed to the agent as guidance.
   const pathMatches =
-    text.match(
+    stripped.match(
       /(?:[a-zA-Z0-9_.-]+\/)+[a-zA-Z0-9_.-]+\.(?:tsx|jsonc|json|jsx|yaml|mjs|cjs|yml|ts|js|md)\b/g,
     ) ?? [];
   for (const p of pathMatches) anchors.add(p);
-  const scoped = text.match(/@[a-z0-9][\w.-]*\/[a-z0-9][\w.-]*/gi) ?? [];
+  const scoped = stripped.match(/@[a-z0-9][\w.-]*\/[a-z0-9][\w.-]*/gi) ?? [];
   for (const p of scoped) anchors.add(p);
   if (anchors.size === 0) return '';
   return [...anchors].map((anchor) => `\`${anchor}\``).join('\n');
@@ -285,6 +295,8 @@ function cleanHowLine(line: string): string {
       .replace(/^\*How:\*\s*/i, '')
       .trim();
   } while (value !== previous);
+  const unwrapped = value.replace(/^`+|`+$/g, '').trim();
+  if (!unwrapped || isLeakedFenceAnchor(unwrapped)) return '';
   return value;
 }
 
@@ -318,7 +330,12 @@ function parseEntryBody(body: string): { what: string; why: string; how: string 
     lines.push(line);
   }
   const text = lines.join('\n');
-  const what = /^-\s+\*\*([\s\S]+?)\*\*\s*$/m.exec(text)?.[1]?.replace(/\s+/g, ' ').trim() ?? '';
+  const what =
+    /^-\s+\*\*([\s\S]+?)\*\*\s*$/m
+      .exec(text)?.[1]
+      ?.replace(/```[\s\S]*?```/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim() ?? '';
   if (!what) return undefined;
   const why = /^\s+-\s+\*Why:\*\s+(.+)$/m.exec(text)?.[1]?.trim() ?? '';
   const how = lines

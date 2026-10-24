@@ -63,7 +63,10 @@ export function normalizeLearnedEntry(raw: string): {
 } | null {
   if (!raw) return null;
 
-  let cleaned = raw;
+  // Strip fenced code blocks (e.g. trailing ```json { "findings": [] } ``` or
+  // ```json { "verification_evidence": ... } ``` emitted at the end of an agent
+  // response after ## LEARNED) before collapsing whitespace into sentences.
+  let cleaned = raw.replace(/```[\s\S]*?```/g, ' ');
   for (const { pattern, replacement } of EPHEMERAL_PATTERNS) {
     cleaned = cleaned.replace(pattern, replacement);
   }
