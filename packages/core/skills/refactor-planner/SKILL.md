@@ -37,6 +37,7 @@ requested behavior changes so their validation is clear.
    step; do not force three phases, feature flags or a minimum task duration.
 6. Preserve dirty work. Rollback means reversing the owned change or a
    separable commit when authorized, never overwriting a shared checkout.
+7. Detect and use the repository's actual language and verification toolchain; never introduce compiler/type/lint suppressions (`as any`, `@ts-ignore`, `# type: ignore`, `#[allow(...)]`, `//nolint`) to force a refactoring step green, and finish immediately once the planned or authorized steps are verified.
 
 ## Workflow
 

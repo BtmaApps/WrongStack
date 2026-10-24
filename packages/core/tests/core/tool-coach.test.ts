@@ -125,8 +125,11 @@ describe('Tool Coach', () => {
       tool('edit', 'Edit a file.', { mutating: true }),
       tool('codebase-targeted-test', 'Run relevant tests.'),
       tool('typecheck', 'Check types.'),
+      tool('language', 'Run polyglot language toolchain verification.'),
     ]);
-    expect(coach.afterTools([call('edit')], [result()])).toContain('codebase-targeted-test');
+    const note = coach.afterTools([call('edit')], [result()]);
+    expect(note).toContain('codebase-targeted-test');
+    expect(note).toContain('language');
     expect(coach.afterTools([call('edit')], [result()])).toBeNull();
   });
 

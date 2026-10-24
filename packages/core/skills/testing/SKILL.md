@@ -29,10 +29,10 @@ cost.
 
 ## Rules
 
-1. **Pre-flight: Inspect repo runner & live version first.** Inspect `package.json` test scripts,
-   runner configs (`vitest.config.ts`, `playwright.config.ts`, `pytest.ini`, `Cargo.toml`),
-   and existing suites. Query `registry.npmjs.org/<runner>/latest` to confirm active flags
-   (e.g. Vitest 5 options, fake timers) and match the project's runner layout before writing tests.
+1. **Pre-flight: Inspect repo runner & live version first.** Inspect project manifests and
+   runner configs (`Cargo.toml`, `pyproject.toml`, `pytest.ini`, `go.mod`, `package.json`,
+   `vitest.config.ts`, `playwright.config.ts`, `pom.xml`, `build.gradle`) and existing suites.
+   Query the authoritative registry only when adding/upgrading a runner and match repo layout.
 2. See it fail first. A regression test must fail without the fix — a test that
    was never red proves nothing.
 3. Test behaviour through the public surface. Don't assert on private helpers or
@@ -44,7 +44,8 @@ cost.
 6. Bound every wait that can hang (network, sockets, child processes, polling),
    and drive time-based logic with fake timers instead of real sleeps.
 7. Report exactly what ran: the command, the files, pass/fail/skip counts. A run
-   that matched no tests is not a pass.
+   that matched no tests is not a pass; never fake green with suppressions (`as any`,
+   `@ts-ignore`, `# type: ignore`, `#[allow(...)]`, `//nolint`), and stop once verified.
 
 ## Workflow
 

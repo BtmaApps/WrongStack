@@ -298,7 +298,7 @@ export function createToolCoach(catalog: readonly Tool[]): ToolCoach {
         // Tests and typecheck say nothing about a notes or docs file; the note
         // would only cost the model a paragraph explaining why it skipped them.
         if (isProseOnlyChange(uses.find((use) => use.id === result.tool_use_id)?.input)) continue;
-        const verification = ['codebase-targeted-test', 'test', 'typecheck', 'lint']
+        const verification = ['codebase-targeted-test', 'test', 'typecheck', 'lint', 'language']
           .filter((candidate) => byName.has(candidate))
           .slice(0, 3);
         if (verification.length === 0) continue;

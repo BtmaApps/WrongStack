@@ -121,6 +121,8 @@ export async function detectLanguages(root: string): Promise<string> {
   const checks: Array<[string, string]> = [
     ['package.json', 'JavaScript/TypeScript'],
     ['tsconfig.json', 'TypeScript'],
+    ['deno.json', 'Deno/TypeScript'],
+    ['deno.jsonc', 'Deno/TypeScript'],
     ['go.mod', 'Go'],
     ['Cargo.toml', 'Rust'],
     ['pyproject.toml', 'Python'],
@@ -128,6 +130,13 @@ export async function detectLanguages(root: string): Promise<string> {
     ['Gemfile', 'Ruby'],
     ['pom.xml', 'Java'],
     ['build.gradle', 'Java/Kotlin'],
+    ['build.gradle.kts', 'Java/Kotlin'],
+    ['CMakeLists.txt', 'C/C++'],
+    ['Makefile', 'C/C++/Make'],
+    ['Package.swift', 'Swift'],
+    ['pubspec.yaml', 'Dart/Flutter'],
+    ['Directory.Build.props', '.NET/C#'],
+    ['global.json', '.NET/C#'],
     ['composer.json', 'PHP'],
     ['mix.exs', 'Elixir'],
   ];

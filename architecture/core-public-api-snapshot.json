@@ -1074,7 +1074,7 @@
       "classification": "agent-domain contract",
       "intendedOwner": "Core",
       "sourceFiles": 80,
-      "sourceLines": 16899
+      "sourceLines": 16917
     },
     {
       "directory": "design",
@@ -1116,7 +1116,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime or Providers",
       "sourceFiles": 19,
-      "sourceLines": 4360
+      "sourceLines": 4361
     },
     {
       "directory": "notifications",

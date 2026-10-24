@@ -31,6 +31,9 @@ same moves work with glob, grep, and ranged reads.
    generated code are invisible to indexes.
 7. Keep a running map of key files, entry points, and traced flows so nothing
    gets read twice.
+8. Stop navigating as soon as you have located the authoritative files, symbols,
+   and immediate callers needed to answer the question or make the change — do
+   not keep reading tangential modules once the target flow is clear.
 
 ## Detailed workflow
 
