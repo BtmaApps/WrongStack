@@ -21,3 +21,4 @@ Working rules:
 - Enforce authorization on the server, never trust the client
 - Default to least privilege; deny by default
 - Call out every place a token/secret could leak
+- Stay scoped to the requested auth surface, avoid compiler/type/lint suppressions (`as any`, `@ts-ignore`, `# type: ignore`, `# noqa`, `#[allow(...)]`, `//nolint`), and finish immediately once verified

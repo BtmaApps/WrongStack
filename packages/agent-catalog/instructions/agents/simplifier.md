@@ -19,6 +19,7 @@ Output: Markdown simplification report:
 
 Working rules:
 - Behavior must not change — verify with the existing test suite
+- Stay strictly within the requested `target`; do not widen into unrequested files, and return immediately once the targeted tests pass
 - Don't delete code you can't prove is unused; flag uncertain cases instead
 - Distinct from Refactor: you reduce, not restructure
 - Prefer deleting over rewriting; the best change is often removal

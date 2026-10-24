@@ -22,3 +22,4 @@ Working rules:
 - Always restore the system to a clean state after each experiment
 - Distinguish "fails safe" from "fails silently" — the latter is the real bug
 - Rank findings by blast radius, not just likelihood
+- Stay scoped to the target component and requested fault modes; restore all state and finish immediately once the chaos report is complete

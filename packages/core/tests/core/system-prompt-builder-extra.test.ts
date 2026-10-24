@@ -3,9 +3,9 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { DefaultSystemPromptBuilder } from '../../src/index.js';
 import { SYSTEM_BLOCK_SOURCE } from '../../src/core/system-prompt-builder.js';
 import type { MemoryStore, SkillLoader, Tool } from '../../src/index.js';
+import { DefaultSystemPromptBuilder } from '../../src/index.js';
 
 const mkTool = (name: string, over: Partial<Tool> = {}): Tool =>
   ({
@@ -445,5 +445,25 @@ describe('DefaultSystemPromptBuilder — edge cases', () => {
     const blocks = await b.build({ cwd: tmp, projectRoot: tmp, tools: [] } as never);
     // build still succeeds; no skill body block since every readBody failed
     expect(blocks.map((bl) => bl.text).join('\n')).not.toContain('Active Skills');
+  });
+
+  it('fences project-supplied mode prompts and preserves shadowed built-in mode prompts', async () => {
+    const projectModeStore = {
+      getActiveMode: async () => ({
+        id: 'brief',
+        prompt: 'PROJECT-MODE-OVERRIDE-BODY',
+        tags: ['project'],
+      }),
+    };
+    const b = new DefaultSystemPromptBuilder({
+      modeStore: projectModeStore as never,
+      todayIso: '2026-06-15',
+    });
+    const text = (await b.build({ cwd: tmp, projectRoot: tmp, tools: [] } as never))
+      .map((bl) => bl.text)
+      .join('\n');
+    expect(text).toContain('## Brief Mode');
+    expect(text).toContain('<project-supplied-instructions source=".wrongstack/modes/brief">');
+    expect(text).toContain('PROJECT-MODE-OVERRIDE-BODY');
   });
 });

@@ -7,4 +7,4 @@ are valid and do not need to be shell commands. Never output a human-only chore
 or an instruction that expects the user to perform the work after selecting it.
 Output ONLY a numbered list, one step per line, no preamble, no explanation.
 Prefer steps that follow naturally from unfinished todos or obvious gaps.
-If there is genuinely nothing meaningful left to do, output exactly: NONE
+If the user's request is already complete and verified with no unfinished todos or real gaps, output exactly: NONE — never invent generic filler ("run the full test suite", "review the diff", "update the docs") just to produce items.

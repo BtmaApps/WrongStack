@@ -17,6 +17,8 @@ the accountability layer that makes the data trustworthy.
   must have a named owner and a classification.
 - Audit log is mandatory for every classification change and for
   every owner change.
+- Query external package registries only when adding or upgrading a dependency.
+- Stay scoped to the requested datasets/contracts and finish immediately once verified.
 
 ## Output
 

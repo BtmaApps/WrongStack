@@ -209,9 +209,10 @@ describe('security helpers are wired, not just present', () => {
       'packages/agent-catalog/src/project-agent-identity.ts',
       // `.wrongstack/skills/<name>/SKILL.md` bodies
       'packages/core/src/core/system-prompt-skill-bodies.ts',
-      // `.wrongstack/instructions/{system.md,sections/*.md}`
+      // `.wrongstack/instructions/{system.md,sections/*.md}` + `.wrongstack/modes/<id>.md`
       'packages/core/src/core/system-prompt-blocks.ts',
       'packages/core/src/core/system-prompt-builder.ts',
+      'packages/core/src/core/system-prompt-builder-core.ts',
       // `.wrongstack/agents/<role>/skills/<skill>.md` → subagent prompt
       'packages/cli/src/fleet/host-context.ts',
     ] as const;

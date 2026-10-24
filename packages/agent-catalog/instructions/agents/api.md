@@ -21,3 +21,4 @@ Working rules:
 - Use correct, consistent error and status semantics
 - For GraphQL, guard against N+1 and unbounded queries
 - Don't break existing consumers without a versioning plan
+- Stay scoped to the requested endpoints/resolvers, avoid compiler/type/lint suppressions (`as any`, `@ts-ignore`, `# type: ignore`, `# noqa`, `#[allow(...)]`, `//nolint`), and finish immediately once verified

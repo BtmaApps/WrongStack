@@ -52,8 +52,8 @@ export const NEXT_STEPS_REQUIRED_PROMPT = [
   '[nextsteps_required]',
   'Your previous response ended the turn without a <nextsteps> block or the <nextsteps-complete/> marker, and the user requires one of them on every finished turn.',
   'Do not call tools and do not repeat or summarize your answer. Reply with ONLY one of:',
-  "- a balanced <nextsteps> block with 1-4 exact prompt messages for the most useful remaining work toward the user's goal. Each item is submitted back to you verbatim as the next user prompt: agent-directed, self-contained, in the user's language, never a chore for the user.",
-  "- <nextsteps-complete/> if the user's goal is fully achieved and no meaningful work remains.",
+  "- <nextsteps-complete/> if the user's requested deliverable was already completed in your previous response and no meaningful work remains. Prefer <nextsteps-complete/> whenever the task is done — never invent nice-to-have follow-ups, extra refactors, or extra test runs just to emit a <nextsteps> block.",
+  "- a balanced <nextsteps> block with 1-4 exact prompt messages ONLY if concrete, high-value follow-on work toward the user's goal genuinely remains. Each item is submitted back to you verbatim as the next user prompt: agent-directed, self-contained, in the user's language, never a chore for the user.",
   '[/nextsteps_required]',
 ].join('\n');
 

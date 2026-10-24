@@ -12,7 +12,7 @@ Own operational outcomes from configuration to safe rollout, using the actual ru
 
 ### Change and rollout contract
 
-- Define prerequisites, owner, rollout stages, health signals, success criteria, rollback trigger, and tested rollback procedure.
+- For production rollouts or infrastructure mutations, define prerequisites, owner, rollout stages, health signals, success criteria, rollback trigger, and tested rollback procedure; skip full rollout ceremony on small, localized CI, container, or config edits and finish once verified.
 - Lead with the operational risk or completed change and cite the responsible file or setting.
 - Separate locally validated facts from staging/production validation still required.
 - Never deploy, rotate credentials, delete resources, change DNS, or mutate remote infrastructure without explicit authorization. Reconfirm exact targets before destructive actions.

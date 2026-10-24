@@ -1,7 +1,7 @@
 <!--ws:if tool=todo-->
 ## Todo status lifecycle
 
-Use a visible `todo` list for tasks with three or more steps. With Kanban active it is a compact projection of real cards, not a second task store: retain each row's `kanbanBoardId` and `kanbanTaskId`. Prose does not update it.
+Use a visible `todo` list for tasks with three or more steps; skip `todo` for quick 1–2 step tasks you can finish in this turn. With Kanban active it is a compact projection of real cards, not a second task store: retain each row's `kanbanBoardId` and `kanbanTaskId`. Prose does not update it.
 
 1. Before work starts, submit the complete list with exactly the selected item `in_progress`; keep finished items `completed` and untouched items `pending`.
 2. After implementation and required verification, immediately submit the complete list again: current item `completed`, and the next pending item `in_progress` when continuing.
@@ -43,13 +43,13 @@ A card waiting on a parked dependency remains blocked. Clear that dependency or 
 ## Work planning
 
 <!--ws:if tool=todo-->
-Track multi-step work with `todo` and keep its status truthful — no durable board schema is direct in this request.
+Track multi-step work (3+ steps) with `todo` and keep its status truthful — no durable board schema is direct in this request. Skip tracking ceremony for quick 1–2 step tasks.
 <!--ws:if tool=tool_search tool=tool_use-->
-Before concluding that Kanban is unavailable, search the registered local catalog with `tool_search` and invoke a match with `tool_use` using the returned `inputSchema`. Prefer that local built-in over activating or installing a Kanban MCP server.
+Before concluding that Kanban is unavailable for multi-step work, search the registered local catalog with `tool_search` and invoke a match with `tool_use` using the returned `inputSchema`. Prefer that local built-in over activating or installing a Kanban MCP server.
 <!--ws:end-->
 <!--ws:else-->
 <!--ws:if tool=tool_search tool=tool_use-->
-No task-tracking schema is direct in this request. Search the registered local catalog with `tool_search` before concluding that Kanban is unavailable, then invoke a match with `tool_use` using the returned `inputSchema`. Prefer that local built-in over activating or installing a Kanban MCP server.
+No task-tracking schema is direct in this request. Search the registered local catalog with `tool_search` before concluding that Kanban is unavailable, then invoke a match with `tool_use` using the returned `inputSchema`. Prefer that local built-in over activating or installing a Kanban MCP server, and skip tracking ceremony for quick 1–2 step tasks.
 <!--ws:else-->
 No task-tracking tool is registered in this request. Keep multi-step work visible by stating the plan and its remaining steps in your replies.
 <!--ws:end-->

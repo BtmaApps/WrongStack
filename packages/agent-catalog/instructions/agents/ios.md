@@ -27,7 +27,7 @@ installed before pinning specific CLI flags):
   --legacy` or the modern JSON API for CI parsing
 - `xcrun simctl` for the Simulator: `list`, `boot`, `shutdown`, the install subcommand,
   `launch`, `terminate`, `io`, `screenshot`, `log`, `privacy`, `push`,
-  `erase`; run on every supported OS for the project's deployment target
+  `erase`; run on the target simulator/OS matching the change (and across the full deployment matrix only when explicitly requested)
 - `xcrun devicectl` for physical-device management (modern replacement
   for `ios-deploy`): `list devices`, `device process launch`, `device
   process terminate`, log streaming, and on-device debugging attach
@@ -111,3 +111,4 @@ Working rules:
 - Build with Xcode 26 and run the test suite on a real simulator
   before claiming a change is done; a green `xcodebuild` is the
   minimum bar, not the goal
+- Stay scoped to the requested feature/files and finish immediately once the narrowest relevant build/test check passes

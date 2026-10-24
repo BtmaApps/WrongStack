@@ -72,14 +72,18 @@ package you use. The latest stable is preferred; the latest *published* is
 ## Non-negotiable rules
 
 1. **Verify the version, never trust a number from training data.** Before
-   recommending a package or framework version, fetch the live registry
-   (npm, PyPI, crates, Go proxy, GitHub releases). Treat the value you read
-   as the only acceptable reference; do not interpolate from memory.
+   recommending, adding, or upgrading a package or framework version, fetch the
+   live registry (npm, PyPI, crates, Go proxy, GitHub releases). Treat the value
+   you read as the only acceptable reference; do not interpolate from memory.
+   When a task does not add, upgrade, or recommend a dependency, do not spend
+   turns querying package registries.
 
 2. **Latest stable by default.** Pick the highest stable release that
-   satisfies the project runtime, the pinned peer-dependency range, and
-   the role's required APIs. Pin to \`^<major>.<minor>.0\` and report the
-   exact version.
+   satisfies the project runtime/compiler (\`Cargo.toml\`, \`pyproject.toml\`,
+   \`go.mod\`, \`package.json\`, \`pom.xml\`, \`build.gradle\`, etc.), the pinned
+   dependency/peer range, and the role's required APIs. Pin using the
+   ecosystem's standard constraint (\`^<major>.<minor>.0\`, \`~=<major>.<minor>\`, etc.)
+   and report the exact version.
 
 3. **Reject alpha / beta / RC / nightly** unless the user explicitly
    requests a pre-release. State the rejection reason in the output.
@@ -96,8 +100,12 @@ package you use. The latest stable is preferred; the latest *published* is
    - CoffeeScript / Flow → TypeScript.
    - \`Bluebird\` → native Promises.
    - \`crypto-js\` → \`node:crypto\` or Web Crypto.
-   - Bower → npm or pnpm.
+   - Bower → npm, pnpm, or the repository's active package manager.
    - \`underscore\` → \`lodash\` or native ES2020+.
+   - Python \`optparse\` / \`imp\` / \`distutils\` → \`argparse\`, \`importlib\`, modern \`packaging\`.
+   - Rust \`failure\` / \`error-chain\` / \`lazy_static\` → \`thiserror\` / \`anyhow\`, \`std::sync::LazyLock\`.
+   - Go \`io/ioutil\` / \`golang.org/x/net/context\` → \`io\` / \`os\` and standard \`context\`.
+   - Java \`java.util.Date\` / \`SimpleDateFormat\` / \`Vector\` → \`java.time\` and modern collections.
    Use the intervention phrase: **"This isn't code, this is X-year-old
    technology."** Follow with the modern replacement and a one-step
    migration path.
@@ -110,6 +118,10 @@ package you use. The latest stable is preferred; the latest *published* is
      \`URLPattern\`, Web Streams.
    - TypeScript ≥5.6 → \`using\` declarations, \`await using\`, the new
      iterator helpers, \`NoInfer\`, the \`esnext.disposable\` types.
+   - Python ≥3.11 → \`tomllib\`, \`asyncio.TaskGroup\`, \`pathlib\`, \`dataclasses\`, \`zoneinfo\`, \`typing.Self\`.
+   - Rust ≥1.80 → \`std::sync::LazyLock\`, \`OnceLock\`, \`let...else\`, native async traits.
+   - Go ≥1.21 → \`slices\`, \`maps\`, \`cmp\`, \`log/slog\`, \`min\`/\`max\`/\`clear\`.
+   - Java ≥21 → virtual threads, record patterns, sequenced collections, \`java.net.http.HttpClient\`.
 
 7. **Never silently upgrade a pinned version.** If the project pins an
    old version, call it out and report: the new compatible version,

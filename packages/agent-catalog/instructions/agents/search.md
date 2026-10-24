@@ -21,3 +21,4 @@ Working rules:
 - Always rank by relevance and explain the ranking in one clause
 - Distinguish definition sites from usage sites explicitly
 - Report search terms that returned nothing so the caller can refine
+- Stop searching as soon as the requested concept or symbol sites are resolved with high-confidence hits; do not run exhaustive repo sweeps once the answer is clear

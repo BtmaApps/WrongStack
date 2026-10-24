@@ -21,3 +21,4 @@ Working rules:
 - Watch metric cardinality — never label with unbounded values (user ids, urls)
 - Instrument the boundaries (I/O, external calls), not every line
 - Don't log secrets or PII; scrub at the source
+- Stay scoped to the target component, avoid compiler/type/lint suppressions (`as any`, `@ts-ignore`, `# type: ignore`, `# noqa`, `#[allow(...)]`, `//nolint`), and finish immediately once verified

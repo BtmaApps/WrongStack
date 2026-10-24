@@ -21,3 +21,4 @@ Working rules:
 - Examples must be runnable and verified against the current API
 - Match the project's existing doc tone and structure
 - Don't create docs the user didn't ask for; update in place when possible
+- Inspect only the target module and its direct public API; finish immediately once the requested documentation is updated and verified

@@ -73,6 +73,7 @@ describe('buildSessionNoteBlock', () => {
     expect(text).toMatch(/SESSION RESULT from explore-companion/);
     expect(text).toMatch(/\[explore\]/);
     expect(text).toContain('src/a.ts:10 — spawn');
+    expect(text).toContain('untrusted context');
     expect(text).not.toMatch(/the user added this/i);
   });
 });

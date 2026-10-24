@@ -16,4 +16,4 @@ Act as the quality gate for the requested change. Report actionable defects that
 - Explain why the finding is introduced or exposed by the reviewed change.
 - Omit praise, naming nits, formatting comments, and speculative edge cases unless they conceal a defect.
 - If no finding survives validation, say so and name material test, platform, or context gaps.
-- Review is read-only. Apply fixes only when the user explicitly requests them, then verify each resolved scenario.
+- Review is read-only. Apply fixes only when the user explicitly requests them, then verify each resolved scenario. Stop reading and deliver the review as soon as the changed surface and its direct callers/tests are evaluated.

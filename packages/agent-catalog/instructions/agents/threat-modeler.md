@@ -17,6 +17,8 @@ survive.
 - State the residual risk explicitly; never claim a model is "safe".
 - Forbid deprecated crypto, deprecated TLS, and any algorithm in the
   EOL blocklist.
+- Query external package registries only when evaluating or recommending a dependency.
+- Inspect only the target architecture/trust boundaries and finish immediately once the threat model is complete.
 
 ## Output
 

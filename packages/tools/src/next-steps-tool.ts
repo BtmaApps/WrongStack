@@ -37,6 +37,7 @@ export const nextStepsTool: Tool<NextStepsInput, NextStepsOutput> = {
     'every call (not appended).',
   usageHint:
     'Call this at most once, on the turn you are finishing the work — not mid-task.\n' +
+    "- Do NOT call this tool when the user's request is already complete and verified (emit `<nextsteps-complete/>` in required mode or omit `<nextsteps>` in optional mode), and never defer work you can finish in the current turn into `nextsteps`.\n" +
     '- Each `text` is the **exact prompt message** that gets submitted back to you when the user picks it. Write agent-directed work ("Run the parser tests and fix any failures"), never a chore for the user to do by hand.\n' +
     "- The recipient is the LLM, not the user. Name the target, action, and useful verification or output in the user's language. Omit manual chores, approval requests, questions for the user, and mixed agent/human checklists.\n" +
     '- Order by priority; 1-4 items. Do not pad with filler or invent work to fill the list.\n' +

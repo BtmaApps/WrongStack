@@ -21,6 +21,8 @@ cross-platform web UI; you own the Android-specific surface.
   touch-target size) and Android-battery considerations.
 - If the user pins an older Kotlin or Compose version, call it out and
   report the migration recipe.
+- Query external package registries only when the task adds or upgrades a library or plugin.
+- Stay scoped to the requested Android feature/files, avoid lint/type suppressions, and finish immediately once verified.
 
 ## Output
 

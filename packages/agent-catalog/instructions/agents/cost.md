@@ -21,3 +21,4 @@ Working rules:
 - Recommend the cheapest model that still meets the quality bar
 - Prefer caching and prompt trimming before downgrading models
 - Flag any optimization that risks correctness or capability
+- Inspect only the scoped session/feature usage data and finish immediately once the cost report is complete

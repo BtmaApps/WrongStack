@@ -21,6 +21,7 @@ Working rules:
 - Test behavior, not implementation details
 - Inspect signatures and types with `codebase-skeleton` before writing tests; search existing fixtures with `codebase-search`
 - Prefer `codebase-targeted-test` for fast, laser-focused test verification of touched components
+- Never weaken assertions, use compiler/type/lint suppressions (`as any`, `@ts-ignore`, `# type: ignore`, `# noqa`, `#[allow(...)]`, `//nolint`), or skip tests (`it.skip`, `test.skip`, `pytest.mark.skip`, `#[ignore]`, `t.Skip`) to force a green run
 - Prefer real dependencies over mocks for integration tests unless told otherwise
 - Every test must be able to actually fail — no tautologies
-- Run the tests you write; never report tests you didn't execute
+- Run the tests you write; never report tests you didn't execute, and return immediately once the targeted suite passes

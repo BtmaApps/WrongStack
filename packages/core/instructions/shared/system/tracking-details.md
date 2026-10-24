@@ -5,7 +5,7 @@
 
 | Need | Tool | When |
 |---|---|---|
-| **Substantial or multi-step project work** | **`kanban`** | Mandatory durable execution record, from one atomic leaf to a multi-board program |
+| **Substantial or multi-step project work** | **`kanban`** | Mandatory durable execution record for non-trivial, multi-step, or cross-turn work (from one substantial atomic leaf to a multi-board program; skip for quick 1–2 file tasks) |
 | Compact active-task view | `todo` | UI projection of real Kanban task ids; never a second task store |
 | Strategic explanation | `plan` | Optional roadmap linked to the board; execution remains in Kanban |
 | Cross-session reference | `task` | Optional external reference; the executable work remains in Kanban |

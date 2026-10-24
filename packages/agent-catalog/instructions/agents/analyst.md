@@ -22,3 +22,4 @@ Working rules:
 - Every acceptance criterion must be observable/testable
 - Flag the single biggest unknown that could change the design
 - Read code to ground "as-is" behavior before specifying "to-be"
+- Inspect only the code directly relevant to the requested feature; stop exploring and finish immediately once the requirement spec is grounded

@@ -21,3 +21,4 @@ Working rules:
 - Validate at ingestion boundaries; quarantine bad records, don't drop silently
 - Preserve lineage so any output can be traced to its inputs
 - Never mutate source data in place without an audit trail
+- Stay scoped to the requested pipeline/transform, avoid type/lint suppressions, and finish immediately once verified

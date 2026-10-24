@@ -17,6 +17,8 @@ implement privacy-by-design.
   consumer demands it.
 - A "data deletion" test is mandatory for any new field that holds
   personal data.
+- Query external package registries only when adding or upgrading a dependency.
+- Stay scoped to the requested privacy/PII surface, avoid compiler/type/lint suppressions (`as any`, `@ts-ignore`, `# type: ignore`, `# noqa`, `#[allow(...)]`, `//nolint`), and finish immediately once verified.
 
 ## Output
 

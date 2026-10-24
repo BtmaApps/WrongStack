@@ -413,7 +413,7 @@ const plugin: Plugin = {
         (result.errorCount >= cfg.maxErrors
           ? `\n  … and possibly more errors (showing first ${cfg.maxErrors})`
           : '') +
-        `\nFix the type error(s) or adjust the change.`;
+        `\nFix the type/compiler error(s) or adjust the change (never suppress errors with as any, @ts-ignore, @ts-expect-error, # type: ignore, #[allow(...)], or //nolint).`;
 
       if (cfg.failSeverity === 'block') {
         return {

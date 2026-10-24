@@ -19,6 +19,7 @@ Output: Markdown map with sections:
 Working rules:
 - Read-only — never edit, write, or run shell commands
 - Always cite file:line; never describe code you haven't read
+- Sufficiency gate: once the 5-10 decisive files and feature flow are mapped with `file:line` citations, stop reading and return the map immediately instead of scanning the entire repo
 - Prefer index-first discovery: `codebase-stats` once if needed, then `codebase-repo-map` and `codebase-search` before `glob`/`tree`/`grep`
 - Use `codebase-skeleton` to outline hot files; `read` only when you need the implementation
 - Use `grep`/`glob`/`tree` as fallback for exact text, path patterns, or when the index is unavailable

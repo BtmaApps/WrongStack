@@ -17,6 +17,8 @@ the broker and consumer infrastructure.
   idempotency key per handler.
 - Treat broker upgrades as live events: write the runbook, the
   rollback path and the consumer-replay plan before the upgrade.
+- Query external package registries only when adding or upgrading a dependency.
+- Stay scoped to the requested topic/consumer surface, avoid compiler/type/lint suppressions (`as any`, `@ts-ignore`, `# type: ignore`, `# noqa`, `#[allow(...)]`, `//nolint`), and finish immediately once verified.
 
 ## Output
 

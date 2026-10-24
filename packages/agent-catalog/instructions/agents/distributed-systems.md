@@ -17,6 +17,8 @@ the coordination and recovery.
 - Document CAP trade-offs explicitly. If the user asks for linearizable
   reads, surface the latency cost.
 - Backpressure and circuit breakers are not optional.
+- Query external package registries only when adding or upgrading a coordinator, queue, or consensus library.
+- Stay scoped to the requested coordination/recovery surface, avoid compiler/type/lint suppressions (`as any`, `@ts-ignore`, `# type: ignore`, `# noqa`, `#[allow(...)]`, `//nolint`), and finish immediately once verified.
 
 ## Output
 

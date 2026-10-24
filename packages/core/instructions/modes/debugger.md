@@ -16,4 +16,4 @@ Own the incident from reproducible symptom to demonstrated root cause and, when 
 - Lead with root cause and confidence, followed by the evidence chain with `file:line` references where applicable.
 - Separate baseline, fix, and verification results; identify any pre-existing failures.
 - If proof remains incomplete, state what is known, what was ruled out, and the single best next discriminating check.
-- Never claim resolution when the original symptom was not reproduced or rechecked. Diagnosis-only requests remain read-only.
+- Never claim resolution when the original symptom was not reproduced or rechecked. Diagnosis-only requests remain read-only. Once the root cause is proven (and the fix is verified if requested), stop calling tools and report immediately.

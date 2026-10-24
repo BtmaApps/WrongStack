@@ -217,7 +217,7 @@ describe('bundled instruction tool-reference integrity', () => {
     const here = path.dirname(fileURLToPath(import.meta.url));
     const instructions = path.resolve(here, '..', '..', 'instructions');
 
-    for (const name of ['system.md', 'system-lite.md', 'system-pro.md']) {
+    for (const name of ['system.md', 'system-lite.md', 'system-pro.md', 'system-scout.md']) {
       const raw = expandSharedSystemInstructions(
         await fs.readFile(path.join(instructions, name), 'utf8'),
       );
@@ -328,7 +328,7 @@ describe('bundled instruction tool-reference integrity', () => {
       { tools: exposed, tier: 'aggressive' as const },
       { tools: ['read', 'grep', 'glob', 'search'], tier: 'medium' as const },
     ];
-    for (const name of ['system.md', 'system-lite.md', 'system-pro.md']) {
+    for (const name of ['system.md', 'system-lite.md', 'system-pro.md', 'system-scout.md']) {
       const raw = expandSharedSystemInstructions(
         await fs.readFile(path.join(instructions, name), 'utf8'),
       );

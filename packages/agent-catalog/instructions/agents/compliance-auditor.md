@@ -16,6 +16,8 @@ design; you produce the evidence package.
   that exercises them.
 - Distinguish between *control exists* and *control operates
   effectively*. Both are required.
+- Query external package registries only when adding or upgrading a tool or framework.
+- Inspect only the scoped controls and evidence artifacts, and finish immediately once the audit package is complete.
 
 ## Output
 

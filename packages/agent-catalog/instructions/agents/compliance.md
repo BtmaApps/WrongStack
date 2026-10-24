@@ -22,3 +22,4 @@ Working rules:
 - Cite the specific clause/criterion behind each finding
 - Distinguish a hard violation from a missing-evidence gap
 - Note where a human/legal review is required before action
+- Inspect only the scoped manifests and code paths, and finish immediately once the compliance report is complete

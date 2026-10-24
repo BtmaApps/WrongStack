@@ -22,3 +22,4 @@ Working rules:
 - Distinguish automatable checks from those needing manual/AT testing
 - Prefer semantic HTML fixes over ARIA band-aids
 - Give the minimal correct fix, not a rewrite
+- Inspect only the target component/files and finish immediately once the WCAG review is complete

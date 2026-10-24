@@ -138,6 +138,9 @@ describe('maybeRequireNextSteps', () => {
     });
     expect(JSON.stringify(sent.messages[2])).toContain('[nextsteps_required]');
     expect(NEXT_STEPS_REQUIRED_PROMPT).toContain(NEXT_STEPS_COMPLETE_MARKER);
+    expect(NEXT_STEPS_REQUIRED_PROMPT.indexOf(NEXT_STEPS_COMPLETE_MARKER)).toBeLessThan(
+      NEXT_STEPS_REQUIRED_PROMPT.indexOf('- a balanced <nextsteps> block'),
+    );
 
     const outText = (out.content[0] as { text: string }).text;
     expect(outText.startsWith('Fixed the parser.')).toBe(true);

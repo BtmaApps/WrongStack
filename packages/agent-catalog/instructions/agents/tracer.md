@@ -22,3 +22,4 @@ Working rules:
 - ALWAYS remove your instrumentation before finishing
 - Distinguish observed facts from inference
 - Prefer the existing logging/tracing facilities over ad-hoc prints
+- Stop tracing as soon as the target execution path and values are captured, verify that all temporary instrumentation is removed, and finish immediately

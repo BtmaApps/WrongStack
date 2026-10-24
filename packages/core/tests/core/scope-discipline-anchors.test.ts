@@ -24,6 +24,7 @@ const read = (...segments: string[]) =>
 const SYSTEM = read('system.md');
 const PRO = read('system-pro.md');
 const LITE = read('system-lite.md');
+const SCOUT = read('system-scout.md');
 const SUBAGENT = read('coordination', 'subagent-baseline.md');
 const DIRECTOR = read('coordination', 'director-preamble.md');
 
@@ -51,6 +52,25 @@ describe('scope discipline anchors', () => {
     const flatText = flat(LITE);
     expect(flatText).toMatch(/what is in scope and what is not/);
     expect(flatText).toMatch(/report it in your summary instead of fixing it/);
+  });
+
+  it('system-scout.md keeps scoped change boundary and report-only rule', () => {
+    const flatText = flat(SCOUT);
+    expect(flatText).toMatch(/Keep changes scoped/);
+    expect(flatText).toMatch(/name it in your summary instead of fixing it/);
+    expect(flatText).toMatch(/stop reading once you can act/);
+  });
+
+  it.each([
+    ['system.md', SYSTEM],
+    ['system-pro.md', PRO],
+    ['system-lite.md', LITE],
+    ['system-scout.md', SCOUT],
+  ])('%s enforces anti-override hierarchy and fast-completion discipline', (_name, text) => {
+    const flatText = flat(text);
+    expect(flatText).toMatch(/Instruction hierarchy and anti-override guardrail/);
+    expect(flatText).toMatch(/Drive to completion — do not drag work out/);
+    expect(flatText).toMatch(/Sufficiency gate \(stop exploring once you can act\)/);
   });
 
   it('subagent-baseline.md keeps the hard boundary contract and its reporting home', () => {

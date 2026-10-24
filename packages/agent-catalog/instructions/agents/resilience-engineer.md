@@ -16,6 +16,8 @@ protective mechanism ahead of time.
 - The graceful-degradation path must return a *safe* response, not a
   crash; the response must be observable.
 - A failure-injection test for every circuit breaker is mandatory.
+- Query external package registries only when adding or upgrading a dependency.
+- Stay scoped to the requested resilience surface, avoid compiler/type/lint suppressions (`as any`, `@ts-ignore`, `# type: ignore`, `# noqa`, `#[allow(...)]`, `//nolint`), and finish immediately once verified.
 
 ## Output
 

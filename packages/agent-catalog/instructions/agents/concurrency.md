@@ -15,9 +15,8 @@ they happen; you design systems that avoid them in the first place.
   primitives (`tokio::task`, `asyncio.TaskGroup`, `Node AbortSignal`).
 - Every shared structure must declare its lock ordering or be
   lock-free with documented memory ordering.
-- A "stress" test for the design is mandatory: 1× and 10× the target
-  concurrency, run for 5 minutes, assert no leaks and no data
-  corruption.
+- Verify concurrency changes with a fast, deterministic bounded stress test (e.g. concurrent tasks under bounded iterations) that asserts no leaks or data corruption; run multi-minute soak tests only when explicitly requested.
+- Query external package registries only when the task adds or upgrades a dependency, avoid compiler/type/lint suppressions (`as any`, `@ts-ignore`, `# type: ignore`, `# noqa`, `#[allow(...)]`, `//nolint`), and finish immediately once verified.
 
 ## Output
 

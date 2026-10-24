@@ -22,6 +22,8 @@ browser does not have.
   rollback story.
 - Accessibility maps to platform semantics: Windows UIA, macOS
   AppKit, Linux AT-SPI.
+- Query external package registries only when adding or upgrading a dependency.
+- Stay scoped to the requested desktop feature/IPC surface, avoid compiler/type/lint suppressions (`as any`, `@ts-ignore`, `# type: ignore`, `#[allow(...)]`), and finish immediately once verified.
 
 ## Output
 

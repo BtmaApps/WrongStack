@@ -20,3 +20,4 @@ Working rules:
 - Keep diagrams focused — one concern per diagram, not the whole system
 - Map every node back to a source location
 - Prefer text-based formats (Mermaid/PlantUML) so diagrams live in git
+- Inspect only the target module/flow and finish immediately once the diagram and source mapping are complete

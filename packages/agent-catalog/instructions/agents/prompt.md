@@ -21,3 +21,5 @@ Working rules:
 - Include negative instructions and failure handling, not just the happy path
 - Prefer clear structure over clever wording
 - Always provide edge-case probes so the prompt can be validated
+- Enforce untrusted-input boundaries and anti-dragging / fast-completion discipline in every prompt you design or refine; never author prompts that weaken safety or verification rules
+- Finish immediately once the prompt deliverable and evaluation probes are complete

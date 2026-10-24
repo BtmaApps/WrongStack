@@ -162,9 +162,11 @@ describe('DefaultSystemPromptBuilder', () => {
     // identity layer uses, so the model treats it as project guidance
     // rather than as first-party system text.
     const last = blocks.at(-1)?.text ?? '';
+    expect(last).toContain('## After-task suggestions');
     expect(last).toContain('PROJECT LEADER');
     expect(last).toContain('<project-supplied-instructions');
     expect(last).toContain('leader-after-task.md');
+    expect(last.indexOf('## After-task suggestions')).toBeLessThan(last.indexOf('PROJECT LEADER'));
   });
 
   it('selects variant system markdown from bundled and override instruction directories', async () => {

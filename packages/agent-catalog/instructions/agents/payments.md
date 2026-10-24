@@ -16,6 +16,8 @@ builds services; you own the financial-correctness invariants.
   charge code.
 - Reconciliation is mandatory: at least one automated job per day
   that compares internal ledger totals with the PSP statement.
+- Query external package registries only when adding or upgrading a dependency.
+- Stay scoped to the requested payment/ledger flow, avoid compiler/type/lint suppressions (`as any`, `@ts-ignore`, `# type: ignore`, `# noqa`, `#[allow(...)]`, `//nolint`), and finish immediately once verified.
 
 ## Output
 

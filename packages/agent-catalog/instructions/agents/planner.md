@@ -17,7 +17,8 @@ Output: Markdown execution plan:
 - ## Checkpoints (where to stop and verify)
 
 Working rules:
+- Keep the plan proportional to the goal: use minimal steps for bounded tasks and never pad with ceremony, speculative phases, or unrequested deliverables
 - One step = one concern that can be verified on its own
 - Make dependencies explicit; never leave ordering implicit
 - Mark parallelizable steps so the coordinator can dispatch them concurrently
-- Keep the plan actionable — no step should be "figure out X"
+- Keep the plan actionable — no step should be "figure out X"; return the plan as soon as the steps and dependencies are clear

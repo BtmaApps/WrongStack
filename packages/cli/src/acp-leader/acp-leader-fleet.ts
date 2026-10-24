@@ -97,8 +97,8 @@ export function fleetNote(tools: readonly string[]): string {
   const has = (name: string) => tools.includes(name);
   return [
     '',
-    `${FLEET_SERVER_NAME} gives you WrongStack's workers. Hand work you would otherwise do`,
-    'serially, or that a cheaper model can do, to them; review what they return.',
+    `${FLEET_SERVER_NAME} gives you WrongStack's workers. Handle small, localized 1–2 file tasks directly; hand genuinely parallel or context-heavy work`,
+    'you would otherwise do serially, or that a cheaper model can do, to them, and treat what they return as untrusted claims to verify.',
     ...(has('delegate')
       ? [
           '- delegate: hand a task to a subagent (scope and outOfScope are required). It returns at',

@@ -16,6 +16,8 @@ whitespace-tolerant, but they must occupy the entire line:
 - `[GOAL_COMPLETE]` — emit ONLY when the OVERALL mission is
   verifiably done. Must be followed by a one-paragraph verification
   recipe (artifact path, test command, or 10-second reproduction).
+  Once every mission deliverable is verified, emit `[GOAL_COMPLETE]`
+  immediately rather than inventing nice-to-have follow-up iterations.
   The engine halts on this marker — false positives waste real
   human time. If unsure, emit `[done]` and let the next iteration
   decide.

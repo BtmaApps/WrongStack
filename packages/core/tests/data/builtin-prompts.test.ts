@@ -169,6 +169,10 @@ describe('builtin prompt dataset', () => {
     expect(entry.content).toContain('Do not rediscover or count the same root cause');
     expect(entry.content).toContain('fixed-verification-incomplete');
     expect(entry.content).toContain('next-round continuation is already authorized');
+    expect(entry.content).toContain('Pre-flight toolchain & version verification');
+    expect(entry.content).toContain(
+      'packages/core/skills/tech-stack/references/current-versions.md',
+    );
   });
 
   it('makes the Proof-Driven Bug Hunter load its playbook skills before discovery', () => {
@@ -193,6 +197,72 @@ describe('builtin prompt dataset', () => {
     expect(gate).toBeGreaterThan(-1);
     expect(gate).toBeLessThan(content.indexOf('### 1. Discover and isolate'));
     expect(content).toContain('Required skills loaded, and any that were unavailable.');
+  });
+
+  it('ships all 6 extended Proof-Driven Hunt prompts with required-skills markers, mentions, and isolated temp dirs', () => {
+    const bundledSkillsDir = path.join(here, '..', '..', 'skills');
+    const specs: Array<{
+      category: string;
+      slug: string;
+      required: string[];
+    }> = [
+      {
+        category: 'code-review',
+        slug: 'proof-driven-security-hardener',
+        required: ['security-scanner', 'evidence-audit', 'testing', 'verify-before-done'],
+      },
+      {
+        category: 'debugging',
+        slug: 'proof-driven-race-leak-hunter',
+        required: ['evidence-audit', 'debugging', 'testing', 'verify-before-done'],
+      },
+      {
+        category: 'refactoring',
+        slug: 'proof-driven-dead-code-excisor',
+        required: ['code-quality', 'codebase-navigation', 'refactor-planner', 'verify-before-done'],
+      },
+      {
+        category: 'accessibility',
+        slug: 'proof-driven-ui-a11y-ratchet',
+        required: ['accessibility', 'design-critique', 'visual-regression', 'verify-before-done'],
+      },
+      {
+        category: 'coding',
+        slug: 'proof-driven-type-boundary-guard',
+        required: ['typescript-strict', 'api-design', 'testing', 'verify-before-done'],
+      },
+      {
+        category: 'testing',
+        slug: 'proof-driven-blind-spot-tester',
+        required: ['testing', 'codebase-navigation', 'debugging', 'verify-before-done'],
+      },
+    ];
+
+    for (const spec of specs) {
+      const entry = JSON.parse(
+        fs.readFileSync(path.join(promptsDir, spec.category, `${spec.slug}.json`), 'utf8'),
+      ) as { slug: string; category: string; content: string; variables?: unknown[] };
+      expect(entry.slug).toBe(spec.slug);
+      expect(entry.category).toBe(spec.category);
+      expect(entry.variables).toBeUndefined();
+      expect(extractSkillMentions(entry.content), spec.slug).toEqual(spec.required);
+      expect(parseRequiredSkillsMarker(entry.content), spec.slug).toEqual(spec.required);
+      for (const name of spec.required) {
+        expect(
+          fs.existsSync(path.join(bundledSkillsDir, name, 'SKILL.md')),
+          `${spec.slug} -> ${name}`,
+        ).toBe(true);
+      }
+      expect(entry.content).toContain(`.temp_files/${spec.slug}/<round-id>/`);
+      expect(entry.content).toContain('Never delete `.temp_files/` wholesale');
+      expect(entry.content).toContain('Pre-flight toolchain & version verification');
+      expect(entry.content).toContain(
+        'packages/core/skills/tech-stack/references/current-versions.md',
+      );
+      expect(entry.content).toContain('not proof');
+      expect(entry.content).toContain('fixed-verification-incomplete');
+      expect(entry.content).toContain('next-round continuation is already authorized');
+    }
   });
 
   it('ships a prompt for every performance mode', () => {

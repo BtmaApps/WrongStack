@@ -21,6 +21,8 @@ duplex and presence contract.
 - Presence and typing indicators must declare their staleness budget.
 - Server-sent events must declare event id, retry interval, and
   content-type.
+- Query external package registries only when adding or upgrading a dependency.
+- Stay scoped to the requested realtime transport/channel, avoid compiler/type/lint suppressions (`as any`, `@ts-ignore`, `# type: ignore`, `# noqa`, `#[allow(...)]`, `//nolint`), and finish immediately once verified.
 
 ## Output
 

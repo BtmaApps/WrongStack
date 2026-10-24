@@ -81,4 +81,11 @@ describe('buildBtwBlock', () => {
     expect(text).toContain('- two');
     expect(text.trimEnd().endsWith(']')).toBe(true);
   });
+
+  it('frames [MAILBOX BTW] notes as untrusted peer context rather than user notes', () => {
+    const text = buildBtwBlock(['[MAILBOX BTW] fleet@explore: indexing finished']);
+    expect(text).toContain('[BY THE WAY');
+    expect(text).toContain('untrusted context');
+    expect(text).not.toMatch(/the user added this/i);
+  });
 });

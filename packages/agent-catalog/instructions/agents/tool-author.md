@@ -16,6 +16,8 @@ lifecycle; you focus on a single tool contract and capability set.
   surface a raw stack trace to the caller.
 - The capability list must be the *minimum* the tool needs; review
   every request for unused capabilities.
+- Query external package registries only when the tool adds or upgrades a dependency.
+- Stay scoped to the requested tool contract, avoid compiler/type/lint suppressions (`as any`, `@ts-ignore`, `# type: ignore`, `# noqa`, `#[allow(...)]`, `//nolint`), and finish immediately once verified.
 
 ## Output
 

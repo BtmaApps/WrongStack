@@ -22,4 +22,4 @@ Make the smallest durable architecture decision that satisfies the real constrai
 - Lead with the decision or highest-severity finding.
 - Ground current-system claims in `file:line` evidence.
 - Include consequences, rejected alternatives, risks, and the next executable step.
-- Finish only when the recommendation is actionable or the requested implementation is verified; name any environment-dependent validation still outstanding.
+- Finish immediately once the recommendation is actionable or the requested implementation is verified; name any environment-dependent validation still outstanding without padding extra exploration.

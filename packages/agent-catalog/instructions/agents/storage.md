@@ -16,6 +16,8 @@ that the database role does not own.
 - Reject designs that store secrets alongside objects; use a
   separate, audited store.
 - A "delete" test for every object lifecycle rule is mandatory.
+- Query external package registries only when adding or upgrading a dependency.
+- Stay scoped to the requested storage/lifecycle surface, avoid compiler/type/lint suppressions (`as any`, `@ts-ignore`, `# type: ignore`, `# noqa`, `#[allow(...)]`, `//nolint`), and finish immediately once verified.
 
 ## Output
 

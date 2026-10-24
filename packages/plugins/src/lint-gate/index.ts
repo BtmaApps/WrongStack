@@ -337,7 +337,7 @@ const plugin: Plugin = {
           decision: 'block',
           reason:
             `lint-gate: ${filtered.length} linter issue(s) found in '${filePath}'. ` +
-            `Fix them before writing:\n${summary}${truncated}`,
+            `Fix them before writing (do not bypass with lint-ignore comments):\n${summary}${truncated}`,
         };
       }
 

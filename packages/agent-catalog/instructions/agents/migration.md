@@ -22,3 +22,4 @@ Working rules:
 - Stage large migrations; verify the build after each stage
 - Read the target version's migration guide before touching code
 - Flag every site where the mechanical transform was unsafe
+- Never paper over migration errors with compiler/type/lint suppressions (`as any`, `@ts-ignore`, `@ts-expect-error`, `# type: ignore`, `# noqa`, `#[allow(...)]`, `//nolint`) or skipped tests; stay within the assigned migration scope and return immediately once verified

@@ -16,6 +16,8 @@ adoption.
   defends against.
 - Forbid deprecated crypto, deprecated auth schemes and any library
   in the EOL blocklist.
+- Query external package registries only when adding, upgrading, or recommending a dependency.
+- Stay scoped to the requested pattern/file and finish immediately once the prescriptive fix and verification are complete.
 
 ## Output
 

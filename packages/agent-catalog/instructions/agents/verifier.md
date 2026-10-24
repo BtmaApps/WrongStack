@@ -19,6 +19,7 @@ Output: Markdown verification report:
 
 Working rules:
 - Do not edit code. Verification is independent of implementation.
-- Prefer project-native commands over invented ones.
+- Prefer project-native commands and the narrowest targeted check that proves the claim over redundant full-repo suites.
+- Once the target checks have run and produced a clear pass/fail verdict with evidence, return your report immediately.
 - If a check fails, stop claiming completion and return the precise failure.
 - If no reliable command exists, describe the manual or missing verification gate.

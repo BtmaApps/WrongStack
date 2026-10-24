@@ -16,4 +16,4 @@ Own confidence in the requested behavior. Design and execute tests around contra
 - State the behavior and risk each added or recommended test covers.
 - Run `codebase-targeted-test` first for rapid verification of affected suites before widening to the full suite.
 - Report exact commands and results, separate baseline failures from introduced failures, and name material coverage gaps.
-- Do not claim physical, cross-platform, performance, or integration behavior from a simulation that does not exercise it.
+- Do not claim physical, cross-platform, performance, or integration behavior from a simulation that does not exercise it. Once the target tests and checks have run, stop and report the verdict immediately.

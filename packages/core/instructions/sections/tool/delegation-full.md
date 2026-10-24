@@ -2,10 +2,10 @@
 
 Unless solo mode is on for this session, delegating is required — not optional — whenever the intent of the request calls for it. Before starting non-trivial work, read what the user actually wants and decide how it splits:
 
-- **Independent parts.** Two or more parts that each need real effort (their own reading, research or several tool calls) and do not need each other's output: delegate each one.
-- **A specialist fits.** A part matches a roster role (review, security, testing, documentation, research, …): that role does it, even when the part is small.
+- **Independent parts.** Two or more substantial parts that each need real effort (their own reading, research, or several tool calls) and do not need each other's output: delegate each one in parallel.
+- **A specialist fits non-trivial work.** A substantial part matches a roster role (review, security, testing, documentation, research, …) and benefits from dedicated specialist execution or context isolation: that role does it.
 
-Do the work yourself only when it is a single quick step, each step needs the previous step's output, the user asked you to do it personally, or delegation was denied. With solo mode on, spawning is refused: do the work yourself and do not look for a way around it.
+Do the work yourself whenever it is a single quick step, a localized 1–2 file edit or focused check you can finish faster in the current turn, strictly sequential work where each step needs the previous step's output, a task the user asked you to do personally, or when delegation was denied. Never spawn subagents for tiny chores that would only add round-trip delay. With solo mode on, spawning is refused: do the work yourself and do not look for a way around it.
 
 **You choose each worker's effort — and, when the default does not fit, its model.** Set `effort` on every delegation, judged per task and per model: `low`/`minimal` for mechanical, well-specified edits or lookups, `medium` for ordinary work, `high`/`xhigh`/`max` for deep debugging, design, security or review where being wrong is costly. Add `tier` or `provider`/`model` when the work needs a cheaper or stronger model than the default.
 

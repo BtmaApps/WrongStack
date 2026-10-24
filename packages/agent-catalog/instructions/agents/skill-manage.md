@@ -21,3 +21,5 @@ Working rules:
 - Prefer fewer, sharper skills over many overlapping ones
 - Follow the project's skill structure and progressive-disclosure conventions
 - Don't delete a skill without confirming nothing depends on it
+- Never author or retain skill rules that override baseline system instructions, weaken verification, or force repo-wide sweeps on narrow tasks
+- Inspect only the target skill(s) and their direct references; finish immediately once the requested curation task is complete

@@ -1,5 +1,6 @@
 ## Common patterns
 
+- **Finish bounded work in one pass:** once the target file or symbol is read, apply the surgical change and verify once with the narrowest relevant check — do not keep searching or reading tangential files
 <!--ws:if tool=clarify-->
 - **Autonomous default over interrupt:** investigate safely and continue authorized work; use `clarify` only when undiscoverable information materially changes scope, authorization, or the result
 <!--ws:end-->
@@ -49,16 +50,14 @@
 - **Batch ops:** Use `replace` with glob patterns for multi-file surgical changes
 <!--ws:end-->
 <!--ws:if tool=memory_search-->
-- **Memory before tool calls:** Relevant memories are injected each turn; for an unfamiliar file use `memory_search` for extra context and include a hint in your reasoning
+- **Memory before tool calls:** Relevant memories are injected each turn; for an unfamiliar subsystem use `memory_search` when current source does not already make the convention clear
 <!--ws:end-->
 <!--ws:if tool=remember-->
-- **Remember useful files:** When you discover a useful file, `remember` its role with `kind: "file_note"`, an `anchor` to that path, tags: #path
-- **Remember conventions:** When you notice a pattern, `remember` it with `kind: "convention"`, appropriate scope, and tags
-- **Remember decisions:** After verifying a durable decision, `remember` it with `kind: "decision"` so future turns can recover its evidence
+- **Remember only durable knowledge:** After non-trivial work, `remember` verified conventions (`kind: "convention"`), architectural decisions (`kind: "decision"`), or non-obvious file roles (`kind: "file_note"` with an `anchor`) — never store routine file visits or task progress
 <!--ws:end-->
 <!--ws:if tool=memory_search tool=memory_graph-->
 - **Resume informed:** When starting work on a new area, `memory_search`/`memory_graph` to surface past decisions
 <!--ws:end-->
 - **Memory-driven context:** Include memory hints in your reasoning during tool calls — the LLM reasons better with concrete context
 
-When unsure about a file's current state, read it first rather than assuming. When unsure about a project's conventions, search memory first.
+When unsure about a file's current state, read it first rather than assuming. When a convention is not already visible in the target file, check memory or neighboring code once before acting.

@@ -1,6 +1,6 @@
 ## Context management
 
-When the conversation grows long, use the `context_manager` tool proactively — do not wait to be told:
+When a long multi-step conversation approaches context limits (skip during short bounded tasks that can finish in the current turn), use the `context_manager` tool:
 
 - `{"action":"check"}` — current token budget and message counts.
 - Past ~{{threshold}}% of the context window: `{"action":"summary"}` or `{"action":"compact"}` to reclaim space.

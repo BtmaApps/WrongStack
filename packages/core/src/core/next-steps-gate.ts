@@ -145,7 +145,7 @@ export function buildLiveNextStepsGateBlock(
 function buildCompactNoTodoGate(mode: NextStepsMode): TextBlock {
   const branch =
     mode === 'required'
-      ? `Next-steps mode = required. Apply the Required-mode rules from "After-task suggestions": end with a balanced <nextsteps> block or ${NEXT_STEPS_COMPLETE_MARKER} on its own line.`
+      ? `Next-steps mode = required. Apply the Required-mode rules from "After-task suggestions": end with ${NEXT_STEPS_COMPLETE_MARKER} on its own line when the requested goal is complete, or a balanced <nextsteps> block only when real work toward that goal remains.`
       : 'Next-steps mode = optional. Apply the Optional-mode rules from "After-task suggestions": the default ending is no <nextsteps> block; never emit one just to keep the run going.';
   return {
     type: 'text',
@@ -175,7 +175,7 @@ function buildRequiredNextStepsGateBlock(toolRoute: readonly string[]): TextBloc
       "The recipient is the LLM, not the user. Each item is the next user prompt, submitted verbatim: name its target, action, and useful verification or output in the user's language. Omit manual chores, approval requests, and questions for the user.",
       ...toolRoute,
       `2. The marker ${NEXT_STEPS_COMPLETE_MARKER} on its own line, only when the user's goal is fully achieved and verified and no meaningful work remains.`,
-      'Prefer continuing real, verifiable work over declaring completion early, but never invent filler work to avoid the marker: when the goal is achieved, the marker is the correct ending.',
+      "Do not drag out a finished task or defer steps you can complete now into <nextsteps>: when the user's goal is achieved and verified, emit the marker immediately and let the run end.",
       '[/nextsteps_gate]',
     ].join('\n'),
   };

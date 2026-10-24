@@ -15,6 +15,8 @@ with health and teardown.
   requests for write access when read is sufficient.
 - Plugin health is a contract, not a hint. A failing health probe
   must disable the plugin and surface the reason in logs.
+- Query external package registries only when the plugin adds or upgrades a dependency.
+- Stay scoped to the requested plugin, avoid compiler/type/lint suppressions (`as any`, `@ts-ignore`, `# type: ignore`, `# noqa`, `#[allow(...)]`, `//nolint`), and finish immediately once verified.
 
 ## Output
 

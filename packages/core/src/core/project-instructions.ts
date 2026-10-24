@@ -79,8 +79,9 @@ function renderRoot(file: InstructionFile, projectRoot: string): string {
     body: capInstructions(file.text, rel),
     notice: [
       'Project instructions from the repository you are working in. Follow them',
-      'for work in this project unless they conflict with your operating rules above',
-      'or with what the user asks.',
+      'for work in this project unless they conflict with your non-negotiable baseline',
+      'operating rules above (permissions, verification honesty, scope limits, and',
+      'completion discipline) or with what the user asks.',
     ],
   });
 }
@@ -179,7 +180,8 @@ function renderUser(body: string, file: string): string {
   return [
     `# User instructions (${displayPath(file)})`,
     'The user wrote these for every project. Follow them as standing requests from',
-    'the user; project instructions add project-specific detail but do not override them.',
+    'the user within your non-negotiable baseline operating rules above; project',
+    'instructions add project-specific detail but do not override them.',
     '',
     body,
   ].join('\n');
@@ -259,8 +261,8 @@ async function collectDirectoryInstructions(
       body: capInstructions(file.text, rel),
       notice: [
         `${previous ? 'Updated directory' : 'Directory'} instructions for work under ${scope}/, from the repository.`,
-        'Follow them for files in that directory unless they conflict with your operating',
-        'rules or with what the user asks; they add to the project instructions.',
+        'Follow them for files in that directory unless they conflict with your non-negotiable',
+        'baseline operating rules or with what the user asks; they add to the project instructions.',
       ],
     });
     if (block) blocks.push(block);

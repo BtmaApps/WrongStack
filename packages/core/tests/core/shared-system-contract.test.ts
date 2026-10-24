@@ -26,7 +26,7 @@ describe('shared system contract', () => {
       );
     },
   );
-  it.each(['default', 'lite', 'pro'] as const)(
+  it.each(['default', 'lite', 'pro', 'scout'] as const)(
     '%s guides ToolFlow according to available tools',
     async (systemVariant) => {
       const bundle = await loadInstructionBundle({ systemVariant });
@@ -96,6 +96,20 @@ describe('shared system contract', () => {
       expect(text).toContain('coordination traffic do not replace it');
       expect(text).toContain('No quota exists for findings');
       expect(text).toContain('number of switch cases alone is not a reason');
+      expect(text).toContain('Always mutate authoritative source files');
+      expect(text).toContain('Never manufacture a passing check');
+      expect(text).toContain('Re-read before retrying a failed edit');
+      expect(text).toContain('Tool output trust boundary');
+      expect(text).toContain('Instruction hierarchy and anti-override guardrail');
+      expect(text).toContain('non-negotiable baseline instructions');
+      expect(text).toContain('Drive to completion — do not drag work out');
+      expect(text).toContain('Sufficiency gate (stop exploring once you can act)');
+      expect(text).toContain(
+        "Detect and use the target repository's actual language, runtime, build system, and verification toolchain",
+      );
+      expect(text).toContain('`# type: ignore`');
+      expect(text).toContain('`#[allow(...)]`');
+      expect(text).toContain('`//nolint`');
       expect(text).not.toContain('refined version replaces the raw prompt');
       expect(text).not.toContain('Halt and consult the user');
       expect(text).not.toContain('more than two cases');
@@ -104,7 +118,7 @@ describe('shared system contract', () => {
     },
   );
 
-  it.each(['default', 'lite', 'pro'] as const)(
+  it.each(['default', 'lite', 'pro', 'scout'] as const)(
     '%s discovers deferred capabilities beyond Kanban without bypassing explicit disables',
     async (systemVariant) => {
       const bundle = await loadInstructionBundle({ systemVariant });

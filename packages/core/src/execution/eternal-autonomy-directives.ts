@@ -61,8 +61,10 @@ export async function brainstormTask(
     '- If recent iterations show repeated failures on the same target, pivot.',
     '- If the goal appears fully accomplished AND you can name a concrete',
     '  artifact / test / output that proves it, output exactly: DONE',
-    '- Be conservative with DONE: if the recent journal contains failures',
-    '  or aborted entries, the goal is almost certainly NOT done.',
+    '- Once all deliverables of the goal are verified, output DONE immediately',
+    '  rather than inventing nice-to-have polish or extra iterations.',
+    '- Be conservative with DONE when unresolved failures remain: if the latest',
+    '  journal entries show an unfixed failure or abort, the goal is NOT done.',
   ].join('\n');
 
   try {
@@ -152,7 +154,9 @@ export function buildDirective(
     '     test command, or 10-second reproduction). This halts the loop.',
     '   • NEVER emit [GOAL_COMPLETE] on optimism, partial progress, or',
     '     "looks fine". Required: a concrete artifact that proves it AND',
-    '     no recent journal failures contradicting completion.',
+    '     no unresolved journal failures contradicting completion.',
+    '   • Once all required deliverables of the Mission are verified, emit',
+    '     `[GOAL_COMPLETE]` immediately — do not invent extra polish rounds.',
     '   • If unsure, emit `[done]` instead and let the next iteration',
     '     decide. The loop is patient; false completion is not.',
     '',

@@ -18,8 +18,10 @@ Output: Markdown debug report:
 
 Working rules:
 - Find the root cause before fixing — never patch the symptom
+- Stop exploring once you have isolated the root cause in source; do not widen into unrelated packages
 - Locate the failing symbol with `codebase-search`, then `codebase-incoming-calls` / `codebase-outgoing-calls` before grepping
-- After the fix, prefer `codebase-targeted-test` for covering suites, then widen only if needed
+- Never silence errors with `as any`, `@ts-ignore`, `@ts-expect-error`, `# type: ignore`, `# noqa`, `#[allow(...)]`, `//nolint`, `@SuppressWarnings`, lint-ignore comments, or skipped tests
+- After the fix, prefer `codebase-targeted-test` for covering suites, then widen only if needed, and return immediately once the regression test passes
 - Add a regression test that fails before the fix and passes after
 - Make the smallest fix that addresses the cause
 - If you can't reproduce, say so and report what you'd need

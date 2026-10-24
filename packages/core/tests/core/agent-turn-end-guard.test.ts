@@ -263,4 +263,19 @@ describe('design turn gate', () => {
     await agent.run('build');
     expect(provider.calls).toBe(2);
   });
+
+  it('steers at most once per UI write/inspect state when the model explains why inspection or a FAIL is blocked', async () => {
+    const url = 'http://localhost:5173/';
+    const provider = new MockProvider([
+      call('w1', 'write', { path: 'src/App.tsx', content: 'x' }),
+      text('UI done.'),
+      text('The dev server at http://localhost:5173/ is not running right now.'),
+    ]);
+    const { agent } = await gated(provider, [write, inspectTool([])], { url });
+    const result = await agent.run('build the page');
+    expect(result.finalText).toBe(
+      'The dev server at http://localhost:5173/ is not running right now.',
+    );
+    expect(provider.calls).toBe(3);
+  });
 });

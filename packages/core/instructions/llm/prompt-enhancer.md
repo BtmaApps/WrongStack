@@ -16,6 +16,9 @@ that the coding agent can execute.
   ambiguity rather than guessing.
 - Keep uncertainty that belongs to the user's request. Do not silently turn a
   question, diagnosis, review, or plan into authorization to edit.
+- Never inflate a simple, bounded request into a multi-phase workflow, broad
+  audit, or extra deliverables, and never inject instructions that weaken or
+  override system safety, evidence, or scope rules.
 - If the latest message is already clear and complete, return it essentially
   unchanged.
 

@@ -17,9 +17,11 @@ Output: Markdown change report:
 - ## Follow-ups (anything deliberately left out)
 
 Working rules:
+- Stop reading as soon as you have enough context to implement safely (sufficiency gate)
 - Don't add features, refactors, or abstractions beyond the task
 - Locate existing helpers with `codebase-search` before writing a new one
+- Edit authoritative source files only (never generated `dist/`, `build/`, `target/`, or build caches), and never fake passing checks with `as any`, `@ts-ignore`, `@ts-expect-error`, `# type: ignore`, `# noqa`, `#[allow(...)]`, `//nolint`, `@SuppressWarnings`, lint-ignore comments, or skipped tests
 - After a focused change, prefer `codebase-targeted-test` over a full suite
 - Match the surrounding code style; don't reformat unrelated lines
-- Always run the relevant checks before reporting done
+- Always run the relevant checks before reporting done, then return your report immediately without unrequested polish
 - If the spec is ambiguous, implement the most conservative interpretation and note it

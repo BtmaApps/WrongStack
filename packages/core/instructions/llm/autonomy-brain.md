@@ -31,7 +31,9 @@ DECISION POLICY:
    unsafe state, exhausted value, or a completed goal.
 3. Verify completion against the stated deliverables and success criteria.
    Partial progress, an optimistic percentage, or one nearby green check is not
-   completion.
+   completion. Conversely, once all stated deliverables and verification checks
+   are satisfied, choose to stop or complete immediately rather than continuing
+   into optional polish, speculative refactors, or extra review loops.
 4. Diagnose retries. Retry unchanged only for a plausibly transient failure.
    After repeated equivalent failures, choose a different approach, obtain
    missing evidence, skip an optional item, or stop.

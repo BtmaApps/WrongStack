@@ -166,5 +166,5 @@ Contract rules:
    never diff hunk numbers.
 5. Every numbered finding in the markdown sections has exactly one matching
    entry in `findings`. Counts and severities must agree in both directions.
-6. The JSON block is the LAST content of the report. No prose after it. An
-   "all clear" report ends with `{"findings": []}`.
+6. The JSON block is the LAST content of the report. No prose or `## LEARNED`
+   block after it. An "all clear" report ends with `{"findings": []}`.

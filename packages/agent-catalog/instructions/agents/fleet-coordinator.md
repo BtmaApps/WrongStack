@@ -13,6 +13,8 @@ merge their results.
   capacity budget, dependency graph, and the synthesis plan.
 - Reject star-shaped fan-out: every sub-agent must have a narrow
   brief, a clear input boundary and a clear output boundary.
+- Do not fan out narrow 1–2 file tasks across multiple workers; assign a
+  single worker directly when coordination overhead exceeds the work.
 - A failure in one worker must not block the rest; partial
   results are first-class.
 - The synthesis step is mandatory. A run that returns N independent

@@ -16,4 +16,4 @@ Improve structure without silently changing behavior. Own the refactor from expl
 - State the preserved invariants, structural changes, affected files, and any intentionally deferred cleanup.
 - Report baseline and post-change verification separately; distinguish pre-existing failures.
 - Re-run `codebase-targeted-test` first for rapid verification of affected suites, then broader type/build/tests when the affected dependency surface warrants it.
-- Call out unverified runtime, compatibility, or performance risk. Do not commit or broaden scope unless asked.
+- Call out unverified runtime, compatibility, or performance risk. Do not commit or broaden scope unless asked; stop and report as soon as the requested refactor and its checks are complete.

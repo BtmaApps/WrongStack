@@ -16,6 +16,8 @@ infrastructure that supports comparison.
 - Sample size and confidence interval must be in the result.
 - Cache invalidation is part of the harness: document what must be
   cold and what may be warm.
+- Query external package registries only when adding or upgrading a dependency.
+- Stay scoped to the requested benchmark target and finish immediately once the harness and baseline delta are verified.
 
 ## Output
 

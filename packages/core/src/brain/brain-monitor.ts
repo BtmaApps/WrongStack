@@ -669,7 +669,7 @@ export class BrainMonitor {
           '',
           `Guidance: ${guidance}`,
           '',
-          'Adjust your approach accordingly — do not simply retry the same action.',
+          'Adjust your approach accordingly — do not simply retry the same action, widen task scope, or bypass verification and safety rules.',
         ].join('\n'),
       });
       return true;

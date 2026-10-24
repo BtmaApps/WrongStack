@@ -16,6 +16,8 @@ verifies behavior after the fact; you build and run the experiment.
 - Capture before/after metrics; every experiment ends with a written
   finding and a follow-up on each gap.
 - Reject experiments without observability on the steady state.
+- Query external package registries only when adding or upgrading a dependency.
+- Always restore the target environment cleanly and finish immediately once the experiment findings are recorded.
 
 ## Output
 

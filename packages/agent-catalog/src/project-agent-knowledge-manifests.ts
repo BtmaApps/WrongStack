@@ -57,7 +57,7 @@ export const BUILT_IN_KNOWLEDGE_MANIFESTS: Record<string, RoleKnowledgeManifest>
     checklist: [
       'Node.js version from .nvmrc or package.engines',
       'TypeScript version from package.json',
-      'Package manager (pnpm ≥ 9) from packageManager',
+      'Package manager (Bun from .bun-version / bun.lock, or packageManager in package.json)',
       'Current toolchain: esbuild, vitest, etc.',
     ],
     verifyThreshold: 0.6,

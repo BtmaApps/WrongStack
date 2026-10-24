@@ -183,7 +183,7 @@ function handleSelection(
     '',
     tasks,
     '',
-    'Complete each task before moving to the next. Report results as you go.',
+    'Complete each task in order with minimal, root-cause changes (no compiler/type/lint/test suppressions such as `as any`, `@ts-ignore`, `@ts-expect-error`, `# type: ignore`, `# noqa`, `#[allow(...)]`, `//nolint`, or skipped tests). Report results as you go and stop immediately once the listed tasks are done.',
   ].join('\n');
 
   return {

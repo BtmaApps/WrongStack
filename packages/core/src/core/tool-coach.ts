@@ -306,7 +306,7 @@ export function createToolCoach(catalog: readonly Tool[]): ToolCoach {
         return [
           '[TOOL COACH — verification phase]',
           `A file changed. Choose the relevant verification tool from: ${verification.join(', ')}.`,
-          'Start with the narrowest check that covers the change, then broaden only when needed.',
+          'Start with the narrowest check that covers the change, then broaden only when needed. Once that check passes and the requested change is complete, finish the turn and report the outcome without extra tool rounds.',
           ']',
         ].join('\n');
       }
@@ -322,7 +322,7 @@ export function createToolCoach(catalog: readonly Tool[]): ToolCoach {
             return [
               '[TOOL COACH — inspect before changing]',
               `Discovery found candidates. Inspect the relevant source with ${inspect.join(' or ')} before editing.`,
-              'Use the returned paths or symbols; do not guess a target.',
+              'Use the returned paths or symbols; do not guess a target, and stop exploring once you have read the target surface.',
               ']',
             ].join('\n');
           }

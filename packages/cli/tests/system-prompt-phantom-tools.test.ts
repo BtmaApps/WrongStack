@@ -24,7 +24,7 @@ import { describe, expect, it } from 'vitest';
  * the assertion fires the moment that tool is absent from a render.
  */
 
-const VARIANTS: readonly SystemInstructionVariant[] = ['default', 'lite', 'pro'];
+const VARIANTS: readonly SystemInstructionVariant[] = ['default', 'lite', 'pro', 'scout'];
 
 async function loadVariant(variant: SystemInstructionVariant): Promise<string> {
   const bundle = await loadInstructionBundle({ systemVariant: variant });
