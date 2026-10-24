@@ -55,14 +55,15 @@ describe('buildGoalPreamble', () => {
     expect(result).toContain('REPORTING:');
   });
 
-  it('contains spawn authority statement', () => {
+  it('scopes spawn authority to delegation that genuinely helps', () => {
     const result = buildGoalPreamble('Test');
-    expect(result).toContain('Spawn as many subagents');
+    expect(result).toContain('Spawn subagents when parallel or context-heavy delegation');
+    expect(result).toContain('do not delegate tiny 1–2');
   });
 
-  it('contains no hidden budget statement', () => {
+  it('allows as many iterations as the goal needs', () => {
     const result = buildGoalPreamble('Test');
-    expect(result).toContain('NO hidden budget');
+    expect(result).toContain('Run as many tool calls and iterations as needed');
   });
 
   it('contains subagent retry directive', () => {

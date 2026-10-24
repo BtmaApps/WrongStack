@@ -116,10 +116,10 @@ describe('buildSteeringPreamble', () => {
     expect(out.trimEnd().endsWith('BEGIN.]')).toBe(true);
   });
 
-  it('goal preamble explicitly grants unlimited fan-out + model switching', () => {
+  it('goal preamble grants needed fan-out, iterations and model switching', () => {
     const out = buildGoalPreamble('audit packages/core');
-    expect(out).toMatch(/no spawn budget/i);
-    expect(out).toMatch(/unlimited tool calls/i);
+    expect(out).toMatch(/spawn subagents when parallel or context-heavy delegation/i);
+    expect(out).toMatch(/as many tool calls and iterations as needed/i);
     expect(out).toMatch(/any provider\/model/i);
     expect(out).toMatch(/auto-extends/i);
   });
