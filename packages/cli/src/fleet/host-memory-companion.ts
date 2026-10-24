@@ -18,7 +18,7 @@ Return submit_result with summary containing ONLY JSON:
 {"verdict":"supported|outdated|contradicted|unverifiable|irrelevant","summary":"brief conclusion and optional correction proposal","evidence":[{"path":"an exact supplied source path","quote":"an exact 12-400 character quote from its supplied excerpt"}]}
 supported/outdated/contradicted require at least one source quote. Report uncertainty if excerpts do not establish the claim. No unsupported tests-passed claims.
 Output limits: summary must be at most 600 characters, including any applicability caveat; evidence may contain at most four quotes. Keep the full JSON below 8000 characters. Longer reports are rejected; do not add a second narrative report.
-Stop after this one claim; read at most four files if additional navigation is necessary. This report is advisory; the host checks revision and source hashes before forwarding.`;
+Stop after this one claim; follow relevant symbols, callers and source files as needed to establish it. This report is advisory; the host checks revision and source hashes before forwarding.`;
 
 interface Input {
   director: Director;
@@ -29,7 +29,7 @@ interface Input {
   enabled: (sessionId: string) => boolean;
   scrub: (text: string) => string;
   note: (sessionId: string, subject: string, body: string) => void;
-  /** Test seams; production uses bounded file snapshots and a 75-second watchdog. */
+  /** Test seams; production uses bounded file snapshots and the worker's configured deadline. */
   snapshot?: typeof snapshotMemoryEvidence;
   timeoutMs?: number;
   ioTimeoutMs?: number;
@@ -44,6 +44,10 @@ interface Job {
   sessionId: string;
   memoryId: string;
 }
+
+const MAX_PROBES_PER_SESSION = 640;
+const MAX_SESSIONS = 16;
+const MAX_PENDING = 32;
 
 /** One bounded worker at a time; one lazily spawned resident per live conversation. */
 export class HostMemoryCompanion {
@@ -68,7 +72,7 @@ export class HostMemoryCompanion {
         if (!event.sessionId || !this.allowed(event.sessionId)) return;
         const session = this.sessions.get(event.sessionId)!;
         if (event.trigger !== 'turn_context') session.paused = event.contextPressure >= 0.82;
-        if (session.paused || session.probes >= 4) return;
+        if (session.paused || session.probes >= MAX_PROBES_PER_SESSION) return;
         for (const memory of event.injected.slice(0, 8)) this.enqueue(event.sessionId, memory.id);
         // Stale records remain excluded from ordinary recall. Inspect them via
         // the explicit path surface and report as historical hints, never facts.
@@ -119,7 +123,7 @@ export class HostMemoryCompanion {
       this.sessions.set(sessionId, existing);
       return;
     }
-    while (this.sessions.size >= 4) this.release(this.sessions.keys().next().value!);
+    while (this.sessions.size >= MAX_SESSIONS) this.release(this.sessions.keys().next().value!);
     this.sessions.set(sessionId, { probes: 0, paused: false });
   }
 
@@ -149,13 +153,13 @@ export class HostMemoryCompanion {
     if (
       !session ||
       session.paused ||
-      session.probes >= 4 ||
+      session.probes >= MAX_PROBES_PER_SESSION ||
       !this.allowed(sessionId) ||
       (this.active?.job.sessionId === sessionId && this.active.job.memoryId === memoryId)
     )
       return;
     const key = `${sessionId}\0${memoryId}`;
-    if (this.pending.size >= 8 && !this.pending.has(key)) return;
+    if (this.pending.size >= MAX_PENDING && !this.pending.has(key)) return;
     this.pending.set(key, { sessionId, memoryId });
     void this.drain();
   }
@@ -182,7 +186,7 @@ export class HostMemoryCompanion {
     const { sessionId, memoryId } = job;
     if (!this.allowed(sessionId)) return;
     const session = this.sessions.get(sessionId)!;
-    if (session.paused || session.probes >= 4) return;
+    if (session.paused || session.probes >= MAX_PROBES_PER_SESSION) return;
     const memory = this.input.memory();
     if (!memory) return;
     const record = await this.withinIoBudget(memory.getSage(memoryId));
@@ -233,6 +237,11 @@ export class HostMemoryCompanion {
     }
     const template = this.input.roster['memory-curator'];
     if (!template) return;
+    const workerConfig = constrainMemoryCompanion({
+      ...template,
+      ...(this.input.timeoutMs === undefined ? {} : { timeoutMs: this.input.timeoutMs }),
+    });
+    const probeTimeoutMs = workerConfig.timeoutMs!;
     if (session.resident) {
       const alive = this.input.director
         .status()
@@ -249,7 +258,7 @@ export class HostMemoryCompanion {
     if (!session.resident) {
       const resident = await this.spawnBounded(
         constrainMemoryCompanion({
-          ...template,
+          ...workerConfig,
           id: `memory-companion-${randomUUID()}`,
           name: 'Memory Companion',
           role: 'memory-curator',
@@ -303,7 +312,7 @@ export class HostMemoryCompanion {
         resolve(undefined);
         if (session.resident === agentId) session.resident = undefined;
         void this.input.director.terminate(agentId).catch(() => {});
-      }, this.input.timeoutMs ?? 75000);
+      }, probeTimeoutMs);
       timeout.unref?.();
     });
     try {
@@ -325,8 +334,7 @@ export class HostMemoryCompanion {
           id: taskId,
           subagentId: agentId,
           description,
-          maxToolCalls: 12,
-          timeoutMs: Math.min(this.input.timeoutMs ?? 60000, 60000),
+          timeoutMs: probeTimeoutMs,
         })
         .catch(() => this.active?.taskId === taskId && this.active.settle());
       const result = await completed;
@@ -443,7 +451,7 @@ export class HostMemoryCompanion {
         new Promise<never>((_resolve, reject) => {
           timer = setTimeout(
             () => reject(new Error('Memory Companion source check timed out')),
-            this.input.ioTimeoutMs ?? 10000,
+            this.input.ioTimeoutMs ?? 30_000,
           );
           timer.unref?.();
         }),
@@ -470,7 +478,7 @@ export class HostMemoryCompanion {
               expired = true;
               resolve(undefined);
             },
-            Math.min(this.input.timeoutMs ?? 10000, 10000),
+            Math.min(config.timeoutMs ?? 60_000, 60_000),
           );
           timer.unref?.();
         }),

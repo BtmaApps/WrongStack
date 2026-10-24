@@ -8,10 +8,10 @@ import type {
   SubagentConfig,
   TaskResult,
 } from '@wrongstack/contracts/types';
-import type { Context } from '@wrongstack/core/agent';
-import { renderInstructionLayer } from '@wrongstack/core/agent';
 import type { Director } from '@wrongstack/coordination';
 import { DEFAULT_SUBAGENT_BASELINE, makeSubagentResultTool } from '@wrongstack/coordination';
+import type { Context } from '@wrongstack/core/agent';
+import { renderInstructionLayer } from '@wrongstack/core/agent';
 import {
   markRecommendedSkillLoaded,
   markRecommendedSkillUnavailable,
@@ -566,8 +566,9 @@ describe('Skill Companion', () => {
     const h = harness();
     h.run('Redesign the settings page please');
     await vi.waitFor(() => expect(h.assignInternal).toHaveBeenCalledTimes(1));
-    expect(h.spawn.mock.calls[0]![0].timeoutMs).toBe(300_000);
-    expect(h.assignInternal.mock.calls[0]![0]).toMatchObject({ timeoutMs: 300_000 });
+    expect(h.spawn.mock.calls[0]![0].timeoutMs).toBe(18_000_000);
+    expect(h.assignInternal.mock.calls[0]![0]).toMatchObject({ timeoutMs: 18_000_000 });
+    expect(h.assignInternal.mock.calls[0]![0]).not.toHaveProperty('maxToolCalls');
 
     await vi.advanceTimersByTimeAsync(60_000);
     expect(h.terminate).not.toHaveBeenCalled();
@@ -677,7 +678,13 @@ describe('Skill Companion policy', () => {
       role: 'skill-companion',
     });
     expect(call).toBeLessThan(limited.maxTokens!);
-    expect(limited).toMatchObject({ maxTokens: 128_000, maxCostUsd: 1, timeoutMs: 300_000 });
+    expect(limited).toMatchObject({
+      maxIterations: 640,
+      maxToolCalls: 1280,
+      maxTokens: 10_000_000,
+      maxCostUsd: 200,
+      timeoutMs: 18_000_000,
+    });
   });
 
   it('parses fenced answers and keeps only offered names', () => {

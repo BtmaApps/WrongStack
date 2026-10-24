@@ -26,15 +26,19 @@ scrubs the payload and snapshots content hashes. Missing/oversized/outside-proje
 sources yield an unverifiable note without a model call. No network evidence or
 test execution is performed in this initial read-only mode.
 
-One task runs at a time; the pending queue is capped at eight and the host keeps
-at most four conversation companions. Each live conversation gets at most four
+One task runs at a time; the pending queue is capped at 32 and the host keeps
+at most 16 conversation companions. Each live conversation gets at most 640
 probes for the lifetime of its companion, with a ten-minute cooldown per
 memory/revision/source fingerprint. Idle residents are reused when available.
 No new probes start when the injector reports context pressure of 82% or more.
-Worker budgets are 8 iterations, 12 tools, 12,000 tokens and $0.15 initially;
-the host separately bounds startup to 10 seconds and a task to 75 seconds.
+Worker defaults are 30,000 iterations, 80,000 tool calls, 10,000,000 total tokens
+and $200 per review. Explicit positive role budgets are honored in either
+direction. Source navigation includes context, symbols, callers, impact
+analysis and bounded repository maps; mutation, shell and delegation remain
+outside this verification role. The host separately bounds startup to sixty
+seconds and aligns each task with the worker deadline (five hours by default).
 Closing/evicting a conversation cancels pending work and terminates its resident.
-Memory reads and source checks each have a ten-second waiting deadline as well;
+Memory reads and source checks each have a thirty-second waiting deadline as well;
 a stuck preflight cannot hold up other queued reviews indefinitely. Underlying
 filesystem/IPC work may settle later, but its late value cannot publish a verdict.
 

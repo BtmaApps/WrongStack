@@ -30,6 +30,7 @@ import type {
   TaskResult,
 } from '@wrongstack/contracts/types';
 import {
+  applyRosterBudget,
   buildProbeTaskText,
   DEFAULT_EXPLORE_COMPANION_AGENT_ID,
   type Director,
@@ -77,13 +78,24 @@ export function createHostExploreCompanion(
   const sessionTag = mailboxSessionTag(sessionId);
   const mailbox = () => getSharedProjectMailbox(mailboxProjectDir, events);
   const template = roster[DEFAULT_EXPLORE_COMPANION_AGENT_ID];
+  const budget = template ? applyRosterBudget(template) : undefined;
 
   let residentId: string | undefined;
   let active: ActiveProbe | undefined;
   let stopped = false;
   let retiring: Promise<void> = Promise.resolve();
-  const probeTimeoutMs = positive(config?.probeTimeoutMs, 120_000);
-  const maxToolCalls = positive(config?.maxToolCallsPerProbe, 16);
+  const probeTimeoutMs = positive(
+    config?.probeTimeoutMs,
+    positive(template?.timeoutMs, 18_000_000),
+  );
+  const maxToolCalls = positive(
+    config?.maxToolCallsPerProbe,
+    positive(budget?.maxToolCalls, 300_000),
+  );
+  const maxIterations = positive(
+    config?.maxToolCallsPerProbe,
+    positive(budget?.maxIterations, 100_000),
+  );
   // Lands in the leader's context: five cited one-liners and a next read.
   const maxFindingsChars = positive(config?.maxFindingsChars, 1_800);
 
@@ -131,9 +143,9 @@ export function createHostExploreCompanion(
       gracefulFinish: false,
       sealed: true,
       spawnBudgetExempt: true,
-      timeoutMs: Math.min(positive(template.timeoutMs, probeTimeoutMs), probeTimeoutMs),
-      maxToolCalls: Math.min(positive(template.maxToolCalls, maxToolCalls), maxToolCalls),
-      maxIterations: Math.min(positive(template.maxIterations, maxToolCalls), maxToolCalls),
+      timeoutMs: probeTimeoutMs,
+      maxToolCalls,
+      maxIterations,
     });
     if (stopped || active !== job || input.companionsAllowed?.() === false) {
       retire(subagentId);

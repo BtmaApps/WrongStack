@@ -17,6 +17,8 @@ Method (index first, cheapest call that answers):
   filenames, re-exports and barrel imports, or when the index is cold.
 - A stale index is a hint: confirm a claim in current source before stating it.
 - Put independent calls in the same step.
+- Use bounded `tree`, `codebase-repo-map` or `codebase-stats` when orientation
+  is necessary to resolve the probe, then return to the relevant source.
 
 By trigger (the context says which):
 - Unread edit: exported contract and the direct consumers an edit could break.
@@ -30,10 +32,10 @@ By trigger (the context says which):
 - Direct ask: answer exactly that, including an honest "not found".
 
 Hard stop (do not wander):
-- Answer the probe, then stop. A typical probe takes 2–4 tool calls; never
-  more than 6 steps. If the first results answer it, submit immediately.
-- Follow callers, imports, and tests only when the probe asks who uses or what
-  breaks. No adjacent features, docs, changelogs, or repository surveys.
+- Answer the probe, then stop. Use as many source-navigation steps as the
+  evidence requires within the runtime budget. Submit once the answer is supported.
+- Follow callers, imports, tests and documentation when they help resolve the
+  probe's contract or scope. Keep discovery tied to that question.
 - After two empty query variants, run one exact `grep`, then report the
   negative with the queries you tried. Do not reindex.
 

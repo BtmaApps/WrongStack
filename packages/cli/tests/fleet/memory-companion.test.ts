@@ -381,16 +381,26 @@ describe('Memory Companion', () => {
     },
   );
 
-  it('has one in-flight task and a four-probe conversation budget', async () => {
+  it('reuses one resident for reviews beyond the former four-probe limit', async () => {
     const h = harness();
     h.emit('leader', ['a', 'b', 'c', 'd', 'e', 'f']);
-    for (let i = 1; i <= 4; i++) {
+    for (let i = 1; i <= 6; i++) {
       await vi.waitFor(() => expect(h.assignInternal).toHaveBeenCalledTimes(i));
       h.finish();
     }
     await new Promise((resolve) => setTimeout(resolve, 20));
-    expect(h.assignInternal).toHaveBeenCalledTimes(4);
+    expect(h.assignInternal).toHaveBeenCalledTimes(6);
     expect(h.spawn).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps a long configured review deadline aligned between host and worker', async () => {
+    const h = harness(3_600_000);
+    h.emit();
+    await vi.waitFor(() => expect(h.assignInternal).toHaveBeenCalledTimes(1));
+    expect(h.spawn.mock.calls[0]![0].timeoutMs).toBe(3_600_000);
+    expect(h.assignInternal.mock.calls[0]![0]).toMatchObject({ timeoutMs: 3_600_000 });
+    expect(h.assignInternal.mock.calls[0]![0]).not.toHaveProperty('maxToolCalls');
+    h.finish();
   });
 
   it('reports unavailable source evidence without starting an LLM', async () => {

@@ -1,4 +1,5 @@
 import { EventBus, type TrackedAgentSnapshot } from '@wrongstack/contracts/kernel/events';
+import { ToolCapabilities } from '@wrongstack/core/security';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { agentPrompt } from '../../agent-catalog/src/agent-prompts.js';
 import {
@@ -8,18 +9,14 @@ import {
   ExploreCompanion,
   type ExploreProbe,
 } from '../src/explore-companion.js';
-import {
-  applyRosterBudget,
-  EXPLORE_COMPANION_TOOLS,
-  FLEET_ROSTER,
-} from '../src/fleet.js';
+import { applyRosterBudget, EXPLORE_COMPANION_TOOLS, FLEET_ROSTER } from '../src/fleet.js';
 import type {
   Mailbox,
   MailboxAckInput,
   MailboxMessage,
   MailboxQuery,
 } from '../src/mailbox-types.js';
-import { ToolCapabilities } from '@wrongstack/core/security';
+import { SubagentBudget } from '../src/subagent-budget.js';
 
 const LEADER_SESSION = 'sess-leader';
 const SUB_SESSION = 'sess-subagent';
@@ -664,8 +661,6 @@ describe('explore-companion roster integration', () => {
       expect(tools, `tools must include ${needed}`).toContain(needed);
     }
     for (const banned of [
-      'tree',
-      'codebase-repo-map',
       'write',
       'edit',
       'replace',
@@ -701,15 +696,31 @@ describe('explore-companion roster integration', () => {
     expect([...DEFAULT_EXPLORE_SEARCH_TOOLS].sort()).toEqual(['codebase-search', 'grep']);
   });
 
-  it('applyRosterBudget sizes the role for one narrow probe', () => {
+  it('applyRosterBudget gives exploration headroom without a hidden token or cost quota', () => {
     const resolved = applyRosterBudget({
       ...FLEET_ROSTER[DEFAULT_EXPLORE_COMPANION_AGENT_ID]!,
       role: DEFAULT_EXPLORE_COMPANION_AGENT_ID,
     });
     expect(resolved.idleTimeoutMs).toBeGreaterThan(0);
-    expect(resolved.maxIterations).toBe(8);
-    expect(resolved.maxToolCalls).toBe(16);
-    expect(resolved.maxTokens).toBe(80_000);
+    expect(resolved.maxIterations).toBe(100_000);
+    expect(resolved.maxToolCalls).toBe(300_000);
+    expect(resolved.maxTokens).toBeUndefined();
+    expect(resolved.maxCostUsd).toBeUndefined();
+  });
+
+  it('can finish a probe beyond the old iteration, tool, token and cost limits', () => {
+    const budget = new SubagentBudget(
+      applyRosterBudget({
+        ...FLEET_ROSTER[DEFAULT_EXPLORE_COMPANION_AGENT_ID]!,
+        role: DEFAULT_EXPLORE_COMPANION_AGENT_ID,
+      }),
+    );
+    expect(() => {
+      for (let i = 0; i < 12; i++) budget.recordIteration();
+      for (let i = 0; i < 24; i++) budget.recordToolCall();
+      budget.recordUsage({ input: 100_000, output: 1000 }, 0.2);
+    }).not.toThrow();
+    expect(budget.usage().toolCalls).toBe(24);
   });
 
   it('prompt file exists and is a real role brief', () => {

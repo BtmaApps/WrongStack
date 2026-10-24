@@ -1,20 +1,28 @@
 import type { SubagentConfig, Tool } from '@wrongstack/contracts/types';
 import { makeSubagentResultTool } from '@wrongstack/coordination';
 
-export const MEMORY_COMPANION_READ_TOOLS = [
+const MEMORY_COMPANION_READ_TOOLS = [
   'read',
   'grep',
   'glob',
   'codebase-search',
   'codebase-skeleton',
+  'codebase-context',
+  'codebase-read-symbol',
+  'codebase-incoming-calls',
+  'codebase-outgoing-calls',
+  'codebase-impact-analysis',
+  'tree',
+  'codebase-repo-map',
+  'codebase-stats',
 ];
 const READ_NAMES = new Set(MEMORY_COMPANION_READ_TOOLS);
-const CAPS = {
-  maxIterations: 8,
-  maxToolCalls: 12,
-  maxTokens: 64000,
-  maxCostUsd: 0.15,
-  timeoutMs: 60000,
+const DEFAULT_MEMORY_COMPANION_BUDGET = {
+  maxIterations: 30_000,
+  maxToolCalls: 80_000,
+  maxTokens: 10_000_000,
+  maxCostUsd: 200,
+  timeoutMs: 18_000_000,
 };
 
 /** This predicate only narrows privileges; copying the prefix cannot grant any. */
@@ -39,12 +47,16 @@ export function constrainMemoryCompanion(config: SubagentConfig): SubagentConfig
     toolStream: 'silent',
     sealed: true,
   };
-  for (const key of Object.keys(CAPS) as Array<keyof typeof CAPS>) {
+  // Project budgets may be smaller or larger; the read-only tool boundary
+  // is independent of how much time and model usage the review receives.
+  for (const key of Object.keys(DEFAULT_MEMORY_COMPANION_BUDGET) as Array<
+    keyof typeof DEFAULT_MEMORY_COMPANION_BUDGET
+  >) {
     const value = config[key];
     limited[key] =
       typeof value === 'number' && Number.isFinite(value) && value > 0
-        ? Math.min(value, CAPS[key])
-        : CAPS[key];
+        ? value
+        : DEFAULT_MEMORY_COMPANION_BUDGET[key];
   }
   return limited;
 }

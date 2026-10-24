@@ -212,6 +212,27 @@ describe('Explore Companion host lifecycle', () => {
     );
   });
 
+  it('inherits exploration headroom instead of silently imposing a 16-call ceiling', async () => {
+    const h = harness();
+    h.emit('src/a.ts');
+    await flush();
+    const spawned = h.spawn.mock.calls[0]![0];
+    expect(spawned.maxToolCalls).toBeGreaterThan(17);
+    expect(spawned.maxIterations).toBeGreaterThan(9);
+    expect(spawned.timeoutMs).toBe(18_000_000);
+    expect(spawned.maxIterations).toBe(100_000);
+    expect(spawned.maxToolCalls).toBe(300_000);
+  });
+
+  it('honors explicit probe budgets', async () => {
+    const h = harness({ maxToolCallsPerProbe: 10_000, probeTimeoutMs: 600_000 });
+    h.emit('src/a.ts');
+    await flush();
+    expect(h.spawn).toHaveBeenCalledWith(
+      expect.objectContaining({ maxToolCalls: 10_000, maxIterations: 10_000, timeoutMs: 600_000 }),
+    );
+  });
+
   it('deadline retires a stalled worker, suppresses its late result, and resumes the queue', async () => {
     vi.useFakeTimers();
     const h = harness({ probeTimeoutMs: 100 });

@@ -43,8 +43,8 @@ import type {
   SubagentConfig,
   TaskResult,
 } from '@wrongstack/contracts/types';
-import { type Context, keepsOwnContext } from '@wrongstack/core/agent';
 import type { Director } from '@wrongstack/coordination';
+import { type Context, keepsOwnContext } from '@wrongstack/core/agent';
 import {
   armSkillPathRules,
   declaredPathMatch,
@@ -176,10 +176,10 @@ export class HostSkillCompanion {
 
   constructor(private readonly input: Input) {
     const config = input.config ?? {};
-    this.maxProbes = Math.floor(positive(config.maxProbesPerSession, 8));
+    this.maxProbes = Math.floor(positive(config.maxProbesPerSession, 640));
     this.minConfidence = Math.min(1, positive(config.minConfidence, 0.6));
     this.probeTimeoutMs = positive(config.probeTimeoutMs, DEFAULT_SKILL_COMPANION_BUDGET.timeoutMs);
-    this.maxCandidates = Math.floor(positive(config.maxCandidates, 80));
+    this.maxCandidates = Math.floor(positive(config.maxCandidates, 256));
     this.enforce = config.enforce !== 'off';
     this.pathRules = config.pathRules !== false;
     this.learn = config.learnOutcomes !== false;
@@ -601,7 +601,6 @@ export class HostSkillCompanion {
           id: taskId,
           subagentId: agentId,
           description,
-          maxToolCalls: DEFAULT_SKILL_COMPANION_BUDGET.maxToolCalls,
           timeoutMs: this.probeTimeoutMs,
         })
         .catch(() => this.active?.taskId === taskId && this.active.settle());
@@ -741,7 +740,7 @@ export class HostSkillCompanion {
               expired = true;
               resolve(undefined);
             },
-            Math.min(this.probeTimeoutMs, 10_000),
+            Math.min(this.probeTimeoutMs, 60_000),
           );
           timer.unref?.();
         }),

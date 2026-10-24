@@ -479,6 +479,7 @@ rather than dropping them silently.
 | `apiKeys` | `ProviderApiKey[]` | — | Multiple keys with labels. Pick one with `activeKey`. |
 | `activeKey` | `string` | first entry | Label of the key to use from `apiKeys`. |
 | `baseUrl` | `string` | provider default | Custom API endpoint. |
+| `queueTimeoutMs` | `number` | `120000` | WrongForge leader and side-request queue wait limit in milliseconds. Positive integer, at most `2147483647`; execution time is separate. |
 | `headers` | `Record<string, string>` | — | Extra HTTP headers sent with every request. |
 | `model` | `string` | — | Default model for this provider. |
 | `family` | `string` | auto-detected | Wire family override (`anthropic`, `openai`, `openai-compatible`, `google`). Required for offline/custom endpoints. |
@@ -488,6 +489,32 @@ rather than dropping them silently.
 | `customModels` | `Record<string, CustomModelDefinition>` | — | Per-model metadata overrides. Keys are model ids. Each entry can carry `name`, `maxOutput`, `capabilities`, and `modelsDev` (full models.dev schema payload). See [Model configuration](#model-configuration-models--custommodels) below. |
 | `quirks` | `Record<string, unknown>` | — | Provider-specific behavior flags. See [CompatibilityQuirks](../packages/providers/src/compatibility-quirks.ts). |
 | `capabilities` | `Record<string, unknown>` | — | Override reported capabilities (e.g. `maxContext`, `vision`). |
+
+### WrongForge in automation
+
+WrongForge shares its task capacity across sessions, projects, and side requests.
+A long autonomous task can leave a short headless request queued. WrongStack
+reports queue state and the server's queue position, when available, on stderr;
+`--output-json` stdout remains a single result object.
+
+Set `providers.wrongforge.queueTimeoutMs` in the active profile or project-private
+configuration to change the default two-minute queue wait:
+
+```json
+{
+  "providers": {
+    "wrongforge": { "type": "wrongforge", "queueTimeoutMs": 60000 }
+  }
+}
+```
+
+The deadline stops when execution starts. If it expires, WrongStack requests task
+cancellation and returns `status: "failed"`, `error.kind: "queue_timeout"`, and a
+nonzero exit code in JSON output. Headless `SIGINT` and `SIGTERM` abort the request
+and request cancellation, including while queued. Cancellation is best effort
+with a bounded network wait; a force kill (`SIGKILL`) or an unreachable server
+cannot guarantee remote cleanup. Existing orphaned tasks can be cancelled through
+WrongForge's `POST /v1/tasks/<id>/cancel` API.
 
 ### Model discovery
 
@@ -1575,6 +1602,35 @@ the WebUI Agents summary bar, or HQ cockpit when a client publishes
 
 **Security:** `fleet` is stripped from in-project config. Configure budgets under
 the active profile or project-private `config.local.json`.
+
+---
+
+## Companion budgets
+
+Companion defaults provide headroom for sustained source discovery and review.
+Limits apply per probe; explicit positive role budgets remain configurable.
+
+| Companion | Iterations | Tool calls | Total tokens | Cost | Task deadline |
+| --- | --- | --- | --- | --- | --- |
+| Explore | 100,000 | 300,000 | No implicit quota | No implicit quota | 5 hours |
+| Memory | 30,000 | 80,000 | 10,000,000 | $200 | 5 hours |
+| Skill | 640 | 1,280 | 10,000,000 | $200 | 5 hours |
+
+Explore and Memory can navigate source context, symbols, callers, impact
+analysis and bounded repository maps. Skill remains a catalog judge whose tool
+is `submit_result`. Explore output defaults to 100,000 bytes per step and honors
+`tools.perIterationOutputCapBytes` overrides.
+
+Memory and Skill allow 640 probes per conversation. Skill offers up to 256
+eligible candidates per probe; set `fleet.skillCompanion.maxCandidates`,
+`maxProbesPerSession` or `probeTimeoutMs` to override those defaults. Explore
+inherits role iteration/tool budgets unless
+`fleet.exploreCompanion.maxToolCallsPerProbe` is supplied; its
+`probeTimeoutMs` overrides the task deadline. Probe count, concurrency,
+deduplication and context-pressure gates remain independent of task budgets.
+
+See [Explore Companion](architecture/explore-companion-subagent.md) and the
+[Memory Companion lifecycle](sage-feedback-lifecycle.md#memory-companion).
 
 ---
 

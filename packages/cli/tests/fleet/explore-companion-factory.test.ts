@@ -119,7 +119,8 @@ describe('explore companion through the real subagent factory', () => {
       expect(text).not.toMatch(/You are a subagent operating under a Director/);
       expect(text).not.toContain('## LEARNED');
       expect(text.length).toBeLessThan(5_000);
-      expect(agent.ctx.tools.map((tool) => tool.name)).not.toContain('tree');
+      for (const name of ['tree', 'codebase-repo-map', 'codebase-stats'])
+        expect(agent.ctx.tools.map((tool) => tool.name)).toContain(name);
       expect(agent.ctx.meta?.sealedAgent).toBe(true);
     } finally {
       await dispose?.();

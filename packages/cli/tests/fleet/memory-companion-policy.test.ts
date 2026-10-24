@@ -1,9 +1,13 @@
 import { applyProjectAgentConfig } from '@wrongstack/agent-catalog';
+import type { Tool } from '@wrongstack/contracts/types';
 import { describe, expect, it } from 'vitest';
-import { constrainMemoryCompanion } from '../../src/fleet/memory-companion-policy.js';
+import {
+  constrainMemoryCompanion,
+  memoryCompanionTools,
+} from '../../src/fleet/memory-companion-policy.js';
 
 describe('Memory Companion role overrides', () => {
-  it('reapplies read-only grants and hard ceilings after system-role widening', () => {
+  it('reapplies read-only grants while honoring explicit budgets after system-role widening', () => {
     const merged = applyProjectAgentConfig(
       { name: 'Memory Companion', tools: ['read'], allowedCapabilities: ['fs.read'] },
       {
@@ -25,16 +29,55 @@ describe('Memory Companion role overrides', () => {
     expect(limited.tools).not.toContain('memory_update');
     expect(limited.tools).not.toContain('session_note');
     expect(limited).toMatchObject({
-      maxIterations: 8,
-      maxToolCalls: 12,
-      maxTokens: 64000,
-      maxCostUsd: 0.15,
-      timeoutMs: 60000,
+      maxIterations: 9000,
+      maxToolCalls: 9000,
+      maxTokens: 999999,
+      maxCostUsd: 100,
+      timeoutMs: 3600000,
       sealed: true,
       gracefulFinish: false,
       spawnBudgetExempt: true,
       textStream: 'silent',
       toolStream: 'silent',
     });
+  });
+
+  it('provides sustained review headroom and rejects mutating navigation tools', () => {
+    const config = constrainMemoryCompanion({ name: 'Memory Companion' });
+    expect(config).toMatchObject({
+      maxIterations: 30_000,
+      maxToolCalls: 80_000,
+      maxTokens: 10_000_000,
+      maxCostUsd: 200,
+      timeoutMs: 18_000_000,
+    });
+    for (const name of [
+      'codebase-context',
+      'codebase-read-symbol',
+      'codebase-incoming-calls',
+      'codebase-outgoing-calls',
+      'codebase-impact-analysis',
+      'tree',
+      'codebase-repo-map',
+      'codebase-stats',
+    ]) {
+      expect(config.tools).toContain(name);
+    }
+    const tools = memoryCompanionTools(
+      [
+        { name: 'codebase-context', mutating: false },
+        { name: 'read', mutating: true },
+        { name: 'bash', mutating: false },
+      ].map(
+        (tool): Tool => ({
+          ...tool,
+          description: tool.name,
+          inputSchema: { type: 'object', properties: {} },
+          permission: 'auto',
+          execute: async () => '',
+        }),
+      ),
+    );
+    expect(tools.map((tool) => tool.name)).toEqual(['codebase-context', 'submit_result']);
   });
 });

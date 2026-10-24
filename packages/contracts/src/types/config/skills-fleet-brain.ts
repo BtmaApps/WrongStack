@@ -345,9 +345,9 @@ export interface ExploreCompanionConfig {
     | undefined;
   /** Discard queued automatic probes older than this. Default 120000. Explicit asks survive. */
   maxProbeAgeMs?: number | undefined;
-  /** Hard host deadline per probe, including assignment. Default 120000. */
+  /** Hard host deadline per probe, including assignment. Defaults to the role timeout or 18000000. */
   probeTimeoutMs?: number | undefined;
-  /** Runtime tool-call ceiling for each probe. Default 16. */
+  /** Explicit tool-call/iteration ceiling per probe. Omitted: inherit role budgets (300000/100000). */
   maxToolCallsPerProbe?: number | undefined;
   /** Maximum characters forwarded to the leader per result. Default 1800. */
   maxFindingsChars?: number | undefined;
@@ -363,15 +363,15 @@ export interface SkillCompanionConfig {
    * `off` keeps the note only.
    */
   enforce?: 'speed-bump' | 'off' | undefined;
-  /** Judged probes per conversation. Default 8. */
+  /** Judged probes per conversation. Default 640. */
   maxProbesPerSession?: number | undefined;
   /** Minimum self-reported confidence (0..1) a pick needs. Default 0.6. */
   minConfidence?: number | undefined;
-  /** Host and worker deadline per probe. Default 300000; larger values are honored. */
+  /** Host and worker deadline per probe. Default 18000000; larger values are honored. */
   probeTimeoutMs?: number | undefined;
   /**
    * Skills offered to the judge per probe, after eligibility filtering and
-   * lexical ranking against the work (best overlap first). Default 80.
+   * lexical ranking against the work (best overlap first). Default 256.
    */
   maxCandidates?: number | undefined;
   /**

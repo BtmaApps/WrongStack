@@ -73,13 +73,11 @@ const SHADOW_AGENT: SubagentConfig = cloneWithLazyPrompt(defineAgent('shadow-age
  * to edit; the companion should say who breaks. File tools are fallbacks
  * when the index is cold or the probe needs a cited `file:line`.
  *
- * Every schema here is paid on every request of every probe, so the list is
- * the smallest set that answers "where is it, who uses it, what breaks":
+ * Source navigation includes bounded repository surveys when a probe needs
+ * orientation. Tools that leave source discovery remain excluded:
  *   - `search` — web search, not codebase search
  *   - `mailbox` — cross-session mail; same-session talk is `session_note`
  *     (injected by the host, like `submit_result`)
- *   - `tree`, `codebase-repo-map`, `codebase-stats` — orientation surveys;
- *     a probe names its subject, and they were the widest outputs it read
  */
 export const EXPLORE_COMPANION_TOOLS: readonly string[] = [
   'codebase-search',
@@ -89,6 +87,9 @@ export const EXPLORE_COMPANION_TOOLS: readonly string[] = [
   'codebase-incoming-calls',
   'codebase-outgoing-calls',
   'codebase-impact-analysis',
+  'tree',
+  'codebase-repo-map',
+  'codebase-stats',
   'read',
   'grep',
   'glob',
@@ -128,8 +129,6 @@ export const EXPLORE_COMPANION_AGENT: SubagentConfig = cloneWithLazyPrompt(
       'codebase-ast-replace',
       'codebase-invariant-check',
       'codebase-targeted-test',
-      'tree',
-      'codebase-repo-map',
     ],
     allowedCapabilities: [
       ToolCapabilities.FS_READ,
@@ -284,13 +283,12 @@ export const FLEET_ROSTER_BUDGETS: Record<string, FleetRosterBudget> = {
     maxCostUsd: 0.5,
   },
   'explore-companion': {
-    // One narrow probe per task. The host lean prompt is ~6k tokens, so eight
-    // requests fit well under the token cap without a mid-probe negotiation.
+    // Let the read-only probe finish its lookup. Sealed companions cannot
+    // negotiate extensions, so tiny per-probe quotas discard useful work.
+    // Keep generous exploration backstops; explicit project budgets still win.
     idleTimeoutMs: DEFAULT_IDLE_TIMEOUT_MS,
-    maxIterations: 8,
-    maxToolCalls: 16,
-    maxTokens: 80_000,
-    maxCostUsd: 0.15,
+    maxIterations: 100_000,
+    maxToolCalls: 300_000,
   },
   'chaos-monkey': {
     // A mutation pass is many short apply/run/restore cycles — per-mutant

@@ -1,6 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { existsSync, statSync } from 'node:fs';
 import * as path from 'node:path';
+import {
+  applyProjectAgentConfig,
+  buildProjectContextualizedPrompt,
+  loadProjectAgentConfig,
+} from '@wrongstack/agent-catalog';
 import { EventBus, TOKENS } from '@wrongstack/contracts/kernel';
 import type {
   Config,
@@ -12,19 +17,6 @@ import type {
   Tool,
 } from '@wrongstack/contracts/types';
 import {
-  Agent,
-  Context,
-  createDefaultPipelines,
-  createFallbackModelExtension,
-  renderInstructionLayer,
-  SEALED_AGENT_META_KEY,
-} from '@wrongstack/core/agent';
-import {
-  applyProjectAgentConfig,
-  buildProjectContextualizedPrompt,
-  loadProjectAgentConfig,
-} from '@wrongstack/agent-catalog';
-import {
   type AgentFactory,
   DEFAULT_SUBAGENT_BASELINE,
   type DirectorSessionFactory,
@@ -33,6 +25,14 @@ import {
   type MailboxAgentStatus,
   resolveSubagentModelTarget,
 } from '@wrongstack/coordination';
+import {
+  Agent,
+  Context,
+  createDefaultPipelines,
+  createFallbackModelExtension,
+  renderInstructionLayer,
+  SEALED_AGENT_META_KEY,
+} from '@wrongstack/core/agent';
 import { installDesignStudioMiddleware, installDesignTurnGate } from '@wrongstack/core/design';
 import {
   createModelRuntimeMiddleware,
@@ -466,10 +466,7 @@ export function createHostSubagentFactory(
       iterationTimeoutMs: config.tools?.iterationTimeoutMs ?? 120_000,
       maxToolTimeoutMs: config.tools?.maxToolTimeoutMs ?? 300_000,
       perIterationOutputCapBytes: exploreCompanion
-        ? Math.min(
-            config.tools?.perIterationOutputCapBytes ?? EXPLORE_COMPANION_OUTPUT_CAP_BYTES,
-            EXPLORE_COMPANION_OUTPUT_CAP_BYTES,
-          )
+        ? (config.tools?.perIterationOutputCapBytes ?? EXPLORE_COMPANION_OUTPUT_CAP_BYTES)
         : (config.tools?.perIterationOutputCapBytes ?? 100_000),
       tracer: host.deps.tracer,
       // Kanban tracks work; it does not gate it. Off unless the operator opts

@@ -106,9 +106,9 @@ Failures do not break the leader, and failed tasks are not published as findings
 
 The allowlist is index discovery (`codebase-search`, `codebase-context`,
 skeleton, read-symbol, incoming/outgoing calls), read-only impact analysis, and
-`read` / `grep` / `glob` fallbacks. Orientation surveys (`tree`,
-`codebase-repo-map`, `codebase-stats`) are excluded: a probe names its subject,
-and every schema is paid on every request. Capabilities are `FS_READ`,
+`read` / `grep` / `glob` fallbacks. Bounded orientation surveys (`tree`,
+`codebase-repo-map`, `codebase-stats`) are available when the question requires
+repository context. Capabilities are `FS_READ`,
 `COORDINATION_RESULT_SUBMIT`, and `SESSION_NOTE`. Mutation, shell, web search,
 reindexing, code replacement, test execution, and nested delegation are absent
 or explicitly disabled. The resident has no mailbox-send tool.
@@ -124,14 +124,15 @@ guides, skill bodies and project addenda, SAGE role memory, the consolidated
 role document, and the `## LEARNED` capture brief (so no learning capture or
 consolidation pass is scheduled for it). Project role overrides cannot widen
 its tools or re-add skills; the policy is reapplied after them. Tool output
-per step is capped at 24,000 bytes (`tools.perIterationOutputCapBytes` can only
-lower it), since every byte is re-sent on each later request of the probe.
+per step defaults to 100,000 bytes; `tools.perIterationOutputCapBytes` can
+override it in either direction.
 `explore-companion-factory.test.ts` builds a real worker through the factory
 and asserts this prompt.
 
 Measured first-request context before the change: 20–28k tokens (median
 27.4k), against a median of five requests per probe — about 143k input tokens
-per probe. The lean prompt plus the ten tool schemas measures ~3.6k tokens.
+per probe. The former ten-tool surface measured ~3.6k tokens with the lean
+prompt; the expanded thirteen-tool surface has not been measured live.
 
 Assignments carry JSON `{probe, hint?, context?, scope}`. The scope and prompt
 permit following direct callers/imports/tests when needed for the question,
@@ -142,7 +143,8 @@ The prompt requires current `file:line` evidence, separation of fact/inference,
 honest negative searches, and source confirmation of stale index hints.
 Repository text is evidence, not task authority. After two unproductive search
 variants it calls for one targeted fallback and a report of the limit.
-A typical probe takes 2–4 tool calls and never more than six steps.
+The worker continues source navigation until the question is supported or its
+runtime budget expires; the prompt adds no separate six-step ceiling.
 
 Results use `summary` (one sentence), at most five `findings[]` written as
 `path:line — fact`, `files_examined[]`, `confidence`, and at most one
@@ -168,13 +170,14 @@ and WebUI host. Omitted signals remain enabled for compatibility. Set
 | `pollIntervalMs` | `5000` | Explicit-ask polling |
 | `signals` | All six enabled | Independent trigger switches |
 | `maxProbeAgeMs` | `120000` | Automatic queue freshness |
-| `probeTimeoutMs` | `120000` | Hard host deadline including spawn/assignment |
-| `maxToolCallsPerProbe` | `16` | Initial runtime tool-call/iteration ceiling, respecting lower roster ceilings |
+| `probeTimeoutMs` | Role timeout or `18000000` | Hard host deadline including spawn/assignment |
+| `maxToolCallsPerProbe` | Role budgets (`300000` tools / `100000` iterations) | Explicit value overrides both ceilings |
 | `maxFindingsChars` | `1800` | Host-forwarded body after scrubbing |
 
-Roster defaults are 8 iterations, 16 tool calls, 80,000 tokens and $0.15 per
-probe. Runtime
-budget policy can negotiate extensions; the host deadline remains independent.
+Roster defaults are 100,000 iterations and 300,000 tool calls, with no implicit
+token or dollar quota per probe. Explicit role token and cost limits remain
+effective. Sealed companions cannot negotiate budget extensions; the host
+deadline remains independent and defaults to five hours.
 `spawnBudgetExempt` exempts deliberate-delegation accounting, not provider cost.
 Distinct subjects can still produce many probes in a long session. This adds
 no session-wide cost quota and makes no measured token-saving claim. Fleet-wide
@@ -186,8 +189,7 @@ ceilings still apply. Invalid numeric inputs fall back to usable defaults.
     "exploreCompanion": {
       "signals": { "unfamiliarRead": false },
       "maxPending": 4,
-      "probeTimeoutMs": 120000,
-      "maxToolCallsPerProbe": 16,
+      "probeTimeoutMs": 18000000,
       "maxFindingsChars": 1800
     }
   }
@@ -196,12 +198,12 @@ ceilings still apply. Invalid numeric inputs fall back to usable defaults.
 
 ## Sources and verification
 
-- Observer/policy: `packages/core/src/coordination/explore-companion.ts` and
+- Observer/policy: `packages/coordination/src/explore-companion.ts` and
   `explore-probe-policy.ts`.
 - Host/registry: `packages/cli/src/fleet/host-explore-companion.ts`,
   `host-explore-companion-registry.ts`, and `host.ts`.
-- Role/tools/budgets: `packages/core/src/coordination/fleet.ts`.
-- Prompt: `packages/core/instructions/agents/explore-companion.md`.
+- Role/tools/budgets: `packages/coordination/src/fleet.ts`.
+- Prompt: `packages/agent-catalog/instructions/agents/explore-companion.md`.
 - Settings: `packages/core/src/types/config/skills-fleet-brain.ts`.
 - Tests: core `explore-companion.test.ts`, `explore-companion-lifecycle.test.ts`,
   CLI `host-explore-companion.test.ts`, and `explore-companion-registry.test.ts`.

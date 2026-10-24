@@ -1,7 +1,7 @@
 import type { SubagentConfig, TextBlock } from '@wrongstack/contracts/types';
 import { DEFAULT_EXPLORE_COMPANION_AGENT_ID, FLEET_ROSTER } from '@wrongstack/coordination';
 
-export const EXPLORE_COMPANION_ID_PREFIX = `${DEFAULT_EXPLORE_COMPANION_AGENT_ID}-`;
+const EXPLORE_COMPANION_ID_PREFIX = `${DEFAULT_EXPLORE_COMPANION_AGENT_ID}-`;
 
 /**
  * The host-spawned resident (`createHostExploreCompanion`), not any spawn that
@@ -17,10 +17,10 @@ export function isExploreCompanion(config: SubagentConfig): boolean {
 
 /**
  * Tool-output bytes one probe step may add to its context. Every byte is
- * re-sent on each later request of the probe; a narrow lookup that needs more
- * than ~7k tokens of raw output in one step is asking the wrong question.
+ * re-sent on each later request of the probe. Match the ordinary worker
+ * default so repository maps and source excerpts have room to be useful.
  */
-export const EXPLORE_COMPANION_OUTPUT_CAP_BYTES = 24_000;
+export const EXPLORE_COMPANION_OUTPUT_CAP_BYTES = 100_000;
 
 /** Reapply the read-only, skill-free surface AFTER project role overrides. */
 export function constrainExploreCompanion(config: SubagentConfig): SubagentConfig {
