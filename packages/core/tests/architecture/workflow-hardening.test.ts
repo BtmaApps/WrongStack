@@ -349,6 +349,19 @@ describe('website CI and Pages verification', () => {
     }
   });
 
+  it('audits the website npm lockfile instead of re-auditing the root lockfile', () => {
+    const audit = jobBlock(withoutComments(read('ci.yml')), 'audit');
+    // The root dependency tree keeps the shared bun-based audit.
+    expect(audit).toContain('run: bun scripts/audit-dependencies.mjs --audit-level=moderate');
+    // website/ is a workspace member, so `bun audit` run there resolves the
+    // WORKSPACE ROOT's bun.lock — the step then re-audited the root tree and
+    // website/package-lock.json was never checked. The website step must
+    // therefore run npm against website/'s own lockfile.
+    expect(audit).toMatch(
+      /- name: Audit website lockfile \(npm\)\n\s+working-directory: website\n\s+run: npm audit --audit-level=moderate --workspaces=false/,
+    );
+  });
+
   it('verifies Pages with workspace dependencies in a separate read-only job', () => {
     const verify = jobBlock(withoutComments(read('pages.yml')), 'website-checks');
     expect(verify).toMatch(/^ {4}permissions:\n {6}contents: read$/m);

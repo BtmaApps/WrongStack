@@ -970,8 +970,15 @@ jobs:
 
       # VF-35: website/ resolves from its own npm package-lock.json — audit
       # it here too so PR-time coverage matches the weekly audit workflow.
+      #
+      # This step used to run the ROOT audit a second time: `bun audit` inside
+      # a workspace member resolves the WORKSPACE ROOT's bun.lock, so
+      # website/package-lock.json was never read (it carried an un-audited
+      # high-severity advisory). npm reads the npm lockfile, and
+      # --workspaces=false stops npm from resolving the root workspace.
       - name: Audit website lockfile (npm)
-        run: bun scripts/audit-dependencies.mjs --audit-level=moderate
+        working-directory: website
+        run: npm audit --audit-level=moderate --workspaces=false
 
   # Composite gate so branch-protection rules can require a single
   # status check rather than listing every job individually.
