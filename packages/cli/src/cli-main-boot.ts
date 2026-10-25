@@ -10,6 +10,7 @@ import { flagsToConfigPatch } from '@wrongstack/core/boot';
 import { DefaultConfigLoader } from '@wrongstack/core/storage';
 import { writeErr } from '@wrongstack/core/utils';
 import { setProxyTransitionLogger } from '@wrongstack/core/wiring/proxy-rewrite';
+import { createMemoryCuratorLlmCall } from '@wrongstack/sage';
 import { resolveModeAndCapabilities } from './boot/system-prompt.js';
 import type { CliContext } from './cli-context.js';
 import { setupInitialCliTools } from './cli-initial-tools.js';
@@ -366,20 +367,32 @@ export async function bootCliRuntime(cliCtx: CliContext, state: CliConfigState) 
     logger,
   });
 
+  const wrapProviderCall: NonNullable<
+    import('@wrongstack/contracts/types').OneShotOrchestratorOptions['wrapProviderCall']
+  > = (request, inner) =>
+    agent.extensions.wrapProviderRunner(
+      (_ctx: typeof agent.ctx, wrappedRequest: import('@wrongstack/contracts/types').Request) =>
+        inner(wrappedRequest),
+      { exclude: ['fallback-model'] },
+    )(agent.ctx, request);
   registerProviderUtilityTools({
     toolRegistry,
     buildProvider: buildProviderForId,
     getConfig: () => state.config,
     fallbackProfileManager,
     statusTracker,
-    wrapProviderCall: (request, inner) =>
-      agent.extensions.wrapProviderRunner(
-        (_ctx: typeof agent.ctx, wrappedRequest: import('@wrongstack/contracts/types').Request) =>
-          inner(wrappedRequest),
-        { exclude: ['fallback-model'] },
-      )(agent.ctx, request),
+    wrapProviderCall,
     compactor: container.resolve(TOKENS.Compactor),
     modelsRegistry,
+  });
+  // SAGE background passes (daily consolidation, triage) on the
+  // `memory-curator` route, through the same provider chain as one-shot tools.
+  const memoryCuratorLlm = createMemoryCuratorLlmCall({
+    buildProvider: buildProviderForId,
+    getConfig: () => state.config,
+    fallbackProfileManager,
+    statusTracker,
+    wrapProviderCall,
   });
 
   return {
@@ -405,6 +418,7 @@ export async function bootCliRuntime(cliCtx: CliContext, state: CliConfigState) 
     healthRegistry,
     hqPublisherRef,
     mcpRegistry,
+    memoryCuratorLlm,
     memoryStore,
     metricsSink,
     metricsStatus,

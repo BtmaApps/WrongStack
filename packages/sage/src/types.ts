@@ -144,6 +144,9 @@ export interface MemoryCandidate {
   reviewReason?: string | undefined;
   /** Advisory suggested action (typed successor of the legacy `suggested:` tag prefix). */
   suggestedAction?: CandidateSuggestedAction | undefined;
+  /** Consolidation: members the lesson supersedes on accept, if still at these revisions. */
+  supersedesMemoryIds?: string[] | undefined;
+  supersedesRevisions?: number[] | undefined;
 }
 
 export interface SessionConsolidationInput {
@@ -381,6 +384,9 @@ export type CreateCandidateInput = Omit<
   reviewReason?: string | undefined;
   /** Advisory suggested action (typed successor of the legacy `suggested:` tag prefix). */
   suggestedAction?: CandidateSuggestedAction | undefined;
+  /** Consolidation proposal members (see {@link MemoryCandidate.supersedesMemoryIds}). */
+  supersedesMemoryIds?: string[] | undefined;
+  supersedesRevisions?: number[] | undefined;
 };
 
 /** Outcome of resolving a review candidate (the redesign contract's decision path). */
@@ -389,9 +395,10 @@ export type CandidateDecision = 'delete' | 'archive' | 'keep';
 /**
  * Advisory action a review proposal suggests (typed successor of the legacy
  * `suggested:` tag prefix). The resolver's `CandidateDecision` remains the
- * authoritative outcome; `'investigate'`/`'update'` are advisory-only.
+ * authoritative outcome; `'investigate'`/`'update'` are advisory-only, and
+ * `'consolidate'` marks an add-proposal that also retires the members it replaces.
  */
-export type CandidateSuggestedAction = CandidateDecision | 'investigate' | 'update';
+export type CandidateSuggestedAction = CandidateDecision | 'investigate' | 'update' | 'consolidate';
 
 export interface MemoryCandidateResolution {
   candidateId: string;

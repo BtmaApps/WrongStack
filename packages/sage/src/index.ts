@@ -1,5 +1,9 @@
 export { verifyMemoryAnchors } from './anchors/verify.js';
 export {
+  createMemoryCuratorLlmCall,
+  type MemoryCuratorLlmDeps,
+} from './consolidation/curator-llm.js';
+export {
   formatSageDoctorReport,
   parseDoctorFixArg,
   suggestedDoctorFixes,

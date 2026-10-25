@@ -62,6 +62,8 @@ interface SqliteAcceptCandidateContext extends SqliteRejectCandidateContext {
     sources: MemoryCandidate['sources'];
     validity?: MemoryCandidate['validity'];
   }) => Promise<Sage>;
+  /** Retires consolidation members; absent on hosts that cannot update. */
+  updateSage?: (id: string, input: UpdateSageInput) => Promise<Sage>;
 }
 
 export function addSqliteCandidate(ctx: SqliteCandidateContext, candidate: MemoryCandidate): void {
@@ -105,6 +107,7 @@ export function createSqliteCandidate(
       'SAGE targetRevision requires a targetMemoryId and a positive integer revision.',
     );
   }
+  const supersedes = validateSupersedes(input);
   const text = normalizeText(input.text);
   if (!text) throw new Error('SAGE candidate text must not be empty.');
   const scope = input.scope ?? 'project';
@@ -154,11 +157,71 @@ export function createSqliteCandidate(
       ...(input.targetRevision !== undefined ? { targetRevision: input.targetRevision } : {}),
       ...(input.reviewReason ? { reviewReason: input.reviewReason } : {}),
       ...(input.suggestedAction ? { suggestedAction: input.suggestedAction } : {}),
+      ...(supersedes
+        ? { supersedesMemoryIds: supersedes.ids, supersedesRevisions: supersedes.revisions }
+        : {}),
     };
     ctx.upsertCandidate(candidate, key);
     ctx.audit('memory.candidate_created', { details: { candidateId: candidate.id } });
     return candidate;
   });
+}
+
+const MAX_SUPERSEDED_MEMBERS = 50;
+
+function validateSupersedes(
+  input: CreateCandidateInput,
+): { ids: string[]; revisions: number[] } | undefined {
+  const ids = input.supersedesMemoryIds;
+  const revisions = input.supersedesRevisions;
+  if (ids === undefined && revisions === undefined) return undefined;
+  if (
+    !Array.isArray(ids) ||
+    !Array.isArray(revisions) ||
+    ids.length === 0 ||
+    ids.length !== revisions.length ||
+    ids.length > MAX_SUPERSEDED_MEMBERS ||
+    new Set(ids).size !== ids.length ||
+    ids.some((id) => typeof id !== 'string' || !id || id.length > 200) ||
+    revisions.some((revision) => !Number.isSafeInteger(revision) || revision < 1)
+  ) {
+    throw new Error(
+      `SAGE supersedesMemoryIds needs 1-${MAX_SUPERSEDED_MEMBERS} distinct ids with one positive integer revision each.`,
+    );
+  }
+  return { ids: [...ids], revisions: [...revisions] };
+}
+
+/**
+ * Retire the members a consolidation proposal replaces. A member is only
+ * superseded while it is still active at the revision that was distilled: one
+ * edited, retired or deleted since keeps its own lifecycle.
+ */
+async function retireConsolidatedMembers(
+  ctx: SqliteAcceptCandidateContext,
+  candidate: MemoryCandidate,
+  keeperId: string,
+): Promise<string[]> {
+  const ids = candidate.supersedesMemoryIds ?? [];
+  const revisions = candidate.supersedesRevisions ?? [];
+  if (!ctx.updateSage || ids.length === 0 || ids.length !== revisions.length) return [];
+  const retired: string[] = [];
+  for (const [index, id] of ids.entries()) {
+    if (id === keeperId) continue;
+    const current = readSqliteSageRow(ctx.stmt, id);
+    if (current?.status !== 'active' || current.revision !== revisions[index]) continue;
+    try {
+      await ctx.updateSage(id, {
+        status: 'superseded',
+        supersededBy: keeperId,
+        expectedRevision: current.revision,
+      });
+      retired.push(id);
+    } catch {
+      // A concurrent edit won the revision race: that member stays as it is.
+    }
+  }
+  return retired;
 }
 
 export function acceptSqliteCandidate(
@@ -251,9 +314,10 @@ export function acceptSqliteCandidate(
           candidateId,
         ),
       );
+      const retired = await retireConsolidatedMembers(ctx, candidate, memory.id);
       ctx.audit('memory.candidate_accepted', {
         memoryId: memory.id,
-        details: { candidateId },
+        details: { candidateId, ...(retired.length > 0 ? { superseded: retired } : {}) },
       });
       return memory;
     },

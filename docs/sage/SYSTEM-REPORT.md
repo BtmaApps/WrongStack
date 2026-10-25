@@ -484,6 +484,19 @@ Scheduled by `setupSage` (1 hour after boot, then every 24h):
 3. **File** review proposals via `fileTriageProposals` (deduped against pending candidates) — does **not** auto-apply status mutations
 4. Optional `getLlmCall()` for real LLM gray-zone/merge; otherwise neutral stub (`'3'`)
 
+
+### 8.9 Daily consolidation (`Sage.consolidate`, default on)
+
+Code: `packages/sage/src/consolidation/`. Hosts that pass `getLlmCall` to `setupSage` (the CLI, via `createMemoryCuratorLlmCall`) schedule it; the standalone WebUI server does not yet.
+
+1. **When:** at most once a day per project, only after the host's session has been idle 10 minutes. State and an exclusive lock live in `hygiene/consolidation.json` / `consolidation.lock`, so one of several hosts does the pass.
+2. **Pool (no LLM):** active project/file/symbol memories with a file/symbol/test anchor that are progress logs (`shared/progress-log.ts`) or aged out of injection (`shared/injection-recency.ts`); never permanent, importance ≥ 0.9, audience-scoped, or already under a consolidation proposal (rejected ones cool down 90 days).
+3. **Batches:** grouped by shared anchor path, then by a ≥4-segment directory; ≤12 members and ≤12k chars each, largest first. A batch whose path no longer exists is skipped.
+4. **Distill:** the `memory-curator` model route (`/setmodel memory-curator …`, else the session model) returns at most one lesson per batch, through the host's provider chain. Default budget: 20 calls per pass.
+5. **Grounding gate:** ≥2 real member sources, anchors copied from them, a lesson kind, and text that is neither a progress log nor ephemeral chatter. Anything else is dropped.
+6. **Proposal:** an add-candidate with `suggestedAction: 'consolidate'`, `supersedesMemoryIds` and their revisions. Accepting it writes the lesson and supersedes each member that is still active at the distilled revision.
+7. **Auto-accept:** the daemon's maintenance pass accepts proposals nobody rejected within 7 days (`consolidation/auto-accept.ts`).
+
 ---
 
 ## 9. Lifecycle: hygiene, triage, recovery

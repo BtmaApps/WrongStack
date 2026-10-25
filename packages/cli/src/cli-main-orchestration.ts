@@ -82,6 +82,7 @@ export async function wireCliOrchestration(
     dwCfg,
     statusTracker,
     buildProviderForId,
+    memoryCuratorLlm,
   } = boot;
   const directorAutonomy = setupDirectorAndAutonomy({
     flags,
@@ -422,6 +423,7 @@ export async function wireCliOrchestration(
     toolRegistry,
     flags,
     onEvent: evOn,
+    memoryCuratorLlm,
   });
 
   const savedProviderCfg = state.config.providers?.[state.config.provider];

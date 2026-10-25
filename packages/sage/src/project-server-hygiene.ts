@@ -18,6 +18,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { atomicWrite } from '@wrongstack/core/utils';
+import { acceptDueConsolidations } from './consolidation/auto-accept.js';
 import type { SageDoctorCheck, SageMaintenanceStatus } from './memory-doctor-types.js';
 import type { SageHygieneOptions, SageHygieneReport } from './memory-hygiene-types.js';
 import type { CompleteSageStore } from './project-server-options.js';
@@ -144,6 +145,17 @@ export function createHygieneRunner(
     } catch (error) {
       log(
         `sage maintenance: hygiene failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+    try {
+      // Consolidation proposals nobody rejected within the review window.
+      const due = await acceptDueConsolidations(store, now());
+      if (due.accepted.length > 0 || due.failed > 0) {
+        log(`sage maintenance: consolidation accepted=${due.accepted.length} failed=${due.failed}`);
+      }
+    } catch (error) {
+      log(
+        `sage maintenance: consolidation auto-accept failed: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
     try {

@@ -33,6 +33,8 @@ interface RuntimeDispatchStateInput {
   toolRegistry: ToolRegistry;
   flags: Record<string, string | boolean>;
   onEvent: (event: string, handler: (payload: unknown) => void) => void;
+  /** `memory-curator` model transport for SAGE consolidation and triage. */
+  memoryCuratorLlm?: import('@wrongstack/sage').LlmCallFn | undefined;
 }
 
 export async function prepareRuntimeDispatch(input: RuntimeDispatchStateInput) {
@@ -44,6 +46,7 @@ export async function prepareRuntimeDispatch(input: RuntimeDispatchStateInput) {
     events: input.events,
     getSessionId: () => input.agent.ctx.session.id,
     projectRoot: input.projectRoot,
+    getLlmCall: () => input.memoryCuratorLlm,
   });
   // Opt-in, and a no-op unless `skills.suggest.enabled` is on AND a TypeSafe
   // key is present. Installed after SAGE so the suggestion block lands after

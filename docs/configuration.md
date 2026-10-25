@@ -2623,6 +2623,8 @@ SQLite is the only runtime backend and needs no engine configuration. On first o
 | `Sage.capture.toolOutcomes` | `boolean` | `false` | Opt-in: auto-remember successful command tool outcomes. |
 | `Sage.capture.errorPatterns` | `boolean` | `false` | Opt-in: auto-remember error signatures from failed tools. |
 | `Sage.triage.dailyDryRun` | `boolean` | `false` | Hint for hosts to schedule a daily triage dry-run via cron when available. |
+| `Sage.consolidate.enabled` | `boolean` | `true` | Daily idle pass (CLI/TUI hosts): the `memory-curator` model distills groups of progress logs and aged-out notes into one lesson each, filed as a review proposal; unrejected proposals are applied after 7 days (members become `superseded`, reversible). |
+| `Sage.consolidate.maxCallsPerDay` | `number` | `20` | Model calls per daily consolidation pass. |
 
 > **Migration is automatic.** Existing JSONL records migrate to SQLite on first launch. The original JSONL files remain unchanged as a recovery backup. Configs written before the SAGE rename keep working too: a legacy top-level `superMemory` key is migrated into `Sage` on load (explicit `Sage` values win on conflict).
 

@@ -452,4 +452,19 @@ export interface SageConfig {
         dailyDryRun?: boolean | undefined;
       }
     | undefined;
+  /**
+   * Daily consolidation: once a day, while the host is idle, the
+   * `memory-curator` model distills groups of progress logs and aged-out notes
+   * into one durable lesson each and files it as a review proposal. A proposal
+   * nobody rejects within 7 days is applied (members become `superseded`,
+   * reversible). Default: on when the host can call a model.
+   */
+  consolidate?:
+    | {
+        /** Default: true. */
+        enabled?: boolean | undefined;
+        /** Model calls per daily pass. Default: 20. */
+        maxCallsPerDay?: number | undefined;
+      }
+    | undefined;
 }

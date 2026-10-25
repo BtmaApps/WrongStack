@@ -44,9 +44,9 @@
       "runtimeOrMixed": 15
     },
     "@wrongstack/core/execution": {
-      "files": 103,
-      "typeOnly": 24,
-      "runtimeOrMixed": 94
+      "files": 104,
+      "typeOnly": 25,
+      "runtimeOrMixed": 95
     },
     "@wrongstack/core/execution/refine-decisions": {
       "files": 2,
@@ -3858,6 +3858,12 @@
       "specifier": "@wrongstack/core/execution",
       "file": "packages/runtime/src/jev-checks.ts",
       "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/execution",
+      "file": "packages/sage/src/consolidation/curator-llm.ts",
+      "typeOnly": 1,
       "runtimeOrMixed": 1
     },
     {

@@ -12,6 +12,8 @@ import type { EventBus } from '@wrongstack/contracts/kernel';
 import type { Config, Logger, MemoryPort } from '@wrongstack/contracts/types';
 import type { AgentPipelines } from '@wrongstack/core/agent';
 import { resolveTypeSafeJudge } from '@wrongstack/core/typesafe';
+import { DEFAULT_CONSOLIDATION_CALLS } from './consolidation/run.js';
+import { scheduleConsolidation } from './consolidation/schedule.js';
 import { getSageRetrieval, getSageSurface } from './memory-port.js';
 import { createSageContextMonitorMiddleware } from './middleware/context-monitor.js';
 import { createSageDomainTermExtractorMiddleware } from './middleware/domain-term-extractor-middleware.js';
@@ -22,6 +24,7 @@ import { createSagePathRemapMiddleware } from './middleware/path-remap.js';
 import { subscribeSessionEndCommitExtractor } from './middleware/session-end-commit-extractor.js';
 import { createSageToolCallMiddleware } from './middleware/tool-call-memory.js';
 import { createSageTurnMiddleware } from './middleware/turn-memory.js';
+import { resolveSagePaths } from './paths.js';
 import { createSystemOneRecallFilter } from './retrieval/system-one-recall.js';
 import { fileTriageProposals } from './shared/file-proposals.js';
 import type { LlmCallFn } from './triage/llm-evaluator.js';
@@ -45,9 +48,10 @@ export interface SageHostWiringDeps {
    */
   projectRoot?: string | undefined;
   /**
-   * Optional LLM transport for the daily triage pass. When omitted, triage
-   * still runs phases 1–2 (pre-filter + value score) with a neutral LLM stub
-   * for gray-zone / merge phases, then files any proposals.
+   * Optional LLM transport (the `memory-curator` route) for the background
+   * passes: daily consolidation, and the daily triage. Without it there is no
+   * consolidation, and triage runs phases 1–2 (pre-filter + value score) with
+   * a neutral LLM stub for gray-zone / merge phases, then files any proposals.
    */
   getLlmCall?: (() => LlmCallFn | undefined) | undefined;
 }
@@ -408,7 +412,34 @@ export function setupSage(deps: SageHostWiringDeps): () => Promise<void> {
     }, 60 * 60_000);
   }
 
+  // Daily consolidation (idle, once per project per day, review-then-apply).
+  let disposeConsolidation: (() => void) | undefined;
+  const consolidationSurface = getSageSurface(memoryStore);
+  if (
+    cfg?.consolidate?.enabled !== false &&
+    deps.getLlmCall &&
+    deps.projectRoot &&
+    consolidationSurface
+  ) {
+    try {
+      disposeConsolidation = scheduleConsolidation({
+        surface: consolidationSurface,
+        getLlmCall: deps.getLlmCall,
+        stateDir: resolveSagePaths(deps.projectRoot, cfg?.storage?.directory).hygieneDir,
+        projectRoot: deps.projectRoot,
+        maxCalls: cfg?.consolidate?.maxCallsPerDay ?? DEFAULT_CONSOLIDATION_CALLS,
+        logger: deps.logger,
+        events: deps.events,
+      });
+    } catch (error) {
+      deps.logger.debug(
+        `sage consolidation not scheduled: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+
   return async () => {
+    disposeConsolidation?.();
     offInjectorRuns?.();
     if (dailyFirst !== undefined) clearTimeout(dailyFirst);
     if (dailyInterval !== undefined) clearInterval(dailyInterval);
