@@ -103,7 +103,7 @@ When running `/autonomy` with no args in the CLI REPL, shows:
 
 - `packages/cli/src/slash-commands/autonomy.ts` — slash command
 - `packages/core/src/execution/eternal-autonomy.ts` — `EternalAutonomyEngine`
-- `packages/core/src/execution/parallel-eternal-engine.ts` — `ParallelEternalEngine`
+- `packages/coordination/src/parallel-eternal-engine.ts` — `ParallelEternalEngine`
 - `packages/core/src/storage/goal-store.ts` — goal file format
 - `packages/cli/src/slash-commands/fleet.ts` — `/fleet` slash command for fleet observability
 - `packages/tui/src/components/autonomy-picker.tsx` — TUI interactive picker

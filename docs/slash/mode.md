@@ -78,7 +78,7 @@ Active mode is stored in `modeStore` and included in the system prompt by `Defau
 ## Code reference
 
 - `packages/cli/src/slash-commands/mode.ts`
-- `packages/core/src/types/mode.ts`
+- `packages/contracts/src/types/mode.ts`
 - `packages/core/src/models/mode-store.ts`
 - `packages/core/instructions/modes/*.md`
 - `packages/core/src/core/system-prompt-builder.ts` — mode layer integration

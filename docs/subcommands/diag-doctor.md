@@ -6,7 +6,7 @@ Prints a structured snapshot of the current WrongStack environment:
 
 ```
 WrongStack diagnostics
-  apiVersion:    0.6.0
+  apiVersion:    0.1.10
   cwd:           /home/user/project
   projectRoot:   /home/user/project
   projectHash:   abc123

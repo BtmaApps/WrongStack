@@ -165,11 +165,11 @@ The `agent.message` and `agent.status` HQ event types carry the same data as the
 ## Testing
 
 ```bash
-# Run agent monitor unit tests (25 tests)
-pnpm vitest run packages/core/tests/coordination/agent-monitor.test.ts
+# Run agent monitor unit tests (36 tests)
+bun --bun run vitest run packages/coordination/tests/agent-monitor.test.ts
 
 # Run all coordination tests
-pnpm vitest run packages/core/tests/coordination/
+bun --bun run vitest run packages/coordination/tests/
 ```
 
 Test coverage: lifecycle, stream toggle, subagent tracking, text/tool routing, ring buffer cap, JSONL persistence, onEntry callback, setFleetBus, edge cases, iteration heartbeat.

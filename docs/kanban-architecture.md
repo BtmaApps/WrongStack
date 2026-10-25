@@ -136,7 +136,7 @@ Primary implementation files:
 | Standalone WebUI WS | `packages/webui-server/src/server/kanban-routes.ts` | Standalone WebUI messages |
 | Frontend store | `packages/webui/src/stores/kanban-store.ts` | Client state/actions for boards and tasks |
 | Frontend board audit | `packages/webui/src/lib/kanban-cleaner.ts` | The WebUI half of the board audit; must produce the same codes as the TUI copy |
-| HQ store | `packages/core/src/hq/kanban-store.ts` | Cross-project snapshot merge by revision then timestamp; a stale writer never wins |
+| HQ store | `packages/hq/src/kanban-store.ts` | Cross-project snapshot merge by revision then timestamp; a stale writer never wins |
 
 ---
 
@@ -942,15 +942,15 @@ Important covered behaviors:
 Recommended local verification for Kanban changes:
 
 ```bash
-pnpm --filter @wrongstack/core typecheck
-pnpm --filter @wrongstack/core build
-pnpm --filter @wrongstack/tools typecheck
-pnpm --filter @wrongstack/webui typecheck
-pnpm --filter @wrongstack/cli typecheck
-pnpm --filter @wrongstack/tui typecheck
-pnpm vitest run packages/cli/tests/kanban-slash-coverage.test.ts packages/webui-server/tests/kanban-host-routes.test.ts
-pnpm --filter @wrongstack/webui test -- tests/stores/kanban-store.test.ts
-pnpm exec biome lint packages/kanban/src/types.ts packages/kanban/src/manager.ts packages/kanban/src/storage.ts packages/tools/src/kanban.ts
+bun run --filter @wrongstack/core typecheck
+bun run --filter @wrongstack/core build
+bun run --filter @wrongstack/tools typecheck
+bun run --filter @wrongstack/webui typecheck
+bun run --filter @wrongstack/cli typecheck
+bun run --filter @wrongstack/tui typecheck
+bun --bun run vitest run packages/cli/tests/kanban-slash-coverage.test.ts packages/webui-server/tests/kanban-host-routes.test.ts
+bun run --filter @wrongstack/webui test -- tests/stores/kanban-store.test.ts
+bunx biome lint packages/kanban/src/types.ts packages/kanban/src/manager.ts packages/kanban/src/storage.ts packages/tools/src/kanban.ts
 ```
 
 Avoid running broad recursive typecheck/build commands in parallel with package

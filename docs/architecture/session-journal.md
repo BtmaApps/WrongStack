@@ -60,7 +60,7 @@ producers ──► SessionEventBridge ──► FileSessionWriter ──► .js
 
 ### Event taxonomy
 
-Two tiers, documented on `SessionEvent` in `core/src/types/session.ts`:
+Two tiers, documented on `SessionEvent` in `packages/contracts/src/types/session.ts`:
 
 | Tier | Purpose | Examples |
 |---|---|---|
@@ -118,7 +118,7 @@ looked wrong.
 messages + events
         │
         ▼
-core/src/types/session-timeline.ts  ── projectSessionTimeline()
+packages/contracts/src/types/session-timeline.ts  ── projectSessionTimeline()
         │   ordering · tool pairing · visibility  (settled ONCE)
         ▼
 SessionTimelineEntry[]   user | assistant | system | thinking | tool | marker
@@ -136,7 +136,7 @@ timestamps repeat — every block of one message shares its `ts` — and sorting
 repeated key tears tool calls away from the prose they belong to.
 
 **Wording** for markers lives one module over, in
-`core/src/types/session-markers.ts` (`sessionEventToMarker`,
+`packages/contracts/src/types/session-markers.ts` (`sessionEventToMarker`,
 `SESSION_MARKER_EVENT_TYPES`, `CHAT_MARKER_SOURCES`). Surfaces choose icon,
 colour and bubble shape; they never re-word.
 
@@ -217,7 +217,7 @@ prompt that spawned it.
 
 ## 7. HQ
 
-`core/src/hq/transcript-mapper.ts` maps **one event at a time**, because HQ's
+`packages/hq/src/transcript-mapper.ts` maps **one event at a time**, because HQ's
 live plane streams `session.transcript` frames as they arrive and cannot buffer
 a whole session. It is not a fifth ordering: its order is journal order, its
 tool pairing is `mergeToolResults`, and its marker wording comes from

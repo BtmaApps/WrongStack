@@ -83,5 +83,5 @@ The ladder deduplicates by `provider/model`, so overlap between the Chimera chai
 
 ## Code reference
 
-- `packages/core/src/plugins/chimera-plugin.ts`
+- `packages/builtin-plugins/src/chimera-plugin.ts`
 - `packages/cli/src/execution-chimera-review.ts`

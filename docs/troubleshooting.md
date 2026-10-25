@@ -201,7 +201,9 @@ wrongstack diag                   # full diagnostic
 ```
 
 **Common causes**:
-- Missing npm dependency: `pnpm install`
+- Missing dependency: official plugins ship with the CLI, so run `bun install` in
+  the project. Third-party plugins install their own dependencies into
+  `~/.wrongstack/plugins/` with their own package manager (npm by default).
 - apiVersion mismatch: check plugin's `apiVersion` vs kernel version
 - Config validation error: check `extensions.<plugin-name>` in config
 

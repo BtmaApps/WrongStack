@@ -459,7 +459,7 @@ declare every subsystem they touch.
 
 ## DI & internals
 
-- **Types:** `packages/core/src/types/hooks.ts` — `HookEvent`, `HookInput`,
+- **Types:** `packages/contracts/src/types/hooks.ts` — `HookEvent`, `HookInput`,
   `HookOutcome`, `InProcessHook`, `ShellHook`, `HookEntry`.
 - **Registry:** `packages/core/src/hooks/registry.ts` — `HookRegistry` with
   `registerInProcess`, `registerShell`, `loadShellHooks`, `replaceShellHooks`,
@@ -474,7 +474,7 @@ declare every subsystem they touch.
   the cheap `has(event)` guard.
 - **Shell executor:** `packages/core/src/hooks/shell-executor.ts` —
   `runShellHook(spec, input, logger?)` with allowlist, timeout, and output cap.
-- **DI token:** `TOKENS.HookRegistry` (`packages/core/src/kernel/tokens.ts`).
+- **DI token:** `TOKENS.HookRegistry` (`packages/contracts/src/kernel/tokens.ts`).
   Resolve it from the container to get the session's shared registry.
 - **Plugin API surface:** `PluginAPI.registerHook` (`plugin/api.ts`) and the
   `hookRegistry` field on `PluginAPIInit`.

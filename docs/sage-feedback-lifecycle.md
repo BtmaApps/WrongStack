@@ -222,7 +222,7 @@ still applies, and force sync respects a live foreign owner.
 
 An opt-in live smoke test is available in
 `packages/cli/tests/fleet/memory-companion.live.test.ts`. From `packages/cli`, run
-`WRONGSTACK_MEMORY_LIVE=1 pnpm exec vitest run tests/fleet/memory-companion.live.test.ts`
+`WRONGSTACK_MEMORY_LIVE=1 bun --bun run vitest run tests/fleet/memory-companion.live.test.ts`
 (PowerShell: set `$env:WRONGSTACK_MEMORY_LIVE='1'` first). It consumes the active
 profile's model quota and decrypts credentials through the existing local vault.
 It creates a temporary project/SQLite store, pins the temporary curator role to

@@ -328,7 +328,7 @@ change it (changing the subset changes the fingerprint).
 
 ## Testing
 
-`pnpm --filter @wrongstack/bench test` (or `pnpm vitest run packages/bench/tests`).
+`bun run --filter @wrongstack/bench test` (or `bun --bun run vitest run packages/bench/tests`).
 Tests cover fingerprint determinism, config validation, aggregate math (including
 graded-vs-ungraded), the polyglot grader against a fixture exercise, patch
 extraction against a real temp git repo, predictions round-trip, and the full

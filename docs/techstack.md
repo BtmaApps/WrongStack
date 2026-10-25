@@ -7,7 +7,7 @@ package and application. July registry comparisons are preserved in
 
 | Area | Source of truth | Implementation |
 |---|---|---|
-| Runtime and package manager | [`package.json`](../package.json), [`pnpm-workspace.yaml`](../pnpm-workspace.yaml) | Node floor, pnpm pin, overrides and install policy |
+| Runtime and package manager | [`package.json`](../package.json), [`pnpm-workspace.yaml`](../pnpm-workspace.yaml) | Node floor, Bun pin, overrides and install policy |
 | TypeScript and build | [`scripts/build.mjs`](../scripts/build.mjs), [`scripts/build-package.mjs`](../scripts/build-package.mjs) | esbuild and declaration emit; `typescript5` is the legacy compiler-API alias |
 | Terminal | [`packages/tui/package.json`](../packages/tui/package.json) | React and Ink |
 | Browser apps | [`packages/webui/package.json`](../packages/webui/package.json), [`packages/webui-hq/package.json`](../packages/webui-hq/package.json) | React/Vite clients; `@wrongstack/webui-protocol` owns wire contracts |
@@ -17,7 +17,7 @@ package and application. July registry comparisons are preserved in
 | Tests and checks | [`package.json`](../package.json) | Vitest, Playwright, TypeScript and Biome; separate coverage ratchets |
 | Standalone build | [`scripts/build-binaries.mjs`](../scripts/build-binaries.mjs) | Bun executables with explicit assets and daemon dispatch |
 
-Use `pnpm build`, `pnpm typecheck:only`, and scoped package tests for
+Use `bun run build`, `bun run typecheck:only`, and scoped package tests for
 development. [Release process](release-process.md) describes the full matrix.
 A documentation check does not certify a release.
 

@@ -88,17 +88,17 @@ three components:
 
 | Component | Description |
 |---|---|
-| **What** | The directive itself — what the agent should do (e.g. "Always run pnpm typecheck before declaring work complete.") |
+| **What** | The directive itself — what the agent should do (e.g. "Always run bun run typecheck before declaring work complete.") |
 | **Why** | The reason behind the directive — derived from the entry's category and any project-specific signals in the text (e.g. "Established convention — skipping it risks regressions.") |
-| **How** | Concrete, runnable anchors — commands, file paths, and package names extracted from backticks in the directive text (e.g. ``pnpm typecheck``, `packages/core/src/...`) |
+| **How** | Concrete, runnable anchors — commands, file paths, and package names extracted from backticks in the directive text (e.g. ``bun run typecheck``, `packages/core/src/...`) |
 
 #### Categories
 
 | Category | Section heading | Trigger words | Example |
 |---|---|---|---|
 | **warning** | `## What to avoid` | avoid, never, must not, beware, pitfall | "Avoid mutating shared state in async handlers." |
-| **convention** | `## What to do` | always, must, should, ensure, verify, before, after | "Always run pnpm typecheck before declaring work complete." |
-| **pattern** | `## Patterns to follow` | use, prefer, choose, adopt, pattern, approach | "Use pnpm for monorepo package management." |
+| **convention** | `## What to do` | always, must, should, ensure, verify, before, after | "Always run bun run typecheck before declaring work complete." |
+| **pattern** | `## Patterns to follow` | use, prefer, choose, adopt, pattern, approach | "Use Bun for monorepo package management." |
 | **fact** | `## Project facts` | (default when no directive verb matches) | "The project uses vitest 2.x for unit tests." |
 
 Categories are ordered warning-first in the rendered document so the
@@ -122,15 +122,15 @@ highest-signal entries (pitfalls) are seen first.
 ## What to do
 
 <!-- learned-stamp: category=convention; capturedAt=2026-07-24T13:44:00Z -->
-- **Always run pnpm typecheck before declaring work complete.**
+- **Always run bun run typecheck before declaring work complete.**
   - *Why:* Established convention — skipping it risks regressions. Project
     signals: guard before shipping.
-  - *How:* `pnpm --filter @wrongstack/core typecheck`
+  - *How:* `bun run --filter @wrongstack/core typecheck`
 
 ## Patterns to follow
 
 <!-- learned-stamp: category=pattern; capturedAt=2026-07-24T13:44:00Z -->
-- **Use pnpm for monorepo package management.**
+- **Use Bun for monorepo package management.**
   - *Why:* This project's chosen approach — alternatives were considered and
     rejected.
 

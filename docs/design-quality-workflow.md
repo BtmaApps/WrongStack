@@ -174,7 +174,7 @@ no baseline and no claim yet about how much the layer helps.
 Validation for this change: 164 tests passed across 16 design, CLI, tool,
 WebUI-session and skill-contract files; core/tools TypeScript checks and scoped
 Biome checks passed. Regression cases were run failing before their fixes.
-The full `pnpm test` attempt was incomplete: a dependency refresh invalidated
+The full `bun run test` attempt was incomplete: a dependency refresh invalidated
 the running Vitest worker module path. It also observed an intermediate skill
 reference mismatch, corrected and verified in the final targeted run. This is
 not a full-suite or release-check pass. No live model-output comparison or

@@ -463,7 +463,7 @@ If the coordinator reports `not ready — no director available`, promote to Dir
 ```text
 packages/core/tsconfig.json typecheck
 packages/cli/tsconfig.json typecheck
-packages/core/tests/coordination/autonomous-coordinator.test.ts
+packages/coordination/tests/autonomous-coordinator.test.ts
 ```
 
 ### Added regression coverage

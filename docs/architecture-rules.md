@@ -16,7 +16,7 @@ The original plan was to extract `packages/core/src/kernel/` as a standalone `@w
 
 ## Layer Definitions
 
-The following layers exist within `packages/core/src/`. Rules below govern what each layer may and may not depend on.
+The following layers exist within `packages/core/src/`. Rules below govern what each layer may and may not depend on. `kernel/` and `types/` now live in `@wrongstack/contracts` and `coordination/` in `@wrongstack/coordination` (the current gate reads `architecture/core-layers.json`), so the layers below record the original core-internal layout.
 
 ### Layer 1 — Primitives (lowest level)
 - `kernel/` — Container, Pipeline, EventBus, RunController, TOKENS
@@ -162,7 +162,7 @@ The following rules are enforced automatically by `packages/core/tests/architect
 
 The test covers internal layers, bidirectional/cycle checks, extracted-package
 regressions, and the workspace DAG. Run it with
-`pnpm exec vitest run packages/core/tests/architecture/package-boundaries.test.ts`.
+`bun --bun run vitest run packages/core/tests/architecture/package-boundaries.test.ts`.
 The seven groups summarize the historical `LAYERS` list, which does not cover
 every present Core directory. `sdd/` is now a historical test-list label; its
 implementation is in the separate `@wrongstack/sdd` package.

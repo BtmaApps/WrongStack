@@ -114,4 +114,4 @@ Or set it in the config file:
 - `packages/cli/src/plugin-management.ts` — `/settings plugins*` + `/plugin *`
 - `packages/cli/src/slash-commands/plugin.ts`
 - `packages/tui/src/components/settings-picker.tsx`
-- `packages/core/src/types/config.ts`
+- `packages/contracts/src/types/config.ts`

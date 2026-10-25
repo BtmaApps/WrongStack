@@ -340,7 +340,7 @@ scroll position and unsent draft survive a trip to Files or Kanban.
   so solo sessions are unaffected.
 - **Context-aware code completion** — Monaco completion providers in
   `src/components/CodeEditor.tsx` send `completion.request` frames for supported
-  code languages. The shared handler (`src/server/completion-handlers.ts`) merges
+  code languages. The shared handler (`packages/webui-server/src/server/completion-handlers.ts`) merges
   three sources in order: LSP (`lsp_completion`, when the plugin/tool is active),
   a short JSON-only provider call, and the WrongStack codebase index. Client and
   server both gate LLM usage so low-value typing stays local; member access (`.`)

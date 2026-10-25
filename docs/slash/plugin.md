@@ -36,5 +36,5 @@ Install with: `wstack plugin install telegram`
 - `packages/cli/src/slash-commands/plugin.ts` — slash command wrapper
 - `packages/cli/src/plugin-management.ts` — actual logic
 - `packages/core/src/plugin/loader.ts` — plugin loading
-- `packages/core/src/types/plugin.ts` — Plugin interface
+- `packages/contracts/src/types/plugin.ts` — Plugin interface
 - `docs/plugin-management.md`

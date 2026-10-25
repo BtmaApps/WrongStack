@@ -740,6 +740,6 @@ See `docs/archive/plans/security-hardening-2026-06.md` (P2) and `SECURITY.md`.
 
 ## Reference
 
-- Plugin type: [`packages/core/src/types/plugin.ts`](../packages/contracts/src/types/plugin.ts)
+- Plugin type: [`packages/contracts/src/types/plugin.ts`](../packages/contracts/src/types/plugin.ts)
 - Loader: [`packages/core/src/plugin/loader.ts`](../packages/core/src/plugin/loader.ts)
 - Test fixtures: [`packages/core/tests/plugin/`](../packages/core/tests/plugin/)

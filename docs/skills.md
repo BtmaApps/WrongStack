@@ -200,11 +200,12 @@ through `tech-stack` before new setups/upgrades; failed checks remain unverified
 
 ## Bundled skills
 
-WrongStack ships with 99 bundled skills:
+WrongStack ships with 116 bundled skills:
 
 | Skill | Description |
 |---|---|
 | `accessibility` | Semantic controls, keyboard/focus behavior and evidenced WCAG checks |
+| `algorithmic-art` | Generative and algorithmic art with p5.js, Canvas2D or WebGPU shaders |
 | `angular-modern` | Build and upgrade Angular applications with typed components, reactive state, dependency injection and verified routing |
 | `api-design` | REST API design, error codes, pagination, auth patterns |
 | `astro-modern` | Build and upgrade Astro content sites and applications with deliberate islands, content contracts and rendering modes |
@@ -213,7 +214,9 @@ WrongStack ships with 99 bundled skills:
 | `authentication-sessions` | Implement application sign-in, sessions and identity integration with explicit account/tenant authorization |
 | `auto-review` | Configure and operate the built-in continuous code-review plugin |
 | `backup-recovery` | Design and verify backups and restoration for owned databases, files and application state |
+| `brand-guidelines` | WrongStack brand identity, typography tokens, palette and design standards |
 | `bug-hunter` | Systematic bug and code smell detection, severity ranking |
+| `canvas-design` | High-craft posters, editorial layouts and vector canvas documents |
 | `chimera` | Post-session code quality review of changed files |
 | `ci-cd` | Reproducible CI, exact-source artifacts and deployment evidence |
 | `cloud-architecture` | Choose and design cloud services from concrete application, data, availability and operational requirements |
@@ -236,7 +239,10 @@ WrongStack ships with 99 bundled skills:
 | `design-reference-read` | Measure a reference site or screenshot into design DNA (`design_reference {action:"extract"}`), name its patterns, borrow without copying |
 | `design-system` | Build consistent interfaces from shared visual tokens and component rules |
 | `design-to-code` | Implement a supplied design or reference and prove the match with per-axis fidelity scores (`design_reference {action:"compare"}`) |
+| `discernment-nudge` | Epistemic scrutiny and assumption checks before consequential decisions |
+| `doc-coauthoring` | Collaborative spec, RFC, PRD and ADR authoring with blind reader testing |
 | `docker-deploy` | Docker containerization, multi-stage builds, image scanning |
+| `docx` | Microsoft Word document authoring, inspection and styling (.docx) |
 | `dotnet-backend` | Build and upgrade ASP.NET Core services with typed contracts, dependency lifetimes and verified persistence |
 | `evidence-audit` | Proof-driven audit rounds: reproduce, apply a scope-only fix, verify, and promote high-risk regressions |
 | `flutter-mobile` | Build and upgrade Flutter applications with typed state, navigation, platform plugins and device verification |
@@ -247,14 +253,17 @@ WrongStack ships with 99 bundled skills:
 | `incident-response` | Diagnose and recover an owned service incident with bounded changes, timeline evidence and verified health. Use during outages, bad deployments or data/service degradation; preserve evidence and separate mitigation from root-cause repair |
 | `infrastructure-as-code` | Build and maintain Terraform, OpenTofu, Pulumi or cloud-native IaC with reviewable plans and protected state |
 | `interaction-design` | Design and implement task-oriented interaction flows, forms, navigation and recovery states |
+| `internal-comms` | Status updates, blameless postmortems, decision memos and leadership briefs |
 | `java-spring` | Build and upgrade Java/Spring services with explicit transaction, concurrency and deployment contracts |
 | `kotlin-android` | Build and upgrade native Android applications with Kotlin, Compose/View UI and lifecycle-aware work |
 | `kubernetes-operations` | Operate and deploy owned Kubernetes workloads with explicit cluster, namespace and rollout identity |
 | `linux-service-ops` | Configure and troubleshoot application services on an authorized Linux host with explicit service ownership |
+| `llm-runtime` | Frontier LLM API integration: streaming, structured outputs, tool schemas, prompt caching |
 | `mailbox-bridge` | Loopback HTTP bridge that exposes the project's shared WrongStack mailbox so external agents (Claude Code, Aider, scripts) can read, send, and acknowledge messages |
 | `manim-video` | Manim Community mathematical/scientific animation and rendered video |
 | `mcp-development` | Versioned MCP contracts, schemas, transport and lifecycle |
 | `media-production` | Renderer selection across Remotion, Motion Canvas, Manim, AI and FFmpeg |
+| `micro-animation-gif` | Compact animated GIFs for chat, pull requests and UI micro-interactions |
 | `mnemosyne` | Deterministic and LLM-supported curation of SAGE memory entries |
 | `mobile-design` | Design and implement mobile interfaces for touch, keyboards, safe areas and native navigation |
 | `mobile-performance` | Measure and improve mobile startup, scrolling, animation and resource usage on representative devices |
@@ -270,8 +279,10 @@ WrongStack ships with 99 bundled skills:
 | `offline-sync` | Implement offline-capable applications with local persistence, queued changes and explicit synchronization conflicts |
 | `output-standards` | Output formatting standards, `<nextsteps>` conventions |
 | `payments-webhooks` | Implement payment-provider integration and reliable authenticated webhook processing for an owned application |
+| `pdf` | Vector-quality PDF generation, assembly, page geometry and PDF/A standards |
 | `php-laravel` | Build and upgrade PHP/Laravel applications with validated requests, policy authorization and reliable jobs/data access |
 | `plugin-author` | Creating, reviewing, or refactoring a WrongStack plugin |
+| `pptx` | PowerPoint decks with 16:9 layouts, typographic hierarchy and visual cards |
 | `prompt-engineering` | System prompt design, tool descriptions, trigger sentences |
 | `python-backend` | Build and upgrade Python services with explicit environments, validation, async boundaries and resource cleanup |
 | `queues-jobs` | Implement reliable asynchronous jobs and message consumers with explicit delivery, retry and shutdown semantics |
@@ -294,17 +305,21 @@ WrongStack ships with 99 bundled skills:
 | `swift-ios` | Build and upgrade native iOS applications with Swift, SwiftUI/UIKit and correct lifecycle/concurrency ownership |
 | `tech-stack` | Latest stable registry verification, migration and compatibility evidence |
 | `testing` | vitest patterns, mocking, coverage, unit/integration/e2e test strategy |
+| `theme-factory` | Curated font pairings, palettes and themes for decks, artifacts and pages |
 | `threejs-3d` | Current Three.js/R3F, renderer compatibility and GPU resource ownership |
 | `typescript-strict` | Strict null checks, exhaustive switch, branded types, discriminated unions |
 | `verify-before-done` | Prove a change works with the project's own checks before reporting it done |
 | `visual-regression` | Detect unintended UI changes with reproducible rendered screenshots and reviewed baselines |
 | `vps-deploy` | Deploy an owned application to an explicitly authorized VPS with versioned artifacts, service identity and live health evidence |
 | `vue-nuxt` | Build and upgrade Vue or Nuxt applications with reactive state, server rendering and typed data boundaries |
+| `web-artifacts` | Self-contained interactive single-file web artifacts, tools and prototypes |
 | `web-performance` | LCP/INP/CLS and matched before/after browser profiling |
 | `web-platform-baseline` | Dated, refreshable modern CSS/HTML/a11y facts with a staleness rule — never assert browser support from memory |
+| `webapp-testing` | Playwright UI journey verification, DOM reconnaissance and screenshot diffs |
 | `wrongstack-kanban` | Deterministic Kanban task lifecycle, verification, and evidence enforcement |
 | `wrongstack-mailbox` | External-facing client for the project's shared WrongStack mailbox — register as an online agent, read messages, send replies, broadcast, and stay visible in the WebUI fleet |
 | `wrongstack-mailbox-mcp` | Coordinate with agents through the project-scoped Mailbox MCP server |
+| `xlsx` | Excel spreadsheet engineering, formulas, financial models and calculation audit |
 
 Versioned recommendations are checked against live registries and official sources.
 The dated snapshot is in [tech-stack/current-versions](../packages/core/skills/tech-stack/references/current-versions.md);
@@ -468,7 +483,7 @@ version: 1.0.0
 - Unit tests co-located: `foo.ts` → `foo.test.ts`
 - Integration tests in `tests/integration/`
 - Use `vi.mock()` for external deps, never for internal modules
-- Run `pnpm test` before every commit
+- Run `bun run test` before every commit
 
 ## Deployment
 

@@ -25,7 +25,7 @@ deep reference lives in [`reference.md`](reference.md).
 
 ## Tools & code intelligence
 
-The 74-tool built-in toolbox spans filesystem edits, code quality (`lint`/`format`/
+The 78-tool built-in toolbox spans filesystem edits, code quality (`lint`/`format`/
 `typecheck`/`test`), execution, web search/fetch, git, packages, browser/E2E
 controls, and a project-owned Codebase Index. The index combines SQLite/FTS5
 substring search, local semantic ranking, content-hash invalidation, symbol and

@@ -562,11 +562,11 @@ Record the exact commands and expected output for post-release smoke tests:
 /telegram-settings test
 
 # 3. Full test suite
-pnpm --filter @wrongstack/telegram test
+bun run --filter @wrongstack/telegram test
 
 # 4. Typecheck
-pnpm --filter @wrongstack/telegram typecheck
+bun run --filter @wrongstack/telegram typecheck
 
 # 5. Manifest parity (checks docs match implementation)
-pnpm --filter @wrongstack/telegram test -- tests/unit/manifest-parity.test.ts
+bun run --filter @wrongstack/telegram test tests/unit/manifest-parity.test.ts
 ```

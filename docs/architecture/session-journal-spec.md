@@ -162,7 +162,7 @@ During `resumeSessionData`:
 
 ## 5. Single Timeline Projection (`projectSessionTimeline`)
 
-Centralized in `packages/core/src/types/session-timeline.ts`, `projectSessionTimeline` provides a deterministic merge of the conversation backbone with audit markers.
+Centralized in `packages/contracts/src/types/session-timeline.ts`, `projectSessionTimeline` provides a deterministic merge of the conversation backbone with audit markers.
 
 ### Surface Projection Parameter Matrix
 

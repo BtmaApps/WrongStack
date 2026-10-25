@@ -51,46 +51,46 @@ handle.
 
 ## Workspace and dependency direction
 
-The pnpm workspace contains 35 packages, two applications, and the marketing
+The Bun workspace contains 43 packages, two applications, and the marketing
 site. All current workspace packages share the version in the root
 `package.json`; do not hard-code that number here.
 
 | Area | Packages / application | Responsibility |
 | --- | --- | --- |
-| Foundation | @wrongstack/primitives, @wrongstack/persistence, @wrongstack/kanban, @wrongstack/core | SQLite/file primitives, task-board domain, agent kernel and contracts |
+| Foundation | @wrongstack/primitives, @wrongstack/persistence, @wrongstack/kanban, @wrongstack/contracts, @wrongstack/agent-catalog, @wrongstack/core | SQLite/file primitives, task-board domain, shared type vocabulary and DI kernel, roster catalog, agent runtime |
 | Runtime composition | @wrongstack/runtime, @wrongstack/providers, @wrongstack/tools | Default host wiring, provider implementations, built-in tools and Codebase Index |
-| Agent domains | @wrongstack/sage, @wrongstack/vector-memory, @wrongstack/sdd, @wrongstack/requirement-intake, @wrongstack/techstack, @wrongstack/governance | Memory, spec workflow, intake, project analysis, and governance contracts |
-| External integration | @wrongstack/mcp, @wrongstack/acp, @wrongstack/plug-lsp, @wrongstack/plugin-sdk, @wrongstack/plugins, @wrongstack/telegram, @wrongstack/wrongtrace | MCP, Agent Client Protocol, LSP, bundled extensions, and Telegram bridge |
+| Agent domains | @wrongstack/sage, @wrongstack/vector-memory, @wrongstack/sdd, @wrongstack/requirement-intake, @wrongstack/techstack, @wrongstack/governance, @wrongstack/goal, @wrongstack/chronicle, @wrongstack/worktree, @wrongstack/coordination | Memory, spec workflow, intake, project analysis, governance contracts, goal runner, event journal, worktree isolation, fleet coordination |
+| External integration | @wrongstack/mcp, @wrongstack/acp, @wrongstack/plug-lsp, @wrongstack/plugin-sdk, @wrongstack/plugins, @wrongstack/builtin-plugins, @wrongstack/telegram, @wrongstack/wrongtrace | MCP, Agent Client Protocol, LSP, bundled extensions, and Telegram bridge |
 | MCP products | codebase-index-mcp, kanban-mcp, mailbox-mcp, requirement-intake-mcp, sage-mcp | Capability-limited MCP facades over local domains |
 | Browser contracts | @wrongstack/webui-protocol, @wrongstack/client | Shared wire types/schema and browser client transport |
-| User surfaces | cli, tui, webui, webui-server, vibeui, webui-hq, desktop | Terminal, full browser UI, focused browser coding workspace, HQ dashboard, and Electron shell |
-| Support | bench, security-scanner, wrongstack | Benchmarks, standalone scan surface, and published command shim |
+| User surfaces | cli, tui, webui, webui-server, vibeui, webui-hq, hq, desktop | Terminal, full browser UI, focused browser coding workspace, HQ dashboard and control plane, Electron shell |
+| Support | bench, security-scanner, wrongstack | Benchmarks, standalone scan surface, and the command shim |
 
 The package graph is a directed acyclic graph checked by
 packages/core/tests/architecture/package-boundaries.test.ts and by the
 topological build runner. primitives and persistence have no WrongStack workspace dependency.
-kanban depends on both. core depends on primitives, persistence, and kanban; it is therefore the agent
-foundation, not a dependency-free kernel. Product surfaces depend toward these
+kanban depends on both. core depends on primitives, persistence, kanban, contracts,
+and agent-catalog; it is therefore the agent foundation, not a dependency-free
+kernel. Product surfaces depend toward these
 lower layers and must not create a reverse dependency from core into a surface
 package.
 
-Within packages/core/src, the seven-layer runtime-import rules in
-[architecture-rules.md](architecture-rules.md) are enforced: primitives and
-types, infrastructure, domain, execution, storage, coordination, then
-high-level extension/observability/plugin/skill modules. Type-only edges are
-allowed where the runtime graph would not be.
+Within packages/core/src, the runtime-import layer rules in
+[architecture-rules.md](architecture-rules.md) are enforced: contracts (types and
+kernel) sit below every core area, then primitives, services, agent, features and
+composition. Type-only edges are allowed where the runtime graph would not be.
 
 ---
 
 ## Core runtime
 
 @wrongstack/core supplies contracts and implementations shared by every host.
-Its key namespaces are kernel, core, execution, storage, security,
-coordination, chronicle, models, registry, skills, plugin, and observability.
+Its key namespaces are core, execution, storage, security,
+models, registry, skills, plugin, and observability.
 
 ### Kernel and composition
 
-packages/core/src/kernel contains the typed Container, Pipeline, EventBus,
+packages/contracts/src/kernel contains the typed Container, Pipeline, EventBus,
 RunController, and token catalogue. The CLI and WebUI server are composition
 roots: they bind concrete services into the container and pass explicit
 dependencies to the agent. Extensions receive scoped APIs rather than an

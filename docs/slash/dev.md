@@ -31,7 +31,7 @@ commands the LLM should observe, use the `exec` tool instead.
 $ bun run release:check  OK  2341ms
 ──
 > wrongstack@0.118.1 release:check
-> pnpm typecheck && pnpm test && pnpm build
+> bun run typecheck && bun run test && bun run build
 …
 ──
 ```

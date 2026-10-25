@@ -195,8 +195,8 @@ For languages not in the auto-install list, or to use a specific server version:
 
 **Via npm** (for TypeScript, Python, JSON, HTML, CSS, YAML, Shell):
 ```sh
-# Using pnpm (WrongStack default)
-pnpm add -D typescript-language-server
+# Using Bun (WrongStack default)
+bun add --dev typescript-language-server
 
 # Using npm
 npm install -D typescript-language-server

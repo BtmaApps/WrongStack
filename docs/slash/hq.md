@@ -58,6 +58,6 @@ at an HQ on **another machine**; disable entirely with `/hq off`.
 ## Code Reference
 
 - `packages/cli/src/slash-commands/hq.ts`
-- `packages/core/src/hq/factory.ts` (`resolveHqConfig`)
-- `packages/core/src/hq/session-bridge.ts` (telemetry stream)
+- `packages/hq/src/factory.ts` (`resolveHqConfig`)
+- `packages/hq/src/session-bridge.ts` (telemetry stream)
 - `packages/cli/src/hq-server.ts` (the `--hq` server)

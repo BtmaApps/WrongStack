@@ -9,7 +9,7 @@ The daemon is **not shipped, owned, or bootstrapped by WrongStack**. Every code 
 
 | Surface | Package / config | Default URL | Activated by |
 |---|---|---|---|
-| Provider base-URL rewriting ("WrongProxy") | `tools.wrongProxy` (`packages/core/src/types/config/tools.ts`) | `http://localhost:3444` | Opt-in toggle (`enabled: true`) |
+| Provider base-URL rewriting ("WrongProxy") | `tools.wrongProxy` (`packages/contracts/src/types/config/tools.ts`) | `http://localhost:3444` | Opt-in toggle (`enabled: true`) |
 | Observability guardrails ("WrongTrace") | `@wrongstack/wrongtrace` (`packages/wrongtrace/`) | `WRONGTRACE_URL` env → `http://localhost:3444` | Presence of the daemon (discovery) |
 
 Both integrations probe the same canonical health endpoint — `GET <base>/api/health` — and both treat a non-2xx or unreachable daemon as a soft signal, never a hard failure.
@@ -254,7 +254,7 @@ The typed `wrongtrace.gate.decision` events (§5) are tallied by `packages/wrong
 
 Distinct from the guardrails, and often confused with them because both default to port 3444 and both appear under one settings heading.
 
-**Config** (`tools.wrongProxy`, `packages/core/src/types/config/tools.ts`):
+**Config** (`tools.wrongProxy`, `packages/contracts/src/types/config/tools.ts`):
 
 ```jsonc
 {
@@ -341,12 +341,12 @@ Start the daemon on the expected port and re-run `packages/wrongtrace` + `packag
 | Fleet subagent gate runner | `packages/cli/src/fleet/subagent-hook-runner.ts` |
 | Standalone WebUI gate wiring | `packages/webui-server/src/server/backend-services.ts` |
 | Runtime light-subagent factory hookRunner dep | `packages/runtime/src/fleet/light-subagent-factory.ts` |
-| Typed `wrongtrace.gate.decision` event key | `packages/core/src/kernel/events/wrongtrace-events.ts` |
+| Typed `wrongtrace.gate.decision` event key | `packages/contracts/src/kernel/events/wrongtrace-events.ts` |
 | Hook registration (leader lifecycle) | `packages/cli/src/wiring/lifecycle-plugins.ts` (`wrongtrace-gate`) |
 | Boot warm-up | `packages/cli/src/boot/system-prompt.ts` |
 | WrongProxy probe | `packages/cli/src/wiring/proxy-probe.ts` |
 | Proxy rewrite semantics | `packages/core/src/wiring/proxy-rewrite.ts` |
-| Config types (`tools.wrongProxy`) | `packages/core/src/types/config/tools.ts` |
+| Config types (`tools.wrongProxy`) | `packages/contracts/src/types/config/tools.ts` |
 | WebUI settings surface | `packages/webui/src/components/SettingsPanel/IntegrationsSection.tsx` |
 | WebUI prefs propagation | `packages/webui-server/src/server/proxy-runtime.ts`, `pref-helpers.ts` |
 | Hook executor tests | `packages/cli/tests/wrongtrace-hooks.executor.test.ts` |

@@ -180,7 +180,7 @@ separate live measurements.
 
 ```powershell
 $env:WRONGSTACK_TOOLFLOW_REPORT = '1'
-pnpm.cmd exec vitest run packages/core/tests/core/nested-tool-call.test.ts
+bun --bun run vitest run packages/core/tests/core/nested-tool-call.test.ts
 Remove-Item Env:\WRONGSTACK_TOOLFLOW_REPORT
 ```
 
@@ -194,7 +194,7 @@ The suite also checks real manifest reads, disabled tools, schema validation,
 and confirmation refusals. Run the broader ToolFlow checks with:
 
 ```powershell
-pnpm.cmd exec vitest run packages/tools/tests/tool-script.test.ts packages/tools/tests/toolflow-presentation.test.ts packages/core/tests/core/nested-tool-call.test.ts packages/core/tests/core/shared-system-contract.test.ts
+bun --bun run vitest run packages/tools/tests/tool-script.test.ts packages/tools/tests/toolflow-presentation.test.ts packages/core/tests/core/nested-tool-call.test.ts packages/core/tests/core/shared-system-contract.test.ts
 ```
 
 The broader tests cover byte accounting, aborts, unfinished effects, concurrent

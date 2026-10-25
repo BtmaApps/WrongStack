@@ -42,7 +42,7 @@ bun run setup:native
 bun run setup:hooks
 bun run build
 bun run test
-bun release:check
+bun run release:check
 ```
 
 Use `bun run test`, because `bun test` selects Bun's own test runner. The project
@@ -52,12 +52,12 @@ continues to use Vitest, executed under Bun, and TypeScript for declaration emit
 For local iteration, select packages instead of repeatedly running the full suite:
 
 ```sh
-bun test:package vector-memory
-bun test:package persistence sage
-bun test:package webui
-bun test:package cli --dry-run
-bun test:package --list
-bun test:affected --list
+bun run test:package vector-memory
+bun run test:package persistence sage
+bun run test:package webui
+bun run test:package cli --dry-run
+bun run test:package --list
+bun run test:affected --list
 ```
 
 Package selection runs suites sequentially using the root test configuration;
@@ -66,13 +66,13 @@ dashboard/color suites. Empty selections fail instead of reporting success.
 This selects package tests only; callers must include affected consumer packages
 when shared APIs change. `test:affected` is a local import-cache aid and may run
 the full root suite on a cold cache or after configuration/lockfile changes.
-`bun run test` and `bun release:check` still provide full validation.
+`bun run test` and `bun run release:check` still provide full validation.
 Root and WebUI tests cache transformed modules on disk while preserving file
 isolation. `WRONGSTACK_VITEST_MAX_WORKERS` can override the shared worker cap.
 
 ```sh
-bun migration:check       # frozen install dry-run, workspace and CI command checks
-bun release:check --list # list gates without running them
+bun run migration:check       # frozen install dry-run, workspace and CI command checks
+bun run release:check --list # list gates without running them
 ```
 
 `bun.lock` is the installation lockfile. `bunfig.toml` enables Bun execution and
@@ -82,13 +82,12 @@ pnpm is not needed to execute these commands. The reviewed dependency patches re
 pinned in `package.json` and the Bun lockfile.
 
 CI installs with scripts disabled and explicitly executes only the reviewed
-native dependencies through `setup:native`. Publishing still keeps verification,
-packing and the privileged OIDC job separate.
+native dependencies through `setup:native`. Releases ship only as GitHub Release
+binaries, built by CI from a `vX.Y.Z` tag.
 
-Bun does not yet implement npm OIDC trusted publishing. The privileged publish
-job runs the pinned npm 12.2.0 compatibility client **under Bun** using
-`bun x --bun npm@12.2.0`; it does not require the Node or npm executable. The npm
-10 package-install gate similarly runs its compatibility oracle under Bun.
-These adapters preserve registry compatibility rather than switching CI to a
-long-lived publishing token. Actual OIDC publishing needs a GitHub Actions run
-and is not proven by a local dry-run.
+npm publishing is retired, so there is no registry publish job and no OIDC
+trusted-publishing step. The root `prepublishOnly` hook fails on purpose with
+"npm publishing is retired: WrongStack releases ship only as GitHub Release
+binaries". The only OIDC tokens CI mints are the build-provenance attestation
+for the standalone binaries (`.github/workflows/binaries.yml`) and the Pages
+deployment token (`.github/workflows/pages.yml`).

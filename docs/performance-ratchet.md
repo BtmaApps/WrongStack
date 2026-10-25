@@ -17,7 +17,7 @@ speed-up with a number, and reverts everything that cannot produce one.
 |---|---|
 | WebUI | Welcome screen → **Start Performance Ratchet** (scope, mode, metric) |
 | CLI / TUI | `/perf [mode] [target] [--metric=<id>]` |
-| CI / local gate | `pnpm perf:guard` |
+| CI / local gate | `bun run perf:guard` |
 
 ### `/perf`
 
@@ -53,7 +53,7 @@ Append-only, markdown, parsed. One round per workload per sitting:
 ## 2026-09-01 — parser throughput
 commit:   a1b2c3d
 machine:  M2 Pro / 16GB / macOS 15.2 / node24.13
-command:  pnpm bench --filter parser
+command:  bun run --filter parser bench
 baseline: 412ms median, 84k allocs/op
 
 - [KEPT]     preallocate token slice    → 388ms, 61k allocs/op (-27% allocs)
@@ -96,7 +96,7 @@ incident, and tears down a hung run by process tree.
 
 ---
 
-## `pnpm perf:guard` — the pawl
+## `bun run perf:guard` — the pawl
 
 Probes live in `architecture/perf-baseline.json`. Each names a command, a
 metric, and an extractor; the guard runs them, compares against the recorded
@@ -111,8 +111,8 @@ baseline, and:
   drifts 40% slower without a single red check.
 
 ```bash
-pnpm perf:guard                                  # measure, report, gate
-pnpm perf:guard:write                            # …and tighten improvements
+bun run perf:guard                                  # measure, report, gate
+bun run perf:guard:write                            # …and tighten improvements
 node scripts/perf-guard.mjs --write --adopt      # …and adopt new probes
 node scripts/perf-guard.mjs --only cli.          # id prefix filter
 node scripts/perf-guard.mjs --from results.json  # take id→value from a harness
@@ -149,7 +149,7 @@ tightens.
 
 Adding a probe: append an entry with `id`, `label`, `metric`, `command`,
 `extract` (`wall`, `re:<pattern>`, `json:<dotted.path>`, `gnu-time-rss`,
-`hyperfine`), `"value": null`, then run `pnpm perf:guard:write`.
+`hyperfine`), `"value": null`, then run `bun run perf:guard:write`.
 
 **Telling a real regression from noise**: re-run on an idle machine. The guard's
 default threshold is 15% precisely because CI machines are noisier than a
@@ -169,10 +169,10 @@ than one that only catches the big ones.
 | `packages/core/src/performance/perf-guard.ts` | baseline comparison and ratchet |
 | `packages/core/src/performance/perf-stack.ts` | stack detection → profiling commands |
 | `packages/core/src/performance/perf-modes.ts` | mode → builtin prompt slug |
-| `packages/core/src/plugins/perf-command.ts` | `/perf` |
+| `packages/builtin-plugins/src/perf-command.ts` | `/perf` |
 | `packages/core/data/prompts/prompts/performance/` | the eight builtin prompts |
 | `packages/webui/src/lib/perf-run-message.ts` | transcript card metadata |
-| `scripts/perf-guard.mjs` | `pnpm perf:guard` |
+| `scripts/perf-guard.mjs` | `bun run perf:guard` |
 | `architecture/perf-baseline.json` | the probes and their recorded numbers |
 | `PERF_LOG.md` | the ledger |
 

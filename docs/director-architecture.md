@@ -103,17 +103,18 @@ each is now closed:
    half-remembered id silently costs the specialist.
 
 The roster block in the leader prompt is introduced as a routing instruction
-rather than a bare list — a menu of 77 look-alike lines gets skimmed, and the
+rather than a bare list — a menu of 83 look-alike lines gets skimmed, and the
 leader falls back to the four ids it can recall.
 
 ### Role toolsets
 
 Roles do not all receive every tool, and this is deliberate. `TOOLS` in
-`agents/types.ts` defines composable presets — `read` (6), `inspect` (10),
-`write` (10), `build` (16), `vcs` (6), `deps` (8), `docs` (9), `research` (6) —
-and a role spreads one plus any extras it needs (`[...TOOLS.build, 'fetch']`).
-Across the 77 roles that resolves to **49 distinct tools**; the widest role is
-`e2e` at 33, then `browser` at 23.
+`packages/agent-catalog/src/types.ts` defines composable presets — `index` (8),
+`read` (6), `inspect` (18), `write` (21), `build` (29), `vcs` (6), `deps` (8),
+`docs` (16), `research` (6) — and a role spreads one plus any extras it needs
+(`[...TOOLS.build, 'fetch']`).
+Across the 83 roster roles that resolves to **65 distinct tools**; the widest
+role is `e2e` at 48, then `payments` at 33.
 
 The narrowing is behavioural, not only defensive: a reviewer that can write is
 not an independent reviewer — it will fix what it was asked to judge — and a

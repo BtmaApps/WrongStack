@@ -18,7 +18,7 @@ Run `/help <command>` for the full registered help of authoring and import flags
 
 ## Code reference
 
-- `packages/core/src/plugins/skills-plugin.ts` — all seven registrations
+- `packages/builtin-plugins/src/skills-plugin.ts` — all seven registrations
 - `packages/core/src/skills/skill-installer.ts` — install, import, update, and uninstall operations
 
 

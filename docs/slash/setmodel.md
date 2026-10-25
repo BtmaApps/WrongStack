@@ -91,4 +91,4 @@ and to run parallel subagents on different providers, one lane each — use
 - `packages/runtime/src/fleet/light-subagent-factory.ts` — runtime subagent factory applies role-specific model/runtime
 - `packages/cli/src/fleet/host.ts` — CLI fleet host applies the same model/runtime path
 - `packages/webui/src/components/SettingsPanel/index.tsx` — WebUI Model Routing editor
-- `packages/core/src/types/config.ts` — `ModelMatrixEntry`, `Config.modelMatrix`
+- `packages/contracts/src/types/config.ts` — `ModelMatrixEntry`, `Config.modelMatrix`

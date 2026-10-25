@@ -67,7 +67,7 @@ hashes against the live index and reports exactly what drifted:
 ```
 ⚠ atlas has drifted from the index
   changed (2):
-    packages/core/src/types/provider.ts
+    packages/contracts/src/types/provider.ts
     packages/core/src/core/context.ts
   run /codebase-map --write to refresh
 ```

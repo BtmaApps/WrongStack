@@ -54,7 +54,7 @@ This is also triggered automatically when `/init` runs for the first time on a n
 
 ### Package discovery
 
-The command reads `pnpm-workspace.yaml` (if present) to find workspace packages, then scans each subdirectory for `package.json`. Single-package projects just get the root `package.json`.
+The command reads the root `package.json` `workspaces` field to find workspace packages, then scans each subdirectory for `package.json`. It falls back to `pnpm-workspace.yaml` only when the root `package.json` declares no workspaces. Single-package projects just get the root `package.json`.
 
 ### Subagent design
 

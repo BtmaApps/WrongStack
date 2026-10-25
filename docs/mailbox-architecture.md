@@ -288,10 +288,10 @@ the direct JSON credential adapter is test-only and fails closed in production.
 Useful checks:
 
 ```bash
-pnpm exec vitest run mailbox
-pnpm exec vitest run packages/core/tests/architecture/mailbox-ipc-boundary.test.ts
-pnpm exec vitest run packages/core/tests/coordination/mailbox-project-server.test.ts
-pnpm exec vitest run packages/tui/tests/run-tui-mailbox-integration.test.ts
+bun --bun run vitest run mailbox
+bun --bun run vitest run packages/core/tests/architecture/mailbox-ipc-boundary.test.ts
+bun --bun run vitest run packages/coordination/tests/mailbox-project-server.test.ts
+bun --bun run vitest run packages/tui/tests/run-tui-mailbox-integration.test.ts
 node scripts/purge-stale-mailbox-entries.mjs
 ```
 

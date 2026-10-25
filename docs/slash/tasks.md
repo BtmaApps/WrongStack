@@ -92,6 +92,6 @@ Use `/tasks` for project planning, `/todos` for the AI's working checklist.
 ## Code reference
 
 - `packages/cli/src/slash-commands/tasks.ts`
-- `packages/core/src/tasks/` — TaskFile, TaskItem types
+- `packages/core/src/storage/task-store.ts` — `TaskFile`; `packages/core/src/utils/task-format.ts` — `TaskItem`
 - `packages/core/src/utils/context-evidence.ts` — `recordCompletedWorkEvidence`
 - `packages/core/src/storage/completed-work-checkpoint.ts` — ledger checkpoint

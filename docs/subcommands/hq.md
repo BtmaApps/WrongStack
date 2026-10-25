@@ -147,7 +147,7 @@ Consequences:
 | `/api/auth/status` | GET | `application/json` | Public auth-mode metadata used to render the credential gate; contains no credentials or telemetry |
 | `/api/login` / `/api/logout` | POST | `application/json` | Password session lifecycle. Login is throttled and sets a signed HttpOnly cookie; logout invalidates it |
 | `/api/auth/password` | POST / DELETE | `application/json` | Create/change/remove the HQ browser password from the Security view. Password sessions must provide the current password; an authenticated browser token can recover/reset it. Local loopback open mode may bootstrap its first password. Public relay mode refuses removal of the final browser auth method |
-| `/api/system/update` | GET | `application/json` | Cached npm self-update status used by the HQ warning banner. The UI polls every six hours; registry access remains capped by the existing 24-hour update cache |
+| `/api/system/update` | GET | `application/json` | Cached self-update status — GitHub Releases for the standalone binary, npm registry for a legacy package install — used by the HQ warning banner. The UI polls every six hours; registry access remains capped by the existing 24-hour update cache |
 | `/api/projects/:id` | GET | `application/json` (`ProjectDetail`) | Drilldown endpoint used by the project drawer |
 | `/api/fleet` | GET | `application/json` (`HqSnapshot`) | Alias of the live snapshot (fleet rollup) |
 | `/api/events` | GET | `application/json` `{events, total}` | Persisted event envelopes from `<dataDir>/events.jsonl`, newest first. `?limit=` (≤5000), `?type=` filter. The panel backfills Brain / Worktrees / Mailbox from here |
@@ -193,7 +193,7 @@ The three prompt-carrying types are:
 | `queue` | `note` | **Waits its turn.** A plain note the agent picks up before its next step. |
 | `broadcast` | `broadcast` | Fan out to every agent on the target's project (`to: all`). |
 
-The full set of `HQ_COMMAND_TYPES` (see `packages/core/src/hq/commands.ts`)
+The full set of `HQ_COMMAND_TYPES` (see `packages/hq/src/commands.ts`)
 also includes `abort`, `spawn`, and the gated `run-command`. Only
 `steer` / `btw` / `queue` / `broadcast` write a prompt to the mailbox;
 the others route through the agent's decision loop.
@@ -712,7 +712,7 @@ Notes:
 The primary dashboard is the **`packages/webui-hq` React app** (offline
 Vite bundle, no CDN), served from its built `dist/` with a graceful
 fallback to a self-contained inline HTML page when the dist is unbuilt.
-The panel connects to `/ws/browser` and renders twelve views behind a
+The panel connects to `/ws/browser` and renders fourteen views behind a
 header (live LED + fleet stat chips) and a tab bar:
 
 | View | Contents | Data source |
@@ -722,25 +722,28 @@ header (live LED + fleet stat chips) and a tab bar:
 | **Console** | Full chat transcript plus exact-client control composer for leader/subagent `steer` / `btw` / `queue`, targeted interrupt, optional leader+fleet interrupt, and optimistic outbound turns whose queued → delivered → acked state updates in the chat history | `/api/sessions/:id/events`, live `session.transcript`, `hq.command_status` |
 | **Mailbox** | Live feed + grouped-by-project message browser with type/priority/project/search filters | `hq.snapshot`, `mailbox.event` (backfilled from `/api/events`) |
 | **Kanban** | Read-only project and board selector with columns, cards, WIP limits, task status, assignees, labels, dependencies, and due dates synchronized across clones and machines | `/api/projects/:projectId/kanban`, live `kanban.snapshot` refresh trigger |
+| **Approvals** | Permission prompts waiting for a human, mirrored from every surface; answer them from HQ | live `approval.requested` / `approval.resolved` (backfilled from `/api/events`) |
 | **Cost** | Hero total, per-project share bars, per-session/model breakdown | `hq.snapshot` |
 | **Brain** | Decision / intervention timeline | `brain.event` (backfilled from `/api/events`) |
 | **Worktrees** | Per-owner lifecycle lanes (allocated → committed → merged / conflict / failed) | `worktree.event` (backfilled) |
 | **Trends** | KPI tiles + SVG column charts (cost / tokens / tool calls) with hover tooltips and 1h–7d range filters | `/api/trends/cost` |
+| **Event Log** | Filterable timeline of every telemetry envelope from every machine | `/api/events`, live `hq.event` |
 | **Alerts** | Live alert feed + history | `hq.alert`, `/api/alerts` |
 | **Control** | Advanced staged command composer (`steer` / `btw` / `queue` / `abort` / `spawn` / `broadcast` / gated `run-command`) with fully-qualified machine/project/process/session targets, preview + typed-confirmation gates, and live audit trail | `POST /api/command`, `/api/commands`, `hq.command_status` |
 | **Security** | Browser password and credential management | `/api/auth/status`, `/api/auth/password` |
 
-Panel source: `packages/webui-hq/` (views under `src/views/`, the
-transcript accumulation layer in `src/lib/transcript-store.ts`). An
+Panel source: `packages/webui-hq/` (views under `packages/webui-hq/src/views/`,
+the transcript accumulation layer in
+`packages/webui-hq/src/domain/transcript-store.ts`). An
 opt-in Playwright smoke drives the whole panel end-to-end:
-`WSTACK_E2E=1 pnpm vitest run packages/cli/tests/hq-visual-smoke.test.ts`.
+`WSTACK_E2E=1 bun --bun run vitest run packages/cli/tests/hq-visual-smoke.test.ts`.
 
 ## Client-side environment variables
 
 Clients (CLI/REPL / TUI / WebUI / VibeUI / Desktop / brain mailbox / agent-loop
 checker mailbox) read HQ config from the environment and publish telemetry
 when configured. The resolution logic lives in
-`packages/core/src/hq/factory.ts` (`resolveHqConfigFromEnv()`,
+`packages/hq/src/factory.ts` (`resolveHqConfigFromEnv()`,
 `createHqPublisherFromEnv()`).
 
 | Variable | Type | Default | Description |
@@ -904,7 +907,7 @@ export WRONGSTACK_HQ_URL=http://<hq-host>:3499
 HQ itself speaks plain HTTP/WS — it does not terminate TLS. For any
 deployment that is not loopback, terminate TLS in front of it and let the
 proxy upgrade `https://` → `ws://` / `wss://` → `ws://`. The publisher's
-`toClientUrl()` (see `packages/core/src/hq/publisher.ts`) rewrites the
+`toClientUrl()` (see `packages/hq/src/publisher.ts`) rewrites the
 scheme automatically:
 
 | Client sets `WRONGSTACK_HQ_URL=` | HQ receives |
@@ -1153,18 +1156,18 @@ is also taken.
   control plane, transcript rings, persistence wiring
 - `packages/cli/src/hq-static-serve.ts` — resolve + serve the built
   `@wrongstack/webui-hq/dist` (inline `HQ_HTML` fallback when unbuilt)
-- `packages/webui-hq/` — the React dashboard (12 views + transcript store)
+- `packages/webui-hq/` — the React dashboard (14 views + transcript store)
 - `packages/cli/src/arg-parser.ts` — `--hq`, `--host`, `--port`,
   `--strict-port`, `--open` boolean flags
 - `packages/cli/src/cli-main.ts` — early `--hq` dispatch (before `boot()`)
 - `packages/cli/tests/hq-server.test.ts` — HTTP serve, snapshot API,
   client hello + event broadcast, project drilldown endpoint,
   mailbox aggregation, protocol mismatch, drawer markup, live event feed
-- `packages/core/src/hq/` — protocol, redaction, mapper, publisher,
+- `packages/hq/src/` — protocol, redaction, mapper, publisher,
   factory (client-side)
 - `packages/coordination/src/sqlite-mailbox.ts` — `SqliteMailbox` →
   `HqPublisher` wiring
-- `packages/core/src/mailbox-attach.ts` — agent-loop checker mailbox
+- `packages/coordination/src/mailbox-attach.ts` — agent-loop checker mailbox
   publisher injection
 - `docs/archive/plans/hq-command-center-2026-06.md` — architecture and phased plan
 - `docs/configuration.md` — full HQ env-var reference table

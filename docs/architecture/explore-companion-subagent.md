@@ -204,7 +204,7 @@ ceilings still apply. Invalid numeric inputs fall back to usable defaults.
   `host-explore-companion-registry.ts`, and `host.ts`.
 - Role/tools/budgets: `packages/coordination/src/fleet.ts`.
 - Prompt: `packages/agent-catalog/instructions/agents/explore-companion.md`.
-- Settings: `packages/core/src/types/config/skills-fleet-brain.ts`.
+- Settings: `packages/contracts/src/types/config/skills-fleet-brain.ts`.
 - Tests: core `explore-companion.test.ts`, `explore-companion-lifecycle.test.ts`,
   CLI `host-explore-companion.test.ts`, and `explore-companion-registry.test.ts`.
 
@@ -226,7 +226,7 @@ resident reuse, absence of a director-side probe backlog, and session delivery.
 
 Core source typechecking, isolated companion test typechecking, and CLI source
 plus test typechecking passed. The broader Core test typecheck has unrelated
-diagnostics; it is not a green package-wide typecheck. The root `pnpm test`
+diagnostics; it is not a green package-wide typecheck. The root `bun run test`
 attempt is recorded at `.reports/explore-companion-full-test-2026-10-02.log`.
 It was stopped after out-of-scope failures and timeouts; it did not complete.
 The final focused run is recorded at

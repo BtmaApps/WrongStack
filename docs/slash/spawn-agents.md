@@ -25,28 +25,23 @@ Returns a summary of what was spawned.
 
 ## /agents
 
-Shows status of all spawned subagents: their name, current task, status (pending/running/done/failed), and iteration count.
+`/agents` reports on spawned subagents and controls how much of their output reaches the chat. Implemented subcommands (`packages/cli/src/slash-commands/agents.ts`):
 
-**Monitor overlay:**
-```
-/agents monitor     — open the agents monitor overlay
-/agents on          — show the agents monitor overlay
-/agents off         — hide the agents monitor overlay
-/agents stream on   — show subagent text output in chat history
-/agents stream off  — hide subagent text output from chat history (default)
-```
+| Form | What it does |
+|---|---|
+| `/agents` | Fleet status summary via the host's subagent status view |
+| `/agents help` | List the subcommands |
+| `/agents status` | Whether the agent stream is on |
+| `/agents chat off\|full\|status` | Fleet-chat verbosity; persisted to the active profile |
+| `/agents stream on\|off\|status` | Show or hide subagent conversations in chat |
+| `/agents list` | Every known subagent — status icon, name, id prefix, status, current task |
+| `/agents show <id>` | Transcript (last 30 entries) for one subagent, matched by id prefix or name |
 
-**Note:** The agents monitor overlay is available in the TUI via **Ctrl+G**. In plain REPL, use `/agents monitor` to open it.
+Unknown subcommands are rejected with `Unknown subcommand "<cmd>". Try: chat, stream, list, show`.
 
-The monitor overlay shows every known subagent with status, elapsed time, iteration/tool counts, an activity sparkline, the current tool, a global concurrency gauge, token/cost totals, and a compact event timeline.
+**Monitor overlay (TUI only).** In the TUI, `/agents` and `/agents monitor` toggle the agents monitor overlay (**F3** / **Ctrl+G**), as does `/agents list`. There are no `/agents on` or `/agents off` forms, and the overlay cannot be opened from the plain REPL.
 
-**With an id:**
-```
-/agents <subagent-id>
-```
-Returns a detailed live monitor view for that specific subagent: status, current task, pending tasks, completed tasks with stats, and (when director is active) cost/iterations/toolCalls from `fleet (action: usage)`. If the id is not found, returns an error.
-
-**Without an id:** Returns the summary table of all subagents.
+**Monitor overlay contents.** The overlay lists every known subagent with status, elapsed time, iteration and tool counts, a per-agent activity sparkline, the current tool, and token/cost totals, plus a per-agent transcript timeline.
 
 ## /director (obsolete — no-op)
 
@@ -156,6 +151,6 @@ The subagent responds synchronously — the director gets the answer in the same
 - `packages/cli/src/boot.ts:600-601` — `flags['director'] = true` **hard-coded**
 - `packages/cli/src/wiring/director-setup.ts:77` — `const directorMode = true` **compile-time constant**
 - `packages/cli/src/fleet/host.ts:1956-1958` — `isDirectorMode()` **always returns `true`**
-- `packages/core/src/types/config.ts:886` — `LaunchConfig.director` **field deleted**
+- `packages/contracts/src/types/config/autonomy.ts:273` — `LaunchConfig.director` **field deleted**
 
 **Result:** Director Mode cannot be disabled. The Director and its 8 orchestration tools are registered into every session automatically. All fleet paths (fleet root, manifest, scratchpad, subagent sessions) are always set up.

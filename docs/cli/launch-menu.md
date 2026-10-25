@@ -137,7 +137,7 @@ in the help text.
 - `packages/cli/src/cli-context.ts` — wires the menu between the
   help/desktop/HQ short-circuits and `boot()`.
 - `packages/cli/src/arg-parser.ts` — adds `'no-menu'` to `BOOLEAN_FLAGS`.
-- `packages/core/src/types/config.ts` — adds `LaunchMenuChoice` and
+- `packages/contracts/src/types/config.ts` — adds `LaunchMenuChoice` and
   `LaunchConfig.menuChoice`.
 - `packages/cli/tests/launch-menu.test.ts` — 39 unit tests covering
   the skip predicate, argv transformation, persistence shape, and the

@@ -39,5 +39,5 @@ Example: `--var "code:Paste the snippet::multiline,flavor:Regex flavor::enum=PCR
 
 ## Code Reference
 
-- `packages/core/src/plugins/prompts-plugin.ts`
+- `packages/builtin-plugins/src/prompts-plugin.ts`
 - `packages/core/src/storage/prompt-store.ts`

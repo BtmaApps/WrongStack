@@ -190,7 +190,7 @@ For documentation checks and source-derived inventories, see [maintenance](maint
 - **Markdown formatting**: ATX-style headings (`#`, `##`), fenced code blocks with language tags, two-space indent, 100-char soft wrap. See [typescript-style-guide.md](typescript-style-guide.md) for code style.
 - **Cross-references**: use relative links (for example, `[Architecture](architecture.md)`) so docs render correctly on GitHub and in editors.
 - **Code paths**: reference files with their full path from the repo root in backticks (e.g. `` `packages/cli/src/subcommands/handlers/per-subcommand-help.ts` ``).
-- **Verification**: run `pnpm docs:check`; refresh inventories with `pnpm docs:catalog:write`. Behavior claims still need code/test evidence.
+- **Verification**: run `bun run docs:check`; refresh inventories with `bun run docs:catalog:write`. Behavior claims still need code/test evidence.
 - **New docs**: add maintained guidance to the appropriate category and index it here. Put dated snapshots and completed work in `archive/` instead of the current-docs path.
 
 ---
@@ -200,7 +200,7 @@ For documentation checks and source-derived inventories, see [maintenance](maint
 1. **Read the [architecture.md](architecture.md)** for the package layout and layering rules.
 2. **Read the relevant Author Guide** for the surface you're adding (tool, plugin, provider, help module).
 3. **Read the [typescript-style-guide.md](typescript-style-guide.md)** before writing code.
-4. **Run `pnpm typecheck` and `pnpm test`** before opening a PR. Both are required to pass.
+4. **Run `bun run typecheck` and `bun run test`** before opening a PR. Both are required to pass.
 5. **Update this README** when you add maintained documentation to a category. Do not add archival snapshots to the main navigation.
 
 For questions, the [`/help` slash command](slash/help.md) and the [`wstack <sub> --help`](subcommands/version-help.md) surfaces are the canonical in-product references. Anything not covered by the in-product help is either a bug or a missing doc.

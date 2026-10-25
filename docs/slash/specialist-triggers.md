@@ -10,7 +10,7 @@ Auto-review is the machine that makes `reviewer` busy. This plugin is the same m
 
 ## What fires what
 
-Shipped rules (`DEFAULT_SPECIALIST_TRIGGERS` in `packages/core/src/plugins/specialist-trigger-rules.ts`):
+Shipped rules (`DEFAULT_SPECIALIST_TRIGGERS` in `packages/builtin-plugins/src/specialist-trigger-rules.ts`):
 
 | Role | Patterns |
 |------|----------|

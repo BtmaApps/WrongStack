@@ -129,5 +129,5 @@ traceable to the same collector and processor that owns the underlying project e
 
 `chronicle-ownership-boundary.test.ts` scans production TypeScript and rejects direct
 construction of `ChronicleJournal`, `ChronicleQueryEngine` or `ChronicleMetricsStore`
-outside `packages/core/src/chronicle`. New consumers must extend the typed project-server
+outside `packages/chronicle/src/`. New consumers must extend the typed project-server
 operation contract instead of opening Chronicle files.

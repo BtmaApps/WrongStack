@@ -69,7 +69,7 @@ packages/acp/
     legacy.ts                  deprecated pre-v1 compatibility entry point
     sdk.ts                     official upstream SDK entry point
     registry/
-      agents.catalog.ts        12-entry static catalog (one entry per agent)
+      agents.catalog.ts        13-entry static catalog (one entry per agent)
       ensemble-registry.ts     EnsembleRegistry class — $PATH probe + 5s cache
       acp-registry-fetch.ts    Official agentclientprotocol/registry (37+ agents)
     client/                    v1 client (WrongStack drives external agents)
@@ -98,7 +98,7 @@ packages/acp/
 
 ## 4. Discovery layer
 
-**`agents.catalog.ts`** — 12 entries, one per agent. Each entry is a typed object:
+**`agents.catalog.ts`** — 13 entries, one per agent. Each entry is a typed object:
 
 ```ts
 export interface ACPAgentDescriptor {
@@ -121,7 +121,7 @@ Integration levels:
 - `community` — Community-maintained wrapper (e.g. `cline` via `npx -y cline --acp`).
 - `experimental` — Listed by ACP but no public ACP entry yet; entry may not work.
 
-**The 12-agent catalog** (as registered in `agents.catalog.ts`):
+**The 13-agent catalog** (as registered in `agents.catalog.ts`):
 
 | id | Display Name | Vendor | Integration | ACP Entry Command |
 |---|---|---|---|---|
@@ -137,6 +137,7 @@ Integration levels:
 | `openhands` | OpenHands | Community | experimental | `openhands` |
 | `mistral-vibe` | Mistral Vibe | Community | experimental | `vibe` |
 | `cursor` | Cursor | Community | experimental | `cursor-agent acp` |
+| `kimi` | Kimi Code CLI | Moonshot | native | `kimi acp` |
 
 **Bundled fallback + live sync.** `agents.catalog.ts` is the *offline
 fallback*. The official [`agentclientprotocol/registry`](https://github.com/agentclientprotocol/registry)
@@ -244,7 +245,7 @@ Per turn:
 
 The default bootstrap uses a no-op echo `runTurn` so the binary is a useful connectivity smoke test. Programmatic users pass the result of `makeACPServerAgentTurn({ agentFor: ... })` as `WrongStackACPServerOptions.runTurn`.
 
-**`scripts/acp-smoke-test.mts`** — Node harness that spawns the bootstrap, walks a full session (initialize → authenticate → session/new → session/prompt → session/cancel → exit), and asserts on every response. Wired as `pnpm --filter @wrongstack/acp smoke`.
+**`scripts/acp-smoke-test.mts`** — Node harness that spawns the bootstrap, walks a full session (initialize → authenticate → session/new → session/prompt → session/cancel → exit), and asserts on every response. Wired as `bun run --filter @wrongstack/acp smoke`.
 
 ---
 
@@ -286,7 +287,7 @@ Three entry points consume the same `runEnsemble`:
 - **`/ensemble <csv> <task>`** — TUI/REPL slash command. Renderer is the same text block, returned to chat history.
 - **Programmatic** — `import { runEnsemble } from '@wrongstack/acp'; await runEnsemble({...})` — any script or test.
 
-**ACP Bench** (`acp-bench.ts`) — end-to-end verification that runs a standard task against every installed agent and produces a structured pass/fail report. Exported as `runAcpBench()` and `renderAcpBenchText()`. Wired as `pnpm --filter @wrongstack/acp bench`.
+**ACP Bench** (`acp-bench.ts`) — end-to-end verification that runs a standard task against every installed agent and produces a structured pass/fail report. Exported as `runAcpBench()` and `renderAcpBenchText()`. Wired as `wstack acp bench` / `/acp bench`.
 
 ---
 
@@ -323,7 +324,7 @@ Three entry points consume the same `runEnsemble`:
 - `makeACPSubagentRunner` / `makeACPSubagentRunnerWithStop` — single-agent runner
 - ACP bench (`runAcpBench`) — end-to-end per-agent verification
 - WebSocket transport (`WebSocketClientTransport`) for remote agents
-- End-to-end smoke test (`pnpm --filter @wrongstack/acp smoke`)
+- End-to-end smoke test (`bun run --filter @wrongstack/acp smoke`)
 
 **Roadmap (not started):**
 

@@ -151,5 +151,5 @@ event, so `/resume` brings it back. It is never written to `config.json` — use
 - `packages/tui/src/components/subagent-models-panel.tsx` — the lane panel
 - `packages/webui/src/components/ChatInput/subagent-models-button.tsx` — composer popover
 - `packages/webui/src/components/SettingsPanel/SubagentModelsSection.tsx` — browser editor
-- `packages/core/tests/coordination/spawn-model-single-resolver.test.ts` — guard
+- `packages/coordination/tests/spawn-model-single-resolver.test.ts` — guard
   proving no second resolver can bypass the plan

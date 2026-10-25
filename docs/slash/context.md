@@ -59,13 +59,13 @@ For a persistent config-level setting, set `context.effectiveMaxContext` and opt
 
 ## The breakdown (TUI monitor + CLI)
 
-The token breakdown is computed by `getContextBreakdown(ctx)` (`packages/core/src/utils/context-breakdown.ts`). It attributes each system-prompt block to its origin section via a builder-side `SYSTEM_BLOCK_SOURCE` WeakMap, splits tool definitions into builtin vs MCP (by server), and separates conversation text from tool-result output. The interactive TUI `/context` monitor renders the same measured numbers plus exact provider-bound memory presence.
+The token breakdown is computed by `getContextBreakdown(ctx)` (`packages/core/src/core/context-breakdown.ts`). It attributes each system-prompt block to its origin section via a builder-side `SYSTEM_BLOCK_SOURCE` WeakMap, splits tool definitions into builtin vs MCP (by server), and separates conversation text from tool-result output. The interactive TUI `/context` monitor renders the same measured numbers plus exact provider-bound memory presence.
 
 ## Code reference
 
 - `packages/cli/src/slash-commands/context.ts`
 - `packages/cli/src/slash-commands/context-residency.ts` — `/context residency` report (`getRequestResidency()` / `getHistoryRetention()` from core)
-- `packages/core/src/utils/context-breakdown.ts` — `getContextBreakdown()`
+- `packages/core/src/core/context-breakdown.ts` — `getContextBreakdown()`
 - `packages/tui/src/context-slash.ts` — panel-only TUI command bridge
 - `packages/tui/src/components/context-panel.tsx` — interactive TUI monitor
 - `packages/core/src/execution/intelligent-compactor.ts` — `repairToolUseAdjacency()`

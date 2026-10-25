@@ -119,7 +119,7 @@ This means subagents never need their own `ctx.meta['readOnly']` check — their
 |---|---|
 | `packages/core/src/security/readonly-permission-policy.ts` | Policy wrapper class |
 | `packages/core/src/security/index.ts` | Barrel export |
-| `packages/core/src/types/permission.ts` | `PermissionDecision.source` includes `'readonly_mode'` |
+| `packages/contracts/src/types/permission.ts` | `PermissionDecision.source` includes `'readonly_mode'` |
 | `packages/core/tests/security/readonly-permission-policy.test.ts` | Policy regression coverage |
 
 ---
@@ -146,7 +146,7 @@ The policy tests cover mutation declarations, capabilities and report-path excep
 Run with:
 
 ```bash
-pnpm --filter @wrongstack/core test tests/security/readonly-permission-policy.test.ts
+bun --bun run vitest run packages/core/tests/security/readonly-permission-policy.test.ts
 ```
 
 ---

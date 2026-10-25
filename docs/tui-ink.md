@@ -9,7 +9,7 @@
 
 ## 1. Overview
 
-WrongStack's TUI (Terminal User Interface) is an interactive, full-screen rendering layer built on top of **Ink 7** (React for CLIs). It is **lazy-loaded** by the CLI package — the `@wrongstack/cli` package only imports Ink and React when the user passes the `--tui` flag. Plain-REPL users pay zero startup cost for those dependencies.
+WrongStack's TUI (Terminal User Interface) is an interactive, full-screen rendering layer built on top of **Ink 8** (React for CLIs). It is **lazy-loaded** by the CLI package — the `@wrongstack/cli` package only imports Ink and React when the user passes the `--tui` flag. Plain-REPL users pay zero startup cost for those dependencies.
 
 The TUI presents a multi-region terminal layout:
 
@@ -20,7 +20,7 @@ terminal size after subscribing to resize events, covering changes during mount.
 
 ```
 ╭──────────────────────────────────────────────────────────────────────╮
-│  ◆ WrongStack  // TERMINAL AI ENGINE          ● READY v0.287.0      │
+│  ◆ WrongStack  // TERMINAL AI ENGINE          ● READY v1.2.1        │
 │                                                                      │
 │          WRONGSTACK ASCII wordmark (7 rows × 10 letters)             │
 │  ━━━━━━━━ BUILT ON THE WRONG STACK. SHIPPED ANYWAY. ━━━━━━━━━━━━━━━ │
@@ -40,40 +40,20 @@ terminal size after subscribing to resize events, covering changes during mount.
 ### 1.1 Architecture Diagram
 
 ```
-┌─────────────────────────────────────────────┐
-│  runTui()                                   │
-│    - bracketed paste                        │
-│    - signal handlers (SIGINT, SIGTERM)      │
-│    - mouse mode                             │
-│    - terminal title animation               │
-│    - Ink instance management                │
-│    - resize handler (erase from cursor)     │
-└──────────────┬──────────────────────────────┘
-               │ <App> props
-               ▼
-┌─────────────────────────────────────────────┐
-│  <App> (React component, ~7,745 lines)       │
-│    useReducer-driven state machine           │
-│    - subscribes to EventBus                  │
-│    - manages agent lifecycle                 │
-│    - hosts all panels/overlays               │
-│                                              │
-│  Regions:                                    │
-│  ┌─────────────────────────────────────┐     │
-│  │  History / ScrollableHistory       │     │
-│  │  (committed entries + streaming)   │     │
-│  ├─────────────────────────────────────┤     │
-│  │  Panels / Overlays / Pickers       │     │
-│  │  (Fleet, Brain, Help, etc.)        │     │
-│  ├─────────────────────────────────────┤     │
-│  │  KeyHintBar                        │     │
-│  ├─────────────────────────────────────┤     │
-│  │  Input (composer)                  │     │
-│  ├─────────────────────────────────────┤     │
-│  │  StatusBar                         │     │
-│  └─────────────────────────────────────┘     │
-└─────────────────────────────────────────────┘
+runTui()  ·  src/run-tui.ts
+  └─ <App>  ·  src/app.tsx   →   useAppController()   →   <AppView>  ·  src/app-view.tsx
+       ├─ AppMainColumn     src/app-main-column.tsx     chat column layout (width/rows, flex-end)
+       ├─ AppStatusRegion   src/app-status-region.tsx   status bar + bottom-region panels
+       ├─ AppViewPickers    src/app-view-pickers.tsx    picker overlays
+       ├─ AppViewPrompts    src/app-view-prompts.tsx    confirm/prompt overlays
+       └─ AppViewSidebar    src/app-view-sidebar.tsx    sidebar panels
 ```
+
+`<App>` owns the `useReducer` state machine, subscribes to the EventBus, manages
+the agent lifecycle and hosts every panel/overlay. Inside the main column
+`src/app-view.tsx` renders the inspect overlay, `ScrollableHistory`, the
+background strip, the composer (`src/components/input.tsx`), the pickers and the
+status bar (`src/components/status-bar.tsx`).
 
 ---
 
@@ -81,12 +61,14 @@ terminal size after subscribing to resize events, covering changes during mount.
 
 ### 2.1 State Management
 
-The TUI uses a single **`useReducer`** pattern with a pure reducer function (no React/Ink dependencies). Types live in `app-state.ts` and the reducer in `app-reducer.ts`.
+The TUI uses a single **`useReducer`** pattern with a pure reducer function (no React/Ink dependencies). The `State` type lives in `src/app-state.ts`, the `Action` union in `src/app-action-type.ts`, and the reducer entry point in `src/app-reducer.ts`.
 
 **Key files:**
-- `src/app-state.ts` — 1,452 lines: `State` interface + 70+ discriminated `Action` union types
-- `src/app-reducer.ts` — 2,445 lines: pure reducer handling all actions
-- `src/app-initial-state.ts` — 258 lines: `createInitialState()` factory with full defaults
+- `src/app-state.ts` — `State` type; supporting types are split across `src/app-state-core-types.ts`, `src/app-state-fleet.ts`, `src/app-ui-state.ts`, `src/app-view-state.ts` and `src/app-panel-state.ts`
+- `src/app-action-type.ts` — discriminated `Action` union
+- `src/app-reducer.ts` — reducer entry point; delegates every action to a `src/reducers/*` module
+- `src/reducers/*` — reducer modules (composer, panel pickers, workspace panels, settings values, fleet, activity, dialogs, chat search, conversation, message jump)
+- `src/app-initial-state.ts` — `createInitialState()` factory with full defaults
 - `src/reducers/fleet.ts` — subagent state reducer (separated for clarity)
 - `src/reducers/helpers.ts` — panel close helpers, stream retention caps
 
@@ -107,7 +89,7 @@ The TUI uses a single **`useReducer`** pattern with a pure reducer function (no 
 
 ### 2.2 Entry Point: `runTui()`
 
-`packages/tui/src/run-tui.ts` (1,317 lines)
+`src/run-tui.ts`
 
 The `runTui()` function:
 1. Enters the alternate screen buffer and sets up bracketed paste mode
@@ -121,7 +103,7 @@ The `runTui()` function:
 
 ### 2.3 Ink Shim: `ink.tsx`
 
-`packages/tui/src/ink.tsx` (80 lines)
+`src/ink.tsx`
 
 A **pastel-aware shim** over Ink's `<Text>` and `<Box>` components. Ink resolves bare color names (`color="red"`) against the terminal's 16-color palette (typically dark and harsh). Instead of rewriting ~300 hardcoded color attributes, the shim intercepts every `color` / `backgroundColor` / `borderColor` prop at runtime and routes it through `softColor()` to remap to Catppuccin Mocha pastel hexes.
 
@@ -141,9 +123,9 @@ Key design decisions:
 **Components:**
 - `src/components/scrollable-history.tsx` — default bounded, virtualized history viewport
 - `src/components/history/index.tsx` — legacy `<History>` renderer and history component exports
-- `src/components/history/entry.tsx` (671 lines) — discriminated union renderer for 11 entry kinds
+- `src/components/history/entry.tsx` — discriminated union renderer for 11 entry kinds
 - `src/components/history/assistant.tsx` — `AssistantBody` (markdown + code blocks), `AssistantTail` (8-row constant-height streaming tail)
-- `src/components/history/banner.tsx` (414 lines) — startup banner with ASCII "W" logo + wordmark
+- `src/components/history/banner.tsx` — startup banner with ASCII "W" logo + wordmark
 - `src/components/history/code-block.tsx` — `CodeBlock`, `DiffBlock`, `DiffFileBlock` with syntax highlighting
 - `src/components/history/tool-card.tsx` — tool call entry with expandable body
 - `src/components/history/types.ts` — all entry type definitions
@@ -175,7 +157,7 @@ With inline diff previews using dark green/red background washes (`#1e4620`/`#5a
 
 ### 3.2 Scrollable History (Managed Viewport)
 
-`src/components/scrollable-history.tsx` (212 lines)
+`src/components/scrollable-history.tsx`
 
 The TUI uses `<ScrollableHistory>` by default. It renders retained entries into
 a **fixed-height, scrolled viewport**, preventing unbounded terminal scrollback.
@@ -206,7 +188,7 @@ adds scrollbar drag and clickable UI.
 
 ### 3.3 Composer / Input
 
-`src/components/input.tsx` (506 lines)
+`src/components/input.tsx`
 
 The composer is a multi-line input buffer with extensive terminal compatibility handling.
 
@@ -239,7 +221,7 @@ The composer is a multi-line input buffer with extensive terminal compatibility 
 
 ### 3.4 Status Bar
 
-`src/components/status-bar.tsx` (1,621 lines) + `src/components/powerline-rail.tsx`
+`src/components/status-bar.tsx` + `src/components/powerline-rail.tsx`
 
 The status bar is the most visually rich component, composed of multiple lines:
 
@@ -273,23 +255,19 @@ const EIGHTHS = ['', '▏', '▎', '▍', '▌', '▋', '▊', '▉'];
 ```
 Each terminal cell is 1/8 resolution, so the bar grows smoothly token-by-token.
 
-### 3.5 Key Hint Bar
+### 3.5 Contextual Shortcut Hints
 
-`src/components/key-hint-bar.tsx` (82 lines)
+There is no standalone shortcut-bar component: each panel, picker and surface owns its own hint string and renders it inside its own frame.
 
-Context-sensitive shortcut footer shown between the history region and the composer. Adapts to the active interactive context:
-
-| Context | Hints Shown | Color |
-|---------|-------------|-------|
-| Confirm prompt | `y yes · n no · a always · d deny` | red |
-| Picker active | `↑↓ navigate · Enter select · Esc close` | — |
-| Monitor overlay | `↑↓ scroll · Esc close` | — |
-| Managed viewport | `↑↓ / wheel scroll` | — |
-| Normal (all panels closed) | Discovery hints: `F1 projects` / `F3 agents` / etc. | cyan for new |
+- Panels and overlays define their hint themselves — e.g. `src/components/auth-panel.tsx` (`↑/↓ select · Enter open · Esc close`), `src/components/brain-panel.tsx`, `src/components/audit-panel.tsx` (`Esc close · Alt+PgUp/PgDn scroll`), `src/components/chat-search-bar.tsx`, `src/components/design-picker.tsx`, `src/components/checkpoint-timeline.tsx`
+- Pickers receive theirs as a `hint` prop from `src/app-view-pickers.tsx` (`hint={state.modelPicker.hint}`, and the same for the other pickers) and render it inside their own border
+- The composer hint is a separate path: `src/components/input.tsx` declares the `hint` prop, defaults `footerHint` to `Enter send · @ file · / commands · $ skill`, and renders `bottomHint = modeLabel + (pointer.notice || hint || footerHint)` in the bottom frame
+- `src/app-view.tsx` fills that prop with `selectionModeError || (bashMode ? BASH_HINT : inputHint)`, where `inputHint` is derived in `src/app-view-state.ts` (e.g. `slash command — Enter to dispatch` while an idle buffer starts with `/`)
+- `src/app-status-region.tsx` gives the status bar its own hint: `state.copiedNotice || renderRunningTools(state.runningTools) || state.hint`
 
 ### 3.6 Startup Banner
 
-`src/components/history/banner.tsx` (414 lines)
+`src/components/history/banner.tsx`
 
 The startup banner is a responsive component that renders differently based on terminal width:
 
@@ -307,7 +285,7 @@ The startup banner is a responsive component that renders differently based on t
 
 ### 3.7 Markdown Renderer
 
-`src/components/markdown.tsx` (279 lines) + `src/components/markdown-table.tsx` (526 lines)
+`src/markdown.tsx` + `src/markdown-table.ts`
 
 A lightweight markdown renderer for assistant prose:
 
@@ -336,7 +314,7 @@ A lightweight markdown renderer for assistant prose:
 
 ## 4. Animation System
 
-`src/components/animation-style.tsx` (162 lines)
+`src/components/animation-style.ts`
 
 The TUI has a sophisticated animation subsystem shared between the status bar's `ThinkingChip` and the composer's `ComposerStatusChip`.
 
@@ -375,7 +353,7 @@ The composer chip has two hard invariants:
 
 ## 5. Theme System
 
-`src/theme.ts` (186 lines)
+`src/theme.ts`
 
 ### 5.1 Color Palette
 
@@ -450,7 +428,7 @@ Both `env` and `isTTY` are overridable for testability.
 
 ## 6. Glyph System
 
-`src/ui-glyphs.ts` (170 lines)
+`src/ui-glyphs.ts`
 
 ### 6.1 Three Profiles
 
@@ -478,7 +456,7 @@ Loaded once at module init via `glyphSet(resolveIconStyle())`.
 
 ## 7. Terminal Width Utilities
 
-`src/terminal-width.ts` (146 lines)
+`src/terminal-width.ts`
 
 Essential for correct visual layout since JavaScript `.length` counts UTF-16 code units, not terminal cells.
 
@@ -601,7 +579,7 @@ The TUI has an extensive picker system for interactive selection:
 - Ink immediately re-renders at the new width
 
 ### 10.4 Terminal Title
-`src/terminal-title.ts` (99 lines)
+`src/terminal-title.ts`
 
 Animated tab/window title via OSC-0 sequence (`ESC ] 0 ; <text> BEL`):
 - Thinking state: `⠋ thinking… · WrongStack`
@@ -627,7 +605,7 @@ timers, countdowns and progress indicators keep updating.
 
 ## 11. Thinking Word System
 
-`src/thinking-word.ts` (73 lines)
+`src/thinking-word.ts`
 
 The configurable label shown during agent processing (e.g., "thinking", "pondering", "conjuring"):
 
@@ -645,7 +623,7 @@ The configurable label shown during agent processing (e.g., "thinking", "ponderi
 ## 12. Fleet & Subagent Integration
 
 ### 12.1 Fleet State Management
-- `fleetReducer` handles subagent events from the FleetBus
+- `reduceFleetState` in `src/reducers/fleet.ts` handles subagent events from the FleetBus
 - Per-agent fields: id, name, provider, model, status, streaming text, iterations, tool calls, cost, context pressure, budget warnings, extensions, transcript path
 - `fleetBatch` action coalesces high-frequency events (agent status updates at ~150ms) into a single reducer pass to prevent React thrash
 
@@ -734,11 +712,11 @@ Eternal mode integration: the TUI drives `runOneIteration()` from the post-slash
 - **Framework:** Vitest
 - **Config:** `vitest.config.ts` — `@wrongstack/core` resolved to source (not dist)
 - **Timeout:** 60 seconds (both test and hooks)
-- **Max workers:** 25%
+- **Max workers:** 2 in watch mode, 4 for a single run (shared cap in `vitest.workers.ts`)
 - **Setup:** `../../vitest.setup.ts`
 - **Ink testing:** `ink-testing-library` ^4.0.0 for component-level tests
 
-### 17.1 Test Coverage Highlights (111 files)
+### 17.1 Test Coverage Highlights
 
 | Area | Key Test Files |
 |------|---------------|
@@ -763,37 +741,26 @@ Eternal mode integration: the TUI drives `runOneIteration()` from the post-slash
 
 ## 18. Source File Index
 
-| File | Lines | Purpose |
-|------|-------|---------|
-| `src/app.tsx` | ~7,745 | Root React component, state wiring, agent lifecycle |
-| `src/app-reducer.ts` | 2,445 | Pure state transformer |
-| `src/app-state.ts` | 1,452 | State & Action type definitions |
-| `src/run-tui.ts` | 1,317 | Ink bootstrap, signals, mouse, terminal title |
-| `src/components/status-bar.tsx` | 1,621 | Multi-line status rail with powerline chips |
-| `src/components/history/entry.tsx` | 671 | Discriminated entry renderer (11 kinds) |
-| `src/components/history/banner.tsx` | 414 | Startup banner (responsive layout) |
-| `src/markdown-table.ts` | 526 | GitHub table → Unicode box-drawing |
-| `src/components/input.tsx` | 506 | Multi-line composer with raw stdin handling |
-| `src/markdown.tsx` | 279 | Lightweight markdown + inline renderer |
-| `src/app-initial-state.ts` | 258 | Initial state factory |
-| `src/components/composer-status-chip.tsx` | 256 | Isolated animated composer chip |
-| `src/components/scrollable-history.tsx` | 212 | Managed viewport with scrollbar |
-| `src/theme.ts` | 186 | Catppuccin Mocha pastel palette + theme |
-| `src/components/history/assistant.tsx` | 175 | Assistant body + streaming tail |
-| `src/ui-glyphs.ts` | 170 | 3-profile icon system |
-| `src/components/animation-style.tsx` | 162 | 5 animation styles + cycle meta-mode |
-| `src/terminal-width.ts` | 146 | Grapheme-aware cell measurement |
-| `src/components/history/index.tsx` | 124 | `<History>` with React.memo + re-exports |
-| `src/components/history/types.ts` | 124 | History entry type definitions |
-| `src/components/powerline-rail.tsx` | 107 | Segmented status rail |
-| `src/terminal-title.ts` | 99 | Animated window/tab title (OSC-0) |
-| `src/ink.tsx` | 80 | Pastel-aware Ink shim |
-| `src/components/key-hint-bar.tsx` | 82 | Context-sensitive shortcut bar |
-| `src/thinking-word.ts` | 73 | Configurable working label + 24-word pool |
-| `src/mouse.ts` | — | SGR mouse event parser |
-| `src/hooks/*` | 22 files | Custom React hooks |
-| `src/components/*` | ~50 files | All UI components + pickers + panels |
-| **Total** | **~18,500** | |
+Paths are relative to `packages/tui/`. File sizes change with every refactor, so the live source tree is the source of truth.
+
+| File | Purpose |
+|------|---------|
+| `src/app.tsx` | `<App>` wrapper: runs `useAppController`, renders `<AppView>`; re-exports public types and helpers |
+| `src/app-view.tsx` · `src/app-main-column.tsx` · `src/app-status-region.tsx` · `src/app-view-pickers.tsx` · `src/app-view-prompts.tsx` · `src/app-view-sidebar.tsx` | View composition: root view, chat-column layout, status region, picker overlays, prompt overlays, sidebar column |
+| `src/app-state.ts` · `src/app-state-core-types.ts` · `src/app-state-fleet.ts` · `src/app-ui-state.ts` · `src/app-view-state.ts` · `src/app-panel-state.ts` | `State` and supporting type modules |
+| `src/app-action-type.ts` | Discriminated `Action` union |
+| `src/app-reducer.ts` | Reducer entry point; delegates each action to a `src/reducers/*` module |
+| `src/reducers/*` | Reducer modules: composer, panel pickers, workspace panels, settings values, fleet, activity, dialogs, chat search, conversation, message jump |
+| `src/app-initial-state.ts` | `createInitialState()` factory |
+| `src/run-tui.ts` | Ink bootstrap, signals, mouse, terminal title |
+| `src/components/input.tsx` | Multi-line composer with raw stdin handling |
+| `src/components/status-bar.tsx` · `src/components/powerline-rail.tsx` · `src/components/composer-status-chip.tsx` | Multi-line status rail, segmented powerline chips, isolated animated composer chip |
+| `src/components/scrollable-history.tsx` | Managed viewport with scrollbar |
+| `src/components/history/index.tsx` · `src/components/history/entry.tsx` · `src/components/history/types.ts` · `src/components/history/assistant.tsx` · `src/components/history/banner.tsx` | `<History>` renderer, discriminated entry renderer (11 kinds), history entry types, assistant body + streaming tail, startup banner |
+| `src/markdown.tsx` · `src/markdown-table.ts` | Lightweight markdown + inline renderer; GitHub table → Unicode box-drawing |
+| `src/theme.ts` · `src/ui-glyphs.ts` · `src/components/animation-style.ts` | Catppuccin Mocha pastel palette + theme, 3-profile icon system, 5 animation styles + cycle meta-mode |
+| `src/terminal-width.ts` · `src/terminal-title.ts` · `src/ink.tsx` · `src/thinking-word.ts` · `src/mouse.ts` | Grapheme-aware cell measurement, animated window/tab title (OSC-0), pastel-aware Ink shim, working label + 24-word pool, SGR mouse event parser |
+| `src/hooks/*` · `src/components/*` | Custom React hooks; all UI components + pickers + panels |
 
 ---
 
@@ -826,4 +793,4 @@ Based on mailbox broadcast activity during this session:
 
 ---
 
-*Report generated 2026-07-14 from live source inspection of `packages/tui/` (111 test files, ~18,500 lines of source, 45+ component files).*
+*Report generated 2026-10-25 from live source inspection of `packages/tui/`. Source and test counts are omitted on purpose — use the live source tree and test inventory.*

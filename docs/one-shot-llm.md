@@ -272,10 +272,10 @@ The `llm` tool wrapper regression suite covers:
 
 | File | Description |
 |------|-------------|
-| `packages/core/src/types/one-shot-llm.ts` | `OneShotLLMInput`, `OneShotLLMResult`, `OneShotOrchestratorOptions` types |
+| `packages/contracts/src/types/one-shot-llm.ts` | `OneShotLLMInput`, `OneShotLLMResult`, `OneShotOrchestratorOptions` types |
 | `packages/core/src/execution/one-shot-llm.ts` | `OneShotOrchestrator` class — core provider resolution + fallback + completion |
-| `packages/core/src/tools/one-shot-llm-tool.ts` | `createOneShotLLMTool()` factory — wraps orchestrator as a registered tool |
-| `packages/core/tests/execution/one-shot-llm.test.ts` | 12 orchestrator tests |
-| `packages/core/tests/tools/one-shot-llm-tool.test.ts` | 4 tool wrapper tests |
+| `packages/tools/src/management/one-shot-llm-tool.ts` | `createOneShotLLMTool()` factory — wraps orchestrator as a registered tool |
+| `packages/core/tests/execution/one-shot-llm.test.ts` | 34 orchestrator tests |
+| `packages/tools/tests/management/one-shot-llm-tool.test.ts` | 13 tool wrapper tests |
 | `packages/cli/src/cli-main.ts` | Runtime registration with `buildProviderForId` |
 | `packages/core/src/index.ts` | Public API exports |

@@ -9,7 +9,9 @@ its wire types.
 |---|---|---|
 | `primitives`, `persistence` | Dependency-leaf helpers and SQLite/file/lifecycle primitives | Package exports; [persistence contract](../../packages/persistence/README.md) |
 | `kanban` | Durable boards, task contracts, readiness and workflow state | [Kanban architecture](../kanban-architecture.md) |
-| `core` | Agent contracts/kernel, execution, security, state and coordination | Focused public subpaths; [architecture](../architecture.md) |
+| `contracts` | Shared type vocabulary and the DI kernel every package builds against | [types](../../packages/contracts/src/types/index.ts), [kernel](../../packages/contracts/src/kernel/index.ts) |
+| `core` | Agent runtime: context, agent loop, tool execution, permissions, hooks and state | Focused public subpaths; [architecture](../architecture.md) |
+| `coordination` | Director, fleet and supervisor, delegation and the project mailbox | [fleet architecture](../director-architecture.md), [mailbox](../mailbox-architecture.md) |
 | `runtime` | Host composition of services and domain ports | [runtime exports](../../packages/runtime/src/index.ts) |
 | `providers`, `tools` | Provider wires/catalog and built-in capabilities | [provider authoring](../provider-author-guide.md), [tool workflows](../tools/README.md) |
 | `webui-protocol` | Browser wire and HTTP contract types/generated schemas | [protocol exports](../../packages/webui-protocol/src/index.ts) |

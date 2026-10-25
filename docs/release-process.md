@@ -40,7 +40,7 @@ back, while every shipped binary still has to pass the cross-platform smoke.
 
 | Job | What it does |
 | --- | --- |
-| `binaries` | `node scripts/build-binaries.mjs` cross-compiles all targets on one Ubuntu runner, then `scripts/smoke-binary.mjs` runs the Linux x64 build |
+| `binaries` | `bun scripts/build-binaries.mjs` cross-compiles all targets on one Ubuntu runner, then `bun scripts/smoke-binary.mjs` runs the Linux x64 build |
 | `binaries-smoke` | runs the same smoke on real Windows x64, Windows arm64 and macOS (arm64) runners |
 | `github-release` | verifies manifest coverage and digests, then uploads `wstack-*`, `SHA256SUMS`, `install.sh`, `install.ps1` |
 | `desktop` | packages and smokes Windows, Linux, macOS arm64, and macOS x64 through the reusable Desktop workflow |
@@ -59,9 +59,9 @@ Targets: `windows-x64`, `windows-arm64`, `linux-x64`, `linux-arm64`,
 Build and smoke locally (Bun required):
 
 ```bash
-pnpm build:binary                       # this machine's target only
-node scripts/smoke-binary.mjs           # smoke it
-pnpm build:binaries                     # every target → dist-bin/
+bun run build:binary                     # this machine's target only
+bun scripts/smoke-binary.mjs            # smoke it
+bun run build:binaries                   # every target → dist-bin/
 ```
 
 How the binary differs from a source/workspace install at runtime — daemon dispatch,
@@ -83,31 +83,31 @@ A broad correctness sweep run on the release commit before the tag is pushed:
 
 ```bash
 bun run release:check
-# ↪ pnpm audit --audit-level=moderate
-#   pnpm build
-#   node scripts/check-tools-package-smoke.mjs
-#   pnpm check:dist-hidden
-#   pnpm providers:catalog:check
-#   pnpm website:tools:check
-#   pnpm plugins:manifest:check
-#   node scripts/check-package-contracts.mjs
-#   pnpm write:build-manifest
-#   pnpm check:build-manifest
-#   pnpm check:architecture
-#   pnpm check:test-inventory
-#   pnpm check:test-skips
-#   pnpm check:node-pty
-#   pnpm check:rulebook
-#   pnpm lint:i18n
-#   pnpm typecheck:only
-#   pnpm check:test-types
-#   pnpm test:coverage
+# ↪ bun scripts/audit-dependencies.mjs --audit-level=moderate
+#   bun run build
+#   bun scripts/check-tools-package-smoke.mjs
+#   bun run check:dist-hidden
+#   bun run providers:catalog:check
+#   bun run website:tools:check
+#   bun run plugins:manifest:check
+#   bun scripts/check-package-contracts.mjs
+#   bun run write:build-manifest
+#   bun run check:build-manifest
+#   bun run check:architecture
+#   bun run check:test-inventory
+#   bun run check:test-skips
+#   bun run check:node-pty
+#   bun run check:rulebook
+#   bun run lint:i18n
+#   bun run typecheck:only
+#   bun run check:test-types
+#   bun run test:coverage
 ```
 
 The matrix is defined in `scripts/release-check-matrix.mjs`. Its release profile
 has 19 gates, including the packed tools-package smoke, catalog/projection freshness,
 architecture, test inventory/skips/types, build lineage and coverage ratchets.
-Full `pnpm lint` and browser smoke are separate. `ci:local` and `release:fast`
+Full `bun run lint` and browser smoke are separate. `ci:local` and `release:fast`
 use different profiles; neither is the full release profile.
 
 Coverage executes its configured test areas; a failed or skipped prerequisite
@@ -125,9 +125,9 @@ because nothing in this repository may be published to npm. The full
 
 ```bash
 bun run test:guard
-# ↪ vitest run packages/plugins/tests/catalog.test.ts
-#           packages/plugins/tests/plugin-teardown.test.ts
-#           packages/plugins/tests/smoke.test.ts
+# ↪ bun --bun run vitest run packages/plugins/tests/catalog.test.ts
+#                            packages/plugins/tests/plugin-teardown.test.ts
+#                            packages/plugins/tests/smoke.test.ts
 ```
 
 **What it guards**:
@@ -135,7 +135,7 @@ bun run test:guard
 | File | Why it matters |
 |------|-----------------|
 | `packages/plugins/tests/catalog.test.ts` | The plugin catalog must list every plugin exported from `src/index.ts`. A mismatch means `spec-linker` (or any other consumer) will be stale on day one. |
-| `packages/plugins/tests/plugin-teardown.test.ts` | Lifecycle expectations are checked across the 63 entries in `PLUGIN_CATALOG`. |
+| `packages/plugins/tests/plugin-teardown.test.ts` | Lifecycle expectations are checked per plugin — the teardown of each plugin that owns timers, watchers or stores. |
 | `packages/plugins/tests/smoke.test.ts` | All 8 historic plugin files (the original 8 from the pre-catalog era) must still import and register. Catches broken barrel exports. |
 
 **Why a separate script?** It gives maintainers focused feedback on catalog,
@@ -150,7 +150,7 @@ machine and the full suite is much larger than this three-file selection.
 | `bun run release:check` | Full repository release gate, no publication |
 | `bun run test:guard` | Three focused plugin tests only |
 | `prepublishOnly` (root) | Always fails: npm publishing is retired |
-| `pnpm test` | Root Vitest suite, then the WebUI package test script |
+| `bun run test` | Root Vitest suite, then the WebUI package test script |
 | Tag push (`v*.*.*`) | Verify the tag/SHA; build and smoke standalone plus Desktop assets; create the GitHub Release |
 | Manual `CI` dispatch (`ci.yml`) | Run the repository CI jobs on the selected ref; pushes and pull requests do not start them |
 | Manual `Dependency Audit` dispatch (`audit.yml`) | Run the configured dependency audit; there is no scheduled or push trigger |
@@ -172,7 +172,7 @@ extended:
 ```jsonc
 {
   "scripts": {
-    "test:guard": "vitest run packages/plugins/tests/catalog.test.ts packages/plugins/tests/plugin-teardown.test.ts packages/plugins/tests/smoke.test.ts packages/plugins/tests/<new-guard>.test.ts"
+    "test:guard": "bun --bun run vitest run packages/plugins/tests/catalog.test.ts packages/plugins/tests/plugin-teardown.test.ts packages/plugins/tests/smoke.test.ts packages/plugins/tests/<new-guard>.test.ts"
   }
 }
 ```
@@ -200,7 +200,7 @@ baseline; new ones should match the same shape.
 ## Cross-references
 
 - [`packages/plugins/src/catalog.ts`](../packages/plugins/src/catalog.ts) — what the catalog test guards
-- [`docs/feature-matrix.md`](feature-matrix.md) — the 63 plugins the H1 teardown test covers
+- [`docs/feature-matrix.md`](feature-matrix.md) — the plugin-to-tool mapping the catalog test guards
 - [`packages/plugins/README.md`](../packages/plugins/README.md) — the plugin contract
 - [`release.md`](release.md) — maintainer checklist, version bump, tagging, and current automation status
 - [`.github/workflows/pages.yml`](../.github/workflows/pages.yml) — website deployment only

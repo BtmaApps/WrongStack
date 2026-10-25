@@ -227,7 +227,7 @@ embedded in `DefaultSystemPromptBuilder`:
 
 ## Agent Prompts
 
-Fleet/subagent role prompts live in `packages/core/instructions/agents/` and are
+Fleet/subagent role prompts live in `packages/agent-catalog/instructions/agents/` and are
 loaded by id, for example:
 
 - `agents/explore.md`
@@ -243,7 +243,7 @@ Agent prompt override lookup checks:
 
 1. `WRONGSTACK_AGENT_INSTRUCTIONS_DIR`
 2. `~/.wrongstack/profiles/<name>/instructions/agents`
-3. bundled `packages/core/instructions/agents`
+3. bundled `packages/agent-catalog/instructions/agents`
 
 ## Mode And Helper Prompts
 

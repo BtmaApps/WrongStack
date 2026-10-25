@@ -173,7 +173,7 @@ Plugins that stop destructive operations from happening by accident.
 | `dep-guard` | Risky `install` calls: deny list, just-published packages (registry age), typosquat lookalike warnings, unknown names, OSV advisories, unpinned version warnings | `warn` |
 | `injection-shield` | Prompt-injection patterns in tool *output* (warns the model that content is data, not instructions) | `warn` |
 | `prompt-firewall` | Credential-leak scanner on the provider wire (provider wrapper) | `warn` |
-| `dependency-vulnerability-gate` | Surfaces `pnpm audit` results before/after installs | `block` / `warn` |
+| `dependency-vulnerability-gate` | Surfaces `bun audit` results before/after installs | `block` / `warn` |
 | `license-audit-gate` | Scans dependency licenses against an allowlist | `block` |
 | `schema-evolution-guard` | Detects schema drift between source and docs | `warn` |
 | `security-hotspot-scanner` | Scans code for security hotspots without running the full pipeline | `warn` |

@@ -37,7 +37,7 @@ in the sidebar, outside the embedded WebUI. The welcome screen lists recent proj
 
 For local packaging, run `node scripts/package-desktop.mjs --publish never`.
 The script builds the workspace dependency closure, deploys local packages, and
-packages Electron; output is under `apps/desktop/.package-stage/release`.
+packages Electron; output is under `.temp_files/package-desktop-stage/release`.
 Run `node scripts/smoke-desktop.mjs --window` to verify packaged dependencies,
 assets, a real PTY process, and window startup using an isolated profile and the
 host platform's bundled Electron runtime. Linux needs a display; CI uses

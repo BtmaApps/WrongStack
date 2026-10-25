@@ -27,5 +27,5 @@ prompt using `{{variables}}`, and saves it via:
 
 ## Code Reference
 
-- `packages/core/src/plugins/prompts-plugin.ts`
+- `packages/builtin-plugins/src/prompts-plugin.ts`
 - `packages/core/skills/prompt-engineering/SKILL.md` (the authoring playbook)

@@ -8,7 +8,7 @@ browser snapshots and commands.
 | Owner | Source |
 |---|---|
 | Server entry | [`hq-server.ts`](../packages/cli/src/hq-server.ts) |
-| Wire contracts and publishers | [`packages/core/src/hq/`](../packages/hq/src/) |
+| Wire contracts and publishers | [`packages/hq/src/`](../packages/hq/src/) |
 | View/navigation registry | [`views.ts`](../packages/webui-hq/src/components/hq/views.ts) |
 | Browser transport | [`hq-socket.ts`](../packages/webui-hq/src/data/transport/hq-socket.ts) |
 | Browser store | [`data/store/`](../packages/webui-hq/src/data/store/) |

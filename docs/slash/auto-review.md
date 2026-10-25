@@ -110,5 +110,5 @@ See also: [`/chimera`](chimera.md) (post-session review), [`/review`](review.md)
 
 ## Code reference
 
-- `packages/core/src/plugins/auto-review-plugin.ts` — change detector and review scheduler
+- `packages/builtin-plugins/src/auto-review-plugin.ts` — change detector and review scheduler
 - `packages/cli/src/execution-chimera-review.ts` — persistence, mailbox delivery, and passive notification

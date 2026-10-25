@@ -17,8 +17,8 @@ owners and state service/test limitations precisely. Keep external links for
 upstream context; repository behavior is determined by local code and tests.
 
 ```bash
-pnpm docs:catalog:write
-pnpm docs:check
+bun run docs:catalog:write
+bun run docs:check
 ```
 
 The catalog writer reads source declarations without importing runtime
@@ -45,6 +45,6 @@ local under `archive/local/`; do not turn them into tracked publication inputs.
 
 Architecture-health evidence is a generated exception: keep the
 `docs/reports/architecture-health-current.{json,md}` pair and regenerate it with
-`pnpm report:architecture`. Never hand-edit measurements or claim a commit's
+`bun run report:architecture`. Never hand-edit measurements or claim a commit's
 freshness from an old report. Full release certification uses the separate
 [release matrix](release-process.md).

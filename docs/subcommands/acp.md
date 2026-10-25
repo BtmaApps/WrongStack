@@ -54,8 +54,8 @@ Runs a single task on a single ACP agent and waits for the result.
 wstack acp spawn <agent-id> <task description>
 ```
 
-The agent is looked up first in the legacy `ACP_AGENT_COMMANDS` map,
-then falls back to the 12-entry catalog, then the synced registry.
+The agent is looked up in the 13-entry catalog first, then the synced
+registry, with the legacy `ACP_AGENT_COMMANDS` map only as a last resort.
 The task is sent as a single
 `session/prompt` turn; `session/update` notifications are streamed to stderr
 (if you want them) and the final `stopReason` and result text are printed to

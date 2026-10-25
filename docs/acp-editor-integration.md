@@ -93,7 +93,7 @@ and terminal (see §5).
 From a WrongStack checkout, run the built-server smoke test:
 
 ```bash
-pnpm --filter @wrongstack/acp smoke
+bun run --filter @wrongstack/acp smoke
 ```
 
 Expect: an `initialize` result, a `session/new` result with a `sessionId`,

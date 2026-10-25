@@ -187,7 +187,7 @@ sat inside an allowed parent.
 A new `Config` field must be registered in three places. Two of them are now
 `tsc`-enforced, so you will be told rather than having to remember:
 
-1. **`Config`** — `packages/core/src/types/config/root.ts`.
+1. **`Config`** — `packages/contracts/src/types/config/root.ts`.
 2. **In-project classification** — `in-project-policy.ts`: add the key to
    `KNOWN_CONFIG_TOP_LEVEL_KEY_LIST`, then to *either* `IN_PROJECT_ALLOWED_KEYS`
    *or* `KNOWN_DENIED_IN_PROJECT` (with a reason). `ConfigFieldRegistryCoverage`
@@ -716,7 +716,7 @@ you want one. Every field is optional, and an unset field means no limit.
 | `subagentDefaultBudget` | `maxIterations`, `maxToolCalls`, `timeoutMs` for a subagent spawned without its own budget. Auto-extend still raises it while the agent makes progress. | The roster's light tier. | iterations ≥ 2 · tool calls ≥ 1 · timeout 10,000 – 2,147,483,647 ms |
 
 Every value must be a whole number inside its range. The ranges live in one
-table (`LIMIT_BOUNDS`, `packages/core/src/types/config/limits.ts`) that the
+table (`LIMIT_BOUNDS`, `packages/contracts/src/types/config/limits.ts`) that the
 CLI, the WebUI and the server all validate against:
 
 - A **minimum** is the point below which the setting breaks the agent rather
@@ -1887,7 +1887,7 @@ Actions: `answer` (needs `optionId` or `text`), `deny`, `escalate`, `defer`.
 
 #### Why an unconfigured rule table changes nothing
 
-Run `pnpm brain:workload` to see it. The report replays the real Brain call
+Run `bun run brain:workload` to see it. The report replays the real Brain call
 sites through a live tier chain and counts **attempted provider calls**:
 
 ```

@@ -1,7 +1,7 @@
 # /prompt — Search & insert from the prompt library
 
 Registered by the built-in `wstack-prompts` plugin. Searches the **merged**
-prompt library (project + user + 848 builtin prompts), de-duplicated by slug,
+prompt library (project + user + 854 builtin prompts), de-duplicated by slug,
 and inserts a chosen prompt into your next turn — filling any `{{variables}}`.
 
 ## Usage
@@ -63,6 +63,6 @@ are in `packages/core/data/prompts/fluidflow/`.
 
 ## Code Reference
 
-- `packages/core/src/plugins/prompts-plugin.ts`
+- `packages/builtin-plugins/src/prompts-plugin.ts`
 - `packages/core/src/execution/prompt-loader.ts` (loader + `renderPrompt`)
 - `packages/webui/src/components/PromptLibraryModal.tsx`

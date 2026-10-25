@@ -42,7 +42,7 @@ Run `wstack acp list` to see which agents are detected on this host.
 
 ## Catalog and discovery
 
-The 12 agents currently in the catalog, with their integration status and ACP entry:
+The 13 agents currently in the catalog, with their integration status and ACP entry:
 
 | id | Display Name | Vendor | Integration | ACP Entry |
 |---|---|---|---|---|
@@ -56,8 +56,9 @@ The 12 agents currently in the catalog, with their integration status and ACP en
 | `opencode` | OpenCode | Community | native | `opencode acp` |
 | `goose` | Goose | Community | experimental | `goose acp` |
 | `openhands` | OpenHands | Community | experimental | `openhands` |
-| `mistral-vibe` | Mistral Vibe | Community | experimental | `vibe` |
+| `mistral-vibe` | Mistral Vibe | Community | experimental | `vibe-acp` |
 | `cursor` | Cursor | Community | experimental | `cursor-agent acp` |
+| `kimi` | Kimi Code CLI | Moonshot AI | native | `kimi acp` |
 
 **Integration levels:**
 - `native` — Agent ships with a documented ACP entry flag.

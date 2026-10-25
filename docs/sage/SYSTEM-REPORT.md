@@ -872,7 +872,7 @@ TUI `/connections` and WebUI Settings → Connections surface daemon health metr
 | Host wiring | `host-wiring.ts` (`setupSage`, hygiene options, daily dry-run) |
 | Middleware | `middleware/*` (inject, turn, capture, path-remap, context, domain terms, …) |
 | Shared helpers | `shared/path-remap.ts`, `shared/file-proposals.ts`, `shared/candidate-dedupe.ts` |
-| Tools | `tools/memory-tools.ts`, `tools/memory-candidates-tool.ts` |
+| Tools | `packages/sage/src/tools/memory-tools.ts`, `packages/sage/src/tools/memory-candidates-tool.ts` |
 | Triage | `triage/*` |
 | Retrieval | `retrieval/format.ts`, `retrieval/relevance.ts`, `retrieval/hybrid-rerank.ts` |
 | Anchors | `anchors/verify.ts` |

@@ -36,6 +36,6 @@ Data API cannot create the first commit in a completely empty repository.
 
 ## Code Reference
 
-- `packages/core/src/plugins/sync-plugin.ts`
+- `packages/builtin-plugins/src/sync-plugin.ts`
 - `packages/core/src/storage/cloud-sync.ts`
-- `packages/core/src/types/config.ts`
+- `packages/contracts/src/types/config.ts`

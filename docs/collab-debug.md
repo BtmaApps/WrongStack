@@ -26,8 +26,8 @@ Refactor -----'   (events)     (listens + judges)
 
 | Target | File Count | Example |
 |---|---|---|
-| Good | 10-20 | `packages/core/src/agents/**/*.ts` |
-| Limit | 20-30 | `packages/core/src/director/**/*.ts` |
+| Good | 10-20 | `packages/core/src/brain/**/*.ts` |
+| Limit | 20-30 | `packages/goal/src/**/*.ts` |
 | Avoid | 50+ | `packages/**/src/**/*.ts` (entire monorepo) |
 
 ---
@@ -40,10 +40,10 @@ For a monorepo, target **one module/package** instead of the whole package set:
 
 ```js
 // Good - single package, limited files
-collab_debug(["packages/core/src/agents/**/*.ts"])
+collab_debug(["packages/core/src/brain/**/*.ts"])
 
 // Good - a subdirectory is even better
-collab_debug(["packages/runtime/src/sessions/**/*.ts"])
+collab_debug(["packages/runtime/src/automation/**/*.ts"])
 
 // Bad - entire monorepo
 collab_debug(["packages/**/src/**/*.ts"])
@@ -54,12 +54,12 @@ collab_debug(["packages/**/src/**/*.ts"])
 ```js
 // Target with a glob inside one package
 collab_debug(["packages/core/src/**/*.ts"])           // under core/src (too broad)
-collab_debug(["packages/core/src/agents/**/*.ts"])   // only under agents
+collab_debug(["packages/core/src/brain/**/*.ts"])   // only under brain
 
 // Multiple small targets are okay
 collab_debug([
-  "packages/core/src/agents/**/*.ts",
-  "packages/core/src/director/**/*.ts"
+  "packages/core/src/brain/**/*.ts",
+  "packages/goal/src/**/*.ts"
 ])
 ```
 

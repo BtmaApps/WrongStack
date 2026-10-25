@@ -272,7 +272,7 @@ doesn't block unrelated commits.
 
 ```bash
 # Full codebase audit (for finding remaining debt)
-pnpm lint:console
+bun run lint:console
 
 # Pre-commit hook runs automatically on every commit:
 #   node scripts/lint-console-logging.mjs --verbose

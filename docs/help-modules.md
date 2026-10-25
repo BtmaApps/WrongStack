@@ -343,7 +343,7 @@ After wiring, verify all 4 surfaces produce the same byte-for-byte string:
 
 ```bash
 # Build first
-cd packages/cli && pnpm run build
+cd packages/cli && bun run build
 
 # Top-level CLI bypass
 node packages/cli/dist/index.js <sub> [deep] --help

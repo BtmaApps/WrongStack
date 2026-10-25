@@ -754,15 +754,21 @@ were done.
 
 ### Remaining
 
-Effectively all of it, by depth. `coordination/` (144 files, 42 k lines),
-`execution/` (51 files, 17 k), `storage/` (75 files, 16 k), `types/` (9.6 k),
-`utils/` (9.8 k), `core/` (9.1 k), `hq/` (8.6 k), `chronicle/` (8.2 k),
-`plugins/` (6.5 k), `security/` (the remaining 17 files), `goal/`, `kernel/`,
-`skills/`, `models/`, `tools/`, `worktree/`, and the smaller directories.
+Effectively all of it, by depth. These were `packages/core/src` subdirectories
+when this scope was opened; the ones since extracted into their own packages
+are noted with their current home. `coordination/` (144 files, 42 k lines) →
+`packages/coordination/src`, `execution/` (51 files, 17 k), `storage/` (75 files,
+16 k), `types/` (9.6 k) → `packages/contracts/src/types`, `utils/` (9.8 k),
+`core/` (9.1 k), `hq/` (8.6 k) → `packages/hq/src`, `chronicle/` (8.2 k) →
+`packages/chronicle/src`, `plugins/` (6.5 k) → `packages/builtin-plugins/src`,
+`security/` (the remaining 17 files), `goal/` → `packages/goal/src`,
+`kernel/` → `packages/contracts/src/kernel`, `skills/`, `models/`,
+`tools/` → `packages/tools/src`, `worktree/` → `packages/worktree/src`, and the
+smaller directories.
 
 ### AUDIT-012 — terminal task outcomes were not absorbing (business logic)
 
-`packages/core/src/coordination/task-auctioneer.ts`
+`packages/coordination/src/task-auctioneer.ts`
 
 `complete()` and `fail()` both fetch the goal, decrement the winning agent's
 in-flight count, and patch the node — without ever checking whether the goal had
@@ -813,7 +819,7 @@ pre-fix code — they fail with `expected 2 to be 1` and
 
 ### AUDIT-013 — a failed run silenced the agent-stall watchdog (business logic)
 
-`packages/core/src/coordination/brain-monitor.ts`
+`packages/core/src/brain/brain-monitor.ts`
 
 `BrainMonitor` tracks live runs to decide whether a stall is even possible:
 `agent.run.started` increments `activeRuns`, and the watchdog returns early
@@ -886,7 +892,7 @@ counter), and `spawn-budget`'s depth clamp.
 
 ### AUDIT-014 — the dead-fleet synthetic path bypassed the results cap (memory)
 
-`packages/core/src/coordination/multi-agent-coordinator.ts`
+`packages/coordination/src/multi-agent-coordinator.ts`
 
 `completedResults` is capped at `MAX_COMPLETED_RESULTS = 10 000`, with the trim
 living inside `recordCompletion` — and a comment on the field stating the
@@ -972,7 +978,7 @@ module maps, quadratic concat) ran over every package, and every hit resolved
 clean on inspection:
 
 - **Intervals** — 9 candidates; 8 had their `unref` just below the grep window,
-  and the ninth (`tools/codebase-index/project-server.ts` client-lease sweep)
+  and the ninth (`packages/tools/src/codebase-index/project-server.ts` client-lease sweep)
   unrefs at +8 lines *and* is cleared in `stop()`.
 - **Clamped counters** — the two real ones both balance exactly:
   `mcp/registry.ts` `inFlightCalls` decrements in a `finally` inside
@@ -1117,7 +1123,7 @@ after that work lands, along with `webui`.
 
 ### AUDIT-016 — TaskDAG terminal states were not absorbing (business logic)
 
-`packages/core/src/coordination/task-dag.ts`
+`packages/coordination/src/task-dag.ts`
 
 Fourth instance of the family (AUDIT-012 auctioneer, AUDIT-013's cousin,
 AUDIT-015 SDD cancel), found by sweeping every direct `.status = '<terminal>'`
@@ -1157,7 +1163,7 @@ is now systematically covered rather than found case by case.
 
 ### Cleared (queue drain, continued)
 
-- `core/hq/persistence/event-log.ts` backward scan — the `Buffer.concat`
+- `packages/hq/src/persistence/event-log.ts` backward scan — the `Buffer.concat`
   flagged by the early sweep is per-window, bounded by
   `BULK_PREFIX_READ_CAP` plus one boundary line, with careful UTF-8 seam
   stitching and seam-line dedup across windows. Engineered precisely to avoid
@@ -1166,14 +1172,14 @@ is now systematically covered rather than found case by case.
   20 000 with a dual-mode eviction that is explicit about *why*: time-based
   pruning under a cooldown, size-based oldest-first in once-per-session mode
   (where age says nothing about need). Per-call maps everywhere else.
-- `core/coordination/mailbox-http-rate-limit.ts` — per-key arrays are capped
+- `packages/coordination/src/mailbox-http-rate-limit.ts` — per-key arrays are capped
   at `limit` (rejected requests do not push), and both HTTP hosts wire the
   periodic `cleanup()`. The open question — the cardinality of
   `rateLimitKey` itself — lives in the HQ auth/client-address code the
   concurrent session is rewriting right now; queued with that surface.
 
 Checkpoint: consolidated run over every touched package —
-`persistence` + `governance` + `kanban` + `sdd` + `core/coordination` —
+`persistence` + `governance` + `kanban` + `sdd` + `coordination` —
 **3 949 tests passed** (1 pre-existing budgeted skip), 36 modified files,
 zero NUL/CRLF corruption.
 
@@ -1210,9 +1216,9 @@ project memory alongside the authoring-failure note.
 - `acp/client/acp-session.ts` — the pending-request map is airtight: response,
   timeout, send-failure and teardown paths each clear the timer and delete the
   entry, and `close()` rejects every remaining pending with a typed error.
-- `tools/codebase-index/worker.ts` — `inFlight` is set/deleted in
+- `packages/tools/src/codebase-index/worker.ts` — `inFlight` is set/deleted in
   `try/finally` around the only awaited op; cancel aborts through the map.
-- `tools/codebase-index/background-indexer.ts` — debounce timers cleared on
+- `packages/tools/src/codebase-index/background-indexer.ts` — debounce timers cleared on
   fire and drained with their batches in teardown.
 
 ### AUDIT-018 — quadratic LSP receive path (performance)
