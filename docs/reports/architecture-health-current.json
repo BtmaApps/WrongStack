@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-25T09:55:30.155Z",
+  "generatedAt": "2026-10-25T10:13:09.571Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,10 +13,10 @@
   "summary": {
     "packages": 45,
     "sourceFiles": 5191,
-    "testFiles": 4573,
-    "sourceLines": 1132563,
+    "testFiles": 4574,
+    "sourceLines": 1132610,
     "workspaceEdges": 223,
-    "moduleEdges": 15462,
+    "moduleEdges": 15463,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 3,
@@ -782,7 +782,7 @@
       "name": "@wrongstack/sage",
       "dir": "packages/sage",
       "sourceFiles": 162,
-      "testFiles": 162,
+      "testFiles": 163,
       "workspaceDependencies": [
         "@wrongstack/contracts",
         "@wrongstack/coordination",
@@ -800,7 +800,7 @@
         {
           "path": "packages/sage/tsconfig.test.json",
           "error": null,
-          "testFiles": 162
+          "testFiles": 163
         }
       ]
     },
@@ -17123,6 +17123,12 @@
       },
       {
         "file": "packages/sage/tests/validity-gate-injection.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/sage/tests/validity-hygiene.test.ts",
         "projects": [
           "root-node"
         ]

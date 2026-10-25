@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { verifyMemoryAnchors } from './anchors/verify.js';
+import { snapshotMemoryEvidence } from './retrieval/source-evidence.js';
 import { applySemanticChange } from './shared/semantic-rewrite.js';
 import { isVerificationStale } from './shared/stale-reason.js';
 import type { SqliteHygieneContext } from './sqlite-hygiene-anchors.js';
@@ -8,7 +9,7 @@ import { anchorsPresentOnDisk, existenceProvesAnchors } from './sqlite-hygiene-a
 import { anchorsChanged } from './sqlite-store-anchor-diff.js';
 import { readSqliteSageRow } from './sqlite-store-codec.js';
 import { stampSqliteVerification } from './sqlite-store-verification-stamp.js';
-import type { MemoryAnchor } from './types.js';
+import type { MemoryAnchor, Sage } from './types.js';
 export async function verifyHygieneMemories(inputs: {
   opts: import('./memory-hygiene-types.js').SageHygieneOptions | undefined;
   ctx: SqliteHygieneContext;
@@ -180,6 +181,26 @@ export async function verifyHygieneMemories(inputs: {
       );
     }
 
+    // A memory's own `validity` source checks are part of whether it holds:
+    // its anchor may still exist while the cited text is gone. Injection
+    // already refuses such a memory; demoting it here also takes it out of
+    // search and audience delivery. Checked for stale memories too, or the
+    // anchor pass would revive one whose claim the code still contradicts on
+    // every run (a revision and an HQ change per pass).
+    const failingValidity = await failingValidityIds(ctx.projectRoot, [
+      ...active,
+      ...staleMemories,
+    ]);
+    for (const memoryId of failingValidity) {
+      reactivations.delete(memoryId);
+      if (verificationOutcomes.get(memoryId) === true) {
+        verificationOutcomes.set(memoryId, false);
+        const index = verified.indexOf(memoryId);
+        if (index >= 0) verified.splice(index, 1);
+        stale.push(memoryId);
+      }
+    }
+
     await ctx.runMutation(() => {
       for (const [memoryId, allValid] of verificationOutcomes) {
         const current = readSqliteSageRow(ctx.stmt, memoryId);
@@ -227,4 +248,30 @@ export async function verifyHygieneMemories(inputs: {
     });
   }
   return { stale, verified, reactivated };
+}
+
+/** Ids of memories with a `source_contains` validity check the source no longer satisfies. */
+async function failingValidityIds(
+  projectRoot: string,
+  memories: readonly Sage[],
+): Promise<Set<string>> {
+  const checked = memories.filter((memory) => memory.validity?.checks?.length);
+  const failing = new Set<string>();
+  let next = 0;
+  const worker = async (): Promise<void> => {
+    while (next < checked.length) {
+      const memory = checked[next++]!;
+      try {
+        const snapshot = await snapshotMemoryEvidence(projectRoot, memory);
+        // Only an explicit miss counts: an unreadable or oversized source is unknown.
+        if (snapshot.validityChecks?.some((check) => check.status === 'not_satisfied')) {
+          failing.add(memory.id);
+        }
+      } catch {
+        // Fail-open: an evidence error never demotes a memory.
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(8, checked.length) }, () => worker()));
+  return failing;
 }
