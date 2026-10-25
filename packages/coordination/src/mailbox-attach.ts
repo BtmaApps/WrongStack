@@ -359,11 +359,7 @@ function attachMailboxCheckerInner(
     pollInFlight = true;
     try {
       const messages = await sessionScopedCheckMailboxAwareness();
-      if (
-        !awarenessDisposed &&
-        messages.length > 0 &&
-        a.ctx.meta['coordinationContextMode'] !== 'background'
-      ) {
+      if (!awarenessDisposed && messages.length > 0) {
         setBtwNote(a.ctx, buildMailboxBtwAwarenessBlock(messages).text);
       }
     } catch {

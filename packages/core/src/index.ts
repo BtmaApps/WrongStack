@@ -153,7 +153,6 @@ export {
   buildMailboxBtwAwarenessBlock,
   createMailboxChecker,
   injectPendingMailboxMessages,
-  type MailboxDeliveryMode,
   type MailboxLoopOptions,
 } from './core/mailbox-loop.js';
 export {

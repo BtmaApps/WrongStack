@@ -72,42 +72,6 @@ describe('injectPendingMailboxMessages', () => {
     expect(fold).toHaveBeenCalledTimes(1); // only the note is folded
   });
 
-  it('keeps routine mailbox tracking out of context in background mode', async () => {
-    const fold = vi.fn();
-    const emitted: unknown[] = [];
-    const res = await injectPendingMailboxMessages(
-      async () => [
-        msg({ type: 'status', body: 'worker is running' }),
-        msg({ type: 'btw', body: 'routine awareness' }),
-        msg({ type: 'note', body: 'presence metadata' }),
-      ],
-      fold,
-      { events: { emit: (_type, payload) => emitted.push(payload) }, logger: {} },
-      'background',
-    );
-
-    expect(res.interrupt).toBe(false);
-    expect(fold).not.toHaveBeenCalled();
-    expect(emitted).toHaveLength(3);
-  });
-
-  it('still delivers actionable mailbox work in background mode', async () => {
-    const fold = vi.fn();
-    await injectPendingMailboxMessages(
-      async () => [
-        msg({ type: 'result', body: 'subagent finding' }),
-        msg({ type: 'steer', body: 'change course' }),
-      ],
-      fold,
-      noopHost,
-      'background',
-    );
-
-    expect(fold).toHaveBeenCalledTimes(1);
-    expect(fold.mock.calls[0]?.[0].text).toContain('subagent finding');
-    expect(fold.mock.calls[0]?.[0].text).toContain('change course');
-  });
-
   it('returns interrupt:false on empty mailbox and never folds', async () => {
     const fold = vi.fn();
     const res = await injectPendingMailboxMessages(async () => [], fold, noopHost);

@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-25T07:52:37.207Z
+**Generated:** 2026-10-25T07:59:11.825Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,7 +9,7 @@
 |---|---:|
 | Workspace packages | 45 |
 | Production source files | 5179 |
-| Production source lines | 1131024 |
+| Production source lines | 1131006 |
 | Test files | 4567 |
 | Workspace dependency edges | 223 |
 | Relative module edges | 15425 |
@@ -119,10 +119,10 @@ None.
 | 696 | `packages/coordination/src/autonomous-brain.ts` |
 | 696 | `packages/core/src/core/agent-tools.ts` |
 | 695 | `packages/coordination/src/fleet-manager.ts` |
-| 695 | `packages/core/src/core/agent-loop.ts` |
 | 695 | `packages/core/src/registry/tool-registry.ts` |
 | 695 | `packages/core/src/storage/config-loader.ts` |
 | 694 | `packages/cli/src/slash-commands/fix-classifier.ts` |
+| 693 | `packages/core/src/core/agent-loop.ts` |
 | 693 | `packages/core/src/execution/eternal-autonomy.ts` |
 | 692 | `packages/coordination/src/sqlite-mailbox.ts` |
 | 692 | `packages/tools/src/codebase-index/project-server.ts` |

@@ -54,7 +54,7 @@
         "export { allServers } from './infrastructure/mcp-servers.js';",
         "export { assertProjectRootOutsideStateDir, type BootConfigOptions, type BootConfigResult, bootConfig, flagsToConfigPatch, } from './boot.js';",
         "export { buildBtwBlock, consumeBtwNotes, pendingBtwCount, setBtwNote, } from './core/btw.js';",
-        "export { buildMailboxBlock, buildMailboxBtwAwarenessBlock, createMailboxChecker, injectPendingMailboxMessages, type MailboxDeliveryMode, type MailboxLoopOptions, } from './core/mailbox-loop.js';",
+        "export { buildMailboxBlock, buildMailboxBtwAwarenessBlock, createMailboxChecker, injectPendingMailboxMessages, type MailboxLoopOptions, } from './core/mailbox-loop.js';",
         "export { buildQueuedMessagesBlock, consumeQueuedMessagesUpdate, peekQueuedMessages, setQueuedMessagesSnapshot, } from './core/queued-messages.js';",
         "export { buildSessionNoteBlock, consumeSessionNotes, enqueueSessionNote, pendingSessionNoteCount, type SessionNote, type SessionNoteKind, } from './core/session-notes.js';",
         "export { countShellHooks, HookRegistry, type HookRunEnv, HookRunner, type HookRunnerOptions, hookMatcherMatches, type PreToolUseResult, type PromptResult, runShellHook, type ShellHookSpec, shellHooksEqual, } from './hooks/index.js';",
@@ -1074,7 +1074,7 @@
       "classification": "agent-domain contract",
       "intendedOwner": "Core",
       "sourceFiles": 80,
-      "sourceLines": 16917
+      "sourceLines": 16901
     },
     {
       "directory": "design",

@@ -83,7 +83,6 @@ export function createAgentLoopHandler(
     ? coordination.attachFleetPulse(a, fleetPulseCfg)
     : async () => null;
   const pulseEveryN = Math.max(1, fleetPulseCfg?.everyNIterations ?? 5);
-  const backgroundCoordination = () => a.ctx.meta['coordinationContextMode'] === 'background';
 
   const loopContext = createAgentLoopContextManager(a, handlers);
 
@@ -313,7 +312,7 @@ export function createAgentLoopHandler(
           pendingLoopSteer = null;
         }
 
-        if (!sealed && !backgroundCoordination() && (i % pulseEveryN === 1 || pulseEveryN === 1)) {
+        if (!sealed && (i % pulseEveryN === 1 || pulseEveryN === 1)) {
           try {
             const pulse = await getFleetPulse();
             if (pulse) foldBlockIntoConversation(pulse);
@@ -331,7 +330,6 @@ export function createAgentLoopHandler(
             },
             logger: a.logger as never as { debug?: (...args: unknown[]) => void },
           },
-          backgroundCoordination() ? 'background' : 'inline',
         );
         if (mailboxResult.interrupt) {
           const reason = `interrupted: ${mailboxResult.interruptReason ?? 'operator request'}`;

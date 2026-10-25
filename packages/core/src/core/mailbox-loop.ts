@@ -238,13 +238,6 @@ const TYPE_GUIDANCE: Record<MailboxMessageType, string> = {
 // coordination layer's runtime policy table here creates a core ↔ coordination
 // dependency cycle; the message union remains a type-only contract.
 const ACTION_FOOTER_TYPES = new Set<MailboxMessageType>(['ask', 'assign', 'result', 'review']);
-const BACKGROUND_DELIVERY_TYPES = new Set<MailboxMessageType>([
-  'steer',
-  'ask',
-  'assign',
-  'result',
-  'review',
-]);
 const OUT_OF_BAND_TYPES = new Set<MailboxMessageType>(['control']);
 
 export function buildMailboxBtwAwarenessBlock(messages: MailboxMessage[]): {
@@ -349,8 +342,6 @@ interface MailboxInjectResult {
   interruptReason?: string | undefined;
 }
 
-export type MailboxDeliveryMode = 'inline' | 'background';
-
 export async function injectPendingMailboxMessages(
   checkMailbox: () => Promise<MailboxMessage[]>,
   foldFn: (block: { type: 'text'; text: string }) => void,
@@ -358,7 +349,6 @@ export async function injectPendingMailboxMessages(
     events: { emit: (type: string, payload: unknown) => void };
     logger: { debug?: (...args: unknown[]) => void };
   },
-  deliveryMode: MailboxDeliveryMode = 'inline',
 ): Promise<MailboxInjectResult> {
   let messages: MailboxMessage[];
   try {
@@ -386,14 +376,10 @@ export async function injectPendingMailboxMessages(
   // block so they never pollute the transcript. The canonical
   const outOfBand = messages.filter((m) => OUT_OF_BAND_TYPES.has(m.type));
   const content = messages.filter((m) => !OUT_OF_BAND_TYPES.has(m.type));
-  const deliveredContent =
-    deliveryMode === 'background'
-      ? content.filter((message) => BACKGROUND_DELIVERY_TYPES.has(message.type))
-      : content;
 
-  if (deliveredContent.length > 0) {
+  if (content.length > 0) {
     try {
-      foldFn(buildMailboxBlock(deliveredContent));
+      foldFn(buildMailboxBlock(content));
     } catch (err) {
       (a.logger.debug ?? console.debug)?.(
         `mailbox: failed to fold messages: ${toErrorMessage(err)}`,
