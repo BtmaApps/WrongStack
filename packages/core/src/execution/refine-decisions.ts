@@ -1,7 +1,6 @@
 /**
  * Shared decision helpers for the refiner ("enhance") preview and failure
- * panels, following the pure projection pattern proven by
- * packages/simpleui/src/lib/refine-model.ts: panels stay renderers, and the
+ * panels, following a pure projection pattern: panels stay renderers, and the
  * decision → next-step mapping lives here so every surface applies the same
  * semantics and can be unit-tested without a DOM.
  *
@@ -142,9 +141,8 @@ export function resolveFailureNextStep(
 }
 
 // ---------------------------------------------------------------------------
-// Refiner reply projection (model.refine_result) — the SimpleUI
-// `refine-model` projection pattern, shared so every surface decides
-// identically.
+// Refiner reply projection (model.refine_result) — shared so every surface
+// decides identically.
 // ---------------------------------------------------------------------------
 
 /** Machine-readable refiner failure kinds (mirrors EnhanceFailureKind). */

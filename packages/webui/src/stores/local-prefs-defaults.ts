@@ -301,7 +301,7 @@ export interface LocalPrefs {
   /** Pre-refine grace countdown in SECONDS (TUI field 41). 0 = skip the
    *  countdown and run the refiner immediately. Presets:
    *  0, 2, 3, 5, 8, 10. Distinct from `enhanceCountdownMs` (a TUI-internal
-   *  ms value used by the simpleui RefinePanel animation). */
+   *  ms value used by the RefinePanel animation). */
   preRefineSeconds: number;
   /** Minimum number of files before the multi-file diff summary footer
    *  renders above the per-file blocks. 0 disables the footer. Mirrors TUI

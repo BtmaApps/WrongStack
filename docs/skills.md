@@ -561,7 +561,7 @@ Export all creates complete ZIP packages including scripts, references, and bina
 
 
 You can also select skills inline: `$code-review Review these changes.` Type `$`
-in the TUI, WebUI, or SimpleUI composer for autocomplete. Multiple mentions are
+in the TUI, WebUI, or VibeUI composer for autocomplete. Multiple mentions are
 supported; Enter/Tab inserts a selection without submitting. See
 [inline skill mentions](slash/skills.md#inline-skill-mentions) for literal syntax
 and refinement behavior.

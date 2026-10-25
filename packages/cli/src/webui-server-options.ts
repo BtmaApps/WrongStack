@@ -41,10 +41,10 @@ export interface CliWebUIOptions {
   host?: string | undefined;
   /** HTTP port serving the React frontend. Defaults to 3456 (auto-advances). */
   httpPort?: number | undefined;
-  /** Alternate frontend dist directory (used by the independent SimpleUI surface). */
+  /** Alternate frontend dist directory (used by the independent VibeUI surface). */
   frontendDistDir?: string | undefined;
-  /** Surface kind: 'webui' (default) or 'simpleui'. Controls port defaults and the instance registry label. */
-  surface?: 'webui' | 'simpleui' | 'vibeui' | undefined;
+  /** Surface kind: 'webui' (default) or 'vibeui'. Controls port defaults and the instance registry label. */
+  surface?: 'webui' | 'vibeui' | undefined;
   /** Fixed access token/password. Defaults to WEBUI_TOKEN or random per process. */
   accessToken?: string | undefined;
   /** Fail instead of auto-advancing when the requested HTTP/WS port is busy. */
@@ -291,7 +291,7 @@ export interface CliWebUIOptions {
   /**
    * Pre-computed update info from the CLI's preflight version check.
    * When present, the session.start payload includes appVersion,
-   * latestVersion, and updateAvailable so all surfaces (WebUI, SimpleUI)
+   * latestVersion, and updateAvailable so all surfaces (WebUI, VibeUI)
    * can display an "update available" warning.
    */
   updateInfo?: import('./webui-server/session-start-payload.js').BootUpdateInfo | undefined;

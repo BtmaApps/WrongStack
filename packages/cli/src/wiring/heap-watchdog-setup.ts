@@ -67,13 +67,11 @@ export function setupCliHeapWatchdog({
       return {
         surface: flags['vibeui']
           ? 'vibeui'
-          : flags['simpleui']
-            ? 'simpleui'
-            : flags['webui']
-              ? 'webui'
-              : tuiOwnsScreen
-                ? 'tui'
-                : 'cli',
+          : flags['webui']
+            ? 'webui'
+            : tuiOwnsScreen
+              ? 'tui'
+              : 'cli',
         sessionId: context.session.id,
         messages: context.state.messages.length,
         messageEstimatedTokens: context.state.messages.reduce(

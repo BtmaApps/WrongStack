@@ -1,7 +1,7 @@
 # First-Party Browser Automation
 
 WrongStack ships lazy Playwright browser tools through the normal builtin `ToolRegistry`. They are
-available to CLI, TUI, WebUI, SimpleUI, Desktop, and fleet workers without enabling the Playwright MCP
+available to CLI, TUI, WebUI, Desktop, and fleet workers without enabling the Playwright MCP
 preset. The optional MCP server remains compatible because it uses `playwright_*`; first-party
 tools use `browser_*`.
 

@@ -43,7 +43,7 @@ afterEach(() => {
 });
 
 describe('startTerminalDashboard', () => {
-  it.each(['WebUI', 'SimpleUI'])(
+  it.each(['WebUI', 'VibeUI'])(
     '%s expires warnings and finished agents after 30 seconds while idle',
     (title) => {
       vi.useFakeTimers();
@@ -449,7 +449,7 @@ describe('renderSessionPanelLines', () => {
     totalSubagents: 0,
   };
 
-  it.each(['WebUI', 'SimpleUI'])(
+  it.each(['WebUI', 'VibeUI'])(
     '%s hides old terminal statuses, prioritizes active workers and bounds agent rows',
     (title) => {
       const statuses = [

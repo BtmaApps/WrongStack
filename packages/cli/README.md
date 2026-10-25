@@ -17,11 +17,12 @@ irm https://wrongstack.com/install.ps1 | iex
 ## Commands
 
 ```bash
-wstack                        # interactive launch menu (TTY only) — pick TUI/REPL, WebUI, SimpleUI, or HQ
+wstack                        # interactive launch menu (TTY only) — pick TUI/REPL, WebUI, VibeUI, HQ, or Desktop
 wstack --no-menu              # same as plain `wstack` but skip the launch menu and use saved defaults
 wstack --tui                  # Ink-based TUI
 wstack desktop                # Electron desktop app (same as --desktop)
 wstack webui                  # project WebUI (same as --webui)
+wstack vibeui                 # focused VibeUI coding workspace (same as --vibeui)
 wstack hq                     # project-independent HQ dashboard (same as --hq)
 wstack --yolo                 # auto-approve tool calls unless explicitly denied
 wstack "refactor src/auth.ts" # one-shot query (no interactive loop)
@@ -33,6 +34,9 @@ wstack resume <session-id>            # equivalent
 
 ### Launch menu
 
+SimpleUI was retired and replaced by VibeUI; `wstack simpleui` / `--simpleui` now open VibeUI.
+`--full-auto` is retired and ignored with a warning; use `--yolo`.
+
 When `wstack` is invoked on an interactive TTY with no surface flag, the CLI
 prints a five-option launch menu and waits for a numeric choice:
 
@@ -41,7 +45,7 @@ prints a five-option launch menu and waits for a numeric choice:
   ? Choose how to run WrongStack:
     1) TUI / REPL  (interactive terminal; TUI is the default)
     2) WebUI       (browser-based project UI; port 3456)
-    3) SimpleUI    (lightweight browser UI; port 3466)
+    3) VibeUI      (focused coding workspace; port 3476)
     4) HQ          (project-independent HQ dashboard; port 3499)
     5) Desktop     (Electron desktop shell; alias: --desktop)
   [1-5, q to quit] (auto 1 in 8s)
@@ -56,7 +60,7 @@ offer the summary gate.
 The menu is automatically skipped when:
 
 - stdin is not a TTY (CI, pipes, redirects) — exit code mirrors a flag-based launch
-- any surface flag is present (`--webui`, `--simpleui`, `--hq`, `--desktop`)
+- any surface flag is present (`--webui`, `--vibeui`, `--hq`, `--desktop`)
 - a positional subcommand is given (`auth`, `init`, `mcp`, `plugin`, `doctor`, …)
 - `--no-menu`, `--no-interactive`, or `--skip` is set
 - a positional query or `--prompt <text>` is supplied (one-shot mode)

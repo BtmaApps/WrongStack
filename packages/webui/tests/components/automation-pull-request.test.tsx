@@ -2,7 +2,6 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { AutomationPullRequestView } from '@wrongstack/webui-protocol';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { AutomationPullRequestPanel as SimplePanel } from '../../../simpleui/src/automation-pull-request.js';
 import { AutomationPullRequestPanel as WebPanel } from '../../src/components/AutomationPullRequestPanel.js';
 
 const { request } = vi.hoisted(() => ({ request: vi.fn() }));
@@ -36,10 +35,7 @@ beforeEach(() => {
   request.mockResolvedValue({ plan: null, receipt: null, ci: null });
 });
 afterEach(cleanup);
-describe.each([
-  ['WebUI', WebPanel],
-  ['SimpleUI', SimplePanel],
-] as const)('%s draft PR workflow', (_name, Panel) => {
+describe.each([['WebUI', WebPanel]] as const)('%s draft PR workflow', (_name, Panel) => {
   it('requires preparation and review before explicit publication, and refreshes CI on demand', async () => {
     render(<Panel runId="run" sessionId="project-session" />);
     expect(request).not.toHaveBeenCalled();

@@ -16,8 +16,9 @@ session) see [`docs/slash/`](slash/). For every `wstack <subcommand>` see also
 |------|--------|
 | `--tui` | Launch the Ink/React full-screen TUI (lazy-loaded). |
 | `--webui` | Launch the standalone browser UI + WebSocket bridge. |
-| `--simpleui` | Launch the minimal SimpleUI chat surface. |
 | `--vibeui` | Launch the VibeUI focused coding workspace (default port 3476; `wstack vibeui` is equivalent). |
+| `--simpleui` | Retired. SimpleUI was replaced by VibeUI; `--simpleui` and `wstack simpleui` open VibeUI and print a notice. |
+| `--full-auto` | Retired with SimpleUI. Accepted but ignored with a warning; use `--yolo` instead. |
 | `--desktop` | Launch the Electron desktop shell hosting a token-gated local WebUI. |
 | `--hq` | Launch the cross-machine HQ Command Center. |
 | `--no-menu` | Skip the launch menu on a TTY and go straight to the REPL. |
@@ -30,6 +31,10 @@ session) see [`docs/slash/`](slash/). For every `wstack <subcommand>` see also
 | `--system-lite` | Use the compact `system-lite.md` baseline for this launch. Equivalent to `--system-prompt lite`. |
 | `--system-scout` | Use the general-purpose Scout identity (`system-scout.md`) for this launch: a small direct tool set (files, shell, web, todo, memory) with the rest of the catalog reached through `tool_search` / `tool_use`. Equivalent to `--system-prompt scout`. |
 | `--system-prompt default\|lite\|pro\|scout` | Select the baseline system prompt variant for this launch. `default` uses `system.md`; `lite` uses `system-lite.md`; `pro` uses `system-pro.md`; `scout` uses `system-scout.md` and the Scout tool surface, including profile/project instruction overrides. |
+
+SimpleUI was retired and replaced by VibeUI; `wstack simpleui` / `--simpleui` now open VibeUI.
+`--full-auto` (formerly SimpleUI-only YOLO + autonomy for one run) is ignored;
+use `--yolo`.
 
 Director is always available. Use `/spawn`, `/fleet`, `/delegate`, or `/goal`;
 `--director` and `--no-director` are no longer accepted.

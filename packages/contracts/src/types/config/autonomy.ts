@@ -296,7 +296,7 @@ export interface LaunchConfig {
    * user has chosen "TUI/REPL" here.
    *
    * Default port per mode is owned by the launcher (HQ=3499, WebUI=3456,
-   * SimpleUI=3466). Storing an explicit override here makes
+   * VibeUI=3476). Storing an explicit override here makes
    * `wstack --no-menu` keep the user's last port too.
    */
   menuChoice?: LaunchMenuChoice | undefined;
@@ -310,7 +310,7 @@ export interface LaunchConfig {
  */
 export interface LaunchMenuChoice {
   /** Which top-level surface the user picked from the menu. */
-  mode: 'tui-repl' | 'webui' | 'simpleui' | 'vibeui' | 'hq' | 'desktop';
+  mode: 'tui-repl' | 'webui' | 'vibeui' | 'hq' | 'desktop';
   /** Port override the user typed (defaults to the surface's default). */
   port?: number | undefined;
   /** Host override the user typed (defaults to 127.0.0.1). */

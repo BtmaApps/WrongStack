@@ -18,7 +18,7 @@
 //      no submit, no newline in the draft.
 //   4. Both mention pickers (`$` skills, `@` files) are HIT-TESTABLE above
 //      the composer inside the production ancestor chain. Regression guard
-//      for the SimpleUI overflow-clip class (2026-10-04): a positioned
+//      for the overflow-clip class (2026-10-04): a positioned
 //      ancestor with overflow:hidden erases these upward-opening popups
 //      while they stay in the DOM — plain visibility checks cannot see it,
 //      only elementFromPoint can. The fixture therefore mounts ChatInput

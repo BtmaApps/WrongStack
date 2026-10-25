@@ -67,7 +67,7 @@ export interface TypeSafeConfig {
    * are done.
    *
    * Full records are written to the process log file only. The live view in
-   * WebUI, SimpleUI and the TUI stays metadata-only either way, and the account
+   * WebUI and the TUI stays metadata-only either way, and the account
    * key is scrubbed from recorded content. `WRONGSTACK_JEV_LOG_CONTENT=1` sets
    * it for one process without editing the profile.
    */

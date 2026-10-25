@@ -73,9 +73,9 @@ describe('server-runtime', () => {
       expect(r.wsHost).toBe('127.0.0.1');
     });
 
-    it('defaults to 3466 for simpleui surface', async () => {
-      const r = await resolvePorts({ surface: 'simpleui' });
-      expect(r.httpPort).toBe(3466);
+    it('defaults to 3476 for vibeui surface', async () => {
+      const r = await resolvePorts({ surface: 'vibeui' });
+      expect(r.httpPort).toBe(3476);
     });
 
     it('uses explicit httpPort over env', async () => {

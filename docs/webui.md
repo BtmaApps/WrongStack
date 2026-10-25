@@ -32,7 +32,7 @@ Collapsing a section keeps its live workspace subscriptions mounted.
 
 ## Host terminal
 
-The WebUI and SimpleUI host terminal keeps a compact status panel in place.
+The WebUI and VibeUI host terminal keeps a compact status panel in place.
 Leader statistics share the session row. Active workers appear first, with at
 most three child rows per session (including any overflow notice), further
 limited by terminal height. Finished, stopped, cancelled, and failed workers

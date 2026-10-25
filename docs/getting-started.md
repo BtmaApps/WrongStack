@@ -21,9 +21,11 @@ repository's stable project identity.
 |---|---|
 | Terminal TUI | `wstack --tui` |
 | Project browser UI | `wstack --webui` |
-| Lightweight browser chat | `wstack --simpleui` |
+| Focused browser coding workspace | `wstack --vibeui` |
 | Desktop shell | `wstack --desktop` |
 | HQ command center | `wstack --hq` |
+
+SimpleUI was retired and replaced by VibeUI; `wstack simpleui` / `--simpleui` now open VibeUI.
 
 The browser launch prints its actual URL; use that URL/token rather than
 assuming the default port was free. For an SSH-hosted project, use

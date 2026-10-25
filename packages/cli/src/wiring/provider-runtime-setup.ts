@@ -212,7 +212,7 @@ export function setupProviderRuntime(deps: ProviderRuntimeDeps): ProviderRuntime
       logger,
       statusTracker,
       // Fallback gate — shows a modal with countdown + manual pick in every
-      // UI surface (TUI/WebUI/SimpleUI) before switching models. The gate
+      // UI surface (TUI/WebUI) before switching models. The gate
       // emits provider.fallback_pending and waits for provider.fallback_choice
       // or the auto-switch countdown.
       fallbackGate: createFallbackGate(events),

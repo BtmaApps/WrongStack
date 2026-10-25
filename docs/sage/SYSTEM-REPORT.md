@@ -2,11 +2,11 @@
 
 > **Status:** Source-verified architecture reference (storage/IPC reference with retrieval ownership refreshed 2026-10-06)<br>
 > **Primary package:** `@wrongstack/sage`<br>
-> **Related packages:** `sage-mcp`, `runtime`, `cli`, `tools`, `core`, `tui`, `webui`, `webui-server`, `simpleui`<br>
+> **Related packages:** `sage-mcp`, `runtime`, `cli`, `tools`, `core`, `tui`, `webui`, `webui-server`, `vibeui`<br>
 > **Supersedes for day-to-day reading:** sections of [`ARCHITECTURE.md`](../archive/sage/ARCHITECTURE.md) that still describe JSONL as the runtime store (JSONL is migration-only).<br>
 > **Package owner summary:** [`packages/sage/README.md`](../../packages/sage/README.md)
 
-This document is the end-to-end reference for SAGE: database layout, process model, IPC, retrieval, tools, MCP, middleware, host wiring, and every host surface (CLI, TUI, WebUI, SimpleUI, Desktop, ACP).
+This document is the end-to-end reference for SAGE: database layout, process model, IPC, retrieval, tools, MCP, middleware, host wiring, and every host surface (CLI, TUI, WebUI, VibeUI, Desktop, ACP).
 
 ---
 
@@ -25,7 +25,7 @@ This document is the end-to-end reference for SAGE: database layout, process mod
 11. [MCP (`@wrongstack/sage-mcp`)](#11-mcp-wrongstacksage-mcp)
 12. [CLI and TUI](#12-cli-and-tui)
 13. [WebUI and webui-server](#13-webui-and-webui-server)
-14. [SimpleUI and Desktop](#14-simpleui-and-desktop)
+14. [VibeUI and Desktop](#14-vibeui-and-desktop)
 15. [Prompt / system-context channels](#15-prompt--system-context-channels)
 16. [Configuration](#16-configuration)
 17. [Security model](#17-security-model)
@@ -62,7 +62,7 @@ This document is the end-to-end reference for SAGE: database layout, process mod
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
-│  Surfaces: CLI · TUI · WebUI · SimpleUI · Desktop · ACP · MCP        │
+│  Surfaces: CLI · TUI · WebUI · VibeUI · Desktop · ACP · MCP          │
 ├──────────────────────────────────────────────────────────────────────┤
 │  Wiring: setupSage() · tool registry · WS handlers · slash /memory   │
 ├──────────────────────────────────────────────────────────────────────┤
@@ -342,7 +342,7 @@ SAGE: `stats`, `listSage`, `listSagePage`, `getSage`, `rememberSage`, `updateSag
 - File match + ancestor walk
 - Audience excluded by default
 - Session isolation via `ownerSessionId`
-- `findMemoriesForFile` returns three buckets — **primary / symbol / related** — with `matchedVia` and `matchStrength` (WebUI / SimpleUI file drawers)
+- `findMemoriesForFile` returns three buckets — **primary / symbol / related** — with `matchedVia` and `matchStrength` (WebUI file drawers)
 
 ### 7.2 Lexical / FTS search
 
@@ -702,21 +702,21 @@ Session consolidator remains registered on the WebUI agent services path.
 
 ---
 
-## 14. SimpleUI and Desktop
+## 14. VibeUI and Desktop
 
-### SimpleUI
+### VibeUI
 
-- Lightweight **Memory drawer** (`memory-drawer.tsx`) for file-scoped lookup via `memory.sage.forFile`
+- Memory browser (`memory-browser.tsx`) over bounded SAGE record pages with search/kind/status filters, record detail, and a graph of persisted relationships; it never renders the raw whole-store text dump
 - Same inject rules as other hosts
-- Tool timeline: **compact SAGE chip** when collapsed (`🧠 N SAGE — preview…`); expanded view keeps MEMORY section
-- Full CRUD/graph remain WebUI/TUI responsibilities
+- Full CRUD/review remain WebUI/TUI responsibilities
+- SimpleUI, which previously had a compact memory drawer, was retired and replaced by VibeUI
 
 ### Desktop / ACP
 
 - Same `createProjectSageMemoryPort` composition path as other hosts
 - ACP and Desktop must not open competing SQLite writers
 
-Invariant: **CLI, TUI, WebUI, SimpleUI, and Desktop share one SAGE backend and injection policy.** Relative tool paths resolve from the live working directory before anchor matching.
+Invariant: **CLI, TUI, WebUI, VibeUI, and Desktop share one SAGE backend and injection policy.** Relative tool paths resolve from the live working directory before anchor matching.
 
 ---
 
@@ -878,7 +878,7 @@ TUI `/connections` and WebUI Settings → Connections surface daemon health metr
 | `core` | Config, consolidator (+ session_digest), sage-output-block, system prompt |
 | `tui` | memory-slash, monitors, compact SageMemoryBlock, statusline |
 | `webui` / `webui-server` | MemoryManager + ReviewQueue + WS handlers |
-| `simpleui` | Memory drawer, compact SAGE tool chips |
+| `vibeui` | Memory browser and relationship graph |
 
 Ops helpers: `scripts/sage-maintenance.mjs`, `scripts/memory-profile.mjs`, `scripts/analyze-memory-log.mjs`.
 
@@ -916,7 +916,6 @@ Ops helpers: `scripts/sage-maintenance.mjs`, `scripts/memory-profile.mjs`, `scri
 | Path remap (`mv` / `git mv` / `Move-Item`) | Done |
 | Symbol remap (`lsp_rename` with pre-read identifier) | Done |
 | TUI compact inject chip default on | Done |
-| SimpleUI compact inject chip + memory drawer | Done |
 | MemoryManager server-side `query` / `kind` on `listPage` | Done |
 | Proposal dedupe (`fileTriageProposals` / pending `targetMemoryId`) | Done |
 | Extended kinds in `VALID_KINDS` + tool schema | Done |
@@ -996,6 +995,6 @@ When you change any of the following, update **this document** in the same PR:
 - Injection gates / defaults<br>
 - Host wiring (`setupSage` middleware set, daily dry-run, capture, remap)<br>
 - WebSocket memory message types<br>
-- MemoryManager / Review / TUI / SimpleUI memory UX contracts<br>
+- MemoryManager / Review / TUI / VibeUI memory UX contracts<br>
 
 If a claim cannot be pointed at a source file, treat it as aspirational and move it to a design plan instead of leaving it here as fact.

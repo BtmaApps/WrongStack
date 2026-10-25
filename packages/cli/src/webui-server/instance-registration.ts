@@ -6,7 +6,7 @@ import { registerWebuiInstance } from './lifecycle.js';
 
 export interface EmbeddedInstanceRegistrationInput {
   opts: CliWebUIOptions;
-  surface: 'webui' | 'simpleui' | 'vibeui';
+  surface: 'webui' | 'vibeui';
   host: string;
   httpPort: number;
   publicUrl: string | undefined;

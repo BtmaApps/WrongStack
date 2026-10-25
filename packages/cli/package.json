@@ -76,7 +76,6 @@
     "@wrongstack/sage-mcp": "workspace:*",
     "@wrongstack/sdd": "workspace:*",
     "@wrongstack/security-scanner": "workspace:*",
-    "@wrongstack/simpleui": "workspace:*",
     "@wrongstack/techstack": "workspace:*",
     "@wrongstack/telegram": "workspace:*",
     "@wrongstack/tools": "workspace:*",

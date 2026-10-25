@@ -13,7 +13,7 @@ Inspect existing Project Kits first for reusable project-specific operations.
 
 Set the optional `description` to a short purpose such as "Summarize package
 versions". The activity summary shows that purpose instead of a raw script dump.
-WebUI, TUI, and SimpleUI label direct and deferred calls as **WrongStack ToolFlow**.
+WebUI and TUI label direct and deferred calls as **WrongStack ToolFlow**.
 Completed runs show the call count and measured result/returned bytes. WebUI's
 expanded activity card also offers the JavaScript for inspection.
 

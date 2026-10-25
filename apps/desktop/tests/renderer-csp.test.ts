@@ -2,7 +2,7 @@
  * WS-061 — the Electron renderer's CSP.
  *
  * This is the fourth served surface and the one most easily missed: webui and
- * simpleui share `buildCspHeader` in @wrongstack/webui-server and HQ builds its
+ * vibeui share `buildCspHeader` in @wrongstack/webui-server and HQ builds its
  * header in code, but the renderer declares its policy in a `<meta>` tag in
  * static HTML. Nothing imports it, so no existing test touched it, and it
  * carried `script-src 'unsafe-inline'` unnoticed alongside the others.

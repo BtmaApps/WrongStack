@@ -198,7 +198,7 @@ export interface ResumableSession {
  * and nothing made the two disagree visible.
  *
  * "Live" means another process holds this session's registry lease: a second
- * `wstack --tui`, the WebUI server, SimpleUI, a REPL. Two writers appending to
+ * `wstack --tui`, the WebUI server, VibeUI, a REPL. Two writers appending to
  * one journal interleave their turns and corrupt the transcript, so this is a
  * refusal, not a warning.
  */

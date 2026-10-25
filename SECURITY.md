@@ -352,7 +352,7 @@ Added by the **August 2026** `security-check` audit:
     npm registry at all; releases ship only as GitHub Release binaries and Desktop packages.
 
 - **Loopback is authenticated, not trusted — but the token is readable by same-user processes** (H3):
-  - The WebUI/SimpleUI HTTP API now requires a token on every bind (previously loopback required
+  - The WebUI/VibeUI HTTP API now requires a token on every bind (previously loopback required
     none). The token lives in `~/.wrongstack/webui-instances.json` (`0o600`) so the one legitimate
     non-browser caller, `FleetNotifier`'s `POST /api/fleet/ping`, can authenticate.
   - This raises the bar against a differently-scoped or sandboxed local process. It does **not**

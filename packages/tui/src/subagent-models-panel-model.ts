@@ -4,7 +4,7 @@
  * The TUI never imports the coordination plan type directly: the host (CLI)
  * owns the session-scoped plan and hands the panel plain rows. That keeps this
  * package free of `@wrongstack/core/coordination` runtime imports and lets the
- * WebUI/SimpleUI reuse the same host contract shape over their own transport.
+ * WebUI reuse the same host contract shape over their own transport.
  */
 
 import type { SubagentLaneView, SubagentRoleView } from './ui-contracts.js';

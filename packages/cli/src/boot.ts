@@ -18,7 +18,6 @@ import { applyGoalTuiDefault } from './boot/goal-tui-default.js';
 import { resolveLaunchMcpServers } from './boot/mcp-config-flag.js';
 import { activateRestrictedMode } from './boot/restricted-mode.js';
 import { announceSafeMode } from './boot/safe-mode.js';
-import { applySimpleUiFullAutoProfile, isSimpleUiFullAuto } from './boot/simpleui-full-auto.js';
 import { parseOutputFormat } from './boot/stream-json.js';
 import { resolveJsonSchemaFlag } from './boot/structured-output.js';
 import {
@@ -202,8 +201,6 @@ export async function boot(argv: string[]): Promise<BootContext | number> {
     }
   }
 
-  config = applySimpleUiFullAutoProfile(config, flags);
-  const simpleUiFullAuto = isSimpleUiFullAuto(flags);
   const { cwd, projectRoot, userHome, wpaths, pathResolver } = paths;
   const profileConfigPath = activeProfileConfigPath(wpaths, config);
   void pathResolver; // used by callers via container binding
@@ -405,7 +402,6 @@ export async function boot(argv: string[]): Promise<BootContext | number> {
   // Mode + YOLO + Director + Autonomy prompts
   const launch = await applyBootLaunchChoices({
     isInteractiveTTY,
-    simpleUiFullAuto,
     flags,
     config,
     renderer,

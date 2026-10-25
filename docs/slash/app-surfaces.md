@@ -12,13 +12,13 @@ The commands are deliberately informational: a running slash-command host does n
 ```text
 wstack desktop
 wstack --webui
-wstack --simpleui
+wstack --vibeui
 ```
 
-SimpleUI is the lightweight browser chat for conversation, live tool progress, and
-agent tabs; unlike WebUI, it does not include the full workspace.
+VibeUI is a focused browser coding workspace; terminal/editor, browser streams
+and automation editing remain in the full WebUI. SimpleUI was retired and replaced by VibeUI; `wstack simpleui` / `--simpleui` now open VibeUI.
 
 ## Code reference
 
 - `packages/cli/src/slash-commands/surfaces.ts`
-- `packages/cli/src/arg-parser.ts` — parses the Desktop, `--webui`, and `--simpleui` launch forms
+- `packages/cli/src/arg-parser.ts` — parses the Desktop, `--webui`, and `--vibeui` launch forms (and redirects the retired `--simpleui` to VibeUI)

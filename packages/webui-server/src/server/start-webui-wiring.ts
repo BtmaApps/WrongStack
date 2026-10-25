@@ -143,7 +143,7 @@ export function wireStandaloneWebuiRuntime(input: StandaloneWebuiWiringInput): v
     updateAutoCompactionMaxContext,
   });
 
-  // WebUI/SimpleUI joins the process flight recorder, including standalone servers.
+  // WebUI joins the process flight recorder, including standalone servers.
   const stopHeapWatchdog = startSharedHeapWatchdog({
     collectStats: () => ({
       surface: opts.surface ?? 'webui',

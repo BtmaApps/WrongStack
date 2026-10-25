@@ -102,8 +102,7 @@ export function startEmbeddedLiveStatusLogger(
   terminalLogView: Parameters<typeof startWebUILiveStatusLogger>[0]['dashboard'],
 ) {
   return startWebUILiveStatusLogger({
-    title:
-      opts.surface === 'vibeui' ? 'VibeUI' : opts.surface === 'simpleui' ? 'SimpleUI' : 'WebUI',
+    title: opts.surface === 'vibeui' ? 'VibeUI' : 'WebUI',
     events: opts.events,
     dashboard: terminalLogView,
     getSessionList: () => {

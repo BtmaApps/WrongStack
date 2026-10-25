@@ -11,7 +11,6 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const repository = path.resolve(root, '../..');
 const output = path.join(repository, '.temp_files/competitive-ui');
 const virtualId = 'virtual:competitive-improvements-smoke';
-const simplePath = path.join(repository, 'packages/simpleui/src').replaceAll('\\', '/');
 const source = `
 import React from 'react';
 import { createRoot } from 'react-dom/client';
@@ -19,11 +18,8 @@ import '/src/index.css';
 import { i18n } from '/src/i18n/index.ts';
 import { ThemeProvider } from '/src/components/ThemeProvider.tsx';
 import { AutomationWorkspace } from '/src/components/AutomationView.tsx';
-import { AutomationWorkspace as SimpleWorkspace } from '/@fs/${simplePath}/automation-workspace.tsx';
 import { AutomationPullRequestPanel as WebPR } from '/src/components/AutomationPullRequestPanel.tsx';
-import { AutomationPullRequestPanel as SimplePR } from '/@fs/${simplePath}/automation-pull-request.tsx';
 import { AutomationEnvironmentRun as WebEnvironment } from '/src/components/AutomationEnvironment.tsx';
-import { AutomationEnvironmentRun as SimpleEnvironment } from '/@fs/${simplePath}/automation-environment.tsx';
 import { BrowserElementSelection } from '/src/components/BrowserElementSelection.tsx';
 import { BrowserLivePane } from '/src/components/BrowserLivePane.tsx';
 import { ChatInput } from '/src/components/ChatInput.tsx';
@@ -31,7 +27,6 @@ import { useConfigStore, useSessionStore, useUIStore } from '/src/stores/index.t
 import { getWSClient } from '/src/lib/ws-client.ts';
 import { setActiveSessionLane } from '/src/stores/session-lanes.ts';
 const mode = new URLSearchParams(location.search).get('mode');
-if (mode === 'simple' || mode === 'pr-simple' || mode === 'repair-simple' || mode === 'env-simple') await import('/@fs/${simplePath}/styles.css');
 await i18n.changeLanguage('en');
 await i18n.loadNamespaces(['activity','chat','common','settings','setup']);
 const sent=[];
@@ -64,7 +59,7 @@ setActiveSessionLane('fixture'); useUIStore.getState().bindSessionChrome('fixtur
 useSessionStore.getState().setEnv({projectName:'Fixture',cwd:'/fixture'});
 useConfigStore.setState({provider:'WrongForge',model:'workspace-model',wsConnected:true,wsStatus:{state:'open'}});
 createRoot(document.getElementById('root')).render(<ThemeProvider><main className="mx-auto max-w-4xl space-y-4 p-4">
-{mode === 'env-web' ? <section className="automation-workspace"><WebEnvironment runId="fixture-run" sessionId="fixture" running/></section> : mode === 'env-simple' ? <section className="automation-workspace"><SimpleEnvironment runId="fixture-run" sessionId="fixture" running/></section> : mode === 'pr-web' || mode === 'repair-web' ? <section className="automation-workspace"><article><WebPR runId="fixture-run" sessionId="fixture"/></article></section> : mode === 'pr-simple' || mode === 'repair-simple' ? <section className="automation-workspace"><article><SimplePR runId="fixture-run" sessionId="fixture"/></article></section> : mode === 'picker' ? <><BrowserLivePane/><ChatInput/></> : mode === 'selection' ? <><BrowserElementSelection selection={selection}/><ChatInput/></> : mode === 'simple' ? <SimpleWorkspace sessionId="fixture"/> : <AutomationWorkspace sessionId="fixture"/>}
+{mode === 'env-web' ? <section className="automation-workspace"><WebEnvironment runId="fixture-run" sessionId="fixture" running/></section> : mode === 'pr-web' || mode === 'repair-web' ? <section className="automation-workspace"><article><WebPR runId="fixture-run" sessionId="fixture"/></article></section> : mode === 'picker' ? <><BrowserLivePane/><ChatInput/></> : mode === 'selection' ? <><BrowserElementSelection selection={selection}/><ChatInput/></> : <AutomationWorkspace sessionId="fixture"/>}
 </main></ThemeProvider>);
 `;
 const server = await createServer({
@@ -107,18 +102,7 @@ try {
   await mkdir(output, { recursive: true });
   await server.listen();
   browser = await chromium.launch({ headless: true });
-  for (const mode of [
-    'web',
-    'simple',
-    'selection',
-    'picker',
-    'pr-web',
-    'pr-simple',
-    'repair-web',
-    'repair-simple',
-    'env-web',
-    'env-simple',
-  ])
+  for (const mode of ['web', 'selection', 'picker', 'pr-web', 'repair-web', 'env-web'])
     for (const width of [1440, 390]) {
       const page = await browser.newPage({ viewport: { width, height: 1000 } });
       page.on('pageerror', (error) => errors.push(`${mode}/${width}: ${error.message}`));
@@ -394,7 +378,7 @@ try {
     }
   assert.deepEqual(errors, []);
   process.stdout.write(
-    'PASS: 20 WebUI/SimpleUI environment, verification, draft PR/CI and browser context scenarios at 1440px and 390px; no browser errors\n',
+    'PASS: 12 WebUI environment, verification, draft PR/CI and browser context scenarios at 1440px and 390px; no browser errors\n',
   );
 } finally {
   await browser?.close();

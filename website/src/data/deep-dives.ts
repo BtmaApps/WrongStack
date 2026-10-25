@@ -31,7 +31,7 @@ export const featureDeepDives: Record<string, FeatureDeepDive> = {
     operatorNotes: [
       'Inspect the schedule preview and event filters before enabling a job.',
       'Use the structured result and patch to review each run; validation is reported separately from completion.',
-      'Manage definitions and inspect results in WebUI or SimpleUI.',
+      'Manage definitions and inspect results in WebUI.',
     ],
     signals: [
       { label: 'Triggers', value: 'Calendar + GitHub' },
@@ -815,8 +815,8 @@ export const featureDeepDives: Record<string, FeatureDeepDive> = {
       },
       {
         title: 'Shape the interface',
-        body: 'CLI modes, TUI panels, WebUI settings, SimpleUI, VibeUI, Desktop and HQ expose shared state while preserving surface-specific preferences.',
-        code: 'one kernel → seven tailored surfaces',
+        body: 'CLI modes, TUI panels, WebUI settings, VibeUI, Desktop and HQ expose shared state while preserving surface-specific preferences.',
+        code: 'one kernel → six tailored surfaces',
       },
       {
         title: 'Protect trust boundaries',

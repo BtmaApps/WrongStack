@@ -16,7 +16,7 @@
 | `/chimera autoFix <off\|ask\|auto>` | Compatibility command; explains that follow-ups are manual. |
 
 Every mode is now passive: the full report is persisted and sent to the mailbox,
-while TUI, WebUI, and SimpleUI receive a compact “report ready” notice. Reports
+while TUI, WebUI, and VibeUI receive a compact “report ready” notice. Reports
 never resume the leader. Findings at or above the `cascadeOn` threshold (`high`
 by default) trigger the correction cascade — security-scanner and/or bug-hunter
 agents spawned to investigate and fix, bounded by `maxCascadeDepth`. Successful

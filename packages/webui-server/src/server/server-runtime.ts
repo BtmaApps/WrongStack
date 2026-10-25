@@ -48,7 +48,7 @@ export interface ResolvedPorts {
  * ports unless `WEBUI_STRICT_PORT` is set.
  */
 export async function resolvePorts(opts: {
-  surface?: 'webui' | 'simpleui' | 'vibeui' | undefined;
+  surface?: 'webui' | 'vibeui' | undefined;
   wsHost?: string | undefined;
   httpPort?: number | undefined;
   webuiPort?: number | undefined;
@@ -59,7 +59,7 @@ export async function resolvePorts(opts: {
 }): Promise<ResolvedPorts> {
   const surface = opts.surface ?? 'webui';
   const surfaceDefaults = {
-    http: surface === 'vibeui' ? 3476 : surface === 'simpleui' ? 3466 : 3456,
+    http: surface === 'vibeui' ? 3476 : 3456,
   };
   const wsHost = opts.wsHost ?? process.env['WEBUI_HOST'] ?? process.env['WS_HOST'] ?? '127.0.0.1';
   const requestedHttpPort =

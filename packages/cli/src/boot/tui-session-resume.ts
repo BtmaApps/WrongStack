@@ -618,7 +618,7 @@ export async function resumeSession(
     const message = toErrorMessage(err);
     // ── Live-session conflict: no fallback ──────────────────────────────
     // Another process holds this session's lease — a second `wstack --tui`,
-    // the WebUI server, SimpleUI, a REPL. The read-only fallback below is the
+    // the WebUI server, VibeUI, a REPL. The read-only fallback below is the
     // wrong answer for that case specifically: it would blank the user's live
     // screen and replace it with a snapshot of a conversation that is STILL
     // MOVING somewhere else, which reads as a successful resume that has

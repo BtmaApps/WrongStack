@@ -23,7 +23,7 @@ function formatDescriptionMode(mode: 'extend' | 'simple'): string {
  * `lazy` is the honest name for the second group: still executable through
  * `tool_search` / `tool_use`, just not paid for on every request. The TUI
  * picker and the WebUI tools panel have shown this split for a while - these
- * text tables (used by `--print`, pipes and SimpleUI) were the surfaces left
+ * text tables (used by `--print`, pipes) were the surfaces left
  * reporting two states for three.
  */
 function toolStatus(

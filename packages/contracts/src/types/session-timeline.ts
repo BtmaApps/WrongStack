@@ -11,7 +11,7 @@
  * or redisplayed — and each of them used to do it separately: the TUI walked
  * the message backbone and two-pointer-merged markers, the WebUI flushed
  * markers only at message boundaries and dropped tool timings entirely, and the
- * SimpleUI built two lists and re-sorted them by timestamp. The same session
+ * since-retired SimpleUI built two lists and re-sorted them by timestamp. The same session
  * therefore read differently depending on which window you resumed it in, and
  * none of them matched what had been on screen while it ran.
  *
@@ -134,7 +134,7 @@ export interface SessionTimelineToolEntry extends TimelineEntryBase {
    * `undefined` while a call has no result in the journal — the run was still
    * executing it when the process stopped. A surface renders that as "running"
    * or "interrupted"; it is NOT a failure, and reporting it as one is what the
-   * SimpleUI replay used to do.
+   * retired SimpleUI replay used to do.
    */
   ok?: boolean | undefined;
   durationMs?: number | undefined;
@@ -169,7 +169,7 @@ export type SessionTimelineEntry =
  * match the surface it is resuming into:
  *
  * - `'inline'` — one entry per thinking block, before the prose, in provider
- *   block order. The TUI and SimpleUI stream thinking as it arrives and leave
+ *   block order. The TUI streams thinking as it arrives and leave
  *   it where it fell.
  * - `'merged-after'` — one entry per message, carrying every thinking block
  *   joined, emitted after that message's prose and tool calls. The WebUI keeps
@@ -177,21 +177,6 @@ export type SessionTimelineEntry =
  *   when the iteration completes, which is after the prose is on screen.
  */
 export type ThinkingPlacement = 'inline' | 'merged-after';
-
-/**
- * How a message's text blocks relate to the tool calls between them.
- *
- * Again a record of what the surface did LIVE, not a preference:
- *
- * - `'split'` — a text run becomes its own entry wherever a tool interrupts
- *   it, so prose that followed a tool stays after that tool. The TUI and the
- *   WebUI render a fresh bubble per run.
- * - `'join'` — every text block of a message becomes ONE entry, emitted before
- *   the message's tool entries. The SimpleUI streams a whole iteration into a
- *   single bubble and lists tool calls beside it, so splitting would invent
- *   bubbles that were never on screen.
- */
-export type TextBlockMode = 'split' | 'join';
 
 export interface ProjectSessionTimelineInput {
   /** The reconstructed conversation, as `SessionStore.load()` rebuilds it. */
@@ -214,8 +199,6 @@ export interface ProjectSessionTimelineInput {
   markerSources?: ReadonlySet<SessionEvent['type']> | undefined;
   /** See {@link ThinkingPlacement}. Defaults to `'inline'`. */
   thinkingPlacement?: ThinkingPlacement | undefined;
-  /** See {@link TextBlockMode}. Defaults to `'split'`. */
-  textBlocks?: TextBlockMode | undefined;
   /**
    * Glue between adjacent text blocks of one run. Defaults to `''` — the
    * provider already streamed them as one continuous body, and inserting a
@@ -343,7 +326,6 @@ export function projectSessionTimeline(input: ProjectSessionTimelineInput): Sess
     messages,
     events,
     thinkingPlacement = 'inline',
-    textBlocks = 'split',
     textSeparator = '',
     hideSystemInjections = true,
     runtimeContextEntries = false,
@@ -442,23 +424,13 @@ export function projectSessionTimeline(input: ProjectSessionTimelineInput): Sess
     const images = message.role === 'user' ? imagesOf(blocks) : undefined;
     const final = !blocks.some((block) => block.type === 'tool_use');
     const textParts: string[] = [];
+    // A text run becomes its own entry wherever a tool interrupts it, so prose
+    // that followed a tool stays after that tool on every surface.
     const flushText = (): void => {
-      // In `'join'` mode a tool does not close the text run — the whole
-      // message is one bubble, emitted before its tools by the pre-pass below.
-      if (textBlocks === 'join') return;
       const text = textParts.join(textSeparator).trim();
       if (text) pushText(message.role, text, ts, final, explicitAuthor);
       textParts.length = 0;
     };
-
-    if (textBlocks === 'join') {
-      const joined = blocks
-        .filter((block): block is Extract<ContentBlock, { type: 'text' }> => block.type === 'text')
-        .map((block) => block.text)
-        .join(textSeparator)
-        .trim();
-      if (joined) pushText(message.role, joined, ts, final, explicitAuthor);
-    }
 
     // Walk content blocks IN ORDER, interleaving text and tool entries.
     // Concatenating all text first would move prose that appeared after a tool

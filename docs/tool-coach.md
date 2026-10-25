@@ -2,7 +2,7 @@
 
 Tool Coach gives the active model short, timely advice about tools that are **enabled in its current session**. It is an advisory part of the Core agent loop, not a separate authority or tool executor.
 
-It is on by default, including for existing profiles that omit the setting. Set `features.toolCoach` to `false` to disable it, or use `/settings tool-coach on|off`, the TUI Settings picker, the WebUI Context tab, or SimpleUI Settings. The change applies to the next task in the active runtime.
+It is on by default, including for existing profiles that omit the setting. Set `features.toolCoach` to `false` to disable it, or use `/settings tool-coach on|off`, the TUI Settings picker, or the WebUI Context tab. The change applies to the next task in the active runtime.
 
 ## When it speaks
 

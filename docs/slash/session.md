@@ -54,7 +54,7 @@ Deletes any saved session — not just empty ones. Removes the `.jsonl` transcri
 
 There is no project-wide `active.json` lock. Multiple surfaces in one project start separate fresh sessions by default. A session is loaded only through an explicit resume action. Without `--force`/`-y`, a delete confirmation prompt is shown (skipped automatically in non-TTY/scripted contexts).
 
-The device-wide registry lives at `~/.wrongstack/session-registry.json`. Each entry includes the session id, owner PID and start generation, client type, project/working-directory identity, heartbeat status, and live agents, so TUI, WebUI, SimpleUI, and HQ consumers share the same ownership view. A missing heartbeat does not release a session while its PID is still alive: the entry becomes `lost` and remains protected until that process exits. Dead-PID entries are pruned automatically.
+The device-wide registry lives at `~/.wrongstack/session-registry.json`. Each entry includes the session id, owner PID and start generation, client type, project/working-directory identity, heartbeat status, and live agents, so TUI, WebUI, and HQ consumers share the same ownership view. A missing heartbeat does not release a session while its PID is still alive: the entry becomes `lost` and remains protected until that process exits. Dead-PID entries are pruned automatically.
 
 ## /exit (aliases: `/quit`, `/q`)
 

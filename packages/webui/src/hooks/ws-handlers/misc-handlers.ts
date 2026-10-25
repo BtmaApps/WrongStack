@@ -294,7 +294,7 @@ export function handleModelRefineResult(msg: WSServerMessage) {
   }
 
   if (!refinePanel) return;
-  // The shared projection (SimpleUI pattern, also used by the TUI) decides
+  // The shared projection (also used by the TUI) decides
   // what the reply means: one silent timeout retry, failure recovery, an
   // original-send for a no-op refinement, or the ready comparison panel.
   const projection = projectRefineResult(p, {

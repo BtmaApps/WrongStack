@@ -179,18 +179,15 @@ describe('setupCliInfrastructure', () => {
     expect(wiring.getSessionId()).toBe('next-session');
   });
 
-  it.each([true, false, 'true'] as const)(
-    'skips online-agent discovery only for the boolean SimpleUI flag (%s)',
-    async (simpleui) => {
+  it.each([true, false] as const)(
+    'always runs online-agent discovery (webui=%s)',
+    async (webui) => {
       const h = harness();
-      h.inputs.flags['simpleui'] = simpleui;
+      h.inputs.flags['webui'] = webui;
       h.inputs.activeMode = { id: 'plan' } as Inputs['activeMode'];
       h.setConfig({ ...h.inputs.getConfig(), systemPrompt: undefined });
       await setupCliInfrastructure(h.inputs);
-      expect(mocks.loadOnlineAgentsForPrompt).toHaveBeenCalledWith(
-        h.inputs.wpaths.projectDir,
-        simpleui === true,
-      );
+      expect(mocks.loadOnlineAgentsForPrompt).toHaveBeenCalledWith(h.inputs.wpaths.projectDir);
       expect(mocks.providerToolsForVariant).toHaveBeenCalledWith(
         h.inputs.toolRegistry,
         undefined,

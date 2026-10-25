@@ -24,7 +24,7 @@ Run `/help <command>` for the full registered help of authoring and import flags
 
 ## Inline skill mentions
 
-Type `$` in the TUI, WebUI, or SimpleUI composer to search installed skills by
+Type `$` in the TUI, WebUI, or VibeUI composer to search installed skills by
 name or description. Use Up/Down and Enter/Tab to insert a selection; the browser
 menus also support clicking. Selecting a skill does not send the draft. Escape
 dismisses the menu and leaves the text intact.

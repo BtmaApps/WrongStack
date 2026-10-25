@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
  * Every session-scoped request must NAME the tab that sent it.
  *
  * `SessionScopedPayload` is `{ sessionId?: string }` — optional, because the
- * single-session surfaces (SimpleUI, the TUI) send these frames without one
+ * single-session surfaces (the TUI) send these frames without one
  * and the server falls back to its only session. That optionality is also why
  * this rule cannot be a type: nothing stops a new send site from leaving the
  * field out, and with four tabs open "no session named" means "whichever

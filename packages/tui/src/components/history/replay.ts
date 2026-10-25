@@ -60,7 +60,7 @@ import type { HistoryEntry } from './types.js';
  * the modern `message_appended` journal reconstruct identically.
  *
  * The set and the wording both live in core (`types/session-markers.ts`) so the
- * TUI, WebUI, SimpleUI and HQ cannot drift on what a resumed session says.
+ * TUI, WebUI and HQ cannot drift on what a resumed session says.
  */
 const TUI_RESUME_EXCLUDED_MARKER_SOURCES: ReadonlySet<SessionEvent['type']> = new Set([
   'agent_spawned',

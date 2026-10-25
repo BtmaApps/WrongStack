@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ProviderCloudSettings as SimpleCloud } from '../../../simpleui/src/provider-cloud-settings.js';
 
 const mock = vi.hoisted(() => ({
   operation: vi.fn(async (_client: unknown, _message: unknown) => true),
@@ -33,22 +32,26 @@ describe('cloud settings forms', () => {
       payload: { id: 'work', cloud: { project: 'new-project', location: 'us-central1' } },
     });
   });
-  it('uses the same validation and empty-field fallback in SimpleUI', async () => {
-    const save = vi.fn(async () => {});
+  it('rejects an invalid region and falls back to an empty cloud block', async () => {
+    const send = vi.fn();
     render(
-      <SimpleCloud
+      <WebCloud
+        id="aws"
         type="amazon-bedrock"
         cloud={{ region: 'us-east-1' }}
-        busy={false}
-        onSave={save}
+        ws={{ send } as never}
       />,
     );
     fireEvent.change(screen.getByLabelText('region'), { target: { value: 'bad/region' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save cloud settings' }));
-    await screen.findByRole('alert');
-    expect(save).not.toHaveBeenCalled();
+    await screen.findByText('Invalid cloud region');
+    expect(mock.operation).not.toHaveBeenCalled();
     fireEvent.change(screen.getByLabelText('region'), { target: { value: '' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save cloud settings' }));
-    await waitFor(() => expect(save).toHaveBeenCalledWith({}));
+    await waitFor(() => expect(mock.operation).toHaveBeenCalled());
+    expect(mock.operation.mock.calls[0]?.[1]).toEqual({
+      type: 'provider.update',
+      payload: { id: 'aws', cloud: {} },
+    });
   });
 });

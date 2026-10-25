@@ -577,7 +577,6 @@ export type {
   SessionTimelineToolEntry,
   SessionTimelineUserEntry,
   SessionToolMeta,
-  TextBlockMode,
   ThinkingPlacement,
 } from './session-timeline.js';
 export { projectSessionTimeline, projectSessionToolMeta } from './session-timeline.js';

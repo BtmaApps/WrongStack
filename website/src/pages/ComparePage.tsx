@@ -58,7 +58,7 @@ const differentiators = [
   {
     icon: ShieldCheck,
     title: 'Open all the way down',
-    body: 'CLI, TUI, WebUI, SimpleUI, VibeUI, Desktop, HQ, fleet and provider layers live in one MIT-licensed monorepo with no paid feature gate.',
+    body: 'CLI, TUI, WebUI, VibeUI, Desktop, HQ, fleet and provider layers live in one MIT-licensed monorepo with no paid feature gate.',
     href: '/architecture',
   },
 ] as const;

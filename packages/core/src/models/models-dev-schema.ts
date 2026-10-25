@@ -31,7 +31,7 @@ import { FORBIDDEN_PROTO_KEYS } from '../utils/deep-merge.js';
  *
  * Zod's fast path assembles validators with `new Function`, and probes for
  * that capability the first time an object schema is constructed. The WebUI
- * and SimpleUI are served under `script-src 'self' 'wasm-unsafe-eval'`
+ * and VibeUI are served under `script-src 'self' 'wasm-unsafe-eval'`
  * (`buildCspHeader`), so the probe is guaranteed to fail there: zod catches
  * the throw and falls back to its interpreted path, but the browser still
  * reports a blocked eval on every page load — from the app's OWN bundle,

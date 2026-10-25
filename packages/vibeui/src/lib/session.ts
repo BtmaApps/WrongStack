@@ -219,7 +219,6 @@ export function reduceFrame(state: SessionState, frame: ProtocolEnvelope): Sessi
           ),
           markers: (session.replayMarkers ?? []) as SessionMarker[],
           toolMeta: (session.replayToolMeta ?? []) as SessionToolMeta[],
-          textBlocks: 'split',
           thinkingPlacement: 'inline',
           textSeparator: '\n\n',
           runtimeContextEntries: true,

@@ -37,7 +37,6 @@
     { "path": "./packages/cli" },
     { "path": "./packages/sdd" },
     { "path": "./packages/security-scanner" },
-    { "path": "./packages/simpleui" },
     { "path": "./packages/sage" },
     { "path": "./packages/bench" },
     { "path": "./packages/techstack" },

@@ -36,7 +36,7 @@ export const featureStories: Feature[] = [
     eyebrow: 'Automation',
     title: 'Reviewable agent jobs beyond the chat session',
     summary:
-      'Manage scheduled and signed GitHub jobs from WebUI or SimpleUI, run them in copied Docker workspaces, and inspect structured results and patches.',
+      'Manage scheduled and signed GitHub jobs from WebUI, run them in copied Docker workspaces, and inspect structured results and patches.',
     details: [
       'Calendar schedules, event filters and frozen queued definitions',
       'Versioned templates and portable definitions with credential references',

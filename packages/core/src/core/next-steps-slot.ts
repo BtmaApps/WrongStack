@@ -4,7 +4,7 @@
  *
  * ## Why a slot and not a direct channel to the UI
  *
- * Every suggestion surface — the TUI history renderer, the WebUI and SimpleUI
+ * Every suggestion surface — the TUI history renderer, the WebUI
  * chat stores, the CLI REPL suggestion store, and the session replay/rehydrate
  * paths — reads `<nextsteps>` out of the assistant's *message text* via
  * `parseNextSteps` in `@wrongstack/tools/next-steps`. Handing the tool its own

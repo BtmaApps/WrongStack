@@ -10,7 +10,8 @@ The menu (`packages/cli/src/boot/launch-menu.ts`) is shown when **all**
 of these hold:
 
 - `process.stdin.isTTY` is `true`
-- No surface flag is set (`--webui`, `--simpleui`, `--hq`, `--desktop`)
+- No surface flag is set (`--webui`, `--vibeui`, `--hq`, `--desktop`;
+  the retired `--simpleui` counts as `--vibeui`)
 - No positional subcommand is given (`auth`, `init`, `mcp`, `plugin`,
   `doctor`, …)
 - No `--no-menu`, `--no-interactive`, or `--skip` flag is set
@@ -28,13 +29,17 @@ In every other case the menu is silently skipped and the historical
   ? Choose how to run WrongStack:
     1) TUI / REPL  (interactive terminal; TUI is the default)
     2) WebUI       (browser-based project UI; port 3456)
-    3) SimpleUI    (lightweight browser UI; port 3466)
+    3) VibeUI      (focused coding workspace; port 3476)
     4) HQ          (project-independent HQ dashboard; port 3499)
     5) Desktop     (Electron desktop shell; alias: --desktop)
   [1-5, q to quit] (auto 1 in 8s)
 ```
 
 - A numeric answer (`1`–`5`) picks the surface.
+
+SimpleUI was retired and replaced by VibeUI; `wstack simpleui` / `--simpleui` now open VibeUI.
+The menu no longer lists SimpleUI; VibeUI moved to option 3.
+
 - `q` (or `quit`) cancels — the CLI exits with code 0.
 - Any other input (or a timeout) falls back to the first option
   (TUI/REPL).
@@ -48,7 +53,7 @@ In every other case the menu is silently skipped and the historical
 | Surface  | Default port | Source of truth |
 |----------|--------------|-----------------|
 | WebUI    | 3456         | `packages/webui-server/src/server/port-utils.ts` (`SURFACE_DEFAULT_PORTS.webui`) |
-| SimpleUI | 3466         | `packages/webui-server/src/server/port-utils.ts` (`SURFACE_DEFAULT_PORTS.simpleui`) |
+| VibeUI   | 3476         | `packages/webui-server/src/server/port-utils.ts` (`SURFACE_DEFAULT_PORTS.vibeui`) |
 | HQ       | 3499         | `packages/cli/src/hq-server.ts` (`DEFAULT_PORT`) |
 | Host     | 127.0.0.1    | `launch-menu.ts` (`DEFAULT_HOST`) |
 
@@ -117,7 +122,7 @@ was built with.
 ## Why a menu at all?
 
 The CLI grew five parallel first-class surfaces (TUI/REPL, WebUI,
-SimpleUI, HQ, Desktop) with separate launch flags. Users on a fresh install
+VibeUI, HQ, Desktop) with separate launch flags. Users on a fresh install
 often type plain `wstack` expecting *one* of them to start. The menu
 replaces the implicit `TUI/REPL if no flag is set` choice with an
 explicit one-liner, while preserving every existing escape hatch.

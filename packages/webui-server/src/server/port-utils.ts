@@ -1,12 +1,12 @@
 /**
- * Port constants for the WebUI / SimpleUI servers.
+ * Port constants for the WebUI / VibeUI servers.
  *
  * Design:
  * - **Single port — shared HTTP + WebSocket.** The WebSocket server attaches
  *   to the HTTP server (`new WebSocketServer({ server: httpServer })`), so
  *   both protocols share one port. No separate WS port is needed.
  * - **Auto-advance.** When a port is taken the server probes upward — WebUI
- *   starts at 3456, SimpleUI at 3466. Set `WEBUI_STRICT_PORT=1` to disable.
+ *   starts at 3456, VibeUI at 3476. Set `WEBUI_STRICT_PORT=1` to disable.
  * - **TOCTOU window.** The probe in `findFreePort` binds a throwaway
  *   `net.Server` then closes it, so there is a tiny race between "found free"
  *   and "real server binds". When that race is lost the real bind fails with
@@ -27,12 +27,11 @@ import { ToolValidationError } from '@wrongstack/contracts/types';
  * WebSocket shares the HTTP port (single-port design), so only one port
  * number is specified per surface:
  *
- *   WebUI:   3456
- *   SimpleUI: 3466
+ *   WebUI:  3456
+ *   VibeUI: 3476
  */
 export const SURFACE_DEFAULT_PORTS = {
   webui: { http: 3456 },
-  simpleui: { http: 3466 },
   vibeui: { http: 3476 },
 } as const satisfies Record<string, { http: number }>;
 
@@ -43,8 +42,7 @@ const MAX_TCP_PORT = 65535;
 
 /** Human-readable label for surfaces. */
 export function surfaceLabel(surface: SurfaceKind): string {
-  if (surface === 'vibeui') return 'VibeUI';
-  return surface === 'webui' ? 'WebUI' : 'SimpleUI';
+  return surface === 'vibeui' ? 'VibeUI' : 'WebUI';
 }
 
 /**
@@ -215,7 +213,7 @@ export function listenWithRetry(
             // the OS releases the listening socket, so the very next bind of
             // that port fails on a port nothing else is using (verified with
             // netstat: no listener at all). Advancing would silently move
-            // SimpleUI off its documented default port for a hazard that
+            // a surface off its documented default port for a hazard that
             // clears in a few ms, so re-bind the SAME port first (bounded),
             // and only then fall through to advancing.
             if (probedFree && phantomLeft > 0) {

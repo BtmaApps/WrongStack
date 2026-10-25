@@ -117,7 +117,7 @@ export interface WebUIDispatchContext {
     | undefined;
   /**
    * Pre-computed update info from the CLI's preflight version check.
-   * When present, surfaces (WebUI, SimpleUI) receive appVersion,
+   * When present, surfaces (WebUI, VibeUI) receive appVersion,
    * latestVersion, and updateAvailable fields in their session.start
    * payload to display an "update available" warning.
    */
@@ -224,8 +224,17 @@ export async function runWebUIDispatch(ctx: WebUIDispatchContext): Promise<numbe
     webuiSessionChild,
   } = ctx;
   const isSessionChild = Boolean(webuiSessionChild);
-  const isSimpleUi = !isSessionChild && flags['simpleui'] === true;
   const isVibeUi = !isSessionChild && flags['vibeui'] === true;
+  if (!isSessionChild && flags['simpleui-retired'] === true) {
+    renderer.writeInfo(
+      color.yellow('  SimpleUI has been retired and replaced by VibeUI — opening VibeUI instead.'),
+    );
+  }
+  if (!isSessionChild && flags['full-auto'] === true) {
+    renderer.writeInfo(
+      color.yellow('  --full-auto was retired with SimpleUI and is ignored. Use --yolo instead.'),
+    );
+  }
 
   // Route permission confirmations to the browser (tool.confirm_needed
   // events) instead of inline terminal prompts — runWebUI forwards them to
@@ -293,7 +302,7 @@ export async function runWebUIDispatch(ctx: WebUIDispatchContext): Promise<numbe
     // HTTP and WebSocket upgrades share one listener. Keep the older
     // --http-port/--ws-port and environment names as aliases, but resolve
     // exactly one port so `--port` also controls the page users open.
-    const defaultPort = isVibeUi ? 3476 : isSimpleUi ? 3466 : 3456;
+    const defaultPort = isVibeUi ? 3476 : 3456;
     webuiPort =
       webuiSessionChild?.port ??
       parsePort(
@@ -321,10 +330,6 @@ export async function runWebUIDispatch(ctx: WebUIDispatchContext): Promise<numbe
       webuiSessionChild?.requireToken ??
       flagBoolean(['webui-require-token', 'require-token']) ??
       envFlag('WEBUI_REQUIRE_TOKEN');
-    if (isSimpleUi) {
-      const { ensureSimpleUiDistDir } = await import('../simpleui-dist.js');
-      frontendDistDir = await ensureSimpleUiDistDir();
-    }
     if (isVibeUi) {
       const { resolveVibeUiDistDir } = await import('../vibeui-dist.js');
       frontendDistDir = resolveVibeUiDistDir();
@@ -353,7 +358,7 @@ export async function runWebUIDispatch(ctx: WebUIDispatchContext): Promise<numbe
     events,
     statusTracker,
     session,
-    surface: isVibeUi ? 'vibeui' : isSimpleUi ? 'simpleui' : 'webui',
+    surface: isVibeUi ? 'vibeui' : 'webui',
     host: webuiHost,
     port: webuiPort,
     frontendDistDir,
@@ -465,7 +470,7 @@ export async function runWebUIDispatch(ctx: WebUIDispatchContext): Promise<numbe
         }).catch(() => undefined);
         return;
       }
-      const surface = isVibeUi ? 'VibeUI' : isSimpleUi ? 'SimpleUI' : 'WebUI';
+      const surface = isVibeUi ? 'VibeUI' : 'WebUI';
       renderer.writeInfo(
         `  ✦ ${terminalText(surface, 'success', { bold: true })} ${terminalText('running →', 'muted')} ${terminalLink(url)}`,
       );
@@ -530,9 +535,7 @@ export async function runWebUIDispatch(ctx: WebUIDispatchContext): Promise<numbe
         renderer.setSilent(false);
         renderer.write('\n');
         renderer.writeInfo(
-          color.yellow(
-            `  Shutting down ${isVibeUi ? 'VibeUI' : isSimpleUi ? 'SimpleUI' : 'WebUI'} server…`,
-          ),
+          color.yellow(`  Shutting down ${isVibeUi ? 'VibeUI' : 'WebUI'} server…`),
         );
         resolve(0);
       })
@@ -553,7 +556,7 @@ export async function runWebUIDispatch(ctx: WebUIDispatchContext): Promise<numbe
         // here would be filtered out — a failed start would print nothing.
         renderer.writeInfo(
           color.red(
-            `  ✗ ${isVibeUi ? 'VibeUI' : isSimpleUi ? 'SimpleUI' : 'WebUI'} failed to start: ${
+            `  ✗ ${isVibeUi ? 'VibeUI' : 'WebUI'} failed to start: ${
               err instanceof Error ? err.message : String(err)
             }`,
           ),

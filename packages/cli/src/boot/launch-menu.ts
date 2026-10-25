@@ -1,12 +1,12 @@
 /**
  * Interactive launch menu — surfaced when `wstack` is invoked with no
- * mode flag (no `--webui`, `--simpleui`, `--hq`, or `--desktop`) and no
+ * mode flag (no `--webui`, `--vibeui`, `--hq`, or `--desktop`) and no
  * positional subcommand, on an interactive TTY.
  *
  * The menu asks the user **once** which top-level surface to launch:
  *   1) TUI / REPL  — interactive terminal (the historical default)
  *   2) WebUI       — browser-based project UI (port 3456 by default)
- *   3) SimpleUI    — lightweight browser UI  (port 3466 by default)
+ *   3) VibeUI      — focused coding workspace (port 3476 by default)
  *   4) HQ          — project-independent HQ dashboard (port 3499)
  *   5) Desktop     — Electron desktop shell (`wstack --desktop`)
  *
@@ -17,7 +17,7 @@
  *                       * `tui-repl` → proceed to boot() with no flag
  *                         changes (the inner pre-launch prompts still
  *                         ask TUI vs REPL + YOLO + autonomy).
- *                       * `webui` / `simpleui` → caller injects the
+ *                       * `webui` / `vibeui` → caller injects the
  *                         surface flag + chosen port into argv.
  *                       * `hq` → caller dispatches to the HQ
  *                         short-circuit with the chosen port/host.
@@ -70,7 +70,7 @@ const PORT_TIMEOUT_MS = 8_000;
  *
  * Menu is skipped when ANY of these are true:
  *   - `--no-menu` flag is set
- *   - `--webui`, `--simpleui`, `--hq`, or `--desktop` flag is set
+ *   - `--webui`, `--vibeui`, `--hq`, or `--desktop` flag is set
  *     (the user already chose a surface)
  *   - stdin is not a TTY (CI, pipes, redirects)
  *   - `--no-interactive` or `--skip` (existing "skip all prompts"
@@ -87,7 +87,6 @@ export function shouldSkipMenu(
   if (flags['no-menu'] === true) return true;
   if (flags['webui'] === true) return true;
   if (flags['webui-session-child'] === true) return true;
-  if (flags['simpleui'] === true) return true;
   if (flags['vibeui'] === true) return true;
   if (flags['hq'] === true) return true;
   if (flags['desktop'] === true) return true;
@@ -327,8 +326,6 @@ function describeMode(mode: LaunchMenuMode): string {
       return 'TUI / REPL';
     case 'webui':
       return 'WebUI';
-    case 'simpleui':
-      return 'SimpleUI';
     case 'vibeui':
       return 'VibeUI';
     case 'hq':
@@ -352,7 +349,7 @@ function describeMode(mode: LaunchMenuMode): string {
  * Behaviour:
  *   - `tui-repl`  → unchanged argv; pre-launch prompts ask TUI vs REPL.
  *   - `webui`     → appends `--webui --port=<n> [--host=<h>]`.
- *   - `simpleui`  → appends `--simpleui --port=<n> [--host=<h>]`.
+ *   - `vibeui`    → appends `--vibeui --port=<n> [--host=<h>]`.
  *   - `hq`        → appends `--hq --port=<n> [--host=<h>]` (the
  *                   short-circuit in cli-context.ts will pick this up
  *                   and dispatch to startHqServer).
@@ -373,11 +370,6 @@ export function applyLaunchMenuToArgv(argv: string[], result: LaunchMenuResult):
       if (typeof result.port === 'number') out.push(`--port=${result.port}`);
       if (typeof result.host === 'string') out.push(`--host=${result.host}`);
       out.push('--webui');
-      return out;
-    case 'simpleui':
-      if (typeof result.port === 'number') out.push(`--port=${result.port}`);
-      if (typeof result.host === 'string') out.push(`--host=${result.host}`);
-      out.push('--simpleui');
       return out;
     case 'vibeui':
       if (typeof result.port === 'number') out.push(`--port=${result.port}`);

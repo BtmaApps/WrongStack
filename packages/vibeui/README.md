@@ -1,6 +1,6 @@
 # @wrongstack/vibeui
 
-A focused coding workspace between SimpleUI and the full WebUI. Fresh Next.js
+A focused coding workspace beside the full WebUI. Fresh Next.js
 App Router/Radix UI design, served by the existing WrongStack HTTP/WebSocket host.
 
 ## Run
@@ -14,7 +14,8 @@ wstack vibeui --open
 
 `wstack --vibeui` is equivalent. The launch menu includes VibeUI; its default port
 is **3476**. Existing `--port`, `--host`, `--open` and browser authentication flags
-apply. The package contains prebuilt `dist` assets for npm and standalone binaries.
+apply. VibeUI replaces the retired SimpleUI: `wstack simpleui` and `--simpleui`
+open VibeUI. The package contains prebuilt `dist` assets for npm and standalone binaries.
 It does not start a separate Next server in production.
 
 ## Development

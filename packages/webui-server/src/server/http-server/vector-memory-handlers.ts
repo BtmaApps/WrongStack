@@ -1,6 +1,6 @@
 /**
  * Vector memory HTTP handlers — minimal visibility surface for the
- * WebUI/SimpleUI. Exposes the active store/provider, the model cache
+ * WebUI. Exposes the active store/provider, the model cache
  * location, entry counts, and a search endpoint. Strictly opt-in:
  * `getVectorMemoryStore` defaults to undefined so non-CLI webui-server
  * hosts (e.g. a headless fleet dashboard) are unaffected.

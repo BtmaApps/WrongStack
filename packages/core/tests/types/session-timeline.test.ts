@@ -215,7 +215,7 @@ describe('projectSessionTimeline — conversation backbone', () => {
     ];
     const [entry] = projectSessionTimeline({ messages });
     // NOT `false`: an interrupted call is not a failed one, and reporting it
-    // as failed is what the SimpleUI replay used to do.
+    // as failed is what the retired SimpleUI replay used to do.
     expect((entry as { ok?: boolean }).ok).toBeUndefined();
   });
 

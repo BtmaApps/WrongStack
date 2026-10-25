@@ -22,7 +22,6 @@ import { patchConfig } from './utils.js';
 
 export interface BootLaunchInput {
   isInteractiveTTY: boolean;
-  simpleUiFullAuto: boolean;
   flags: Record<string, string | boolean>;
   config: Config;
   renderer: TerminalRenderer;
@@ -36,16 +35,8 @@ export async function applyBootLaunchChoices(
   input: BootLaunchInput,
 ): Promise<BootPhaseExit | { kind: 'ok'; config: Config }> {
   let { config } = input;
-  const {
-    isInteractiveTTY,
-    simpleUiFullAuto,
-    flags,
-    renderer,
-    reader,
-    profileConfigPath,
-    wpaths,
-    projectRoot,
-  } = input;
+  const { isInteractiveTTY, flags, renderer, reader, profileConfigPath, wpaths, projectRoot } =
+    input;
   if (isInteractiveTTY) {
     const reuseLast = shouldReuseStartupChoices(config);
     // System prompt (Lite / Standard / Pro). The gate itself lives in
@@ -180,15 +171,13 @@ export async function applyBootLaunchChoices(
     // but we must NOT persist that choice — the user's last non-webui mode
     // (likely TUI) should survive so the next plain `wstack` session returns
     // to their preferred surface instead of silently landing in REPL.
-    if (!simpleUiFullAuto) {
-      try {
-        const toPersist = flags['webui']
-          ? { ...choices, mode: lastChoices?.mode ?? config.launch?.mode ?? 'tui' }
-          : choices;
-        await persistLaunchChoices(profileConfigPath, toPersist, { rememberStartupChoices });
-      } catch {
-        // Best-effort — never blocks launch.
-      }
+    try {
+      const toPersist = flags['webui']
+        ? { ...choices, mode: lastChoices?.mode ?? config.launch?.mode ?? 'tui' }
+        : choices;
+      await persistLaunchChoices(profileConfigPath, toPersist, { rememberStartupChoices });
+    } catch {
+      // Best-effort — never blocks launch.
     }
   } else {
     // When skipping interactive prompts (--webui or --no-interactive), use saved
@@ -200,9 +189,7 @@ export async function applyBootLaunchChoices(
     // Respect an explicit opt-out (--no-autonomy or defaultMode 'off'); otherwise
     // default to 'auto' so non-interactive sessions self-drive too.
     const nonInteractiveAutonomy: 'off' | 'auto' =
-      !simpleUiFullAuto && (flags['no-autonomy'] === true || config.autonomy?.defaultMode === 'off')
-        ? 'off'
-        : 'auto';
+      flags['no-autonomy'] === true || config.autonomy?.defaultMode === 'off' ? 'off' : 'auto';
     const effectiveChoices = config.launch
       ? {
           mode: flags['no-tui'] ? 'repl' : (config.launch.mode ?? 'tui'),

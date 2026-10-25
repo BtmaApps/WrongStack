@@ -69,22 +69,17 @@ describe('cli-main helpers', () => {
     expect(events.off).toHaveBeenCalledWith('event', handler);
   });
 
-  it('skips mailbox discovery when online agents are not needed', async () => {
-    await expect(loadOnlineAgentsForPrompt('C:/repo', true)).resolves.toEqual([]);
-    expect(mocks.getSharedProjectMailbox).not.toHaveBeenCalled();
-  });
-
   it('loads online agents and contains mailbox failures', async () => {
     const statuses = [{ agentId: 'agent-1', status: 'running' }];
     mocks.getSharedProjectMailbox.mockReturnValueOnce({
       getAgentStatuses: vi.fn().mockResolvedValue(statuses),
     });
-    await expect(loadOnlineAgentsForPrompt('C:/repo', false)).resolves.toBe(statuses);
+    await expect(loadOnlineAgentsForPrompt('C:/repo')).resolves.toBe(statuses);
 
     mocks.getSharedProjectMailbox.mockImplementationOnce(() => {
       throw new Error('mailbox unavailable');
     });
-    await expect(loadOnlineAgentsForPrompt('C:/repo', false)).resolves.toEqual([]);
+    await expect(loadOnlineAgentsForPrompt('C:/repo')).resolves.toEqual([]);
   });
 
   it('projects the active SDD runtime state', async () => {

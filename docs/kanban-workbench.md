@@ -9,8 +9,8 @@ It answers four questions without turning the UI into another task database:
 4. What is waiting for evidence or acceptance?
 
 Authoritative state remains in the project Kanban server and SQLite store. The
-Workbench is a bounded projection returned by `getKanbanWorkbench`; WebUI,
-TUI, and SimpleUI never reconstruct global state from the currently paginated
+Workbench is a bounded projection returned by `getKanbanWorkbench`; WebUI
+and TUI never reconstruct global state from the currently paginated
 board.
 
 ## Shared lanes
@@ -29,7 +29,7 @@ managed lifecycle transition gate.
 ## Preventing overload
 
 - Each lane is bounded to `1..50` returned cards; surfaces request smaller
-  defaults (WebUI 8, SimpleUI 6, TUI 3).
+  defaults (WebUI 8, TUI 3).
 - Total and omitted counts are retained, so hidden cards are never presented
   as absent.
 - Alerts are independently bounded and expose their omitted count.
@@ -57,8 +57,6 @@ edited through the Workbench.
   cross-board lanes with drill-down.
 - TUI: `/flow` (alias `/workbench`) renders the shared pipeline, bounded focus
   lanes, placement reasons, omitted counts, and alerts in a text-first view.
-- SimpleUI: the workspace launcher exposes `FLOW`, with the pipeline, alerts,
-  and bounded lanes refreshed while the panel is open.
 
 Every surface uses the same typed `KanbanWorkbenchSnapshot`. If a lane rule or
 alert meaning changes, update the server-side projection rather than forking UI

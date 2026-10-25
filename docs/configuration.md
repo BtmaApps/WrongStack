@@ -1189,7 +1189,7 @@ gain new approval prompts. Plugins can register in-process hooks via
 | `memory` | `boolean` | `true` | Register `remember`/`forget` tools backed by memory store. |
 | `modelsRegistry` | `boolean` | `true` | Fetch models.dev catalog at startup. Set `false` for offline use. |
 | `skills` | `boolean` | `true` | Discover and load skills from disk. |
-| `toolCoach` | `boolean` | `true` | Give the agent brief, task-aware guidance from the enabled tool catalog and tool outcomes. Can be changed with `/settings tool-coach on|off`, TUI Settings, WebUI Context settings, or SimpleUI Settings. |
+| `toolCoach` | `boolean` | `true` | Give the agent brief, task-aware guidance from the enabled tool catalog and tool outcomes. Can be changed with `/settings tool-coach on|off`, TUI Settings, or WebUI Context settings. |
 | `tokenSavingMode` | `TokenSavingTier` | `"auto"` | Token-saving tier. Controls the direct tool surface, tool-description length, and prompt guidance sections. `"auto"` picks a tier from the model's context window at startup. |
 
 ### Token-saving tiers
@@ -2260,8 +2260,8 @@ When unset, git's own configuration applies (default behavior). Manage at runtim
 |---|---|
 | `<PROVIDER>_API_KEY` | API key for the provider (e.g. `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`). |
 | `WRONGSTACK_LOG_LEVEL` | Override log level (`error`, `warn`, `info`, `debug`, `trace`). |
-| `WEBUI_VERBOSE` / `WRONGSTACK_WEBUI_VERBOSE` | Set `1` to bypass the compact WebUI/SimpleUI terminal dashboard and keep full append-only console output. By default, visible logs and finished workers expire after 30 seconds. Non-TTY output also bypasses the dashboard. |
-| `WEBUI_LOGS` | Set `1` to include informational logs in the CLI WebUI/SimpleUI host's bounded terminal log window. Warnings and errors are visible by default. |
+| `WEBUI_VERBOSE` / `WRONGSTACK_WEBUI_VERBOSE` | Set `1` to bypass the compact WebUI/VibeUI terminal dashboard and keep full append-only console output. By default, visible logs and finished workers expire after 30 seconds. Non-TTY output also bypasses the dashboard. |
+| `WEBUI_LOGS` | Set `1` to include informational logs in the CLI WebUI/VibeUI host's bounded terminal log window. Warnings and errors are visible by default. |
 | `WRONGSTACK_FETCH_ALLOW_PRIVATE` | Set `1` to allow localhost/private IPs in the `fetch` tool. |
 | `WRONGSTACK_BASH_ENV_PASSTHROUGH` | Set `1` to disable the bash-tool env allowlist (legacy unsafe mode). |
 | `WRONGSTACK_CHILD_ENV_PASSTHROUGH` | Set `1` to opt back to old child-process env behavior. |
@@ -2269,7 +2269,7 @@ When unset, git's own configuration applies (default behavior). Manage at runtim
 | `WRONGSTACK_INDEX_QUESTION_THRESHOLD` | File-count threshold for the "Run codebase indexing now?" pre-launch prompt. Default `500`. Set to a high number to suppress the question. |
 | `WRONGSTACK_MAX_CONCURRENT` | Max concurrent subagents (default `4`). Overridden by `--max-concurrent`. Profile alternative: top-level `maxConcurrent`. |
 | `WRONGSTACK_MAX_SPAWNS` | Lifetime director spawn cap (default `64`). Overridden by `--max-spawns`. Profile alternative: `fleet.budget.maxSpawns`. Live used/remaining: `/fleet status`. |
-| `WRONGSTACK_HQ_URL` | HQ command center URL for telemetry publishing (e.g. `http://localhost:3499`). When set, CLI/REPL/TUI/WebUI/SimpleUI hosts connect to this HQ and publish mailbox events, fleet snapshots, and client lifecycle telemetry. See [HQ Command Center Plan](archive/plans/hq-command-center-2026-06.md). |
+| `WRONGSTACK_HQ_URL` | HQ command center URL for telemetry publishing (e.g. `http://localhost:3499`). When set, CLI/REPL/TUI/WebUI/VibeUI hosts connect to this HQ and publish mailbox events, fleet snapshots, and client lifecycle telemetry. See [HQ Command Center Plan](archive/plans/hq-command-center-2026-06.md). |
 | `WRONGSTACK_HQ_TOKEN` | Client enrollment token for HQ authentication. Required for non-loopback HQ servers. Passed as `?token=` on the outbound `/ws/client` WebSocket. |
 | `WRONGSTACK_HQ_ENABLED` | Set `1` to force HQ publishing even when `WRONGSTACK_HQ_URL` is unset (defaults to `http://localhost:3499`). Set `0` to explicitly disable when `WRONGSTACK_HQ_URL` is set. |
 | `WRONGSTACK_HQ_RAW_CONTENT` | Raw prompt/tool/mailbox content publishing to HQ. **Defaults on for every HQ target** unless explicitly disabled. Set `0` to force raw-content redaction. |
@@ -2295,7 +2295,7 @@ wstack --hq --port 8080 --open   # custom port + open browser
 **Connect clients to HQ:**
 
 ```bash
-# All clients (CLI/REPL, TUI, WebUI, SimpleUI) auto-publish telemetry when HQ_URL is set:
+# All clients (CLI/REPL, TUI, WebUI, VibeUI) auto-publish telemetry when HQ_URL is set:
 export WRONGSTACK_HQ_URL=http://localhost:3499
 export WRONGSTACK_HQ_TOKEN=<enrollment-token>   # required for remote HQ
 wstack
@@ -2385,7 +2385,7 @@ danger and protected-process checks. Allowlisting does not bypass permission che
 **Approval scope.** Permission prompts distinguish allowing once from remembering
 an approval for this project. WebUI offers a scope selector beside **Always**;
 CLI/TUI use **a** for the exact input, **c** for the executable (structured `exec`
-calls only), and **t** for the tool. SimpleUI and HQ expose the same scope choices.
+calls only), and **t** for the tool. HQ exposes the same scope choices.
 
 - **Exact input / arguments:** only the identical input and working directory;
   literal wildcard characters never widen this grant.

@@ -28,7 +28,7 @@ export interface WSClientMessage {
 
 export interface WebUIOptions {
   /** Runtime surface label used by instance registration and memory diagnostics. */
-  surface?: 'webui' | 'simpleui' | 'vibeui' | undefined;
+  surface?: 'webui' | 'vibeui' | undefined;
   /** Policy authority for terminal/process/native-shell actions. */
   trustBoundary?: TrustBoundary | undefined;
   /** Trusted host-only hook installed around leader and light-subagent tools. */

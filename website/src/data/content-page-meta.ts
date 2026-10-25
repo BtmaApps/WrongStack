@@ -24,9 +24,8 @@ export const pageMeta: Record<SiteRoute, { title: string; description: string }>
       'An evidence-based, official-source comparison of model routing, multi-agent coordination, mailbox, work tracking, extensions, security and operations.',
   },
   '/interfaces': {
-    title: 'CLI, TUI, WebUI, SimpleUI, VibeUI, Desktop & HQ — WrongStack',
-    description:
-      'Seven interfaces, one agent kernel. Choose the surface that fits the way you work.',
+    title: 'CLI, TUI, WebUI, VibeUI, Desktop & HQ — WrongStack',
+    description: 'Six interfaces, one agent kernel. Choose the surface that fits the way you work.',
   },
   '/commands': {
     title: 'Slash command reference — WrongStack',

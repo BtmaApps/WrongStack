@@ -57,7 +57,7 @@ export interface ResumeSessionEntry {
    *
    * Taken from the cross-process `SessionRegistry` at listing time, so it
    * covers every surface that claims a session lease — another `wstack --tui`,
-   * a WebUI server, SimpleUI, a plain REPL. Two processes appending to one
+   * a WebUI server, VibeUI, a plain REPL. Two processes appending to one
    * journal interleave their turns and corrupt the transcript, so the picker
    * refuses these outright rather than letting the host's reservation fail
    * seconds into a multi-hundred-MB read.

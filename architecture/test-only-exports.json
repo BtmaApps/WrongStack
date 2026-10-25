@@ -300,9 +300,6 @@
       "resolveActualTarget",
       "resolvePersistPath"
     ],
-    "packages/cli/src/simpleui-dist.ts": [
-      "resolveSimpleUiDistDir"
-    ],
     "packages/cli/src/slash-commands/context.ts": [
       "cacheTrendVerdict"
     ],
@@ -1098,43 +1095,6 @@
       "gatherProjectInfo",
       "generateFallbackSkill"
     ],
-    "packages/simpleui/src/agent-chat-pane.tsx": [
-      "agentConversationEntries"
-    ],
-    "packages/simpleui/src/chat-message-list.tsx": [
-      "applyScrollAnchoring",
-      "CHAT_WINDOW_SIZE"
-    ],
-    "packages/simpleui/src/context-breakdown-modal.tsx": [
-      "parseContextDebugPayload"
-    ],
-    "packages/simpleui/src/file-changes-button.tsx": [
-      "FileChangesButton"
-    ],
-    "packages/simpleui/src/lib/agent-model.ts": [
-      "IDLE_AGENT_TTL_MS",
-      "isActiveStatus",
-      "parseAgentSessionReplays"
-    ],
-    "packages/simpleui/src/lib/model-catalog-view.ts": [
-      "isLikelyNonChatModel"
-    ],
-    "packages/simpleui/src/lib/model-switch.ts": [
-      "findModelContextWindow"
-    ],
-    "packages/simpleui/src/lib/settings-catalog.ts": [
-      "SETTINGS_CATALOG",
-      "SETTINGS_GROUPS"
-    ],
-    "packages/simpleui/src/lib/worklist-store.ts": [
-      "parseSimplePlan",
-      "parseSimpleTasks",
-      "parseSimpleTodos"
-    ],
-    "packages/simpleui/src/lib/ws.ts": [
-      "exchangeAuthCookie",
-      "scrubPageToken"
-    ],
     "packages/techstack/src/adapters/python.ts": [
       "parsePoetryLock"
     ],
@@ -1643,6 +1603,7 @@
       "acceptsPanelReply"
     ],
     "packages/webui-hq/src/data/local-prefs.ts": [
+      "__test__",
       "getHqLocalPrefsSnapshot",
       "reloadHqLocalPrefs",
       "resetHqLocalPrefs"
@@ -1681,6 +1642,9 @@
     ],
     "packages/webui-hq/src/domain/mailbox-live.ts": [
       "buildLiveFeed"
+    ],
+    "packages/webui-hq/src/domain/transcript-store.ts": [
+      "entryKey"
     ],
     "packages/webui-hq/src/domain/use-pending-approvals.ts": [
       "derivePendingApprovals"
@@ -1745,6 +1709,9 @@
     "packages/webui/src/components/AgentsPage.tsx": [
       "getIterations",
       "getLastEventAt"
+    ],
+    "packages/webui/src/components/AutomationView.tsx": [
+      "AutomationWorkspace"
     ],
     "packages/webui/src/components/ChatInput/code-detect.ts": [
       "unfenceCode"
@@ -1941,6 +1908,7 @@
       "detectDesktopShell"
     ],
     "packages/webui/src/lib/fallback-ref.ts": [
+      "refInactiveReason",
       "splitProviderModel"
     ],
     "packages/webui/src/lib/font-scale-css.ts": [

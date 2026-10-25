@@ -174,7 +174,7 @@ export function DisplaySection({ syncPref }: DisplaySectionProps) {
           </div>
         </div>
         <div className="space-y-1 divide-y divide-border/50">
-          {/* TUI field 22 — thinkingWord (free-text, validated by simpleui) */}
+          {/* TUI field 22 — thinkingWord (free-text) */}
           <div className="py-3">
             <label
               htmlFor="display-thinking-word"

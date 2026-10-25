@@ -24,9 +24,9 @@
       "runtimeOrMixed": 13
     },
     "@wrongstack/core/cloud-provider": {
-      "files": 13,
+      "files": 11,
       "typeOnly": 1,
-      "runtimeOrMixed": 12
+      "runtimeOrMixed": 10
     },
     "@wrongstack/core/coordination/agent-subagent-runner.js": {
       "files": 2,
@@ -169,9 +169,9 @@
       "runtimeOrMixed": 23
     },
     "@wrongstack/core/utils": {
-      "files": 932,
+      "files": 931,
       "typeOnly": 69,
-      "runtimeOrMixed": 901
+      "runtimeOrMixed": 900
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -3281,18 +3281,6 @@
     {
       "specifier": "@wrongstack/core/cloud-provider",
       "file": "packages/providers/src/preflight.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/cloud-provider",
-      "file": "packages/simpleui/src/auth-panel-saved.tsx",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/cloud-provider",
-      "file": "packages/simpleui/src/provider-cloud-settings.tsx",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -11447,12 +11435,6 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/src/settings-menu.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/utils",
-      "file": "packages/cli/src/simpleui-dist.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

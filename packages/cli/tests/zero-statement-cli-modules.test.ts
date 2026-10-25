@@ -17,7 +17,6 @@ const mocks = vi.hoisted(() => ({
   createSessionCommandHandlers: vi.fn(() => ({ sessionHandler: true })),
   buildCommandHostSlashCommands: vi.fn(() => [{ name: 'one' }, { name: 'two' }]),
   setupCliGovernance: vi.fn(async () => ({ close: vi.fn() })),
-  configureSimpleUiRuntimeContext: vi.fn(),
   createAuthPanelHost: vi.fn(() => ({ auth: true })),
   createPickableProvidersLoader: vi.fn(() => vi.fn()),
   createRuntimeControllerDeps: vi.fn(() => ({ controllers: true })),
@@ -80,9 +79,6 @@ vi.mock('../src/cli-main-helpers.js', () => ({
   createPickableProvidersLoader: mocks.createPickableProvidersLoader,
   getSddRuntimeStateForCli: vi.fn(),
   setupCliGovernance: mocks.setupCliGovernance,
-}));
-vi.mock('../src/boot/simpleui-full-auto.js', () => ({
-  configureSimpleUiRuntimeContext: mocks.configureSimpleUiRuntimeContext,
 }));
 vi.mock('../src/auth-menu/panel-service.js', () => ({
   createAuthPanelHost: mocks.createAuthPanelHost,
@@ -264,7 +260,7 @@ describe('formerly zero-statement CLI modules', () => {
 
     expect(result.governanceHandle).toBeDefined();
     expect(mocks.setupCliGovernance).toHaveBeenCalledOnce();
-    expect(mocks.configureSimpleUiRuntimeContext).toHaveBeenCalledWith(context.meta, {});
+    expect(context.meta).toEqual({});
     expect(memoryStore.withTraceId).toHaveBeenCalledWith('trace-1');
   });
 

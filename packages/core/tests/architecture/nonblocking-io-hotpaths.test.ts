@@ -39,7 +39,6 @@ const PROCESS_HOT_PATHS = [
   'packages/plugins/src/semver-bump/index.ts',
   'packages/tools/src/codebase-index/rs-parser.ts',
   'packages/tools/src/codebase-index/py-parser.ts',
-  'packages/cli/src/simpleui-dist.ts',
   'packages/cli/src/webui-server/static-serve.ts',
   'packages/bench/src/runner.ts',
 ] as const;

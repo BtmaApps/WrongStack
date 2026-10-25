@@ -96,7 +96,6 @@ const CHILD_ENV_EXEMPT: Record<string, string> = {
   'cli/src/boot-provider-selection.ts': REASON_SELF_RELAUNCH,
   'cli/src/boot/tui-project-spawn.ts': REASON_SELF_RELAUNCH,
   'cli/src/boot/short-circuit-desktop.ts': REASON_SELF_RELAUNCH,
-  'cli/src/simpleui-dist.ts': REASON_SELF_RELAUNCH,
   'cli/src/hq-tunnel.ts': REASON_SELF_RELAUNCH,
   'cli/src/mailbox-bridge-bootstrap.ts': REASON_SELF_RELAUNCH,
   'cli/src/slash-commands/dev.ts': REASON_SELF_RELAUNCH,

@@ -15,7 +15,7 @@ browser and detects URL changes. The capture describes the live DOM at selection
 time; it is not a source-component mapping. Open shadow roots are inspected;
 closed roots and cross-origin frames expose their containing element.
 
-The Automations screen in WebUI and SimpleUI accepts one independent verification
+The Automations screen in WebUI accepts one independent verification
 command per line and shows actual check exits separately from agent completion.
 See [the automation guide](../../docs/subcommands/automation.md) for its isolation
 and evidence contract.

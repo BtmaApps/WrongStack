@@ -6,17 +6,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { runWebUI } from '../src/webui-server.js';
 import { openWs } from './_ws-client.js';
 
-describe('SimpleUI embedded server lifecycle', () => {
+describe('VibeUI embedded server lifecycle', () => {
   let frontendDir: string | undefined;
   let serverDone: Promise<void> | undefined;
 
   beforeEach(async () => {
     process.removeAllListeners('SIGINT');
     process.removeAllListeners('SIGTERM');
-    frontendDir = await fs.mkdtemp(path.join(os.tmpdir(), 'wrongstack-simpleui-'));
+    frontendDir = await fs.mkdtemp(path.join(os.tmpdir(), 'wrongstack-vibeui-'));
     await fs.writeFile(
       path.join(frontendDir, 'index.html'),
-      '<!doctype html><html><head></head><body>SimpleUI</body></html>',
+      '<!doctype html><html><head></head><body>VibeUI</body></html>',
       'utf8',
     );
   });
@@ -40,7 +40,7 @@ describe('SimpleUI embedded server lifecycle', () => {
     });
 
     serverDone = runWebUI({
-      surface: 'simpleui',
+      surface: 'vibeui',
       frontendDistDir: frontendDir,
       profileConfigPath: path.join(frontendDir!, 'config.json'),
       host: '127.0.0.1',
@@ -50,7 +50,7 @@ describe('SimpleUI embedded server lifecycle', () => {
         signalReady?.();
       },
       events: new EventBus(),
-      session: { id: 'simpleui-lifecycle' } as never,
+      session: { id: 'vibeui-lifecycle' } as never,
       agent: {
         ctx: { model: 'test-model', provider: { id: 'test-provider' } },
         run: vi.fn(),

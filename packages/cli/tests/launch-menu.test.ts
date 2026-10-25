@@ -72,8 +72,8 @@ describe('shouldSkipMenu', () => {
     expect(shouldSkipMenu([], { webui: true }, [])).toBe(true);
   });
 
-  it('skips when --simpleui is set', () => {
-    expect(shouldSkipMenu([], { simpleui: true }, [])).toBe(true);
+  it('skips when --vibeui is set', () => {
+    expect(shouldSkipMenu([], { vibeui: true }, [])).toBe(true);
   });
 
   it('skips when --hq is set', () => {
@@ -171,14 +171,14 @@ describe('applyLaunchMenuToArgv', () => {
     ).toEqual(['--port=3500', '--webui']);
   });
 
-  it('appends --simpleui and --port for simpleui results', () => {
+  it('appends --vibeui and --port for vibeui results', () => {
     expect(
       applyLaunchMenuToArgv([], {
-        mode: 'simpleui',
+        mode: 'vibeui',
         port: 3501,
         cancelled: false,
       }),
-    ).toEqual(['--port=3501', '--simpleui']);
+    ).toEqual(['--port=3501', '--vibeui']);
   });
 
   it('appends --hq and --port for hq results', () => {
@@ -282,12 +282,12 @@ describe('toPersistedMenuChoice', () => {
   it('drops empty host string', () => {
     expect(
       toPersistedMenuChoice({
-        mode: 'simpleui',
-        port: 3466,
+        mode: 'vibeui',
+        port: 3476,
         host: '',
         cancelled: false,
       }),
-    ).toEqual({ mode: 'simpleui', port: 3466 });
+    ).toEqual({ mode: 'vibeui', port: 3476 });
   });
 });
 
@@ -467,8 +467,8 @@ describe('runLaunchMenu', () => {
       lastChoice: { mode: 'webui', port: 8080 },
     });
     expect(result).not.toBeNull();
-    expect(result!.mode).toBe('simpleui');
-    expect(result!.port).toBe(3466); // default SimpleUI port
+    expect(result!.mode).toBe('vibeui');
+    expect(result!.port).toBe(3476); // default VibeUI port, now menu entry 3
   });
 
   it('summary gate "q" cancels', async () => {

@@ -12,7 +12,7 @@ import { ensureDirectorAndAnnounce } from '../../src/wiring/director-announcemen
  *
  *   1. `define_subagent` was registered by BOTH the brain/orchestration phase
  *      and the Director's own toolset. `ToolRegistry.register` throws on a
- *      duplicate name, so every interactive boot — REPL, TUI, WebUI, SimpleUI —
+ *      duplicate name, so every interactive boot — REPL, TUI, WebUI, VibeUI —
  *      died with `Tool "define_subagent" already registered`.
  *
  *   2. Director tools were registered but never exposed. Below the `off`

@@ -13,7 +13,7 @@
  * - **Resume claim/rollback** (session.ts SessionClaimHandle): the closure
  *   reserves via `sessionRegistry.reserveResume` and returns
  *   `{ rollback: claim.cancel, activate: claim.activate(payload) }`.
- *   The payload's clientType precedence (`webui/simpleui` -> `tui` -> `cli`)
+ *   The payload's clientType precedence (`webui` -> `tui` -> `cli`)
  *   reads `tuiOwnsScreen` — passed in, not re-derived, so the flag
  *   resolution stays owned by the teardown-registrar phase.
  * - **sessionRef LIVE read** in the fatal-salvage hook: the hook captures
@@ -139,7 +139,7 @@ export async function setupSessionEstablishment(args: SessionEstablishmentArgs) 
             projectRoot,
             projectName: path.basename(projectRoot),
             workingDir: cwd,
-            clientType: flags.webui || flags.simpleui ? 'webui' : tuiOwnsScreen ? 'tui' : 'cli',
+            clientType: flags.webui ? 'webui' : tuiOwnsScreen ? 'tui' : 'cli',
             pid: process.pid,
             startedAt: new Date().toISOString(),
           });

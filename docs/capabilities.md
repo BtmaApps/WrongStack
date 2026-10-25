@@ -42,7 +42,7 @@ See [dead-code workflows](tools/dead-code.md).
 **[WrongStack ToolFlow](toolflow.md)** composes repeated or dependent tool
 calls in sandboxed JavaScript and returns the findings needed for the next
 decision. Intermediate results stay out of model context; each call keeps its
-permission checks and session record. WebUI, TUI, and SimpleUI show the run's
+permission checks and session record. WebUI and TUI show the run's
 purpose, call count, failure count, and measured output bytes.
 
 In a reproducible 50-read fixture using the real Agent/ToolExecutor and a
@@ -70,7 +70,7 @@ session does not pay for every schema on every turn. Set
 ## Autonomy & goals
 
 `wstack automation` runs persistent scheduled or signed GitHub jobs in copied
-Docker workspaces. WebUI and SimpleUI manage jobs, versioned templates and
+Docker workspaces. WebUI manages jobs, versioned templates and
 portable definitions, and show structured results with usage, known estimated
 cost and read-only patches. `present_artifact` presents text, images, diffs and
 owned live browsers. See [automation](subcommands/automation.md),
@@ -168,7 +168,7 @@ See [account setup and coverage](typesafe-account.md),
 ## Inter-agent mailbox
 
 One project-wide coordination plane connects **every agent, across every client,
-process, session, branch, and linked Git worktree** — CLI, TUI, WebUI, SimpleUI,
+process, session, branch, and linked Git worktree** — CLI, TUI, WebUI, VibeUI,
 Desktop, and HQ alike. Agents send typed messages (`ask`, `assign`, `steer`,
 `result`, `review`, `status`), hand off work, broadcast milestones, and see who is
 online with live presence — so parallel agents cooperate instead of colliding.

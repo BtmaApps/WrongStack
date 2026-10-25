@@ -186,7 +186,7 @@ export interface ToolEventMap {
    * fallback (`brain_timeout`).
    *
    * `user` exists because a prompt is mirrored to more than one surface at
-   * once (the local TUI/WebUI/SimpleUI dialog and the HQ dashboard). Without
+   * once (the local TUI/WebUI dialog and the HQ dashboard). Without
    * an event on the ordinary path, HQ would keep offering buttons for a
    * decision already made at the keyboard.
    */

@@ -163,7 +163,7 @@ vi.mock('../src/server/webui-status-logger.js', () => ({
 }));
 
 describe('start-webui-logging: setupWebuiTerminalLogging', () => {
-  it.each([undefined, 'simpleui'] as const)(
+  it.each([undefined, 'vibeui'] as const)(
     'configures dashboard and status logger for %s',
     async (surface) => {
       const { startTerminalDashboard } = await import('../src/server/terminal-dashboard.js');
@@ -189,7 +189,7 @@ describe('start-webui-logging: setupWebuiTerminalLogging', () => {
       });
       expect(logging.terminalDashboard).toBeDefined();
       expect(typeof logging.stopLiveStatusLogger).toBe('function');
-      const title = surface === 'simpleui' ? 'SimpleUI' : 'WebUI';
+      const title = surface === 'vibeui' ? 'VibeUI' : 'WebUI';
       expect(vi.mocked(startTerminalDashboard).mock.lastCall?.[0]?.title).toBe(title);
       expect(vi.mocked(startWebUILiveStatusLogger).mock.lastCall?.[0]?.title).toBe(title);
       logging.stopLiveStatusLogger();

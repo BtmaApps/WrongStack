@@ -1,6 +1,6 @@
 # Session Journaling (JSONL) & Resume Engine Specification
 
-This specification documents the architecture, write pipeline, streaming deserialization, crash recovery, single-timeline projection, and multi-surface resume lifecycle for WrongStack across the **TUI**, **SimpleUI**, and **WebUI** (including its **4-tab parallel concurrent execution architecture**).
+This specification documents the architecture, write pipeline, streaming deserialization, crash recovery, single-timeline projection, and multi-surface resume lifecycle for WrongStack across the **TUI**, **VibeUI**, and **WebUI** (including its **4-tab parallel concurrent execution architecture**).
 
 ---
 
@@ -62,8 +62,8 @@ To achieve byte-accurate and visual parity across heterogeneous runtimes:
         │                                │                                │
         ▼                                ▼                                ▼
 +---------------+               +-----------------+               +---------------+
-|      TUI      |               |    SimpleUI     |               |     WebUI     |
-| (Inline Merge)|               | (Split Bubbles) |               | (4-Tab Lanes) |
+|      TUI      |               |     VibeUI      |               |     WebUI     |
+| (Inline Merge)|               | (Inline Merge)  |               | (4-Tab Lanes) |
 +---------------+               +-----------------+               +---------------+
 ```
 
@@ -166,12 +166,12 @@ Centralized in `packages/core/src/types/session-timeline.ts`, `projectSessionTim
 
 ### Surface Projection Parameter Matrix
 
-| Configuration Option | TUI | WebUI | SimpleUI | Technical Rationale |
-| :--- | :--- | :--- | :--- | :--- |
-| `thinkingPlacement` | `'inline'` | `'merged-after'` | `'inline'` | WebUI commits thinking blocks on `iteration.completed` (after prose); TUI streams inline. |
-| `textBlocks` | `'split'` | `'split'` | `'join'` | SimpleUI renders entire turns in single bubbles; TUI and WebUI isolate tool cards. |
-| `markerSources` | Full Marker Set (excl. subagent lifecycle) | Chat-Filtered Set | Chat-Filtered Set | High-density audit markers belong in dedicated panels (e.g. WebUI Fleet Panel). |
-| `toolMeta` Injection | Direct from raw events | Hydrated from wire payload | Hydrated from wire payload | Local processes access raw events; web clients receive projected metadata over WebSocket. |
+| Configuration Option | TUI | WebUI | Technical Rationale |
+| :--- | :--- | :--- | :--- |
+| `thinkingPlacement` | `'inline'` | `'merged-after'` | WebUI commits thinking blocks on `iteration.completed` (after prose); TUI streams inline. |
+| `textBlocks` | `'split'` | `'split'` | TUI and WebUI isolate tool cards. |
+| `markerSources` | Full Marker Set (excl. subagent lifecycle) | Chat-Filtered Set | High-density audit markers belong in dedicated panels (e.g. WebUI Fleet Panel). |
+| `toolMeta` Injection | Direct from raw events | Hydrated from wire payload | Local processes access raw events; web clients receive projected metadata over WebSocket. |
 
 ---
 
@@ -184,10 +184,10 @@ Centralized in `packages/core/src/types/session-timeline.ts`, `projectSessionTim
 * Projects the timeline with `thinkingPlacement: 'inline'`.
 * Implements transactional rollback if swapping fails mid-flight.
 
-### 6.2 SimpleUI
-* Single-lane streaming web interface.
-* Calls `projectSessionTimeline` with `textBlocks: 'split'` and `thinkingPlacement: 'inline'`.
-* Maintains a synchronized sidecar tool execution map.
+### 6.2 VibeUI
+* Single-session streaming web interface (`packages/vibeui/src/lib/session.ts`).
+* Calls `projectSessionTimeline` on replay with `thinkingPlacement: 'inline'`, replay markers and tool metadata.
+* SimpleUI, which previously occupied this slot, was retired and replaced by VibeUI.
 
 ### 6.3 WebUI & WebUI Server: 4-Tab Parallel Concurrent Execution
 The WebUI supports **up to four active sessions running concurrently in separate browser tabs within a single window**.

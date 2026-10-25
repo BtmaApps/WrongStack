@@ -143,7 +143,7 @@ describe('readRecentProcessMemoryDiagnostics', () => {
     const root = await createRoot();
     const latest = JSON.stringify({
       pid: 42,
-      surface: 'simpleui',
+      surface: 'vibeui',
       ts: '2026-07-31T00:00:03.000Z',
       rss: 400,
       heapUsed: 150,
@@ -157,7 +157,7 @@ describe('readRecentProcessMemoryDiagnostics', () => {
     const diagnostics = await readRecentProcessMemoryDiagnostics(root, latest.length + 16);
 
     expect(diagnostics).toHaveLength(1);
-    expect(diagnostics[0]).toMatchObject({ pid: 42, surface: 'simpleui' });
+    expect(diagnostics[0]).toMatchObject({ pid: 42, surface: 'vibeui' });
   });
 
   it('returns an empty list when the flight recorder does not exist', async () => {

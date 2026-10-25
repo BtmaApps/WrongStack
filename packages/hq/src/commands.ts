@@ -165,7 +165,7 @@ export interface HqBroadcastCommand {
  * client's token.
  *
  * HQ is a MIRROR of the prompt, not its owner: the same prompt is live in the
- * TUI/WebUI/SimpleUI dialog that raised it, and whichever surface answers
+ * TUI/WebUI dialog that raised it, and whichever surface answers
  * first wins. A command that arrives after the prompt was settled locally is
  * rejected with "no longer pending" rather than silently dropped, so the
  * operator learns the decision was already made instead of assuming theirs

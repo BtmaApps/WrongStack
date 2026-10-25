@@ -37,7 +37,7 @@ const MEMORY_LINE = `- [pattern][high] <memory id="mem_glob_1">${'kanban writes 
 /** What the SAGE middleware leaves on `result.content` after injecting. */
 const SAGE_BLOCK = `${HEADER}\n${MEMORY_LINE}`;
 
-/** Same regex the TUI / WebUI / SimpleUI use to recognise a memory line. */
+/** Same regex the TUI / WebUI use to recognise a memory line. */
 const SAGE_MEMORY_LINE = /^- \[[^\]]+\](?:\[[^\]]+\])* <memory id="[^"]+">.*<\/memory>(?: .*)?$/;
 
 async function buildAgent(provider: MockProvider, extraTools: Tool[]) {

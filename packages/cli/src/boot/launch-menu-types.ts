@@ -7,14 +7,13 @@ import type { TerminalRenderer } from '../renderer.js';
 export type LaunchMenuMode = LaunchMenuChoice['mode'];
 
 // Default ports — keep in sync with the rest of the codebase.
-//   WebUI / SimpleUI: packages/webui-server/src/server/port-utils.ts
+//   WebUI / VibeUI:   packages/webui-server/src/server/port-utils.ts
 //   HQ:               packages/cli/src/hq-server.ts (DEFAULT_PORT)
 /** Surfaces that bind a TCP listener and therefore need a port/host prompt. */
 export type NetworkLaunchMode = Exclude<LaunchMenuMode, 'tui-repl' | 'desktop'>;
 
 export const DEFAULT_PORTS: Record<NetworkLaunchMode, number> = {
   webui: 3456,
-  simpleui: 3466,
   vibeui: 3476,
   hq: HQ_DEFAULT_PORT,
 };
@@ -43,10 +42,10 @@ export const MODE_OPTIONS: ReadonlyArray<{
   },
   {
     key: 3,
-    mode: 'simpleui',
-    label: 'SimpleUI',
-    hint: `lightweight browser UI (port ${DEFAULT_PORTS.simpleui})`,
-    icon: '📄',
+    mode: 'vibeui',
+    label: 'VibeUI',
+    hint: `focused coding workspace (port ${DEFAULT_PORTS.vibeui})`,
+    icon: '✦',
   },
   {
     key: 4,
@@ -61,13 +60,6 @@ export const MODE_OPTIONS: ReadonlyArray<{
     label: 'Desktop',
     hint: 'Electron app (alias: --desktop)',
     icon: '🖥',
-  },
-  {
-    key: 6,
-    mode: 'vibeui',
-    label: 'VibeUI',
-    hint: `focused coding workspace (port ${DEFAULT_PORTS.vibeui})`,
-    icon: '✦',
   },
 ];
 

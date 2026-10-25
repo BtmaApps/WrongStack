@@ -40,14 +40,13 @@ This is the on-ramp to the WrongStack documentation. If you're new to the projec
 | [architecture-rules.md](architecture-rules.md) | Seven-layer internal runtime-import ordering with automated enforcement | Read when adding a new file to `packages/core/src/` |
 | [architecture/session-catalog.md](architecture/session-catalog.md) | Catalog claims, presence and transcript ownership | Read before changing session ownership or resume |
 | [webui.md](webui.md) | WebUI architecture: Vite + React 19 + WebSocket + Monaco | Read when working on `packages/webui/` |
-| [architecture/simpleui-message-lifecycle.md](architecture/simpleui-message-lifecycle.md) | SimpleUI message lifecycle end to end: composer → `user_message` frame → webui-server → `@wrongstack/core` emit sites → rendered chat, plus the client/server protocol frame registry | Read when working on `packages/simpleui/`, the surface protocol, or the chat frame flow |
 | [hq.md](hq.md) | HQ server, browser transport and state ownership | Read when working on the cross-machine dashboard |
 | [agent-monitoring.md](agent-monitoring.md) | Agent monitoring system: FleetBus → AgentMonitorService → HQ browser + TUI timeline | Read when working on subagent visibility or HQ integration |
 | [mcp-server.md](mcp-server.md) | MCP server architecture: stdio / SSE / streamable-HTTP transports | Read when working on `packages/mcp/` |
 | [director-architecture.md](director-architecture.md) | Multi-agent Director orchestration: phase-based pipeline, brain handoff, autonomy levels | Read when working on `packages/coordination/src/` |
 | [kanban-architecture.md](kanban-architecture.md) | Project-scoped multi-kanban architecture: storage, queue semantics, TaskGraph bridge, Director/fleet dispatch, managed lifecycle, completion verification, and the execution-time security boundary | Read when working on `packages/kanban/`, the `kanban` tool, Kanban CLI/TUI/WebUI surfaces, or `tools.kanbanGovernance` |
 | [kanban-contract-graph.md](kanban-contract-graph.md) | Goodhart-safe objective, impact, guardrail, risk, and verification graph for autonomous coding tasks | Read before changing contract-graph types, completion enforcement, or autonomous Kanban instructions |
-| [kanban-workbench.md](kanban-workbench.md) | Bounded cross-board Now, Next, Blocked, Review, alerts, and shared WebUI/TUI/SimpleUI visibility | Read before changing global Kanban navigation, work-surface projections, or task-flow presentation |
+| [kanban-workbench.md](kanban-workbench.md) | Bounded cross-board Now, Next, Blocked, Review, alerts, and shared WebUI/TUI visibility | Read before changing global Kanban navigation, work-surface projections, or task-flow presentation |
 | [kanban-orchestration-contract.md](kanban-orchestration-contract.md) | Canonical task/assignment lifecycle contract for Kanban-backed LLM, Director, subagent, review, and recovery work | Read before changing Kanban queue semantics, assignment lifecycle, stale recovery, or orchestration prompts |
 | [architecture/project-goals.md](architecture/project-goals.md) | Goal ids, workspaces, leases, My Goals and verification | Read before changing phase goals |
 | [todos_architecture.md](todos_architecture.md) | Todo/plan/queue storage architecture | Read when working on `packages/core/src/storage/` |
@@ -63,7 +62,7 @@ This is the on-ramp to the WrongStack documentation. If you're new to the projec
 | [subcommands/provider-preflight.md](subcommands/provider-preflight.md) | Read-only native provider setup diagnostics | Read before diagnosing cloud credential chains |
 | [skills.md](skills.md) | Skill system: SKILL.md format, skill loader, registry | Read when working on `packages/core/src/skills/` |
 | [codebase-index-calls.md](codebase-index-calls.md) | Incoming/outgoing calls tools: ref-graph caller/callee lookup, 7-layer dispatch, edit→index pipeline, impact analysis | Read when working on `codebase-incoming-calls`/`codebase-outgoing-calls` or the index dispatch stack |
-| [sage/SYSTEM-REPORT.md](sage/SYSTEM-REPORT.md) | SAGE long-term memory end to end: SQLite schema, IPC project server, injection middleware, tools, MCP, CLI/TUI/WebUI/SimpleUI surfaces | **Read first** before changing memory storage, inject policy, `/memory`, MemoryManager, or `sage-mcp` |
+| [sage/SYSTEM-REPORT.md](sage/SYSTEM-REPORT.md) | SAGE long-term memory end to end: SQLite schema, IPC project server, injection middleware, tools, MCP, CLI/TUI/WebUI/VibeUI surfaces | **Read first** before changing memory storage, inject policy, `/memory`, MemoryManager, or `sage-mcp` |
 | [sage/retrieval.md](sage/retrieval.md) | SAGE, durable vectors, host fusion and visibility | Read before changing retrieval |
 | [context-editor.md](context-editor.md) | Revision checks, validation and context edits | Read before changing the context editor |
 

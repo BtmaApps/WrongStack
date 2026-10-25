@@ -163,14 +163,14 @@ describe('parseArgs', () => {
     expect(r.positional).toEqual(['next']);
   });
 
-  it('normalizes desktop, webui, simpleui, and hq launcher subcommands to flags', () => {
+  it('normalizes desktop, webui, vibeui, and hq launcher subcommands to flags', () => {
     expect(parseArgs(['desktop'])).toEqual({ flags: { desktop: true }, positional: [] });
     expect(parseArgs(['webui', '--open'])).toEqual({
       flags: { webui: true, open: true },
       positional: [],
     });
-    expect(parseArgs(['simpleui', '--open'])).toEqual({
-      flags: { open: true, simpleui: true, webui: true },
+    expect(parseArgs(['vibeui', '--open'])).toEqual({
+      flags: { open: true, vibeui: true, webui: true },
       positional: [],
     });
     expect(parseArgs(['hq'])).toEqual({ flags: { hq: true }, positional: [] });
@@ -180,16 +180,20 @@ describe('parseArgs', () => {
     });
   });
 
-  it('routes --simpleui through the WebUI runtime while retaining its surface flag', () => {
-    expect(parseArgs(['--simpleui'])).toEqual({
-      flags: { simpleui: true, webui: true },
+  it('redirects the retired SimpleUI launch shapes to VibeUI and marks the retirement', () => {
+    const redirected = { vibeui: true, webui: true, 'simpleui-retired': true };
+    expect(parseArgs(['--simpleui'])).toEqual({ flags: redirected, positional: [] });
+    expect(parseArgs(['simpleui', '--open'])).toEqual({
+      flags: { ...redirected, open: true },
       positional: [],
     });
+    // `--simpleui` stays boolean so it never swallows the next positional.
+    expect(parseArgs(['--simpleui', 'task'])).toEqual({ flags: redirected, positional: ['task'] });
   });
 
-  it('parses the explicit SimpleUI full-auto profile as a boolean flag', () => {
-    expect(parseArgs(['simpleui', '--full-auto', '--open'])).toEqual({
-      flags: { simpleui: true, webui: true, 'full-auto': true, open: true },
+  it('still parses the retired --full-auto flag as a boolean', () => {
+    expect(parseArgs(['vibeui', '--full-auto', '--open'])).toEqual({
+      flags: { vibeui: true, webui: true, 'full-auto': true, open: true },
       positional: [],
     });
   });

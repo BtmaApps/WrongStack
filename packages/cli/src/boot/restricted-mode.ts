@@ -36,7 +36,6 @@ const CONFLICTING_FLAGS = [
   'yolo',
   'yolo-plus',
   'yolo-destructive',
-  'full-auto',
   'mcp-config',
   // Pre-approving a tool would let writes skip the prompt this mode promises.
   'allowed-tools',

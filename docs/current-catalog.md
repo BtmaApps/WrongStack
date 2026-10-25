@@ -6,7 +6,7 @@ tools in an individual session or verified external-service availability.
 
 ## Workspace packages
 
-44 packages, 2 applications, plus the private website.
+43 packages, 2 applications, plus the private website.
 
 | Package | Manifest | Publication |
 |---|---|---|
@@ -42,7 +42,6 @@ tools in an individual session or verified external-service availability.
 | `@wrongstack/sage-mcp` | [packages/sage-mcp/package.json](../packages/sage-mcp/package.json) | private |
 | `@wrongstack/sdd` | [packages/sdd/package.json](../packages/sdd/package.json) | private |
 | `@wrongstack/security-scanner` | [packages/security-scanner/package.json](../packages/security-scanner/package.json) | private |
-| `@wrongstack/simpleui` | [packages/simpleui/package.json](../packages/simpleui/package.json) | private |
 | `@wrongstack/techstack` | [packages/techstack/package.json](../packages/techstack/package.json) | private |
 | `@wrongstack/telegram` | [packages/telegram/package.json](../packages/telegram/package.json) | private |
 | `@wrongstack/tools` | [packages/tools/package.json](../packages/tools/package.json) | private |

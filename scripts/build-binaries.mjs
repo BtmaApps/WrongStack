@@ -75,7 +75,6 @@ const ASSETS = {
   bench: ['package.json', 'fixtures', 'subsets'],
   webui: ['package.json', 'dist'],
   'webui-hq': ['package.json', 'dist'],
-  simpleui: ['package.json', 'dist'],
   vibeui: ['package.json', 'dist'],
 };
 

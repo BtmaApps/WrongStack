@@ -79,10 +79,7 @@ export async function setupCliInfrastructure(inputs: {
 
   teardownHandlers.push(registerJevTools(toolRegistry, configStore));
   const promptBuilder = container.resolve(TOKENS.SystemPromptBuilder) as SystemPromptBuilder;
-  const onlineAgents = await loadOnlineAgentsForPrompt(
-    wpaths.projectDir,
-    flags['simpleui'] === true,
-  );
+  const onlineAgents = await loadOnlineAgentsForPrompt(wpaths.projectDir);
 
   const systemPrompt = await promptBuilder.build({
     cwd,

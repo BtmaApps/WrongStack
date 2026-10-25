@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-25T06:45:36.381Z",
+  "generatedAt": "2026-10-25T07:52:37.207Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -11,18 +11,18 @@
     ]
   },
   "summary": {
-    "packages": 46,
-    "sourceFiles": 5313,
-    "testFiles": 4672,
-    "sourceLines": 1154399,
-    "workspaceEdges": 228,
-    "moduleEdges": 15808,
+    "packages": 45,
+    "sourceFiles": 5179,
+    "testFiles": 4567,
+    "sourceLines": 1131024,
+    "workspaceEdges": 223,
+    "moduleEdges": 15425,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 3,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 0,
-    "testOnlyExports": 967
+    "testOnlyExports": 953
   },
   "errors": [],
   "packageCycles": [],
@@ -208,8 +208,8 @@
     {
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
-      "sourceFiles": 677,
-      "testFiles": 672,
+      "sourceFiles": 675,
+      "testFiles": 670,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/agent-catalog",
@@ -239,7 +239,6 @@
         "@wrongstack/sage-mcp",
         "@wrongstack/sdd",
         "@wrongstack/security-scanner",
-        "@wrongstack/simpleui",
         "@wrongstack/techstack",
         "@wrongstack/telegram",
         "@wrongstack/tools",
@@ -262,7 +261,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 672
+          "testFiles": 670
         }
       ]
     },
@@ -879,35 +878,6 @@
       ]
     },
     {
-      "name": "@wrongstack/simpleui",
-      "dir": "packages/simpleui",
-      "sourceFiles": 132,
-      "testFiles": 102,
-      "workspaceDependencies": [
-        "@wrongstack/kanban",
-        "@wrongstack/tools",
-        "@wrongstack/webui-protocol",
-        "@wrongstack/webui-server"
-      ],
-      "tsconfigs": [
-        {
-          "path": "packages/simpleui/tsconfig.dts.json",
-          "error": null,
-          "testFiles": 0
-        },
-        {
-          "path": "packages/simpleui/tsconfig.json",
-          "error": null,
-          "testFiles": 0
-        },
-        {
-          "path": "packages/simpleui/tsconfig.test.json",
-          "error": null,
-          "testFiles": 102
-        }
-      ]
-    },
-    {
       "name": "@wrongstack/techstack",
       "dir": "packages/techstack",
       "sourceFiles": 55,
@@ -1067,7 +1037,7 @@
       "name": "@wrongstack/webui",
       "dir": "packages/webui",
       "sourceFiles": 767,
-      "testFiles": 508,
+      "testFiles": 507,
       "workspaceDependencies": [
         "@wrongstack/contracts",
         "@wrongstack/core",
@@ -1092,7 +1062,7 @@
         {
           "path": "packages/webui/tsconfig.test.json",
           "error": null,
-          "testFiles": 508
+          "testFiles": 507
         }
       ]
     },
@@ -5242,24 +5212,6 @@
         ]
       },
       {
-        "file": "packages/cli/tests/simpleui-dist.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/cli/tests/simpleui-full-auto.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/cli/tests/simpleui-server-lifecycle.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
         "file": "packages/cli/tests/single-shot-budget.test.ts",
         "projects": [
           "root-node"
@@ -6371,6 +6323,12 @@
       },
       {
         "file": "packages/cli/tests/vibe-protocol-wiring.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/vibeui-server-lifecycle.test.ts",
         "projects": [
           "root-node"
         ]
@@ -17626,618 +17584,6 @@
         ]
       },
       {
-        "file": "packages/simpleui/tests/agent-chat-pane.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/agent-model.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/agent-name-uniqueness.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/app-shell.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/artifact-presentation.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/auth-panel.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/automation-workspace.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/brain-panel.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/chat-message-display.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/chat-model.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/chat-next-step-countdown.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/chat-next-steps-gate.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/command-palette-model.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/command-palette.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/composer-file-mention-enter.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/composer-permission-bar.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/context-breakdown-modal.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/delegation-auto-wake.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/error-boundary.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/fallback-modal.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/file-diff-panel.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/file-explorer.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/finished-agents-menu.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/image-attachment-limits.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/lib/fallback-ref.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/mailbox-store-extended.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/mailbox-store.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/main-entrypoint.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/markdown-link-attributes.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/message-handler-catalog-auth-refresh.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/message-handler-nextsteps-deferred.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/message-handler-session-isolation.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/message-handler-session-start.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/message-handler-tool-events.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/message-handler.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/message-projection.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/model-catalog-view.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/model-switch.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/model-switcher.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/palette-verify.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/panel-events.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/panels-and-composer.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/prefs-model.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/prompt-library.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/queue-model.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/refine-model.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/refine-panel-countdown-restart.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/refine-panel.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/refine-restore.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/refine-result-images.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/sage-block-drift.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/secure-context-request-ids.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/server-health.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/session-health-panel.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/session-switcher.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/session-topbar.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/settings-catalog.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/settings-preset-selects.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/simple-ui-session-helpers.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/simple-ui-session-smoke.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/socket-request.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/stream-meter.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/telegram-settings.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/timeline-model.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/tool-coach-setting.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/tool-model.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/tool-sidebar.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/toolflow-render.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/transcript-export.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/update-banner.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/use-agent-roster.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/use-agent-view.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/use-composer-actions.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/use-composer-state.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/use-f5-resilience.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/use-file-mention.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/use-focus-trap.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/use-global-shortcuts.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/use-image-attachments.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/use-model-catalog.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/use-next-step-auto-submit.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/use-panel-state.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/use-server-outage.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/use-settings-reset.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/use-settings.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/use-simple-mailbox.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/use-simple-socket.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/use-skill-mention-picker.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/use-status-notice.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/use-sticky-scroll-missing-matchmedia.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/use-sticky-scroll.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/use-tab-title.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/use-theme.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/use-worklists.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/user-input-modal.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/user-input-queue.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/utility-dock.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/workbench-sidebar.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/worklist-blocked-by.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/worklist-store.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/ws.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/simpleui/tests/zero-coverage-ui.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
         "file": "packages/techstack/tests/adapters/extra-adapters.test.ts",
         "projects": [
           "root-node"
@@ -27550,12 +26896,6 @@
         ]
       },
       {
-        "file": "packages/webui/tests/components/simple-artifact-preview.test.tsx",
-        "projects": [
-          "webui-jsdom"
-        ]
-      },
-      {
         "file": "packages/webui/tests/components/skills-create-modal.test.ts",
         "projects": [
           "webui-jsdom"
@@ -29363,21 +28703,6 @@
       "syntax": "import"
     },
     {
-      "from": "packages/simpleui/src/automation-workspace.tsx",
-      "specifier": "./automation.css",
-      "syntax": "import"
-    },
-    {
-      "from": "packages/simpleui/src/main.tsx",
-      "specifier": "./styles.css",
-      "syntax": "import"
-    },
-    {
-      "from": "packages/simpleui/src/stream-meter.tsx",
-      "specifier": "./stream-meter.css",
-      "syntax": "import"
-    },
-    {
       "from": "packages/vibeui/src/app/layout.tsx",
       "specifier": "./globals.css",
       "syntax": "import"
@@ -29593,7 +28918,7 @@
     },
     {
       "file": "packages/vibeui/src/lib/session.ts",
-      "lines": 801,
+      "lines": 800,
       "relativeImports": 5
     },
     {
@@ -29639,14 +28964,14 @@
       "relativeImports": 2
     },
     {
-      "file": "packages/vibeui/src/lib/session.ts",
-      "lines": 801,
-      "relativeImports": 5
-    },
-    {
       "file": "packages/vibeui/src/components/resource-hub.tsx",
       "lines": 800,
       "relativeImports": 12
+    },
+    {
+      "file": "packages/vibeui/src/lib/session.ts",
+      "lines": 800,
+      "relativeImports": 5
     },
     {
       "file": "packages/vibeui/src/lib/use-session.ts",
@@ -29804,11 +29129,6 @@
       "relativeImports": 13
     },
     {
-      "file": "packages/simpleui/src/automation-workspace.tsx",
-      "lines": 692,
-      "relativeImports": 4
-    },
-    {
       "file": "packages/tools/src/codebase-index/project-server.ts",
       "lines": 692,
       "relativeImports": 13
@@ -29872,6 +29192,11 @@
       "file": "packages/coordination/src/mailbox-project-server-client.ts",
       "lines": 689,
       "relativeImports": 3
+    },
+    {
+      "file": "packages/core/src/storage/file-session-writer.ts",
+      "lines": 689,
+      "relativeImports": 12
     }
   ],
   "testOnlyExports": [
@@ -30422,10 +29747,6 @@
     {
       "file": "packages/cli/src/settings-menu.ts",
       "name": "resolvePersistPath"
-    },
-    {
-      "file": "packages/cli/src/simpleui-dist.ts",
-      "name": "resolveSimpleUiDistDir"
     },
     {
       "file": "packages/cli/src/slash-commands/context.ts",
@@ -31944,74 +31265,6 @@
       "name": "generateFallbackSkill"
     },
     {
-      "file": "packages/simpleui/src/agent-chat-pane.tsx",
-      "name": "agentConversationEntries"
-    },
-    {
-      "file": "packages/simpleui/src/chat-message-list.tsx",
-      "name": "applyScrollAnchoring"
-    },
-    {
-      "file": "packages/simpleui/src/chat-message-list.tsx",
-      "name": "CHAT_WINDOW_SIZE"
-    },
-    {
-      "file": "packages/simpleui/src/context-breakdown-modal.tsx",
-      "name": "parseContextDebugPayload"
-    },
-    {
-      "file": "packages/simpleui/src/file-changes-button.tsx",
-      "name": "FileChangesButton"
-    },
-    {
-      "file": "packages/simpleui/src/lib/agent-model.ts",
-      "name": "IDLE_AGENT_TTL_MS"
-    },
-    {
-      "file": "packages/simpleui/src/lib/agent-model.ts",
-      "name": "isActiveStatus"
-    },
-    {
-      "file": "packages/simpleui/src/lib/agent-model.ts",
-      "name": "parseAgentSessionReplays"
-    },
-    {
-      "file": "packages/simpleui/src/lib/model-catalog-view.ts",
-      "name": "isLikelyNonChatModel"
-    },
-    {
-      "file": "packages/simpleui/src/lib/model-switch.ts",
-      "name": "findModelContextWindow"
-    },
-    {
-      "file": "packages/simpleui/src/lib/settings-catalog.ts",
-      "name": "SETTINGS_CATALOG"
-    },
-    {
-      "file": "packages/simpleui/src/lib/settings-catalog.ts",
-      "name": "SETTINGS_GROUPS"
-    },
-    {
-      "file": "packages/simpleui/src/lib/worklist-store.ts",
-      "name": "parseSimplePlan"
-    },
-    {
-      "file": "packages/simpleui/src/lib/worklist-store.ts",
-      "name": "parseSimpleTasks"
-    },
-    {
-      "file": "packages/simpleui/src/lib/worklist-store.ts",
-      "name": "parseSimpleTodos"
-    },
-    {
-      "file": "packages/simpleui/src/lib/ws.ts",
-      "name": "exchangeAuthCookie"
-    },
-    {
-      "file": "packages/simpleui/src/lib/ws.ts",
-      "name": "scrubPageToken"
-    },
-    {
       "file": "packages/techstack/src/adapters/python.ts",
       "name": "parsePoetryLock"
     },
@@ -32929,6 +32182,10 @@
     },
     {
       "file": "packages/webui-hq/src/data/local-prefs.ts",
+      "name": "__test__"
+    },
+    {
+      "file": "packages/webui-hq/src/data/local-prefs.ts",
       "name": "getHqLocalPrefsSnapshot"
     },
     {
@@ -33006,6 +32263,10 @@
     {
       "file": "packages/webui-hq/src/domain/mailbox-live.ts",
       "name": "buildLiveFeed"
+    },
+    {
+      "file": "packages/webui-hq/src/domain/transcript-store.ts",
+      "name": "entryKey"
     },
     {
       "file": "packages/webui-hq/src/domain/use-pending-approvals.ts",
@@ -33110,6 +32371,10 @@
     {
       "file": "packages/webui/src/components/AgentsPage.tsx",
       "name": "getLastEventAt"
+    },
+    {
+      "file": "packages/webui/src/components/AutomationView.tsx",
+      "name": "AutomationWorkspace"
     },
     {
       "file": "packages/webui/src/components/ChatInput/code-detect.ts",
@@ -33542,6 +32807,10 @@
     {
       "file": "packages/webui/src/lib/desktop-shell.ts",
       "name": "detectDesktopShell"
+    },
+    {
+      "file": "packages/webui/src/lib/fallback-ref.ts",
+      "name": "refInactiveReason"
     },
     {
       "file": "packages/webui/src/lib/fallback-ref.ts",

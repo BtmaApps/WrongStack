@@ -43,10 +43,7 @@ export async function ensureDirectorAndAnnounce(args: {
   } = args;
 
   const report =
-    flags.tui === true &&
-    flags['no-tui'] !== true &&
-    flags.webui !== true &&
-    flags.simpleui !== true
+    flags.tui === true && flags['no-tui'] !== true && flags.webui !== true
       ? (message: string) => args.logger?.info(message, { event: 'tui.startup.director' })
       : (message: string) => renderer.writeInfo(message);
 
@@ -69,7 +66,7 @@ export async function ensureDirectorAndAnnounce(args: {
       directorToolNames.push(tool.name);
     }
     toolRegistry.exposeToProvider(directorToolNames);
-    const browserSurface = flags.webui === true || flags.simpleui === true;
+    const browserSurface = flags.webui === true;
     if (browserSurface) {
       report(`Director mode enabled (${Object.keys(FLEET_ROSTER).length} roles) → ${fleetRoot}`);
     } else {

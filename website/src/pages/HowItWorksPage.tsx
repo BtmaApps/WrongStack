@@ -177,7 +177,7 @@ export function HowItWorksPage() {
       <PageNext
         label="Interfaces"
         title="Choose the surface around the same kernel"
-        body="Compare the CLI, TUI, WebUI, SimpleUI, VibeUI, Desktop and HQ by the jobs they do best."
+        body="Compare the CLI, TUI, WebUI, VibeUI, Desktop and HQ by the jobs they do best."
         href="/interfaces"
       />
     </>

@@ -2,7 +2,7 @@
  * WS-066 / WS-060 / WS-063 — error text that leaves the process.
  *
  * `sanitizeApiError` lived in `packages/cli/src/hq-server/utils.ts`, so the
- * WebUI and SimpleUI servers — same JSON API surface, same browser on the other
+ * WebUI and VibeUI servers — same JSON API surface, same browser on the other
  * end — never adopted it and answered with `String(err)`. These pin the shared
  * implementation both surfaces now import, and the two levels it offers:
  * opaque for HTTP bodies, scrubbed-but-readable for authenticated channels.

@@ -1,7 +1,7 @@
 # Coding-agent feedback
 
 WrongStack uses completed tool evidence to guide the next coding step across
-CLI, TUI, WebUI and SimpleUI through the shared agent runtime.
+CLI, TUI and WebUI through the shared agent runtime.
 
 ## Post-edit diagnostics
 

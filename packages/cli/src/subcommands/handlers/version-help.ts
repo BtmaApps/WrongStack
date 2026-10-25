@@ -39,7 +39,7 @@ export const helpCmd: SubcommandHandler = async (_args, deps) => {
       ['wstack', 'Interactive session (REPL or TUI, picked at launch)'],
       ['wstack "<task>"', 'Run one task and exit (also: --prompt "<task>")'],
       ['wstack quick', 'Straight into the TUI with saved defaults'],
-      ['wstack webui | simpleui | vibeui', 'Browser UI / minimal chat / focused coding workspace'],
+      ['wstack webui | vibeui', 'Browser UI / focused coding workspace'],
       ['wstack desktop', 'WrongStack Desktop (requires @wrongstack/desktop)'],
       ['wstack hq', 'HQ command center across projects and machines'],
       ['wstack remote <user@host:/path>', 'Run on a remote machine over SSH; WebUI tunneled here'],
@@ -130,10 +130,6 @@ export const helpCmd: SubcommandHandler = async (_args, deps) => {
       [
         '--webui [--host <h>] [--port <n>] [--open]',
         'Browser UI (+ --webui-token, --webui-public-url, ...)',
-      ],
-      [
-        '--simpleui [same flags] [--full-auto]',
-        'Minimal chat UI; --full-auto = YOLO + autonomy for this run only',
       ],
       ['--vibeui [same browser flags]', 'Focused coding workspace (default port 3476)'],
       [

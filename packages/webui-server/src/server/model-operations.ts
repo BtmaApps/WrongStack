@@ -76,7 +76,7 @@ function sendResult(
   const message = { type: 'model.switch_result', payload };
   if (payload.success && context.broadcast) context.broadcast(message);
   else context.send(ws, message);
-  // SimpleUI and older clients do not attach requestId yet. Keep their status
+  // Older clients do not attach requestId yet. Keep their status
   // notice alive without reintroducing the ambiguous generic result for modern
   // WebUI requests.
   if (legacyResult) {

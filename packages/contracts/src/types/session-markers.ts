@@ -10,7 +10,7 @@
  * events as they arrive. On resume/reconnect they must render identically, or
  * the same session looks different before and after a reload.
  *
- * This module owns the event → text mapping so TUI, WebUI, SimpleUI and HQ
+ * This module owns the event → text mapping so TUI, WebUI and HQ
  * cannot drift. Each surface still decides *presentation* (icon, colour, chat
  * bubble vs. dimmed line) from {@link SessionMarker.source} and
  * {@link SessionMarker.level}; only the wording lives here.
@@ -98,7 +98,7 @@ export const SESSION_MARKER_EVENT_TYPES: ReadonlySet<SessionEvent['type']> = new
 ]);
 
 /**
- * The subset chat-shaped surfaces (WebUI, SimpleUI, HQ Live Console) render.
+ * The subset chat-shaped surfaces (WebUI, HQ Live Console) render.
  *
  * `checkpoint` is excluded: one is written per user prompt
  * (`agent-loop.ts` → `writeCheckpoint`), so in a chat transcript it would be a
@@ -396,7 +396,7 @@ export const SYSTEM_INJECTION_PREFIXES: readonly string[] = [
 
 /**
  * Check if a text block is an internal runtime system injection that should be
- * hidden from the human chat transcript on replay across all surfaces (TUI, WebUI, SimpleUI).
+ * hidden from the human chat transcript on replay across all surfaces (TUI, WebUI).
  */
 export function isSystemInjectedMessage(text: string): boolean {
   const trimmed = text.trimStart();

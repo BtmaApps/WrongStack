@@ -29,7 +29,7 @@ interface RefineCountdownPanelProps {
  * to the composer (the submitted text is restored as the draft), any other
  * key sends the message unchanged (skip), and expiry proceeds into the
  * normal refine flow. Mirrors the
- * WebUI/SimpleUI RefinePanel's 'countdown' face.
+ * WebUI RefinePanel's 'countdown' face.
  */
 export function RefineCountdownPanel({
   original,

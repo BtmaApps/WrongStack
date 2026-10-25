@@ -368,12 +368,10 @@ describe('buildSessionRows', () => {
 });
 
 describe('formatSessionRowsBlock', () => {
-  it('labels SimpleUI status output for redirected and verbose terminals', () => {
+  it('labels VibeUI status output for redirected and verbose terminals', () => {
     const rows = buildSessionRows(SESSIONS, new Map(), new Map(), new Map());
-    expect(formatSessionRowsBlock(rows, 'SimpleUI')).toContain('[SimpleUI Live Status]');
-    expect(formatSessionRowsBlock([], 'SimpleUI')).toBe(
-      '[SimpleUI Live Status] No active sessions.',
-    );
+    expect(formatSessionRowsBlock(rows, 'VibeUI')).toContain('[VibeUI Live Status]');
+    expect(formatSessionRowsBlock([], 'VibeUI')).toBe('[VibeUI Live Status] No active sessions.');
   });
   it('renders the append-only block for non-TTY output', () => {
     const rows = buildSessionRows(SESSIONS, new Map(), new Map(), new Map());

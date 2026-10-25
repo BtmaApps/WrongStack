@@ -129,7 +129,7 @@ export type SessionLiveStatus =
 
 export interface SessionWebUIEndpointHint {
   role: 'standalone' | 'parent-shell' | 'session-child';
-  surface: 'webui' | 'simpleui' | string;
+  surface: 'webui' | 'vibeui' | string;
   host: string;
   httpPort: number;
   url: string;

@@ -13,11 +13,11 @@ export interface CommandDetail {
 
 /**
  * Single source of truth for the canonical surface enumeration.
- * Keep this list aligned with the seven surfaces in the `surfaces` array
+ * Keep this list aligned with the six surfaces in the `surfaces` array
  * exported from `website/src/data/content.ts` and the homepage copy.
  * Each detail entry interpolates {@link surfaceListSentence} instead of
  * re-typing the list, so a new surface ships by adding it here once.
  */
-export const surfaceListSentence = 'CLI, TUI, WebUI, SimpleUI, VibeUI, Desktop and HQ';
+export const surfaceListSentence = 'CLI, TUI, WebUI, VibeUI, Desktop and HQ';
 
 export type CommandDetailMap = Record<string, CommandDetail>;

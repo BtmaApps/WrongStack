@@ -270,7 +270,7 @@ export function createConnectionLifecycle<Client, Request, Message>(
     let messageCount = 0;
     let rateWindowResetAt = Date.now() + rateLimitWindowMs;
     // When true, the connection is in cooldown: frames are still dropped but
-    // the user-facing error frame is suppressed so the SimpleUI toast does not
+    // the user-facing error frame is suppressed so a browser toast does not
     // re-render on every subsequent frame for the rest of the window. Cleared
     // when the window resets, which is the next time we evaluate `now`.
     let rateLimitNotified = false;

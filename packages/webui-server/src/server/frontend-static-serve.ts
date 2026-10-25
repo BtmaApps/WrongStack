@@ -312,8 +312,7 @@ export interface EnsureDistDeps extends Omit<ResolveDistOptions, 'explicitDistDi
 /**
  * Resolve the WebUI dist, auto-building it when missing.
  *
- * Mirrors the SimpleUI cold-start recovery in `simpleui-dist.ts`:
- * after a fresh clone, `git clean`, or dependency update the `dist/`
+ * Cold-start recovery: after a fresh clone, `git clean`, or dependency update the `dist/`
  * directory (gitignored) may not exist. Instead of silently degrading
  * to WS-only, this function runs the Vite build automatically and
  * retries resolution. Explicit missing directories return `null` so

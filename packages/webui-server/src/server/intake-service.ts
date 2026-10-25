@@ -3,7 +3,7 @@
  *
  * Both HTTP bring-up paths need the same service instance shape:
  *   - `startHttpServer` (standalone `wstack webui` server), and
- *   - `startStaticServe` (CLI/TUI-hosted WebUI + SimpleUI).
+ *   - `startStaticServe` (CLI/TUI-hosted WebUI + VibeUI).
  *
  * Keeping the construction here means a host cannot bring the HTTP server up
  * with the intake routes silently answering 503 because it forgot to build the

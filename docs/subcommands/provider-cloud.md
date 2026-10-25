@@ -23,7 +23,7 @@ wstack auth cloud work-vertex clear
 
 In TUI/REPL use `/auth cloud work-vertex project team-project`,
 `/auth cloud work-vertex location europe-west4`, or `/auth cloud <alias> clear`.
-WebUI saved provider profiles and SimpleUI's credential panel expose the same
+WebUI saved provider profiles expose the same
 validated fields. Empty fields clear an override and use the environment again.
 Re-select the provider or restart to construct an instance with the new settings.
 

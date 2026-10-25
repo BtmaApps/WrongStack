@@ -1,6 +1,6 @@
 /**
  * HTTP + WebSocket listeners for the CLI-embedded WebUI host: the static
- * frontend (when built), the authenticated WS bridge, the deferred SimpleUI
+ * frontend (when built), the authenticated WS bridge, the deferred VibeUI
  * bind, the IPv6 loopback proxy and the ready banner.
  */
 
@@ -21,7 +21,7 @@ import type { WebuiTransport } from './transport.js';
 
 export interface WebuiHttpBridgeInput {
   opts: CliWebUIOptions;
-  surface: 'webui' | 'simpleui' | 'vibeui';
+  surface: 'webui' | 'vibeui';
   host: string;
   httpPort: number;
   strictPort: boolean;
@@ -84,7 +84,7 @@ export async function startWebuiHttpBridge(input: WebuiHttpBridgeInput) {
     publicWsUrl,
     apiToken: wsToken,
     requireToken,
-    deferListen: surface === 'simpleui' || surface === 'vibeui',
+    deferListen: surface === 'vibeui',
     strictPort,
     // Resolve the same-origin health probes from live preferences, including
     // changes made after boot, just like the standalone WebUI host.
@@ -133,7 +133,7 @@ export async function startWebuiHttpBridge(input: WebuiHttpBridgeInput) {
 
   // Armed at construction, not at wiring time. Constructing a WebSocketServer
   // with {server} makes `ws` forward that HTTP server's 'error' events onto
-  // this emitter, and the SimpleUI surface binds the HTTP server AFTER this
+  // this emitter, and the VibeUI surface binds the HTTP server AFTER this
   // point (deferListen). A bind error arriving while this emitter had no
   // 'error' listener threw out of the emit loop as an uncaughtException,
   // which skipped the remaining HTTP-server 'error' listeners — including
@@ -154,7 +154,7 @@ export async function startWebuiHttpBridge(input: WebuiHttpBridgeInput) {
 
   if (httpServer) {
     const boundPort =
-      surface === 'simpleui' || surface === 'vibeui'
+      surface === 'vibeui'
         ? await startDeferredHttpListen({
             server: httpServer.server,
             host,

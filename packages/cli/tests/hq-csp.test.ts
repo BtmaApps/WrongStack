@@ -7,7 +7,7 @@
  * but no script". The comment was right and the header disagreed with it; with
  * nothing asserting the header, there was nothing to notice.
  *
- * The sibling surfaces (webui, simpleui) share `buildCspHeader` in
+ * The sibling surfaces (webui, vibeui) share `buildCspHeader` in
  * @wrongstack/webui-server and are pinned by two tests there. HQ builds its
  * header independently, so it needs its own.
  */

@@ -9,7 +9,7 @@ import { chromium, expect } from '@playwright/test';
 import { DefaultSecretVault } from '@wrongstack/core/security';
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
-const surface = process.argv.includes('--webui') ? 'webui' : 'simpleui';
+const surface = 'webui';
 const refreshFixture = process.argv.includes('--refresh-fixture');
 const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'wrongstack-auth-live-'));
 const state = path.join(dir, 'state');
@@ -135,85 +135,40 @@ try {
       'Standalone expired-token refresh persisted through native provider and host wiring.',
     );
   }
-  if (surface === 'webui') {
-    const { loadSavedProviders } = await import(
-      pathToFileURL(path.join(repo, 'packages/webui-server/dist/index.js')).href
-    );
-    const vault = new DefaultSecretVault({ keyFile: path.join(state, '.key') });
-    const saved = () => loadSavedProviders(profile, vault);
-    await page.locator('textarea').first().fill('/auth');
-    await page.locator('textarea').first().press('Enter');
-    await page.getByRole('button', { name: /^Saved \(/ }).click();
-    const remove = page.getByRole('button', { name: 'Remove provider personal' });
-    await expect(remove).toBeVisible();
-    const card = remove.locator('xpath=../../..');
-    await card.getByRole('button', { name: 'Add Key', exact: true }).click();
-    await card.getByPlaceholder('Key label (e.g. default, production)').fill('backup');
-    await card.getByPlaceholder('API key', { exact: true }).fill('fixture-webui-backup');
-    await card.getByRole('button', { name: 'Save Key', exact: true }).click();
-    await expect.poll(async () => (await saved()).personal?.apiKeys?.length).toBe(2);
-    await expect(card.getByPlaceholder('API key', { exact: true })).toHaveCount(0);
-    await card.getByRole('button', { name: 'Set Active', exact: true }).click();
-    await expect.poll(async () => (await saved()).personal?.activeKey).toBe('backup');
-    await card.getByRole('button', { name: 'Delete key backup' }).click();
-    await page.getByRole('dialog').getByRole('button', { name: 'Cancel', exact: true }).click();
-    assert.equal((await saved()).personal.apiKeys.length, 2);
-    await card.getByRole('button', { name: 'Delete key backup' }).click();
-    await page.getByRole('dialog').getByRole('button', { name: 'Delete', exact: true }).click();
-    await expect.poll(async () => (await saved()).personal?.apiKeys?.length).toBe(1);
-    assert.equal((await saved()).personal.activeKey, 'default');
-    await remove.click();
-    await page.getByRole('dialog').getByRole('button', { name: 'Delete', exact: true }).click();
-    await expect(remove).toHaveCount(0);
-    assert.deepEqual(JSON.parse(await fs.readFile(profile, 'utf8')).fallbackModels, [
-      'work-native/same-model',
-    ]);
-    assert.deepEqual(errors, []);
-    console.log('Live WebUI /auth/key/active/delete HTTP/WS/disk smoke passed.');
-  } else {
-    await page.getByRole('button', { name: 'Manage provider credentials' }).click();
-    const dialog = page.getByRole('dialog');
-    await expect(dialog.getByRole('heading', { name: 'personal', exact: true })).toBeVisible();
-    await dialog.getByLabel('Auth profile alias', { exact: true }).fill('work-native');
-    await dialog.getByLabel('Account API key', { exact: true }).fill('fixture-work-key');
-    await dialog.getByRole('button', { name: 'Save auth profile' }).click();
-    const work = dialog
-      .locator('article')
-      .filter({ has: page.getByRole('heading', { name: 'work-native', exact: true }) });
-    await expect(work).toBeVisible();
-    const { loadSavedProviders } = await import(
-      pathToFileURL(path.join(repo, 'packages/webui-server/dist/index.js')).href
-    );
-    const vault = new DefaultSecretVault({ keyFile: path.join(state, '.key') });
-    const saved = () => loadSavedProviders(profile, vault);
-    await expect.poll(async () => (await saved())['work-native']?.type).toBe('openai');
-    assert.equal((await saved()).personal.apiKey, 'fixture-personal-key');
-    await dialog.getByLabel('Provider or saved alias').fill('work-native');
-    await dialog.getByLabel('Key label').fill('backup');
-    await dialog.getByLabel('API key', { exact: true }).fill('fixture-backup-key');
-    await dialog.getByRole('button', { name: 'Save key' }).click();
-    await expect.poll(async () => (await saved())['work-native']?.apiKeys?.length).toBe(2);
-    await work.getByRole('button', { name: 'Use', exact: true }).nth(1).click();
-    await expect.poll(async () => (await saved())['work-native']?.activeKey).toBe('backup');
-    await work.getByRole('button', { name: 'Delete', exact: true }).nth(1).click();
-    await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
-    assert.equal((await saved())['work-native'].apiKeys.length, 2);
-    await work.getByRole('button', { name: 'Delete', exact: true }).nth(1).click();
-    await dialog.getByRole('button', { name: 'Confirm deletion' }).click();
-    await expect.poll(async () => (await saved())['work-native']?.apiKeys?.length).toBe(1);
-    assert.equal((await saved())['work-native'].activeKey, 'default');
-    const raw = await fs.readFile(profile, 'utf8');
-    assert.ok(!raw.includes('fixture-work-key') && !raw.includes('fixture-personal-key'));
-    await work.getByRole('button', { name: 'Remove provider' }).click();
-    await dialog.getByRole('button', { name: 'Confirm deletion' }).click();
-    await expect(work).toHaveCount(0);
-    const removed = JSON.parse(await fs.readFile(profile, 'utf8'));
-    assert.deepEqual(removed.fallbackModels, ['personal/same-model']);
-    assert.ok(!removed.favoriteModels?.includes('work-native/same-model'));
-    assert.ok((await saved()).personal);
-    assert.deepEqual(errors, []);
-    console.log('Live SimpleUI auth HTTP/WS/disk smoke passed.');
-  }
+  const { loadSavedProviders } = await import(
+    pathToFileURL(path.join(repo, 'packages/webui-server/dist/index.js')).href
+  );
+  const vault = new DefaultSecretVault({ keyFile: path.join(state, '.key') });
+  const saved = () => loadSavedProviders(profile, vault);
+  await page.locator('textarea').first().fill('/auth');
+  await page.locator('textarea').first().press('Enter');
+  await page.getByRole('button', { name: /^Saved \(/ }).click();
+  const remove = page.getByRole('button', { name: 'Remove provider personal' });
+  await expect(remove).toBeVisible();
+  const card = remove.locator('xpath=../../..');
+  await card.getByRole('button', { name: 'Add Key', exact: true }).click();
+  await card.getByPlaceholder('Key label (e.g. default, production)').fill('backup');
+  await card.getByPlaceholder('API key', { exact: true }).fill('fixture-webui-backup');
+  await card.getByRole('button', { name: 'Save Key', exact: true }).click();
+  await expect.poll(async () => (await saved()).personal?.apiKeys?.length).toBe(2);
+  await expect(card.getByPlaceholder('API key', { exact: true })).toHaveCount(0);
+  await card.getByRole('button', { name: 'Set Active', exact: true }).click();
+  await expect.poll(async () => (await saved()).personal?.activeKey).toBe('backup');
+  await card.getByRole('button', { name: 'Delete key backup' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Cancel', exact: true }).click();
+  assert.equal((await saved()).personal.apiKeys.length, 2);
+  await card.getByRole('button', { name: 'Delete key backup' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Delete', exact: true }).click();
+  await expect.poll(async () => (await saved()).personal?.apiKeys?.length).toBe(1);
+  assert.equal((await saved()).personal.activeKey, 'default');
+  await remove.click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Delete', exact: true }).click();
+  await expect(remove).toHaveCount(0);
+  assert.deepEqual(JSON.parse(await fs.readFile(profile, 'utf8')).fallbackModels, [
+    'work-native/same-model',
+  ]);
+  assert.deepEqual(errors, []);
+  console.log('Live WebUI /auth/key/active/delete HTTP/WS/disk smoke passed.');
 } catch (error) {
   console.error(
     'Auth backend smoke failed:',

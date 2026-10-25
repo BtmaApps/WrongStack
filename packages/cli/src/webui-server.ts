@@ -91,7 +91,7 @@ export async function runWebUI(opts: CliWebUIOptions): Promise<void> {
    * dashboard entirely, keeping the raw append-only log.
    */
   const terminalLogView = startTerminalDashboard({
-    title: surface === 'vibeui' ? 'VibeUI' : surface === 'simpleui' ? 'SimpleUI' : 'WebUI',
+    title: surface === 'vibeui' ? 'VibeUI' : 'WebUI',
     quiet: !envFlag('WEBUI_LOGS'),
     // The dashboard is operator-owned terminal output, so retain the full
     // authenticated access URL here even though startup logs remain redacted.

@@ -57,8 +57,11 @@ export const BOOLEAN_FLAGS = new Set([
   'metrics',
   'webui',
   'webui-session-child',
+  // Retired surface: SimpleUI was replaced by VibeUI. Kept boolean so
+  // `--simpleui foo` never swallows `foo`; see normalizeSurfaceAliases.
   'simpleui',
   'vibeui',
+  // Retired with SimpleUI; accepted and reported as ignored.
   'full-auto',
   'desktop',
   'open',
@@ -228,7 +231,7 @@ export function parseArgs(argv: string[]): ParsedArgs {
 /**
  * Keep the user-facing launch shapes equivalent:
  *   wstack --webui      == wstack webui
- *   wstack --simpleui   == wstack simpleui
+ *   wstack --vibeui     == wstack vibeui
  *   wstack --desktop    == wstack desktop
  *   wstack --hq         == wstack hq / wstack hq serve
  *
@@ -239,14 +242,25 @@ function normalizeSurfaceAliases(
   flags: Record<string, string | boolean>,
   positional: string[],
 ): void {
-  // SimpleUI deliberately reuses the WebUI backend/runtime path. Keep its own
+  // SimpleUI was retired and replaced by VibeUI. Old launch shapes still work:
+  // they open VibeUI and `simpleui-retired` lets dispatch tell the user why.
+  if (positional[0] === 'simpleui') {
+    positional[0] = 'vibeui';
+    flags['simpleui-retired'] = true;
+  }
+  if (flags['simpleui']) {
+    delete flags['simpleui'];
+    flags['vibeui'] = true;
+    flags['simpleui-retired'] = true;
+  }
+  // VibeUI deliberately reuses the WebUI backend/runtime path. Keep its own
   // flag so dispatch can select the independent frontend build, while also
   // setting `webui` so every existing non-interactive surface guard applies.
-  if (flags['simpleui'] || flags['vibeui']) flags['webui'] = true;
+  if (flags['vibeui']) flags['webui'] = true;
   if (flags['webui-session-child']) flags['webui'] = true;
 
   const first = positional[0];
-  if (first === 'simpleui' || first === 'vibeui') {
+  if (first === 'vibeui') {
     flags[first] = true;
     flags['webui'] = true;
     positional.splice(0, 1);

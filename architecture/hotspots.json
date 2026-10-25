@@ -51,7 +51,7 @@
       "relativeImports": 34
     },
     "packages/vibeui/src/lib/session.ts": {
-      "lines": 801,
+      "lines": 800,
       "relativeImports": 5
     },
     "packages/vibeui/src/lib/use-session.ts": {

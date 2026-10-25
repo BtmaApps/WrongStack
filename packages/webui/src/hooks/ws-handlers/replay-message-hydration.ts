@@ -30,7 +30,7 @@ export function replayMessageId(index: number): string {
  * Rebuild a lane's chat from a replayed session.
  *
  * Ordering, tool pairing and visibility come from core's
- * {@link projectSessionTimeline} — the same function the TUI, SimpleUI and HQ
+ * {@link projectSessionTimeline} — the same function the TUI and HQ
  * project through — so a resumed session cannot read differently here than it
  * does there. Everything below the projection is WebUI presentation: which
  * `ChatMessage` shape a timeline entry becomes.

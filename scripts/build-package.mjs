@@ -68,7 +68,7 @@ const coreEntries = entryMap([
   // statusline: status surfaces read it without pulling in the `core` barrel.
   'src/quota/index.ts',
   // Narrow, dependency-free entries so browser bundles (webui, webui-hq,
-  // simpleui) can import these helpers without dragging the `types` / `core`
+  // vibeui) can import these helpers without dragging the `types` / `core`
   // barrels — those used to reach `types/mode-prompts.ts`, which reads
   // instruction files with `node:fs` at module scope and made Vite externalize
   // Node built-ins into the browser graph. (`types/` + `kernel/` moved to
@@ -493,13 +493,6 @@ const profiles = {
   '@wrongstack/security-scanner': standard(['@wrongstack/core']),
   '@wrongstack/techstack': standard(['@wrongstack/core', '@wrongstack/tools']),
   '@wrongstack/requirement-intake': standard(['@wrongstack/core']),
-  '@wrongstack/simpleui': {
-    entries: { index: 'src/index.ts' },
-    target: 'es2022',
-    platform: 'browser',
-    clean: false,
-    external: ['@wrongstack/core', '@wrongstack/webui-protocol'],
-  },
   '@wrongstack/telegram': standard(['@wrongstack/core']),
   '@wrongstack/webui-protocol': {
     // `frame-resume` has no imports: `@wrongstack/client` bundles it without
@@ -716,13 +709,11 @@ function emitDeclarations(entries, outdir) {
   // subpath produces its own .d.ts tree under outDir. Falling back to a
   // bare `--rootDir src --emitDeclarationOnly` only emits the `index`
   // entry's declarations, which breaks subpath imports like
-  // `@wrongstack/tools/tool-diff`. Browser packages (webui, simpleui)
+  // `@wrongstack/tools/tool-diff`. Browser packages (webui)
   // override their tsconfig with `noEmit: true`, so they need a
   // dedicated declaration project.
   const dtsProject =
-    packageJson.name === '@wrongstack/webui' || packageJson.name === '@wrongstack/simpleui'
-      ? 'tsconfig.dts.json'
-      : 'tsconfig.json';
+    packageJson.name === '@wrongstack/webui' ? 'tsconfig.dts.json' : 'tsconfig.json';
   const args = [
     tsc,
     '--project',

@@ -16,7 +16,7 @@ vi.mock('@wrongstack/webui-server', async (importOriginal) => {
 
 import { runWebUI } from '../src/webui-server.js';
 
-describe('SimpleUI deferred-listen port-advance reconciliation', () => {
+describe('VibeUI deferred-listen port-advance reconciliation', () => {
   let frontendDir: string | undefined;
   let holder: net.Server | undefined;
   let serverDone: Promise<void> | undefined;
@@ -27,7 +27,7 @@ describe('SimpleUI deferred-listen port-advance reconciliation', () => {
     frontendDir = await fs.mkdtemp(path.join(os.tmpdir(), 'wrongstack-deferred-'));
     await fs.writeFile(
       path.join(frontendDir, 'index.html'),
-      '<!doctype html><html><head></head><body>SimpleUI</body></html>',
+      '<!doctype html><html><head></head><body>VibeUI</body></html>',
       'utf8',
     );
   });
@@ -64,7 +64,7 @@ describe('SimpleUI deferred-listen port-advance reconciliation', () => {
     });
 
     serverDone = runWebUI({
-      surface: 'simpleui',
+      surface: 'vibeui',
       frontendDistDir: frontendDir,
       profileConfigPath: path.join(frontendDir!, 'config.json'),
       host: '127.0.0.1',

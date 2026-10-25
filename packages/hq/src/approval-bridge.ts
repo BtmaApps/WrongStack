@@ -1,13 +1,13 @@
 import { isPersistentApproval } from '@wrongstack/core/security';
 
 /**
- * Approval mirroring — puts the permission prompts raised by TUI, WebUI and
- * SimpleUI on the HQ dashboard, and lets an operator answer them from there.
+ * Approval mirroring — puts the permission prompts raised by TUI and WebUI
+ * on the HQ dashboard, and lets an operator answer them from there.
  *
- * All three surfaces converge on ONE emission point: `waitForConfirm()` in
+ * Both surfaces converge on ONE emission point: `waitForConfirm()` in
  * `core/agent-tools.ts` emits `tool.confirm_needed` carrying an idempotent
- * resolver. The TUI subscribes directly; WebUI and SimpleUI subscribe through
- * their shared backend and relay over their own socket. So a single listener
+ * resolver. The TUI subscribes directly; WebUI subscribes through
+ * its backend and relays over its own socket. So a single listener
  * on the local EventBus mirrors every surface — there is deliberately no
  * per-host copy of this logic to drift.
  *

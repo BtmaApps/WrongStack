@@ -10,9 +10,7 @@ In the plain REPL (no TUI), `/auth` falls back to a read-only dashboard and
 points at `wstack auth`.
 
 In the WebUI, `/auth` opens **Settings → Providers**, including API keys and
-OAuth accounts. SimpleUI opens its **Provider credentials** panel; the key icon
-next to Settings opens the same panel. SimpleUI supports key add/update/delete,
-active-key selection, OAuth account aliases, and local/custom endpoints.
+OAuth accounts.
 
 Provider removal clears model routing references on every surface. Concurrent
 edits to different providers are preserved; conflicting edits to the same

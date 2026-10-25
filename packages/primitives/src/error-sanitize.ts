@@ -4,7 +4,7 @@
  * developer log line.
  *
  * WS-066: the HQ server had a `sanitizeApiError` for exactly this and the
- * WebUI/SimpleUI servers did not, so the same class of error reached the
+ * WebUI servers did not, so the same class of error reached the
  * browser opaque on one surface and verbatim on the other. This module is the
  * single implementation both now use.
  *

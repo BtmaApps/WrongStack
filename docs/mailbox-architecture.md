@@ -214,10 +214,6 @@ code.
   `SQLite · IPC pid <pid>`.
   Settings → Connections also probes the project owner and shows its PID,
   endpoint, database path, client/request counts, latency, and uptime.
-- **SimpleUI:** the compact `MAIL` workspace drawer uses the same WebSocket
-  routes for unread mail, recent messages, online agents, direct sends,
-  mark-read/ack/reopen/delete actions, and SQLite/IPC health; background
-  agent-loop delivery remains active while the drawer is closed.
 - **HQ:** mailbox snapshots include service storage kind, owner PID, connected
   clients, pending requests, and protocol version for each project.
 - **CLI:** `/mailbox` exposes inbox, agents, online agents, send, broadcast,

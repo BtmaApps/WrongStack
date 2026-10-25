@@ -63,7 +63,7 @@ const LOCK_FILE = 'active.json';
 const DEFAULT_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 /**
- * @deprecated Production TUI/WebUI/SimpleUI hosts use per-session
+ * @deprecated Production TUI/WebUI hosts use per-session
  * {@link SessionRegistry} ownership. Retained only for API compatibility with
  * older embedders; it must not be used as a project-wide runtime lock.
  */

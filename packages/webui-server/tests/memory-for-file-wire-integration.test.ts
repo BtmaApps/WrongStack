@@ -10,7 +10,7 @@
  * This file closes that gap: a real SQLite SAGE store in a tmpdir, a real
  * memory anchored to a real path, the real handler, and assertions written
  * from the *consumer's* point of view (`packages/webui/src/hooks/useMemoryForFile.ts`
- * and `packages/simpleui/src/memory-drawer.tsx` both read `payload.response`).
+ * reads `payload.response`).
  *
  * It deliberately does NOT mock `@wrongstack/sage` — keep it in its own file.
  */

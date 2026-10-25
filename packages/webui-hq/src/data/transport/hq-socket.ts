@@ -3,7 +3,7 @@
  *
  * Responsibilities, and nothing else:
  *  - open / reconnect with exponential backoff + jitter (shared policy from
- *    `@wrongstack/webui-protocol`, so HQ, WebUI and SimpleUI age out the same)
+ *    `@wrongstack/webui-protocol`, so HQ, WebUI age out the same)
  *  - detect silent dropouts via a heartbeat clock and force a reconnect
  *  - send `client.resume` frames on every open so the server can gap-fill
  *  - hand decoded frames to subscribers, and connection state to the store

@@ -17,7 +17,7 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   // Pin an empty inline PostCSS config so Vite never searches the filesystem
   // for `postcss.config.*` — that search climbs past the workspace root to the
-  // drive root and dies on any stray entry there. See `packages/simpleui`.
+  // drive root and dies on any stray entry there.
   css: { postcss: {} },
   resolve: {
     alias: {

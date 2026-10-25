@@ -199,7 +199,7 @@ Each line of the log then carries, alongside the metadata:
 Three properties hold regardless:
 
 - **Disk only.** `recordJevActivity` strips these fields as the entry enters
-  the in-process tail, so the live views — WebUI, SimpleUI, TUI, `/jev logs` —
+  the in-process tail, so the live views — WebUI, TUI, `/jev logs` —
   stay metadata-only even while the file beside them holds full content. The
   wire payload is unchanged in both modes.
 - **Key scrubbed.** The account key is replaced with `[redacted]` in recorded

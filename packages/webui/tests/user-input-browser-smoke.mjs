@@ -5,7 +5,6 @@ import { createServer } from 'vite';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const webuiRoot = path.resolve(here, '..');
-const simpleuiRoot = path.resolve(here, '..', '..', 'simpleui');
 
 function harnessPlugin(source) {
   const virtualId = 'virtual:user-input-browser-smoke';
@@ -63,25 +62,6 @@ useUserInputStore.getState().enqueue({ sessionId: 'browser-session', request: {
   ]
 } });
 createRoot(document.getElementById('root')).render(React.createElement(UserInputDialog));
-window.__userInputReady = true;
-`;
-
-const simpleuiSource = `
-import React from 'react';
-import { createRoot } from 'react-dom/client';
-import '/src/styles.css';
-import { UserInputModal } from '/src/user-input-modal.tsx';
-const options = Array.from({ length: 6 }, (_, index) => ({ id: 'option_' + index, label: 'Option ' + (index + 1), description: 'Trade-off ' + (index + 1) }));
-const pending = { sessionId: 'simple-session', request: { id: 'simple-form', title: 'SimpleUI decisions', submitLabel: 'Submit answers', tabs: [
-  { id: 'architecture', label: 'Architecture', questions: Array.from({ length: 5 }, (_, index) => ({ id: 'choice_' + index, prompt: 'Question ' + (index + 1) + '?', kind: 'single_select', required: true, options, recommendedOptionIds: ['option_0'], recommendationReason: 'Safest default.', allowCustomResponse: true })) },
-  { id: 'product', label: 'Product', questions: [{ id: 'tenant_name', prompt: 'Tenant name?', kind: 'text', required: true }] }
-] } };
-window.__sent = [];
-const send = (type, payload) => { window.__sent.push({ type, payload }); };
-// UserInputModal takes the pending form nested under an "input:" prop
-// (see simple-ui-session.tsx) — the Sep 25 2026 refactor moved the
-// props into that shape, so the fixture must match it.
-createRoot(document.getElementById('root')).render(React.createElement(UserInputModal, { input: { pending, queuedCount: 2 }, send }));
 window.__userInputReady = true;
 `;
 
@@ -215,24 +195,10 @@ async function runSurface(browser, root, source, name) {
     // exercised through the real rendering + socket stack.
     await page.getByRole('button', { name: 'Submit answers' }).click();
     await page.getByRole('button', { name: 'Submitting…' }).waitFor();
-    if (name === 'SimpleUI') {
-      const submitted = await page.evaluate(() => window.__sent[0]);
-      if (
-        submitted?.type !== 'user.input_submit' ||
-        submitted?.payload?.response?.status !== 'submitted'
-      ) {
-        throw new Error('SimpleUI submit did not produce a submitted response frame');
-      }
-    }
     await page.getByRole('button', { name: 'Cancel' }).click();
-    // `name` must be passed explicitly: page.evaluate stringifies the
-    // function, so a free `name` would silently resolve to window.name.
-    const frames = await page.evaluate(
-      (surface) => (surface === 'WebUI' ? window.__wsSent : window.__sent),
-      name,
-    );
+    const frames = await page.evaluate(() => window.__wsSent);
     const cancelled = frames.at(-1);
-    const expectedRequestId = name === 'WebUI' ? 'browser-form' : 'simple-form';
+    const expectedRequestId = 'browser-form';
     if (cancelled?.type !== 'user.input_submit') {
       throw new Error(`${name} cancel did not emit a user.input_submit frame`);
     }
@@ -266,7 +232,6 @@ const browser = await chromium.launch({ headless: true });
 try {
   const results = [];
   results.push(await runSurface(browser, webuiRoot, webuiSource, 'WebUI'));
-  results.push(await runSurface(browser, simpleuiRoot, simpleuiSource, 'SimpleUI'));
   process.stdout.write(`${JSON.stringify({ passed: true, results })}\n`);
 } finally {
   await browser.close();

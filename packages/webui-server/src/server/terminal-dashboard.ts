@@ -84,7 +84,7 @@ export interface DashboardAgentRow {
 }
 
 export interface TerminalDashboardOptions {
-  /** Panel title, e.g. `WebUI` / `SimpleUI`. */
+  /** Panel title, e.g. `WebUI` / `VibeUI`. */
   title?: string | undefined;
   /** Live access URL shown in the panel header, including its auth token when configured. */
   getUrl?: (() => string | undefined) | undefined;

@@ -166,7 +166,7 @@ export const moreNav = [
   {
     href: '/interfaces',
     label: 'Interfaces',
-    description: 'CLI, TUI, WebUI, SimpleUI, VibeUI, Desktop and HQ',
+    description: 'CLI, TUI, WebUI, VibeUI, Desktop and HQ',
     icon: PanelTop,
     group: 'learn',
   },
@@ -583,27 +583,11 @@ export const surfaces = [
     icon: Globe2,
   },
   {
-    id: 'simpleui',
-    name: 'SimpleUI',
-    tagline: 'The lightweight chat',
-    description:
-      'A lightweight browser chat with live tool progress, agent tabs, and a shared launcher for workspace utilities, file management, and diffs.',
-    launch: 'wstack --simpleui',
-    best: 'Quick browser chat without the full workspace',
-    traits: [
-      'Workspace and utilities launcher',
-      'File management and diffs',
-      'Agent tabs and transcript',
-      'Shares the CLI agent',
-    ],
-    icon: MessageSquareMore,
-  },
-  {
     id: 'vibeui',
     name: 'VibeUI',
     tagline: 'The focused coding workspace',
     description:
-      'A focused browser coding workspace between SimpleUI and the full WebUI, with a streaming chat queue, sessions, provider and model picking, diffs, plan views and live agent transcripts.',
+      'A focused browser coding workspace beside the full WebUI, with a streaming chat queue, sessions, provider and model picking, diffs, plan views and live agent transcripts.',
     launch: 'wstack --vibeui',
     best: 'Focused coding without the full workbench',
     traits: [

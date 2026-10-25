@@ -206,16 +206,10 @@ export function GettingStartedPage() {
               'Starts a browser-driven agent session instead of the terminal REPL. Add --open to launch the browser automatically.',
             ],
             [
-              MessageSquareMore,
-              'Lightweight browser chat',
-              'wstack --simpleui',
-              'A stripped-down browser chat—conversation, live tool progress and agent tabs without the full workspace.',
-            ],
-            [
               CodeXml,
               'Focused coding workspace',
               'wstack --vibeui',
-              'A browser coding workspace between SimpleUI and the full WebUI—chat queue, sessions, model picker, diffs and agent transcripts on port 3476.',
+              'A browser coding workspace beside the full WebUI—chat queue, sessions, model picker, diffs and agent transcripts on port 3476. It replaces the retired SimpleUI; wstack --simpleui now opens VibeUI.',
             ],
             [
               ShieldCheck,
@@ -243,7 +237,7 @@ export function GettingStartedPage() {
             ],
           ].map(([Icon, title, command, body], index, items) => {
             const ItemIcon = Icon as typeof Terminal;
-            // Ten recipes leave one orphan in the three-column grid; let it span the row.
+            // A lone recipe in the last three-column row spans the whole row.
             const spanRow = index === items.length - 1 && items.length % 3 === 1;
             return (
               <article

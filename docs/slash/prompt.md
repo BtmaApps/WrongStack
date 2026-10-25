@@ -48,11 +48,10 @@ Examples:
 /prompt insert fluidflow-design-d21-bento-grid --level=simple
 ```
 
-WebUI, VibeUI, and SimpleUI show a detail-level selector when variants exist.
+WebUI and VibeUI show a detail-level selector when variants exist.
 The TUI picker uses `1` (simple), `2` (detailed), and `3` (advanced); the preview
 and inserted draft use the same selection. Detailed is the default. Existing
-single-text prompts keep their original behavior. SimpleUI's shared browser
-starts in the Design category and also keeps personal saved prompts available.
+single-text prompts keep their original behavior.
 
 The upstream revision, per-text checksums, license, and re-import instructions
 are in `packages/core/data/prompts/fluidflow/`.

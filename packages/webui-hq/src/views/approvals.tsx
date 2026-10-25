@@ -4,7 +4,7 @@
  *
  * A tool call that needs approval blocks its run until someone answers. Until
  * now that someone had to be at the machine: the prompt lived only in the TUI
- * dialog or the WebUI/SimpleUI modal that raised it. This view mirrors those
+ * dialog or the WebUI modal that raised it. This view mirrors those
  * prompts and lets an operator answer them from HQ. The prompt stays live on
  * its own surface — whichever answers first wins, and the loser is told so
  * rather than left believing their answer applied.
@@ -201,7 +201,7 @@ export function ApprovalsView(): React.ReactElement {
       <ViewHero
         eyebrow="Human in the loop"
         headline="Approvals"
-        description="Permission prompts raised on any surface — TUI, WebUI or SimpleUI — mirrored here. The prompt stays live on its own screen; whoever answers first wins."
+        description="Permission prompts raised on any surface — TUI or WebUI — mirrored here. The prompt stays live on its own screen; whoever answers first wins."
         tone={urgent > 0 ? 'error' : approvals.length > 0 ? 'warn' : 'idle'}
         metrics={
           <>

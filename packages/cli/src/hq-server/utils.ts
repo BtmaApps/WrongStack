@@ -395,7 +395,7 @@ export function recordTimeseriesSignal(persistence: HqPersistence, event: HqEven
  * Re-exported from `@wrongstack/core/security`.
  *
  * WS-066: this used to be an HQ-local implementation, which is why the WebUI
- * and SimpleUI servers — which have the same JSON-API surface — never adopted
+ * and VibeUI servers — which have the same JSON-API surface — never adopted
  * it and forwarded `String(err)` verbatim instead. One implementation now
  * serves every server surface.
  */

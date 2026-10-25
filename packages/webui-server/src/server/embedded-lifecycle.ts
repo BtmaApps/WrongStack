@@ -34,7 +34,7 @@ import { buildWebUIAccessUrl } from './ws-utils.js';
 
 export interface RegisterWebuiInstanceParams {
   pid: number;
-  /** Surface kind — 'webui' or 'simpleui'. */
+  /** Surface kind — 'webui' or 'vibeui'. */
   surface: SurfaceKind;
   host: string;
   /** Port serving both HTTP and WebSocket (single-port design). */
@@ -51,7 +51,7 @@ export interface RegisterWebuiInstanceParams {
    * authenticate `POST /api/fleet/ping` (H3). See `WebUIInstanceRecord`.
    */
   authToken?: string | undefined;
-  /** Runtime role. Missing means the legacy standalone WebUI/SimpleUI role. */
+  /** Runtime role. Missing means the legacy standalone WebUI/VibeUI role. */
   role?: WebUIInstanceRole | undefined;
   /** Live session owned by this endpoint when `role === 'session-child'`. */
   sessionId?: string | undefined;
@@ -121,7 +121,7 @@ export async function registerWebuiInstance(
 // ── Ready banner + open browser ──────────────────────────────────────
 
 export interface AnnounceWebuiReadyParams {
-  /** Surface kind — 'webui' or 'simpleui'. */
+  /** Surface kind — 'webui' or 'vibeui'. */
   surface: SurfaceKind;
   /** The HTTP server (StaticServeHandle.server). */
   server: { on: (event: 'listening', cb: () => void) => void; listening?: boolean };
@@ -172,7 +172,7 @@ export function announceWebuiReady(p: AnnounceWebuiReadyParams): void {
       ? ' (authentication required; use automatic browser launch or a separately provisioned WEBUI_TOKEN)'
       : '';
     log(
-      `\n  ▸ ${p.surface === 'vibeui' ? 'VibeUI' : p.surface === 'webui' ? 'WebUI' : 'SimpleUI'} ready at \x1b[1m${displayUrl}\x1b[0m${authHint}` +
+      `\n  ▸ ${p.surface === 'vibeui' ? 'VibeUI' : 'WebUI'} ready at \x1b[1m${displayUrl}\x1b[0m${authHint}` +
         `    (same agent as this terminal)\n${extraBlock}`,
     );
     if (p.open) launch(openUrl);

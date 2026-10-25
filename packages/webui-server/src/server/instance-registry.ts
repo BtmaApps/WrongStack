@@ -34,12 +34,12 @@ export interface WebUIInstanceAuthInfo {
   tokenPresent: boolean;
 }
 
-/** One running WebUI / SimpleUI process. */
+/** One running WebUI / VibeUI process. */
 export interface WebUIInstanceRecord {
   /** OS process id — also the liveness key. */
   pid: number;
-  /** Surface kind — 'webui' or 'simpleui'. Additional strings are tolerated for new surfaces. */
-  surface: 'webui' | 'simpleui' | string;
+  /** Surface kind — 'webui' or 'vibeui'. Additional strings are tolerated for new surfaces. */
+  surface: 'webui' | 'vibeui' | string;
   /** Port serving both HTTP and WebSocket. */
   httpPort: number;
   /** Bind host (e.g. 127.0.0.1 or 0.0.0.0). */
@@ -73,7 +73,7 @@ export interface WebUIInstanceRecord {
    * Optional so an older record (or a surface that has no token) still parses.
    */
   authToken?: string | undefined;
-  /** Runtime role. Missing means the legacy standalone WebUI/SimpleUI role. */
+  /** Runtime role. Missing means the legacy standalone WebUI/VibeUI role. */
   role?: WebUIInstanceRole | undefined;
   /** Live session owned by this endpoint when `role === 'session-child'`. */
   sessionId?: string | undefined;

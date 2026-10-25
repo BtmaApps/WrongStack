@@ -4,7 +4,7 @@
 
 **Status as of 0.270.0** — All core phases shipped; ongoing refinement of subagent budget negotiation, error classification, and fleet observability.
 
-> **Note (0.287.0):** Director Mode is permanently on across the CLI, TUI, WebUI, SimpleUI, and Desktop surfaces. The `--director` and `--no-director` flags have been removed from `arg-parser.ts`, `directorMode` is a compile-time `true` constant in `director-setup.ts`, `isDirectorMode()` unconditionally returns `true`, and `ensureDirector()` always builds the Director without any mode check. The `/director` slash command now surfaces fleet status; the actual fleet entry points are `/spawn`, `/fleet`, `/delegate`, and the goal-flow launcher.
+> **Note (0.287.0):** Director Mode is permanently on across the CLI, TUI, WebUI, VibeUI, and Desktop surfaces. The `--director` and `--no-director` flags have been removed from `arg-parser.ts`, `directorMode` is a compile-time `true` constant in `director-setup.ts`, `isDirectorMode()` unconditionally returns `true`, and `ensureDirector()` always builds the Director without any mode check. The `/director` slash command now surfaces fleet status; the actual fleet entry points are `/spawn`, `/fleet`, `/delegate`, and the goal-flow launcher.
 
 ---
 

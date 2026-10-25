@@ -183,11 +183,7 @@ export function createTeardownEventRegistrar(
   };
 }
 
-export async function loadOnlineAgentsForPrompt(
-  projectDir: string,
-  skip: boolean,
-): Promise<MailboxAgentStatus[]> {
-  if (skip) return [];
+export async function loadOnlineAgentsForPrompt(projectDir: string): Promise<MailboxAgentStatus[]> {
   try {
     const systemMailbox = getSharedProjectMailbox(projectDir);
     return await systemMailbox.getAgentStatuses();

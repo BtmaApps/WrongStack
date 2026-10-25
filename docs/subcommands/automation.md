@@ -31,7 +31,7 @@ or saved credential references. `add --dry-run` does the same. Neither starts a
 container, decrypts saved keys or writes a job. Credential presence is a setup
 check; execution still resolves its value at use time.
 
-The WebUI Tools menu and SimpleUI utilities menu both include **Automations**.
+The WebUI Tools menu includes **Automations**.
 Create or edit jobs, preview schedules and conditions, queue or cancel runs,
 enable/disable jobs and read exported patches/logs. Existing job edits require
 the observed revision; a stale editor receives a conflict instead of overwriting

@@ -56,7 +56,7 @@ function firstServerOptions(mock: { mock: { calls: unknown[] } }): Record<string
 
 describe('resolveDistDir', () => {
   it('uses an explicit frontend directory without resolving the webui package', () => {
-    expect(resolveDistDir('./custom-simpleui')).toBe(path.resolve('./custom-simpleui'));
+    expect(resolveDistDir('./custom-vibeui')).toBe(path.resolve('./custom-vibeui'));
   });
 
   it('resolves the webui dist directory in the monorepo', () => {
@@ -176,17 +176,17 @@ describe('startStaticServe', () => {
 
   it('threads an explicit frontend directory through the resolver', async () => {
     const fake = new FakeServer();
-    const resolveDist = vi.fn(() => '/resolved/simpleui-dist');
+    const resolveDist = vi.fn(() => '/resolved/vibeui-dist');
     const createServer = vi.fn(() => fake as never as Server);
 
     await startStaticServe(
-      { ...baseOpts, distDir: '/packages/simpleui/dist' },
+      { ...baseOpts, distDir: '/packages/vibeui/dist' },
       { resolveDist, createServer },
     );
 
-    expect(resolveDist).toHaveBeenCalledWith('/packages/simpleui/dist');
+    expect(resolveDist).toHaveBeenCalledWith('/packages/vibeui/dist');
     expect(createServer).toHaveBeenCalledWith(
-      expect.objectContaining({ distDir: '/resolved/simpleui-dist' }),
+      expect.objectContaining({ distDir: '/resolved/vibeui-dist' }),
     );
   });
 

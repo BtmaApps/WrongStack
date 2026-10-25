@@ -86,8 +86,8 @@ security gates, VibeUI and Desktop.
 Highlights from **1.1.7**:
 
 - **VibeUI, a seventh interface:** [`wstack vibeui`](packages/vibeui/README.md)
-  (`--vibeui`, port 3476) opens a focused coding workspace between SimpleUI and
-  the full WebUI: queued chat with Queue / Steer / BTW, provider and account
+  (`--vibeui`, port 3476) opens a focused coding workspace beside the full
+  WebUI: queued chat with Queue / Steer / BTW, provider and account
   setup, files and diffs, live agents, quotas, SAGE memory with a relationship
   graph, and next-step suggestions that can submit on their own under YOLO + Auto.
 - **Text selection in the TUI:** a Text mode beside Block copies only the
@@ -164,8 +164,8 @@ See the [release history](CHANGELOG.md) for earlier releases.
 - **Goals that end verified.** `/goal` loops until a locked contract passes,
   the **Brain** rules on risky calls, and Kanban cards reach Done only when
   their criteria pass.
-- **Seven surfaces, one engine.** REPL, TUI, WebUI, SimpleUI, VibeUI, Desktop
-  and the cross-machine **HQ** share the same sessions and memory.
+- **Six surfaces, one engine.** REPL, TUI, WebUI, VibeUI, Desktop and the
+  cross-machine **HQ** share the same sessions and memory.
 - **Any model, including local ones.** API keys or subscription sign-in, a
   models.dev catalog, Ollama / vLLM / LM Studio presets, and per-role routing
   with fallback chains.
@@ -189,7 +189,7 @@ scratch:
 | **Memory** | Usually none, or bolted-on files | **SAGE** — code-anchored SQLite/FTS5 memory, recalled every turn |
 | **Multi-agent** | Orchestrates external processes | **Native fleet + Director** with isolated budgets and one mailbox |
 | **Local-only** | Needs the upstream tool and network | **Runs on localhost** with Ollama / vLLM / LM Studio presets |
-| **Surfaces** | One terminal | **Seven** — REPL, TUI, WebUI, SimpleUI, VibeUI, Desktop, HQ |
+| **Surfaces** | One terminal | **Six** — REPL, TUI, WebUI, VibeUI, Desktop, HQ |
 | **Safety** | Depends on the wrapped tool | **Per-call permission policy** and Chimera review of your diffs |
 
 ---
@@ -229,7 +229,7 @@ release or `WSTACK_INSTALL_DIR` to install elsewhere. You can also download a
 your `PATH` yourself.
 
 On first run the binary unpacks its assets (prompts, skills, design kits,
-grammars, the WebUI/HQ/SimpleUI frontends) once into
+grammars, the WebUI/HQ/VibeUI frontends) once into
 `~/.wrongstack/runtime/<version>/`.
 
 Not available in the binary: the WebUI terminal panel (needs the native
@@ -327,15 +327,17 @@ Full flag and subcommand reference: [`docs/cli-reference.md`](docs/cli-reference
 | **REPL** | `wstack` | Fast, dependency-light terminal use |
 | **TUI** | `wstack --tui` | Rich full-screen terminal with panels |
 | **WebUI** | `wstack --webui` | Browser chat + tool/diff/session panels |
-| **SimpleUI** | `wstack --simpleui` | Fast, focused standalone browser chat (see below) |
-| **VibeUI** | `wstack --vibeui` | Focused coding workspace between SimpleUI and WebUI (see below) |
+| **VibeUI** | `wstack --vibeui` | Focused browser coding workspace beside the full WebUI (see below) |
 | **Desktop** | `wstack --desktop` | Electron shell over a token-gated local WebUI |
 | **HQ** | `wstack --hq` | Cross-machine command center for a whole team |
 
 Plain `wstack` on a TTY opens a launch menu; add `--no-menu` to go straight to the
 REPL. See [WebUI](docs/webui.md) for the browser surface details.
 
-WebUI, SimpleUI and VibeUI keep their host terminal compact: repeated warnings share
+SimpleUI was retired and replaced by VibeUI; `wstack simpleui` / `--simpleui`
+now open VibeUI.
+
+WebUI and VibeUI keep their host terminal compact: repeated warnings share
 one row, logs and finished workers disappear after 30 seconds, and live worker
 rows fit the terminal. Use `WEBUI_VERBOSE=1` for full console output.
 
@@ -350,14 +352,8 @@ The secondary sidebar pins Story at the top and switches it to **Back to
 session** when open. Chat sidebar sections collapse and reorder by dragging,
 with keyboard/touch arrow controls and saved browser layout preferences.
 
-**SimpleUI** is a full, independent chat surface (Vite + React), not a
-stripped WebUI. It reuses the same WebSocket backend but ships its own bundle,
-with a sticky composer, `@`-file picker, streaming markdown + syntax highlighting,
-vision/image attachments, session switching, and a lazy-loaded Tools/Todo/Task/Plan
-sidebar — deliberately minimal, fast, and focused.
-
-**VibeUI** (new in 1.1.7) is a focused coding workspace between SimpleUI and the
-full WebUI, built with Next.js and Radix UI and served as prebuilt assets by the
+**VibeUI** (new in 1.1.7) is a focused browser coding workspace beside the full
+WebUI, built with Next.js and Radix UI and served as prebuilt assets by the
 same host on port 3476. It adds a queued composer with Queue / Steer / BTW,
 provider and account setup, files and diff modals, a live Agents view, provider
 quotas, SAGE memory with a relationship graph and Simple / Extended context

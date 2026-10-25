@@ -1,7 +1,7 @@
 # Session journal: recording, resume, and the single timeline
 
 How a session is written to disk, and how it comes back looking like itself in
-the TUI, the WebUI, the SimpleUI and HQ.
+the TUI, the WebUI, VibeUI and HQ.
 
 The property this architecture exists to hold:
 
@@ -125,8 +125,8 @@ SessionTimelineEntry[]   user | assistant | system | thinking | tool | marker
         │
    ┌────┴────┬─────────────┬──────────────┐
    ▼         ▼             ▼              ▼
-  TUI      WebUI       SimpleUI          HQ
- HistoryEntry ChatMessage  ChatMessage+ToolCallInfo   (see §7)
+  TUI      WebUI       VibeUI            HQ
+ HistoryEntry ChatMessage  ChatEntry+ToolEntry        (see §7)
 ```
 
 **Ordering** is a two-pointer merge of two already-chronological sequences (the
@@ -144,11 +144,11 @@ colour and bubble shape; they never re-word.
 
 Each surface renders live in its own way, and resume must match *that surface*:
 
-| Option | TUI | WebUI | SimpleUI | Why |
-|---|---|---|---|---|
-| `thinkingPlacement` | `inline` | `merged-after` | `inline` | The WebUI commits the archived thinking log at `iteration.completed`, i.e. after the prose is on screen |
-| `textBlocks` | `split` | `split` | `join` | The SimpleUI streams a whole iteration into one bubble and lists tools beside the chat |
-| `markerSources` | full set | chat set | chat set | `checkpoint` would restate every user prompt in a chat transcript; `agent_session_linked` belongs in a fleet panel, and the TUI has none |
+| Option | TUI | WebUI | Why |
+|---|---|---|---|
+| `thinkingPlacement` | `inline` | `merged-after` | The WebUI commits the archived thinking log at `iteration.completed`, i.e. after the prose is on screen |
+| `textBlocks` | `split` | `split` | Both surfaces keep tool cards between prose blocks |
+| `markerSources` | full set | chat set | `checkpoint` would restate every user prompt in a chat transcript; `agent_session_linked` belongs in a fleet panel, and the TUI has none |
 
 `SessionMarker.detail` carries the source event's structured fields for the few
 sources a surface draws richly (the `delegate_*` pair). Handing replay only the

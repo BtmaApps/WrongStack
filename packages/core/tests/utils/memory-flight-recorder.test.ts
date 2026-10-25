@@ -163,9 +163,9 @@ describe('memory flight recorder', () => {
       },
     });
 
-    recorder.observe(sample(), { surface: 'simpleui' });
+    recorder.observe(sample(), { surface: 'vibeui' });
     now = 60_000;
-    const diagnosis = recorder.observe(sample(), { surface: 'simpleui' });
+    const diagnosis = recorder.observe(sample(), { surface: 'vibeui' });
     await recorder.stop();
 
     expect(diagnosis['memorySignal']).toBe('stable');

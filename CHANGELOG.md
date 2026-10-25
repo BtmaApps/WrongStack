@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Removed
+
+- **SimpleUI retired and replaced by VibeUI.** The `@wrongstack/simpleui` package is gone; VibeUI (`wstack vibeui` / `--vibeui`, default port 3476) is the focused browser surface. `wstack simpleui` and `--simpleui` still parse but open VibeUI and print a notice that SimpleUI has been retired. The interactive launch menu is now TUI / REPL, WebUI, VibeUI, HQ and Desktop, with VibeUI as option 3.
+- **`--full-auto` retired.** The SimpleUI-only shortcut for YOLO + autonomy in one run is accepted but ignored with a warning; use `--yolo` instead.
+
 ## [1.2.0] — 2026-10-24
 
 A visibility and workspace release: live model-output activity reaches terminal

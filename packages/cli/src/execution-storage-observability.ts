@@ -14,7 +14,7 @@ export function installStorageObservability(
     // ctx.todos checkpoint at packages/core/src/storage/todos-checkpoint.ts
     // emitting a JSON line on every save). Successful reads/writes
     // (`outcome: 'success'`) are not user-actionable signals and would
-    // clutter the CLI's stdout chat pane (the SimpleUI protocol decoder
+    // clutter the CLI's stdout chat pane (a browser protocol decoder
     // also rejects these frames before they reach the timeline; see
     // packages/webui-server/src/protocol/decoder.ts).
     //

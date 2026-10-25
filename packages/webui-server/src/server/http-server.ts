@@ -1,5 +1,5 @@
 /**
- * Static-file HTTP server for the WebUI / SimpleUI React frontends.
+ * Static-file HTTP server for the WebUI / VibeUI React frontends.
  *
  * Design:
  * - **Single port — shared HTTP + WebSocket.** A single port serves both the

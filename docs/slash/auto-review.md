@@ -40,7 +40,7 @@ iteration.completed
   → Director spawns review subagent with the remaining pool as fallbacks
   → persist full report + mailbox result
   → emit chimera.review_complete
-  → emit chimera.report_available to TUI, WebUI, and SimpleUI
+  → emit chimera.report_available to TUI, WebUI, and VibeUI
   → if findings meet cascadeOn (default `high`): emit chimera.cascade_needed
       → Director spawns bug-hunter (+ security-scanner for security findings)
       → edits re-read and re-reviewed, bounded by maxCascadeDepth
@@ -51,7 +51,7 @@ iteration.completed
 
 A completed report is advisory. The runtime persists the full text, sends a
 mailbox result, and shows a compact availability notice in TUI, WebUI, and
-SimpleUI. It does not append the report as a normal assistant response or wake
+VibeUI. It does not append the report as a normal assistant response or wake
 the leader. When findings meet the `cascadeOn` threshold (`high` by default —
 High and Critical), the correction cascade spawns follow-up fix agents
 (bug-hunter, plus security-scanner for security findings), bounded by

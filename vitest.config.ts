@@ -191,8 +191,8 @@ export default defineConfig({
     // They are spawned `detached` + unref'd, so nothing in the test process
     // owns them and a forgotten kill switch leaks one per run.
     globalSetup: ['./vitest.globalTeardown.ts'],
-    // `.tsx` is included explicitly: the Ink component tests in tui/ and
-    // simpleui/ are .tsx, and a `*.test.ts`-only glob silently skipped all of
+    // `.tsx` is included explicitly: the Ink component tests in tui/
+    // are .tsx, and a `*.test.ts`-only glob silently skipped all of
     // them — they passed CI by never running.
     include: [
       'packages/**/tests/**/*.test.{ts,tsx}',

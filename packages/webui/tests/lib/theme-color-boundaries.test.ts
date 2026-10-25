@@ -4,16 +4,10 @@ import { describe, expect, it } from 'vitest';
 
 /**
  * Every themed package whose `src` tree must stay free of hardcoded colors.
- *
- * `simpleui` is a separate design system with its own token names — its danger
- * voice is the full-color `--danger`, not webui's HSL-triple `--destructive` —
- * so it is scanned by the same rules but exempted separately below. Both
- * packages own files with identical relative paths (`automation.css`), which is
- * why allowlist keys are `<package>/<path-relative-to-that-package's-src>`.
+ * Allowlist keys are `<package>/<path-relative-to-that-package's-src>`.
  */
 const SCAN_ROOTS = [
   { package: 'webui', root: path.resolve(import.meta.dirname, '../../src') },
-  { package: 'simpleui', root: path.resolve(import.meta.dirname, '../../../simpleui/src') },
 ] as const;
 
 /**
@@ -62,35 +56,6 @@ const ISOLATED_COLOR_SURFACES = new Map<string, string>([
   ['webui/lib/palettes.ts', 'Defines the literal two-color swatches shown by the palette picker.'],
   ['webui/lib/tool-icon.ts', 'Maps externally supplied icon colors to stable color names.'],
   ['webui/syntax-highlight.css', 'Highlight.js owns paired light/dark syntax colors.'],
-
-  // ---- simpleui ----
-  // Mirrors the webui `index.css` exemption: this file *is* the palette. Every
-  // hex in it is a token definition (--bg, --text, --danger, --accent, …), and
-  // the surface rules below resolve against the variables it declares.
-  ['simpleui/styles.css', 'Declares the simpleui palette tokens; its literals ARE the tokens.'],
-  // Same role as webui/lib/palettes.ts — the swatch data behind the picker.
-  [
-    'simpleui/lib/palettes.ts',
-    'Defines the literal swatches shown by the simpleui palette picker.',
-  ],
-  // Same role as webui/syntax-highlight.css — a highlighter owns paired
-  // light/dark syntax colors rather than theme tokens.
-  [
-    'simpleui/lib/markdown-highlighter.ts',
-    'Markdown highlighter owns paired light/dark syntax colors, not theme tokens.',
-  ],
-  // Same role as webui/components/vector-memory-panel — data-viz series colors
-  // map to a fixed scale that is not the surface palette.
-  [
-    'simpleui/artifact-preview.tsx',
-    'Artifact preview renders build/tool status series from a fixed status ramp, not theme tokens.',
-  ],
-  // A modal scrim is intentionally alpha-blended neutral in both themes, so it
-  // has no theme token to reference; the surface beneath it still does.
-  [
-    'simpleui/automation.css',
-    'Automation modal scrim is a fixed-alpha neutral; the surfaces beneath it use tokens.',
-  ],
 ]);
 
 const NAMED_TAILWIND_PALETTE =
@@ -223,8 +188,7 @@ describe('WebUI theme color boundaries', () => {
     const violations = SCAN_ROOTS.flatMap(({ package: pkg, root }) =>
       sourceFiles(root).flatMap((file) => {
         const relative = `${pkg}/${path.relative(root, file).replaceAll('\\', '/')}`;
-        // index.css is exempt by name in webui; simpleui's equivalent
-        // (styles.css) is allowlisted above with a documented reason.
+        // index.css is exempt by name: it declares the palette tokens.
         if (relative === 'webui/index.css' || ISOLATED_COLOR_SURFACES.has(relative)) return [];
         return colorViolations(relative, readFileSync(file, 'utf8'));
       }),

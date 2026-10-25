@@ -1,11 +1,10 @@
 import type { Container, EventBus } from '@wrongstack/contracts/kernel';
 import type { Logger, MemoryPort, SessionStore } from '@wrongstack/contracts/types';
 import type { WstackPaths } from '@wrongstack/core/utils';
-import { type CliFlags, configureSimpleUiRuntimeContext } from '../boot/simpleui-full-auto.js';
 import { setupCliGovernance } from '../cli-main-helpers.js';
 
 interface SetupReplayAndGovernanceOptions {
-  flags: CliFlags;
+  flags: Record<string, string | boolean>;
   container: Container;
   wpaths: WstackPaths;
   projectRoot: string;
@@ -65,8 +64,6 @@ export async function setupReplayAndGovernance({
     captureWorkspaceCheckpoint: async () =>
       sessionStore.captureWorkspaceCheckpoint?.(session.id, 0),
   });
-
-  configureSimpleUiRuntimeContext(context.meta, flags);
 
   if (traceId) {
     memoryStore.withTraceId(traceId);

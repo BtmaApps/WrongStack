@@ -24,7 +24,6 @@ function fixture(
 ): BootLaunchInput {
   return {
     isInteractiveTTY: false,
-    simpleUiFullAuto: false,
     flags: {},
     config: { yolo: false, launch: { mode: 'tui', autonomy: 'auto' } },
     renderer: { write: vi.fn(), writeWarning: vi.fn() },
@@ -49,12 +48,6 @@ describe('boot launch choices', () => {
     expect(input.flags).toMatchObject({ autonomy: 'off', tui: false, 'no-tui': true });
     expect(mocks.prompts).not.toHaveBeenCalled();
     expect(mocks.persist).not.toHaveBeenCalled();
-  });
-
-  it('uses automatic autonomy for SimpleUI even with an opt-out flag', async () => {
-    const input = fixture({ simpleUiFullAuto: true, flags: { 'no-autonomy': true } });
-    await applyBootLaunchChoices(input);
-    expect(input.flags.autonomy).toBe('auto');
   });
 
   it('closes the reader when the system-prompt menu is cancelled', async () => {

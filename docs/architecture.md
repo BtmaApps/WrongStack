@@ -63,7 +63,7 @@ site. All current workspace packages share the version in the root
 | External integration | @wrongstack/mcp, @wrongstack/acp, @wrongstack/plug-lsp, @wrongstack/plugin-sdk, @wrongstack/plugins, @wrongstack/telegram, @wrongstack/wrongtrace | MCP, Agent Client Protocol, LSP, bundled extensions, and Telegram bridge |
 | MCP products | codebase-index-mcp, kanban-mcp, mailbox-mcp, requirement-intake-mcp, sage-mcp | Capability-limited MCP facades over local domains |
 | Browser contracts | @wrongstack/webui-protocol, @wrongstack/client | Shared wire types/schema and browser client transport |
-| User surfaces | cli, tui, webui, webui-server, simpleui, webui-hq, desktop | Terminal, full browser UI, small browser UI, HQ dashboard, and Electron shell |
+| User surfaces | cli, tui, webui, webui-server, vibeui, webui-hq, desktop | Terminal, full browser UI, focused browser coding workspace, HQ dashboard, and Electron shell |
 | Support | bench, security-scanner, wrongstack | Benchmarks, standalone scan surface, and published command shim |
 
 The package graph is a directed acyclic graph checked by
@@ -202,7 +202,7 @@ fallbacks.
 | SAGE memory | packages/sage/src/project-server.ts owns the SQLite memory graph/search store. | RemoteMemoryPort implements the memory-port contract for all hosts. Retrieval/memory injection and tools use the port, not direct store construction. |
 | Kanban | packages/kanban/src/server/project-server.ts owns SqliteKanbanStorage at .wrongstack/kanbans/_kanban.sqlite. | Domain calls, board events, workflow state, and supervisor integration go through the Kanban client/store facade. Legacy board data is migrated transactionally by storage. |
 | Codebase Index | packages/tools/src/codebase-index/project-server.ts owns the SQLite index, write queue, index job, and external file watcher. | Search/index/call-graph tools and Code Atlas use the shared client. Read work can overlap; writes and full-index coalescing stay with the owner. |
-| Session Catalog | core/session-catalog/project-server.ts owns catalog.sqlite plus durable hashed lease proofs, two-phase resume reservations, maintenance leases, and bounded live presence. Sharded session JSONL remains transcript authority. | DefaultSessionStore publishes coarse summary boundaries; ProjectSessionRegistry supplies claim/heartbeat/presence compatibility; TUI, WebUI, SimpleUI, and local HQ query or subscribe over authenticated IPC. The device-global session-registry.json is no longer a production authority. |
+| Session Catalog | core/session-catalog/project-server.ts owns catalog.sqlite plus durable hashed lease proofs, two-phase resume reservations, maintenance leases, and bounded live presence. Sharded session JSONL remains transcript authority. | DefaultSessionStore publishes coarse summary boundaries; ProjectSessionRegistry supplies claim/heartbeat/presence compatibility; TUI, WebUI, VibeUI, and local HQ query or subscribe over authenticated IPC. The device-global session-registry.json is no longer a production authority. |
 
 connections.health in the WebUI server exposes a common operational view of
 these services: owner identity, endpoint/storage state, clients, queue/watcher
@@ -310,7 +310,7 @@ runtime dependency of the agent loop.
 The published wrongstack application is a small bin shim around
 @wrongstack/cli. The CLI parses arguments, resolves boot configuration, handles
 short-circuit subcommands/surfaces, wires services and registries, and then
-dispatches an REPL, Ink TUI, WebUI host, SimpleUI host, desktop launch, or HQ
+dispatches an REPL, Ink TUI, WebUI host, VibeUI host, desktop launch, or HQ
 server as requested. Slash commands are a CLI interaction layer over the same
 domain services; they should not open project databases directly.
 
@@ -318,7 +318,7 @@ domain services; they should not open project databases directly.
 sessions, fleet state, project-service health, Kanban, SAGE/Brain interactions,
 and terminal-specific controls from runtime events and service snapshots.
 
-### Full WebUI and SimpleUI
+### Full WebUI and VibeUI
 
 @wrongstack/webui is the full React 19/Vite browser client. It owns browser
 components, stores, hooks, protocol helpers, and localization. It does not own
@@ -334,11 +334,12 @@ mutable for session, model, project, and mode switching; route/dispatcher
 modules read them through the shared mutable-state interface rather than stale
 closure copies.
 
-@wrongstack/simpleui is a deliberately smaller browser client served by the
-same backend protocol. It sends ordinary user_message frames, keeps a compact
-per-session composer/file-reference state, and avoids the full WebUI's optional
-prompt-refinement route. It remains a client of the same mailbox and project
-services.
+@wrongstack/vibeui is a focused Next.js/Radix browser coding workspace. Its
+prebuilt assets are served by the same WebUI host and it speaks the same
+WebSocket protocol; it does not start a separate Next server in production. It
+remains a client of the same mailbox and project services. SimpleUI
+(@wrongstack/simpleui) was retired and replaced by VibeUI; `wstack simpleui` and
+`--simpleui` now open VibeUI.
 
 ### HQ and desktop
 

@@ -143,8 +143,8 @@ describe('buildCspHeader', () => {
   // and it is strictly BROADER than the per-extension `'sha256-…'` allowlist
   // this project already rejected on 2026-07-15.
   //
-  // Verified rather than assumed before flipping: the Vite builds for webui,
-  // simpleui and webui-hq contain zero inline `<script>` without `src`.
+  // Verified rather than assumed before flipping: the Vite builds for webui
+  // and webui-hq contain zero inline `<script>` without `src`.
   it('keeps script-src strict — no unsafe-inline, no per-extension hashes', () => {
     const csp = buildCspHeader();
     // The rejected narrow workaround must not creep back either.

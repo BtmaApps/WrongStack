@@ -1278,7 +1278,7 @@ an explicit `omitted` count, plus alerts such as heartbeats coming due.
 `buildKanbanWorkbench()` is exported as a pure function of a snapshot so every
 UI can test the exact same semantics. It is **navigation, not a task store**:
 follow a selected card back to its own board before mutating it. The surface
-contract across WebUI, TUI and SimpleUI is specified in
+contract across WebUI and TUI is specified in
 [kanban-workbench.md](kanban-workbench.md).
 
 ### Queue anomalies
