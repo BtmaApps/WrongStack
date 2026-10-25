@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-25T07:59:11.825Z",
+  "generatedAt": "2026-10-25T08:53:59.772Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,17 +12,17 @@
   },
   "summary": {
     "packages": 45,
-    "sourceFiles": 5179,
-    "testFiles": 4567,
-    "sourceLines": 1131006,
+    "sourceFiles": 5182,
+    "testFiles": 4571,
+    "sourceLines": 1131495,
     "workspaceEdges": 223,
-    "moduleEdges": 15425,
+    "moduleEdges": 15434,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 3,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 0,
-    "testOnlyExports": 953
+    "testOnlyExports": 956
   },
   "errors": [],
   "packageCycles": [],
@@ -781,8 +781,8 @@
     {
       "name": "@wrongstack/sage",
       "dir": "packages/sage",
-      "sourceFiles": 151,
-      "testFiles": 157,
+      "sourceFiles": 154,
+      "testFiles": 161,
       "workspaceDependencies": [
         "@wrongstack/contracts",
         "@wrongstack/coordination",
@@ -800,7 +800,7 @@
         {
           "path": "packages/sage/tsconfig.test.json",
           "error": null,
-          "testFiles": 157
+          "testFiles": 161
         }
       ]
     },
@@ -16288,6 +16288,12 @@
         ]
       },
       {
+        "file": "packages/sage/tests/eval-injection-replay.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/sage/tests/feedback-counters.test.ts",
         "projects": [
           "root-node"
@@ -16517,6 +16523,12 @@
       },
       {
         "file": "packages/sage/tests/paths.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/sage/tests/progress-log-injection.test.ts",
         "projects": [
           "root-node"
         ]
@@ -17099,6 +17111,18 @@
       },
       {
         "file": "packages/sage/tests/use-credit-render-path.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/sage/tests/validity-gate-injection.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/sage/tests/verification-stamp-no-rewrite.test.ts",
         "projects": [
           "root-node"
         ]
@@ -31163,6 +31187,18 @@
     {
       "file": "packages/sage/src/daemon-log.ts",
       "name": "SAGE_DAEMON_LOG_MAX_BYTES"
+    },
+    {
+      "file": "packages/sage/src/eval/injection-replay.ts",
+      "name": "mineReplayCases"
+    },
+    {
+      "file": "packages/sage/src/eval/injection-replay.ts",
+      "name": "replayInjection"
+    },
+    {
+      "file": "packages/sage/src/eval/injection-replay.ts",
+      "name": "summarizeReplay"
     },
     {
       "file": "packages/sage/src/middleware/memory-injector-agent.ts",

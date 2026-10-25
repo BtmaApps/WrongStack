@@ -1030,6 +1030,11 @@
     "packages/sage/src/daemon-log.ts": [
       "SAGE_DAEMON_LOG_MAX_BYTES"
     ],
+    "packages/sage/src/eval/injection-replay.ts": [
+      "mineReplayCases",
+      "replayInjection",
+      "summarizeReplay"
+    ],
     "packages/sage/src/middleware/memory-injector-agent.ts": [
       "memoryInjectorAgentCoverage"
     ],

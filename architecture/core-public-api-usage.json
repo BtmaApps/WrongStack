@@ -4,8 +4,8 @@
   "rootImportFiles": 0,
   "bySpecifier": {
     "@wrongstack/core/agent": {
-      "files": 480,
-      "typeOnly": 364,
+      "files": 481,
+      "typeOnly": 365,
       "runtimeOrMixed": 145
     },
     "@wrongstack/core/agent-catalog": {
@@ -1595,6 +1595,12 @@
     {
       "specifier": "@wrongstack/core/agent",
       "file": "packages/sage-mcp/src/adapter.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/sage/src/eval/injection-replay.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
