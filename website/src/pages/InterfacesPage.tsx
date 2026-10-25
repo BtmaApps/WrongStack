@@ -84,10 +84,6 @@ export function InterfacesPage() {
           eyebrow="Surface guide"
           title="From a single terminal to an operations room."
         />
-        <p className="mt-6 max-w-4xl text-sm leading-7 text-muted">
-          SimpleUI was retired and replaced by VibeUI; <code>wstack simpleui</code> and{' '}
-          <code>--simpleui</code> now open VibeUI.
-        </p>
         <div className="mt-14 space-y-5">
           {surfaces.map((surface, index) => (
             <Reveal key={surface.id} delay={index * 0.025}>

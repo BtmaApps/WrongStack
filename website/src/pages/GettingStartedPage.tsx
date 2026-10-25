@@ -209,7 +209,7 @@ export function GettingStartedPage() {
               CodeXml,
               'Focused coding workspace',
               'wstack --vibeui',
-              'A browser coding workspace beside the full WebUI—chat queue, sessions, model picker, diffs and agent transcripts on port 3476. It replaces the retired SimpleUI; wstack --simpleui now opens VibeUI.',
+              'A browser coding workspace beside the full WebUI—chat queue, sessions, model picker, diffs and agent transcripts on port 3476.',
             ],
             [
               ShieldCheck,
