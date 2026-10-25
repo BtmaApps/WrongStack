@@ -179,14 +179,18 @@ describe('banner pixel formation', () => {
       expect(initial).not.toContain(WORDMARK_LINES[0]);
       expect(initial).not.toContain('██');
       expect(initial).toContain('openai › gpt-test');
+      // Wait for each repaint instead of a fixed 90 ms: under a loaded coverage
+      // run the next animation tick can land later than that. The clock is
+      // frozen between steps, so waiting cannot skip a phase.
+      const repaint = (check: (frame: string) => void) =>
+        vi.waitFor(() => check(view.lastFrame()), { timeout: 5_000, interval: 20 });
       clock.mockReturnValue(startedAt + 650);
-      await settle(90);
+      await repaint((frame) => expect(frame).not.toBe(initial));
       const middle = view.lastFrame();
-      expect(middle).not.toBe(initial);
       expect(middle).not.toContain(WORDMARK_LINES[0]);
       expect(middle.split('\n')).toHaveLength(initial.split('\n').length);
       clock.mockReturnValue(startedAt + BANNER_FORMATION_DURATION_MS);
-      await settle(90);
+      await repaint((frame) => expect(frame).toContain(WORDMARK_LINES[0]));
       const completed = view.lastFrame();
       expect(completed).toContain(WORDMARK_LINES[0]);
       expect(completed.split('\n')).toHaveLength(initial.split('\n').length);
