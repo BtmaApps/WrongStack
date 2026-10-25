@@ -150,8 +150,10 @@ export function createHygieneRunner(
     try {
       // Consolidation proposals nobody rejected within the review window.
       const due = await acceptDueConsolidations(store, now());
-      if (due.accepted.length > 0 || due.failed > 0) {
-        log(`sage maintenance: consolidation accepted=${due.accepted.length} failed=${due.failed}`);
+      if (due.accepted.length > 0 || due.failed > 0 || due.held > 0) {
+        log(
+          `sage maintenance: consolidation accepted=${due.accepted.length} failed=${due.failed} heldForReview=${due.held}`,
+        );
       }
     } catch (error) {
       log(

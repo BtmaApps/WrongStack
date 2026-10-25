@@ -14,6 +14,9 @@ const EVERGREEN_KINDS: ReadonlySet<Sage['kind']> = new Set([
   'fleet_convention',
 ]);
 
+/** Tag every consolidation lesson carries (see consolidation/distill.ts). */
+export const CONSOLIDATED_TAG = 'consolidated';
+
 /** Written and last referenced longer ago than this: no longer auto-injected. */
 export const INJECTION_AGE_OUT_MS = 45 * 86_400_000;
 const PINNED_IMPORTANCE = 0.9;
@@ -31,11 +34,16 @@ const PINNED_IMPORTANCE = 0.9;
  * when the content was last confirmed useful.
  */
 export function isAgedOutForInjection(
-  memory: Pick<Sage, 'kind' | 'persistence' | 'importance' | 'createdAt' | 'lastUsedAt'>,
+  memory: Pick<Sage, 'kind' | 'persistence' | 'importance' | 'createdAt' | 'lastUsedAt'> & {
+    tags?: readonly string[] | undefined;
+  },
   nowMs: number,
 ): boolean {
   if (memory.persistence === 'permanent' || memory.importance >= PINNED_IMPORTANCE) return false;
-  if (EVERGREEN_KINDS.has(memory.kind)) return false;
+  // A model-distilled lesson has to earn its keep whatever kind it claims: one
+  // nobody references ages out like any other note instead of riding the
+  // evergreen exemption (consolidation reads untrusted memory text).
+  if (EVERGREEN_KINDS.has(memory.kind) && !memory.tags?.includes(CONSOLIDATED_TAG)) return false;
   const created = Date.parse(memory.createdAt);
   const used = Date.parse(memory.lastUsedAt ?? '');
   const lastTouch = Number.isFinite(used) ? Math.max(used, created) : created;

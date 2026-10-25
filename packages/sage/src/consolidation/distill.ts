@@ -1,8 +1,10 @@
 import { isEphemeralMemoryText } from '../memory-input-validation.js';
 import { normalizeText } from '../memory-text.js';
+import { CONSOLIDATED_TAG } from '../shared/injection-recency.js';
 import { isProgressLogText } from '../shared/progress-log.js';
 import type { MemoryAnchor, SageKind } from '../types.js';
 import { type ConsolidationBatch, MEMBER_PROMPT_CHARS } from './batches.js';
+import { escapesMemoryFence } from './review-hold.js';
 
 /**
  * Model half of consolidation: turn one batch of related, mostly retired
@@ -123,7 +125,8 @@ export function parseConsolidationResponse(
 
   const text = typeof value.text === 'string' ? normalizeText(value.text) : '';
   if (text.length < MIN_LESSON_CHARS || text.length > MAX_LESSON_CHARS) return null;
-  if (isProgressLogText(text) || isEphemeralMemoryText(text)) return null;
+  if (isProgressLogText(text) || isEphemeralMemoryText(text) || escapesMemoryFence(text))
+    return null;
 
   const kind = value.kind as SageKind;
   if (!LESSON_KINDS.has(kind)) return null;
@@ -161,7 +164,7 @@ export function parseConsolidationResponse(
     text,
     kind,
     anchors,
-    tags: [...new Set([...tags, 'consolidated'])],
+    tags: [...new Set([...tags, CONSOLIDATED_TAG])],
     importance: Math.min(0.85, Math.max(...sources.map((memory) => memory.importance))),
     sourceIds,
     sourceRevisions: sources.map((memory) => memory.revision),
