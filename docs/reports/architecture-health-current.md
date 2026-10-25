@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-25T10:13:09.571Z
+**Generated:** 2026-10-25T10:51:53.022Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,8 +9,8 @@
 |---|---:|
 | Workspace packages | 45 |
 | Production source files | 5191 |
-| Production source lines | 1132610 |
-| Test files | 4574 |
+| Production source lines | 1132618 |
+| Test files | 4575 |
 | Workspace dependency edges | 223 |
 | Relative module edges | 15463 |
 | Non-command slash imports | 0 |
@@ -55,7 +55,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/requirement-intake | 18 | 20 | @wrongstack/core |
 | @wrongstack/requirement-intake-mcp | 6 | 3 | @wrongstack/core, @wrongstack/mcp, @wrongstack/requirement-intake |
 | @wrongstack/runtime | 35 | 34 | @wrongstack/builtin-plugins, @wrongstack/chronicle, @wrongstack/contracts, @wrongstack/coordination, @wrongstack/core, @wrongstack/governance, @wrongstack/hq, @wrongstack/kanban, @wrongstack/primitives, @wrongstack/sage, @wrongstack/tools, @wrongstack/vector-memory, @wrongstack/webui-protocol |
-| @wrongstack/sage | 162 | 163 | @wrongstack/contracts, @wrongstack/coordination, @wrongstack/core, @wrongstack/hq, @wrongstack/persistence, @wrongstack/primitives |
+| @wrongstack/sage | 162 | 164 | @wrongstack/contracts, @wrongstack/coordination, @wrongstack/core, @wrongstack/hq, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/sage-mcp | 7 | 6 | @wrongstack/contracts, @wrongstack/core, @wrongstack/mcp, @wrongstack/sage |
 | @wrongstack/sdd | 45 | 42 | @wrongstack/contracts, @wrongstack/coordination, @wrongstack/core, @wrongstack/kanban, @wrongstack/primitives, @wrongstack/requirement-intake, @wrongstack/worktree |
 | @wrongstack/security-scanner | 21 | 34 | @wrongstack/contracts, @wrongstack/core |

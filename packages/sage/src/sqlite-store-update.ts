@@ -142,7 +142,15 @@ export function updateSqliteSage(
   }
   const resultingKind = input.kind ?? existing.kind;
   const resultingAnchors = input.anchors ?? existing.anchors;
-  if (STRUCTURAL_KINDS.has(resultingKind) && resultingAnchors.length === 0) {
+  // Enforced when the update sets the kind or the anchors. Anchorless file
+  // notes written before the rule existed must still move through their
+  // lifecycle: checking every update made archive/delete/supersede of them
+  // throw, so review resolutions on those targets reverted to pending forever.
+  if (
+    (input.kind !== undefined || input.anchors !== undefined) &&
+    STRUCTURAL_KINDS.has(resultingKind) &&
+    resultingAnchors.length === 0
+  ) {
     throw new Error(
       `SAGE kind "${resultingKind}" requires at least one anchor (file/symbol/command binding).`,
     );
