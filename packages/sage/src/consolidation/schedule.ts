@@ -12,6 +12,8 @@ const FIRST_CHECK_MS = 10 * 60_000;
 const IDLE_MS = 10 * 60_000;
 /** A pass that holds the lock longer than this crashed; the lock is taken over. */
 const STALE_LOCK_MS = 2 * 60 * 60_000;
+/** Retry delay after an outdated store owner dropped a proposal's member list. */
+const STALE_OWNER_RETRY_MS = 60 * 60_000;
 const STATE_FILE = 'consolidation.json';
 const LOCK_FILE = 'consolidation.lock';
 
@@ -117,14 +119,18 @@ export function scheduleConsolidation(deps: ConsolidationScheduleDeps): () => vo
         projectRoot: deps.projectRoot,
         skipIds: new Set(Object.keys(seen)),
       });
-      const stamp = new Date(now()).toISOString();
-      for (const id of seenIds) seen[id] = stamp;
+      // An outdated store owner withdrew the pass's proposal: remember nothing
+      // as seen and retry an hour later instead of tomorrow.
+      const stamp = new Date(
+        report.staleOwner ? now() - DAY_MS + STALE_OWNER_RETRY_MS : now(),
+      ).toISOString();
+      if (!report.staleOwner) for (const id of seenIds) seen[id] = stamp;
       fs.writeFileSync(
         statePath,
         `${JSON.stringify({ lastRunAt: stamp, lastReport: report, seen }, null, 2)}\n`,
       );
       deps.logger.debug(
-        `sage consolidation: pool=${report.pool} batches=${report.batches} calls=${report.calls} proposed=${report.proposed} noLesson=${report.noLesson} skippedMissing=${report.skippedMissing} errors=${report.errors}`,
+        `sage consolidation: pool=${report.pool} batches=${report.batches} calls=${report.calls} proposed=${report.proposed} noLesson=${report.noLesson} skippedMissing=${report.skippedMissing} errors=${report.errors}${report.staleOwner ? ' staleOwner=restart the SAGE daemon' : ''}`,
       );
     } catch (error) {
       deps.logger.debug(

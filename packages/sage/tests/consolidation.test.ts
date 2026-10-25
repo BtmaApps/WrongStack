@@ -254,6 +254,40 @@ describe('consolidation end to end on a real store', () => {
     }
   });
 
+  it('withdraws the proposal and stops when an outdated store owner drops the member list', async () => {
+    await seedLogs();
+    const rejectCandidate = vi.fn((id: string, reason: string) =>
+      store.rejectCandidate(id, reason),
+    );
+    const outdatedOwner = {
+      listSage: store.listSage.bind(store),
+      listCandidates: store.listCandidates.bind(store),
+      // What a pre-consolidation daemon does: unknown fields are not persisted.
+      createCandidate: (input: Parameters<typeof store.createCandidate>[0]) => {
+        const { supersedesMemoryIds: _ids, supersedesRevisions: _revs, ...rest } = input;
+        return store.createCandidate(rest);
+      },
+      rejectCandidate,
+    };
+    const llm = vi.fn(async (_system: string, prompt: string) => {
+      const ids = [...prompt.matchAll(/"id": "([^"]+)"/g)].map((m) => m[1]);
+      return JSON.stringify({
+        lesson: {
+          text: 'packages/tui/src/hooks/use-brain-panel.ts focus handling was audited clean; its duplicate interval is idempotent and is not a defect to re-raise.',
+          kind: 'anti_pattern',
+          anchors: [{ type: 'file', path: 'packages/tui/src/hooks/use-brain-panel.ts' }],
+          sourceIds: ids,
+        },
+      });
+    });
+
+    const report = await runConsolidationPass(outdatedOwner, llm);
+
+    expect(report).toMatchObject({ staleOwner: true, proposed: 0, calls: 1 });
+    expect(rejectCandidate).toHaveBeenCalledTimes(1);
+    expect(await store.listCandidates(false)).toEqual([]);
+  });
+
   it('skips a batch whose shared path is gone instead of paying for a stale lesson', async () => {
     await seedLogs();
     const llm = vi.fn(async () => JSON.stringify({ lesson: null }));

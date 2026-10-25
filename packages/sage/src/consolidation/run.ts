@@ -20,6 +20,7 @@ export interface ConsolidationSurface {
   listSage(statuses?: SageStatus[]): Promise<Sage[]>;
   listCandidates(includeResolved?: boolean): Promise<MemoryCandidate[]>;
   createCandidate(input: CreateCandidateInput): Promise<MemoryCandidate>;
+  rejectCandidate?(candidateId: string, reason: string): Promise<boolean>;
 }
 
 export interface ConsolidationReport {
@@ -34,6 +35,8 @@ export interface ConsolidationReport {
   errors: number;
   /** Members sent to the model this pass. */
   seenIds: string[];
+  /** The store owner dropped the member list: it is older than this host. */
+  staleOwner?: boolean | undefined;
 }
 
 /**
@@ -107,8 +110,9 @@ export async function runConsolidationPass(
           .map((source) => [JSON.stringify(source), source]),
       ).values(),
     ].slice(0, MAX_PROPOSAL_SOURCES);
+    let created: MemoryCandidate;
     try {
-      await surface.createCandidate({
+      created = await surface.createCandidate({
         text: lesson.text,
         kind: lesson.kind,
         scope: 'project',
@@ -122,10 +126,24 @@ export async function runConsolidationPass(
         supersedesMemoryIds: lesson.sourceIds,
         supersedesRevisions: lesson.sourceRevisions,
       });
-      report.proposed++;
     } catch {
       report.errors++;
+      continue;
     }
+    // A store owner from before consolidation drops the member list without
+    // an error, leaving a proposal that adds the lesson and retires nothing.
+    // Withdraw it and stop paying for calls until the owner is restarted.
+    if (created.supersedesMemoryIds?.length !== lesson.sourceIds.length) {
+      await surface
+        .rejectCandidate?.(
+          created.id,
+          'SAGE store owner predates consolidation (member list dropped); restart it.',
+        )
+        .catch(() => false);
+      report.staleOwner = true;
+      break;
+    }
+    report.proposed++;
   }
   return report;
 }
