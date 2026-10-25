@@ -487,7 +487,7 @@ Scheduled by `setupSage` (1 hour after boot, then every 24h):
 
 ### 8.9 Daily consolidation (`Sage.consolidate`, default on)
 
-Code: `packages/sage/src/consolidation/`. Hosts that pass `getLlmCall` to `setupSage` (the CLI, via `createMemoryCuratorLlmCall`) schedule it; the standalone WebUI server does not yet.
+Code: `packages/sage/src/consolidation/`. Hosts that pass `getLlmCall` to `setupSage` schedule it: the CLI (`cli-main-boot.ts`) and the WebUI server (`backend-services.ts`, providers built by `saved-provider.ts`), both via `createMemoryCuratorLlmCall`.
 
 1. **When:** at most once a day per project, only after the host's session has been idle 10 minutes. State and an exclusive lock live in `hygiene/consolidation.json` / `consolidation.lock`, so one of several hosts does the pass.
 2. **Pool (no LLM):** active project/file/symbol memories with a file/symbol/test anchor that are progress logs (`shared/progress-log.ts`) or aged out of injection (`shared/injection-recency.ts`); never permanent, importance ≥ 0.9, audience-scoped, or already under a consolidation proposal (rejected ones cool down 90 days).

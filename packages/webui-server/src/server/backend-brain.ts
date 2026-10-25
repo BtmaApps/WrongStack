@@ -22,6 +22,7 @@ import {
 import type { ProviderRegistry } from '@wrongstack/core/registry';
 import { resolveTypeSafeJudge } from '@wrongstack/core/typesafe';
 import type { WstackPaths } from '@wrongstack/core/utils';
+import { buildSavedProvider } from './saved-provider.js';
 
 /** Shared Brain ladder and standalone host-owned forms, monitor and persistence. */
 export function createBackendBrain({
@@ -98,30 +99,7 @@ export function createBackendBrain({
     defaultProviderId: config.provider,
     sessionProvider: () => provider,
     sessionModel: () => context.model,
-    resolveProvider: (providerId) => {
-      const savedCfg: Partial<import('@wrongstack/contracts/types').ProviderConfig> =
-        config.providers?.[providerId] ?? {};
-      // The legacy top-level key/baseUrl belong to the primary only (same rule
-      // as the CLI's resolveRawProviderConnection). Handing them to every
-      // provider sent the primary's key to other vendors, and to any base URL
-      // `provider_manage` repointed (WS-2026-09-26-01).
-      const isAccountAlias = savedCfg.type !== undefined && savedCfg.type !== providerId;
-      const inheritsPrimary =
-        !isAccountAlias && (config.provider === undefined || config.provider === providerId);
-      // The VULN-006 sentinel (`endpointCredentialsSuppressed` in @wrongstack/providers).
-      const repointed = Array.isArray(savedCfg.envVars) && savedCfg.envVars.length === 0;
-      // `type` names the provider; the factory is the saved type (an alias
-      // `work` is built by the `anthropic` factory, not looked up as `work`).
-      return providerRegistry.create(
-        {
-          ...savedCfg,
-          apiKey: savedCfg.apiKey ?? (inheritsPrimary && !repointed ? config.apiKey : undefined),
-          baseUrl: savedCfg.baseUrl ?? (inheritsPrimary ? config.baseUrl : undefined),
-          type: providerId,
-        } as never,
-        savedCfg.type ?? providerId,
-      );
-    },
+    resolveProvider: (providerId) => buildSavedProvider(providerRegistry, config, providerId),
     getSystemOneJudge: () =>
       resolveTypeSafeJudge({ config: getHostConfig(), feature: 'brain', logger }),
     ledger: {

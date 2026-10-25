@@ -51,7 +51,12 @@ import { SessionMemoryConsolidator } from '@wrongstack/core/storage';
 import { resolveTypeSafeJudge } from '@wrongstack/core/typesafe';
 import { estimateRequestTokensCalibrated } from '@wrongstack/core/utils';
 import { makeLightSubagentFactory } from '@wrongstack/runtime';
-import { getSageService, setupSage } from '@wrongstack/sage';
+import {
+  createMemoryCuratorLlmCall,
+  getSageService,
+  type LlmCallFn,
+  setupSage,
+} from '@wrongstack/sage';
 import { installVibeProtocol } from '@wrongstack/sdd';
 import {
   createWrongTraceHookPair,
@@ -68,6 +73,7 @@ import { discoverMailboxBridgeForWebui } from './discover-mailbox-bridge.js';
 import { GoalWebSocketHandler } from './goal-ws-handler.js';
 import { createMaxContextUpdater, positiveWindow } from './max-context-updater.js';
 import { resolveProviderModelMetadata } from './model-catalog.js';
+import { buildSavedProvider } from './saved-provider.js';
 import { SddBoardWebSocketHandler } from './sdd-board-ws-handler.js';
 import { buildSddWizardDeps } from './sdd-wizard-wiring.js';
 import { SddWizardWebSocketHandler } from './sdd-wizard-ws-handler.js';
@@ -125,6 +131,7 @@ export async function createAgentServices(input: AgentServicesInput): Promise<Ag
   installVibeProtocol(pipelines);
   // Shared CLI/WebUI wiring: tool-call inject, opt-in turn inject, domain terms,
   // context monitor, session-end commit extractor, and throttled hygiene teardown.
+  let memoryCuratorLlm: LlmCallFn | undefined;
   const runSageSessionHygiene = setupSage({
     config,
     pipelines,
@@ -133,6 +140,8 @@ export async function createAgentServices(input: AgentServicesInput): Promise<Ag
     events,
     getSessionId: () => input.sessionGetter().id,
     projectRoot,
+    // Assigned once the agent exists (its provider chain wraps the calls).
+    getLlmCall: () => memoryCuratorLlm,
   });
   // CLI parity (`prepareRuntimeDispatch`): same setup, same opt-in gate, same
   // position after SAGE on the request pipeline.
@@ -401,6 +410,23 @@ export async function createAgentServices(input: AgentServicesInput): Promise<Ag
         ...(consSage ? { Sage: consSage } : {}),
       }),
     );
+  }
+  // SAGE background passes (daily consolidation, triage) on the
+  // `memory-curator` route, through the agent's provider chain (CLI parity:
+  // cli-main-boot.ts). Providers are built with the Brain's saved-config rule.
+  const fallbackProfileManager = container.safeResolve(TOKENS.FallbackProfileManager);
+  if (fallbackProfileManager) {
+    memoryCuratorLlm = createMemoryCuratorLlmCall({
+      buildProvider: (providerId) => buildSavedProvider(providerRegistry, input.config, providerId),
+      getConfig: () => input.config,
+      fallbackProfileManager,
+      statusTracker: container.safeResolve(TOKENS.ProviderModelStatusTracker),
+      wrapProviderCall: (request, inner) =>
+        agent.extensions.wrapProviderRunner(
+          (_ctx: typeof agent.ctx, wrapped: typeof request) => inner(wrapped),
+          { exclude: ['fallback-model'] },
+        )(agent.ctx, request),
+    });
   }
   console.log('[WebUI] Agent initialized');
 

@@ -109,8 +109,8 @@
       "runtimeOrMixed": 58
     },
     "@wrongstack/core/registry": {
-      "files": 181,
-      "typeOnly": 74,
+      "files": 183,
+      "typeOnly": 76,
       "runtimeOrMixed": 110
     },
     "@wrongstack/core/replay": {
@@ -6538,6 +6538,12 @@
     },
     {
       "specifier": "@wrongstack/core/registry",
+      "file": "packages/webui-server/src/server/saved-provider.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/registry",
       "file": "packages/webui-server/src/server/session-handler-helpers.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -6557,6 +6563,12 @@
     {
       "specifier": "@wrongstack/core/registry",
       "file": "packages/webui-server/src/server/types.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/registry",
+      "file": "packages/webui-server/tests/saved-provider.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },

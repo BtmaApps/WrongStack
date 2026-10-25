@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-25T09:48:10.460Z",
+  "generatedAt": "2026-10-25T09:55:30.155Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 45,
-    "sourceFiles": 5190,
-    "testFiles": 4572,
-    "sourceLines": 1132522,
+    "sourceFiles": 5191,
+    "testFiles": 4573,
+    "sourceLines": 1132563,
     "workspaceEdges": 223,
-    "moduleEdges": 15460,
+    "moduleEdges": 15462,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 3,
@@ -1119,8 +1119,8 @@
     {
       "name": "@wrongstack/webui-server",
       "dir": "packages/webui-server",
-      "sourceFiles": 304,
-      "testFiles": 308,
+      "sourceFiles": 305,
+      "testFiles": 309,
       "workspaceDependencies": [
         "@wrongstack/builtin-plugins",
         "@wrongstack/chronicle",
@@ -1153,7 +1153,7 @@
         {
           "path": "packages/webui-server/tsconfig.test.json",
           "error": null,
-          "testFiles": 308
+          "testFiles": 309
         }
       ]
     },
@@ -24983,6 +24983,12 @@
       },
       {
         "file": "packages/webui-server/tests/routes-composition-coverage.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/webui-server/tests/saved-provider.test.ts",
         "projects": [
           "root-node"
         ]
