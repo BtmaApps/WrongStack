@@ -124,17 +124,45 @@ describe('mailbox HQ publisher sharing', () => {
     expect(createHqPublisherFromEnv).toHaveBeenCalledTimes(2);
   });
 
-  it('balances the refcount when HQ is disabled', () => {
+  it('balances the refcount when HQ is disabled and evicts the entry after the last Agent disposes', () => {
     createHqPublisherFromEnv.mockReturnValue(undefined);
 
-    const agent = makeAgent('/repo', 's1');
-    attachMailboxChecker(agent.internals);
-    attachMailboxChecker(makeAgent('/repo', 's1').internals);
-    agent.dispose();
+    const agent1 = makeAgent('/repo', 's1');
+    const agent2 = makeAgent('/repo', 's1');
+    attachMailboxChecker(agent1.internals);
+    attachMailboxChecker(agent2.internals);
+    agent1.dispose();
 
-    // Cached as `undefined` rather than re-deciding per Agent, so the config
-    // is read once.
+    // Cached as `undefined` rather than re-deciding per Agent while at least
+    // one ref remains.
     expect(createHqPublisherFromEnv).toHaveBeenCalledTimes(1);
+
+    agent2.dispose();
+
+    // Once the last Agent disposes, the cached disabled entry is released so a
+    // subsequent Agent re-evaluates the factory.
+    const publisher = fakePublisher();
+    createHqPublisherFromEnv.mockReturnValue(publisher);
+    const agent3 = makeAgent('/repo', 's2');
+    attachMailboxChecker(agent3.internals);
+    expect(createHqPublisherFromEnv).toHaveBeenCalledTimes(2);
+    agent3.dispose();
+    expect(publisher.close).toHaveBeenCalledTimes(1);
+  });
+
+  it('infers the surface from ctx.meta.source when the explicit source argument is omitted', () => {
+    const publisher = fakePublisher();
+    createHqPublisherFromEnv.mockReturnValue(publisher);
+
+    const webAgent = makeAgent('/repo-web', 's1');
+    webAgent.internals.ctx.meta['source'] = 'webui';
+    attachMailboxChecker(webAgent.internals);
+
+    expect(createHqPublisherFromEnv).toHaveBeenCalledTimes(1);
+    expect(createHqPublisherFromEnv.mock.calls[0]![0].clientKind).toBe('webui');
+
+    webAgent.dispose();
+    expect(publisher.close).toHaveBeenCalledTimes(1);
   });
 
   it('releases under the project it acquired, even after an in-place project switch', () => {

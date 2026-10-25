@@ -8,6 +8,7 @@
  *  3. Deduplicate results present in both sources
  */
 
+import * as path from 'node:path';
 import type { Tool } from '@wrongstack/contracts/types';
 import { ToolValidationError } from '@wrongstack/contracts/types';
 import {
@@ -157,7 +158,7 @@ export function createCodebaseLspSearchTool(deps: ToolDeps): Tool<CodebaseLspSea
         }
 
         // ── Step 3: Merge & deduplicate ────────────────────────────────────────
-        const output = mergeResults(indexResults, lspResults, limit);
+        const output = mergeResults(indexResults, lspResults, limit, ctx.projectRoot);
 
         const fullOutput: CodebaseLspSearchOutput = {
           results: output,
@@ -228,7 +229,7 @@ async function searchLsp(
   answered: number;
   failures: string[];
 }> {
-  const merged: SymbolInformation[] = [];
+  const merged: Array<{ sym: SymbolInformation; serverName: string }> = [];
   let answered = 0;
   const failures: string[] = [];
 
@@ -251,7 +252,7 @@ async function searchLsp(
           answered++;
           if (result) {
             for (const sym of result) {
-              merged.push(sym);
+              merged.push({ sym, serverName: server.name });
             }
           }
         } catch (err) {
@@ -267,14 +268,14 @@ async function searchLsp(
   await Promise.all(promises);
 
   const deduplicated = deduplicateByKey(
-    merged.map((sym) => ({
+    merged.map(({ sym, serverName }) => ({
       name: sym.name,
       kind: lspKindToInternalKind(sym.kind) ?? 'symbol',
       lspKind: sym.kind,
       file: locationUriToPath(sym.location.uri),
       line: sym.location.range.start.line + 1, // convert to 1-based
       source: 'lsp' as const,
-      server: serverNameFromConfig(deps, sym),
+      server: serverName || serverNameFromConfig(deps, sym),
     })),
   );
 
@@ -342,18 +343,19 @@ function mergeResults(
   indexResults: CodebaseLspResult[],
   lspResults: CodebaseLspResult[],
   limit: number,
+  projectRoot?: string,
 ): CodebaseLspResult[] {
   const seen = new Map<string, CodebaseLspResult>();
 
   // Index results take priority (BM25-ranked)
   for (const r of indexResults) {
-    const key = `${r.file}:${r.line}:${r.name}`;
+    const key = canonicalResultKey(r, projectRoot);
     seen.set(key, r);
   }
 
   // LSP results fill in gaps (deduplicated)
   for (const r of lspResults) {
-    const key = `${r.file}:${r.line}:${r.name}`;
+    const key = canonicalResultKey(r, projectRoot);
     if (!seen.has(key)) {
       seen.set(key, r);
     }
@@ -374,12 +376,32 @@ function mergeResults(
   return merged.slice(0, limit);
 }
 
-function deduplicateByKey<T extends { name: string; file: string; line: number }>(items: T[]): T[] {
+function deduplicateByKey<T extends { name: string; file: string; line: number }>(
+  items: T[],
+  projectRoot?: string,
+): T[] {
   const seen = new Set<string>();
   return items.filter((item) => {
-    const key = `${item.file}:${item.line}:${item.name}`;
+    const key = canonicalResultKey(item, projectRoot);
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
   });
+}
+
+function canonicalResultKey(
+  item: { name: string; file: string; line: number },
+  projectRoot?: string,
+): string {
+  const isNonPathUri = /^[a-z][a-z0-9+.-]*:/i.test(item.file) && !/^[a-z]:[\\/]/i.test(item.file);
+  const resolved = isNonPathUri
+    ? item.file
+    : path.isAbsolute(item.file)
+      ? path.normalize(item.file)
+      : projectRoot
+        ? path.resolve(projectRoot, item.file)
+        : path.normalize(item.file);
+  const normalizedFile =
+    process.platform === 'win32' && !isNonPathUri ? resolved.toLowerCase() : resolved;
+  return `${normalizedFile}:${item.line}:${item.name}`;
 }

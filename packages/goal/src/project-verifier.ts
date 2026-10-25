@@ -184,9 +184,8 @@ export async function verifyGoalProject(
 ): Promise<GoalProjectVerificationResult> {
   const root = options.projectRoot ?? options.cwd;
   const timeoutMs = options.timeoutMs ?? 120_000;
-  const hasPackageJson =
-    (await exists(path.join(options.cwd, 'package.json'))) ||
-    (await exists(path.join(root, 'package.json')));
+  const hasCwdPackageJson = await exists(path.join(options.cwd, 'package.json'));
+  const hasPackageJson = hasCwdPackageJson || (await exists(path.join(root, 'package.json')));
 
   if (!hasPackageJson) {
     if (
@@ -268,9 +267,10 @@ export async function verifyGoalProject(
     return { ok: true, skipped: true, output: 'verify skipped: node_modules not found' };
   }
 
+  const jsTargetDir = hasCwdPackageJson ? options.cwd : root;
   let scripts: Record<string, string>;
   try {
-    scripts = await readScripts(options.cwd);
+    scripts = await readScripts(jsTargetDir);
   } catch (err) {
     return {
       ok: false,
@@ -284,7 +284,7 @@ export async function verifyGoalProject(
 
   const manager = await detectPackageManager(root);
   for (const step of steps) {
-    const result = await runStep(manager, step, options.cwd, options.timeoutMs ?? 120_000);
+    const result = await runStep(manager, step, jsTargetDir, options.timeoutMs ?? 120_000);
     if (!result.ok) return { ok: false, output: `[${step}] ${result.output}` };
   }
   return { ok: true };

@@ -157,6 +157,45 @@ describe('verifyMemoryAnchors', () => {
     expect(result.anchors[0]?.reason).toContain('no longer exists');
   });
 
+  // A symbol anchor is verified by finding the symbol in the anchored file.
+  // The matcher used `\b` word boundaries, which are defined on the ASCII word
+  // class `[A-Za-z0-9_]` and therefore can NEVER match a symbol whose first or
+  // last character is not a word character — `$ref`, `$el`, `$$`, `#priv`,
+  // `foo$`. JS/TS identifiers legitimately start with `$` and end with `$`, and
+  // ES private class fields start with `#`. Such a symbol was reported as
+  // gone even though it was present, which demoted the memory to `stale` and
+  // pulled it out of injection (`CONTEXT_STATUSES = ['active']`).
+  it('verifies symbols whose first or last character is not a word character', async () => {
+    const cases: Array<{ body: string; symbol: string }> = [
+      { body: 'const $ref = 1;\n', symbol: '$ref' },
+      { body: 'const $el = 1;\n', symbol: '$el' },
+      { body: 'class Foo { #priv = 1; }\n', symbol: '#priv' },
+      { body: 'let foo$ = 1;\n', symbol: 'foo$' },
+      { body: 'const $$ = 1;\n', symbol: '$$' },
+    ];
+    for (const { body, symbol } of cases) {
+      await fs.writeFile(path.join(tmpDir, 'source.ts'), body, 'utf8');
+      const memory = makeMemory({
+        anchors: [{ type: 'symbol', path: 'source.ts', symbol }],
+      });
+      const result = await verifyMemoryAnchors(tmpDir, memory);
+      expect(result.status, `symbol ${JSON.stringify(symbol)} should verify`).toBe('verified');
+    }
+  });
+
+  // The boundary case the fix must NOT weaken: a symbol that is genuinely
+  // absent still reports stale, and a plain word symbol still verifies.
+  it('still reports a genuinely absent symbol as stale', async () => {
+    const file = path.join(tmpDir, 'source.ts');
+    await fs.writeFile(file, 'const $ref = 1;\n', 'utf8');
+    const memory = makeMemory({
+      anchors: [{ type: 'symbol', path: 'source.ts', symbol: '$missing' }],
+    });
+    const result = await verifyMemoryAnchors(tmpDir, memory);
+    expect(result.status).toBe('stale');
+    expect(result.anchors[0]?.reason).toContain('no longer exists');
+  });
+
   it('accepts signal to abort', async () => {
     const abort = new AbortController();
     abort.abort();

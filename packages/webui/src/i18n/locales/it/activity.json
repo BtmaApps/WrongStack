@@ -142,10 +142,27 @@
     "fleetMonitor": "Ispettore della flotta"
   },
   "reorder": {
-    "edit": "Modifica ordine",
-    "done": "Fatto",
+    "edit": "Personalizza la barra (max {{max}} icone)"
+  },
+  "customize": {
+    "title": "Personalizza la barra delle attività",
+    "description": "Fissa le icone che vuoi sulla barra a sinistra. Tutte le altre passano nel menu «…» e nel launcher degli strumenti. Le modifiche vengono applicate al salvataggio.",
+    "counter": "{{count}} / {{max}} icone fissate",
+    "budgetHint": "La barra contiene al massimo {{max}} icone.",
+    "maxReached": "Massimo di {{max}} icone raggiunto — rimuovine una prima.",
+    "pinnedColumn": "Fissate sulla barra",
+    "othersColumn": "Altre",
+    "groupPanels": "Pannelli",
+    "groupViews": "Viste",
+    "fixed": "Sempre sulla barra",
+    "moveUp": "Sposta {{label}} in alto",
+    "moveDown": "Sposta {{label}} in basso",
+    "pin": "Fissa {{label}} sulla barra",
+    "unpin": "Rimuovi {{label}} dalla barra",
+    "emptyOthers": "Niente qui.",
     "reset": "Ripristina predefinito",
-    "locked": "Fisso — non riordinabile"
+    "cancel": "Annulla",
+    "save": "Salva"
   },
   "sidePanel": {
     "dragHint": "Trascina per ridimensionare · doppio clic per ripristinare",
@@ -4553,7 +4570,7 @@
       "quality": "Qualità",
       "system": "Sistema"
     },
-    "customize": "Personalizza la barra (le prime 4 viste restano lì)"
+    "customize": "Personalizza la barra (fissa fino a {{max}} icone)"
   },
   "worktreeTimeline": {
     "outcomeLive": "in corso",

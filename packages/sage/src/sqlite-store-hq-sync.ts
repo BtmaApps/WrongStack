@@ -12,7 +12,7 @@ const content = (row: string) =>
 // along with a real change, but must not by itself trigger one (every scheduled
 // hygiene pass stamps the whole anchored corpus).
 const changed = (row: string) =>
-  `CASE WHEN json_valid(${row}.data) THEN json_remove(${row}.data, '$.injectionCount', '$.useCount', '$.lastAccessedAt', '$.lastUsedAt', '$.lastVerifiedAt') ELSE NULL END`;
+  `CASE WHEN json_valid(${row}.data) THEN json_remove(${row}.data, '$.injectionCount', '$.useCount', '$.lastAccessedAt', '$.lastUsedAt', '$.lastVerifiedAt', '$.freshness') ELSE NULL END`;
 
 export function initSageHqSync(db: DatabaseSync): void {
   const schema = db

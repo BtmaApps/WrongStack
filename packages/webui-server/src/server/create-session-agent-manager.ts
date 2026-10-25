@@ -1,7 +1,11 @@
 import { DEFAULT_TOOLS_CONFIG } from '@wrongstack/contracts/types';
 import { Agent, Context } from '@wrongstack/core/agent';
 
-import { createSessionAgentRegistry, createSessionTokenCounter } from './session-agent-registry.js';
+import {
+  createSessionAgentRegistry,
+  createSessionTokenCounter,
+  inheritedSessionMeta,
+} from './session-agent-registry.js';
 
 export function createSessionAgentManager({
   agent,
@@ -44,7 +48,7 @@ export function createSessionAgentManager({
     ...(input.isRunActive ? { isRunActive: input.isRunActive } : {}),
     ...(input.isDisplayed ? { isDisplayed: input.isDisplayed } : {}),
     createAgent: (sessionId) => {
-      const sessionCtx = new Context({
+      const sessionCtx: Context = new Context({
         projectRoot,
         cwd: workingDir,
         model: context.model,
@@ -67,10 +71,10 @@ export function createSessionAgentManager({
           root: input.tokenCounter,
           sessionId,
           registry: modelsRegistry,
-          providerId: () => context.provider?.id,
+          providerId: () => sessionCtx.provider?.id,
         }),
       });
-      Object.assign(sessionCtx.meta, context.meta);
+      Object.assign(sessionCtx.meta, inheritedSessionMeta(context.meta));
       return new Agent({
         container,
         tools: toolRegistry,

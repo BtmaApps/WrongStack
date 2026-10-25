@@ -130,4 +130,23 @@ describe('verifyGoalProject', () => {
     const ruffArgs = execFile.mock.calls[0]?.[1] as string[];
     expect(ruffArgs.join(' ')).toContain('check');
   });
+
+  it('reads and runs scripts from projectRoot when cwd is a subdirectory without package.json', async () => {
+    const subDir = path.join(dir, 'src');
+    await fs.mkdir(subDir, { recursive: true });
+    await fs.mkdir(path.join(dir, 'node_modules'));
+    await fs.writeFile(
+      path.join(dir, 'package.json'),
+      JSON.stringify({ scripts: { typecheck: 'tsc --noEmit' } }),
+    );
+    execFile.mockImplementation((_command, _args, _options, callback) => {
+      callback(new Error('exit 1'), '', 'root typecheck error');
+    });
+
+    await expect(verifyGoalProject({ cwd: subDir, projectRoot: dir })).resolves.toEqual({
+      ok: false,
+      output: '[typecheck] root typecheck error',
+    });
+    expect(execFile).toHaveBeenCalledOnce();
+  });
 });

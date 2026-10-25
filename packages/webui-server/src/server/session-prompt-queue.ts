@@ -204,7 +204,9 @@ export function createSessionPromptQueue(deps: SessionPromptQueueDeps): SessionP
   const queues = new Map<string, QueuedPrompt[]>();
   const loading = new Map<string, Promise<QueuedPrompt[]>>();
   /** Sessions with a drain in progress — one turn start at a time per session. */
-  const draining = new Set<string>();
+  const draining = new Map<string, Promise<void>>();
+  const turnDecided = new Set<string>();
+  const redrain = new Set<string>();
   /** Serialises file writes per session so an older snapshot never lands last. */
   const writes = new Map<string, Promise<boolean>>();
   const legacyUpdates = new Map<string, () => Promise<boolean>>();
@@ -357,49 +359,66 @@ export function createSessionPromptQueue(deps: SessionPromptQueueDeps): SessionP
     await persist(sessionId);
   };
 
-  const drain = async (sessionId: string): Promise<void> => {
-    if (draining.has(sessionId)) return;
-    draining.add(sessionId);
-    try {
-      const items = await load(sessionId);
-      const front = items[0];
-      if (!front || deps.isBusy(sessionId)) return;
-      const removeFront = (): void => {
-        const index = items.indexOf(front);
-        if (index !== -1) items.splice(index, 1);
-      };
-      let started = false;
-      try {
-        started = await deps.startTurn(sessionId, front, () => {
-          removeFront();
-          // Pages add the user bubble from this, ahead of the run's own events.
-          deps.broadcast({
-            type: 'queue.drained',
-            payload: { sessionId, item: drainedView(front) },
-          });
-          publish(sessionId);
-        });
-      } catch (err) {
-        deps.warn?.(`queued prompt for ${sessionId} failed to start: ${toErrorMessage(err)}`);
-      }
-      if (!started) {
-        // Lost the lock (another turn got there first) or the session is not
-        // open yet: the prompt keeps its place and runs after that turn.
-        await changed(sessionId);
-        return;
-      }
-      removeFront();
-      await persist(sessionId);
-    } catch (err) {
-      // A queue read failure must not escape this function: QueueStore.read()
-      // throws rather than reporting an empty queue, and every real call site
-      // is fire-and-forget (after a turn ends, after an add, after queue.get)
-      // — the rejection would take the host process down. The prompts stay on
-      // disk untouched and the next drain retries the read.
-      deps.warn?.(`queued prompts for ${sessionId} not drained: ${toErrorMessage(err)}`);
-    } finally {
-      draining.delete(sessionId);
+  const drain = (sessionId: string): Promise<void> => {
+    const active = draining.get(sessionId);
+    if (active) {
+      if (turnDecided.has(sessionId)) redrain.add(sessionId);
+      return active;
     }
+    const run = (async (): Promise<void> => {
+      try {
+        do {
+          redrain.delete(sessionId);
+          turnDecided.delete(sessionId);
+          const items = await load(sessionId);
+          const front = items[0];
+          if (!front || deps.isBusy(sessionId)) return;
+          const removeFront = (): void => {
+            const index = items.indexOf(front);
+            if (index !== -1) items.splice(index, 1);
+          };
+          let started = false;
+          try {
+            started = await deps.startTurn(sessionId, front, () => {
+              turnDecided.add(sessionId);
+              removeFront();
+              // Pages add the user bubble from this, ahead of the run's own events.
+              deps.broadcast({
+                type: 'queue.drained',
+                payload: { sessionId, item: drainedView(front) },
+              });
+              publish(sessionId);
+            });
+          } catch (err) {
+            deps.warn?.(`queued prompt for ${sessionId} failed to start: ${toErrorMessage(err)}`);
+          } finally {
+            turnDecided.add(sessionId);
+          }
+          if (!started) {
+            // Lost the lock (another turn got there first) or the session is not
+            // open yet: the prompt keeps its place and runs after that turn.
+            await changed(sessionId);
+            if (!redrain.has(sessionId)) return;
+            continue;
+          }
+          removeFront();
+          await persist(sessionId);
+        } while (redrain.has(sessionId));
+      } catch (err) {
+        // A queue read failure must not escape this function: QueueStore.read()
+        // throws rather than reporting an empty queue, and every real call site
+        // is fire-and-forget (after a turn ends, after an add, after queue.get)
+        // — the rejection would take the host process down. The prompts stay on
+        // disk untouched and the next drain retries the read.
+        deps.warn?.(`queued prompts for ${sessionId} not drained: ${toErrorMessage(err)}`);
+      } finally {
+        turnDecided.delete(sessionId);
+        redrain.delete(sessionId);
+        draining.delete(sessionId);
+      }
+    })();
+    draining.set(sessionId, run);
+    return run;
   };
 
   return {

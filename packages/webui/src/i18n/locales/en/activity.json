@@ -150,10 +150,27 @@
     "fleetMonitor": "Fleet Inspector"
   },
   "reorder": {
-    "edit": "Edit order",
-    "done": "Done",
+    "edit": "Customize the bar (max {{max}} icons)"
+  },
+  "customize": {
+    "title": "Customize the activity bar",
+    "description": "Pin the icons you want on the left rail. Everything else moves into the “…” menu and the Tools launcher. Changes apply when you save.",
+    "counter": "{{count}} / {{max}} icons pinned",
+    "budgetHint": "The bar holds at most {{max}} icons.",
+    "maxReached": "Maximum of {{max}} icons reached — remove one first.",
+    "pinnedColumn": "Pinned on the bar",
+    "othersColumn": "Others",
+    "groupPanels": "Panels",
+    "groupViews": "Views",
+    "fixed": "Always on the bar",
+    "moveUp": "Move {{label}} up",
+    "moveDown": "Move {{label}} down",
+    "pin": "Pin {{label}} to the bar",
+    "unpin": "Remove {{label}} from the bar",
+    "emptyOthers": "Nothing here.",
     "reset": "Reset to default",
-    "locked": "Fixed — cannot be reordered"
+    "cancel": "Cancel",
+    "save": "Save"
   },
   "sidePanel": {
     "dragHint": "Drag to resize · double-click to reset",
@@ -4553,7 +4570,7 @@
       "quality": "Quality",
       "system": "System"
     },
-    "customize": "Customize the bar (the first 4 views stay on it)"
+    "customize": "Customize the bar (pin up to {{max}} icons)"
   },
   "worktreeTimeline": {
     "outcomeLive": "running",

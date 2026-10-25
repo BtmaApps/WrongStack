@@ -458,8 +458,10 @@ span svg {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  min-height: 51px;
-  padding: 0 28px;
+  width: 100%;
+  max-width: 848px;
+  align-self: center;
+  padding: 0 34px 10px;
   gap: 12px;
 }
 .model-trigger {
@@ -2839,8 +2841,7 @@ kbd {
     gap: 10px;
   }
   .session-toolbar {
-    padding: 0 19px;
-    min-height: 50px;
+    padding: 0 34px 8px;
   }
   .context-track {
     display: none;

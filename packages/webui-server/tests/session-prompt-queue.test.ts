@@ -398,6 +398,40 @@ describe('createSessionPromptQueue', () => {
       path.join('root', 'projects', 'p', 'prompt-queue'),
     );
   });
+
+  it('re-drains the next prompt when a turn ends while post-start queue persistence is still in flight', async () => {
+    const dir = await tempDir();
+    let busy = true;
+    const started: QueuedPrompt[] = [];
+    const turn1Started = deferred();
+
+    const queue = createSessionPromptQueue({
+      sessionsDir: dir,
+      isBusy: () => busy,
+      startTurn: async (_sid, prompt, onStart) => {
+        busy = true;
+        onStart();
+        started.push(prompt);
+        if (prompt.text === 'first') turn1Started.resolve();
+        return true;
+      },
+      broadcast: () => {},
+    });
+
+    await queue.add(SESSION, { text: 'first' });
+    await queue.add(SESSION, { text: 'second' });
+
+    busy = false;
+    const firstDrain = queue.drain(SESSION);
+    await turn1Started.promise;
+
+    busy = false;
+    const secondDrain = queue.drain(SESSION);
+    await Promise.all([firstDrain, secondDrain]);
+
+    expect(started.map((p) => p.text)).toEqual(['first', 'second']);
+    expect(await queue.list(SESSION)).toEqual([]);
+  });
 });
 
 describe('handlePromptQueueMessage', () => {

@@ -317,6 +317,12 @@
 .vibe-shell[data-view="focus"] .composer-area {
   max-width: 840px;
 }
+.vibe-shell[data-view="focus"] .session-toolbar {
+  max-width: 840px;
+}
+.vibe-shell[data-view="focus"] .stream-meter {
+  max-width: 772px;
+}
 .vibe-shell[data-view="focus"] .cozy-greeting > .vibe-buddy {
   width: 75px;
   height: 68px;

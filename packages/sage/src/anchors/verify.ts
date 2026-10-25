@@ -575,7 +575,16 @@ async function verifyAnchor(
 
 function containsSymbol(text: string, symbol: string): boolean {
   const escaped = symbol.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return new RegExp(`\\b${escaped}\\b`).test(text);
+  // Whole-identifier boundaries via lookarounds, NOT `\b`. `\b` is defined on
+  // the ASCII word class `[A-Za-z0-9_]`, so it can never match a symbol whose
+  // first or last character is not a word character — `$ref`, `$el`, `$$`,
+  // `#priv`, `foo$`. JavaScript/TypeScript identifiers legitimately start with
+  // `$` and end with `$`, and ES private class fields start with `#`. Such a
+  // symbol was reported as gone even though it was right there in the file,
+  // which demoted the memory to `stale` and pulled it out of injection.
+  // Mirrors `replaceIdentifier` in `middleware/path-remap.ts`.
+  const pattern = new RegExp(`(?<![\\p{L}\\p{N}_$])${escaped}(?![\\p{L}\\p{N}_$])`, 'u');
+  return pattern.test(text);
 }
 
 function aggregateStatus(results: AnchorVerificationResult[]): VerificationStatus {

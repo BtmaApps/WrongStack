@@ -1,4 +1,4 @@
-import { Check, Pencil, RotateCcw } from 'lucide-react';
+import { Pencil } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useIsFullChrome } from '@/hooks/useChromeLevel';
 import { useAppTranslation } from '@/i18n';
@@ -18,16 +18,17 @@ import {
   useSessionTabStore,
   useUIStore,
 } from '@/stores';
+import { ActivityBarCustomizeModal } from './activity-bar-customize-modal.js';
 import {
   applyLockedAnchors,
   DESKTOP_CORE_PANEL_IDS,
-  moveItemId,
   PANELS,
   resolveActivityOrder,
   splitDesktopActivityBarItems,
   useDesktopActivityCapacity,
   VIEWS,
 } from './activity-bar-items.js';
+import { ACTIVITY_BAR_MAX_ICONS, defaultPinnedIds } from './activity-bar-pins.js';
 import { ActivityIcon, UtilitiesMenu } from './activity-bar-utilities.js';
 import { ToolsLauncher } from './tools-launcher';
 
@@ -39,12 +40,7 @@ export {
   splitDesktopActivityBarItems,
 } from './activity-bar-items.js';
 
-/**
- * Calm chrome keeps this many main views (the first of the user's order) on
- * the bar; every view — these included — is in the ToolsLauncher map.
- */
-const CALM_BAR_VIEW_COUNT = 4;
-// Convenience set for O(1) `isLocked` checks during drag/drop.
+// Convenience set for O(1) `isLocked` checks.
 const DESKTOP_CORE_PANEL_IDS_SET: ReadonlySet<string> = new Set(DESKTOP_CORE_PANEL_IDS);
 
 export const PANEL_ORDER: readonly Activity[] = PANELS.map((p) => p.id);
@@ -65,136 +61,96 @@ export function ActivityBar({ desktopShell = false }: { desktopShell?: boolean |
   // Subscribe (not getState()) so the utility trigger updates its active
   // highlight when the inspector opens or closes.
   const inspectorOpen = useUIStore((s) => s.inspectorOpen);
-  // ── User-customized icon order (drag/drop) ──
-  // Local-only reorder UI mode; the actual order itself lives in the
-  // persisted store so it survives F5 + reload.
+  // ── User-customized icon order + pin selection ──
+  // The order and the pinned selection live in the persisted store so they
+  // survive F5 + reload; the customize dialog edits them and the rail
+  // re-renders from the store the moment they are saved.
   const customOrder = useUIStore((s) => s.activityBarOrder);
-  const setCustomOrder = useUIStore((s) => s.setActivityBarOrder);
-  const [reorderMode, setReorderMode] = useState(false);
+  const [customizeOpen, setCustomizeOpen] = useState(false);
+
+  const fullChrome = useIsFullChrome();
+  const chromeLevel = fullChrome ? 'full' : 'calm';
+
   // ── Effective ordering ──
   // Panels: locked anchors (chat/files/changes/mailbox) stay at top in
-  // default relative order; the rest fill the remaining slots in
-  // `customOrder.panels` (filtered/deduped). Views: full reorder (no
-  // locked items below the panels).
-  const orderedPanels = useMemo(
+  // default relative order; the rest follow the stored order. Views follow
+  // the stored order as well. Only pinned ids reach the rail — everything
+  // else moves into the "…" menu (and the Tools launcher).
+  const seed = useMemo(
+    () => customOrder?.pinned ?? defaultPinnedIds(chromeLevel),
+    [customOrder?.pinned, chromeLevel],
+  );
+  const pinnedPanelIds = useMemo(() => new Set(seed.panels), [seed]);
+  const pinnedViewIds = useMemo(() => new Set(seed.views), [seed]);
+  // Full order (pinned + unpinned) — the unpinned tail feeds the "…" menu.
+  const fullPanels = useMemo(
     () => applyLockedAnchors(PANELS, customOrder?.panels, DESKTOP_CORE_PANEL_IDS_SET),
     [customOrder?.panels],
   );
-  const orderedViews = useMemo(
+  const fullViews = useMemo(
     () => resolveActivityOrder(VIEWS, customOrder?.views),
     [customOrder?.views],
   );
-  // Calm chrome (outside reorder mode): the bar carries only the first
-  // CALM_BAR_VIEW_COUNT views plus the ToolsLauncher, which maps them all.
-  // Reorder mode shows every view again so any of them can be dragged into
-  // those first slots.
-  const fullChrome = useIsFullChrome();
-  const calmBar = !fullChrome && !reorderMode;
-  const barViews = useMemo(
-    () => (calmBar ? orderedViews.slice(0, CALM_BAR_VIEW_COUNT) : orderedViews),
-    [calmBar, orderedViews],
+  const orderedPanels = useMemo(
+    () => fullPanels.filter((def) => pinnedPanelIds.has(def.id)),
+    [fullPanels, pinnedPanelIds],
   );
+  const orderedViews = useMemo(
+    () => fullViews.filter((def) => pinnedViewIds.has(def.id)),
+    [fullViews, pinnedViewIds],
+  );
+  // Calm chrome (compact workbench): the bar carries the pinned icons plus
+  // the ToolsLauncher, which maps every tool.
+  const calmBar = !fullChrome;
   // Always calculate capacity — when icons don't fit the viewport they
-  // overflow into the "…" menu instead of scrolling. The launcher takes a slot.
+  // overflow into the "…" menu instead of scrolling. The launcher takes a
+  // slot; the icon budget (`ACTIVITY_BAR_MAX_ICONS`) is the hard ceiling.
   const desktopCapacity = useDesktopActivityCapacity(desktopShell);
+  const contentCapacity = Math.min(
+    calmBar ? desktopCapacity - 1 : desktopCapacity,
+    ACTIVITY_BAR_MAX_ICONS,
+  );
   const desktopSplit = useMemo(
-    () =>
-      splitDesktopActivityBarItems(
-        calmBar ? desktopCapacity - 1 : desktopCapacity,
-        orderedPanels,
-        barViews,
-      ),
-    [calmBar, desktopCapacity, orderedPanels, barViews],
+    () => splitDesktopActivityBarItems(contentCapacity, orderedPanels, orderedViews),
+    [contentCapacity, orderedPanels, orderedViews],
   );
   const visiblePanelIdSet = useMemo(
     () => new Set(desktopSplit.visiblePanelIds),
     [desktopSplit.visiblePanelIds],
   );
-  const overflowPanelIdSet = useMemo(
-    () => new Set(desktopSplit.overflowPanelIds),
-    [desktopSplit.overflowPanelIds],
-  );
   const visibleViewIdSet = useMemo(
     () => new Set(desktopSplit.visibleViewIds),
     [desktopSplit.visibleViewIds],
   );
-  const overflowViewIdSet = useMemo(
-    () => new Set(desktopSplit.overflowViewIds),
-    [desktopSplit.overflowViewIds],
-  );
   const visiblePanels = orderedPanels.filter((def) => visiblePanelIdSet.has(def.id));
-  const overflowPanels = orderedPanels.filter((def) => overflowPanelIdSet.has(def.id));
-  const visibleViews = barViews.filter((def) => visibleViewIdSet.has(def.id));
-  // Calm: the launcher already lists every view, so "…" does not repeat them.
-  const overflowViews = calmBar ? [] : barViews.filter((def) => overflowViewIdSet.has(def.id));
+  const visibleViews = orderedViews.filter((def) => visibleViewIdSet.has(def.id));
+
+  // ── Hidden items ──
+  // Everything the user did not pin, plus the pinned icons that did not fit
+  // the viewport. Calm chrome hides the views in the "…" menu because the
+  // Tools launcher already lists every tool; full chrome has no launcher,
+  // so unpinned views must stay reachable there.
+  const hiddenPanelIds = useMemo(() => {
+    const ids = new Set<string>(desktopSplit.overflowPanelIds);
+    for (const def of fullPanels) {
+      if (!pinnedPanelIds.has(def.id)) ids.add(def.id);
+    }
+    return ids;
+  }, [desktopSplit.overflowPanelIds, fullPanels, pinnedPanelIds]);
+  const hiddenViewIds = useMemo(() => {
+    const ids = new Set<string>(desktopSplit.overflowViewIds);
+    for (const def of fullViews) {
+      if (!pinnedViewIds.has(def.id)) ids.add(def.id);
+    }
+    return ids;
+  }, [desktopSplit.overflowViewIds, fullViews, pinnedViewIds]);
+  const hiddenPanels = fullPanels.filter((def) => hiddenPanelIds.has(def.id));
+  const hiddenViews = calmBar ? [] : fullViews.filter((def) => hiddenViewIds.has(def.id));
 
   const badgeFor = (id: Activity): number | undefined => {
     if (id === 'mailbox') return unreadMail || undefined;
     if (id === 'chat') return openTabCount > 0 ? openTabCount : undefined;
     return undefined;
-  };
-
-  // Drag state (transient; lives only while `reorderMode` is on).
-  // HTML5 DnD handles only same-group drops; locked items are never
-  // valid drop targets (anchors).
-  const [dragId, setDragId] = useState<string | null>(null);
-  const [dragOverId, setDragOverId] = useState<string | null>(null);
-  const isLockedId = (id: string) => DESKTOP_CORE_PANEL_IDS_SET.has(id);
-  const closeReorder = () => {
-    setReorderMode(false);
-    setDragId(null);
-    setDragOverId(null);
-  };
-  const resetCustomOrder = () => {
-    setCustomOrder(null);
-    closeReorder();
-  };
-  // ── Drag handlers ──
-  const onDragStart = (group: 'panel' | 'view', id: string) => (e: React.DragEvent) => {
-    if (!reorderMode) return;
-    if (group === 'panel' && isLockedId(id)) {
-      e.preventDefault();
-      return;
-    }
-    setDragId(id);
-    setDragOverId(null);
-    e.dataTransfer.effectAllowed = 'move';
-  };
-  // `_group` is part of the call shape every handler factory here shares; this
-  // one decides purely from `id`.
-  const onDragOver = (_group: 'panel' | 'view', id: string) => (e: React.DragEvent) => {
-    if (!reorderMode || dragId == null || dragId === id) return;
-    if (isLockedId(id)) return;
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    if (dragOverId !== id) setDragOverId(id);
-  };
-  const onDragLeave = (id: string) => (e: React.DragEvent) => {
-    if (dragOverId === id) setDragOverId(null);
-    e.preventDefault();
-  };
-  const onDrop = (group: 'panel' | 'view', id: string) => (e: React.DragEvent) => {
-    if (!reorderMode || dragId == null || dragId === id) return;
-    if (isLockedId(id)) {
-      e.preventDefault();
-      return;
-    }
-    e.preventDefault();
-    if (group === 'panel') {
-      const current = orderedPanels.map((p) => p.id);
-      const next = moveItemId(current, dragId, id);
-      setCustomOrder({ panels: next, views: orderedViews.map((v) => v.id) });
-    } else {
-      const current = orderedViews.map((v) => v.id);
-      const next = moveItemId(current, dragId, id);
-      setCustomOrder({ panels: orderedPanels.map((p) => p.id), views: next });
-    }
-    setDragId(null);
-    setDragOverId(null);
-  };
-  const onDragEnd = () => {
-    setDragId(null);
-    setDragOverId(null);
   };
 
   return (
@@ -239,30 +195,17 @@ export function ActivityBar({ desktopShell = false }: { desktopShell?: boolean |
             also loses scroll fallback — ensure enough slots for core icons. */}
       <div className="flex-1 min-h-0 overflow-hidden flex flex-col items-center pt-2 pb-1">
         {/* Panel icons */}
-        {visiblePanels.map((def) => {
-          const locked = isLockedId(def.id);
-          return (
-            <ActivityIcon
-              key={def.id}
-              compact={desktopShell}
-              icon={def.icon}
-              label={`${navLabel(def.id, def.label)} (${shortcutLabelForActivity(def.id)})`}
-              active={sidebarOpen && activeActivity === def.id}
-              badge={badgeFor(def.id)}
-              onClick={() => openPanel(def.id)}
-              reorderMode={reorderMode}
-              draggable={reorderMode && !locked}
-              locked={locked}
-              isDragOver={reorderMode && dragOverId === def.id}
-              isDragging={reorderMode && dragId === def.id}
-              onDragStart={onDragStart('panel', def.id)}
-              onDragOver={onDragOver('panel', def.id)}
-              onDragLeave={onDragLeave(def.id)}
-              onDrop={onDrop('panel', def.id)}
-              onDragEnd={onDragEnd}
-            />
-          );
-        })}
+        {visiblePanels.map((def) => (
+          <ActivityIcon
+            key={def.id}
+            compact={desktopShell}
+            icon={def.icon}
+            label={`${navLabel(def.id, def.label)} (${shortcutLabelForActivity(def.id)})`}
+            active={sidebarOpen && activeActivity === def.id}
+            badge={badgeFor(def.id)}
+            onClick={() => openPanel(def.id)}
+          />
+        ))}
 
         {/* Divider between panels and main-view switchers */}
         {visibleViews.length > 0 && <div className="my-1.5 h-px w-6 shrink-0 bg-border/70" />}
@@ -276,20 +219,11 @@ export function ActivityBar({ desktopShell = false }: { desktopShell?: boolean |
             label={navLabel(def.id, def.label)}
             active={currentView === def.id}
             onClick={() => openMainView(def.id)}
-            reorderMode={reorderMode}
-            draggable={reorderMode}
-            isDragOver={reorderMode && dragOverId === def.id}
-            isDragging={reorderMode && dragId === def.id}
-            onDragStart={onDragStart('view', def.id)}
-            onDragOver={onDragOver('view', def.id)}
-            onDragLeave={onDragLeave(def.id)}
-            onDrop={onDrop('view', def.id)}
-            onDragEnd={onDragEnd}
           />
         ))}
 
         {calmBar && (
-          <ToolsLauncher compact={desktopShell} onCustomize={() => setReorderMode(true)} />
+          <ToolsLauncher compact={desktopShell} onCustomize={() => setCustomizeOpen(true)} />
         )}
       </div>
 
@@ -321,71 +255,35 @@ export function ActivityBar({ desktopShell = false }: { desktopShell?: boolean |
             Settings) collapsed into one popover. Items that don't fit
             the visible icon slots also land here. */}
       <div className="flex flex-col items-center shrink-0 pt-1 pb-2 border-t border-border/60">
-        {/* ── Edit / done / reset toggles (drag/drop edit mode) ──
-              Lives in the same bottom sticky column as the utilities
-              "…" so it stays discoverable without crowding the icon
-              column. Click-cycle: pencil → done. Reset is a one-tap
-              escape back to the default priority order. */}
-        {reorderMode ? (
-          <>
-            <button
-              type="button"
-              data-testid="activity-bar-reorder-done"
-              onClick={closeReorder}
-              aria-label={t('activity:reorder.done', 'Done')}
-              title={t('activity:reorder.done', 'Done')}
-              className={cn(
-                'ws-nav-button relative flex shrink-0 items-center justify-center rounded-md transition-colors',
-                desktopShell ? 'h-9 w-9' : 'h-11 w-11',
-                'text-primary bg-primary/10 ring-1 ring-primary/30 hover:bg-primary/15',
-              )}
-            >
-              <span className="h-5 w-5 shrink-0">
-                <Check size={16} />
-              </span>
-            </button>
-            <button
-              type="button"
-              data-testid="activity-bar-reorder-reset"
-              onClick={resetCustomOrder}
-              aria-label={t('activity:reorder.reset', 'Reset to default')}
-              title={t('activity:reorder.reset', 'Reset to default')}
-              className={cn(
-                'ws-nav-button relative flex shrink-0 items-center justify-center rounded-md transition-colors',
-                desktopShell ? 'h-9 w-9' : 'h-11 w-11',
-                'text-muted-foreground hover:border-border/70 hover:text-foreground hover:bg-muted/60',
-              )}
-            >
-              <span className="h-5 w-5 shrink-0">
-                <RotateCcw size={16} />
-              </span>
-            </button>
-          </>
-        ) : (
-          <button
-            type="button"
-            data-testid="activity-bar-reorder-edit"
-            onClick={() => setReorderMode(true)}
-            aria-label={t('activity:reorder.edit', 'Edit order')}
-            title={t('activity:reorder.edit', 'Edit order')}
-            className={cn(
-              'ws-nav-button relative flex shrink-0 items-center justify-center rounded-md transition-colors',
-              desktopShell ? 'h-9 w-9' : 'h-11 w-11',
-              'text-muted-foreground hover:border-border/70 hover:text-foreground hover:bg-muted/60',
-            )}
-          >
-            <span className="h-5 w-5 shrink-0">
-              <Pencil size={16} />
-            </span>
-          </button>
-        )}
+        {/* ── Customize the bar ──
+              Opens the one-screen editor: the icons pinned to the bar on the
+              left, everything else on the right. Saving writes the
+              selection to the store, so the rail refreshes immediately. */}
+        <button
+          type="button"
+          data-testid="activity-bar-reorder-edit"
+          onClick={() => setCustomizeOpen(true)}
+          aria-label={t('activity:reorder.edit', { max: ACTIVITY_BAR_MAX_ICONS })}
+          title={t('activity:reorder.edit', { max: ACTIVITY_BAR_MAX_ICONS })}
+          className={cn(
+            'ws-nav-button relative flex shrink-0 items-center justify-center rounded-md transition-colors',
+            desktopShell ? 'h-9 w-9' : 'h-11 w-11',
+            'text-muted-foreground hover:border-border/70 hover:text-foreground hover:bg-muted/60',
+          )}
+        >
+          <span className="h-5 w-5 shrink-0">
+            <Pencil size={16} />
+          </span>
+        </button>
         <UtilitiesMenu
           compact={desktopShell}
           monitorOpen={inspectorOpen}
-          overflowPanels={overflowPanels}
-          overflowViews={overflowViews}
+          hiddenPanels={hiddenPanels}
+          hiddenViews={hiddenViews}
         />
       </div>
+
+      <ActivityBarCustomizeModal open={customizeOpen} onOpenChange={setCustomizeOpen} />
     </div>
   );
 }

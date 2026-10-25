@@ -148,8 +148,9 @@ export function createSessionTokenCounter(opts: {
   });
   return {
     account(usage, model, providerId) {
-      own.account(usage, model, providerId);
-      return opts.root.account(usage, model, providerId);
+      const resolvedProviderId = providerId ?? opts.providerId?.();
+      own.account(usage, model, resolvedProviderId);
+      return opts.root.account(usage, model, resolvedProviderId);
     },
     // Resetting must never reach the root: /clear in one tab would zero the
     // numbers of the three beside it.
@@ -318,7 +319,7 @@ export function createSessionAgentRegistry(
 
   const create = (sessionId: string): Agent => {
     const root = template.ctx;
-    const sessionCtx = new Context({
+    const sessionCtx: Context = new Context({
       projectRoot: (root as { projectRoot?: string }).projectRoot ?? process.cwd(),
       cwd: root.cwd,
       model: root.model,
@@ -338,7 +339,7 @@ export function createSessionAgentRegistry(
         root: root.tokenCounter,
         sessionId,
         ...(opts.modelsRegistry ? { registry: opts.modelsRegistry } : {}),
-        providerId: () => root.provider?.id,
+        providerId: () => sessionCtx.provider?.id,
       }),
       tools: root.tools,
       catalogTools: root.catalogTools,

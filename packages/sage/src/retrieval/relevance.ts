@@ -79,7 +79,7 @@ export function memoryQueryRelevance(memory: Sage, query: string): MemoryQueryRe
   for (const anchor of anchors) {
     if (!anchor) continue;
     const exact = exactAnchorValue(anchor);
-    if (exact && normalizedQuery.includes(exact)) {
+    if (exact && containsWholeIdentifier(normalizedQuery, exact)) {
       return {
         strength: anchor.type === 'symbol' || anchor.type === 'command' ? 0.98 : 0.96,
         evidence: [`query:exact-${anchor.type}`],
@@ -284,6 +284,37 @@ function informativeTerms(text: string): string[] {
   return tokenize(text)
     .map((term) => term.replace(/^[._-]+|[._-]+$/g, ''))
     .filter((term) => term.length >= 3 && !GENERIC_QUERY_TERMS.has(term));
+}
+
+/**
+ * True when `needle` occurs in `haystack` as a COMPLETE identifier rather than
+ * as a fragment of a longer one.
+ *
+ * The "exact anchor" tier is the strongest score the lexical channel can
+ * produce and its evidence label says `query:exact-<type>` — it means the
+ * query NAMES the anchor. A plain `includes` also fires when the anchor is
+ * only a SUBSTRING of an unrelated word: an anchor on the symbol `load`
+ * matched "reduce the payload size" (and "download", "reload"), and an anchor
+ * on `parse` matched "parser" — so a memory about a different thing reached
+ * the top of the ranking. Word boundaries keep the tier meaning what it says,
+ * and match the sibling path matcher in
+ * `middleware/tool-call-memory-retrieval.ts`, which compares anchor paths
+ * with strict equality.
+ */
+function containsWholeIdentifier(haystack: string, needle: string): boolean {
+  if (!needle) return false;
+  // Unicode-aware identifier characters: a boundary after a non-ASCII letter
+  // is still a word boundary, so `café` is not "named" by `naïvecafé`.
+  const isIdentifierChar = (char: string): boolean => /[\p{L}\p{N}_$]/u.test(char);
+  let from = 0;
+  for (;;) {
+    const index = haystack.indexOf(needle, from);
+    if (index === -1) return false;
+    const before = index > 0 ? (haystack[index - 1] ?? '') : '';
+    const after = haystack[index + needle.length] ?? '';
+    if (!isIdentifierChar(before) && !isIdentifierChar(after)) return true;
+    from = index + 1;
+  }
 }
 
 function exactAnchorValue(anchor: MemoryAnchor): string | undefined {

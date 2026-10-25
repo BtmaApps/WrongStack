@@ -4,7 +4,6 @@ import {
   Keyboard,
   Layers,
   LayoutGrid,
-  Lock,
   MoreHorizontal,
   Network,
   Palette,
@@ -36,13 +35,14 @@ import type { PanelDef, ViewDef } from './activity-bar-items.js';
 export function UtilitiesMenu({
   compact = false,
   monitorOpen,
-  overflowPanels,
-  overflowViews,
+  hiddenPanels,
+  hiddenViews,
 }: {
   compact?: boolean | undefined;
   monitorOpen: boolean;
-  overflowPanels: PanelDef[];
-  overflowViews: ViewDef[];
+  /** Panels and views that are not on the rail (unpinned or overflowed). */
+  hiddenPanels: PanelDef[];
+  hiddenViews: ViewDef[];
 }) {
   const { t } = useAppTranslation();
   const activeActivity = useUIStore((s) => s.activeActivity);
@@ -50,9 +50,9 @@ export function UtilitiesMenu({
   const currentView = useUIStore((s) => s.currentView);
   const inspectorOpen = useUIStore((s) => s.inspectorOpen);
   const inspectorTab = useUIStore((s) => s.inspectorTab);
-  const hiddenItemCount = overflowPanels.length + overflowViews.length;
-  const hiddenPanelActive = overflowPanels.some((def) => sidebarOpen && activeActivity === def.id);
-  const hiddenViewActive = overflowViews.some((def) => currentView === def.id);
+  const hiddenItemCount = hiddenPanels.length + hiddenViews.length;
+  const hiddenPanelActive = hiddenPanels.some((def) => sidebarOpen && activeActivity === def.id);
+  const hiddenViewActive = hiddenViews.some((def) => currentView === def.id);
   const hiddenActive = hiddenPanelActive || hiddenViewActive;
 
   const toggleInspectorTab = (tab: 'fleet' | 'sideEffects') => {
@@ -123,13 +123,13 @@ export function UtilitiesMenu({
           <DropdownMenuShortcut>?</DropdownMenuShortcut>
         </DropdownMenuItem>
 
-        {overflowPanels.length > 0 && (
+        {hiddenPanels.length > 0 && (
           <>
             <DropdownMenuSeparator />
-            <DropdownMenuLabel className="text-[11px] uppercase text-muted-foreground">
+            <DropdownMenuLabel className="text-[11px] uppercase tracking-wide text-muted-foreground">
               {t('activity:menu.panels')}
             </DropdownMenuLabel>
-            {overflowPanels.map((def) => (
+            {hiddenPanels.map((def) => (
               <DropdownMenuItem key={def.id} onSelect={() => showPanel(def.id)}>
                 {def.icon}
                 <span>{t(`activity:nav.${def.id}`, def.label)}</span>
@@ -143,13 +143,13 @@ export function UtilitiesMenu({
           </>
         )}
 
-        {overflowViews.length > 0 && (
+        {hiddenViews.length > 0 && (
           <>
             <DropdownMenuSeparator />
-            <DropdownMenuLabel className="text-[11px] uppercase text-muted-foreground">
+            <DropdownMenuLabel className="text-[11px] uppercase tracking-wide text-muted-foreground">
               {t('activity:menu.views')}
             </DropdownMenuLabel>
-            {overflowViews.map((def) => (
+            {hiddenViews.map((def) => (
               <DropdownMenuItem key={def.id} onSelect={() => openMainView(def.id)}>
                 {def.icon}
                 <span>{t(`activity:nav.${def.id}`, def.label)}</span>
@@ -223,16 +223,6 @@ export function ActivityIcon({
   active,
   badge,
   onClick,
-  reorderMode = false,
-  draggable = false,
-  locked = false,
-  isDragOver = false,
-  isDragging = false,
-  onDragStart,
-  onDragOver,
-  onDragLeave,
-  onDrop,
-  onDragEnd,
 }: {
   compact?: boolean | undefined;
   icon: ReactElement;
@@ -240,41 +230,18 @@ export function ActivityIcon({
   active: boolean;
   badge?: number | undefined;
   onClick: () => void;
-  reorderMode?: boolean | undefined;
-  draggable?: boolean | undefined;
-  locked?: boolean | undefined;
-  isDragOver?: boolean | undefined;
-  isDragging?: boolean | undefined;
-  onDragStart?: ((e: React.DragEvent) => void) | undefined;
-  onDragOver?: ((e: React.DragEvent) => void) | undefined;
-  onDragLeave?: ((e: React.DragEvent) => void) | undefined;
-  onDrop?: ((e: React.DragEvent) => void) | undefined;
-  onDragEnd?: ((e: React.DragEvent) => void) | undefined;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
       aria-label={label}
-      title={locked && reorderMode ? `${label} — ${'Sabit'}` : label}
-      draggable={draggable}
-      onDragStart={onDragStart}
-      onDragOver={onDragOver}
-      onDragLeave={onDragLeave}
-      onDrop={onDrop}
-      onDragEnd={onDragEnd}
-      data-reorder-mode={reorderMode ? 'on' : 'off'}
-      data-locked={locked ? '1' : '0'}
-      data-drag-over={isDragOver ? '1' : '0'}
-      data-dragging={isDragging ? '1' : '0'}
+      title={label}
       className={cn(
         'ws-nav-button relative flex shrink-0 items-center justify-center rounded-md transition-colors',
         compact ? 'h-9 w-9' : 'h-11 w-11',
         'text-muted-foreground hover:border-border/70 hover:text-foreground hover:bg-muted/60',
         active && 'ws-nav-button-active',
-        reorderMode && !locked && 'cursor-grab active:cursor-grabbing ring-1 ring-primary/40',
-        reorderMode && locked && 'opacity-70 cursor-not-allowed',
-        isDragOver && 'ring-2 ring-primary bg-primary/15 text-foreground',
       )}
     >
       {/* Active indicator — left accent bar */}
@@ -282,19 +249,6 @@ export function ActivityIcon({
         <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 rounded-r-full bg-primary" />
       )}
       <span className="h-5 w-5 shrink-0">{icon}</span>
-      {/* Lock badge — pinned icons in edit mode */}
-      {locked && reorderMode && (
-        <span
-          // A bare <span> has no role that supports aria-label, so the badge
-          // announced nothing. It is an icon conveying meaning, so give it the
-          // role that makes the label part of the accessibility tree.
-          role="img"
-          aria-label="locked"
-          className="absolute -top-1 -left-1 h-3.5 w-3.5 flex items-center justify-center rounded-full bg-background text-muted-foreground ring-1 ring-border"
-        >
-          <Lock size={9} />
-        </span>
-      )}
       {/* Badge count — top-right pill */}
       {badge !== undefined && badge > 0 && (
         <span className="absolute -top-0.5 -right-0.5 min-w-[15px] h-[15px] flex items-center justify-center rounded bg-primary text-[8px] font-bold text-primary-foreground leading-none px-1 tabular">

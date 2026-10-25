@@ -7,6 +7,7 @@ import {
   resolveActivityOrder,
   splitDesktopActivityBarItems,
 } from '@/components/activity-bar';
+import { ACTIVITY_BAR_MAX_ICONS } from '@/components/activity-bar/activity-bar-pins';
 import { useUIStore } from '@/stores';
 import type { ActivityBarOrder } from '@/stores/ui-store-types';
 
@@ -195,7 +196,7 @@ describe('activity-bar · store wiring (setActivityBarOrder + persist v8)', () =
       version?: number;
       partialize?: (s: Record<string, unknown>) => Record<string, unknown>;
     };
-    expect(opts.version).toBe(8);
+    expect(opts.version).toBe(9);
     expect(opts.partialize).toBeDefined();
     const partial = opts.partialize!({ activityBarOrder: 'oops' });
     expect(partial).toHaveProperty('activityBarOrder', 'oops');
@@ -228,7 +229,7 @@ describe('activity-bar · store wiring (setActivityBarOrder + persist v8)', () =
 
 // Component UI smoke ───────────────────────────────────────────────────
 
-describe('activity-bar · reorder · UI mode toggles', () => {
+describe('activity-bar · customize dialog', () => {
   beforeEach(() => {
     act(() => {
       useUIStore.setState({
@@ -244,68 +245,27 @@ describe('activity-bar · reorder · UI mode toggles', () => {
     cleanup();
   });
 
-  it('shows the Edit pencil by default and reveals Done/Reset when entered', () => {
+  it('opens the one-screen editor from the pencil instead of an in-place drag mode', () => {
     render(<ActivityBar />);
-    expect(screen.queryByTestId('activity-bar-reorder-edit')).toBeTruthy();
+    expect(screen.queryByTestId('activity-bar-customize-dialog')).toBeNull();
+
+    act(() => {
+      screen.getByTestId('activity-bar-reorder-edit').click();
+    });
+    expect(screen.getByTestId('activity-bar-customize-dialog')).toBeTruthy();
+    // The rail-side "done/reset" pair is gone — the dialog owns the flow.
     expect(screen.queryByTestId('activity-bar-reorder-done')).toBeNull();
-
-    act(() => {
-      screen.getByTestId('activity-bar-reorder-edit').click();
-    });
-    expect(screen.queryByTestId('activity-bar-reorder-edit')).toBeNull();
-    expect(screen.queryByTestId('activity-bar-reorder-done')).toBeTruthy();
-    expect(screen.queryByTestId('activity-bar-reorder-reset')).toBeTruthy();
+    expect(screen.queryByTestId('activity-bar-reorder-reset')).toBeNull();
   });
 
-  it('Reset restores the default visible view order and exits reorder mode', () => {
-    act(() => {
-      useUIStore.getState().setActivityBarOrder({
-        panels: ['design'],
-        views: ['memory', 'kanban', 'goal', 'roster'],
-      });
-    });
-    const { container } = render(<ActivityBar />);
-    const visibleViewLabels = () =>
-      Array.from(container.querySelectorAll('button[data-locked="0"]')).map((button) =>
-        button.getAttribute('aria-label'),
-      );
-    const customLabels = visibleViewLabels();
-    act(() => {
-      screen.getByTestId('activity-bar-reorder-edit').click();
-    });
-    act(() => {
-      screen.getByTestId('activity-bar-reorder-reset').click();
-    });
-    expect(useUIStore.getState().activityBarOrder).toBeNull();
-    expect(screen.queryByTestId('activity-bar-reorder-edit')).toBeTruthy();
-    // The rendered icons must react to reset, not just the persisted store.
-    expect(visibleViewLabels().slice(2, 6)).toEqual([
-      customLabels[5],
-      customLabels[4],
-      customLabels[3],
-      customLabels[2],
-    ]);
-  });
-
-  it('exits reorder mode on Done and preserves the user order', () => {
-    const order: ActivityBarOrder = {
-      panels: ['design', 'skills'],
-      views: ['goal', 'intake', 'roster', 'kanban'],
-    };
-    act(() => {
-      useUIStore.getState().setActivityBarOrder(order);
-    });
+  it('states the icon budget so the maximum is never a guess', () => {
     render(<ActivityBar />);
     act(() => {
       screen.getByTestId('activity-bar-reorder-edit').click();
     });
-    // jsdom does not implement HTML5 DnD (no usable DataTransfer), so we
-    // exercise Done — the on-screen reset+drag path is exercised in the
-    // other helpers/store tests above.
-    act(() => {
-      screen.getByTestId('activity-bar-reorder-done').click();
-    });
-    expect(screen.queryByTestId('activity-bar-reorder-edit')).toBeTruthy();
-    expect(useUIStore.getState().activityBarOrder).toEqual(order);
+    // The counter renders the pinned count against the hard cap.
+    expect(screen.getByTestId('activity-bar-customize-dialog').textContent).toContain(
+      `${ACTIVITY_BAR_MAX_ICONS}`,
+    );
   });
 });

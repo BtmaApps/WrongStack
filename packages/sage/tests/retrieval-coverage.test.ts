@@ -174,4 +174,45 @@ describe('query relevance completion coverage', () => {
       evidence: [],
     });
   });
+
+  // The exact-anchor tier (evidence `query:exact-<type>`, strength 0.96/0.98)
+  // is the strongest score the lexical channel produces, and it claims the
+  // query NAMES the anchor. It used to be entered through a plain
+  // `includes` — a SUBSTRING test — so an anchor on the symbol `load` matched
+  // any query that merely contained "load" inside a longer word ("payload",
+  // "download"), and `parse` matched "parser". A memory about a different
+  // thing then reached the top of the relevance ranking.
+  it('requires a whole-token match before the exact-anchor tier fires', () => {
+    const symbolFragment = memoryQueryRelevance(
+      sage({ anchors: [{ type: 'symbol', path: 'src/loader.ts', symbol: 'load' }] }),
+      'reduce the payload size of the response',
+    );
+    expect(symbolFragment.evidence).not.toContain('query:exact-symbol');
+    expect(symbolFragment.strength).toBeLessThan(0.96);
+
+    const longerWord = memoryQueryRelevance(
+      sage({ anchors: [{ type: 'symbol', path: 'src/parser.ts', symbol: 'parse' }] }),
+      'write a parser for the config',
+    );
+    expect(longerWord.evidence).not.toContain('query:exact-symbol');
+    expect(longerWord.strength).toBeLessThan(0.96);
+
+    // Same rule on the right boundary: a path anchor is not satisfied by a
+    // different file whose name merely extends it.
+    const extendedPath = memoryQueryRelevance(
+      sage({ anchors: [{ type: 'file', path: 'src/store.ts' }] }),
+      'src/store.tsx',
+    );
+    expect(extendedPath.evidence).not.toContain('query:exact-file');
+    expect(extendedPath.strength).toBeLessThan(0.96);
+
+    // The tier still fires for a command anchor named verbatim — the fix
+    // narrows the MATCH, it does not disable the tier.
+    expect(
+      memoryQueryRelevance(
+        sage({ anchors: [{ type: 'command', command: 'pnpm test' }] }),
+        'run pnpm test now',
+      ),
+    ).toEqual({ strength: 0.98, evidence: ['query:exact-command'] });
+  });
 });

@@ -1,4 +1,4 @@
-// Changelog — 1.x era (1.2.0 → 1.0.0).
+// Changelog — 1.x era (1.2.1 → 1.0.0).
 // Historical entries mirror CHANGELOG.md release notes. The 1.0.37 entry was
 // written from committed runtime/source evidence (git history and packages), not
 // the root CHANGELOG, which had not been extended when it landed. 1.1.0 absorbs
@@ -13,10 +13,20 @@ import type { ChangelogEntry } from './changelog-types';
 
 export const changelog1x: ChangelogEntry[] = [
   {
+    version: '1.2.1',
+    date: '2026-10-25',
+    tagline: 'SimpleUI retired and replaced by VibeUI',
+    latest: true,
+    highlights: [
+      'SimpleUI is retired: the @wrongstack/simpleui package is gone and VibeUI (wstack vibeui / --vibeui, default port 3476) is the focused browser surface; the retired wstack simpleui command and --simpleui flag still parse, but open VibeUI and print a notice',
+      'The interactive launch menu is now TUI / REPL, WebUI, VibeUI, HQ and Desktop, with VibeUI as option 3',
+      'The --full-auto shortcut is retired: it is still accepted but ignored with a warning, and --yolo is the supported replacement',
+    ],
+  },
+  {
     version: '1.2.0',
     date: '2026-10-24',
     tagline: 'Live model-output activity, a calmer VibeUI and stronger agent boundaries',
-    latest: true,
     highlights: [
       'CLI, TUI, SimpleUI and WebUI share live model-output token estimates, throughput, elapsed time and waiting, thinking, receiving or tool-running phases; provider usage reconciles completed responses when available',
       'VibeUI opens in Cozy chat and adds Just chat and Studio views, visual starters, a quick tour, optional Stacky interactions, persistent workspace preferences and run-wide stop-all controls',

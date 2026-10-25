@@ -709,6 +709,68 @@ describe('agent-loop fingerprint detector', () => {
     expect(detected[0]).toEqual({ scope: 'call', repeatCount: 4 });
   });
 
+  it('per-call detector does not cut prematurely after a steer due to calls that aged out of an earlier window', async () => {
+    const tools = [
+      { ...echoTool('bash'), mutating: true },
+      { ...echoTool('aux'), mutating: true },
+    ];
+    const bash = (id: string) => ({
+      content: [{ type: 'tool_use' as const, id, name: 'bash', input: { cmd: 'npm test' } }],
+      stopReason: 'tool_use' as const,
+    });
+    const aux = (n: number) => ({
+      content: [{ type: 'tool_use' as const, id: `x-${n}`, name: 'aux', input: { step: n } }],
+      stopReason: 'tool_use' as const,
+    });
+    // windowSize=6, callRepeatThreshold=3:
+    // Two early bash calls age out of the window during 6 aux calls.
+    // Later, 3 bash calls within the window trigger a steer.
+    // One post-steer bash call followed by end_turn must NOT cut the turn,
+    // because escalating to a cut requires another full threshold (3 repeats) after the steer.
+    const provider = new MockProvider([
+      bash('e1'),
+      bash('e2'),
+      aux(1),
+      aux(2),
+      aux(3),
+      aux(4),
+      aux(5),
+      aux(6),
+      bash('w1'),
+      aux(7),
+      bash('w2'),
+      aux(8),
+      bash('w3'), // 3rd in window -> steers here
+      aux(9),
+      bash('post1'), // 1st repeat after steer -> must NOT cut
+      {
+        content: [{ type: 'text', text: 'recovered after 1 post-steer check' }],
+        stopReason: 'end_turn',
+      },
+    ]);
+    const { agent, tmp } = await buildAgent(provider, tools, {
+      mode: 'steer-then-cut',
+      windowSize: 6,
+      callRepeatThreshold: 3,
+      steerThreshold: 4,
+      cutThreshold: 7,
+    });
+    cleanupDirs.push(tmp);
+
+    const detected: Array<{
+      action?: string | undefined;
+      scope?: string | undefined;
+      repeatCount: number;
+    }> = [];
+    (agent as never as { events: EventBus }).events.on('tool.loop_detected', (e) =>
+      detected.push({ action: e.action, scope: e.scope, repeatCount: e.repeatCount }),
+    );
+
+    const result = await agent.run('go', { maxIterations: 30 });
+    expect(result.status).toBe('done');
+    expect(detected).toEqual([{ action: 'steer', scope: 'call', repeatCount: 3 }]);
+  });
+
   it("mode 'off' disables both detectors", async () => {
     const echo = echoTool();
     const identical = () => ({

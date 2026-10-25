@@ -410,6 +410,7 @@ export function createApprovalRegistry(events: EventBus): ApprovalRegistry {
         );
         if (grantedUntil !== undefined) grantExpiries.set(toolUseId, grantedUntil);
       }
+      busAnnouncedId = undefined;
       approval.resolve(decision);
       // `wasRegistered` alone is not enough: if this resolver emits
       // `tool.confirm_resolved` synchronously, the listener above already
@@ -451,6 +452,7 @@ export function createApprovalRegistry(events: EventBus): ApprovalRegistry {
       };
     },
     renew(toolUseId, deadlineAt) {
+      sweep();
       const approval = pending.get(toolUseId);
       if (approval === undefined) return false;
       approval.deadlineAt = deadlineAt;

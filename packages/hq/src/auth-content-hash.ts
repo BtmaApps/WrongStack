@@ -164,9 +164,9 @@ export const HQ_AUTH_CONTENT_HASH_REDACTED = '<redacted>';
  * so no explicit `invalidate()` call is needed. Worst-case staleness:
  * one process lifetime per unique serialized projection.
  */
-export const _hqAuthHashCache = new Map<string, string>();
+const _hqAuthHashCache = new Map<string, string>();
 
-export const _HQ_AUTH_HASH_CACHE_MAX = 256;
+const _HQ_AUTH_HASH_CACHE_MAX = 256;
 
 export function hqAuthContentHash(file: HqAuthFile): string | undefined {
   const REDACTED = HQ_AUTH_CONTENT_HASH_REDACTED;
@@ -206,8 +206,7 @@ export function hqAuthContentHash(file: HqAuthFile): string | undefined {
 
 /**
  * Inner hash function with memoization. Public callers should use
- * {@link hqAuthContentHash} — this is exported for tests that need to
- * assert the cache behavior directly.
+ * {@link hqAuthContentHash}.
  *
  * The cache key is the canonical JSON serialization of the projection
  * (stable key order, since the projection above has fixed key ordering).
@@ -221,7 +220,7 @@ export function hqAuthContentHash(file: HqAuthFile): string | undefined {
  * adversarial or pathological sequence of unique projections from growing
  * the map without bound.
  */
-export function hqAuthContentHashCached(projection: HqAuthFile): string | undefined {
+function hqAuthContentHashCached(projection: HqAuthFile): string | undefined {
   let payload: string;
   try {
     // Stable key ordering — the projection above has a fixed key order, so
@@ -240,13 +239,4 @@ export function hqAuthContentHashCached(projection: HqAuthFile): string | undefi
   }
   _hqAuthHashCache.set(payload, hash);
   return hash;
-}
-
-/**
- * Test-only: drop all memoized auth-file hashes. Production code never
- * needs to invalidate — the watcher always re-reads, producing a fresh
- * projection whose canonical serialization is a different cache key.
- */
-export function _resetHqAuthHashCacheForTests(): void {
-  _hqAuthHashCache.clear();
 }

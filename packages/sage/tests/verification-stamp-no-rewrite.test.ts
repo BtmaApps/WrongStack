@@ -96,4 +96,62 @@ describe('verification stamps without rewriting the memory', () => {
     expect(after?.revision).toBe(memory.revision + 1);
     expect(await store.getHqSyncVersion()).not.toBe(clock);
   });
+
+  it('verify() and hygiene() do not advance the HQ clock when stamping freshness < 1 back to 1', async () => {
+    const { dir, store } = await newStore();
+    const memory = await anchoredMemory(dir, store);
+    await store.updateSage(memory.id, { freshness: 0.75 });
+    const before = (await store.getSage(memory.id))!;
+    const clock = await store.getHqSyncVersion();
+
+    await store.verify(memory.id);
+
+    const after = (await store.getSage(memory.id))!;
+    expect(after.freshness).toBe(1);
+    expect(after.revision).toBe(before.revision);
+    expect(after.updatedAt).toBe(before.updatedAt);
+    expect(await store.getHqSyncVersion()).toBe(clock);
+  });
+
+  it('hygiene contradiction pass re-reads live rows inside runMutation before linking contradictions', async () => {
+    const { store } = await newStore();
+    const state = store as unknown as {
+      runMutation: <T>(work: () => T) => Promise<T>;
+      upsertMemory: (m: import('../src/types.js').Sage) => void;
+    };
+    const older = await store.rememberSage({
+      text: 'Automatic schema migration is enabled on startup for the billing service database.',
+      kind: 'fact',
+      tags: ['billing'],
+    });
+    const newer = await store.rememberSage({
+      text: 'Automatic schema migration is not enabled on startup for the billing service database.',
+      kind: 'fact',
+      tags: ['billing'],
+    });
+    const originalRunMutation = state.runMutation.bind(store);
+    let mutationStep = 0;
+    state.runMutation = (async <T>(work: () => T): Promise<T> => {
+      mutationStep++;
+      if (mutationStep === 2) {
+        const current = (await store.getSage(newer.id))!;
+        state.upsertMemory({
+          ...current,
+          revision: current.revision + 1,
+          tags: ['billing', 'concurrent-tag'],
+          useCount: 5,
+        });
+      }
+      return originalRunMutation(work);
+    }) as never;
+
+    await store.hygiene({ verify: false, nearDedup: false });
+    state.runMutation = originalRunMutation;
+
+    const after = await store.getSage(newer.id);
+    expect(after?.revision).toBe(newer.revision + 2);
+    expect(after?.tags).toContain('concurrent-tag');
+    expect(after?.useCount).toBe(5);
+    expect(after?.contradicts).toEqual([older.id]);
+  });
 });

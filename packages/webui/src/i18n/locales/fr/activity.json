@@ -142,10 +142,27 @@
     "fleetMonitor": "Inspecteur de flotte"
   },
   "reorder": {
-    "edit": "Modifier l'ordre",
-    "done": "Terminé",
+    "edit": "Personnaliser la barre (max {{max}} icônes)"
+  },
+  "customize": {
+    "title": "Personnaliser la barre d'activité",
+    "description": "Épinglez les icônes que vous voulez garder à gauche. Les autres passent dans le menu « … » et le lanceur d'outils. Les modifications s'appliquent à l'enregistrement.",
+    "counter": "{{count}} / {{max}} icônes épinglées",
+    "budgetHint": "La barre contient au maximum {{max}} icônes.",
+    "maxReached": "Maximum de {{max}} icônes atteint — retirez-en une d'abord.",
+    "pinnedColumn": "Épinglées sur la barre",
+    "othersColumn": "Autres",
+    "groupPanels": "Panneaux",
+    "groupViews": "Vues",
+    "fixed": "Toujours sur la barre",
+    "moveUp": "Déplacer {{label}} vers le haut",
+    "moveDown": "Déplacer {{label}} vers le bas",
+    "pin": "Épingler {{label}} sur la barre",
+    "unpin": "Retirer {{label}} de la barre",
+    "emptyOthers": "Rien ici.",
     "reset": "Réinitialiser",
-    "locked": "Fixe — non réordonnable"
+    "cancel": "Annuler",
+    "save": "Enregistrer"
   },
   "sidePanel": {
     "dragHint": "Glisser pour redimensionner · double-clic pour réinitialiser",
@@ -4553,7 +4570,7 @@
       "quality": "Qualité",
       "system": "Système"
     },
-    "customize": "Personnaliser la barre (les 4 premières vues y restent)"
+    "customize": "Personnaliser la barre (épingler jusqu'à {{max}} icônes)"
   },
   "worktreeTimeline": {
     "outcomeLive": "en cours",

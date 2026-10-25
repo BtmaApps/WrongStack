@@ -258,6 +258,12 @@ async function runInstallCommand(ctx: LspContext, language: string): Promise<{ m
       };
     }
 
+    if (result.error) {
+      return {
+        message: `${colorize('Installation failed:', 'red')} ${lang}\n  ${result.error}`,
+      };
+    }
+
     const activation = await activateServer(ctx, lang, {
       command: server.binary,
       args: server.args ?? ['--stdio'],
@@ -375,7 +381,7 @@ async function runStartCommand(ctx: LspContext, name?: string): Promise<{ messag
   const failed: string[] = [];
 
   for (const srv of allServers) {
-    if (!srv.config.enabled) continue;
+    if (srv.config.enabled === false) continue;
     if (srv.state === 'ready') {
       started.push(srv.name);
       continue;
@@ -442,7 +448,9 @@ async function runRestartCommand(ctx: LspContext, name?: string): Promise<{ mess
   }
 
   // Restart all enabled servers
-  const allServers = ctx.registry.list().filter((s) => s.config.enabled);
+  const allServers = ctx.registry
+    .list()
+    .filter((s) => s.config.enabled !== false && s.state !== 'disabled');
   const restarted: string[] = [];
   const failed: string[] = [];
 

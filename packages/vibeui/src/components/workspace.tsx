@@ -70,7 +70,6 @@ export function Workspace() {
     controller;
   const [sidebar, setSidebar] = useState(false);
   const [panel, setPanel] = useState(false);
-  const [conversationOptions, setConversationOptions] = useState(false);
   const [inspectedToolId, setInspectedToolId] = useState('');
   const [settings, setSettings] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
@@ -105,7 +104,6 @@ export function Workspace() {
   useEffect(() => {
     setPanel(preferences.view === 'studio' && window.innerWidth >= 1100);
     setSidebar(false);
-    setConversationOptions(false);
   }, [preferences.view]);
 
   useEffect(() => {
@@ -604,18 +602,6 @@ export function Workspace() {
                   setPanel(false);
                 }}
               />
-              {preferences.view !== 'studio' && (
-                <button
-                  type="button"
-                  className={`icon-button ${conversationOptions ? 'is-active' : ''}`}
-                  aria-label="Conversation options"
-                  title="Conversation options"
-                  aria-expanded={conversationOptions}
-                  onClick={() => setConversationOptions(!conversationOptions)}
-                >
-                  <Settings2 size={16} />
-                </button>
-              )}
               <button
                 type="button"
                 className="icon-button"
@@ -690,89 +676,6 @@ export function Workspace() {
                 <X size={13} />
               </button>
             </nav>
-          )}
-          {(preferences.view === 'studio' || conversationOptions) && (
-            <div className="session-toolbar">
-              <div className="model-controls">
-                <ModelPicker
-                  models={state.models}
-                  providers={state.providers}
-                  provider={state.provider}
-                  model={state.model}
-                  locked={locked}
-                  pending={modelPending}
-                  onChoose={chooseModel}
-                  onSettings={setProvidersOpen}
-                  onRefresh={refreshModels}
-                />
-                <EffortSelect state={state} disabled={locked} onChange={controller.setEffort} />
-              </div>
-              <button
-                type="button"
-                aria-label="View context"
-                onClick={() => setContextOpen(true)}
-                className="context-summary"
-                title={`${state.tokens.toLocaleString()} / ${state.maxContext.toLocaleString()} context tokens${state.cache ? ` · cache hit ${Math.round((state.cache.lastHitRatio ?? state.cache.hitRatio) * 100)}%` : ''}`}
-              >
-                <span className="context-track">
-                  <span style={{ width: `${Math.min(100, state.load * 100)}%` }} />
-                </span>
-                <span className="context-label">
-                  {presentation === 'simple' ? (
-                    <>Conversation space · {Math.round(state.load * 100)}%</>
-                  ) : (
-                    <>
-                      {Intl.NumberFormat('en', {
-                        notation: 'compact',
-                        maximumFractionDigits: 1,
-                      }).format(state.tokens)}{' '}
-                      /{' '}
-                      {Intl.NumberFormat('en', {
-                        notation: 'compact',
-                        maximumFractionDigits: 1,
-                      }).format(state.maxContext)}{' '}
-                      <span className="context-percentage"> · {Math.round(state.load * 100)}%</span>
-                      {state.cache && (
-                        <span className="context-cache">
-                          {' '}
-                          · cache{' '}
-                          {Math.round((state.cache.lastHitRatio ?? state.cache.hitRatio) * 100)}%
-                        </span>
-                      )}
-                    </>
-                  )}
-                </span>
-              </button>
-              {typeof state.prefs.autonomy === 'string' && (
-                <button
-                  type="button"
-                  className="runtime-chip"
-                  aria-label="Agent settings"
-                  onClick={() => setSettings(true)}
-                >
-                  {state.mode || 'Default'} · {state.prefs.autonomy}
-                  {state.prefs.yoloPlus === true
-                    ? ' · YOLO+'
-                    : state.prefs.yolo === true
-                      ? ' · YOLO'
-                      : ''}
-                </button>
-              )}
-              {liveAgents.length > 0 && (
-                <button
-                  type="button"
-                  className="agent-count"
-                  aria-label="View agents"
-                  title={`${liveAgents.length} active ${liveAgents.length === 1 ? 'agent' : 'agents'}`}
-                  onClick={() => {
-                    setPanel(true);
-                    setAgentView((value) => value + 1);
-                  }}
-                >
-                  <Users size={13} /> {liveAgents.length}
-                </button>
-              )}
-            </div>
           )}
           {controller.sessionTransition && (
             <div className="notice" role="status">
@@ -1012,6 +915,87 @@ export function Workspace() {
             </button>
           )}
           <StreamMeter activity={state.streamActivity} running={state.running} />
+          <div className="session-toolbar">
+            <div className="model-controls">
+              <ModelPicker
+                models={state.models}
+                providers={state.providers}
+                provider={state.provider}
+                model={state.model}
+                locked={locked}
+                pending={modelPending}
+                onChoose={chooseModel}
+                onSettings={setProvidersOpen}
+                onRefresh={refreshModels}
+              />
+              <EffortSelect state={state} disabled={locked} onChange={controller.setEffort} />
+            </div>
+            <button
+              type="button"
+              aria-label="View context"
+              onClick={() => setContextOpen(true)}
+              className="context-summary"
+              title={`${state.tokens.toLocaleString()} / ${state.maxContext.toLocaleString()} context tokens${state.cache ? ` · cache hit ${Math.round((state.cache.lastHitRatio ?? state.cache.hitRatio) * 100)}%` : ''}`}
+            >
+              <span className="context-track">
+                <span style={{ width: `${Math.min(100, state.load * 100)}%` }} />
+              </span>
+              <span className="context-label">
+                {presentation === 'simple' ? (
+                  <>Conversation space · {Math.round(state.load * 100)}%</>
+                ) : (
+                  <>
+                    {Intl.NumberFormat('en', {
+                      notation: 'compact',
+                      maximumFractionDigits: 1,
+                    }).format(state.tokens)}{' '}
+                    /{' '}
+                    {Intl.NumberFormat('en', {
+                      notation: 'compact',
+                      maximumFractionDigits: 1,
+                    }).format(state.maxContext)}{' '}
+                    <span className="context-percentage"> · {Math.round(state.load * 100)}%</span>
+                    {state.cache && (
+                      <span className="context-cache">
+                        {' '}
+                        · cache{' '}
+                        {Math.round((state.cache.lastHitRatio ?? state.cache.hitRatio) * 100)}%
+                      </span>
+                    )}
+                  </>
+                )}
+              </span>
+            </button>
+            {typeof state.prefs.autonomy === 'string' && (
+              <button
+                type="button"
+                className="runtime-chip"
+                aria-label="Agent settings"
+                onClick={() => setSettings(true)}
+              >
+                {state.mode || 'Default'} · {state.prefs.autonomy}
+                {state.prefs.yoloPlus === true
+                  ? ' · YOLO+'
+                  : state.prefs.yolo === true
+                    ? ' · YOLO'
+                    : ''}
+              </button>
+            )}
+            {liveAgents.length > 0 && (
+              <button
+                type="button"
+                className="agent-count"
+                aria-label="View agents"
+                title={`${liveAgents.length} active ${liveAgents.length === 1 ? 'agent' : 'agents'}`}
+                onClick={() => {
+                  setPanel(true);
+                  setAgentView((value) => value + 1);
+                }}
+              >
+                <Users size={13} /> {liveAgents.length}
+              </button>
+            )}
+          </div>
           <Composer
             key={`${state.id || 'connecting'}-${controller.clearGeneration}`}
             controller={controller}

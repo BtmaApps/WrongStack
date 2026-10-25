@@ -262,31 +262,35 @@ export class AgentLoopDetector {
             : loopCfg.callRepeatThreshold;
         // A key that was already steered used to be skipped for ever, so an
         // agent that ignored the steer could repeat the identical call
-        // unboundedly and the detector never escalated. Count total repeats
-        // and cut once it has ignored the steer for another full threshold.
-        const total = (this.callKeyTotals.get(key) ?? 0) + 1;
-        this.callKeyTotals.set(key, total);
-        if (this.steeredCallKeys.has(key) && total >= observationThreshold * 2) {
-          const detail = `"${u.name}" called with identical arguments and results ${total} times despite a steer`;
-          this.a.logger.warn(`Loop detected: ${detail} — stopping to prevent infinite loop.`);
-          this.a.events.emit('tool.loop_detected', {
-            sessionId: resolveEventSessionId(this.a.ctx),
-            ctx: this.a.ctx,
-            tools: u.name,
-            repeatCount: total,
-            iteration: iterationIndex,
-            kind: 'tool',
-            action: 'cut',
-            scope: 'call',
-          });
-          return {
-            cut: true,
-            cutSummary: `[Loop detected: ${detail} — stopping to prevent infinite repetition.]`,
-          };
+        // unboundedly and the detector never escalated. Count repeats from the
+        // steer point and cut once it has ignored the steer for another full
+        // threshold.
+        if (this.steeredCallKeys.has(key)) {
+          const total = (this.callKeyTotals.get(key) ?? observationThreshold) + 1;
+          this.callKeyTotals.set(key, total);
+          if (total >= observationThreshold * 2) {
+            const detail = `"${u.name}" called with identical arguments and results ${total} times despite a steer`;
+            this.a.logger.warn(`Loop detected: ${detail} — stopping to prevent infinite loop.`);
+            this.a.events.emit('tool.loop_detected', {
+              sessionId: resolveEventSessionId(this.a.ctx),
+              ctx: this.a.ctx,
+              tools: u.name,
+              repeatCount: total,
+              iteration: iterationIndex,
+              kind: 'tool',
+              action: 'cut',
+              scope: 'call',
+            });
+            return {
+              cut: true,
+              cutSummary: `[Loop detected: ${detail} — stopping to prevent infinite repetition.]`,
+            };
+          }
+          continue;
         }
-        if (this.steeredCallKeys.has(key)) continue;
         if (count < observationThreshold) continue;
         this.steeredCallKeys.add(key);
+        this.callKeyTotals.set(key, count);
         const preview = JSON.stringify(u.input ?? {}).slice(0, 160);
         this.a.logger.warn(
           `Loop detected: "${u.name}" called with identical arguments ${count}× within the last ${loopCfg.windowSize} tool calls — steering the model to change approach.`,

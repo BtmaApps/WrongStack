@@ -3,11 +3,9 @@ import { HQ_AUTH_FILE_VERSION, hqAuthContentHash } from './auth-content-hash.js'
 
 export type { HqAuthFile, HqToken } from './auth-content-hash.js';
 export {
-  _resetHqAuthHashCacheForTests,
   HQ_AUTH_CONTENT_HASH_REDACTED,
   HQ_AUTH_FILE_VERSION,
   hqAuthContentHash,
-  hqAuthContentHashCached,
 } from './auth-content-hash.js';
 export {
   hashHqPassword,

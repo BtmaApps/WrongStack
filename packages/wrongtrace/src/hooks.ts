@@ -155,7 +155,7 @@ export interface WrongTraceHookOptions {
  * block each other for the TTL. Resolve it against the session's directory.
  */
 function absoluteTarget(path: string, opts: WrongTraceHookOptions): string {
-  return isAbsolute(path) ? path : resolve(opts.baseDir?.() || process.cwd(), path);
+  return isAbsolute(path) ? resolve(path) : resolve(opts.baseDir?.() || process.cwd(), path);
 }
 
 /**
@@ -209,12 +209,12 @@ function claimedOwnerSetFor(counters: Map<string, number>): Map<string, string> 
 
 // Pre-hook claims still running, keyed like the counters. A host timeout can
 // abandon a pre hook whose daemon claim then lands after the tool ran.
-const pendingByCounters = new WeakMap<Map<string, number>, Map<string, Promise<unknown>>>();
+const pendingByCounters = new WeakMap<Map<string, number>, Map<string, Set<Promise<unknown>>>>();
 
-function pendingFor(counters: Map<string, number>): Map<string, Promise<unknown>> {
+function pendingFor(counters: Map<string, number>): Map<string, Set<Promise<unknown>>> {
   let map = pendingByCounters.get(counters);
   if (!map) {
-    map = new Map<string, Promise<unknown>>();
+    map = new Map<string, Set<Promise<unknown>>>();
     pendingByCounters.set(counters, map);
   }
   return map;
@@ -223,10 +223,10 @@ function pendingFor(counters: Map<string, number>): Map<string, Promise<unknown>
 /** How long a post hook waits for an in-flight claim before leaving it to the TTL. */
 const CLAIM_SETTLE_MS = 10_000;
 
-async function settleWithin(work: Promise<unknown>, ms: number): Promise<void> {
+async function settleWithin(work: Set<Promise<unknown>>, ms: number): Promise<void> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   await Promise.race([
-    work.catch(() => undefined),
+    Promise.all([...work]).catch(() => undefined),
     new Promise<void>((resolve) => {
       timer = setTimeout(resolve, ms);
     }),
@@ -284,12 +284,18 @@ export function createWrongTraceHookPair(
       // claim below still lands. The post hook then waits for it instead of
       // finding no claim and leaving the lock to the TTL.
       const pending = pendingFor(counters);
+      let inFlightSet = pending.get(key);
+      if (!inFlightSet) {
+        inFlightSet = new Set<Promise<unknown>>();
+        pending.set(key, inFlightSet);
+      }
       const work = claim();
-      pending.set(key, work);
+      inFlightSet.add(work);
       try {
         return await work;
       } finally {
-        if (pending.get(key) === work) pending.delete(key);
+        inFlightSet.delete(work);
+        if (inFlightSet.size === 0) pending.delete(key);
       }
 
       async function claim(): Promise<WrongTracePreToolUseOutcome | undefined> {
@@ -375,7 +381,6 @@ export function createWrongTraceHookPair(
       claimedOwnerSetFor(counters).delete(key);
       try {
         const wt = await getWrongTrace();
-        if (counters.has(key)) return; // re-acquired by a new preToolUse while awaiting
         if (wt.isAvailable) {
           // If a lock-conflict-race ever touched this path, count-zero does
           // NOT prove the daemon lock is ours — the claim went to a peer (or
@@ -389,10 +394,11 @@ export function createWrongTraceHookPair(
           if (wasRaced) {
             const expectedOwner = recordedOwner ?? `wrongstack:${input.sessionId || sessionId()}`;
             const health = await wt.getFileHealth(path);
-            if (counters.has(key)) return; // re-acquired by a new preToolUse while awaiting
             if (health?.lock_owner !== expectedOwner) return; // not ours — TTL reaps
           }
-          if (counters.has(key)) return;
+          const inFlightAfter = pendingFor(counters).get(key);
+          if (inFlightAfter) await settleWithin(inFlightAfter, CLAIM_SETTLE_MS);
+          if (counters.has(key)) return; // re-acquired by a new preToolUse while awaiting
           const released = await wt.unlockFile(path);
           if (released !== null && released.ok !== false) {
             // Emit lock-released only on a CONFIRMED daemon response —

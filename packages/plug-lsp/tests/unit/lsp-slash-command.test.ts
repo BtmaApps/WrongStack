@@ -459,12 +459,18 @@ describe('buildLspCommand — start/stop/restart', () => {
     expect(result.message).toContain('Restarted:');
   });
 
-  it('restart all enabled servers', async () => {
+  it('restart all enabled servers including those with omitted enabled flag', async () => {
     const ctx = makeCtx([
       {
         name: 'ts',
         state: 'ready',
         config: { command: 'tsls', languages: ['ts'], enabled: true },
+        diagnostics: new Map(),
+      },
+      {
+        name: 'clangd',
+        state: 'ready',
+        config: { command: 'clangd', languages: ['c'] },
         diagnostics: new Map(),
       },
       {
@@ -477,8 +483,9 @@ describe('buildLspCommand — start/stop/restart', () => {
     const result = await runCmd(ctx, 'restart');
     expect(result.message).toContain('Restarted:');
     expect(result.message).toContain('ts');
+    expect(result.message).toContain('clangd');
     // go is disabled, should not be restarted
-    expect(ctx.registry.start).toHaveBeenCalledTimes(1);
+    expect(ctx.registry.start).toHaveBeenCalledTimes(2);
   });
 
   it('reports named and all-server restart failures', async () => {

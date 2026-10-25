@@ -271,4 +271,21 @@ describe('HqCommandAuditLog', () => {
     // Most recent 5 retained.
     expect(log.recent()[0]!.commandId).toBe('c5');
   });
+
+  it('passes immutable snapshots to onPersist across synchronous state transitions', () => {
+    const persisted: Array<{ status: string }> = [];
+    const log = new HqCommandAuditLog(10, (entry) => persisted.push(entry));
+    log.record({
+      commandId: 'c1',
+      type: 'steer',
+      clientId: 'cl-1',
+      enqueuedBy: 'tok-1',
+      enqueuedAt: 't1',
+      status: 'queued',
+    });
+    log.update('c1', { status: 'delivered', dispatchedAt: 100 });
+    log.updateForClient('c1', 'cl-1', { status: 'acked', acknowledgedAt: 150 });
+
+    expect(persisted.map((entry) => entry.status)).toEqual(['queued', 'delivered', 'acked']);
+  });
 });

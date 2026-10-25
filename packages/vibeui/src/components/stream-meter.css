@@ -10,8 +10,11 @@
   flex-wrap: wrap;
   gap: 8px 16px;
   min-width: 0;
+  align-self: center;
+  width: calc(100% - 68px);
+  max-width: 780px;
   padding: 10px 14px;
-  margin: 6px 10px;
+  margin: 6px 0;
   border: 1px solid color-mix(in srgb, var(--meter-accent) 42%, transparent);
   border-radius: 10px;
   color: var(--meter-text);

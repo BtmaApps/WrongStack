@@ -142,10 +142,27 @@
     "fleetMonitor": "Filo Denetçisi"
   },
   "reorder": {
-    "edit": "Sıralamayı düzenle",
-    "done": "Bitti",
+    "edit": "Çubuğu özelleştir (en fazla {{max}} simge)"
+  },
+  "customize": {
+    "title": "Sol ikon menüsünü özelleştir",
+    "description": "Sol çubukta kalmasını istediğin simgeleri sabitle. Diğerleri “…” menüsüne ve Araçlar başlatıcısına taşınır. Değişiklikler kaydettiğinde uygulanır.",
+    "counter": "{{count}} / {{max}} simge sabitlendi",
+    "budgetHint": "Çubuk en fazla {{max}} simge taşır.",
+    "maxReached": "{{max}} simgelik sınıra ulaşıldı — önce birini kaldır.",
+    "pinnedColumn": "Çubukta sabitlenenler",
+    "othersColumn": "Diğerleri",
+    "groupPanels": "Paneller",
+    "groupViews": "Görünümler",
+    "fixed": "Her zaman çubukta",
+    "moveUp": "{{label}} simgesini yukarı taşı",
+    "moveDown": "{{label}} simgesini aşağı taşı",
+    "pin": "{{label}} simgesini çubuğa sabitle",
+    "unpin": "{{label}} simgesini çubuktan kaldır",
+    "emptyOthers": "Burada hiçbir şey yok.",
     "reset": "Varsayılana sıfırla",
-    "locked": "Sabit — sırası değiştirilemez"
+    "cancel": "Vazgeç",
+    "save": "Kaydet"
   },
   "sidePanel": {
     "dragHint": "Yeniden boyutlandırmak için sürükle · sıfırlamak için çift tıkla",
@@ -4553,7 +4570,7 @@
       "quality": "Kalite",
       "system": "Sistem"
     },
-    "customize": "Çubuğu özelleştir (ilk 4 görünüm çubukta kalır)"
+    "customize": "Çubuğu özelleştir (en fazla {{max}} simge sabitle)"
   },
   "worktreeTimeline": {
     "outcomeLive": "çalışıyor",

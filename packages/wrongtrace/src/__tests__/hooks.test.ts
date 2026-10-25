@@ -595,4 +595,119 @@ describe('createWrongTraceHookPair abandoned pre hook', () => {
 
     expect(unlocked).toEqual([resolve('proj', 'index.html')]);
   });
+
+  it('settles overlapping pending pre-hooks, awaits mid-release pending claims, and normalizes absolute paths (F13)', async () => {
+    let activeDaemonOwner: string | undefined;
+    let healthCalls = 0;
+    let lockCalls = 0;
+    let releaseHealthGate!: () => void;
+    const healthGate = new Promise<void>((r) => {
+      releaseHealthGate = r;
+    });
+    let pre2EnteredLock!: () => void;
+    const pre2InLock = new Promise<void>((r) => {
+      pre2EnteredLock = r;
+    });
+    let releasePre2LockGate!: () => void;
+    const pre2LockGate = new Promise<void>((r) => {
+      releasePre2LockGate = r;
+    });
+
+    globalThis.fetch = makeFetch(async (url, init) => {
+      const u = new URL(url);
+      const body = init?.body ? JSON.parse(String(init.body)) : {};
+      if (u.pathname === '/api/health') return healthyHealth();
+      if (u.pathname === '/api/file/health') {
+        healthCalls++;
+        if (healthCalls === 2) {
+          await healthGate;
+        }
+        return jsonResponse({
+          file_path: 'src/race.ts',
+          health_score: 100,
+          is_fragile: false,
+          recent_thrashing_count: 0,
+          is_locked: activeDaemonOwner !== undefined,
+          lock_owner: activeDaemonOwner,
+        });
+      }
+      if (u.pathname === '/api/guardrail/lock') {
+        lockCalls++;
+        if (lockCalls === 1) {
+          activeDaemonOwner = 'wrongstack:sess-1';
+          return jsonResponse({ ok: false, status: 'conflict', owner: activeDaemonOwner }, 409);
+        }
+        activeDaemonOwner = body.owner;
+        pre2EnteredLock();
+        await pre2LockGate;
+        return jsonResponse({ ok: true, path: body.path, status: 'locked' });
+      }
+      if (u.pathname === '/api/guardrail/unlock') {
+        activeDaemonOwner = undefined;
+        return jsonResponse({ ok: true, path: body.path, status: 'unlocked' });
+      }
+      return jsonResponse({});
+    });
+
+    const pairA = createWrongTraceHookPair(() => 'sess-1');
+    const inputA = { toolName: 'edit', toolInput: { path: 'src/race.ts' } };
+    await pairA.preToolUse(inputA);
+    const post1Promise = pairA.postToolUse(inputA);
+    const pre2Promise = pairA.preToolUse(inputA);
+    await pre2InLock;
+    releaseHealthGate();
+    releasePre2LockGate();
+    await Promise.all([post1Promise, pre2Promise]);
+    expect(activeDaemonOwner).toBe('wrongstack:sess-1');
+    await pairA.postToolUse(inputA);
+    expect(activeDaemonOwner).toBeUndefined();
+
+    // Overlapping pre-hooks where pre1 is slow/abandoned and pre2 finishes first
+    resetWrongTraceGate();
+    let releasePre1Lock!: () => void;
+    const pre1LockGate = new Promise<void>((r) => {
+      releasePre1Lock = r;
+    });
+    let pre1Requested!: () => void;
+    const pre1Asked = new Promise<void>((r) => {
+      pre1Requested = r;
+    });
+    let caseBLockCount = 0;
+    let caseBActiveLocks = 0;
+
+    globalThis.fetch = makeFetch(async (url) => {
+      const u = new URL(url);
+      if (u.pathname === '/api/health') return healthyHealth();
+      if (u.pathname === '/api/file/health') return healthyFileHealth();
+      if (u.pathname === '/api/guardrail/lock') {
+        caseBLockCount++;
+        if (caseBLockCount === 1) {
+          pre1Requested();
+          await pre1LockGate;
+        }
+        caseBActiveLocks++;
+        return jsonResponse({ ok: true, path: 'src/overlap.ts', status: 'locked' });
+      }
+      if (u.pathname === '/api/guardrail/unlock') {
+        caseBActiveLocks = 0;
+        return jsonResponse({ ok: true, path: 'src/overlap.ts', status: 'unlocked' });
+      }
+      return jsonResponse({});
+    });
+
+    const baseDir = resolve('proj-norm');
+    const pairB = createWrongTraceHookPair(() => 'sess-overlap', { baseDir: () => baseDir });
+    const inputB = { toolName: 'edit', toolInput: { path: 'src/overlap.ts' } };
+    void pairB.preToolUse(inputB);
+    await pre1Asked;
+    await pairB.preToolUse(inputB);
+    const post2 = pairB.postToolUse(inputB);
+    const post1Abandoned = pairB.postToolUse({
+      toolName: 'edit',
+      toolInput: { path: `${baseDir}/./src/overlap.ts` },
+    });
+    releasePre1Lock();
+    await Promise.all([post2, post1Abandoned]);
+    expect(caseBActiveLocks).toBe(0);
+  });
 });

@@ -341,20 +341,41 @@ export async function runSqliteSageHygiene(
     if (flagged.size > 0) {
       await ctx.runMutation(() => {
         for (const { memory, other } of flagged.values()) {
-          const contradictions = [...new Set([...(memory.contradicts ?? []), other.id])];
+          const current = readSqliteSageRow(ctx.stmt, memory.id);
+          const currentOther = readSqliteSageRow(ctx.stmt, other.id);
+          if (current?.status !== 'active' || currentOther?.status !== 'active') continue;
+          if (current.validity || currentOther.validity) continue;
+          const currentAudience = JSON.stringify(normalizeAudience(current.audience) ?? null);
+          const otherAudience = JSON.stringify(normalizeAudience(currentOther.audience) ?? null);
+          if (
+            `${hygieneScopeKey(current)}\u0000${currentAudience}` !==
+            `${hygieneScopeKey(currentOther)}\u0000${otherAudience}`
+          ) {
+            continue;
+          }
+          if (!isPossiblyContradictory(current, currentOther)) continue;
+          if (
+            current.contradicts?.includes(currentOther.id) ||
+            currentOther.contradicts?.includes(current.id)
+          ) {
+            continue;
+          }
+          const contradictions = [...new Set([...(current.contradicts ?? []), currentOther.id])];
           const updated = applySemanticChange(
-            memory,
+            current,
             { contradicts: contradictions },
             ctx.nowIso(),
           );
           ctx.upsertMemory(updated);
           ctx.syncAnchorEdges(updated);
-          pendingCandidates.push({ memory, other });
+          pendingCandidates.push({ memory: updated, other: currentOther });
           contradicted++;
         }
-        ctx.audit('memory.hygiene_contradictions', {
-          details: { candidates: contradicted },
-        });
+        if (contradicted > 0) {
+          ctx.audit('memory.hygiene_contradictions', {
+            details: { candidates: contradicted },
+          });
+        }
       });
     }
     // Candidate creation is async and must not run inside the (synchronous)

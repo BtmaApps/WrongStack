@@ -289,8 +289,51 @@ describe('createCodebaseLspSearchTool', () => {
       { projectRoot: '/proj', cwd: '/proj' } as never,
       { signal: new AbortController().signal } as never,
     );
-    // .ts file → langMap maps to 'typescript'/'tsserver' → server name 'tsserver'
+    // .ts file → server name 'tsserver'
     expect(result).toContain('[lsp:tsserver]');
+  });
+
+  it('preserves the originating server name for non-hardcoded extensions and deduplicates drive-letter variants', async () => {
+    const hppPath = path.resolve('/proj', 'native', 'engine.hpp');
+    const tsServer = makeMockServer({
+      name: 'tsserver',
+      languages: ['typescript'],
+      workspaceSymbol: vi.fn(async () => []),
+    });
+    const clangdServer = makeMockServer({
+      name: 'clangd',
+      languages: ['c', 'cpp'],
+      workspaceSymbol: vi.fn(async () => [
+        {
+          name: 'renderFrame',
+          kind: 12,
+          location: {
+            uri: pathToUri(hppPath),
+            range: { start: { line: 9, character: 0 }, end: { line: 9, character: 11 } },
+          },
+        },
+        {
+          name: 'renderFrame',
+          kind: 12,
+          location: {
+            uri: pathToUri(hppPath).replace(
+              /^file:\/\/\/([A-Z]):/,
+              (_, d: string) => `file:///${d.toLowerCase()}%3A`,
+            ),
+            range: { start: { line: 9, character: 0 }, end: { line: 9, character: 11 } },
+          },
+        },
+      ]),
+    });
+    const tool = createCodebaseLspSearchTool(makeDeps([tsServer, clangdServer]));
+
+    const result = await tool.execute(
+      { query: 'renderFrame', preferLsp: true },
+      { projectRoot: path.resolve('/proj'), cwd: path.resolve('/proj') } as never,
+      { signal: new AbortController().signal } as never,
+    );
+    expect(result).toContain('1 results for "renderFrame" (index:0 lsp:1):');
+    expect(result).toContain('[lsp:clangd] function renderFrame');
   });
 
   it('falls back to LSP when the index query fails', async () => {

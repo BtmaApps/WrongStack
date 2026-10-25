@@ -81,6 +81,12 @@ export const VIEWS: ViewDef[] = [
 
 export const DESKTOP_CORE_PANEL_IDS: readonly Activity[] = ['chat', 'files', 'changes', 'mailbox'];
 
+/**
+ * How many main views the compact (calm) rail keeps when the user has not
+ * pinned any icons explicitly. The Tools launcher carries the rest.
+ */
+export const CALM_BAR_VIEW_COUNT = 4;
+
 export const DESKTOP_PANEL_PRIORITY: readonly Activity[] = [
   ...DESKTOP_CORE_PANEL_IDS,
   'skills',

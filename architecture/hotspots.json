@@ -47,7 +47,7 @@
       "relativeImports": 12
     },
     "packages/vibeui/src/components/workspace.tsx": {
-      "lines": 1222,
+      "lines": 1206,
       "relativeImports": 34
     },
     "packages/vibeui/src/lib/session.ts": {

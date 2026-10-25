@@ -83,14 +83,18 @@ describe('ActivityBar under calm chrome', () => {
     expect(screen.getByTestId('activity-bar-tools-launcher')).toBeTruthy();
   });
 
-  it('shows every view again (and no launcher) while reordering', () => {
+  it('opens the customize dialog without changing the calm bar', () => {
     useLocalPrefs.setState({ chromeLevel: 'calm' });
     const { container } = render(<ActivityBar />);
     act(() => {
       screen.getByTestId('activity-bar-reorder-edit').click();
     });
-    expect(screen.queryByTestId('activity-bar-tools-launcher')).toBeNull();
-    expect(viewIcons(container).length).toBeGreaterThan(CALM_BAR_VIEW_COUNT);
+    // The compact bar keeps its launcher and its first four views while the
+    // editor is open — the dialog edits the selection, it does not replace
+    // the rail.
+    expect(screen.getByTestId('activity-bar-tools-launcher')).toBeTruthy();
+    expect(screen.getByTestId('activity-bar-customize-dialog')).toBeTruthy();
+    expect(viewIcons(container)).toEqual(['Agent Roster', 'Goal', 'Kanban', 'Memory']);
   });
 
   it('full chrome renders no launcher', () => {

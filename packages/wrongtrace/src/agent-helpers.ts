@@ -113,6 +113,10 @@ export async function getCrossAgentRisk(
   return { path, risk: 50, band: 'unknown', reasons: ['file health endpoint unreachable'] };
 }
 
+function normalizeMatchPath(p: string): string {
+  return p.replace(/\\/g, '/').replace(/^(?:\.\/)+/, '');
+}
+
 /** Shared scoring used both directly and after a stale-lock fallthrough. */
 async function scoreFromHealth(
   path: string,
@@ -139,10 +143,11 @@ async function scoreFromHealth(
   }
 
   // Path-aware friction lookup: best-effort, daemon schema may not carry file_path.
+  const targetPath = normalizeMatchPath(path);
   const fileFriction = friction.filter((row) => {
     const r = row as WrongTraceFrictionRow & { file_path?: string; files?: string[] };
-    if (typeof r.file_path === 'string') return r.file_path === path;
-    if (Array.isArray(r.files)) return r.files.includes(path);
+    if (typeof r.file_path === 'string') return normalizeMatchPath(r.file_path) === targetPath;
+    if (Array.isArray(r.files)) return r.files.some((f) => normalizeMatchPath(f) === targetPath);
     return false;
   });
   if (fileFriction.length > 0) {
@@ -273,11 +278,15 @@ export function summarizeFriction(friction: unknown): FrictionSummary {
  * ------------------------------------------------------------------ */
 
 interface RecentEvent {
+  event_id?: string;
   file_path?: string;
   action?: string;
   author_model?: string;
   author_run_id?: string;
+  run_id?: string;
   author_time?: string;
+  event_time?: string;
+  timestamp?: string;
   overwriter_model?: string;
   overwriter_run_id?: string;
   overwriter_time?: string;
@@ -313,26 +322,33 @@ export async function getRecentActivity(
   const safeLimit = Number.isSafeInteger(limit) && limit > 0 ? limit : 0;
   if (safeLimit === 0) return [];
 
-  // Friction's recent_collisions is the most reliable signal today.
-  // The daemon does not yet expose a per-file events endpoint (see
-  // Missing-Endpoints report), so this is our primary source.
+  // Friction's recent_collisions plus any dedicated recent-events feed exposed by the daemon.
   const matrix = (await getFrictionRaw(wt, limit * 5)) as EventsReport;
+  const recentFeed = await wt.getRecentEvents?.({ filePath, limit: safeLimit });
   const collisions = Array.isArray(matrix.recent_collisions) ? matrix.recent_collisions : [];
   const events = Array.isArray(matrix.events) ? matrix.events : [];
+  const feed = Array.isArray(recentFeed) ? (recentFeed as RecentEvent[]) : [];
 
-  const all = [...events, ...collisions];
+  const all = [...feed, ...events, ...collisions];
+  const targetPath = normalizeMatchPath(filePath);
+  const seenIds = new Set<string>();
   const matched: RecentActivityEntry[] = [];
   for (const ev of all) {
     if (ev === null || typeof ev !== 'object' || Array.isArray(ev)) continue;
-    if (typeof ev.file_path !== 'string' || ev.file_path !== filePath) continue;
-    const at = ev.overwriter_time ?? ev.author_time ?? '';
+    if (typeof ev.file_path !== 'string' || normalizeMatchPath(ev.file_path) !== targetPath)
+      continue;
+    if (typeof ev.event_id === 'string') {
+      if (seenIds.has(ev.event_id)) continue;
+      seenIds.add(ev.event_id);
+    }
+    const at = ev.overwriter_time ?? ev.author_time ?? ev.event_time ?? ev.timestamp ?? '';
     if (!at) continue;
     const entry: RecentActivityEntry = {
       at,
       actor: ev.overwriter_model ?? ev.author_model ?? 'unknown',
       action: ev.action ?? 'MODIFIED',
     };
-    const runId = ev.overwriter_run_id ?? ev.author_run_id;
+    const runId = ev.overwriter_run_id ?? ev.author_run_id ?? ev.run_id;
     if (runId) entry.runId = runId;
     matched.push(entry);
   }

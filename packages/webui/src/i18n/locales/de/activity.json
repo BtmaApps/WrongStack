@@ -142,10 +142,27 @@
     "fleetMonitor": "Fleet-Inspektor"
   },
   "reorder": {
-    "edit": "Reihenfolge bearbeiten",
-    "done": "Fertig",
+    "edit": "Leiste anpassen (max. {{max}} Symbole)"
+  },
+  "customize": {
+    "title": "Aktivitätsleiste anpassen",
+    "description": "Pinne die Symbole an, die links auf der Leiste bleiben sollen. Alle anderen wandern in das „…“-Menü und den Werkzeug-Launcher. Änderungen werden beim Speichern übernommen.",
+    "counter": "{{count}} / {{max}} Symbole angeheftet",
+    "budgetHint": "Die Leiste fasst höchstens {{max}} Symbole.",
+    "maxReached": "Maximum von {{max}} Symbolen erreicht — bitte zuerst eines entfernen.",
+    "pinnedColumn": "An der Leiste",
+    "othersColumn": "Andere",
+    "groupPanels": "Bereiche",
+    "groupViews": "Ansichten",
+    "fixed": "Immer an der Leiste",
+    "moveUp": "{{label}} nach oben verschieben",
+    "moveDown": "{{label}} nach unten verschieben",
+    "pin": "{{label}} an die Leiste anheften",
+    "unpin": "{{label}} von der Leiste entfernen",
+    "emptyOthers": "Nichts vorhanden.",
     "reset": "Auf Standard zurücksetzen",
-    "locked": "Fixiert — Reihenfolge nicht änderbar"
+    "cancel": "Abbrechen",
+    "save": "Speichern"
   },
   "sidePanel": {
     "dragHint": "Ziehen zum Skalieren · Doppelklick zum Zurücksetzen",
@@ -4553,7 +4570,7 @@
       "quality": "Qualität",
       "system": "System"
     },
-    "customize": "Leiste anpassen (die ersten 4 Ansichten bleiben dort)"
+    "customize": "Leiste anpassen (bis zu {{max}} Symbole anheften)"
   },
   "worktreeTimeline": {
     "outcomeLive": "läuft",

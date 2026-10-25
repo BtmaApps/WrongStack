@@ -1702,9 +1702,6 @@
       "probeWrongProxyActive",
       "seedWrongProxyFromConfig"
     ],
-    "packages/webui-server/src/server/session-agent-registry.ts": [
-      "inheritedSessionMeta"
-    ],
     "packages/webui-server/src/server/terminal-ws-handler.ts": [
       "resolveTerminalShell"
     ],

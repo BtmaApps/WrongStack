@@ -46,6 +46,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu';
+import { ACTIVITY_BAR_MAX_ICONS } from './activity-bar-pins.js';
 
 interface ToolDef {
   view: AppView;
@@ -171,7 +172,7 @@ export function ToolsLauncher({
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={onCustomize} className="gap-2 text-muted-foreground">
           <Pencil size={14} />
-          <span>{t('activity:launcher.customize')}</span>
+          <span>{t('activity:launcher.customize', { max: ACTIVITY_BAR_MAX_ICONS })}</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

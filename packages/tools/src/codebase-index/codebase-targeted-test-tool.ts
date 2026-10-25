@@ -52,8 +52,18 @@ export type CodebaseTargetedTestOutput = TargetedTestOutput;
  * Returns null when no counts are printed (e.g. `go test`).
  */
 export function parseTestCounts(output: string): { passed: number; failed: number } | null {
-  const vitestLine = output.match(/^\s*Tests\s+(.+)$/m)?.[1];
-  const scope = vitestLine ?? output;
+  const vitestLine = output.match(/^\s*Tests:?\s+(.+)$/m)?.[1];
+  let scope = vitestLine;
+  if (!scope) {
+    const lines = output.split(/\r?\n/);
+    for (let i = lines.length - 1; i >= 0; i--) {
+      if (/\b\d+\s+(?:passed|failed)\b/i.test(lines[i]!)) {
+        scope = lines[i];
+        break;
+      }
+    }
+  }
+  if (!scope) return null;
   const last = (re: RegExp): number | undefined => {
     let value: number | undefined;
     for (const m of scope.matchAll(re)) value = Number(m[1]);

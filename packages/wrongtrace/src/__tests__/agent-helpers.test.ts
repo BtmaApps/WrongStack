@@ -494,4 +494,90 @@ describe('digestAtlas', () => {
     expect(negConflict.selfThrashRatioPct).toBeGreaterThanOrEqual(0);
     expect(summarizeFriction({ total_collisions: -5, edges: [] } as never).totalCollisions).toBe(0);
   });
+
+  it('merges getRecentEvents with event_time/timestamp/run_id and normalizes paths in risk and activity (F14)', async () => {
+    const client = {
+      ...offlineStub(),
+      isAvailable: true,
+      async getFileHealth() {
+        return {
+          file_path: 'src/app.ts',
+          health_score: 75,
+          is_fragile: false,
+          recent_thrashing_count: 0,
+          is_locked: false,
+        };
+      },
+      async getFrictionMatrix() {
+        return Object.assign(
+          [
+            {
+              author_model: 'a',
+              overwriter_model: 'b',
+              file_count: 1,
+              deleted_lines: 10,
+              file_path: './src\\app.ts',
+              conflict_count: 2,
+            },
+            {
+              author_model: 'a',
+              overwriter_model: 'c',
+              file_count: 1,
+              deleted_lines: 5,
+              files: ['src\\app.ts'],
+              conflict_count: 2,
+            },
+          ],
+          {
+            events: [
+              {
+                event_id: 'ev-dup',
+                run_id: 'run-dup',
+                file_path: 'src/app.ts',
+                action: 'MODIFIED',
+                author_model: 'claude-4-sonnet',
+                event_time: '2026-08-24T11:30:00Z',
+              },
+              {
+                event_id: 'ev-2',
+                run_id: 'run-matrix-2',
+                file_path: 'src/app.ts',
+                action: 'CREATED',
+                author_model: 'claude-4-opus',
+                timestamp: '2026-08-24T11:00:00Z',
+              },
+            ],
+            recent_collisions: [],
+          },
+        ) as never;
+      },
+      async getRecentEvents() {
+        return [
+          {
+            event_id: 'ev-1',
+            run_id: 'run-feed-1',
+            file_path: 'src/app.ts',
+            action: 'MODIFIED',
+            author_model: 'gemini-2.5-pro',
+            event_time: '2026-08-24T12:00:00Z',
+          },
+          {
+            event_id: 'ev-dup',
+            run_id: 'run-dup',
+            file_path: 'src/app.ts',
+            action: 'MODIFIED',
+            author_model: 'claude-4-sonnet',
+            event_time: '2026-08-24T11:30:00Z',
+          },
+        ];
+      },
+    };
+
+    const risk = await getCrossAgentRisk(client, './src/app.ts');
+    expect(risk.risk).toBe(20);
+
+    const activity = await getRecentActivity(client, '.\\src\\app.ts', 5);
+    expect(activity).toHaveLength(3);
+    expect(activity.map((a) => a.runId)).toEqual(['run-feed-1', 'run-dup', 'run-matrix-2']);
+  });
 });

@@ -175,6 +175,49 @@ describe('createApprovalRegistry', () => {
     expect(registry.list()).toHaveLength(0);
     expect(registry.resolve('toolu_1', 'yes')).toBe(false);
   });
+
+  it('refuses to renew an expired prompt and still announces registered resolutions after a reused toolUseId', () => {
+    const events = new EventBus();
+    const registry = make(events);
+    const resolved: string[] = [];
+    registry.onChange((change) => {
+      if (change.kind === 'resolved') resolved.push(`${change.toolUseId}:${change.decision}`);
+    });
+
+    events.emit('tool.confirm_resolved', {
+      sessionId: 'sess-1',
+      toolUseId: 'repl:1',
+      toolName: 'bash',
+      decision: 'no',
+      source: 'user',
+    } as never);
+    resolved.length = 0;
+
+    registry.register({
+      toolUseId: 'repl:1',
+      toolName: 'bash',
+      sessionId: 'sess-1',
+      deadlineAt: Date.now() + 60_000,
+      input: {},
+      suggestedPattern: 'bash:rm',
+      destructive: true,
+      resolve: vi.fn(),
+    });
+    expect(registry.resolve('repl:1', 'yes')).toBe(true);
+    expect(resolved).toEqual(['repl:1:yes']);
+
+    registry.register({
+      toolUseId: 'repl:expired',
+      toolName: 'bash',
+      sessionId: 'sess-1',
+      deadlineAt: Date.now() - 1,
+      input: {},
+      suggestedPattern: 'bash:rm',
+      destructive: true,
+      resolve: vi.fn(),
+    });
+    expect(registry.renew('repl:expired', Date.now() + 60_000)).toBe(false);
+  });
 });
 
 describe('startApprovalTelemetryBridge', () => {

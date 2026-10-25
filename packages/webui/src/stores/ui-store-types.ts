@@ -149,13 +149,49 @@ export type DockSection =
 export type WorkDashboardTab = 'todos' | 'tasks' | 'plan';
 
 /**
- * User-customized ActivityBar icon order (panels + views). Null = default
- * delivery-pipeline order. Persisted to localStorage (`wrongstack-ui`) and
- * driven by the icon bar's edit/drag mode.
+ * Icons the user pinned to the ActivityBar. `panels`/`views` hold the ids
+ * that stay on the rail; everything else moves into the "…" overflow menu
+ * and the Tools launcher.
+ */
+export interface ActivityBarPins {
+  panels: Activity[];
+  views: View[];
+}
+
+/**
+ * Maximum number of content icons (panels + views) the activity rail may
+ * show. The Tools launcher and the "…" button are chrome and are not
+ * counted. Lives here because the persisted pin selection is validated
+ * against it when a stored payload is read back.
+ */
+export const ACTIVITY_BAR_MAX_ICONS = 12;
+
+/**
+ * Panels that always stay on the rail — they own the 1-4 keyboard
+ * shortcuts and the responsive split guarantees them a slot.
+ */
+export const ACTIVITY_BAR_FIXED_PANEL_IDS: readonly Activity[] = [
+  'chat',
+  'files',
+  'changes',
+  'mailbox',
+];
+
+/**
+ * User-customized ActivityBar icon order (panels + views) plus the explicit
+ * pin selection. Null = default delivery-pipeline order. Persisted to
+ * localStorage (`wrongstack-ui`) and driven by the activity bar's customize
+ * dialog.
  */
 export interface ActivityBarOrder {
   panels: Activity[];
   views: View[];
+  /**
+   * Explicit pin selection. `undefined` = the user never picked icons, so
+   * the bar falls back to its default order; a present value = exactly these
+   * ids live on the rail.
+   */
+  pinned?: ActivityBarPins | undefined;
 }
 
 /**

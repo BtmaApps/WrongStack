@@ -11,6 +11,7 @@ import { codebaseImpactAnalysisTool } from '../src/codebase-index/codebase-impac
 import { codebaseIncomingCallsTool } from '../src/codebase-index/codebase-incoming-calls-tool.js';
 import {
   codebaseTargetedTestTool,
+  parseTestCounts,
   selectTestRunner,
 } from '../src/codebase-index/codebase-targeted-test-tool.js';
 import { runIndexer } from '../src/codebase-index/indexer.js';
@@ -172,6 +173,23 @@ describe('selectTestRunner', () => {
     await expect(selectTestRunner(root, ['src/a.test.ts', 'tests/test_a.py'])).rejects.toThrow(
       /different runners/,
     );
+  });
+
+  it('scopes parseTestCounts to the summary line instead of mixing earlier log or suite counts', () => {
+    expect(
+      parseTestCounts(
+        [
+          'console.log: Retrying after 1 failed attempt',
+          'Test Suites: 1 passed, 1 total',
+          'Tests:       3 passed, 3 total',
+        ].join('\n'),
+      ),
+    ).toEqual({ passed: 3, failed: 0 });
+    expect(
+      parseTestCounts(
+        ['Test Suites: 1 failed, 1 passed, 2 total', 'Tests:       2 failed, 2 total'].join('\n'),
+      ),
+    ).toEqual({ passed: 0, failed: 2 });
   });
 
   it('reports an unreadable index instead of "no tests found"', async () => {

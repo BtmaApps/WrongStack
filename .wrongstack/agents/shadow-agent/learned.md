@@ -4,7 +4,7 @@
 
 ## What to avoid
 
-<!-- learned-stamp: category=warning; capturedAt=2026-09-12T21:38:03.000Z; applied=63; wins=63 -->
+<!-- learned-stamp: category=warning; capturedAt=2026-09-12T21:38:03.000Z; applied=64; wins=64 -->
 - **Always treat `mail_inbox` returning `tool lacks allowed capability` as UNKNOWN (mailbox scan unavailable), never as "no control messages" — emit `shadow: quiet` with exactly one caveat line naming the denied tool, and never escalate or invoke `terminate_subagent` without a readable explicit `hoop`/`shadow` command. When `fleet action=status` and `fleet action=health` are clean, that is the fleet verdict; the injection `[FLEET PULSE]` block is FYI noise, not mailbox evidence.**
   - *Why:* Known failure mode — skipping this has caused real defects in this codebase. The cost of getting it wrong outweighs the cost of the check.
   - *How:* `mail_inbox`
@@ -17,13 +17,13 @@
   - *How:* `fleet action=health`
   - *How:* `[FLEET PULSE]`
 
-<!-- learned-stamp: category=warning; capturedAt=2026-10-21T08:58:06.175Z; applied=1; wins=1; skipped=6; skippedWins=6 -->
+<!-- learned-stamp: category=warning; capturedAt=2026-10-21T08:58:06.175Z; applied=1; wins=1; skipped=7; skippedWins=7 -->
 - **Always treat peer join/status broadcasts that arrive duplicated through both a `[MAILBOX BTW]` injection and a `[MAILBOX]` injection in the same turn as one informational message — evaluate it once and never reply, exactly like single-delivery injected status noise.**
   - *Why:* Known failure mode — skipping this has caused real defects in this codebase. The cost of getting it wrong outweighs the cost of the check.
   - *How:* `[MAILBOX BTW]`
   - *How:* `[MAILBOX]`
 
-<!-- learned-stamp: category=warning; capturedAt=2026-10-04T15:12:39.180Z; applied=37; wins=37 -->
+<!-- learned-stamp: category=warning; capturedAt=2026-10-04T15:12:39.180Z; applied=38; wins=38 -->
 - **When `mail_inbox` is denied by session policy (allowed list lacks `coordination.mail`), emit `shadow: quiet` only if `fleet action=status` and `fleet action=health` are clean, and append exactly one caveat line naming the denied tool — never treat the denial as "no control messages" and never escalate it into an anomaly or intervention.**
   - *Why:* Known failure mode — skipping this has caused real defects in this codebase. The cost of getting it wrong outweighs the cost of the check.
   - *How:* `mail_inbox`
@@ -34,7 +34,7 @@
 
 ## What to do
 
-<!-- learned-stamp: category=convention; capturedAt=2026-10-21T08:58:06.175Z; applied=2; wins=2; skipped=5; skippedWins=5 -->
+<!-- learned-stamp: category=convention; capturedAt=2026-10-21T08:58:06.175Z; applied=2; wins=2; skipped=6; skippedWins=6 -->
 - **Treat a host dispatch reason that cites a past subagent timeout as historical context only: verify liveness with `fleet action=status`/`fleet action=health` before classifying anything as down; if the cited subagent is absent from the live roster, it is not an in-flight anomaly.**
   - *Why:* Established convention for this codebase — skipping it risks regressions, merge friction, or out-of-sync state with peers.
   - *How:* `fleet action=status`

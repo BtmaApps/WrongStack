@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-25T10:52:38.656Z",
+  "generatedAt": "2026-10-25T12:19:00.728Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,17 +12,17 @@
   },
   "summary": {
     "packages": 45,
-    "sourceFiles": 5191,
-    "testFiles": 4575,
-    "sourceLines": 1132642,
+    "sourceFiles": 5193,
+    "testFiles": 4576,
+    "sourceLines": 1133178,
     "workspaceEdges": 223,
-    "moduleEdges": 15463,
+    "moduleEdges": 15471,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 3,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 0,
-    "testOnlyExports": 956
+    "testOnlyExports": 955
   },
   "errors": [],
   "packageCycles": [],
@@ -1036,8 +1036,8 @@
     {
       "name": "@wrongstack/webui",
       "dir": "packages/webui",
-      "sourceFiles": 767,
-      "testFiles": 507,
+      "sourceFiles": 769,
+      "testFiles": 508,
       "workspaceDependencies": [
         "@wrongstack/contracts",
         "@wrongstack/core",
@@ -1062,7 +1062,7 @@
         {
           "path": "packages/webui/tsconfig.test.json",
           "error": null,
-          "testFiles": 507
+          "testFiles": 508
         }
       ]
     },
@@ -25654,6 +25654,12 @@
         ]
       },
       {
+        "file": "packages/webui/tests/components/activity-bar-customize.test.tsx",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
         "file": "packages/webui/tests/components/activity-bar-nav-reexport.test.ts",
         "projects": [
           "webui-jsdom"
@@ -28961,7 +28967,7 @@
     },
     {
       "file": "packages/vibeui/src/components/workspace.tsx",
-      "lines": 1222,
+      "lines": 1206,
       "relativeImports": 34
     },
     {
@@ -28998,7 +29004,7 @@
   "hotspots": [
     {
       "file": "packages/vibeui/src/components/workspace.tsx",
-      "lines": 1222,
+      "lines": 1206,
       "relativeImports": 34
     },
     {
@@ -32411,10 +32417,6 @@
     {
       "file": "packages/webui-server/src/server/proxy-runtime.ts",
       "name": "seedWrongProxyFromConfig"
-    },
-    {
-      "file": "packages/webui-server/src/server/session-agent-registry.ts",
-      "name": "inheritedSessionMeta"
     },
     {
       "file": "packages/webui-server/src/server/terminal-ws-handler.ts",

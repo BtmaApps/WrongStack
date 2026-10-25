@@ -142,11 +142,26 @@ describe('unified LSP install command coverage', () => {
     expect(ctx.registry.start).toHaveBeenCalledWith('clangd');
   });
 
-  it('formats Error and non-Error install failures', async () => {
+  it('formats Error, non-Error, and InstallResult.error install failures without activating', async () => {
     installLang.mockRejectedValueOnce(new Error('install exploded'));
     expect((await run('install python')).message).toContain('install exploded');
 
     installLang.mockRejectedValueOnce('string failure');
     expect((await run('install python')).message).toContain('string failure');
+
+    const ctx = context() as unknown as {
+      registry: { upsertServer: ReturnType<typeof vi.fn>; start: ReturnType<typeof vi.fn> };
+    };
+    installLang.mockResolvedValueOnce({
+      language: 'go',
+      binary: 'gopls',
+      alreadyInstalled: false,
+      dryRun: false,
+      error: 'Go toolchain (go) is not on your PATH. Install it first.',
+    });
+    const res = await buildLspCommand(ctx as never).run!('install go');
+    expect(res?.message).toContain('Installation failed:');
+    expect(res?.message).toContain('Go toolchain (go) is not on your PATH');
+    expect(ctx.registry.upsertServer).not.toHaveBeenCalled();
   });
 });

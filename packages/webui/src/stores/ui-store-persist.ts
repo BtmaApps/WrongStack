@@ -1,8 +1,10 @@
 import type { PersistOptions } from 'zustand/middleware';
 import { homeNavigationStatePatch, isDesktopShellStorageContext } from './ui-store-chrome.js';
-import type { Activity, UIState } from './ui-store-types.js';
+import type { Activity, ActivityBarPins, UIState } from './ui-store-types.js';
 import {
   ACTIVITIES,
+  ACTIVITY_BAR_FIXED_PANEL_IDS,
+  ACTIVITY_BAR_MAX_ICONS,
   coerceActivity,
   coerceDockSection,
   coerceSettingsTab,
@@ -13,7 +15,7 @@ import {
 
 export const uiPersistOptions: PersistOptions<UIState, Partial<UIState>> = {
   name: 'wrongstack-ui',
-  version: 8,
+  version: 9,
   // v0 → v1: 'context'/'sessions' activities were removed and the
   // sidebar width bounds changed — coerce persisted values so a stale
   // localStorage entry can't select a panel that no longer exists.
@@ -63,7 +65,11 @@ export const uiPersistOptions: PersistOptions<UIState, Partial<UIState>> = {
     // Panels keep only known ACTIVITIES; views keep only entries that
     // coerceView accepts; both must be deduplicated arrays (or null).
     if ('activityBarOrder' in p && p.activityBarOrder != null) {
-      const order = p.activityBarOrder as { panels?: unknown; views?: unknown };
+      const order = p.activityBarOrder as {
+        panels?: unknown;
+        views?: unknown;
+        pinned?: unknown;
+      };
       const knownPanels: ReadonlySet<string> = new Set(ACTIVITIES);
       const panels = Array.isArray(order.panels)
         ? Array.from(
@@ -77,7 +83,30 @@ export const uiPersistOptions: PersistOptions<UIState, Partial<UIState>> = {
       const views = Array.isArray(order.views)
         ? Array.from(new Set((order.views as unknown[]).map(coerceView)))
         : [];
-      p.activityBarOrder = panels.length || views.length ? { panels, views } : null;
+      // v9: the explicit pin selection. Only known ids survive, the fixed
+      // panels are always kept, and the selection is capped at the rail's
+      // icon budget so a hand-edited payload cannot overflow the bar.
+      let pinned: ActivityBarPins | undefined;
+      if (order.pinned != null && typeof order.pinned === 'object') {
+        const raw = order.pinned as { panels?: unknown; views?: unknown };
+        const rawPinnedPanels = Array.isArray(raw.panels)
+          ? (raw.panels as unknown[]).filter(
+              (id): id is Activity => typeof id === 'string' && knownPanels.has(id),
+            )
+          : [];
+        const rawPinnedViews = Array.isArray(raw.views)
+          ? Array.from(new Set((raw.views as unknown[]).map(coerceView)))
+          : [];
+        const pinnedPanels = Array.from(
+          new Set([
+            ...ACTIVITY_BAR_FIXED_PANEL_IDS,
+            ...rawPinnedPanels.filter((id) => !ACTIVITY_BAR_FIXED_PANEL_IDS.includes(id)),
+          ]),
+        );
+        const viewBudget = Math.max(0, ACTIVITY_BAR_MAX_ICONS - pinnedPanels.length);
+        pinned = { panels: pinnedPanels, views: rawPinnedViews.slice(0, viewBudget) };
+      }
+      p.activityBarOrder = panels.length || views.length ? { panels, views, pinned } : null;
     }
     if (version < 6) {
       // v6: draftInput is no longer persisted — drop any stale value

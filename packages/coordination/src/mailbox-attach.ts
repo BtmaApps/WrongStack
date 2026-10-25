@@ -149,20 +149,19 @@ function attachMailboxCheckerInner(
   // `a.ctx.projectRoot`, so releasing by the live value decremented the NEW
   // project's entry — leaking the old publisher and closing a socket other
   // agents still held by value.
+  const surface = source ?? (a.ctx.meta['source'] as 'cli' | 'webui' | undefined) ?? 'cli';
+  if (!a.ctx.meta['source']) a.ctx.meta['source'] = surface;
   const acquiredRoot = a.ctx.projectRoot;
-  const acquiredSource = source ?? 'cli';
+  const acquiredSource = surface;
   const hqPublisher = acquireMailboxHqPublisher(
     acquiredRoot,
     acquiredSource,
     a.logger,
     resolveHqMailboxPublisherFactory(a.container),
   );
-  if (hqPublisher) {
-    // Agent-level hook: the HQ publisher lives across runs, not per-run.
-    a.ctx.registerAgentHook(() => releaseMailboxHqPublisher(acquiredRoot, acquiredSource));
-  }
-  const surface = source ?? (a.ctx.meta['source'] as 'cli' | 'webui' | undefined) ?? 'cli';
-  if (!a.ctx.meta['source']) a.ctx.meta['source'] = surface;
+  // Agent-level hook: the HQ publisher (and its cached disabled entry) lives
+  // across runs, not per-run, and must always balance its refcount on dispose.
+  a.ctx.registerAgentHook(() => releaseMailboxHqPublisher(acquiredRoot, acquiredSource));
 
   // SESSION-bound unique identity (`<base>@<sessionTag>`): every session
   // has its own id, so two leader sessions on the same project never
@@ -299,9 +298,12 @@ function attachMailboxCheckerInner(
   // when agent X actually dropped it.
   const reportSessionResolver = resolveChimeraReportSessionResolver(a.container);
   const sessionAffinityCtx: MailboxSessionAffinityContext = {
-    resolveChimeraReportSessionId: reportSessionResolver?.(
-      resolveProjectDir(a.ctx.projectRoot, wstackGlobalRoot()),
-    ),
+    resolveChimeraReportSessionId: reportSessionResolver
+      ? (reportId: string) =>
+          reportSessionResolver(resolveProjectDir(a.ctx.projectRoot, wstackGlobalRoot()))?.(
+            reportId,
+          )
+      : undefined,
   };
   /**
    * Filter messages by session affinity. Shared by inline and awareness
@@ -510,17 +512,24 @@ export function attachFleetPulse(
     return async () => null;
   }
   try {
-    const projectDir = resolveProjectDir(a.ctx.projectRoot, wstackGlobalRoot());
-    // No EventBus/HQ publisher here — the pulse is a read-only registry
-    // consumer; the checker's mailbox instance already owns event emission.
-    const mailbox: Mailbox = getSharedProjectMailbox(projectDir);
+    let lastProjectDir = '';
     let lastReadAt = 0;
     let lastSignature = '';
     return async () => {
       try {
+        if (!a.ctx.projectRoot) return null;
+        const projectDir = resolveProjectDir(a.ctx.projectRoot, wstackGlobalRoot());
+        if (projectDir !== lastProjectDir) {
+          lastProjectDir = projectDir;
+          lastReadAt = 0;
+          lastSignature = '';
+        }
         const now = Date.now();
         if (now - lastReadAt < PULSE_MIN_READ_INTERVAL_MS) return null;
         lastReadAt = now;
+        // No EventBus/HQ publisher here — the pulse is a read-only registry
+        // consumer; the checker's mailbox instance already owns event emission.
+        const mailbox: Mailbox = getSharedProjectMailbox(projectDir);
         const statuses = await mailbox.getAgentStatuses();
         const selfId =
           (a.ctx.meta['globalAgentId'] as string | undefined) ??

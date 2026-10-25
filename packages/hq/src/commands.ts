@@ -596,18 +596,19 @@ export class HqCommandAuditLog {
   }
 
   record(entry: HqCommandAuditEntry): void {
-    this.entries.push(entry);
+    const snapshot = { ...entry };
+    this.entries.push(snapshot);
     if (this.entries.length > this.max) {
       this.entries.splice(0, this.entries.length - this.max);
     }
-    this.onPersist?.(entry);
+    this.onPersist?.({ ...snapshot });
   }
 
   update(commandId: string, patch: Partial<HqCommandAuditEntry>): void {
     const entry = this.entries.find((e) => e.commandId === commandId);
     if (entry) {
       Object.assign(entry, patch);
-      this.onPersist?.(entry);
+      this.onPersist?.({ ...entry });
     }
   }
 
@@ -626,7 +627,7 @@ export class HqCommandAuditLog {
     );
     if (!entry) return false;
     Object.assign(entry, patch);
-    this.onPersist?.(entry);
+    this.onPersist?.({ ...entry });
     return true;
   }
 
