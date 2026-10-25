@@ -37,7 +37,7 @@ describe('command resolver completion coverage', () => {
     expect(await resolveServerCommand('definitely-missing-wrongstack-command', root)).toBeNull();
     expect(await resolveServerCommand(process.execPath, root)).toBe(process.execPath);
     expect(await resolveServerCommand(path.join(root, 'missing-absolute'), root)).toBeNull();
-    expect(await commandExistsOnPath('definitely-missing-wrongstack-command', 2_000)).toBe(false);
+    expect(await commandExistsOnPath('definitely-missing-wrongstack-command')).toBe(false);
   });
 
   it('covers platform candidate and shell escaping helpers', async () => {

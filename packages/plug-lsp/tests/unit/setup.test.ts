@@ -12,6 +12,17 @@ import {
 } from '../../src/setup.js';
 
 describe('wrongstack-lsp-setup', () => {
+  it('defaults to the current workspace and rejects unknown languages before installing', async () => {
+    expect(parseArgs([])).toMatchObject({
+      cwd: process.cwd(),
+      dryRun: false,
+      toolchains: true,
+    });
+    await expect(runSetup(['--languages', 'unknown-language'])).rejects.toThrow(
+      'Unknown language preset(s): unknown-language',
+    );
+  });
+
   it('parses options and reports help/errors', () => {
     const base = deps();
     expect(

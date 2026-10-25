@@ -8,7 +8,7 @@
  * production.
  */
 
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   createSurfaceConnectionState,
   DEFAULT_SURFACE_CONNECTION_CONFIG,
@@ -21,6 +21,34 @@ import {
   resetConnection,
   stopConnection,
 } from '../src/index.js';
+
+afterEach(() => {
+  vi.useRealTimers();
+});
+
+describe('connection clock defaults', () => {
+  it('stamps activity, schedules retries, and checks heartbeats with the current time', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(10_000);
+    const state = markConnectionOpen(createSurfaceConnectionState(), 1_000);
+    const active = markConnectionActivity(state);
+    expect(active).toEqual({ ...state, lastActivityAt: 10_000 });
+    expect(state.lastActivityAt).toBe(1_000);
+
+    const config = {
+      ...DEFAULT_SURFACE_CONNECTION_CONFIG,
+      heartbeatIntervalMs: 1_000,
+      heartbeatTimeoutMs: 500,
+    };
+    const reconnect = planConnectionReconnect(active, config);
+    expect(reconnect.plan).toEqual({ attempt: 1, delayMs: 1_000, retryAt: 11_000 });
+    expect(isConnectionHeartbeatTimedOut(active, config)).toBe(false);
+    vi.setSystemTime(11_500);
+    expect(isConnectionHeartbeatTimedOut(active, config)).toBe(false);
+    vi.setSystemTime(11_501);
+    expect(isConnectionHeartbeatTimedOut(active, config)).toBe(true);
+  });
+});
 
 describe('createSurfaceConnectionState', () => {
   it('returns the idle initial state', () => {

@@ -97,15 +97,12 @@ describe('autoDiscoverServers', () => {
   });
 
   it('keeps user configured servers instead of overwriting presets', async () => {
-    const servers = await autoDiscoverServers(
-      {
-        typescript: {
-          command: 'custom-ts',
-          languages: ['typescript'],
-        },
+    const servers = await autoDiscoverServers({
+      typescript: {
+        command: 'custom-ts',
+        languages: ['typescript'],
       },
-      process.cwd(),
-    );
+    });
     expect(servers.typescript?.command).toBe('custom-ts');
   });
 });

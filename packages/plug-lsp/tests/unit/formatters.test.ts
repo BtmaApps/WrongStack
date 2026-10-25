@@ -10,6 +10,28 @@ import { pathToUri } from '../../src/utils/uri.js';
 const cwd = process.cwd();
 
 describe('formatters', () => {
+  it('sorts diagnostics with omitted severity as errors before comparing positions', () => {
+    const implicitError: Diagnostic = { range: range(2, 0), message: 'implicit error' };
+    const out = formatDiagnostics(
+      new Map([
+        [
+          `${cwd}/sorted.ts`,
+          [
+            implicitError,
+            diagnostic(1, 0, 1, 'earlier error'),
+            diagnostic(0, 0, 2, 'warning'),
+            { range: range(0, 0), message: 'first default error' },
+          ],
+        ],
+      ]),
+      { cwd, severityFilter: ['error', 'warning'], maxPerFile: 10, maxTotal: 10 },
+    );
+    expect(out).toContain('L3:1 ERROR: implicit error');
+    expect(out.indexOf('first default error')).toBeLessThan(out.indexOf('earlier error'));
+    expect(out.indexOf('earlier error')).toBeLessThan(out.indexOf('implicit error'));
+    expect(out.indexOf('implicit error')).toBeLessThan(out.indexOf('warning'));
+  });
+
   it('formats diagnostics with sorting, filtering, truncation, and fallback severity', () => {
     const file = `${cwd}/src.ts`;
     const out = formatDiagnostics(

@@ -77,6 +77,7 @@ function harness() {
   );
   return {
     server,
+    child,
     events,
     initializing: initializing.promise,
     release: () => reply(initializeId, { capabilities: { hoverProvider: true } }),
@@ -92,6 +93,33 @@ afterEach(() => {
 });
 
 describe('LSP startup retains only its own lifecycle', () => {
+  it.each([
+    [null, 'SIGTERM', 'code=null signal=SIGTERM'],
+    [7, null, 'code=7 signal=null'],
+  ] as const)(
+    'reports a ready child exiting with code %s and signal %s',
+    async (code, signal, detail) => {
+      const value = harness();
+      const crashed = vi.fn();
+      value.events.on('lsp.server.crashed', crashed);
+      const started = value.server.start();
+      await value.initializing;
+      value.release();
+      await started;
+      expect(value.server.state).toBe('ready');
+
+      value.child.emit('exit', code, signal);
+
+      expect(value.server.state).toBe('failed');
+      expect(crashed).toHaveBeenCalledExactlyOnceWith({
+        name: 'startup',
+        error: `process exited ${detail}`,
+      });
+      await value.server.shutdown();
+      expect(value.server.state).toBe('exited');
+    },
+  );
+
   it('keeps exited after shutdown rejects an older initialization', async () => {
     const { server, initializing } = harness();
     const started = server.start().catch((error: unknown) => error);
