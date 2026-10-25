@@ -8,6 +8,9 @@ import { describe, expect, it } from 'vitest';
 const ROOT = path.resolve(fileURLToPath(new URL('../../../..', import.meta.url)));
 const SCAN_ROOTS = ['packages', 'apps'];
 const ADAPTER_AUTHORITY = 'packages/sage/src/memory-port.ts';
+// The offline SAGE eval is a developer script, not shipped code: it opens a
+// private snapshot of sage.db directly, outside any running agent.
+const DEV_SCRIPTS = new Set(['packages/sage/scripts/sage-eval.ts']);
 
 async function productionTypeScriptFiles(root: string): Promise<string[]> {
   const entries = await fs.readdir(root, { withFileTypes: true });
@@ -39,7 +42,7 @@ describe('MemoryPort ownership boundary', () => {
 
     for (const file of files) {
       const relative = path.relative(ROOT, file).replaceAll('\\', '/');
-      if (relative === ADAPTER_AUTHORITY) continue;
+      if (relative === ADAPTER_AUTHORITY || DEV_SCRIPTS.has(relative)) continue;
       const source = await fs.readFile(file, 'utf8');
       if (/new\s+(?:SageStore|SqliteSageStore)\s*\(/u.test(source)) {
         violations.push(`${relative}: constructs a concrete memory backend`);

@@ -28,7 +28,11 @@ describe('Kanban IPC ownership boundary', () => {
         // data — nothing for the IPC owner to arbitrate.
         !file.endsWith(
           `${path.sep}plugins${path.sep}src${path.sep}migration-rehearsal${path.sep}index.ts`,
-        ),
+        ) &&
+        // The offline SAGE eval is a developer script, not shipped code: it
+        // opens the live sage.db only to `VACUUM INTO` a private snapshot.
+        // No kanban data is involved.
+        !file.endsWith(`${path.sep}sage${path.sep}scripts${path.sep}sage-eval.ts`),
     );
     const offenders = productionFiles
       .filter((file) => /\bnew\s+DatabaseSync\s*\(/.test(fs.readFileSync(file, 'utf8')))
