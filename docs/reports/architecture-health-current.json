@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-25T08:53:59.772Z",
+  "generatedAt": "2026-10-25T09:11:32.425Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 45,
-    "sourceFiles": 5182,
+    "sourceFiles": 5183,
     "testFiles": 4571,
-    "sourceLines": 1131495,
+    "sourceLines": 1131589,
     "workspaceEdges": 223,
-    "moduleEdges": 15434,
+    "moduleEdges": 15436,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 3,
@@ -781,7 +781,7 @@
     {
       "name": "@wrongstack/sage",
       "dir": "packages/sage",
-      "sourceFiles": 154,
+      "sourceFiles": 155,
       "testFiles": 161,
       "workspaceDependencies": [
         "@wrongstack/contracts",

@@ -22,6 +22,15 @@ export interface RetrievedMemory {
 
 const MIN_ANCESTOR_ANCHOR_SEGMENTS = 2;
 const ANCESTOR_DECAY_PER_SEGMENT = 0.11;
+/**
+ * A `directory`/`package` anchor that equals the target names a whole scope,
+ * not the thing being touched: `grep path=packages/webui` matched every note
+ * "about packages/webui" at 0.95 whatever the pattern was. Judged on replayed
+ * sessions, these injections were 10% relevant (grep) and never actionable,
+ * against 69% for file/symbol anchors. Kept below every relation floor, so a
+ * scope note now needs the query itself (pattern, path terms) to relate.
+ */
+const SCOPE_ANCHOR_EXACT_STRENGTH = 0.8;
 
 export function pathAnchorRelation(
   memory: Sage,
@@ -40,7 +49,12 @@ export function pathAnchorRelation(
     if (!anchor.path) continue;
     const anchorNorm = anchor.path.replace(/\\/g, '/').replace(/^\.\//, '');
     if (anchorNorm === relPath) {
-      const exact = anchor.type === 'symbol' || anchor.type === 'command' ? 0.98 : 0.95;
+      const exact =
+        anchor.type === 'symbol' || anchor.type === 'command'
+          ? 0.98
+          : anchor.type === 'directory' || anchor.type === 'package'
+            ? SCOPE_ANCHOR_EXACT_STRENGTH
+            : 0.95;
       if (!best || exact > best.strength) {
         best = {
           strength: exact,
@@ -64,6 +78,31 @@ export function pathAnchorRelation(
     }
   }
   return best;
+}
+
+const isScopeAnchor = (anchor: Sage['anchors'][number]) =>
+  anchor.type === 'directory' || anchor.type === 'package';
+
+/**
+ * The query channel's twin of {@link SCOPE_ANCHOR_EXACT_STRENGTH}: a path
+ * query naming a directory/package anchor (`query:exact-package`) scored 0.96
+ * and let the same scope notes back in through the search channel. The scope
+ * match is capped; whatever the memory's text and narrower anchors prove on
+ * their own still counts.
+ */
+function scopeAwareQueryRelevance(item: Sage, query: string) {
+  const lexical = memoryQueryRelevance(item, query);
+  const exactScope = lexical.evidence.some(
+    (reason) => reason === 'query:exact-directory' || reason === 'query:exact-package',
+  );
+  if (!exactScope) return lexical;
+  const narrower = memoryQueryRelevance(
+    { ...item, anchors: item.anchors.filter((anchor) => !isScopeAnchor(anchor)) },
+    query,
+  );
+  return narrower.strength >= SCOPE_ANCHOR_EXACT_STRENGTH
+    ? narrower
+    : { strength: SCOPE_ANCHOR_EXACT_STRENGTH, evidence: lexical.evidence };
 }
 
 function relativeProjectPath(projectRoot?: string, targetPath?: string): string {
@@ -247,7 +286,7 @@ export async function retrieveTriggeredMemories(
     // `memoryQueryRelevance` is 0 for a purely semantic one — taking the max
     // is what lets a single gate serve both without a second threshold.
     const scoreHit = (item: Sage, vectorScore: number | null): RetrievedMemory => {
-      const lexical = memoryQueryRelevance(item, trigger.queryText);
+      const lexical = scopeAwareQueryRelevance(item, trigger.queryText);
       const semantic = memorySemanticRelevance(vectorScore);
       const evidence = [...lexical.evidence, ...semantic.evidence];
       return {

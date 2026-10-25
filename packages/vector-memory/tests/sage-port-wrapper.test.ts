@@ -82,6 +82,8 @@ function makeFakePort(
   return port as unknown as MemoryPort;
 }
 
+const FIXTURE_NOW = new Date().toISOString();
+
 function makeSage(id: string, text: string, overrides: Partial<Sage> = {}): Sage {
   return {
     id,
@@ -95,8 +97,9 @@ function makeSage(id: string, text: string, overrides: Partial<Sage> = {}): Sage
     tags: [],
     anchors: [],
     sources: [],
-    createdAt: '2026-01-01T00:00:00.000Z',
-    updatedAt: '2026-01-01T00:00:00.000Z',
+    // Fresh: SAGE no longer auto-injects a fact written 45+ days ago and unused.
+    createdAt: FIXTURE_NOW,
+    updatedAt: FIXTURE_NOW,
     ...overrides,
   } as unknown as Sage;
 }

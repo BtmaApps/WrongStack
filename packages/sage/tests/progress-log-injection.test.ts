@@ -130,18 +130,91 @@ describe('tool-call injection of progress logs', () => {
     expect(await injectedFor(file, 'idle')).toBe('');
   });
 
-  it('keeps injecting an idle-aged durable memory on the same file', async () => {
+  it('keeps injecting an old convention on the same file', async () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date('2026-09-01T00:00:00Z'));
     const file = 'packages/core/src/storage/session-write-buffer.ts';
     await store.rememberSage({
       text: `SessionWriteBuffer in ${file} must fsync before rename; a crash otherwise loses the tail.`,
-      kind: 'warning',
+      kind: 'convention',
       importance: 0.85,
       anchors: [{ type: 'file', path: file }],
     });
 
     vi.setSystemTime(new Date('2026-10-25T00:00:00Z'));
     expect(await injectedFor(file, 'durable')).toContain('must fsync before rename');
+  });
+
+  it('ages out an old fact nobody referenced, but not a recently used one', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-08-01T00:00:00Z'));
+    const file = 'packages/core/src/storage/session-write-buffer.ts';
+    const fact = await store.rememberSage({
+      text: `SessionWriteBuffer in ${file} flushes every 64 events in the measured baseline.`,
+      kind: 'fact',
+      importance: 0.85,
+      anchors: [{ type: 'file', path: file }],
+    });
+
+    vi.setSystemTime(new Date('2026-10-25T00:00:00Z'));
+    expect(await injectedFor(file, 'aged')).toBe('');
+
+    vi.setSystemTime(new Date('2026-10-20T00:00:00Z'));
+    await store.recordUse([fact.id], 'assistant_reference');
+    vi.setSystemTime(new Date('2026-10-25T00:00:00Z'));
+    expect(await injectedFor(file, 'renewed')).toContain('flushes every 64 events');
+  });
+});
+
+describe('scope anchors', () => {
+  let tmpDir: string;
+  let store: SqliteSageStore;
+
+  beforeEach(async () => {
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'sage-scope-anchor-'));
+    store = new SqliteSageStore({ projectRoot: tmpDir });
+  });
+
+  afterEach(async () => {
+    store.close();
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    await fs.rm(tmpDir, { recursive: true, force: true });
+  });
+
+  it('a grep over a package directory no longer attaches every note about that package', async () => {
+    await store.rememberSage({
+      text: 'The WebUI test suite exceeds tool timeouts on Windows and must run per file.',
+      kind: 'convention',
+      importance: 0.9,
+      anchors: [{ type: 'package', path: 'packages/webui' }],
+    });
+    const mw = createSageToolCallMiddleware({
+      memory: {
+        retrieveForPath: (opts) => store.retrieveForPath([opts.path], opts),
+        searchSage: (query, opts) => store.searchSage(query, opts),
+        findRelatedSage: (ids, opts) => store.findRelatedSage(ids, opts),
+        recordInjection: (ids, trigger, sessionId) =>
+          store.recordInjection(ids, trigger, sessionId),
+        recordUse: (ids, source, sessionId) => store.recordUse(ids, source, sessionId),
+      },
+    });
+    const payload = {
+      toolUse: {
+        type: 'tool_use',
+        id: 'g1',
+        name: 'grep',
+        input: { path: 'packages/webui', pattern: 'cozy|Cozy' },
+      },
+      result: { type: 'tool_result', tool_use_id: 'g1', name: 'grep', content: 'no matches' },
+      ctx: {
+        projectRoot: tmpDir,
+        cwd: tmpDir,
+        session: { id: 'scope' },
+        signal: new AbortController().signal,
+      },
+    } as unknown as ToolCallPipelinePayload;
+    await mw.handler(payload, async (p) => p);
+    const evidence = (payload.ctx as { memoryEvidence?: Array<{ text: string }> }).memoryEvidence;
+    expect(evidence?.map((entry) => entry.text).join('\n') ?? '').not.toContain('per file');
   });
 });

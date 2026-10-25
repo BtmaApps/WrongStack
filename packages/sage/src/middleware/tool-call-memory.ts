@@ -3,6 +3,7 @@ import { activeLimits, positiveLimit } from '@wrongstack/contracts/types';
 import type { ToolCallPipelinePayload } from '@wrongstack/core/agent';
 import { formatMemoryHintsDetailed } from '../retrieval/format.js';
 import { checkInjectionValidity } from '../retrieval/validity-checks.js';
+import { isAgedOutForInjection } from '../shared/injection-recency.js';
 import { isIdleProgressLog } from '../shared/progress-log.js';
 import type { InjectionTracker } from './injection-tracker.js';
 import { MemoryInjectorAgent } from './memory-injector-agent.js';
@@ -294,6 +295,16 @@ export function createSageToolCallMiddleware(
               kind: memory.kind,
               gate: 'belowScore',
               reason: 'idle progress log (no use within 30 days)',
+              at: nowIso(),
+            });
+            return false;
+          }
+          if (isAgedOutForInjection(memory, now)) {
+            pushRejection({
+              id: memory.id,
+              kind: memory.kind,
+              gate: 'belowScore',
+              reason: `aged out: ${memory.kind} written and unused for 45+ days`,
               at: nowIso(),
             });
             return false;
