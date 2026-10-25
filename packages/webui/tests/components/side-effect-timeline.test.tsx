@@ -18,7 +18,13 @@ describe('SideEffectTimeline', () => {
     useSessionLanes.setState({ activeSessionId: 'sess-1' });
   });
 
-  afterEach(cleanup);
+  // The component fetches through `import('@/lib/ws-client')` in an effect.
+  // Under coverage load that import can still be resolving when the file's
+  // environment is torn down, which Vitest reports as an unhandled error.
+  afterEach(async () => {
+    cleanup();
+    await vi.dynamicImportSettled();
+  });
 
   it('renders empty state when there are no side effects and not loading', () => {
     render(<SideEffectTimeline />);
