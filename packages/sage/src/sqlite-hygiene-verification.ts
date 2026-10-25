@@ -7,6 +7,7 @@ import type { SqliteHygieneContext } from './sqlite-hygiene-anchors.js';
 import { anchorsPresentOnDisk, existenceProvesAnchors } from './sqlite-hygiene-anchors.js';
 import { anchorsChanged } from './sqlite-store-anchor-diff.js';
 import { readSqliteSageRow } from './sqlite-store-codec.js';
+import { stampSqliteVerification } from './sqlite-store-verification-stamp.js';
 import type { MemoryAnchor } from './types.js';
 export async function verifyHygieneMemories(inputs: {
   opts: import('./memory-hygiene-types.js').SageHygieneOptions | undefined;
@@ -185,12 +186,17 @@ export async function verifyHygieneMemories(inputs: {
         if (!current) continue;
         if (current.status !== 'active') continue;
         if (allValid && current.anchors.length === 0) continue;
+        if (allValid) {
+          // Confirmed, not changed: bookkeeping only (see stampSqliteVerification).
+          stampSqliteVerification(ctx.stmt, memoryId, verificationRunAt, 1);
+          continue;
+        }
         const updated = applySemanticChange(
           current,
           {
-            status: allValid ? ('active' as const) : ('stale' as const),
+            status: 'stale' as const,
             lastVerifiedAt: verificationRunAt,
-            ...(allValid ? { freshness: 1 } : { staleReason: 'verification' as const }),
+            staleReason: 'verification' as const,
           },
           ctx.nowIso(),
         );

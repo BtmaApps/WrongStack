@@ -834,7 +834,7 @@ describe('SqliteSageStore', () => {
       });
     });
 
-    it('increments revision monotonically across hygiene operations (P1-9)', async () => {
+    it('increments revision for verification status changes, not for passing checks', async () => {
       const store = trackStore(new SqliteSageStore({ projectRoot: tempDir }));
       await store.initialize();
 
@@ -852,19 +852,25 @@ describe('SqliteSageStore', () => {
       });
       expect(mem.revision).toBe(1);
 
-      // Run verification — should increment revision (P1-9 fix).
+      // A passing check confirms the memory: stamped, not rewritten.
       await store.verify();
       const afterVerify = await store.getSage(mem.id);
-      expect(afterVerify!.revision).toBe(2);
+      expect(afterVerify!.revision).toBe(1);
       expect(afterVerify!.lastVerifiedAt).toBeTruthy();
 
-      // Run hygiene — verify pass inside hygiene increments again.
+      // The anchor disappears: active → stale is a semantic change.
+      fs.rmSync(anchorFile);
       await store.hygiene();
-      const afterHygiene = await store.getSage(mem.id);
-      expect(afterHygiene!.revision).toBeGreaterThanOrEqual(3);
+      const afterStale = await store.getSage(mem.id);
+      expect(afterStale!.status).toBe('stale');
+      expect(afterStale!.revision).toBe(2);
 
-      // Revision must be monotonically increasing.
-      expect(afterHygiene!.revision).toBeGreaterThan(afterVerify!.revision);
+      // Restored: stale → active is one too, and revisions only grow.
+      fs.writeFileSync(anchorFile, 'export const x = 1;');
+      await store.hygiene();
+      const afterRestore = await store.getSage(mem.id);
+      expect(afterRestore!.status).toBe('active');
+      expect(afterRestore!.revision).toBe(3);
     });
 
     it('increments revision when superseded by dedup (P1-9)', async () => {

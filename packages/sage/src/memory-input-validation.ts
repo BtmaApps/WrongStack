@@ -6,6 +6,7 @@
 
 import { normalizeText, tokenize } from './memory-text.js';
 import { normalizeValidity } from './shared/memory-validity.js';
+import { isProgressLogText } from './shared/progress-log.js';
 import {
   type MemoryAnchor,
   type MemoryAudienceSelector,
@@ -170,6 +171,10 @@ export function assessRememberQuality(input: {
     confidenceCap = Math.min(confidenceCap, 0.35);
     importanceCap = Math.min(importanceCap, 0.35);
     reasons.push('ephemeral_pattern');
+  }
+  if (isProgressLogText(text)) {
+    importanceCap = Math.min(importanceCap, 0.55);
+    reasons.push('progress_log');
   }
 
   return { confidenceCap, importanceCap, reasons };

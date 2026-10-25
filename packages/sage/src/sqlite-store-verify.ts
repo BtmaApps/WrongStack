@@ -7,6 +7,7 @@ import { anchorsChanged } from './sqlite-store-anchor-diff.js';
 import { readSqliteSageRow } from './sqlite-store-codec.js';
 import { MEMORY_NODE_PREFIX } from './sqlite-store-graph-helpers.js';
 import { sqliteRowsToMemories } from './sqlite-store-search-helpers.js';
+import { stampSqliteVerification } from './sqlite-store-verification-stamp.js';
 import type { MemoryVerificationResult, Sage } from './types.js';
 
 interface SqliteVerifyContext {
@@ -170,20 +171,23 @@ async function reconcileVerifiedMemories(
                 current.staleReason !== 'manual'
               ? 'active'
               : current.status;
+        if (nextStatus === current.status) {
+          // Confirmed, not changed: bookkeeping only (see stampSqliteVerification).
+          stampSqliteVerification(ctx.stmt, update.id, update.lastVerifiedAt, update.freshness);
+          continue;
+        }
         const verified = applySemanticChange(
           current,
           {
             status: nextStatus,
-            ...(nextStatus !== current.status
-              ? { staleReason: nextStatus === 'stale' ? ('verification' as const) : undefined }
-              : {}),
+            staleReason: nextStatus === 'stale' ? ('verification' as const) : undefined,
             lastVerifiedAt: update.lastVerifiedAt,
             ...(update.freshness !== undefined && { freshness: update.freshness }),
           },
           ctx.nowIso(),
         );
         ctx.upsertMemory(verified);
-        if (verified.status !== current.status) ctx.syncAnchorEdges(verified);
+        ctx.syncAnchorEdges(verified);
       }
     });
   }

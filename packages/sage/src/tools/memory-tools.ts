@@ -127,6 +127,8 @@ function memoryRememberTool(memory: SageServiceLike): Tool<RememberToolInput, Sa
       'WHEN NOT TO USE:\n' +
       '- Temporary task state or progress → use `todo` (WIP/todo chatter is rejected)\n' +
       '- One-off debugging notes and "fixed the bug" summaries\n' +
+      '- Round/campaign progress logs (round N/M, LANDED, test counts, HEAD sha): git and\n' +
+      '  Kanban hold those; save only the durable lesson; idle logs stop auto-injecting.\n' +
       '- Information already obvious from the codebase\n' +
       '- `file_note` / `symbol_note` / `command_note` without anchors (hard reject)\n\n' +
       'Pick the most specific `kind`. Default persistence is `long_lived`; use `permanent`\n' +

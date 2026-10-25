@@ -3,6 +3,7 @@ import { activeLimits, positiveLimit } from '@wrongstack/contracts/types';
 import type { ToolCallPipelinePayload } from '@wrongstack/core/agent';
 import { formatMemoryHintsDetailed } from '../retrieval/format.js';
 import { checkInjectionValidity } from '../retrieval/validity-checks.js';
+import { isIdleProgressLog } from '../shared/progress-log.js';
 import type { InjectionTracker } from './injection-tracker.js';
 import { MemoryInjectorAgent } from './memory-injector-agent.js';
 import { StoreFaultBreaker } from './tool-call-memory-breaker.js';
@@ -287,6 +288,16 @@ export function createSageToolCallMiddleware(
             });
             return false;
           }
+          if (isIdleProgressLog(memory, now)) {
+            pushRejection({
+              id: memory.id,
+              kind: memory.kind,
+              gate: 'belowScore',
+              reason: 'idle progress log (no use within 30 days)',
+              at: nowIso(),
+            });
+            return false;
+          }
           if (relationStrength < relationFloor) {
             pushRejection({
               id: memory.id,
@@ -418,7 +429,25 @@ export function createSageToolCallMiddleware(
           });
         }
         const validityReviews = await checkInjectionValidity(selected, nextPayload.ctx.projectRoot);
-        const rendered = formatMemoryHintsDetailed(selected, {
+        // A memory whose own source check now fails states something the code
+        // no longer says. Rendering it with a failed `sourceChecks` note still
+        // hands the model the claim as guidance; reuse without an applicability
+        // check is what makes memory hurt a coding agent.
+        const applicable = selected.filter((memory) => {
+          const failed = validityReviews
+            .get(memory.id)
+            ?.checks.find((check) => check.status === 'not_satisfied');
+          if (!failed) return true;
+          pushRejection({
+            id: memory.id,
+            kind: memory.kind,
+            gate: 'belowScore',
+            reason: `validity check failed: ${failed.path} no longer contains the cited text`,
+            at: nowIso(),
+          });
+          return false;
+        });
+        const rendered = formatMemoryHintsDetailed(applicable, {
           validityReviews,
           maxChars,
           heading:

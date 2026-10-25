@@ -8,12 +8,17 @@ const SHARED = "('project', 'file', 'symbol')";
 // Local access counters must not create a replication storm on every recall.
 const content = (row: string) =>
   `CASE WHEN json_valid(${row}.data) THEN json_remove(${row}.data, '$.injectionCount', '$.useCount', '$.lastAccessedAt', '$.lastUsedAt') ELSE NULL END`;
+// A verification stamp confirms the record without changing it: it still rides
+// along with a real change, but must not by itself trigger one (every scheduled
+// hygiene pass stamps the whole anchored corpus).
+const changed = (row: string) =>
+  `CASE WHEN json_valid(${row}.data) THEN json_remove(${row}.data, '$.injectionCount', '$.useCount', '$.lastAccessedAt', '$.lastUsedAt', '$.lastVerifiedAt') ELSE NULL END`;
 
 export function initSageHqSync(db: DatabaseSync): void {
   const schema = db
     .prepare("SELECT value FROM schema_meta WHERE key = 'hq_memory_sync_schema'")
     .get() as { value: number } | undefined;
-  const migrate = (schema?.value ?? 0) < 2;
+  const migrate = (schema?.value ?? 0) < 3;
   db.exec('BEGIN IMMEDIATE');
   try {
     db.exec(`
@@ -23,7 +28,7 @@ export function initSageHqSync(db: DatabaseSync): void {
       DROP TRIGGER IF EXISTS sage_hq_insert;
       DROP TRIGGER IF EXISTS sage_hq_update;
       DROP TRIGGER IF EXISTS sage_hq_delete;
-      INSERT INTO schema_meta (key, value) VALUES ('hq_memory_sync_schema', 2)
+      INSERT INTO schema_meta (key, value) VALUES ('hq_memory_sync_schema', 3)
         ON CONFLICT(key) DO UPDATE SET value = excluded.value;
     `
         : ''
@@ -51,7 +56,7 @@ export function initSageHqSync(db: DatabaseSync): void {
       ON CONFLICT(id) DO UPDATE SET revision = revision + 1, change_id = excluded.change_id, data = excluded.data;
     END;
     CREATE TRIGGER IF NOT EXISTS sage_hq_update AFTER UPDATE ON memories
-      WHEN (new.scope IN ${SHARED} OR old.scope IN ${SHARED}) AND json_valid(new.data) AND ${content('new')} IS NOT ${content('old')} BEGIN
+      WHEN (new.scope IN ${SHARED} OR old.scope IN ${SHARED}) AND json_valid(new.data) AND ${changed('new')} IS NOT ${changed('old')} BEGIN
       INSERT INTO hq_memory_sync VALUES(new.id, 1, lower(hex(randomblob(16))), CASE WHEN new.scope IN ${SHARED} THEN ${content('new')} ELSE NULL END)
       ON CONFLICT(id) DO UPDATE SET revision = revision + 1, change_id = excluded.change_id, data = excluded.data;
     END;

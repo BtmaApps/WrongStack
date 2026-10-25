@@ -304,8 +304,10 @@ describe('SQLite defensive and lifecycle completion coverage', () => {
     }) as never;
     await expect(store.verify('concurrent-edit')).resolves.toHaveLength(1);
     state.runMutation = originalRunMutation;
+    // The concurrent edit is revision 2; a passing check stamps it in place
+    // without a revision of its own (see stampSqliteVerification).
     expect(await store.getSage('concurrent-edit')).toMatchObject({
-      revision: 3,
+      revision: 2,
       text: 'edited while anchors were being verified',
       tags: ['concurrent'],
       lastVerifiedAt: expect.any(String),
