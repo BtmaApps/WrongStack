@@ -159,8 +159,8 @@ export interface WstackPaths {
  * submodules, and separate-git-dir layouts keep their existing identity.
  */
 export function canonicalProjectRoot(absRoot: string): string {
-  if (typeof absRoot !== 'string' || !absRoot) return process.cwd();
-  return onDiskCase(gitIdentityRoot(path.resolve(absRoot)));
+  const target = typeof absRoot === 'string' && absRoot.trim().length > 0 ? absRoot : process.cwd();
+  return onDiskCase(gitIdentityRoot(path.resolve(target)));
 }
 
 /**
@@ -199,7 +199,7 @@ function gitIdentityRoot(checkoutRoot: string): string {
     // Submodules use `<common>/.git/modules/...` and retain their own identity.
     const worktreesDir = path.dirname(gitDir);
     if (path.basename(worktreesDir).toLowerCase() !== 'worktrees') return checkoutRoot;
-    if (path.resolve(worktreesDir, '..') !== commonDir) return checkoutRoot;
+    if (onDiskCase(path.resolve(worktreesDir, '..')) !== onDiskCase(commonDir)) return checkoutRoot;
     if (path.basename(commonDir).toLowerCase() !== '.git') return checkoutRoot;
     return path.dirname(commonDir);
   } catch {
@@ -323,14 +323,22 @@ export function wstackGlobalRoot(): string {
 export function resolveWstackPaths(opts: WstackPathOptions): WstackPaths {
   // Precedence: explicit globalRoot > explicit userHome (callers/tests that
   // pass one expect paths under it) > WRONGSTACK_HOME env > real home dir.
+  const explicitGlobalRoot =
+    typeof opts.globalRoot === 'string' && opts.globalRoot.trim().length > 0
+      ? opts.globalRoot.trim()
+      : undefined;
+  const explicitUserHome =
+    typeof opts.userHome === 'string' && opts.userHome.trim().length > 0
+      ? opts.userHome.trim()
+      : undefined;
   const globalRoot =
-    opts.globalRoot ??
-    (opts.userHome ? path.join(opts.userHome, '.wrongstack') : wstackGlobalRoot());
+    explicitGlobalRoot ??
+    (explicitUserHome ? path.join(explicitUserHome, '.wrongstack') : wstackGlobalRoot());
   // Home dir for FOREIGN tool state (Claude Code's ~/.claude). Independent of
   // WRONGSTACK_HOME, which redirects only WrongStack state: a real user's
   // Claude skills live in their real home, but tests pass `userHome` to keep
   // both `.wrongstack` and `.claude` under a temp dir.
-  const homeDir = opts.userHome ?? os.homedir();
+  const homeDir = explicitUserHome ?? os.homedir();
   const profileName = safeProfileName(opts.profileName ?? bootstrapProfileName(globalRoot));
   const profileDir = path.join(globalRoot, 'profiles', profileName);
   const hash = projectHash(opts.projectRoot);

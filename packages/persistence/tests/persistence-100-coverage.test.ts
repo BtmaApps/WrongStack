@@ -27,6 +27,7 @@ import {
   unixSocketPathLimit,
 } from '../src/socket-path.js';
 import { isRuntimeSqliteAvailable, loadRuntimeDatabaseSync } from '../src/sqlite-runtime.js';
+import { canonicalProjectRoot, projectSlug, resolveWstackPaths } from '../src/wstack-paths.js';
 
 describe('persistence 100% coverage suite', () => {
   const originalEnv = { ...process.env };
@@ -574,6 +575,59 @@ describe('persistence 100% coverage suite', () => {
       const resMaxAttempts = await maxAttemptsPromise;
       expect(resMaxAttempts.outcome).toBe('failed');
       expect((resMaxAttempts as any).error.message).toContain('after 2 attempts');
+    });
+  });
+
+  describe('wstack-paths.ts (F24 regressions)', () => {
+    it('canonicalizes empty projectRoot via CWD, normalizes commondir casing, and ignores blank globalRoot/userHome', async () => {
+      const tmpRoot = await fsPromises.mkdtemp(path.join(os.tmpdir(), 'ws-f24-'));
+      const savedCwd = process.cwd();
+      try {
+        const mainRepo = path.join(tmpRoot, 'MainRepo');
+        const mainGitDir = path.join(mainRepo, '.git');
+        const wtGitDir = path.join(mainGitDir, 'worktrees', 'linked-wt');
+        const linkedWt = path.join(tmpRoot, 'linked-wt');
+        const fakeHome = path.join(tmpRoot, 'home');
+
+        await fsPromises.mkdir(wtGitDir, { recursive: true });
+        await fsPromises.mkdir(linkedWt, { recursive: true });
+        await fsPromises.mkdir(fakeHome, { recursive: true });
+
+        const idx = mainGitDir.search(/[a-zA-Z]/);
+        const flippedCommonDir =
+          idx === -1
+            ? mainGitDir
+            : mainGitDir.slice(0, idx) +
+              (mainGitDir[idx] === mainGitDir[idx]!.toLowerCase()
+                ? mainGitDir[idx]!.toUpperCase()
+                : mainGitDir[idx]!.toLowerCase()) +
+              mainGitDir.slice(idx + 1);
+
+        await fsPromises.writeFile(path.join(linkedWt, '.git'), `gitdir: ${wtGitDir}\n`, 'utf8');
+        await fsPromises.writeFile(
+          path.join(wtGitDir, 'commondir'),
+          `${flippedCommonDir}\n`,
+          'utf8',
+        );
+
+        const mainCanonical = canonicalProjectRoot(mainRepo);
+        expect(canonicalProjectRoot(linkedWt)).toBe(mainCanonical);
+
+        process.chdir(linkedWt);
+        expect(canonicalProjectRoot('')).toBe(mainCanonical);
+        expect(projectSlug('')).toBe(projectSlug(linkedWt));
+        process.chdir(savedCwd);
+
+        const resolved = resolveWstackPaths({
+          projectRoot: mainRepo,
+          userHome: fakeHome,
+          globalRoot: '   ',
+        });
+        expect(resolved.globalRoot).toBe(path.join(fakeHome, '.wrongstack'));
+      } finally {
+        process.chdir(savedCwd);
+        await fsPromises.rm(tmpRoot, { recursive: true, force: true });
+      }
     });
   });
 });
