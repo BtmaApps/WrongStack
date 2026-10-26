@@ -54,23 +54,28 @@ export function updateAgent<S extends { agents: AgentEntry[] }>(
         maxContext: 0,
         entries: [],
       };
-  const name = text(p.agentName) || text(p.name);
+  const isTimeline = type === 'agent.timeline.message';
+  const name = text(p.agentName) || (!isTimeline ? text(p.name) : '');
   if (name && (name !== id || agent.name === id)) agent.name = name;
-  if (text(p.description) || text(p.task)) agent.task = text(p.description) || text(p.task);
+  if (!isTimeline && (text(p.description) || text(p.task)))
+    agent.task = text(p.description) || text(p.task);
   if (text(p.model)) agent.model = text(p.model);
   if (text(p.provider)) agent.provider = text(p.provider);
-  if (text(p.status)) agent.status = text(p.status);
-  if (kind === 'task_started') agent.status = 'running';
-  if (kind === 'removed') {
-    agent.status = 'stopped';
-    agent.currentTool = '';
+  if (!isTimeline) {
+    if (text(p.status)) agent.status = text(p.status);
+    if (kind === 'task_started') agent.status = 'running';
+    if (kind === 'removed') {
+      agent.status = 'stopped';
+      agent.currentTool = '';
+    }
+    if (kind === 'task_completed') {
+      agent.status = text(p.status) || 'completed';
+      agent.currentTool = '';
+      agent.partialText = '';
+    }
+  } else if (!previous) {
+    agent.status = 'running';
   }
-  if (kind === 'task_completed') {
-    agent.status = text(p.status) || 'completed';
-    agent.currentTool = '';
-    agent.partialText = '';
-  }
-  if (type === 'agent.timeline.message' && !previous) agent.status = 'running';
   if (isActiveAgent(agent.status) || kind === 'task_completed' || type === 'agent.timeline.message')
     agent.hasWorked = true;
   if (typeof p.iteration === 'number' || typeof p.iterations === 'number')

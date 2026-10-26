@@ -165,9 +165,75 @@ describe('next steps', () => {
     });
     expect(state.messages.at(-1)?.final).toBe(true);
   });
+  it('finalizes a streaming assistant tail on run.result and does not mark prior-turn replies autoEligible', () => {
+    let streamed = reduceFrame(start(), {
+      type: 'provider.text_delta',
+      payload: { sessionId: 'one', text: 'Partial stream' },
+    });
+    streamed = reduceFrame(streamed, {
+      type: 'run.result',
+      payload: { sessionId: 'one', status: 'done', finalText: reply, iterations: 1 },
+    });
+    expect(streamed.messages.at(-1)).toMatchObject({
+      role: 'assistant',
+      text: reply,
+      streaming: false,
+      final: true,
+      autoEligible: true,
+    });
+
+    let stale = reduceFrame(initialState(), {
+      type: 'session.start',
+      payload: {
+        sessionId: 'one',
+        replayMessages: [
+          { role: 'assistant', content: reply },
+          { role: 'user', content: 'Run silent check' },
+        ],
+      },
+    });
+    stale = reduceFrame(stale, {
+      type: 'run.result',
+      payload: { sessionId: 'one', status: 'done', iterations: 1 },
+    });
+    expect(stale.messages[0]?.autoEligible).toBeUndefined();
+  });
 });
 
 describe('subagent observability', () => {
+  it('preserves canonical agent status, name, and task when replaying transcript entries on session.start', () => {
+    const state = reduceFrame(initialState(), {
+      type: 'session.start',
+      payload: {
+        sessionId: 'one',
+        agentSessions: [
+          {
+            subagentId: 'auditor',
+            agentName: 'SecurityAuditor',
+            status: 'completed',
+            model: 'replay-model',
+            task: 'Audit token validation',
+            transcript: [
+              { kind: 'task_started', status: 'running', content: 'Starting audit' },
+              {
+                kind: 'tool',
+                name: 'read_file',
+                description: 'Read src/auth.ts',
+                content: 'Read 120 lines',
+              },
+              { kind: 'result', content: 'Audit complete' },
+            ],
+          },
+        ],
+      },
+    });
+    expect(state.agents[0]).toMatchObject({
+      name: 'SecurityAuditor',
+      status: 'completed',
+      task: 'Audit token validation',
+    });
+    expect(state.agents[0]?.entries).toHaveLength(3);
+  });
   it('hydrates worker replay and current snapshots without mixing sessions', () => {
     let state = reduceFrame(initialState(), {
       type: 'session.start',

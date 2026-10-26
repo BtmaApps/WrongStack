@@ -373,14 +373,21 @@ export function reduceFrame(state: SessionState, frame: ProtocolEnvelope): Sessi
           : chat.status === 'aborted'
             ? 'Run stopped. Queued messages are paused.'
             : 'Run did not complete. Review the result before continuing.';
-    const messages = state.messages.map((m) => ({ ...m, streaming: false }));
+    const tailIndex = conversationTail(state.messages);
+    const prevTail = state.messages[tailIndex];
+    const messages = state.messages.map((m, idx) =>
+      chat.kind === 'run-result' && idx === tailIndex && m.role === 'assistant' && m.streaming
+        ? {
+            ...m,
+            ...(chat.finalText ? { text: bounded(chat.finalText) } : {}),
+            streaming: false,
+            final: chat.status === 'done',
+          }
+        : { ...m, streaming: false },
+    );
     if (chat.kind === 'error')
       messages.push({ id, role: 'system', text: chat.message, streaming: false });
-    if (
-      chat.kind === 'run-result' &&
-      chat.finalText &&
-      state.messages[conversationTail(state.messages)]?.role !== 'assistant'
-    )
+    if (chat.kind === 'run-result' && chat.finalText && prevTail?.role !== 'assistant')
       messages.push({
         id,
         role: 'assistant',
@@ -389,11 +396,8 @@ export function reduceFrame(state: SessionState, frame: ProtocolEnvelope): Sessi
         final: chat.status === 'done',
       });
     if (chat.kind === 'run-result' && chat.status === 'done') {
-      const lastAssistant = messages
-        .slice()
-        .reverse()
-        .find((message) => message.role === 'assistant');
-      if (lastAssistant) lastAssistant.autoEligible = true;
+      const tail = messages[conversationTail(messages)];
+      if (tail?.role === 'assistant' && tail.final === true) tail.autoEligible = true;
     }
     return {
       ...state,
