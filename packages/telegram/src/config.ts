@@ -254,7 +254,10 @@ function resolveInboundMode(
         'Telegram inboundMode "allowlist" requires at least one allowedUsers or allowedChats entry.',
       );
     }
-    if (opts.inboundMode === 'paired' && opts.notifyChatId === undefined) {
+    if (
+      opts.inboundMode === 'paired' &&
+      (opts.notifyChatId === undefined || String(opts.notifyChatId).trim() === '')
+    ) {
       throw new Error('Telegram inboundMode "paired" requires notifyChatId.');
     }
     return opts.inboundMode;
@@ -262,7 +265,9 @@ function resolveInboundMode(
 
   if (hasEntries(opts.allowedUsers) || hasEntries(opts.allowedChats)) return 'allowlist';
 
-  const inferredMode: TelegramInboundMode = opts.notifyChatId === undefined ? 'disabled' : 'paired';
+  const hasNotifyChat =
+    opts.notifyChatId !== undefined && String(opts.notifyChatId).trim().length > 0;
+  const inferredMode: TelegramInboundMode = !hasNotifyChat ? 'disabled' : 'paired';
   if (migration.configured) {
     migration.warn?.(
       `Telegram inbound access no longer defaults to public when allowedUsers and allowedChats are empty; inferred inboundMode "${inferredMode}". Set inboundMode "public" explicitly to preserve legacy allow-all behavior.`,
@@ -272,5 +277,5 @@ function resolveInboundMode(
 }
 
 function hasEntries(values: Array<string | number> | undefined): boolean {
-  return Array.isArray(values) && values.length > 0;
+  return Array.isArray(values) && values.some((value) => String(value).trim().length > 0);
 }

@@ -272,4 +272,29 @@ describe('telegram config', () => {
       items: { oneOf: [{ type: 'string' }, { type: 'integer' }] },
     });
   });
+
+  it('rejects whitespace-only allowlist entries and trims padded IDs in inboundAllowlist (F649)', async () => {
+    const { inboundAllowlist } = await import('../../src/telegram-config.js');
+    expect(() =>
+      readTelegramConfig({
+        config: {
+          extensions: {
+            [PLUGIN_NAME]: {
+              inboundMode: 'allowlist',
+              allowedUsers: ['   '],
+              allowedChats: [''],
+            },
+          },
+        },
+      } as Parameters<typeof readTelegramConfig>[0]),
+    ).toThrow(/requires at least one allowedUsers or allowedChats entry/);
+
+    const list = inboundAllowlist({
+      inboundMode: 'allowlist',
+      allowedUsers: [' 12345 '],
+      allowedChats: [' -1001 '],
+    });
+    expect(list.allowedUsers.has('12345')).toBe(true);
+    expect(list.allowedChats.has('-1001')).toBe(true);
+  });
 });

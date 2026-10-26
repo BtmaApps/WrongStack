@@ -104,12 +104,17 @@ export function makeTelegramApproveTool(opts: {
     async execute(input, ctx, toolOpts) {
       const chatId = resolveTelegramOutboundTarget(input.chat_id, opts);
       const timeoutMs = Math.min(Math.max(input.timeout_ms ?? 60_000, 1000), 600_000);
-      const configuredUserIds = opts.getAllowedUserIds?.().map(String) ?? [];
-      const isGroup = String(chatId).startsWith('-');
+      const configuredUserIds =
+        opts
+          .getAllowedUserIds?.()
+          .map((id) => String(id).trim())
+          .filter(Boolean) ?? [];
+      const isGroup = String(chatId).trim().startsWith('-');
       if (isGroup && (opts.getAllowGroupApprovals?.() !== true || configuredUserIds.length === 0)) {
         throw new Error('Telegram group approvals require explicit per-user configuration.');
       }
-      const expectedUserIds = configuredUserIds.length > 0 ? configuredUserIds : [String(chatId)];
+      const expectedUserIds =
+        configuredUserIds.length > 0 ? configuredUserIds : [String(chatId).trim()];
 
       // Stable request identity shared by the yes/no callback actions.
       const requestId = randomUUID().slice(0, 16);

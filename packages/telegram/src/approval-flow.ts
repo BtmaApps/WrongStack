@@ -145,7 +145,9 @@ export class ApprovalFlow {
     }
   }
   awaitApproval(input: TelegramApprovalRequestInput): Promise<TelegramApprovalResult> {
-    if (input.expectedUserIds.length === 0)
+    const expectedUserIds = input.expectedUserIds.map((id) => String(id).trim()).filter(Boolean);
+    const expectedChatId = String(input.expectedChatId).trim();
+    if (expectedUserIds.length === 0 || !expectedChatId)
       throw new Error('Telegram approval requires at least one expected user ID.');
     if (this.callbackWaiters.has(input.requestId))
       throw new Error(`Telegram approval request ${input.requestId} is already pending.`);
@@ -157,8 +159,8 @@ export class ApprovalFlow {
       const request: TelegramApprovalRequest = {
         requestId: input.requestId,
         sessionId: input.sessionId,
-        expectedChatId: String(input.expectedChatId),
-        expectedUserIds: new Set(input.expectedUserIds.map(String)),
+        expectedChatId,
+        expectedUserIds: new Set(expectedUserIds),
         allowGroup: input.allowGroup,
         pendingCallbacks: [],
         expiresAt: input.expiresAt,

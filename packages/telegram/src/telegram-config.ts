@@ -46,17 +46,37 @@ export function inboundAllowlist(cfg: {
     return { allowedUsers: new Set(), allowedChats: new Set() };
   }
   if (cfg.inboundMode === 'paired') {
-    const pairedUsers = new Set((cfg.allowedUsers ?? []).map(String));
+    const pairedUsers = new Set(
+      (cfg.allowedUsers ?? []).map((id) => String(id).trim()).filter(Boolean),
+    );
+    const notifyChat = String(expectDefined(cfg.notifyChatId)).trim();
+    if (!notifyChat) {
+      return {
+        allowedUsers: new Set([DENY_ALL_INBOUND]),
+        allowedChats: new Set([DENY_ALL_INBOUND]),
+      };
+    }
     return {
-      allowedUsers:
-        pairedUsers.size > 0 ? pairedUsers : new Set([String(expectDefined(cfg.notifyChatId))]),
-      allowedChats: new Set([String(expectDefined(cfg.notifyChatId))]),
+      allowedUsers: pairedUsers.size > 0 ? pairedUsers : new Set([notifyChat]),
+      allowedChats: new Set([notifyChat]),
     };
   }
   if (cfg.inboundMode === 'allowlist') {
+    const allowedUsers = new Set(
+      (cfg.allowedUsers ?? []).map((id) => String(id).trim()).filter(Boolean),
+    );
+    const allowedChats = new Set(
+      (cfg.allowedChats ?? []).map((id) => String(id).trim()).filter(Boolean),
+    );
+    if (allowedUsers.size === 0 && allowedChats.size === 0) {
+      return {
+        allowedUsers: new Set([DENY_ALL_INBOUND]),
+        allowedChats: new Set([DENY_ALL_INBOUND]),
+      };
+    }
     return {
-      allowedUsers: new Set((cfg.allowedUsers ?? []).map(String)),
-      allowedChats: new Set((cfg.allowedChats ?? []).map(String)),
+      allowedUsers,
+      allowedChats,
     };
   }
   return {

@@ -671,4 +671,30 @@ describe('telegram_approve with bot allowlist', () => {
     expect(result).toMatchObject({ approved: true, from: 'alice' });
     bot.stop();
   });
+
+  it('rejects whitespace-only group allowedUserIds and trims padded user IDs in approval matching (F648)', async () => {
+    const bot = makeBot({ allowedUsers: ['1'], allowedChats: ['-100999', '999'] });
+    const whitespaceGroupTool = makeTool(bot, '-100999', ['   '], true);
+    await expect(
+      whitespaceGroupTool.execute({ prompt: 'Deploy?', chat_id: '-100999', timeout_ms: 1_000 }),
+    ).rejects.toThrow(/group approvals require explicit per-user configuration/i);
+
+    const paddedTool = makeTool(bot, '999', [' 1 ']);
+    const execPromise = paddedTool.execute({ prompt: 'Trim?', timeout_ms: 1_000 });
+    await new Promise((r) => setTimeout(r, 5));
+    const prompt = sentBodies.find((b) => b.includes('Trim?'))!;
+    const yesKey = prompt.match(/"callback_data":"(approve:[^"]+:yes)"/)![1]!;
+    await (
+      bot.approvals as unknown as {
+        dispatchCallback(cq: unknown): Promise<void>;
+      }
+    ).dispatchCallback({
+      id: 'cb-trimmed',
+      from: { id: 1, username: 'alice' },
+      message: { message_id: 42, chat: { id: 999, type: 'private' } },
+      data: yesKey,
+    });
+    await expect(execPromise).resolves.toMatchObject({ approved: true, from: 'alice' });
+    bot.stop();
+  });
 });
