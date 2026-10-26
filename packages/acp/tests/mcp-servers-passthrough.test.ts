@@ -18,6 +18,7 @@ import {
   type RunTurnInput,
 } from '../src/agent/protocol-handler.js';
 import { parseMcpServers } from '../src/agent/protocol-session-ops.js';
+import { ACPSessionStore } from '../src/agent/session-store.js';
 import type { AgentServerTransport } from '../src/agent/stdio-transport.js';
 
 const CWD = mkdtempSync(nodePath.join(tmpdir(), 'acp-mcp-'));
@@ -228,5 +229,72 @@ describe('ACP session mcpServers passthrough', () => {
     expect(turns.at(-1)?.mcpServers).toEqual([
       { type: 'http', name: 'remote', url: 'https://example.test/mcp' },
     ]);
+  });
+
+  it('persists mcpServers across cold session/load, warm session/load updates, and explicit empty fork (F25)', async () => {
+    const storeDir = mkdtempSync(nodePath.join(tmpdir(), 'acp-f25-'));
+    const store = new ACPSessionStore({ dir: storeDir });
+    const makeWithStore = () => {
+      const sent: unknown[] = [];
+      const turns: RunTurnInput[] = [];
+      const handler = new ACPProtocolHandler({
+        transport: {
+          send: vi.fn(async (msg: unknown) => {
+            sent.push(msg);
+          }),
+        } as never as AgentServerTransport,
+        defaultCwd: CWD,
+        runTurn: async (input) => {
+          turns.push(input);
+          return { stopReason: 'end_turn' };
+        },
+        store,
+      });
+      return { handler, sent, turns };
+    };
+
+    const h1 = makeWithStore();
+    await h1.handler.handleMessage({ id: 1, method: 'initialize', params: { protocolVersion: 1 } });
+    await h1.handler.handleMessage({
+      id: 2,
+      method: 'session/new',
+      params: { cwd: CWD, mcpServers: [STDIO] },
+    });
+    const sessionId = resultOf(h1.sent, 2)?.sessionId as string;
+
+    const h2 = makeWithStore();
+    await h2.handler.handleMessage({
+      id: 10,
+      method: 'initialize',
+      params: { protocolVersion: 1 },
+    });
+    await h2.handler.handleMessage({ id: 11, method: 'session/load', params: { sessionId } });
+    await h2.handler.handleMessage({
+      id: 12,
+      method: 'session/prompt',
+      params: { sessionId, prompt: [{ type: 'text', text: 'cold' }] },
+    });
+    expect(h2.turns[0]?.mcpServers).toEqual([STDIO]);
+
+    await h2.handler.handleMessage({
+      id: 13,
+      method: 'session/load',
+      params: { sessionId, mcpServers: [HTTP] },
+    });
+    const persisted = await store.load(sessionId);
+    expect(persisted?.mcpServers).toEqual([HTTP]);
+
+    await h2.handler.handleMessage({
+      id: 14,
+      method: 'session/fork',
+      params: { sessionId, mcpServers: [] },
+    });
+    const forkId = resultOf(h2.sent, 14)?.sessionId as string;
+    await h2.handler.handleMessage({
+      id: 15,
+      method: 'session/prompt',
+      params: { sessionId: forkId, prompt: [{ type: 'text', text: 'forked' }] },
+    });
+    expect(h2.turns.at(-1)?.mcpServers).toBeUndefined();
   });
 });

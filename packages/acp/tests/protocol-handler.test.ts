@@ -319,6 +319,57 @@ describe('ACPProtocolHandler', () => {
       await turnDone;
       expect(observed).toEqual(['protocol handler closed']);
     });
+
+    it('still sends terminal/release when runTerminal is cancelled mid-command', async () => {
+      const waitIssued = deferred();
+      const listeners = new Set<(m: unknown) => void>();
+      const sent: unknown[] = [];
+      const transport = {
+        sent,
+        send: vi.fn(async (msg: unknown) => {
+          sent.push(msg);
+          const m = msg as { id?: string; method?: string };
+          if (m.method === 'terminal/create' && m.id) {
+            for (const l of listeners)
+              l({ jsonrpc: '2.0', id: m.id, result: { terminalId: 't_1' } });
+          } else if (m.method === 'terminal/wait_for_exit' && m.id) {
+            waitIssued.resolve();
+          } else if (m.method === 'terminal/release' && m.id) {
+            for (const l of listeners) l({ jsonrpc: '2.0', id: m.id, result: {} });
+          }
+        }),
+        onMessage: (fn: (m: unknown) => void) => {
+          listeners.add(fn);
+          return () => listeners.delete(fn);
+        },
+      };
+      const handler = new ACPProtocolHandler({
+        transport: transport as never as AgentServerTransport,
+        defaultCwd: CWD_TEST,
+        runTurn: async (_input, _emit, api) => {
+          await api!.runTerminal({ command: 'sleep', args: ['30'] });
+          return { stopReason: 'end_turn' };
+        },
+      });
+      await handler.handleMessage({ id: 1, method: 'initialize', params: {} });
+      await handler.handleMessage({ id: 2, method: 'session/new', params: { cwd: CWD_TEST } });
+      const sessionId = (
+        sent.find((m) => (m as { id?: number }).id === 2) as { result?: { sessionId?: string } }
+      )?.result?.sessionId!;
+
+      const turnDone = handler.handleMessage({
+        id: 3,
+        method: 'session/prompt',
+        params: { sessionId, prompt: [{ type: 'text', text: 'run' }] },
+      });
+      await waitIssued.promise;
+      await handler.handleMessage({ method: 'session/cancel', params: { sessionId } });
+      await turnDone;
+
+      expect(
+        sent.filter((m) => (m as { method?: string }).method === 'terminal/release'),
+      ).toHaveLength(1);
+    });
   });
 
   describe('initialization', () => {

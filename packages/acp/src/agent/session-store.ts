@@ -138,6 +138,9 @@ export class ACPSessionStore {
         createdAt: state.createdAt,
         updatedAt: state.updatedAt,
         title: state.title,
+        ...(state.mcpServers && state.mcpServers.length > 0
+          ? { mcpServers: state.mcpServers }
+          : {}),
         ...(history && history.length > 0 ? { history } : {}),
       });
       try {

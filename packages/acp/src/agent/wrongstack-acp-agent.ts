@@ -155,8 +155,8 @@ export class WrongStackACPServer {
         if (terminal) break;
       }
     } finally {
-      this.handler.close();
       await Promise.allSettled(prompts);
+      this.handler.close();
       this.transport.close();
     }
   }

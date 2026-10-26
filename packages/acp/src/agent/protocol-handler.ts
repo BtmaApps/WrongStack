@@ -115,7 +115,13 @@ export class ACPProtocolHandler {
   private request(method: string, params: unknown, timeoutMs = 60_000): Promise<unknown> {
     const id = `srv_${this.nextOutId++}`;
     const sessionId = (params as { sessionId?: string } | null)?.sessionId;
-    const signal = sessionId ? this.sessions.get(sessionId)?.abort.signal : undefined;
+    // `terminal/release` runs from `runTerminal`'s `finally` block after a turn
+    // is cancelled to kill the client-side process; binding it to the already-
+    // aborted turn signal would fail closed before the release reaches the wire.
+    const signal =
+      method !== 'terminal/release' && sessionId
+        ? this.sessions.get(sessionId)?.abort.signal
+        : undefined;
     return new Promise<unknown>((resolve, reject) => {
       const cleanup = (): void => {
         clearTimeout(timer);

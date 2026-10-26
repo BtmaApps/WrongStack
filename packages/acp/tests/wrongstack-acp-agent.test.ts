@@ -150,4 +150,34 @@ describe('WrongStackACPServer', () => {
       await running;
     }
   });
+
+  it('awaits in-flight stdio prompts before closing the protocol handler on EOF', async () => {
+    const server = new WrongStackACPServer();
+    const t = lastTransport();
+    const handler = lastHandler();
+    const events: string[] = [];
+    let finishPrompt!: (value: boolean) => void;
+    const promptDone = new Promise<boolean>((resolve) => {
+      finishPrompt = (v) => {
+        events.push('prompt.finished');
+        resolve(v);
+      };
+    });
+    handler.close.mockImplementation(() => {
+      events.push('handler.closed');
+    });
+    handler.handleMessage.mockImplementation(async (message: ACPMessage) => {
+      if (message.method === 'session/prompt') return promptDone;
+      return false;
+    });
+    t.read.mockResolvedValueOnce({ id: 1, method: 'session/prompt' }).mockResolvedValueOnce(null);
+
+    const running = server.start();
+    await vi.waitFor(() => expect(handler.handleMessage).toHaveBeenCalledTimes(1));
+    // EOF has already been read, but handler.close() must not fire until the prompt settles.
+    expect(handler.close).not.toHaveBeenCalled();
+    finishPrompt(false);
+    await running;
+    expect(events).toEqual(['prompt.finished', 'handler.closed']);
+  });
 });

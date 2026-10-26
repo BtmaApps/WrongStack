@@ -158,6 +158,9 @@ export async function handleSessionLoadOp(
         await ctx.sendError(id, -32000, `active session limit reached (${ctx.maxSessions})`);
         return false;
       }
+      const restoredMcpServers = Array.isArray(p.mcpServers)
+        ? loadMcpServers
+        : persisted.mcpServers;
       const restored: SessionState = {
         id: sessionId,
         cwd: restoredCwd,
@@ -167,10 +170,15 @@ export async function handleSessionLoadOp(
         createdAt: persisted.createdAt ?? new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         ...(persisted.title !== undefined ? { title: persisted.title } : {}),
-        ...(loadMcpServers.length > 0 ? { mcpServers: loadMcpServers } : {}),
+        ...(restoredMcpServers && restoredMcpServers.length > 0
+          ? { mcpServers: restoredMcpServers }
+          : {}),
       };
       ctx.sessions.set(sessionId, restored);
       ctx.seedFor?.(sessionId, persisted.history ?? []);
+      if (loadCwd !== undefined || Array.isArray(p.mcpServers)) {
+        await ctx.persist(restored, persisted.history);
+      }
       for (const update of replayHistory ? (persisted.history ?? []) : []) {
         await ctx.sendNotification({ sessionId, update });
       }
@@ -227,8 +235,9 @@ export async function handleSessionLoadOp(
       ctx.seedFor?.(sessionId!, replay ?? []);
     }
     existing.cwd = nextCwd;
-    if (Array.isArray(p.mcpServers)) {
-      existing.mcpServers = loadMcpServers;
+    if (Array.isArray(p.mcpServers)) existing.mcpServers = loadMcpServers;
+    if (cwdChanged || mcpChanged) {
+      await ctx.persist(existing, replay);
     }
     if (replayHistory && replay) {
       for (const update of replay) {
@@ -301,8 +310,9 @@ export async function handleSessionForkOp(
   const forkRequested = parseMcpServers(p.mcpServers, (reason) => forkSkipped.push(reason));
   // A fork inherits the source session's servers unless the client names its
   // own set — the fork is a continuation, and dropping the parent's tools
-  // would silently change what the agent can do mid-conversation.
-  const forkMcpServers = forkRequested.length > 0 ? forkRequested : source.mcpServers;
+  // would silently change what the agent can do mid-conversation. An explicit
+  // array (including `[]`) overrides the parent set, matching `session/load`.
+  const forkMcpServers = Array.isArray(p.mcpServers) ? forkRequested : source.mcpServers;
 
   if (ctx.sessions.size >= ctx.maxSessions) {
     await ctx.sendError(id, -32000, `active session limit reached (${ctx.maxSessions})`);
