@@ -15,6 +15,7 @@ import { CATALOG_ALIAS_BY_PROVIDER_TYPE, capabilitiesFor } from './capabilities.
 import { OpenAICompatibleProvider } from './openai-compatible.js';
 import { buildProvider, readFromEnv, resolveActiveKey, validateQuirks } from './provider-build.js';
 import { SubscriptionOAuthProvider } from './subscription-oauth.js';
+import { withCurrentPresetEndpoint } from './trusted-presets.js';
 import { withZaiAccountPlane, zaiWireContract } from './zai.js';
 
 export type { CompatiblePreset, ProviderCredentialSource } from './provider-build.js';
@@ -199,6 +200,7 @@ export function makeProvider(
   factoryType: string = p.id,
   instanceId: string = p.id,
 ): Provider {
+  cfg = withCurrentPresetEndpoint(cfg, factoryType);
   const provider = buildProvider(p, cfg, factoryType, instanceId);
   return attachAccountQuotaReporting(provider, {
     providerId: instanceId,

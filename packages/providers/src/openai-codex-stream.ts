@@ -409,10 +409,19 @@ export async function* parseOpenAIResponsesStream(
           // Final safety net: recover any message text the backend delivered
           // only in the completed item's `content` (no deltas, no
           // output_text.done). flushRemainingText dedupes against what we
-          // already streamed, so this is a no-op on the normal delta path.
-          const full = extractOutputText(item.content);
-          const ev2 = flushRemainingText(full);
-          if (ev2) yield ev2;
+          // already streamed per content part, so this is a no-op on the normal
+          // delta path and never slices concatenated text across part boundaries.
+          if (Array.isArray(item.content)) {
+            for (const [partIdx, part] of item.content.entries()) {
+              const partText = extractOutputText([part]);
+              const ev2 = flushRemainingText(partText, partIdx);
+              if (ev2) yield ev2;
+            }
+          } else {
+            const full = extractOutputText(item.content);
+            const ev2 = flushRemainingText(full);
+            if (ev2) yield ev2;
+          }
         }
         break;
       }

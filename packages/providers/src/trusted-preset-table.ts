@@ -437,7 +437,9 @@ export const TRUSTED_PROVIDER_PRESETS: Readonly<Record<string, TrustedProviderPr
     id: 'alibaba-token-plan',
     name: 'Alibaba Token Plan (Personal Edition)',
     family: 'openai-compatible',
-    baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+    // Token Plan keys are paired with this host; the pay-as-you-go DashScope
+    // endpoint rejects them or bills them as pay-as-you-go.
+    baseUrl: 'https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1',
     envVars: ['ALIBABA_API_KEY', 'DASHSCOPE_API_KEY'],
     // Exact-string allowlist — Personal Edition only. NO deepseek-v4-flash,
     // NO qwen3.6-plus, NO Kimi models, NO MiniMax-M2.5, NO qwen-image-2.0,

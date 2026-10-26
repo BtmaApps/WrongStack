@@ -179,7 +179,7 @@ describe('subscription OAuth inference', () => {
       'fetch',
       vi.fn<typeof fetch>(async (input, init) => {
         urls.push(String(input));
-        if (String(input) === 'https://auth.kimi.ai/api/oauth/token') {
+        if (String(input) === 'https://auth.kimi.com/api/oauth/token') {
           return Response.json({
             access_token: 'new-access',
             refresh_token: 'new-refresh',
@@ -218,7 +218,7 @@ describe('subscription OAuth inference', () => {
       text: 'KIMI_LOGIN_OK',
     });
     expect(urls).toEqual([
-      'https://auth.kimi.ai/api/oauth/token',
+      'https://auth.kimi.com/api/oauth/token',
       'https://api.kimi.ai/coding/v1/messages',
     ]);
   });
@@ -256,7 +256,7 @@ describe('subscription OAuth inference', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn<typeof fetch>(async (input) => {
-        if (String(input) === 'https://auth.kimi.ai/api/oauth/token')
+        if (String(input) === 'https://auth.kimi.com/api/oauth/token')
           return Response.json({ error: 'invalid_grant' }, { status: 400 });
         throw new Error(`unexpected fetch in discovery: ${String(input)}`);
       }),

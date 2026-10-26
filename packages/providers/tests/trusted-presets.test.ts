@@ -117,7 +117,9 @@ describe('TRUSTED_PROVIDER_PRESETS', () => {
     const preset = TRUSTED_PROVIDER_PRESETS['alibaba-token-plan'];
     expect(preset).toBeDefined();
     expect(preset!.family).toBe('openai-compatible');
-    expect(preset!.baseUrl).toBe('https://dashscope.aliyuncs.com/compatible-mode/v1');
+    expect(preset!.baseUrl).toBe(
+      'https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1',
+    );
     expect(preset!.envVars).toEqual(['ALIBABA_API_KEY', 'DASHSCOPE_API_KEY']);
     // Must contain all 11 Personal Edition models
     expect(preset!.models).toHaveLength(11);
@@ -340,6 +342,28 @@ describe('rehydrateCanonicalProviderConfig', () => {
     };
     rehydrateCanonicalProviderConfig('zai-coding-plan', custom);
     expect(custom.models).toEqual(['company-fine-tune']);
+  });
+
+  it('moves a saved Alibaba Token Plan config off the legacy pay-as-you-go endpoint', () => {
+    const preset = TRUSTED_PROVIDER_PRESETS['alibaba-token-plan'];
+    const dest: any = {
+      type: 'alibaba-token-plan',
+      family: 'openai-compatible',
+      baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+      models: ['qwen3.7-max'],
+      apiKey: 'sk-sp-secret',
+    };
+    rehydrateCanonicalProviderConfig('alibaba-token-plan', dest);
+    expect(dest.baseUrl).toBe(preset!.baseUrl);
+    expect(dest.apiKey).toBe('sk-sp-secret');
+
+    const gateway: any = {
+      type: 'alibaba-token-plan',
+      family: 'openai-compatible',
+      baseUrl: 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1',
+    };
+    rehydrateCanonicalProviderConfig('alibaba-token-plan', gateway);
+    expect(gateway.baseUrl).toBe('https://dashscope-intl.aliyuncs.com/compatible-mode/v1');
   });
 
   it('preserves user-owned fields when baseUrl diverges from the preset', () => {

@@ -83,6 +83,32 @@ export function buildProviderConfigFromPreset(preset: TrustedProviderPreset): Pr
 }
 
 /**
+ * Base URLs an earlier preset shipped as its default. A saved config still
+ * carrying one is a stale default, not a user-chosen gateway, so rehydration
+ * moves it to the current preset endpoint.
+ */
+const LEGACY_PRESET_BASE_URLS: Readonly<Record<string, readonly string[]>> = {
+  // Token Plan keys (sk-sp-) only authenticate against the Token Plan host.
+  'alibaba-token-plan': ['https://dashscope.aliyuncs.com/compatible-mode/v1'],
+};
+
+/**
+ * Return `cfg` with a stale preset-default base URL replaced by the current
+ * preset endpoint, or `cfg` itself when nothing is stale. Never mutates: the
+ * live config is frozen, and a saved config is only rewritten on the next
+ * credential write (see {@link rehydrateCanonicalProviderConfig}).
+ */
+export function withCurrentPresetEndpoint(
+  cfg: ProviderConfig,
+  presetId: string,
+): ProviderConfig {
+  const preset = TRUSTED_PROVIDER_PRESETS[presetId];
+  if (!preset || cfg.baseUrl === undefined) return cfg;
+  if (!LEGACY_PRESET_BASE_URLS[preset.id]?.includes(cfg.baseUrl)) return cfg;
+  return { ...cfg, baseUrl: preset.baseUrl };
+}
+
+/**
  * Repair stale preset metadata on an existing exact-canonical provider.
  * Credentials and user-owned fields are preserved. A provider with a base URL
  * different from the preset is treated as an explicit custom gateway, so its
@@ -96,6 +122,7 @@ export function rehydrateCanonicalProviderConfig(
   if (!preset || providerId !== preset.id) return false;
 
   const template = buildProviderConfigFromPreset(preset);
+  dest.baseUrl = withCurrentPresetEndpoint(dest, providerId).baseUrl;
   const hasCustomEndpoint = dest.baseUrl !== undefined && dest.baseUrl !== preset.baseUrl;
   const protocolWasStale = dest.type !== preset.id || dest.family !== preset.family;
 

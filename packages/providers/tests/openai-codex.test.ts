@@ -1551,6 +1551,41 @@ describe('OpenAICodexProvider stream parsing', () => {
     const res = await p.complete(baseReq, { signal: new AbortController().signal });
     expect(res.content).toEqual([{ type: 'text', text: 'ABCD' }]);
   });
+
+  it('flushes unstreamed message parts per content_index on response.output_item.done without duplicating later parts (F639)', async () => {
+    const events = [
+      {
+        type: 'response.output_item.added',
+        item: { type: 'message', id: 'm1', content: [] },
+      },
+      { type: 'response.output_text.delta', content_index: 1, delta: 'CD' },
+      { type: 'response.output_text.done', content_index: 1, text: 'CD' },
+      {
+        type: 'response.output_item.done',
+        item: {
+          type: 'message',
+          id: 'm1',
+          content: [
+            { type: 'output_text', text: 'AB' },
+            { type: 'output_text', text: 'CD' },
+          ],
+        },
+      },
+      {
+        type: 'response.completed',
+        response: { id: 'r1', status: 'completed', usage: { input_tokens: 1, output_tokens: 1 } },
+      },
+    ];
+    const p = new OpenAICodexProvider({
+      credentials: { accessToken: fakeJwt('a'), expiresAt: Date.now() + 3_600_000 },
+      fetchImpl: (async () =>
+        new Response(sseBody(events.map((e) => `data: ${JSON.stringify(e)}\n\n`).join('')), {
+          status: 200,
+        })) as never as typeof fetch,
+    });
+    const res = await p.complete(baseReq, { signal: new AbortController().signal });
+    expect(res.content).toEqual([{ type: 'text', text: 'CDAB' }]);
+  });
 });
 
 describe('OpenAICodexProvider token refresh', () => {

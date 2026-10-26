@@ -797,6 +797,53 @@ describe('tool-format conversions', () => {
       // But structurally equal
       expect(a).toEqual(b);
     });
+
+    it('recomputes when a Tool[] array or Tool object is mutated in place (F638)', () => {
+      const t1: Tool = {
+        name: 'read',
+        description: 'read file v1',
+        inputSchema: { type: 'object', properties: { path: { type: 'string' } } },
+        permission: 'auto',
+        mutating: false,
+        async execute() {
+          return '';
+        },
+      };
+      const t2: Tool = {
+        name: 'write',
+        description: 'write file',
+        inputSchema: { type: 'object', properties: { path: { type: 'string' } } },
+        permission: 'confirm',
+        mutating: true,
+        async execute() {
+          return '';
+        },
+      };
+      const tools = [t1];
+      const first = toolsToAnthropic(tools);
+      expect(first).toHaveLength(1);
+      expect(first[0]?.description).toBe('read file v1');
+
+      tools.push(t2);
+      const afterPush = toolsToAnthropic(tools);
+      expect(afterPush).toHaveLength(2);
+
+      t1.description = 'read file v2';
+      const afterMutate = toolsToAnthropic(tools);
+      expect(afterMutate[0]?.description).toBe('read file v2');
+
+      t1.inputSchema = {
+        type: 'object',
+        properties: { path: { type: 'string' }, encoding: { type: 'string' } },
+      };
+      const afterSchemaMutate = toolsToAnthropic(tools);
+      expect(afterSchemaMutate).not.toBe(afterMutate);
+      expect(
+        (afterSchemaMutate[0]?.input_schema?.['properties'] as Record<string, unknown>)?.[
+          'encoding'
+        ],
+      ).toBeDefined();
+    });
   });
 
   describe('toolsToOpenAI memoization', () => {
