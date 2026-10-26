@@ -16,12 +16,15 @@
  * 100k events must not allocate ~100k objects when only the first 5
  * matches are wanted.
  */
+import * as fsSync from 'node:fs';
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import type { SecretScrubber } from '@wrongstack/contracts/types/secret-scrubber';
 import type { SessionEvent } from '@wrongstack/contracts/types/session';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { DefaultSessionStore } from '../../src/index.js';
+import { searchSessionEvents } from '../../src/storage/session-store/search-events.js';
 
 describe('DefaultSessionStore.searchEvents — streaming walker', () => {
   let tmp: string;
@@ -389,5 +392,47 @@ describe('DefaultSessionStore.searchEvents — streaming walker', () => {
     );
     expect(out).toHaveLength(1);
     expect(String((out[0]!.event as { content: string }).content)).not.toContain('\uFFFD');
+  });
+
+  it('honors non-positive limit in direct searchSessionEvents calls and advances read position by bytesRead on short reads (F616)', async () => {
+    const file = path.join(tmp, 'short-read.jsonl');
+    const line1 = JSON.stringify({
+      type: 'user_input',
+      ts: '2026-06-26T10:00:01.000Z',
+      content: 'first',
+    });
+    const line2 = JSON.stringify({
+      type: 'user_input',
+      ts: '2026-06-26T10:00:02.000Z',
+      content: 'second',
+    });
+    await fs.writeFile(file, `${line1}\n`, 'utf8');
+
+    const scrubber: SecretScrubber = {
+      scrub: (s: string) => s,
+      scrubObject: <T>(v: T): T => v,
+    } as unknown as SecretScrubber;
+
+    const zero = await searchSessionEvents({
+      file,
+      secretScrubber: scrubber,
+      predicate: () => true,
+      limit: 0,
+    });
+    expect(zero).toEqual([]);
+
+    let appended = false;
+    const all = await searchSessionEvents({
+      file,
+      secretScrubber: scrubber,
+      predicate: () => {
+        if (!appended) {
+          appended = true;
+          fsSync.appendFileSync(file, `${line2}\n`, 'utf8');
+        }
+        return true;
+      },
+    });
+    expect(all.map((e) => e.eventIndex)).toEqual([0, 1]);
   });
 });

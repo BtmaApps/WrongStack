@@ -764,6 +764,44 @@ describe('AutoApprovePermissionPolicy', () => {
       expect(d.reason).toContain('agent state');
     });
 
+    // B1 (AC-008 / RCE-007) widened the leader's agent-state guard to
+    // CONFIG_MUTATE and destructive-tier tools; the subagent port must bind
+    // the same capability set, or the leader's locked confirm becomes the
+    // subagent's silent auto.
+    it('denies a CONFIG_MUTATE write into the agent state root (B1 widening binds subagents)', async () => {
+      const p = new AutoApprovePermissionPolicy([
+        'fs.read',
+        'net.outbound',
+        ToolCapabilities.CONFIG_MUTATE,
+      ]);
+      const d = await p.evaluate(
+        {
+          ...tool('mcp_control', 'confirm', 'destructive', true, [ToolCapabilities.CONFIG_MUTATE]),
+          writeTargets: () => [path.join(fakeHome, 'config.json')],
+        },
+        { action: 'enable', server: 'example-server' },
+      );
+      expect(d.permission).toBe('deny');
+      expect(d.source).toBe('subagent_guard');
+      expect(d.reason).toContain('agent state');
+    });
+
+    it('still auto-approves a CONFIG_MUTATE write outside the agent state root', async () => {
+      const p = new AutoApprovePermissionPolicy([
+        'fs.read',
+        'net.outbound',
+        ToolCapabilities.CONFIG_MUTATE,
+      ]);
+      const d = await p.evaluate(
+        {
+          ...tool('mcp_control', 'confirm', 'destructive', true, [ToolCapabilities.CONFIG_MUTATE]),
+          writeTargets: () => [path.join(dir, 'settings', 'settings.json')],
+        },
+        { action: 'enable', server: 'example-server' },
+      );
+      expect(d.permission).toBe('auto');
+    });
+
     it('auto-approves ordinary writes with fs.write granted', async () => {
       const p = new AutoApprovePermissionPolicy(WIDE_SUBAGENT_CAPABILITIES);
       const d = await p.evaluate(tool('write', 'confirm', undefined, true, ['fs.write']), {

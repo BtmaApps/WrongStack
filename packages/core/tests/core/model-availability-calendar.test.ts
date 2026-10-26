@@ -160,4 +160,41 @@ describe('model availability calendar', () => {
       true,
     );
   });
+
+  it('matches rules targeting omniroute transport or prefixed model id, single-digit hours, 24:00, and whitespace timezone (F33)', () => {
+    const now = atUtc('2026-07-20T10:00:00');
+    expect(
+      evaluateModelCalendar(
+        [
+          {
+            id: 'omniroute-maint',
+            provider: 'omniroute',
+            start: '9:00',
+            end: '24:00',
+            timezone: '   ',
+          },
+        ],
+        'omniroute',
+        'anthropic/claude-sonnet-4-5',
+        now,
+      ).allowed,
+    ).toBe(false);
+
+    expect(
+      evaluateModelCalendar(
+        [
+          {
+            id: 'prefixed-model-rule',
+            model: 'anthropic/claude-sonnet-4-5',
+            start: ' 9:00 ',
+            end: ' 17:00 ',
+            timezone: ' UTC ',
+          },
+        ],
+        'omniroute',
+        'anthropic/claude-sonnet-4-5',
+        now,
+      ).allowed,
+    ).toBe(false);
+  });
 });

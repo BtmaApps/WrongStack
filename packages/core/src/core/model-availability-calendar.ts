@@ -32,18 +32,21 @@ const WEEKDAYS: Record<string, number> = {
 };
 
 function minuteOfDay(value: string): number | undefined {
-  const match = /^(\d{2}):(\d{2})$/.exec(value);
+  if (typeof value !== 'string') return undefined;
+  const match = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
   if (!match) return undefined;
   const hour = Number(match[1]);
   const minute = Number(match[2]);
+  if (hour === 24 && minute === 0) return 24 * 60;
   if (hour > 23 || minute > 59) return undefined;
   return hour * 60 + minute;
 }
 
 function clockAt(date: Date, timezone?: string): { day: number; minute: number } | undefined {
   try {
+    const trimmedTz = typeof timezone === 'string' ? timezone.trim() : undefined;
     const parts = new Intl.DateTimeFormat('en-US', {
-      timeZone: timezone,
+      timeZone: trimmedTz || undefined,
       weekday: 'short',
       hour: '2-digit',
       minute: '2-digit',
@@ -63,10 +66,10 @@ function clockAt(date: Date, timezone?: string): { day: number; minute: number }
 function targetMatches(
   rule: ModelBlackoutRule,
   providerIds: readonly string[],
-  model: string,
+  models: readonly string[],
 ): boolean {
   if (rule.provider && !providerIds.includes(rule.provider)) return false;
-  if (rule.model && rule.model !== model) return false;
+  if (rule.model && !models.includes(rule.model)) return false;
   return Boolean(rule.provider || rule.model);
 }
 
@@ -94,17 +97,18 @@ export function evaluateModelCalendar(
   requestedModel: string,
   at = new Date(),
 ): ModelCalendarDecision {
-  let model = requestedModel;
+  const models = [requestedModel];
   const providerIds: string[] = [];
   for (const id of typeof provider === 'string' ? [provider] : provider) {
+    if (!providerIds.includes(id)) providerIds.push(id);
     const target = logicalCalendarTarget(id, requestedModel);
-    providerIds.push(target.providerId);
-    if (target.providerId !== id) model = target.model;
+    if (!providerIds.includes(target.providerId)) providerIds.push(target.providerId);
+    if (target.providerId !== id && !models.includes(target.model)) models.push(target.model);
   }
   const allowRules: ModelBlackoutRule[] = [];
   let allowMatched = false;
   for (const rule of rules ?? []) {
-    if (rule.enabled === false || !targetMatches(rule, providerIds, model)) continue;
+    if (rule.enabled === false || !targetMatches(rule, providerIds, models)) continue;
     const clock = clockAt(at, rule.timezone);
     if (!clock || minuteOfDay(rule.start) === undefined || minuteOfDay(rule.end) === undefined)
       continue;

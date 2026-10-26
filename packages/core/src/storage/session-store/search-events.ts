@@ -13,6 +13,7 @@ export async function searchSessionEvents(args: {
   signal?: AbortSignal | undefined;
 }): Promise<Array<{ event: SessionEvent; eventIndex: number; ts: string }>> {
   const { file, secretScrubber, predicate, limit, signal } = args;
+  if (limit !== undefined && limit <= 0) return [];
   const out: Array<{ event: SessionEvent; eventIndex: number; ts: string }> = [];
 
   let stat: import('node:fs').Stats;
@@ -56,13 +57,14 @@ export async function searchSessionEvents(args: {
     const decoder = new StringDecoder('utf8');
     let leftover = '';
     let eventIndex = 0;
-    for (let position = 0; ; position += buf.byteLength) {
+    for (let position = 0; ; ) {
       if (signal?.aborted) {
         const reason = signal.reason ?? new DOMException('Aborted', 'AbortError');
         throw reason;
       }
       const { bytesRead } = await fh.read(buf, 0, CHUNK, position);
       if (bytesRead === 0) break;
+      position += bytesRead;
       const text = leftover + decoder.write(buf.subarray(0, bytesRead));
       const parts = text.split('\n');
       leftover = parts.pop() ?? '';

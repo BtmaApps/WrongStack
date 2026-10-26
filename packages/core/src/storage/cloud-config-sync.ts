@@ -513,8 +513,19 @@ export class CloudConfigSync {
         ...parsed,
         version: 1,
       };
-    } catch {
-      this.state = structuredClone(EMPTY_STATE);
+    } catch (error) {
+      if (raw.trim() === '') {
+        // A missing file (ENOENT → raw '') or a blank one is the legitimate
+        // first sync: start from the empty state.
+        this.state = structuredClone(EMPTY_STATE);
+        return this.state;
+      }
+      // A non-empty file that does not parse is an untrustworthy read. Fail
+      // closed like the other read errors above (see syncOnce): silently
+      // resetting to the empty state would treat every namespace as dirty
+      // against an empty merge base and push local values over other
+      // machines' changes.
+      throw error;
     }
     return this.state;
   }

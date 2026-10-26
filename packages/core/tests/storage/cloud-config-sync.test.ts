@@ -374,6 +374,27 @@ describe('CloudConfigSync engine', () => {
     expect((harness.getLocalConfig() as Record<string, unknown>).hints).toBe(false);
   });
 
+  it('fails closed on a corrupt state file instead of pushing from an empty baseline', async () => {
+    const harness = createHarness(realisticConfig());
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'cloud-config-sync-corrupt-'));
+    const statePath = path.join(dir, 'cloud-sync-state.json');
+    // A torn write or a hand edit leaves non-JSON content: an untrustworthy
+    // read, not a first sync. Resetting the baselines silently would treat
+    // every namespace as dirty against an empty merge base and push local
+    // values over other machines' portal-side changes.
+    await fs.writeFile(statePath, '{', 'utf8');
+
+    const before = harness.calls.length;
+    const engine = await harness.makeEngine(statePath);
+    const result = await engine.syncOnce();
+
+    expect(result.ok).toBe(false);
+    expect(result.message).toContain('cannot read sync state');
+    const newPuts = harness.calls.slice(before).filter((call) => call.method === 'PUT');
+    expect(newPuts).toEqual([]);
+    await fs.rm(dir, { recursive: true, force: true });
+  });
+
   it('parks a namespace the server rejects and retries only after a local edit', async () => {
     const harness = createHarness(realisticConfig());
     harness.server.reject.set('core.runtime', 'invalid_payload');

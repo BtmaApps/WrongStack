@@ -133,4 +133,31 @@ describe('trust-rule expiry (W6 #9)', () => {
   it('defaults the prompt TTL to one day', () => {
     expect(DEFAULT_ALWAYS_TRUST_TTL_MS).toBe(24 * 60 * 60 * 1000);
   });
+
+  it('invalidates cached evaluate() auto-approvals on the same policy instance once allowUntil expires (F615)', async () => {
+    const originalNow = Date.now;
+    let now = 1_000_000;
+    Date.now = () => now;
+    try {
+      const policy = new DefaultPermissionPolicy({ trustFile });
+      await policy.trust({ tool: 'read', pattern: 'README.md', ttlMs: 5_000 });
+      const ctx = {
+        session: { id: 'sess-ttl-cache' },
+        workingDir: dir,
+        projectRoot: dir,
+        meta: {},
+      } as unknown as Context;
+
+      now = 1_002_000;
+      const before = await policy.evaluate(readTool(), { path: 'README.md' }, ctx);
+      expect(before).toMatchObject({ permission: 'auto', source: 'trust' });
+
+      now = 1_006_000;
+      const after = await policy.evaluate(readTool(), { path: 'README.md' }, ctx);
+      expect(after.source).not.toBe('trust');
+      expect(after.permission).toBe('confirm');
+    } finally {
+      Date.now = originalNow;
+    }
+  });
 });

@@ -244,20 +244,25 @@ export function createToolCoach(catalog: readonly Tool[]): ToolCoach {
     afterTools(uses, results, settlements) {
       const byId = new Map(uses.map((use) => [use.id, use.name]));
       // A batch may contain discovery and a write. Handle the most consequential
-      // outcome first so a weaker note does not consume the one next-turn slot.
+      // outcome first so a weaker note does not consume the one next-turn slot:
+      // a policy refusal anywhere in the batch outranks a plain failure.
       for (const result of results) {
         const name = byId.get(result.tool_use_id);
-        if (!name) continue;
+        if (!name || !result.is_error || advisedFailures.has(name)) continue;
         const settlement = settlements?.get(result.tool_use_id);
-        if (settlement === 'aborted') continue;
-        const policyRefusal =
+        if (
           settlement === 'denied_by_policy' ||
           settlement === 'blocked_by_hook' ||
-          settlement === 'declined';
-        if (result.is_error && policyRefusal && !advisedFailures.has(name)) {
+          settlement === 'declined'
+        ) {
           advisedFailures.add(name);
           return `[TOOL COACH — ${name} was denied]\nThe refusal is authoritative. Do not retry or route around the policy; continue only with actions the policy permits.`;
         }
+      }
+      for (const result of results) {
+        const name = byId.get(result.tool_use_id);
+        if (!name) continue;
+        if (settlements?.get(result.tool_use_id) === 'aborted') continue;
         const tool = catalogByName.get(name);
         if (!tool) {
           if (result.is_error && byName.has('tool_search') && !advisedUnknownTools.has(name)) {

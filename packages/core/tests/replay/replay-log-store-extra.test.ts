@@ -203,3 +203,72 @@ describe('ReplayLogStore — readAll envelope + error emits', () => {
     expect(entries).toHaveLength(2);
   });
 });
+
+describe('ReplayLogStore — chunked scan across a 64KiB UTF-8 boundary', () => {
+  // ensureCache reads the JSONL in 64KiB chunks; decoding each chunk in
+  // isolation turned a multi-byte character split at the boundary into
+  // U+FFFD, inflating that line's cached byte length and drifting every
+  // later line's cached offset — lookup() then threw "unreadable" on an
+  // intact file for the straddling entry and everything after it.
+  const CHUNK = 64 * 1024;
+  const DASH_START = CHUNK - 2; // 3-byte em-dash spans the boundary
+
+  const line = (hash: string, text: string) =>
+    JSON.stringify({
+      hash,
+      ts: '2026-01-01T00:00:00.000Z',
+      request: { model: 'm', messages: [{ role: 'user', content: `req ${text}` }], maxTokens: 1 },
+      response: {
+        content: [{ type: 'text', text: `res ${text}` }],
+        stopReason: 'end_turn',
+        usage: { input: 0, output: 0 },
+        model: 'm',
+      },
+    }) + '\n';
+
+  function straddlingLine(hash: string, lineStartByte: number): string {
+    let pad = CHUNK;
+    for (let i = 0; i < 8; i++) {
+      const text = 'x'.repeat(pad) + '—straddle';
+      const candidate = line(hash, text);
+      const dashGlobal = lineStartByte + Buffer.byteLength(candidate.split('—')[0] ?? '', 'utf8');
+      const diff = DASH_START - dashGlobal;
+      if (diff === 0) return candidate;
+      pad += diff; // 'x' is one byte, so the byte gap maps 1:1 onto the pad
+    }
+    throw new Error('could not align the em-dash on the chunk boundary');
+  }
+
+  it('keeps entries lookable when a multi-byte character straddles the chunk boundary', async () => {
+    const control = line('sha256:c0', 'plain ascii control');
+    const straddle = straddlingLine('sha256:c1', Buffer.byteLength(control, 'utf8'));
+    const afterAscii = line('sha256:c2', 'plain ascii after the boundary');
+    const afterUtf8 = line('sha256:c3', 'boundary-far em-dash — and CJK 文字');
+    const body = control + straddle + afterAscii + afterUtf8;
+    const fp = path.join(dir, 'straddle.replay.jsonl');
+    await fs.writeFile(fp, body, 'utf8');
+
+    // Fixture sanity: the em-dash's first byte sits at the global file offset
+    // that the store's 64KiB chunking splits mid-character.
+    expect(Buffer.byteLength(body.split('—')[0] ?? '', 'utf8')).toBe(DASH_START);
+
+    const before = JSON.stringify(await store.lookup('straddle', 'sha256:c0'));
+    expect(before).toContain('plain ascii control');
+    expect(before).not.toContain('\uFFFD');
+
+    const straddleText = JSON.stringify(await store.lookup('straddle', 'sha256:c1'));
+    expect(straddleText).toContain('—straddle');
+    expect(straddleText).not.toContain('\uFFFD');
+
+    const afterText = JSON.stringify(await store.lookup('straddle', 'sha256:c2'));
+    expect(afterText).toContain('after the boundary');
+    expect(afterText).not.toContain('\uFFFD');
+
+    const utf8Text = JSON.stringify(await store.lookup('straddle', 'sha256:c3'));
+    expect(utf8Text).toContain('文字');
+    expect(utf8Text).toContain('—');
+    expect(utf8Text).not.toContain('\uFFFD');
+
+    expect(await store.lookup('straddle', 'sha256:missing')).toBeNull();
+  });
+});

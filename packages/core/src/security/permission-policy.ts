@@ -83,9 +83,10 @@ export class DefaultPermissionPolicy extends PermissionPolicyState implements Pe
     // honouring everywhere, and the one-shot allow is consumed by the very
     // call that requested it.
     const overrides = readSessionPermissionOverrides(ctx);
+    const allowUnexpired = entry?.allowUntil === undefined || Date.now() < entry.allowUntil;
     const evalKey = `${ctx.session?.id ?? '__default__'}::${cacheKey}::${permissionFingerprint(tool)}::${exactApprovalKey(input, ctx)}::y${
       this.effectiveYolo(ctx) ? 1 : 0
-    }::p${this.effectiveYoloPlus(ctx) ? 1 : 0}::o${sessionOverridesFingerprint(overrides)}`;
+    }::p${this.effectiveYoloPlus(ctx) ? 1 : 0}::u${allowUnexpired ? 1 : 0}::o${sessionOverridesFingerprint(overrides)}`;
 
     if (tool.name !== 'write' && !this.hasAgentStateWriteTarget(tool, input, ctx)) {
       const cached = this._evalCache.get(evalKey);
@@ -217,7 +218,6 @@ export class DefaultPermissionPolicy extends PermissionPolicyState implements Pe
     // falls through to the normal confirm path below, so expiry re-prompts
     // rather than blocks. Absent `allowUntil` (a hand-authored entry) never
     // expires.
-    const allowUnexpired = entry?.allowUntil === undefined || Date.now() < entry.allowUntil;
     const trustScope =
       allowUnexpired && !denyUnevaluated
         ? matchingApprovalScope(entry?.allow ?? [], tool, input, ctx)

@@ -264,7 +264,17 @@ export class AutoApprovePermissionPolicy implements PermissionPolicy {
 
   /** Port of DefaultPermissionPolicy.hasAgentStateWriteTarget (leader). */
   private hasAgentStateWriteTarget(tool: Tool, input: unknown, ctx?: SubagentContext): boolean {
-    if (!hasCapability(tool, ToolCapabilities.FS_WRITE)) return false;
+    // B1 (AC-008 / RCE-007) widened the leader's gate to CONFIG_MUTATE and
+    // destructive-tier tools: `mcp_control({action:'enable'})` persists
+    // `mcpServers.*` into the fully-trusted profile without any fs.write —
+    // exactly as state-rooting as writing trust.json. The subagent port must
+    // check the same capability set, or the leader's locked confirm becomes
+    // the subagent's silent auto (the less-supervised principal would have
+    // the weaker gate).
+    const isFsWrite = hasCapability(tool, ToolCapabilities.FS_WRITE);
+    const isConfigMutate = hasCapability(tool, ToolCapabilities.CONFIG_MUTATE);
+    const isDestructiveTier = tool.riskTier === 'destructive';
+    if (!isFsWrite && !isConfigMutate && !isDestructiveTier) return false;
     return writesAgentState(tool, input, ctx?.workingDir ?? ctx?.cwd);
   }
 

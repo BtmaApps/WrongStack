@@ -1,5 +1,6 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
+import { StringDecoder } from 'node:string_decoder';
 import type { Request, Response } from '@wrongstack/contracts/types/provider';
 import { hashRequest } from '../replay/hash.js';
 import { SECRET_FILE_MODE } from '../security/file-permissions.js';
@@ -441,6 +442,14 @@ export class ReplayLogStore {
       const handle = await fs.open(fp, 'r');
       const CHUNK = 64 * 1024;
       const buffer = Buffer.alloc(CHUNK);
+      // Incremental UTF-8 decode: Buffer.toString decodes each chunk in
+      // isolation, so a multi-byte character split at the CHUNK boundary
+      // became U+FFFD — corrupting the decoded line AND inflating its
+      // cached byte length, which drifted every later line's offset and made
+      // all of them unreadable ("Replay entry … is unreadable") on an intact
+      // file. StringDecoder holds incomplete sequences across reads, so the
+      // decoded text and the byte offsets below always agree with the file.
+      const decoder = new StringDecoder('utf8');
       let leftover = '';
       let leftoverOffset = 0;
       let fileOffset = 0;
@@ -448,7 +457,7 @@ export class ReplayLogStore {
         while (true) {
           const { bytesRead } = await handle.read(buffer, 0, CHUNK, fileOffset);
           if (bytesRead === 0) break;
-          const chunk = buffer.subarray(0, bytesRead).toString('utf8');
+          const chunk = decoder.write(buffer.subarray(0, bytesRead));
           const text = leftover + chunk;
           let lineStart = leftoverOffset;
           let searchFrom = 0;
