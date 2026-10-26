@@ -245,7 +245,10 @@ export function decideGovernanceCommand(
         );
       }
     } else {
-      if (aggregate.state !== 'replan_requested') {
+      if (
+        aggregate.state !== 'replan_requested' ||
+        aggregate.activePlanVersion !== aggregate.replanRequestedFromPlanVersion
+      ) {
         return rejectCommand(
           'plan_attach_state_invalid',
           'A replacement plan requires an explicit replan_requested transition.',

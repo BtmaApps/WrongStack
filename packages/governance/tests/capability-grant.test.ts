@@ -618,6 +618,101 @@ describe('authenticated governance project service', () => {
     authenticated.close();
   });
 
+  it('tracks rotated runtime attachment control and model grants so release revokes the active pair', () => {
+    const service = openService();
+    const { registry } = registryHarness();
+    const broker = registry.issue({
+      clientId: 'attachment-broker',
+      capabilities: ['runtime_attach'],
+      ttlMs: 30_000,
+    });
+    const admin = registry.issue({
+      clientId: 'admin-client',
+      capabilities: ['capability_admin'],
+      ttlMs: 30_000,
+    });
+    const authenticated = new AuthenticatedGovernanceProjectService(service, registry);
+    const brokerCred = {
+      token: broker.token,
+      projectId: 'project-1',
+      clientId: 'attachment-broker',
+    };
+    const adminCred = {
+      token: admin.token,
+      projectId: 'project-1',
+      clientId: 'admin-client',
+    };
+
+    const claimed = authenticated.handleUnknown(
+      {
+        protocolVersion: GOVERNANCE_SERVICE_PROTOCOL_VERSION,
+        requestId: 'claim-attachment-before-rotation',
+        type: 'claim_runtime_attachment',
+        controlClientId: 'webui-control',
+        modelClientId: 'webui-model',
+        modelCapabilities: ['task_read'],
+        ttlMs: 20_000,
+      },
+      brokerCred,
+    );
+    if (!claimed.ok || claimed.result.type !== 'runtime_attachment_claimed') {
+      throw new Error('Expected runtime attachment claim.');
+    }
+
+    const rotatedModel = authenticated.handleUnknown(
+      {
+        protocolVersion: GOVERNANCE_SERVICE_PROTOCOL_VERSION,
+        requestId: 'rotate-attached-model',
+        type: 'rotate_capability_grant',
+        grantId: claimed.result.model.grant.grantId,
+        ttlMs: 20_000,
+      },
+      adminCred,
+    );
+    const rotatedControl = authenticated.handleUnknown(
+      {
+        protocolVersion: GOVERNANCE_SERVICE_PROTOCOL_VERSION,
+        requestId: 'rotate-attached-control',
+        type: 'rotate_capability_grant',
+        grantId: claimed.result.control.grant.grantId,
+        ttlMs: 20_000,
+      },
+      adminCred,
+    );
+    if (
+      !rotatedModel.ok ||
+      rotatedModel.result.type !== 'capability_grant_rotated' ||
+      !rotatedControl.ok ||
+      rotatedControl.result.type !== 'capability_grant_rotated'
+    ) {
+      throw new Error('Expected rotated control and model grants.');
+    }
+
+    const released = authenticated.handleUnknown(
+      {
+        protocolVersion: GOVERNANCE_SERVICE_PROTOCOL_VERSION,
+        requestId: 'release-after-rotation',
+        type: 'release_runtime_attachment',
+      },
+      rotatedControl.result.credential,
+    );
+    expect(released).toMatchObject({
+      ok: true,
+      result: {
+        type: 'runtime_attachment_released',
+        controlGrantId: rotatedControl.result.grant.grantId,
+        modelGrantId: rotatedModel.result.grant.grantId,
+      },
+    });
+    expect(registry.getGrant(rotatedControl.result.grant.grantId)).toMatchObject({
+      status: 'revoked',
+    });
+    expect(registry.getGrant(rotatedModel.result.grant.grantId)).toMatchObject({
+      status: 'revoked',
+    });
+    authenticated.close();
+  });
+
   it('denies attachment claims and runtime_attach delegation without the broker capability', () => {
     const service = openService();
     const { registry } = registryHarness();

@@ -451,4 +451,29 @@ describe('PlanVersion v1', () => {
       { valid: true },
     );
   });
+
+  it('trims expectedPaths before matching deniedPaths so whitespace cannot bypass denied scopes (F36)', () => {
+    const contract = taskContract({
+      autonomy: {
+        ...taskContract().autonomy,
+        allowedPaths: ['**'],
+        deniedPaths: ['packages/governance/secrets/**'],
+      },
+    });
+    const base = plan();
+    const whitespaceDenied = plan({
+      steps: [
+        {
+          ...base.steps[0]!,
+          expectedPaths: [' packages/governance/secrets/token.ts '],
+        },
+        base.steps[1]!,
+      ],
+    });
+    const result = validatePlanVersionV1(whitespaceDenied, contract);
+    expect(result).toMatchObject({ valid: false });
+    if (!result.valid) {
+      expect(result.issues).toContainEqual(expect.objectContaining({ code: 'path_outside_scope' }));
+    }
+  });
 });

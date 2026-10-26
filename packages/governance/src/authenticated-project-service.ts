@@ -436,6 +436,16 @@ export class AuthenticatedGovernanceProjectService {
           ttlMs: request.ttlMs,
           ...(request.reason ? { reason: request.reason } : {}),
         });
+        const attachedModelGrantId = this.#attachmentModelGrantByControlGrant.get(request.grantId);
+        if (attachedModelGrantId !== undefined) {
+          this.#attachmentModelGrantByControlGrant.delete(request.grantId);
+          this.#attachmentModelGrantByControlGrant.set(rotated.grant.grantId, attachedModelGrantId);
+        }
+        for (const [controlGrantId, modelGrantId] of this.#attachmentModelGrantByControlGrant) {
+          if (modelGrantId === request.grantId) {
+            this.#attachmentModelGrantByControlGrant.set(controlGrantId, rotated.grant.grantId);
+          }
+        }
         const response: GovernanceServiceResponse = {
           ok: true,
           requestId: request.requestId,

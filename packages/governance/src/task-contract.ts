@@ -226,7 +226,10 @@ function hasMutatingOperation(operations: readonly GovernedOperation[]): boolean
 }
 
 function normalizePath(value: string): string {
-  return posix.normalize(value.replaceAll('\\', '/')).replace(/^\.\//, '').replace(/\/+$/, '');
+  return posix
+    .normalize(value.trim().replaceAll('\\', '/'))
+    .replace(/^\.\//, '')
+    .replace(/\/+$/, '');
 }
 
 export function validateTaskContractV1(contract: TaskContractV1): ContractValidationResult {
@@ -324,9 +327,13 @@ export function validateTaskContractV1(contract: TaskContractV1): ContractValida
     addRequiredStringIssue(issues, assumption.statement, `assumptions[${assumption.id}].statement`);
   }
 
+  const normalizedAllowedPaths = contract.autonomy.allowedPaths
+    .map(normalizePath)
+    .filter((entry) => entry.length > 0 && entry !== '.');
   if (
     hasMutatingOperation(contract.autonomy.allowedOperations) &&
-    contract.autonomy.allowedPaths.length === 0
+    (contract.autonomy.allowedPaths.length === 0 ||
+      normalizedAllowedPaths.length !== contract.autonomy.allowedPaths.length)
   ) {
     issues.push({
       code: 'path_scope_missing',
@@ -334,9 +341,18 @@ export function validateTaskContractV1(contract: TaskContractV1): ContractValida
       message: 'Mutating operations require at least one allowed path.',
     });
   }
-  const allowedPaths = new Set(contract.autonomy.allowedPaths.map(normalizePath));
+  const allowedPaths = new Set(normalizedAllowedPaths);
   for (const deniedPath of contract.autonomy.deniedPaths) {
-    if (allowedPaths.has(normalizePath(deniedPath))) {
+    const normalizedDenied = normalizePath(deniedPath);
+    if (!normalizedDenied || normalizedDenied === '.') {
+      issues.push({
+        code: 'required_value_missing',
+        path: 'autonomy.deniedPaths',
+        message: 'autonomy.deniedPaths entries must not be empty.',
+      });
+      continue;
+    }
+    if (allowedPaths.has(normalizedDenied)) {
       issues.push({
         code: 'path_scope_conflict',
         path: 'autonomy.deniedPaths',

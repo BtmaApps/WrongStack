@@ -236,5 +236,34 @@ describe('TaskContract v1', () => {
         expect.objectContaining({ code: 'path_scope_conflict' }),
       );
     }
+
+    const whitespaceConflict = validateTaskContractV1({
+      ...base,
+      autonomy: {
+        ...base.autonomy,
+        allowedPaths: ['packages/governance/**'],
+        deniedPaths: [' ./packages/governance/** '],
+      },
+    });
+    expect(whitespaceConflict).toMatchObject({ valid: false });
+    if (!whitespaceConflict.valid) {
+      expect(whitespaceConflict.issues).toContainEqual(
+        expect.objectContaining({ code: 'path_scope_conflict' }),
+      );
+    }
+
+    const blankAllowed = validateTaskContractV1({
+      ...base,
+      autonomy: {
+        ...base.autonomy,
+        allowedPaths: ['   '],
+      },
+    });
+    expect(blankAllowed).toMatchObject({ valid: false });
+    if (!blankAllowed.valid) {
+      expect(blankAllowed.issues).toContainEqual(
+        expect.objectContaining({ code: 'path_scope_missing' }),
+      );
+    }
   });
 });

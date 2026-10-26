@@ -158,7 +158,10 @@ function isMutatingStep(step: PlanStepV1): boolean {
  * `allowed/../denied/x` match `allowed/**` and miss `denied/**`.
  */
 function normalizePath(value: string): string {
-  return posix.normalize(value.replaceAll('\\', '/')).replace(/^\.\//, '').replace(/\/+$/, '');
+  return posix
+    .normalize(value.trim().replaceAll('\\', '/'))
+    .replace(/^\.\//, '')
+    .replace(/\/+$/, '');
 }
 
 /**

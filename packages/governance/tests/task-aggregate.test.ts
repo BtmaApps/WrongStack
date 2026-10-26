@@ -231,6 +231,13 @@ describe('governance task aggregate', () => {
       replanRequested.aggregate,
       command('attach_plan_version', replanRequested.aggregate.revision, { plan: plan(2, 1) }),
     );
+    expect(
+      decideGovernanceCommand(
+        attachedV2.aggregate,
+        command('attach_plan_version', attachedV2.aggregate.revision, { plan: plan(3, 2) }),
+        { transitionFacts: facts },
+      ),
+    ).toMatchObject({ accepted: false, code: 'plan_attach_state_invalid' });
     const replanned = decideAndApply(
       attachedV2.aggregate,
       command('transition_task', attachedV2.aggregate.revision, { to: 'planned' }),
