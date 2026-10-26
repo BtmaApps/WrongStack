@@ -78,4 +78,40 @@ describe('embedded WebUI credential watcher', () => {
 
     expect(ctx.provider).toBe(blocked);
   });
+
+  it('refreshes frozen appConfig via shallow clone and preserves inherited providers when snapshotHasProviders is false', () => {
+    const initialProviders = { deepseek: deepseek('sk-old') };
+    const opts = {
+      appConfig: Object.freeze({
+        providers: initialProviders,
+        disabledModels: ['deepseek/old'],
+        disabledProviders: [] as string[],
+        fallbackBridge: 'legacy-bridge',
+      }),
+      agent: { ctx: { provider: {}, meta: {} }, container: { safeResolve: () => undefined } },
+      globalConfigPath: 'C:/tmp/webui-watcher/config.json',
+    };
+    const saved: unknown[] = [];
+    startWebuiCredentialWatcher({
+      opts: opts as never,
+      profileConfigPath: 'C:/tmp/webui-watcher/profiles/default/config.json',
+      broadcast: () => undefined,
+      broadcastSaved: (providers) => saved.push(providers),
+    });
+
+    captured.onChange?.({
+      providers: {},
+      snapshotHasProviders: false,
+      uiLocale: 'tr',
+      disabledModels: ['deepseek/reasoner'],
+      disabledProviders: ['openai'],
+    });
+
+    expect(opts.appConfig.providers).toEqual(initialProviders);
+    expect(opts.appConfig.disabledModels).toEqual(['deepseek/reasoner']);
+    expect(opts.appConfig.disabledProviders).toEqual(['openai']);
+    expect((opts.appConfig as { uiLocale?: string }).uiLocale).toBe('tr');
+    expect((opts.appConfig as { fallbackBridge?: string }).fallbackBridge).toBeUndefined();
+    expect(saved).toEqual([initialProviders]);
+  });
 });

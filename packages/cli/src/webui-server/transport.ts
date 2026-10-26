@@ -40,17 +40,24 @@ export function createWebuiTransport(clients: Map<WebSocket, ConnectedClient>): 
    */
   function broadcast(msg: WSServerMessage, targetSessionId?: string): void {
     const payload = (msg as { payload?: unknown }).payload;
-    const sessionId =
-      targetSessionId ??
-      (payload &&
-      typeof payload === 'object' &&
-      typeof (payload as { sessionId?: unknown }).sessionId === 'string'
-        ? (payload as { sessionId: string }).sessionId
-        : undefined);
+    let sessionId: string | undefined;
+    if (targetSessionId !== undefined) {
+      if (typeof targetSessionId !== 'string' || targetSessionId.trim().length === 0) return;
+      sessionId = targetSessionId;
+    } else if (payload && typeof payload === 'object' && 'sessionId' in payload) {
+      const value = (payload as { sessionId?: unknown }).sessionId;
+      sessionId = typeof value === 'string' && value.trim().length > 0 ? value : undefined;
+    }
     // Session frames are numbered for reconnect catch-up (session-frame-log).
-    const data = sessionId ? webuiSessionFrameLog().sequence(sessionId, msg) : JSON.stringify(msg);
+    let data: string;
+    try {
+      data = sessionId ? webuiSessionFrameLog().sequence(sessionId, msg) : JSON.stringify(msg);
+    } catch {
+      return;
+    }
+    const frameBytes = Buffer.byteLength(data, 'utf8');
     for (const [ws, client] of clients) {
-      if (clientWantsSession(client, sessionId)) sendSerialized(ws, data);
+      if (clientWantsSession(client, sessionId)) sendSerialized(ws, data, frameBytes);
     }
   }
 

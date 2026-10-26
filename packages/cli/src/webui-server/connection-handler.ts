@@ -146,6 +146,7 @@ export function createConnectionHandler(
         requireToken: deps.requireToken,
         allowedHostnames: deps.publicHostnames,
         allowBrowserUrlToken: Boolean(deps.publicWsUrl),
+        allowCrossPortLoopbackCookie: process.env['WRONGSTACK_WEBUI_DEV_CROSS_PORT_WS'] === '1',
       });
       if (!allowed) ws.close(4003, 'Forbidden');
       return allowed;

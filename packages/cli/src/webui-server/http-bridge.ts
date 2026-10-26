@@ -112,6 +112,16 @@ export async function startWebuiHttpBridge(input: WebuiHttpBridgeInput) {
   // memory/FD pressure on the agent host. The standalone server
   // already wires `verifyClient`; mirror that on the CLI host.
   // `WS-003` is left to its standalone setting (the Vite dev loop).
+  const allowedHostnames = [publicUrl, publicWsUrl]
+    .map((value) => {
+      if (!value) return undefined;
+      try {
+        return new URL(value).hostname;
+      } catch {
+        return value;
+      }
+    })
+    .filter((value): value is string => Boolean(value));
   const verifyClient = (info: { origin: string; secure: boolean; req: IncomingMessage }) =>
     verifyWsClient({
       origin: info.origin,
@@ -122,7 +132,7 @@ export async function startWebuiHttpBridge(input: WebuiHttpBridgeInput) {
       wsHost: host,
       expectedToken: wsToken,
       requireToken,
-      allowedHostnames: [publicUrl, publicWsUrl].filter((value): value is string => Boolean(value)),
+      allowedHostnames,
       allowBrowserUrlToken: Boolean(publicWsUrl),
       allowCrossPortLoopbackCookie: process.env['WRONGSTACK_WEBUI_DEV_CROSS_PORT_WS'] === '1',
     });

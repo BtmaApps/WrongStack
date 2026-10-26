@@ -5,6 +5,9 @@ import {
   type ConnectionHandlerDeps,
   createConnectionHandler,
 } from '../../src/webui-server/connection-handler.js';
+import type { WSServerMessage } from '../../src/webui-server/contracts.js';
+import { startWebuiHttpBridge } from '../../src/webui-server/http-bridge.js';
+import { createWebuiTransport } from '../../src/webui-server/transport.js';
 
 class TestSocket {
   readonly listeners = new Map<string, (...args: unknown[]) => unknown>();
@@ -152,5 +155,109 @@ describe('CLI WebUI connection-handler — socket close and run locks', () => {
 
     await socket.listeners.get('close')?.();
     expect(deps.clients.size).toBe(0);
+  });
+
+  it('honors WRONGSTACK_WEBUI_DEV_CROSS_PORT_WS in connection-handler and parses tunnel hostnames in http-bridge', async () => {
+    const prev = process.env['WRONGSTACK_WEBUI_DEV_CROSS_PORT_WS'];
+    let bridge: Awaited<ReturnType<typeof startWebuiHttpBridge>> | undefined;
+    try {
+      process.env['WRONGSTACK_WEBUI_DEV_CROSS_PORT_WS'] = '1';
+      const deps = createDeps(async () => undefined);
+      deps.wsToken = 'dev-cookie-token';
+      const socket = new TestSocket();
+      await createConnectionHandler(deps)(
+        socket as never as WebSocket,
+        {
+          headers: {
+            host: '127.0.0.1:3456',
+            origin: 'http://127.0.0.1:5173',
+            cookie: 'ws_token=dev-cookie-token',
+          },
+          url: '/',
+          socket: { remoteAddress: '127.0.0.1' },
+        } as IncomingMessage,
+      );
+      expect(socket.close).not.toHaveBeenCalled();
+      expect(deps.clients.size).toBe(1);
+
+      bridge = await startWebuiHttpBridge({
+        opts: {
+          agent: { ctx: { meta: {} } },
+          frontendDistDir: 'D:/nonexistent-dist-for-test',
+        } as never,
+        surface: 'webui',
+        host: '127.0.0.1',
+        httpPort: 0,
+        strictPort: false,
+        globalRoot: 'D:/nonexistent-global-root',
+        wsToken: 'tunnel-token',
+        publicUrl: 'https://webui.example.com:8443/app',
+        publicWsUrl: 'wss://ws.example.com:9443/ws',
+        requireToken: true,
+        getSessionAgents: () => undefined,
+        onFleetPing: () => undefined,
+        broadcast: () => undefined,
+        onPortRebound: () => undefined,
+      });
+      const verifyClient = (
+        bridge.wss as unknown as {
+          options: {
+            verifyClient: (info: {
+              origin: string;
+              secure: boolean;
+              req: IncomingMessage;
+            }) => boolean;
+          };
+        }
+      ).options.verifyClient;
+      expect(
+        verifyClient({
+          origin: 'https://webui.example.com:8443',
+          secure: true,
+          req: {
+            url: '/?token=tunnel-token',
+            headers: {
+              host: 'ws.example.com:9443',
+              origin: 'https://webui.example.com:8443',
+            },
+            socket: { remoteAddress: '127.0.0.1' },
+          } as IncomingMessage,
+        }),
+      ).toBe(true);
+    } finally {
+      if (prev === undefined) delete process.env['WRONGSTACK_WEBUI_DEV_CROSS_PORT_WS'];
+      else process.env['WRONGSTACK_WEBUI_DEV_CROSS_PORT_WS'] = prev;
+      await new Promise<void>((r) => (bridge ? bridge.wss.close(() => r()) : r()));
+    }
+  });
+
+  it('degrades whitespace payload sessionId to project-wide broadcast and ignores blank targetSessionId without throwing (F614)', () => {
+    const sent: string[] = [];
+    const ws = {
+      readyState: 1,
+      bufferedAmount: 0,
+      send: (data: string) => sent.push(data),
+    } as never as WebSocket;
+    const clients = new Map([[ws, { ws, sessionId: 'session-1' }]]);
+    const transport = createWebuiTransport(clients);
+
+    expect(() =>
+      transport.broadcast({
+        type: 'session.status',
+        payload: { sessionId: '   ', status: 'idle' },
+      } as unknown as WSServerMessage),
+    ).not.toThrow();
+    expect(sent).toHaveLength(1);
+
+    expect(() =>
+      transport.broadcast(
+        {
+          type: 'session.status',
+          payload: { sessionId: 'session-1', status: 'running' },
+        } as unknown as WSServerMessage,
+        '   ',
+      ),
+    ).not.toThrow();
+    expect(sent).toHaveLength(1);
   });
 });

@@ -39,21 +39,55 @@ export function startWebuiCredentialWatcher({
     getVault(opts.globalConfigPath),
     (snapshot) => {
       const hadFallbackBridge = Boolean(opts.appConfig?.fallbackBridge?.trim());
-      // Best-effort: refresh the in-memory providers ref the panel reads from
-      // (skipped silently when appConfig is frozen — the broadcast below still
-      // pushes the fresh map, so panels stay correct either way).
+      const effectiveProviders =
+        snapshot.snapshotHasProviders === false
+          ? (opts.appConfig?.providers ?? snapshot.providers)
+          : snapshot.providers;
+      // Refresh the in-memory appConfig via shallow clone so a frozen boot
+      // Config from ConfigLoader.load() is updated too, and keep disabled/routing
+      // slices in sync before broadcastSaved reads them.
       try {
-        if (opts.appConfig && !Object.isFrozen(opts.appConfig)) {
-          opts.appConfig.providers = snapshot.providers;
-          if (snapshot.uiLocale) opts.appConfig.uiLocale = snapshot.uiLocale;
+        if (opts.appConfig) {
+          const nextConfig = {
+            ...opts.appConfig,
+            providers: effectiveProviders,
+            ...(snapshot.uiLocale ? { uiLocale: snapshot.uiLocale } : {}),
+            ...(snapshot.fallbackModels !== undefined
+              ? { fallbackModels: snapshot.fallbackModels }
+              : {}),
+            ...(snapshot.fallbackProfiles !== undefined
+              ? { fallbackProfiles: snapshot.fallbackProfiles }
+              : {}),
+            ...(snapshot.favoriteModels !== undefined
+              ? { favoriteModels: snapshot.favoriteModels }
+              : {}),
+            ...(snapshot.disabledModels !== undefined
+              ? { disabledModels: snapshot.disabledModels }
+              : {}),
+            ...(snapshot.disabledProviders !== undefined
+              ? { disabledProviders: snapshot.disabledProviders }
+              : {}),
+            ...(snapshot.favoriteModelsOnly !== undefined
+              ? { favoriteModelsOnly: snapshot.favoriteModelsOnly }
+              : {}),
+            ...(snapshot.modelMatrix !== undefined
+              ? {
+                  modelMatrix: snapshot.modelMatrix as NonNullable<
+                    import('@wrongstack/contracts/types').Config['modelMatrix']
+                  >,
+                }
+              : {}),
+            ...(snapshot.fallbackAuto !== undefined ? { fallbackAuto: snapshot.fallbackAuto } : {}),
+          };
           if (snapshot.fallbackBridge !== undefined) {
-            opts.appConfig.fallbackBridge = snapshot.fallbackBridge;
+            nextConfig.fallbackBridge = snapshot.fallbackBridge;
           } else {
-            delete opts.appConfig.fallbackBridge;
+            delete nextConfig.fallbackBridge;
           }
+          opts.appConfig = nextConfig;
         }
       } catch {
-        /* frozen / read-only appConfig — ignore */
+        /* read-only opts — ignore */
       }
       // Propagate routing/config changes to ConfigStore so running workers
       // pick them up (independent of the provider-credential path below).
@@ -96,7 +130,7 @@ export function startWebuiCredentialWatcher({
           ...(snapshot.fallbackAuto !== undefined ? { fallbackAuto: snapshot.fallbackAuto } : {}),
         } as never);
       }
-      broadcastSaved(snapshot.providers);
+      broadcastSaved(effectiveProviders);
 
       // Display language live-propagation: when another surface writes
       // Config.uiLocale (desktop shell, standalone WebUI, or another
