@@ -42,7 +42,7 @@ function makeQuestion(
     id: `${QUESTION_ID_PREFIX}${ulid()}`,
     field: template.field,
     question: template.question,
-    required: template.required,
+    required: typeof template.required === 'boolean' ? template.required : false,
     status: skipped ? 'skipped' : 'unanswered',
     order,
   };

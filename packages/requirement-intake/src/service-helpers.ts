@@ -308,7 +308,7 @@ export function applySuggestionProposal(
         upsertQuestion(record, {
           field: (template as { field: string }).field,
           question: (template as { question: string }).question,
-          required: template.required,
+          required: typeof template.required === 'boolean' ? template.required : false,
         });
       }
       break;

@@ -220,4 +220,15 @@ describe('store idempotency recovery', () => {
     expect(result.idempotent).toBe(false);
     expect(result.record.idempotencyKey).toBeUndefined();
   });
+
+  it('trims idempotency keys in findByIdempotencyKey to match create and recovery (F651)', async () => {
+    const dir = await makeDir();
+    const store = new RequirementIntakeStore({ baseDir: dir });
+    await store.create(recordLiteral('reqi_trim'), '  idem-trim  ');
+
+    await expect(store.findByIdempotencyKey('  idem-trim  ')).resolves.toMatchObject({
+      id: 'reqi_trim',
+    });
+    await expect(store.findByIdempotencyKey('   ')).resolves.toBeNull();
+  });
 });

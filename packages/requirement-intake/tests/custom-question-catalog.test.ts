@@ -26,4 +26,27 @@ describe('custom question catalogs', () => {
     expect(byField.get('alpha')?.required).toBe(true);
     expect(byField.get('beta')?.required).toBe(false);
   });
+
+  it('defaults a missing required flag on an accepted question suggestion proposal to false (F650)', async () => {
+    const { applySuggestionProposal } = await import('../src/service-helpers.js');
+    const harness = makeHarness();
+    const { record } = await harness.service.createIntake(
+      {
+        projectId: ALICE.projectId,
+        originalRequest: 'Add SSO.',
+        requestedBy: ALICE.id,
+      },
+      ALICE,
+    );
+    applySuggestionProposal(record, {
+      id: 'sug_q1',
+      kind: 'question',
+      status: 'accepted',
+      rationale: 'Optional question',
+      value: { field: 'gamma', question: 'Optional gamma?' } as never,
+      createdAt: Date.now(),
+    });
+    const gamma = record.questions.find((q) => q.field === 'gamma');
+    expect(gamma?.required).toBe(false);
+  });
 });

@@ -192,8 +192,10 @@ export class RequirementIntakeStore {
   }
 
   async findByIdempotencyKey(key: string): Promise<RequirementIntakeRecord | null> {
+    const trimmed = key.trim();
+    if (!trimmed) return null;
     const map = await this.readIdempotency();
-    const entry = map.entries[hashIdempotencyKey(key)];
+    const entry = map.entries[hashIdempotencyKey(trimmed)];
     if (!entry) return null;
     return this.load(entry.intakeId);
   }
