@@ -283,17 +283,26 @@ describe('LeaderAutoWakeController', () => {
     finish();
   });
 
-  it('logs and survives a failing startWakeTurn', async () => {
+  it('logs and survives a failing startWakeTurn without burning chain or rate-limit state (F29)', async () => {
     const warn = vi.fn();
-    const controller = new LeaderAutoWakeController({ hub, now: () => now, logger: { warn } });
+    config = { maxChainedWakes: 1 };
+    const controller = new LeaderAutoWakeController({
+      hub,
+      now: () => now,
+      config: () => config,
+      logger: { warn },
+    });
     controllers.push(controller);
     const { port, startWakeTurn } = makePort();
-    startWakeTurn.mockRejectedValue(new Error('boom'));
+    startWakeTurn.mockRejectedValueOnce(new Error('boom'));
     controller.attachPort(port);
     hub.enqueue(delivery('d1'));
     expect(controller.evaluate(SID)).toBe('woken');
     await vi.advanceTimersByTimeAsync(0);
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('boom'));
+    expect(controller.chainLength(SID)).toBe(0);
+    expect(controller.onRunFinished(SID)).toBe('woken');
+    expect(controller.chainLength(SID)).toBe(1);
   });
 
   it('without a port nothing happens; detach and dispose stop further wakes', async () => {

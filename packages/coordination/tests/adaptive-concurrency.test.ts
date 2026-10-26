@@ -304,4 +304,24 @@ describe('AdaptiveConcurrencyController', () => {
     expect(c.getState().current).toBe(8);
     expect(setMax).toHaveBeenLastCalledWith(8);
   });
+
+  it('clamps explicit decrease(target) to minConcurrent floor (F29)', () => {
+    const bus = makeFleetBus();
+    const setMax = vi.fn();
+    const c = new AdaptiveConcurrencyController(bus, setMax, {
+      enabled: true,
+      maxConcurrent: 8,
+      minConcurrent: 3,
+      decreaseFactor: 0.5,
+    });
+    setMax.mockClear();
+
+    c.decrease(0);
+    expect(c.getState().current).toBe(3);
+    expect(setMax).toHaveBeenCalledWith(3);
+
+    c.decrease(-5);
+    expect(c.getState().current).toBe(3);
+    expect(setMax).toHaveBeenCalledTimes(1);
+  });
 });

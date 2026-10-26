@@ -236,12 +236,10 @@ export class AdaptiveConcurrencyController {
   decrease(target?: number): void {
     if (!this.config.enabled) return;
 
-    const newConcurrent =
-      target ??
-      Math.max(
-        this.config.minConcurrent,
-        Math.floor(this.state.current * this.config.decreaseFactor),
-      );
+    const newConcurrent = Math.max(
+      this.config.minConcurrent,
+      target ?? Math.floor(this.state.current * this.config.decreaseFactor),
+    );
 
     if (newConcurrent < this.state.current) {
       const previousConcurrent = this.state.current;

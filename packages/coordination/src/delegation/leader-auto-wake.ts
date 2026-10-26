@@ -249,6 +249,12 @@ export class LeaderAutoWakeController {
       return 'chain_cap';
     }
 
+    if (state.timer) {
+      clearTimeout(state.timer);
+      state.timer = null;
+    }
+    const previousChain = state.chain;
+    const previousLastWakeAt = state.lastWakeAt;
     state.chain += 1;
     state.lastWakeAt = now;
     state.inFlight = true;
@@ -276,7 +282,11 @@ export class LeaderAutoWakeController {
         if (state.wakeGeneration === generation) state.inFlight = false;
       },
       (err: unknown) => {
-        if (state.wakeGeneration === generation) state.inFlight = false;
+        if (state.wakeGeneration === generation) {
+          state.inFlight = false;
+          state.chain = previousChain;
+          state.lastWakeAt = previousLastWakeAt;
+        }
         this.warn(`auto-wake turn failed for ${sessionId}: ${String(err)}`);
       },
     );
