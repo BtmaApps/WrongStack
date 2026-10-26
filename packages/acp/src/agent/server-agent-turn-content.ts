@@ -209,6 +209,23 @@ export function extractText(result: unknown): string {
 }
 
 /**
+ * A user-facing line for a run that ended with an error, or `''` when the
+ * result carries none. Used only when the run produced no text of its own.
+ */
+export function extractRunError(result: unknown): string {
+  if (typeof result !== 'object' || result === null) return '';
+  const error = (result as { error?: unknown }).error;
+  if (!error) return '';
+  const message =
+    typeof error === 'string'
+      ? error
+      : typeof (error as { message?: unknown }).message === 'string'
+        ? (error as { message: string }).message
+        : '';
+  return message ? `Error: ${message}` : 'Error: the turn failed.';
+}
+
+/**
  * Map a `RunResult` (and the parent signal) to a v1 `StopReason`.
  *
  * If the parent signal was aborted, return `'cancelled'`. Otherwise

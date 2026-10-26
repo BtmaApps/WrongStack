@@ -37,6 +37,8 @@ vi.mock('@wrongstack/runtime', () => ({
       child: () => ({ info() {}, warn() {}, error() {}, debug() {} }),
       scrub: (s: string) => s,
     }),
+    safeResolve: () => undefined,
+    has: () => false,
   }),
 }));
 
@@ -153,6 +155,25 @@ describe('buildAcpServerAgentFactory', () => {
     // 'acp-server' id with an id-less writer, neither held.
     expect(agent.ctx.agentId).toBe('leader');
     expect(agent.ctx.session.id).toBe('sess-lead');
+  });
+
+  it('reaches the provider on a turn instead of failing on the session writer (#421)', async () => {
+    const stream = vi.fn(() => {
+      throw new Error('stub provider reached');
+    });
+    mockSetupProvider.mockResolvedValue({
+      provider: { ...makeStubProvider(), stream, complete: stream },
+      providerRegistry: { has: () => true } as never as ProviderRegistry,
+      resolvedProvider: {} as ResolvedProvider,
+    });
+    const agent = await buildAcpServerAgentFactory(makeDeps())('sess-run', '/tmp');
+    const result = await agent.run('say hi', { inputOrigin: 'user' });
+    // The old `{ id, append }` writer threw `writeCheckpoint is not a
+    // function` before the first provider request.
+    expect(String(result.error?.message ?? '')).not.toMatch(
+      /(writeCheckpoint|writeInFlightMarker|flush) is not a function/,
+    );
+    expect(stream).toHaveBeenCalled();
   });
 
   it('wires ACP-backed fs/terminal tools when the client advertises capabilities', async () => {

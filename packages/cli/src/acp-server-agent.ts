@@ -22,6 +22,7 @@ import {
   type Logger,
   type PermissionDecision,
   type PermissionPolicy,
+  type SessionWriter,
   type Tool,
   ToolValidationError,
 } from '@wrongstack/contracts/types';
@@ -47,6 +48,32 @@ export class AcpServerConfigError extends Error {
     super(message);
     this.name = 'AcpServerConfigError';
   }
+}
+
+/**
+ * A complete no-op `SessionWriter` for an ACP session. It must implement the
+ * whole interface, not just `append`: the agent loop calls `writeCheckpoint`
+ * before the first provider request and `RunController.dispose` calls
+ * `flush`, so a partial writer failed every turn before the model was ever
+ * called (#421).
+ */
+export function createAcpSessionWriter(sessionId: string): SessionWriter {
+  return {
+    id: sessionId,
+    pendingToolUses: [],
+    append: async () => {},
+    appendBatch: async () => {},
+    flush: async () => {},
+    close: async () => {},
+    recordFileChange: () => {},
+    recordSideEffect: () => {},
+    writeCheckpoint: async () => {},
+    writeFileSnapshot: async () => {},
+    truncateToCheckpoint: async () => 0,
+    clearSession: async () => {},
+    writeInFlightMarker: async () => {},
+    clearInFlightMarker: async () => {},
+  };
 }
 
 /**
@@ -379,13 +406,13 @@ export function buildAcpServerAgentFactory(
       events,
     });
 
-    // Minimal session writer — ACP sessions don't persist to the JSONL
-    // transcript store yet. A no-op writer keeps the Context contract happy.
-    // It carries the ACP session id: the run pins `activeRunSessionId` from
-    // it, and background `delegate` results are routed to (and drained for)
-    // the leader by that id. Without it the leader-delivery drain matched no
-    // session and a queued result could never reach this conversation.
-    const session = { id: sessionId, append: async () => {} } as never;
+    // No-op session writer — ACP sessions don't persist to the JSONL
+    // transcript store yet. It carries the ACP session id: the run pins
+    // `activeRunSessionId` from it, and background `delegate` results are
+    // routed to (and drained for) the leader by that id. Without it the
+    // leader-delivery drain matched no session and a queued result could
+    // never reach this conversation.
+    const session = createAcpSessionWriter(sessionId);
 
     const context = new Context({
       systemPrompt: [],

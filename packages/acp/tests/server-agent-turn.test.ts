@@ -1168,6 +1168,14 @@ describe('serverAgentTurn deterministic helpers', () => {
     expect(h.extractText({})).toBe('');
   });
 
+  it('turns a failed run into a visible reply instead of an empty end_turn', () => {
+    expect(h.extractRunError(null)).toBe('');
+    expect(h.extractRunError({ status: 'done' })).toBe('');
+    expect(h.extractRunError({ error: 'boom' })).toBe('Error: boom');
+    expect(h.extractRunError({ error: { message: 'provider down' } })).toBe('Error: provider down');
+    expect(h.extractRunError({ error: { code: 1 } })).toBe('Error: the turn failed.');
+  });
+
   it('maps every stop-reason shape', () => {
     const aborted = new AbortController();
     aborted.abort();

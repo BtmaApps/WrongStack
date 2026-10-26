@@ -53,6 +53,7 @@ import type { McpServer } from '../types/acp-v1.js';
 import type { RunTurn, RunTurnApi, RunTurnResult } from './protocol-handler.js';
 import {
   extractPlan,
+  extractRunError,
   extractText,
   extractUsage,
   isRecord,
@@ -374,8 +375,10 @@ export function makeACPServerAgentTurn(opts: ACPServerAgentTurnOptions): ACPServ
       });
       if (!alive()) return { stopReason: 'cancelled' };
 
-      // Stream the agent's final text back
-      const text = extractText(result);
+      // Stream the agent's final text back. A failed run with no text would
+      // otherwise reach the client as an empty, successful-looking end_turn
+      // (#421), so its error becomes the visible reply.
+      const text = extractText(result) || extractRunError(result);
       if (text) {
         emit({
           sessionUpdate: 'agent_message_chunk',
@@ -611,6 +614,7 @@ export const serverAgentTurnCoverage = {
   promptToAgentInput,
   promptToText,
   extractText,
+  extractRunError,
   pickStopReason,
   extractPlan,
   extractUsage,
