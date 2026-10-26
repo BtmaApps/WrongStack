@@ -149,7 +149,13 @@ export async function cancelTask(host: SddParallelControlsHost, taskId: string):
 export function deleteTask(host: SddParallelControlsHost, taskId: string): boolean {
   const node = host.opts.tracker.getNode(taskId);
   if (!node) return false;
-  if (node.status === 'in_progress' || host.taskSubagents.has(taskId)) return false;
+  if (
+    node.status === 'in_progress' ||
+    node.status === 'completed' ||
+    host.taskSubagents.has(taskId)
+  ) {
+    return false;
+  }
   host.cancelledTasks.delete(taskId);
   host.retryMap.delete(taskId);
   return host.opts.tracker.removeNode(taskId);

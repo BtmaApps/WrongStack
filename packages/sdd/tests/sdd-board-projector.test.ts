@@ -6,6 +6,7 @@ import type { TaskGraph, TaskNode } from '@wrongstack/contracts/types/task-graph
 import { DefaultTaskStore } from '@wrongstack/core/tasking';
 import { afterAll, describe, expect, it, vi } from 'vitest';
 import { removeProjectFixtureDirectory } from '../../core/tests/helpers/project-server-harness.js';
+import { splitGraphNode } from '../src/graph-split.js';
 import { SddBoardProjector } from '../src/sdd-board-projector.js';
 import { SddBoardStore } from '../src/sdd-board-store.js';
 import { TaskTracker, type TaskTrackerChange } from '../src/task-tracker.js';
@@ -727,5 +728,34 @@ describe('SddBoardProjector', () => {
       expect(seen).toEqual([typeof sessionId === 'string' ? sessionId : 'function-session']);
       proj.dispose();
     }
+  });
+
+  it('refreshes shortId mappings for subtasks created by splitGraphNode', () => {
+    const g = graph();
+    const tracker = makeTracker(g);
+    const events = new EventBus();
+    const proj = new SddBoardProjector({ runId: 'split-run', graph: g, tracker, events, store });
+
+    const [child1, child2] = splitGraphNode(tracker, 'b', [
+      { title: 'Sub 1', description: 'd1' },
+      { title: 'Sub 2', description: 'd2' },
+    ]);
+    events.emit('sdd.task.split', {
+      runId: 'split-run',
+      taskId: 'b',
+      subtaskIds: [child1!, child2!],
+    });
+    events.emit('sdd.task.started', {
+      runId: 'split-run',
+      taskId: child1!,
+      subagentId: 'sub-1',
+      agentName: 'Euler',
+    });
+
+    const snap = proj.snapshot();
+    const expectedShortId = snap.tasks.find((t) => t.id === child1)?.shortId;
+    expect(expectedShortId).toBeDefined();
+    expect(snap.feed?.[0]?.taskShortId).toBe(expectedShortId);
+    proj.dispose();
   });
 });

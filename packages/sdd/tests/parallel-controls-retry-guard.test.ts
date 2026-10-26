@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { retryTask, type SddParallelControlsHost } from '../src/sdd-parallel-controls.js';
+import { splitGraphNode } from '../src/graph-split.js';
+import {
+  deleteTask,
+  retryTask,
+  type SddParallelControlsHost,
+} from '../src/sdd-parallel-controls.js';
 
 describe('retryTask status and active subagent guard', () => {
   it('allows retrying failed or blocked tasks while refusing in_progress, completed, or active-subagent tasks', () => {
@@ -59,5 +64,31 @@ describe('retryTask status and active subagent guard', () => {
 
     expect(retryTask(host, 'pending-active')).toBe(false);
     expect(retryTask(host, 'missing')).toBe(false);
+  });
+
+  it('refuses deleteTask and splitGraphNode on terminal completed tasks', () => {
+    const nodes = new Map<string, { status: string; metadata: Record<string, unknown> }>([
+      ['done-1', { status: 'completed', metadata: {} }],
+      ['failed-1', { status: 'failed', metadata: {} }],
+    ]);
+    const tracker = {
+      getNode: (id: string) => nodes.get(id) as never,
+      removeNode: (id: string) => nodes.delete(id),
+    };
+    const host = {
+      opts: { tracker } as never,
+      retryMap: new Map<string, number>(),
+      cancelledTasks: new Set<string>(),
+      taskSubagents: new Map<string, string>(),
+    } as unknown as SddParallelControlsHost;
+
+    expect(deleteTask(host, 'done-1')).toBe(false);
+    expect(nodes.has('done-1')).toBe(true);
+    expect(
+      splitGraphNode(tracker as never, 'done-1', [{ title: 'Sub', description: 'd' }]),
+    ).toEqual([]);
+
+    expect(deleteTask(host, 'failed-1')).toBe(true);
+    expect(nodes.has('failed-1')).toBe(false);
   });
 });

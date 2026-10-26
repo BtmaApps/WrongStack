@@ -85,7 +85,7 @@ export class SddBoardProjector {
   private readonly o: SddBoardProjectorOptions;
   private readonly now: () => number;
   private readonly throttleMs: number;
-  private readonly shortId: Map<string, string>;
+  private shortId: Map<string, string>;
   private readonly scrubber: SecretScrubber;
 
   private status: SddBoardStatus = 'idle';
@@ -122,7 +122,12 @@ export class SddBoardProjector {
     this.startedAt = this.now();
 
     // Source of truth: any task mutation redraws the board.
-    this.unsubs.push(opts.tracker.subscribe(() => this.markDirty()));
+    this.unsubs.push(
+      opts.tracker.subscribe(() => {
+        this.shortId = shortIdMap(this.o.graph);
+        this.markDirty();
+      }),
+    );
 
     // Run lifecycle → status/wave/deadlock + JSONL audit.
     this.onRun('sdd.run.started', (e) => {
@@ -251,6 +256,7 @@ export class SddBoardProjector {
       this.markDirty();
     });
     this.onRun('sdd.task.split', (e) => {
+      this.shortId = shortIdMap(this.o.graph);
       const sid = this.shortId.get(e.taskId);
       this.pushFeed({
         ts: this.now(),

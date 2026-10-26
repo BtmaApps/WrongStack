@@ -32,7 +32,9 @@ export function splitGraphNode(
 ): string[] {
   const node = tracker.getNode(taskId);
   if (!node) return [];
-  if (node.status === 'in_progress' || options.isRunning?.(taskId)) return [];
+  if (node.status === 'in_progress' || node.status === 'completed' || options.isRunning?.(taskId)) {
+    return [];
+  }
   if (!subtasks.length) return [];
 
   const blockers = tracker.getBlockers(taskId);
