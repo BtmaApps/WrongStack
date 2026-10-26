@@ -7,13 +7,66 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+The Electron desktop app gives way to a native Tauri desktop app, failed runs
+resume on their own after transient provider errors, and a broad hardening
+pass lands across the mailbox, Kanban, SDD, worktrees, SAGE and every
+browser surface.
+
+### Added
+
+- **Native desktop app (Desktop v2).** `apps/desktop-v2` is a Tauri shell for multiple projects and persistent sessions with its own React interface; it does not load the WebUI frontend. A bundled engine reuses the WebUI server's backend services. `bun run desktop:v2` starts it in development and `bun run desktop:v2:build` produces a portable Windows build (application, engine and `SHA256SUMS`) under `apps/desktop-v2/dist-native/`.
+- **Automatic resume after provider failures.** In `auto` autonomy, a run that fails on a transient provider error resumes up to three times with growing waits, using one policy shared by the TUI, REPL, WebUI and VibeUI. A hung stream is retried once and then moves to the fallback model; `provider.error` now reports the error kind's real retryability instead of always `false`.
+- **Live output metering for tool-only model steps.** WrongForge leader turns emit `provider.output_progress`, so the token and speed meter keeps moving while the model works through tools instead of jumping at the end of the turn.
+- **Kanban cards run in isolated workers from the standalone WebUI.** Explicit card dispatch uses the same isolated worker runtime and lease fencing as management dispatch and honours the card's role, capabilities and origin session.
+- **Request correlation in the WebUI server.** Replies to file, skill, Kanban, MCP, preference, provider, git, Chronicle, tool-toggle and SAGE requests carry the caller's `requestId`; direct user submissions receive a correlated acknowledgement (`session.user-ack`), and `POST /api/codemap/index` / `GET /api/codemap/status` start and report CodeMap indexing.
+- **Prompt journal for standalone WebUI sessions.** Raw and refined prompts are journaled like CLI-hosted sessions.
+- **Early empty-session sweep.** Never-used sessions are removed 30 seconds after an interactive host starts instead of waiting for the hourly sweep.
+
+### Changed
+
+- **WrongForge overflow recovery.** When a WrongForge leader session overflows (or `/compact` fails with a server error), the leader moves to a fresh WrongForge session seeded with WrongStack's own size-capped conversation.
+- **Tool enable/disable is saved.** Toggling a tool in the WebUI writes the active profile, so the choice survives a restart; a failed write rolls the toggle back.
+- **Provider endpoints.** Kimi device sign-in uses `auth.kimi.com`, and Alibaba Token Plan keys use the Token Plan host; saved configs carrying the old default are moved on load.
+
+### Removed
+
+- **Electron Desktop app removed.** `apps/desktop`, its packaging/smoke scripts, the `desktop.yml` workflow and the Desktop release assets are gone. `wstack desktop`, `--desktop`, the `/desktop` slash command and launch-menu option 5 were removed; the menu now offers TUI/REPL, WebUI, VibeUI and HQ. The WebUI `?shell=desktop` compact mode and desktop host bridge were removed with it, along with the Electron-only dependency chain (`electron-builder`, `electron-winstaller` build approval and related overrides).
+- **Unused WebUI session-child groundwork removed.** The never-wired `--webui-session-child` launch mode, its parent-shell instance-registry fields and the session attach discovery helper are gone.
+- **`pnpm-lock.yaml` removed.** The repository is Bun-only; `bun.lock` is the sole lockfile.
+
+### Fixed
+
+- **Mailbox.** Version 1 SQLite mailboxes are migrated instead of failing every write, and a database-level ownership fence keeps daemons of different protocol versions from sharing one mailbox. Every surface uses one message vocabulary and send rule, and reads are scoped to the reading actor, so other actors' receipts and session-scoped mail no longer leak.
+- **Kanban.** Unparseable leases fail closed and are revoked on recovery, stale chain members are dropped, moving a task cannot strand a required requirement, a failed decomposition returns to `proposed`, and `/kanban` matches boards and tasks only by exact id, title or an unambiguous id prefix.
+- **SDD and worktrees.** Live Goal and SDD checkouts are held out of stale sweeps, task worktrees are released when spawn, assign or merge fails, completed tasks cannot be split or deleted, board snapshot names cannot collide with reserved names, worktree removal deletes only managed `wstack/ap/*` branches, and concurrent allocations are shared per owner.
+- **SAGE.** Session-scoped candidates and memories are enforced against their owner session on every action and listing; path remapping follows repeated and directory renames; recall queries ignore the injected live-context block; vector sync validates its input.
+- **ACP.** Sessions get a complete session writer, failed turns are reported, session MCP servers persist across load and fork, and terminals are released after a cancel.
+- **Providers.** Streamed tool calls without an index are split correctly (including Mistral), capabilities are copied per provider instance, rotated OAuth tokens are adopted, and provider config is compared canonically.
+- **Sessions.** Catalog rebuilds keep archived sessions' sizes, digest and archive time, and restoring an archived session updates the index.
+- **Browser surfaces.** The WebUI resolves the leader per session, keeps queued document attachments, anchors fixed activity-bar panels and deduplicates stored tabs; VibeUI finalizes stale streaming entries; HQ keeps live transcript batches that arrive during a fetch.
+- **Autonomy.** An `auto="true"` next step from an earlier turn can no longer be re-run by the YOLO + Auto loop, auto-proceed stops after non-retryable provider failures, and the TypeSafe judge is rebuilt when a per-feature switch changes.
+- **Elsewhere.** Hardening across agent catalog, Chronicle, client, CodeMap MCP, coordination, governance, goals, HQ, LSP plugin, MCP, persistence, plugin SDK, primitives, requirement intake, runtime, security scanner, TechStack, Telegram and tools.
+
+## [1.2.1] — 2026-10-25
+
+VibeUI replaces SimpleUI, the WebUI activity bar becomes customizable, and
+SAGE injects fewer, more relevant memories.
+
+### Added
+
+- **Customizable WebUI activity bar.** A pin/customize dialog chooses and orders activity-bar panels; the layout is saved.
+- **SAGE lesson distillation.** Once a day, while the host is idle, progress logs and aged-out notes that share anchors are distilled by the memory-curator model into grounded lessons filed for review. The standalone WebUI server now runs consolidation and triage on that model too.
+- **Offline injection evaluation.** `packages/sage/scripts/sage-eval.ts` replays recent sessions' real tool calls against a snapshot of the memory store and reports how many injected memories were used, with optional judged precision.
+
+### Changed
+
+- **SAGE injects less noise.** Directory- and package-level anchors no longer score like file hits, aged-out and scope-only notes are not injected, and passing verification stamps memories in place instead of rewriting them, so recency ranking and retention ageing stay accurate. Instruction-like consolidation lessons are held for review.
+
 ### Removed
 
 - **SimpleUI retired and replaced by VibeUI.** The `@wrongstack/simpleui` package is gone; VibeUI (`wstack vibeui` / `--vibeui`, default port 3476) is the focused browser surface. `wstack simpleui` and `--simpleui` still parse but open VibeUI and print a notice that SimpleUI has been retired. The interactive launch menu is now TUI / REPL, WebUI, VibeUI, HQ and Desktop, with VibeUI as option 3.
 - **`--full-auto` retired.** The SimpleUI-only shortcut for YOLO + autonomy in one run is accepted but ignored with a warning; use `--yolo` instead.
-- **Electron Desktop app removed.** `apps/desktop`, its packaging/smoke scripts, the `desktop.yml` workflow and the Desktop release assets are gone. `wstack desktop`, `--desktop`, the `/desktop` slash command and launch-menu option 5 were removed; the menu now offers TUI/REPL, WebUI, VibeUI and HQ. The WebUI `?shell=desktop` compact mode and desktop host bridge were removed with it, along with the Electron-only dependency chain (`electron-builder`, `electron-winstaller` build approval and related overrides).
-- **Unused WebUI session-child groundwork removed.** The never-wired `--webui-session-child` launch mode, its parent-shell instance-registry fields and the session attach discovery helper are gone.
-- **`pnpm-lock.yaml` removed.** The repository is Bun-only; `bun.lock` is the sole lockfile.
+- **Background coordination context mode removed.** Only SimpleUI used it; mailbox messages are now always folded into the turn.
 
 ## [1.2.0] — 2026-10-24
 

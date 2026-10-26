@@ -55,24 +55,26 @@ suite. Memory, tools, providers, permissions, and the multi-agent runtime are al
 first-party and work together, on your machine, with no upstream agent to phone
 home to.
 
-### What's new in 1.2.0
+### What's new in 1.2.2
 
-- **Live model-output activity:** CLI, TUI, SimpleUI and WebUI share live token
-  estimates, throughput, elapsed time and waiting/thinking/receiving/tool phases.
-  Provider usage replaces estimates after completed responses when available.
-- **A calmer VibeUI:** Cozy chat, Just chat and Studio views preserve the active
-  session and draft. Visual starters, a quick tour, richer Library and Memory
-  views, and the optional Stacky companion make the workspace easier to navigate.
-- **Files within reach:** VibeUI adds pinned and recent file shortcuts, type
-  filters, card/tree and single/split views, breadcrumbs and preview downloads.
-- **Companions with room to work:** Explore, Memory and Skill companions inherit
-  practical role budgets, with bounded repository orientation and deeper
-  source-backed memory verification.
-- **Stronger operating boundaries:** untrusted repository and memory content
-  cannot override the active request or safety rules; WrongForge queue waits
-  time out cleanly and shutdown cancels owned remote tasks.
+- **A native desktop app:** the Electron shell is gone; Desktop v2 is a Tauri
+  app for multiple projects and persistent sessions with its own interface and
+  a bundled engine (see [Surfaces](#surfaces)).
+- **Runs that recover on their own:** in `auto` autonomy a run stopped by a
+  transient provider error resumes by itself, and a hung model moves to its
+  fallback sooner.
+- **Live metering for tool-heavy turns:** the token and speed meter keeps moving
+  while a WrongForge leader works through tools.
+- **Kanban cards from the WebUI** run in isolated workers with the same lease
+  fencing as management dispatch.
+- **A broad hardening pass:** the mailbox migrates old databases and scopes
+  reads per actor; Kanban, SDD and worktrees release and protect what they own;
+  SAGE enforces session ownership on every candidate.
 
-1.1.16 added six proof-driven hunt modes beside `/bughunt`; 1.1.15 fixed Git
+1.2.1 replaced SimpleUI with VibeUI, made the WebUI activity bar customizable
+and cut irrelevant SAGE injections; 1.2.0 added live model-output activity in
+every workspace, calmer VibeUI views with a file shelf and practical companion
+budgets; 1.1.16 added six proof-driven hunt modes beside `/bughunt`; 1.1.15 fixed Git
 correctness, capability-gated media, SAGE verify-on-mutation and sealed
 companions; 1.1.14 added polyglot codebase intelligence, CodeMap 2.0 and durable
 mission continuity; 1.1.13 added durable MCP tasks, browser element selection,
@@ -331,6 +333,12 @@ REPL. See [WebUI](docs/webui.md) for the browser surface details.
 SimpleUI was retired and replaced by VibeUI; `wstack simpleui` / `--simpleui`
 now open VibeUI.
 
+**Desktop v2** is a native Tauri app for multiple projects and persistent
+sessions, built from source: `bun run desktop:v2` for development and
+`bun run desktop:v2:build` for a portable Windows build. It has its own
+interface and bundled engine and does not load the WebUI frontend. See
+[`apps/desktop-v2/README.md`](apps/desktop-v2/README.md).
+
 WebUI and VibeUI keep their host terminal compact: repeated warnings share
 one row, logs and finished workers disappear after 30 seconds, and live worker
 rows fit the terminal. Use `WEBUI_VERBOSE=1` for full console output.
@@ -433,7 +441,7 @@ Full walk-through: [`docs/architecture.md`](docs/architecture.md).
 
 ## Status
 
-- **v1.2.0** — current repository version; semver from 1.0.0 onward
+- **v1.2.2** — current repository version (latest tagged release: v1.2.1); semver from 1.0.0 onward
 - Distribution: GitHub Releases only (standalone `wstack` binaries); npm publishing is retired and the existing npm versions are frozen
 - Full release verification: `bun run release:check` before pushing the `vX.Y.Z` release tag
 - Coverage thresholds (root Vitest): ≥76% lines / ≥75% functions / ≥66% branches / ≥75% statements
