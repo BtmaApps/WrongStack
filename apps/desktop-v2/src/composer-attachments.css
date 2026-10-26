@@ -1,0 +1,86 @@
+.composer-attachment-tray,
+.message-attachments {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 0;
+}
+.draft-attachment,
+.attachment-document {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 7px;
+  max-width: 260px;
+  min-width: 0;
+  background: var(--base);
+}
+.draft-attachment > img {
+  width: 42px;
+  height: 42px;
+  object-fit: cover;
+  border-radius: 3px;
+}
+.draft-attachment > span,
+.attachment-document > span {
+  overflow-wrap: anywhere;
+  min-width: 0;
+  font-size: 11px;
+}
+.draft-attachment small,
+.attachment-document small {
+  display: block;
+  color: var(--muted);
+  font-size: 10px;
+  margin-top: 4px;
+}
+.draft-attachment > button {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.composer-attachment-tray > button {
+  color: var(--muted);
+  font-size: 10px;
+}
+.attachment-image {
+  max-width: 190px;
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  overflow: hidden;
+}
+.attachment-image > img {
+  display: block;
+  max-width: 100%;
+  max-height: 140px;
+  object-fit: contain;
+}
+.attachment-image > span {
+  display: block;
+  font-size: 10px;
+  padding: 5px;
+  overflow-wrap: anywhere;
+}
+.attachment-preview > header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+}
+.attachment-preview > img {
+  display: block;
+  max-width: 100%;
+  max-height: 65vh;
+  object-fit: contain;
+  margin: 15px auto;
+}
+.attachment-drop-hint {
+  color: var(--brand);
+  border: 1px dashed var(--brand);
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}

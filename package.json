@@ -19,6 +19,8 @@
     "build:bun": "bun scripts/build.mjs",
     "build:binaries": "bun scripts/build-binaries.mjs",
     "build:binary": "bun scripts/build-binaries.mjs --current",
+    "desktop:v2": "bun run --filter @wrongstack/desktop-v2 dev",
+    "desktop:v2:build": "bun run --filter @wrongstack/desktop-v2 build:native",
     "test": "bun run --filter @wrongstack/core... build && bun --bun run vitest run && bun run --filter @wrongstack/webui test",
     "test:watch": "bun --bun run vitest",
     "test:package": "bun scripts/test-package.mjs",
@@ -134,14 +136,10 @@
     "ws@8.22.0": "patches/ws@8.22.0.patch"
   },
   "trustedDependencies": [
-    "electron-winstaller",
     "esbuild",
     "node-pty"
   ],
   "overrides": {
-    "@electron/get@3.1.0": {
-      "global-agent": "4.1.3"
-    },
     "brace-expansion@<1.1.21": {
       ".": "^1.1.21"
     },
@@ -155,7 +153,6 @@
     "fast-uri@>=3.0.0 <3.1.9": {
       ".": "^3.1.9"
     },
-    "http-cache-semantics": ">=4.3.0",
     "sharp": ">=0.35.5",
     "source-map-js@<1.2.2": {
       ".": "1.2.2"

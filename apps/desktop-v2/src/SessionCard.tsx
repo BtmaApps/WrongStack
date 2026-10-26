@@ -1,0 +1,86 @@
+import { ArrowRight, ArrowUpRight, Folder, Terminal, Workflow } from 'lucide-react';
+import { age, isLive, type Session } from './model';
+
+export function Metric({
+  icon,
+  label,
+  value,
+  note,
+  live = false,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string | number;
+  note: string;
+  live?: boolean;
+}) {
+  return (
+    <div className="metric">
+      <div className="metric-label">
+        {icon}
+        <span>{label}</span>
+        {live && <span className="live-label">LIVE</span>}
+      </div>
+      <strong>
+        {value}
+        {live && <span className="metric-live-dot" />}
+      </strong>
+      <p>{note}</p>
+    </div>
+  );
+}
+export function SessionCard({
+  session: s,
+  name,
+  selected,
+  onOpen,
+  onLaunch,
+}: {
+  session: Session;
+  name: string;
+  selected: boolean;
+  onOpen: () => void;
+  onLaunch: () => void;
+}) {
+  return (
+    <article className={`session-card ${selected ? 'selected' : ''}`}>
+      <button type="button" className="session-card-main" onClick={onOpen}>
+        <div className="card-top">
+          <span className="card-project">
+            <Folder size={12} />
+            {name}
+          </span>
+          <span className={`status-pill ${s.status}`}>
+            <span className={`status-dot ${s.status}`} />
+            {s.status}
+          </span>
+        </div>
+        <div className="session-card-title">
+          <span className="session-icon">
+            {s.kind === 'agent' ? <Workflow size={20} /> : <Terminal size={20} />}
+          </span>
+          <h3>{s.title}</h3>
+        </div>
+        <p className="session-directory">{s.workdir.replace(/^\\\\\?\\/, '')}</p>
+        <div className="card-meta">
+          <span>{s.kind === 'agent' ? 'WRONGSTACK AGENT' : 'NATIVE TERMINAL'}</span>
+          <span>{age(s.updatedAt)}</span>
+        </div>
+      </button>
+      <footer>
+        <span className="mono">{s.id.slice(0, 8)}</span>
+        {s.kind === 'agent' && s.status === 'running' ? (
+          <button type="button" className="card-footer-action" onClick={onLaunch}>
+            Open workspace
+            <ArrowUpRight size={14} />
+          </button>
+        ) : (
+          <button type="button" className="card-footer-action" onClick={onOpen}>
+            {isLive(s) ? 'Attach session' : 'View transcript'}
+            <ArrowRight size={14} />
+          </button>
+        )}
+      </footer>
+    </article>
+  );
+}

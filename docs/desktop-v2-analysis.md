@@ -1,6 +1,14 @@
 # Analysis Report: WrongStack Desktop v2 — From-Scratch Rebuild on Tauri
 
-- **Status**: Proposed (analysis — no implementation authorized by this document)
+- **Status**: Implementation started by explicit product-owner request on 2026-10-25.
+  The first native vertical slice lives in [`apps/desktop-v2`](../apps/desktop-v2/README.md);
+  its README records implemented behavior, executable checks, and remaining release gates.
+  The native workbench now restores session tabs and includes a portable bundled engine;
+  no separate Bun/Node installation is needed to run the portable build.
+  Provider/key onboarding and model selection also live inside the desktop-owned session UI.
+  Native Markdown chat and structured question forms are implemented, including real-engine
+  clarification handling and replay of pending requests.
+  This document alone does not authorize publication or removal of the Electron application.
 - **Author**: WrongStack leader session (with Ersin KOÇ, product owner)
 - **Date**: 2026-10-25
 - **Deciders**: Product owner; desktop/platform engineering
@@ -22,6 +30,27 @@
 5.6 user journey · 5.7 wireframes) · 6 Requirements, gates & budgets · 7 Electron limits ·
 8 Alternatives · 9 Migration, effort, rollback · 10 Risks & open questions · 11 Decision
 checklist · Appendices A (versions) · B (sources) · C (glossary)
+
+**Product-owner implementation override (2026-10-25):** All project, session, chat, and product
+screens must be authored inside the Tauri desktop. Do not open or embed the WebUI frontend.
+This supersedes the original frontend/component reuse proposal, including G-D, the old G5 wording,
+and the component reuse column in §5.4. Backend runtime services and protocol contracts may be
+shared. See [`apps/desktop-v2/README.md`](../apps/desktop-v2/README.md) for implementation and proof.
+
+**Product-owner experience requirement (2026-10-26):** Multiple projects and multiple sessions
+are the primary workflow. Keep a clear project/session tree, project-labelled open sessions,
+and an uncluttered working surface. Feature parity must use considered desktop workflows;
+a wall of tabs, generic forms, or raw snapshots is not an acceptable finished experience.
+The desktop owns System/Light/Dark appearance and multiple color themes, persisted locally.
+The [feature parity inventory](desktop-v2-feature-parity.md) tracks the broader scope separately
+from navigation coverage. WebUI frontend reuse remains prohibited.
+
+**Ownership refinement (2026-10-26):** Project Memory, Kanban, Code Atlas and Automations belong
+to independent project workspaces, accessible with no conversation sessions. WrongStack profile
+configuration belongs to a separate settings surface, accessible before registering a project.
+Only conversation/terminal/run interactions belong to sessions. Generic JSON snapshots and
+generic action forms are not accepted implementations. Native project/profile runtimes have
+their own lifecycle, and newer service hosts coexist with existing session hosts during updates.
 
 ---
 
@@ -113,7 +142,8 @@ escapes the sameness trap and acceptance gates that make the decision cheap to r
   registry) survive UI reloads and app restarts.
 - G-B: A home screen that shows the whole operation (fleet wall), not one repository.
 - G-C: A built-in verification loop (preview → tests → diff review) per agent session.
-- G-D: Reuse of the existing React frontend and `@wrongstack/webui` chat surface.
+- G-D: Dedicated desktop project/session/chat interfaces, sharing backend runtime services and
+  protocol contracts with other WrongStack clients.
 - G-E: An IPC/API surface small enough that agents themselves can drive the app.
 
 **Explicit non-goals**
@@ -410,7 +440,8 @@ the workspace's bottom strip is the verification-loop state machine (§5.4.4 ite
 - `[critical]` Core owns PTY sessions; a terminal pane's output/scrollback survives webview reload
   and app restart (reattach by session ID).
 - `[critical]` Session registry persisted (SQLite) with JSONL transcripts per session.
-- `[critical]` Agent chat via reused `@wrongstack/webui` inside a Tauri webview, talking to the core.
+- `[critical]` Dedicated desktop agent chat talking to the core through the native host; no
+  opened or embedded WebUI frontend.
 - `[high]` Browser pane with zero IPC capabilities; per-pane DevTools.
 - `[high]` Multi-project registry with workdir overlays; one window per project supported.
 - `[high]` Fleet wall reading live session status from the core.
@@ -429,7 +460,7 @@ the workspace's bottom strip is the verification-loop state machine (§5.4.4 ite
 | G2 | 3 concurrent sessions at ~10k lines/s with no dropped frames (measured; numbers recorded) |
 | G3 | Browser pane as child webview with zero capabilities; DevTools opens per pane |
 | G4 | App restart → sessions reattach from the registry with transcript tail |
-| G5 | `@wrongstack/webui` loads inside a Tauri webview and reaches the core (reuse contract proven) |
+| G5 | Desktop-owned session/chat UI reaches the core, stays inside the app, and reattaches to the same core session after UI restart; no WebUI window |
 
 A gate that fails twice gets a root-cause writeup before any workaround.
 

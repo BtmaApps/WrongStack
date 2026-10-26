@@ -1,0 +1,17 @@
+{
+  "identifier": "shell",
+  "description": "Desktop application windows own the host capability. Untrusted preview windows receive none.",
+  "local": true,
+  "windows": ["main", "project-*"],
+  "permissions": [
+    "core:default",
+    "allow-host-request",
+    "allow-choose-project",
+    "allow-open-preview",
+    "allow-open-external",
+    "allow-terminal-stream",
+    "allow-terminal-stop",
+    "allow-terminal-ack",
+    "allow-open-project-window"
+  ]
+}

@@ -1,0 +1,445 @@
+import {
+  Check,
+  ChevronDown,
+  FolderCode,
+  GitCompareArrows,
+  LoaderCircle,
+  MessageSquare,
+  PanelsTopLeft,
+  RefreshCw,
+  Settings2,
+  Square,
+  Workflow,
+  X,
+} from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { AttachmentPreview } from './ComposerAttachments';
+import { CopyButton } from './CopyButton';
+import type { ComposerAttachment } from './composer-attachments';
+import { type ComposerFileReference, splitReferenceMessage } from './composer-resources-model';
+import { EngineDataView } from './EngineDataView';
+import { contentText, type EngineState, record } from './engine-state';
+import { workspaceFilePath } from './file-model';
+import { InputRequestCard } from './InputRequestCard';
+import type { InputDraft } from './input-form-model';
+import { MarkdownContent } from './MarkdownContent';
+import { markdownTarget } from './markdown-target';
+import { ProjectSessionTools } from './ProjectSessionTools';
+import { openExternal } from './platform';
+import { SessionComposer } from './SessionComposer';
+import type { ProjectPage } from './useDesktop';
+import { useEngine } from './useEngine';
+import { WorkspaceTools } from './WorkspaceTools';
+
+export type EngineTab = 'chat' | 'activity' | 'files' | 'changes' | 'skills' | 'mailbox' | 'kanban';
+export type { EngineSend } from './engine-operations';
+export function EngineWorkspace({
+  id,
+  onError,
+  draft,
+  onDraftChange,
+  references,
+  attachments,
+  onAttachmentsChange,
+  onReferencesChange,
+  inputDrafts,
+  onInputDraftChange,
+  onSettings,
+  onProject,
+  scopeKey,
+  projectId,
+  projectRoot,
+}: {
+  id: string;
+  onError: (error: unknown) => void;
+  draft: string;
+  onDraftChange: (text: string) => void;
+  references: ComposerFileReference[];
+  attachments: ComposerAttachment[];
+  onAttachmentsChange: (items: ComposerAttachment[]) => void;
+  onReferencesChange: (refs: ComposerFileReference[]) => void;
+  inputDrafts: Record<string, InputDraft>;
+  onInputDraftChange: (key: string, draft: InputDraft | null) => void;
+  onSettings: () => void;
+  onProject: (page?: ProjectPage) => void;
+  scopeKey: string;
+  projectId: string;
+  projectRoot: string;
+}) {
+  const { state, send, command } = useEngine(id, onError);
+  const [fileTarget, setFileTarget] = useState('');
+  const [tab, setTab] = useState<EngineTab>('chat');
+  useEffect(() => {
+    if (tab !== 'files' && tab !== 'changes') setFileTarget('');
+  }, [tab]);
+  const [toolsOpen, setToolsOpen] = useState(false);
+  const end = useRef<HTMLDivElement>(null);
+  const chatPane = useRef<HTMLDivElement>(null);
+  const following = useRef(true);
+  const [showLatest, setShowLatest] = useState(false);
+  const [showConversation, setShowConversation] = useState(false);
+  const hadQuestions = useRef(false);
+  useEffect(() => {
+    if (state.inputs.length) {
+      following.current = false;
+      setShowLatest(false);
+      setShowConversation(false);
+      chatPane.current?.scrollTo({ top: 0 });
+    } else if (hadQuestions.current) {
+      following.current = true;
+      setShowLatest(false);
+    }
+    hadQuestions.current = state.inputs.length > 0;
+  }, [state.inputs]);
+  useEffect(() => {
+    if (!state.inputs.length && following.current)
+      end.current?.scrollIntoView({ block: 'nearest' });
+  }, [state.messages, state.inputs]);
+  const resolved = state.results['user.input_resolved']?.['requestId'];
+  useEffect(() => {
+    if (typeof resolved === 'string') onInputDraftChange(`${id}:${resolved}`, null);
+  }, [resolved, id, onInputDraftChange]);
+  const perform = (type: string, payload?: Record<string, unknown>) => {
+    void send(type, payload).catch(onError);
+  };
+  const openLink = useCallback(
+    (url: string) => {
+      const target = markdownTarget(url);
+      if (target?.kind === 'external') void openExternal(target.value).catch(onError);
+      if (target?.kind === 'file') {
+        setFileTarget(target.value);
+        setTab('files');
+      }
+    },
+    [send, onError],
+  );
+  return (
+    <div className="engine-workspace" data-engine-session={state.sessionId}>
+      <nav className="workspace-tabs" aria-label="Agent workspace views">
+        {(
+          [
+            { name: 'chat', label: 'Chat', Icon: MessageSquare },
+            { name: 'files', label: 'Files', Icon: FolderCode },
+            { name: 'changes', label: 'Diff / review', Icon: GitCompareArrows },
+          ] as const
+        ).map(({ name, label, Icon }) => (
+          <button
+            type="button"
+            key={name}
+            className={tab === name ? 'chosen-tab' : ''}
+            aria-current={tab === name ? 'page' : undefined}
+            onClick={() => setTab(name)}
+          >
+            <Icon size={14} />
+            {label}
+            {name === 'chat' && state.approvals.length + state.inputs.length > 0 && (
+              <span>{state.approvals.length + state.inputs.length}</span>
+            )}
+          </button>
+        ))}
+        <button
+          type="button"
+          className={
+            ['activity', 'skills'].includes(tab)
+              ? 'chosen-tab project-tools-button'
+              : 'project-tools-button'
+          }
+          onClick={() => setToolsOpen(true)}
+        >
+          <PanelsTopLeft size={14} />
+          Tools
+          <ChevronDown size={11} />
+        </button>
+        <button
+          type="button"
+          className="icon-button project-tools-button"
+          aria-label="Settings"
+          title="Model & provider settings"
+          onClick={onSettings}
+        >
+          <Settings2 size={15} />
+        </button>
+      </nav>
+      {toolsOpen && (
+        <WorkspaceTools
+          onClose={() => setToolsOpen(false)}
+          onSkills={() => {
+            setTab('skills');
+            setToolsOpen(false);
+          }}
+          onProject={() => {
+            setToolsOpen(false);
+            onProject();
+          }}
+          onSettings={() => {
+            setToolsOpen(false);
+            onSettings();
+          }}
+          onActivity={() => {
+            setTab('activity');
+            setToolsOpen(false);
+          }}
+        />
+      )}
+      {state.error && (
+        <div className="session-error" role="alert">
+          {state.error}
+        </div>
+      )}
+      {tab === 'chat' ? (
+        <>
+          {state.connected && state.needsSetup && (
+            <div className="provider-setup-banner">
+              <span>Connect a provider to start working with WrongStack.</span>
+              <button type="button" className="button primary" onClick={onSettings}>
+                Configure provider
+              </button>
+            </div>
+          )}
+          {state.inputs.length > 0 && (
+            <div className="input-context-toggle">
+              <span>
+                {state.inputs.length} pending {state.inputs.length === 1 ? 'request' : 'requests'}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowConversation(!showConversation);
+                  chatPane.current?.scrollTo({ top: 0 });
+                }}
+              >
+                {showConversation ? 'Focus questions' : 'Review conversation'}
+              </button>
+            </div>
+          )}
+          <div
+            ref={chatPane}
+            className="native-chat-messages"
+            aria-live="polite"
+            onScroll={(event) => {
+              const pane = event.currentTarget;
+              const near = pane.scrollHeight - pane.scrollTop - pane.clientHeight < 80;
+              if (following.current !== near) {
+                following.current = near;
+                setShowLatest(!near);
+              }
+            }}
+          >
+            {!state.messages.length && !state.inputs.length && (
+              <div className="native-chat-welcome">
+                <Workflow size={30} />
+                <span className="eyebrow">YOUR AGENT, IN YOUR WORKSPACE</span>
+                <h2>What are we building?</h2>
+                <p>
+                  Brief WrongStack. Watch the work here, review its tools, and approve requests
+                  without leaving this session.
+                </p>
+                {!state.connected && <LoaderCircle size={18} className="spin" />}
+              </div>
+            )}
+            {(!state.inputs.length || showConversation) &&
+              state.messages.map((message) => (
+                <article className={`chat-message ${message.role}`} key={message.id}>
+                  <header className={message.role === 'user' ? 'user-chat-label' : undefined}>
+                    <span>{message.role === 'user' ? 'YOU' : 'WRONGSTACK'}</span>
+                    <CopyButton text={message.text} label="Copy message" />
+                  </header>
+                  <div className={message.role === 'user' ? 'user-chat-body' : undefined}>
+                    {message.role === 'assistant' ? (
+                      <MarkdownContent text={message.text} onLink={openLink} />
+                    ) : (
+                      <UserComposerMessage text={message.text} />
+                    )}
+                    {!!message.attachments?.length && (
+                      <AttachmentPreview items={message.attachments} />
+                    )}
+                  </div>
+                </article>
+              ))}
+            {state.inputs.map((request) => (
+              <InputRequestCard
+                key={request.id}
+                request={request}
+                draft={inputDrafts[`${id}:${request.id}`]}
+                onChange={(value) => onInputDraftChange(`${id}:${request.id}`, value)}
+                send={send}
+                connected={state.connected}
+              />
+            ))}
+            {state.approvals.map((approval) => (
+              <article className="approval-card" key={String(approval['id'])}>
+                <span className="eyebrow">APPROVAL REQUIRED</span>
+                <h3>{String(approval['toolName'])}</h3>
+                <p>
+                  {String(
+                    approval['boundaryReason'] ??
+                      'WrongStack is requesting permission to run this tool.',
+                  )}
+                </p>
+                <pre>{JSON.stringify(approval['input'], null, 2)}</pre>
+                <div>
+                  <button
+                    type="button"
+                    className="button secondary"
+                    onClick={() =>
+                      perform('tool.confirm_result', { id: approval['id'], decision: 'no' })
+                    }
+                  >
+                    <X size={14} />
+                    Deny
+                  </button>
+                  <button
+                    type="button"
+                    className="button primary"
+                    onClick={() =>
+                      perform('tool.confirm_result', { id: approval['id'], decision: 'yes' })
+                    }
+                  >
+                    <Check size={14} />
+                    Allow once
+                  </button>
+                </div>
+              </article>
+            ))}
+            {state.running && (
+              <div className="agent-working">
+                <LoaderCircle size={13} className="spin" />
+                {state.inputs.length ? 'Waiting for your answers…' : 'WrongStack is working…'}
+              </div>
+            )}
+            <div ref={end} />
+          </div>
+          {showLatest && !state.inputs.length && (
+            <div className="chat-follow-control">
+              <button
+                type="button"
+                onClick={() => {
+                  following.current = true;
+                  setShowLatest(false);
+                  end.current?.scrollIntoView({ block: 'nearest' });
+                }}
+              >
+                Jump to latest
+              </button>
+            </div>
+          )}
+          {state.inputs.length > 0 ? (
+            <div className="input-waiting-controls">
+              <span>Answer the form to continue.</span>
+              <button type="button" className="button secondary" onClick={() => perform('abort')}>
+                <Square size={13} />
+                Stop run
+              </button>
+            </div>
+          ) : (
+            <SessionComposer
+              key={id}
+              state={state}
+              send={send}
+              command={command}
+              draft={draft}
+              onDraftChange={onDraftChange}
+              onSettings={onSettings}
+              references={references}
+              attachments={attachments}
+              onAttachmentsChange={onAttachmentsChange}
+              onReferencesChange={onReferencesChange}
+              projectId={projectId}
+              projectRoot={projectRoot}
+              onNavigate={(target) => {
+                if (target === 'files' || target === 'changes' || target === 'skills')
+                  setTab(target);
+                else onProject(target);
+              }}
+            />
+          )}
+        </>
+      ) : tab === 'activity' ? (
+        <div className="native-activity">
+          {state.activity.map((event, index) => (
+            <article key={index}>
+              <span
+                className={`status-dot ${event.type === 'tool.executed' && event.payload['ok'] === false ? 'error' : 'running'}`}
+              />
+              <div>
+                <strong>{String(event.payload['name'] ?? event.type.replaceAll('.', ' '))}</strong>
+                <p>
+                  {contentText(event.payload['output']) ||
+                    contentText(event.payload['text']) ||
+                    (event.payload['durationMs'] !== undefined
+                      ? `${event.payload['durationMs']} ms`
+                      : 'Agent activity')}
+                </p>
+              </div>
+            </article>
+          ))}
+          {!state.activity.length && (
+            <p className="quiet-state">
+              Tool calls and verification results appear here as the agent works.
+            </p>
+          )}
+        </div>
+      ) : tab === 'skills' || tab === 'files' || tab === 'changes' ? (
+        <ProjectSessionTools
+          projectId={projectId}
+          projectRoot={projectRoot}
+          view={tab}
+          initialPath={workspaceFilePath(fileTarget, projectRoot, scopeKey)}
+          onError={onError}
+          onOpenFile={(path) => {
+            setFileTarget(path);
+            setTab('files');
+          }}
+          onReview={(text) => {
+            onDraftChange(
+              `Project root: ${projectRoot.replace(/^\\\\\?\\/, '').replaceAll('\\', '/')}\n\n${text}`,
+            );
+            setTab('chat');
+          }}
+        />
+      ) : (
+        <EngineDataView tab={tab} state={state} send={send} onError={onError} />
+      )}
+      <EngineUsage state={state} refresh={() => perform('stats.get')} />
+    </div>
+  );
+}
+function UserComposerMessage({ text }: { text: string }) {
+  const view = splitReferenceMessage(text);
+  return (
+    <>
+      {view.text}
+      {view.paths.length > 0 && (
+        <section className="chat-file-references" aria-label="Referenced project files">
+          {view.paths.map((path) => (
+            <code key={path}>{path}</code>
+          ))}
+        </section>
+      )}
+    </>
+  );
+}
+function EngineUsage({ state, refresh }: { state: EngineState; refresh: () => void }) {
+  const stats = state.results['stats.get'];
+  const usage = record(stats?.['usage']);
+  return (
+    <div className="native-usage">
+      <span>{state.running ? 'RUNNING' : state.connected ? 'READY' : 'CONNECTING'}</span>
+      <span>
+        {typeof usage['input'] === 'number'
+          ? `${usage['input'].toLocaleString()} in`
+          : 'Usage not reported'}
+      </span>
+      {typeof usage['output'] === 'number' && <span>{usage['output'].toLocaleString()} out</span>}
+      {typeof stats?.['cost'] === 'number' && <span>Estimated ${stats['cost'].toFixed(4)}</span>}
+      <button
+        type="button"
+        title="Refresh engine usage"
+        onClick={refresh}
+        disabled={!state.connected}
+      >
+        <RefreshCw size={12} />
+      </button>
+    </div>
+  );
+}

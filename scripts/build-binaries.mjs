@@ -135,9 +135,9 @@ function listFiles(absolute, relative, out) {
 }
 
 /** Write the asset pack (format documented in scripts/binary/entry.mjs). */
-function buildAssetPack() {
+export function buildAssetPack({ assets = ASSETS, destination = stageDir } = {}) {
   const files = [];
-  for (const [pkg, entries] of Object.entries(ASSETS)) {
+  for (const [pkg, entries] of Object.entries(assets)) {
     for (const entry of entries) {
       const absolute = path.join(root, 'packages', pkg, entry);
       if (!existsSync(absolute))
@@ -154,8 +154,8 @@ function buildAssetPack() {
   header.writeUInt32LE(index.length, 6);
   const raw = Buffer.concat([header, index, ...contents]);
   const packed = gzipSync(raw, { level: 9 });
-  mkdirSync(stageDir, { recursive: true });
-  writeFileSync(path.join(stageDir, 'assets.pack'), packed);
+  mkdirSync(destination, { recursive: true });
+  writeFileSync(path.join(destination, 'assets.pack'), packed);
   const packId = createHash('sha256').update(raw).digest('hex').slice(0, 12);
   console.log(
     `asset pack: ${files.length} files, ${(raw.length / 1e6).toFixed(1)} MB → ${(packed.length / 1e6).toFixed(1)} MB gz (${packId})`,

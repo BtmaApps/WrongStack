@@ -1,0 +1,257 @@
+/* Generated brand tokens only. No WebUI component or runtime styles are imported. */
+:root {
+  --ws-background: 45 36.4% 95.7%;
+  --ws-foreground: 60 7% 8.4%;
+  --ws-card: 42.9 100% 98.6%;
+  --ws-primary: 344.8 74.6% 47.8%;
+  --ws-primary-foreground: 0 0% 100%;
+  --ws-brand-orange: 32.1 94.6% 43.7%;
+  --ws-secondary: 43.6 26.8% 92%;
+  --ws-muted-foreground: 43.6 5.8% 37.1%;
+  --ws-accent: 38 70% 90%;
+  --ws-accent-foreground: 33.9 100% 30.2%;
+  --ws-destructive: 0 72% 48%;
+  --ws-border: 42.9 17.9% 84.7%;
+  --ws-input: 40 14.3% 75.3%;
+  --ws-ring: 344.8 74.6% 47.8%;
+  --ws-success: 150 58% 30%;
+  --ws-warning: 32 92% 44%;
+  --ws-info: 200 80% 40%;
+  --ws-running: 344.8 74.6% 47.8%;
+}
+:root[data-mode="dark"] {
+  --ws-background: 90 3.7% 10.6%;
+  --ws-foreground: 45 37.5% 93.7%;
+  --ws-card: 75 5% 15.7%;
+  --ws-primary: 345.9 99% 58.8%;
+  --ws-primary-foreground: 60 5.9% 6.7%;
+  --ws-brand-orange: 37.5 98.4% 50%;
+  --ws-secondary: 75 6.1% 12.9%;
+  --ws-muted-foreground: 42.9 8.8% 68.6%;
+  --ws-accent: 37.5 42% 19%;
+  --ws-accent-foreground: 37.5 98.4% 50%;
+  --ws-destructive: 0 70% 66%;
+  --ws-border: 70 5.3% 22.4%;
+  --ws-input: 66.7 5.8% 30.4%;
+  --ws-ring: 345.9 99% 58.8%;
+  --ws-success: 150 64% 46%;
+  --ws-warning: 38 94% 58%;
+  --ws-info: 198 82% 56%;
+  --ws-running: 345.9 99% 58.8%;
+}
+:root[data-palette="blue-navy"] {
+  --ws-primary: 217 89% 42%;
+  --ws-primary-foreground: 0 0% 100%;
+  --ws-ring: 217 89% 42%;
+  --ws-running: 217 89% 42%;
+  --ws-accent: 216 62% 90%;
+  --ws-accent-foreground: 222 72% 30%;
+  --ws-brand-orange: 32 94% 42%;
+}
+:root[data-mode="dark"][data-palette="blue-navy"] {
+  --ws-primary: 213 90% 60%;
+  --ws-primary-foreground: 222 47% 9%;
+  --ws-ring: 213 90% 60%;
+  --ws-running: 213 90% 60%;
+  --ws-accent: 218 44% 19%;
+  --ws-accent-foreground: 213 92% 76%;
+  --ws-brand-orange: 36 96% 54%;
+}
+:root[data-palette="emerald-gold"] {
+  --ws-primary: 151 68% 30%;
+  --ws-primary-foreground: 0 0% 100%;
+  --ws-ring: 151 68% 30%;
+  --ws-running: 151 68% 30%;
+  --ws-accent: 45 60% 88%;
+  --ws-accent-foreground: 38 80% 24%;
+  --ws-brand-orange: 40 92% 42%;
+}
+:root[data-mode="dark"][data-palette="emerald-gold"] {
+  --ws-primary: 152 66% 48%;
+  --ws-primary-foreground: 155 40% 7%;
+  --ws-ring: 152 66% 48%;
+  --ws-running: 152 66% 48%;
+  --ws-accent: 42 38% 18%;
+  --ws-accent-foreground: 42 92% 62%;
+  --ws-brand-orange: 42 96% 54%;
+}
+:root[data-palette="purple-pink"] {
+  --ws-primary: 262 75% 50%;
+  --ws-primary-foreground: 0 0% 100%;
+  --ws-ring: 262 75% 50%;
+  --ws-running: 262 75% 50%;
+  --ws-accent: 330 72% 92%;
+  --ws-accent-foreground: 335 72% 34%;
+  --ws-brand-orange: 332 85% 45%;
+}
+:root[data-mode="dark"][data-palette="purple-pink"] {
+  --ws-primary: 263 82% 66%;
+  --ws-primary-foreground: 262 42% 8%;
+  --ws-ring: 263 82% 66%;
+  --ws-running: 263 82% 66%;
+  --ws-accent: 330 44% 20%;
+  --ws-accent-foreground: 332 92% 74%;
+  --ws-brand-orange: 332 94% 62%;
+}
+:root[data-palette="cyan-teal"] {
+  --ws-primary: 178 82% 27%;
+  --ws-primary-foreground: 0 0% 100%;
+  --ws-ring: 178 82% 27%;
+  --ws-running: 178 82% 27%;
+  --ws-accent: 172 58% 88%;
+  --ws-accent-foreground: 175 80% 22%;
+  --ws-brand-orange: 32 94% 42%;
+}
+:root[data-mode="dark"][data-palette="cyan-teal"] {
+  --ws-primary: 180 76% 46%;
+  --ws-primary-foreground: 184 40% 8%;
+  --ws-ring: 180 76% 46%;
+  --ws-running: 180 76% 46%;
+  --ws-accent: 174 40% 18%;
+  --ws-accent-foreground: 176 80% 62%;
+  --ws-brand-orange: 36 96% 54%;
+}
+:root[data-palette="rose-copper"] {
+  --ws-primary: 12 78% 44%;
+  --ws-primary-foreground: 0 0% 100%;
+  --ws-ring: 12 78% 44%;
+  --ws-running: 12 78% 44%;
+  --ws-accent: 25 70% 90%;
+  --ws-accent-foreground: 18 85% 28%;
+  --ws-brand-orange: 32 86% 46%;
+}
+:root[data-mode="dark"][data-palette="rose-copper"] {
+  --ws-primary: 14 82% 56%;
+  --ws-primary-foreground: 14 42% 7%;
+  --ws-ring: 14 82% 56%;
+  --ws-running: 14 82% 56%;
+  --ws-accent: 24 38% 18%;
+  --ws-accent-foreground: 28 84% 60%;
+  --ws-brand-orange: 34 96% 54%;
+}
+:root[data-palette="indigo-amber"] {
+  --ws-primary: 235 70% 48%;
+  --ws-primary-foreground: 0 0% 100%;
+  --ws-ring: 235 70% 48%;
+  --ws-running: 235 70% 48%;
+  --ws-accent: 42 64% 89%;
+  --ws-accent-foreground: 38 82% 26%;
+  --ws-brand-orange: 38 90% 44%;
+}
+:root[data-mode="dark"][data-palette="indigo-amber"] {
+  --ws-primary: 233 74% 58%;
+  --ws-primary-foreground: 235 42% 8%;
+  --ws-ring: 233 74% 58%;
+  --ws-running: 233 74% 58%;
+  --ws-accent: 40 40% 18%;
+  --ws-accent-foreground: 40 90% 60%;
+  --ws-brand-orange: 38 96% 54%;
+}
+:root[data-palette="sage-sand"] {
+  --ws-primary: 130 28% 38%;
+  --ws-primary-foreground: 0 0% 100%;
+  --ws-ring: 130 28% 38%;
+  --ws-running: 130 28% 38%;
+  --ws-accent: 38 44% 88%;
+  --ws-accent-foreground: 130 30% 26%;
+  --ws-brand-orange: 36 55% 60%;
+}
+:root[data-mode="dark"][data-palette="sage-sand"] {
+  --ws-primary: 130 28% 55%;
+  --ws-primary-foreground: 130 20% 8%;
+  --ws-ring: 130 28% 55%;
+  --ws-running: 130 28% 55%;
+  --ws-accent: 38 30% 18%;
+  --ws-accent-foreground: 36 55% 72%;
+  --ws-brand-orange: 36 55% 72%;
+}
+:root[data-palette="slate-violet"] {
+  --ws-primary: 248 50% 40%;
+  --ws-primary-foreground: 0 0% 100%;
+  --ws-ring: 248 50% 40%;
+  --ws-running: 248 50% 40%;
+  --ws-accent: 285 40% 90%;
+  --ws-accent-foreground: 248 45% 30%;
+  --ws-brand-orange: 285 52% 50%;
+}
+:root[data-mode="dark"][data-palette="slate-violet"] {
+  --ws-primary: 248 50% 55%;
+  --ws-primary-foreground: 248 35% 8%;
+  --ws-ring: 248 50% 55%;
+  --ws-running: 248 50% 55%;
+  --ws-accent: 285 30% 18%;
+  --ws-accent-foreground: 285 52% 62%;
+  --ws-brand-orange: 285 52% 62%;
+}
+:root[data-palette="coral-mint"] {
+  --ws-primary: 12 85% 48%;
+  --ws-primary-foreground: 0 0% 100%;
+  --ws-ring: 12 85% 48%;
+  --ws-running: 12 85% 48%;
+  --ws-accent: 162 50% 90%;
+  --ws-accent-foreground: 162 55% 28%;
+  --ws-brand-orange: 14 88% 52%;
+}
+:root[data-mode="dark"][data-palette="coral-mint"] {
+  --ws-primary: 12 85% 62%;
+  --ws-primary-foreground: 12 40% 8%;
+  --ws-ring: 12 85% 62%;
+  --ws-running: 12 85% 62%;
+  --ws-accent: 162 35% 18%;
+  --ws-accent-foreground: 162 55% 55%;
+  --ws-brand-orange: 14 88% 60%;
+}
+:root[data-palette="arctic-ember"] {
+  --ws-primary: 195 85% 45%;
+  --ws-primary-foreground: 0 0% 100%;
+  --ws-ring: 195 85% 45%;
+  --ws-running: 195 85% 45%;
+  --ws-accent: 14 80% 90%;
+  --ws-accent-foreground: 14 85% 28%;
+  --ws-brand-orange: 14 85% 48%;
+}
+:root[data-mode="dark"][data-palette="arctic-ember"] {
+  --ws-primary: 195 85% 58%;
+  --ws-primary-foreground: 195 40% 8%;
+  --ws-ring: 195 85% 58%;
+  --ws-running: 195 85% 58%;
+  --ws-accent: 14 40% 18%;
+  --ws-accent-foreground: 14 85% 55%;
+  --ws-brand-orange: 14 85% 55%;
+}
+:root[data-palette="moss-rust"] {
+  --ws-primary: 100 45% 28%;
+  --ws-primary-foreground: 0 0% 100%;
+  --ws-ring: 100 45% 28%;
+  --ws-running: 100 45% 28%;
+  --ws-accent: 18 65% 88%;
+  --ws-accent-foreground: 18 70% 24%;
+  --ws-brand-orange: 18 70% 40%;
+}
+:root[data-mode="dark"][data-palette="moss-rust"] {
+  --ws-primary: 100 45% 38%;
+  --ws-primary-foreground: 100 30% 8%;
+  --ws-ring: 100 45% 38%;
+  --ws-running: 100 45% 38%;
+  --ws-accent: 18 35% 18%;
+  --ws-accent-foreground: 18 70% 48%;
+  --ws-brand-orange: 18 70% 48%;
+}
+:root[data-palette="terminal"] {
+  --ws-primary: 150 65% 24%;
+  --ws-primary-foreground: 0 0% 100%;
+  --ws-ring: 150 65% 24%;
+  --ws-running: 150 65% 24%;
+  --ws-accent: 150 45% 88%;
+  --ws-accent-foreground: 150 60% 20%;
+  --ws-brand-orange: 38 92% 40%;
+}
+:root[data-mode="dark"][data-palette="terminal"] {
+  --ws-primary: 150 70% 45%;
+  --ws-primary-foreground: 150 45% 7%;
+  --ws-ring: 150 70% 45%;
+  --ws-running: 150 70% 45%;
+  --ws-accent: 150 30% 16%;
+  --ws-accent-foreground: 150 70% 55%;
+  --ws-brand-orange: 40 90% 52%;
+}

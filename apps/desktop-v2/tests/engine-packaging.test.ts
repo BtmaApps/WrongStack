@@ -1,0 +1,42 @@
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { gunzipSync } from 'node:zlib';
+import { describe, expect, it } from 'vitest';
+import { buildAssetPack } from '../../../scripts/build-binaries.mjs';
+import { createEngineEntry } from '../scripts/build-engine.mjs';
+
+describe('native engine standalone bootstrap', () => {
+  it('keeps real daemon/script dispatch while selecting the desktop backend and local asset pack', () => {
+    const canonical = readFileSync(
+      new URL('../../../scripts/binary/entry.mjs', import.meta.url),
+      'utf8',
+    );
+    const entry = createEngineEntry(canonical);
+    expect(entry).toContain("await import('../engine/main.ts')");
+    expect(entry).toContain(
+      "await import('../../../packages/core/dist/session-catalog/project-server.js')",
+    );
+    expect(entry).toContain("'./assets.pack'");
+    expect(entry).toContain("BUN_BE_BUN: '1'");
+    expect(entry).not.toContain("await import('../../packages/cli/dist/index.js')");
+  });
+  it('rejects a changed canonical entry instead of silently producing a CLI sidecar', () => {
+    expect(() => createEngineEntry('export {};')).toThrow(/bootstrap contract changed/);
+  });
+  it('packs only the selected runtime assets using the canonical extraction format', () => {
+    const destination = mkdtempSync(join(tmpdir(), 'wrongstack-engine-pack-'));
+    try {
+      const id = buildAssetPack({ assets: { core: ['package.json'] }, destination });
+      const raw = gunzipSync(readFileSync(join(destination, 'assets.pack')));
+      expect(raw.subarray(0, 6).toString()).toBe('WSPK1\n');
+      const length = raw.readUInt32LE(6);
+      const index = JSON.parse(raw.subarray(10, 10 + length).toString());
+      expect(index.map((file: [string, number]) => file[0])).toEqual(['core/package.json']);
+      expect(JSON.parse(raw.subarray(10 + length).toString()).name).toBe('@wrongstack/core');
+      expect(id).toMatch(/^[a-f0-9]{12}$/);
+    } finally {
+      rmSync(destination, { recursive: true, force: true });
+    }
+  });
+});

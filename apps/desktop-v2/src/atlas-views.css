@@ -1,0 +1,351 @@
+.atlas-view-switcher {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  margin: 16px 0;
+}
+.atlas-view-switcher > :where(button) {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  text-align: left;
+  padding: 13px 14px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--muted);
+}
+.atlas-view-switcher > :where(button)[aria-pressed="true"] {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: color-mix(in oklch, var(--accent) 40%, var(--border));
+}
+.atlas-view-switcher :where(strong) {
+  display: block;
+  font-size: 11px;
+  font-weight: 550;
+}
+.atlas-view-switcher :where(small) {
+  display: block;
+  font-size: 9px;
+  color: var(--subtle);
+  margin-top: 5px;
+  line-height: 1.5;
+}
+.atlas-subsystem-view,
+.atlas-matrix-view,
+.atlas-impact-view {
+  min-width: 0;
+  background: var(--sidebar);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 18px;
+  max-height: 720px;
+  overflow: auto;
+}
+.atlas-view-heading {
+  display: flex;
+  align-items: start;
+  gap: 12px;
+  margin-bottom: 18px;
+  color: var(--accent);
+}
+.atlas-view-heading :where(h2) {
+  margin: 0;
+  color: var(--text);
+  font-size: 17px;
+  font-weight: 500;
+}
+.atlas-view-heading :where(p) {
+  font-size: 10px;
+  color: var(--muted);
+  line-height: 1.8;
+  margin-bottom: 0;
+}
+.atlas-subsystem-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr));
+  gap: 14px;
+}
+.atlas-subsystem-card {
+  padding: 15px;
+  background: var(--base);
+  border: 1px solid var(--border);
+  border-top: 2px solid var(--group-color, var(--accent));
+  border-radius: 5px;
+  min-width: 0;
+}
+.atlas-group-1 {
+  --group-color: oklch(0.72 0.09 225);
+}
+.atlas-group-2 {
+  --group-color: oklch(0.77 0.1 75);
+}
+.atlas-group-3 {
+  --group-color: oklch(0.74 0.08 170);
+}
+.atlas-subsystem-card > :where(header) {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.atlas-subsystem-card :where(h3) {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+  font-weight: 550;
+  margin: 0;
+}
+.atlas-subsystem-card :where(header) > :where(strong) {
+  font-size: 22px;
+  font-weight: 450;
+}
+.atlas-subsystem-card :where(header) :where(small) {
+  display: block;
+  font-size: 9px;
+  color: var(--subtle);
+  font-weight: 400;
+}
+.atlas-subsystem-size {
+  height: 4px;
+  background: var(--border);
+  margin: 13px 0;
+}
+.atlas-subsystem-size > :where(span) {
+  display: block;
+  height: 100%;
+  background: var(--group-color, var(--accent));
+  min-width: 2px;
+}
+.atlas-subsystem-card dl {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 14px 0;
+}
+.atlas-subsystem-card :where(dt) {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--subtle);
+  font-size: 9px;
+}
+.atlas-subsystem-card :where(dd) {
+  margin: 5px 0 0;
+  font-size: 14px;
+}
+.atlas-subsystem-nodes {
+  max-height: 280px;
+  overflow-y: auto;
+}
+.atlas-subsystem-nodes > :where(button),
+.atlas-impact-ring > :where(button) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+  padding: 10px 4px;
+  border-top: 1px solid var(--border);
+  width: 100%;
+}
+.atlas-subsystem-nodes > :where(button)[aria-pressed="true"],
+.atlas-impact-ring > :where(button)[aria-pressed="true"] {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.atlas-subsystem-nodes :where(button) > :where(span),
+.atlas-impact-ring :where(button) > :where(span) {
+  flex: 1;
+  min-width: 0;
+}
+.atlas-subsystem-nodes :where(strong),
+.atlas-impact-ring :where(strong) {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+}
+.atlas-subsystem-nodes :where(small),
+.atlas-impact-ring :where(small) {
+  display: block;
+  font-size: 9px;
+  color: var(--subtle);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-top: 4px;
+}
+.atlas-subsystem-nodes :where(b) {
+  font-size: 9px;
+  color: var(--subtle);
+}
+.atlas-matrix-pages {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+  font-size: 9px;
+  color: var(--muted);
+}
+.atlas-matrix-pages :where(button) {
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+}
+.atlas-matrix-scroll {
+  overflow: auto;
+  max-height: 420px;
+  border: 1px solid var(--border);
+}
+.atlas-matrix-scroll :where(table) {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+  font-size: 10px;
+}
+.atlas-matrix-scroll :where(caption) {
+  text-align: left;
+  font-size: 9px;
+  color: var(--muted);
+  padding: 8px;
+}
+.atlas-matrix-scroll :where(th),
+.atlas-matrix-scroll :where(td) {
+  height: 31px;
+  min-width: 29px;
+  padding: 0;
+  text-align: center;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.atlas-matrix-scroll :where(th) {
+  background: var(--raised);
+}
+.atlas-matrix-scroll :where(th):first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  text-align: left;
+  min-width: 140px;
+  max-width: 210px;
+  padding: 0 10px;
+}
+.atlas-matrix-scroll :where(th) > :where(button) {
+  font-size: 10px;
+  padding: 6px 0;
+  width: 100%;
+  text-align: inherit;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 200px;
+}
+.atlas-matrix-scroll :where(td) > :where(span) {
+  color: var(--subtle);
+  opacity: 0.4;
+}
+.atlas-matrix-scroll .matrix-reference {
+  width: 100%;
+  min-height: 30px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.atlas-matrix-scroll .matrix-diagonal {
+  background: var(--raised);
+}
+.atlas-matrix-selected :where(th):first-child {
+  color: var(--accent);
+}
+.atlas-matrix-key {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  column-gap: 20px;
+  row-gap: 10px;
+  font-size: 9px;
+  color: var(--subtle);
+  padding-left: 20px;
+}
+.atlas-matrix-key :where(button) {
+  text-align: left;
+  font-size: 10px;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+.atlas-matrix-key :where(small) {
+  display: block;
+  color: var(--subtle);
+  font-size: 9px;
+  margin-top: 3px;
+}
+.atlas-impact-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.atlas-impact-controls :where(label) {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-size: 10px;
+  color: var(--muted);
+  flex: 1;
+  min-width: 140px;
+}
+.atlas-impact-controls :where(select) {
+  background: var(--base);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 7px;
+  border-radius: 4px;
+  width: 100%;
+}
+.atlas-impact-summary {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  padding: 20px 0;
+}
+.atlas-impact-summary > :where(strong) {
+  font-size: 40px;
+  color: var(--accent);
+  font-weight: 400;
+}
+.atlas-impact-summary > :where(span) {
+  font-size: 12px;
+}
+.atlas-impact-summary :where(small) {
+  display: block;
+  color: var(--subtle);
+  font-size: 9px;
+  margin-top: 7px;
+}
+.atlas-impact-ring {
+  margin-bottom: 20px;
+}
+.atlas-impact-ring > :where(header) {
+  display: flex;
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: 10px;
+  padding: 8px;
+  background: var(--raised);
+  border-left: 2px solid var(--accent);
+}
+.atlas-impact-ring :where(em) {
+  font-size: 9px;
+  font-style: normal;
+  color: var(--subtle);
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@media (max-width: 1100px) {
+  .atlas-view-switcher {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .atlas-layout.atlas-with-explorer {
+    grid-template-columns: 170px minmax(0, 1fr);
+  }
+  .atlas-layout.atlas-with-explorer > .atlas-inspector {
+    grid-column: 2;
+  }
+}
