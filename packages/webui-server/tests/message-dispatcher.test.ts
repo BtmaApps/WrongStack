@@ -119,10 +119,19 @@ describe('createMessageDispatcher', () => {
     );
     const mocked = vi.mocked(createRouteFamilyDispatcher);
     return {
-      options: mocked.mock.calls.at(-1)?.[0] as { onUnknown: (ws: unknown, msg: unknown) => void },
+      options: mocked.mock.calls.at(-1)?.[0] as {
+        onUnknown: (ws: unknown, msg: unknown) => void;
+        getKanbanContext: () => { dispatchTask?: unknown };
+      },
       routed: mocked.mock.results.at(-1)?.value as ReturnType<typeof vi.fn>,
     };
   };
+
+  it('exposes an isolated card dispatcher to standalone Kanban routes', async () => {
+    createMessageDispatcher(makeMinimalOpts());
+    const { options } = await lastRouteFamily();
+    expect(typeof options.getKanbanContext().dispatchTask).toBe('function');
+  });
 
   it('hands a message to the route-family dispatcher', async () => {
     const dispatcher = createMessageDispatcher(makeMinimalOpts());

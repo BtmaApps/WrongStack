@@ -37,7 +37,11 @@ import { createGoalRefinerAdapter } from './goal-refiner-adapter.js';
 import type { GoalSnapshotRouteHandlers } from './goal-snapshot-routes.js';
 import type { HostRouteHandlers } from './host-routes.js';
 import type { KanbanHostRouteHandlers } from './kanban-host-routes.js';
-import { createManagementDispatcher } from './kanban-management-dispatch.js';
+import {
+  createKanbanTaskDispatcher,
+  createManagementDispatcher,
+  registeredKanbanTools,
+} from './kanban-management-dispatch.js';
 import { handleKanbanRoute } from './kanban-routes.js';
 import { createKanbanSupervisor } from './kanban-supervisor.js';
 import type { PendingConfirm } from './pending-confirms.js';
@@ -435,6 +439,7 @@ export function createMessageDispatcher(
     opts.onDispose(dispose);
   }
   const kanbanContext = () => ({
+    dispatchTask: createKanbanTaskDispatcher(deps, state),
     projectRoot: state.getProjectRoot(),
     context: deps.context,
     broadcast: (message: object) => broadcast(state.getClients(), message),
@@ -457,7 +462,7 @@ export function createMessageDispatcher(
         payload: {
           success: true,
           data: {
-            tools: deps.agent.ctx.tools.map((tool) => ({
+            tools: registeredKanbanTools(deps).map((tool) => ({
               name: tool.name,
               description: tool.description ?? '',
             })),

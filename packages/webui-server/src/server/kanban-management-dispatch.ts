@@ -3,9 +3,15 @@ import { resolveTier } from '@wrongstack/coordination';
 import { fallbackProfileChain, parseModelRef } from '@wrongstack/core/agent';
 import { stripFrontmatter } from '@wrongstack/core/skills';
 import { makeLightSubagentFactory } from '@wrongstack/runtime';
+import type { KanbanTaskDispatcher } from './kanban-dispatch.js';
 import type { KanbanSupervisorDeps } from './kanban-supervisor.js';
 import type { WebuiDeps, WebuiMutableState } from './routes.js';
 import { errMessage } from './ws-utils.js';
+
+/** Card routes may pin a model while the project leader is still unconfigured. */
+export function registeredKanbanTools(deps: WebuiDeps) {
+  return deps.toolRegistry?.listForProvider?.() ?? deps.agent.ctx.tools;
+}
 
 /** Standalone WebUI uses the same isolated factory as its SDD workers. */
 export function createManagementDispatcher(
@@ -50,7 +56,9 @@ export function createManagementDispatcher(
         built = await factory({
           id,
           name: options.name ?? id,
-          role: 'kanban-agent',
+          role: options.role ?? 'kanban-agent',
+          allowedCapabilities: options.allowedCapabilities,
+          originSessionId: sessionId,
           prompt,
           tools: options.tools ?? ['kanban', 'read', 'grep', 'glob', 'tree'],
           provider: primary?.provider ?? options.provider ?? tier?.provider ?? config.provider,
@@ -82,5 +90,26 @@ export function createManagementDispatcher(
       await options.onDone?.(outcome);
     })().catch((error) => deps.logger.warn?.(`Kanban manager: ${String(error)}`));
     return `Started Kanban task manager ${id}.`;
+  };
+}
+
+/** Explicit card execution uses the same isolated worker runtime and board lease fencing. */
+export function createKanbanTaskDispatcher(
+  deps: WebuiDeps,
+  state: WebuiMutableState,
+): KanbanTaskDispatcher {
+  const dispatch = createManagementDispatcher(deps, state);
+  return async (description, options) => {
+    const summary = await dispatch(description, {
+      ...options,
+      tools: options?.tools?.length
+        ? options.tools
+        : registeredKanbanTools(deps).map((tool) => tool.name),
+      context: {
+        ...options?.context,
+        sessionId: options?.context?.sessionId ?? deps.context.session.id,
+      },
+    });
+    return summary.replace('Started Kanban task manager ', 'Spawned subagent ').replace(/\.$/, '');
   };
 }

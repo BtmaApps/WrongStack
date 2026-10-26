@@ -12,5 +12,13 @@
  * import from this file (the package root) for forward-compat.
  */
 
+// Canonical domain DTOs for typed clients; these exports add no browser runtime imports.
+export type {
+  KanbanAgentAssignment,
+  KanbanBoard,
+  KanbanDecompositionProposal,
+  KanbanTask,
+  KanbanVerificationReport,
+} from '@wrongstack/kanban';
 export * from '@wrongstack/webui-protocol';
 export * from './server/index.js';

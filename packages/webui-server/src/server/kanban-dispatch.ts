@@ -28,9 +28,11 @@ export type KanbanTaskDispatcher = (
     skills?: string[] | undefined;
     tools?: string[] | undefined;
     name?: string | undefined;
+    role?: string | undefined;
     allowedCapabilities?: readonly string[] | undefined;
     context?:
       | {
+          sessionId?: string;
           kanban?: { boardId?: string; taskId?: string; projectRoot?: string; leaseId?: string };
         }
       | undefined;
@@ -219,10 +221,12 @@ export async function handleKanbanTaskDispatch(
         ...(assignment.skills ? { skills: assignment.skills } : {}),
         ...(assignment.tools ? { tools: assignment.tools } : {}),
         ...(assignment.name ? { name: assignment.name } : {}),
+        ...(assignment.role ? { role: assignment.role } : {}),
         ...(assignment.allowedCapabilities
           ? { allowedCapabilities: assignment.allowedCapabilities }
           : {}),
         context: {
+          sessionId,
           kanban: {
             boardId,
             taskId: task.id,
