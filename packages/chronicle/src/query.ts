@@ -134,16 +134,23 @@ async function* reverseLines(filePath: string, maxBytes?: number): AsyncGenerato
   }
 }
 
-async function* streamEvents(files: readonly string[]): AsyncGenerator<ChronicleEvent> {
+async function* streamEvents(
+  files: readonly string[],
+  onInvalidLine?: () => void,
+): AsyncGenerator<ChronicleEvent> {
   for (const file of files) {
     try {
       for await (const line of streamLines(file)) {
         if (!line.trim()) continue;
         try {
           const event = JSON.parse(line) as ChronicleEvent;
-          if (isChronicleEvent(event)) yield event;
+          if (isChronicleEvent(event)) {
+            yield event;
+          } else {
+            onInvalidLine?.();
+          }
         } catch {
-          /* skip invalid lines */
+          onInvalidLine?.();
         }
       }
     } catch {
@@ -324,6 +331,8 @@ export class ChronicleQueryEngine {
       await this.rangeCache.flush();
     }
 
+    this.diagnostics.invalidLines = invalidLines;
+
     return {
       events: pageEvents,
       total: totalCount,
@@ -416,21 +425,25 @@ export class ChronicleQueryEngine {
   ): Promise<ChronicleGraphResult> {
     const nodeLimit = Math.max(0, Math.floor(maxNodes));
     const selected = new Map<string, ChronicleEvent>();
-    let seedCount = 0;
+    let truncated = false;
+    let invalidLines = 0;
 
-    for await (const event of streamEvents(this.partitionFiles)) {
+    for await (const event of streamEvents(this.partitionFiles, () => {
+      invalidLines++;
+    })) {
       if (!matches(event, seed)) continue;
-      seedCount++;
-      if (selected.size < nodeLimit) selected.set(event.eventId, event);
+      if (selected.has(event.eventId)) continue;
+      if (selected.size < nodeLimit) {
+        selected.set(event.eventId, event);
+      } else {
+        truncated = true;
+      }
     }
+    this.diagnostics.invalidLines = invalidLines;
 
     let frontier = [...selected.values()];
     const depthLimit = Math.max(0, Math.min(hops, 10));
-    for (
-      let depth = 0;
-      depth < depthLimit && frontier.length > 0 && selected.size < nodeLimit;
-      depth++
-    ) {
+    for (let depth = 0; depth < depthLimit && frontier.length > 0 && !truncated; depth++) {
       const frontierKeys = new Set(
         frontier.flatMap((event) => relationKeys(event).map((relation) => relation.key)),
       );
@@ -439,9 +452,12 @@ export class ChronicleQueryEngine {
       for await (const event of streamEvents(this.partitionFiles)) {
         if (selected.has(event.eventId)) continue;
         if (!relationKeys(event).some((relation) => frontierKeys.has(relation.key))) continue;
+        if (selected.size >= nodeLimit) {
+          truncated = true;
+          break;
+        }
         selected.set(event.eventId, event);
         next.push(event);
-        if (selected.size >= nodeLimit) break;
       }
       frontier = next;
     }
@@ -474,7 +490,7 @@ export class ChronicleQueryEngine {
             });
           }
         }
-    return { nodes, edges, truncated: seedCount > nodeLimit || selected.size >= nodeLimit };
+    return { nodes, edges, truncated };
   }
 }
 

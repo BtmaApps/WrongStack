@@ -291,20 +291,22 @@ export class ChronicleSqliteQueryEngine {
   ): Promise<ChronicleGraphResult> {
     const nodeLimit = Math.max(0, Math.floor(maxNodes));
     const selected = new Map<string, ChronicleEvent>();
-    let seedCount = 0;
+    let truncated = false;
+    let maxObservedInvalidLines = 0;
 
     for (const event of this.eachMatch(seed)) {
-      seedCount++;
-      if (selected.size < nodeLimit) selected.set(event.eventId, event);
+      if (selected.has(event.eventId)) continue;
+      if (selected.size < nodeLimit) {
+        selected.set(event.eventId, event);
+      } else {
+        truncated = true;
+      }
     }
+    maxObservedInvalidLines = Math.max(maxObservedInvalidLines, this.diagnostics.invalidLines);
 
     let frontier = [...selected.values()];
     const depthLimit = Math.max(0, Math.min(hops, 10));
-    for (
-      let depth = 0;
-      depth < depthLimit && frontier.length > 0 && selected.size < nodeLimit;
-      depth++
-    ) {
+    for (let depth = 0; depth < depthLimit && frontier.length > 0 && !truncated; depth++) {
       const frontierKeys = new Set(
         frontier.flatMap((event) => relationKeys(event).map((relation) => relation.key)),
       );
@@ -312,12 +314,17 @@ export class ChronicleSqliteQueryEngine {
       for (const event of this.eachMatch({})) {
         if (selected.has(event.eventId)) continue;
         if (!relationKeys(event).some((relation) => frontierKeys.has(relation.key))) continue;
+        if (selected.size >= nodeLimit) {
+          truncated = true;
+          break;
+        }
         selected.set(event.eventId, event);
         next.push(event);
-        if (selected.size >= nodeLimit) break;
       }
+      maxObservedInvalidLines = Math.max(maxObservedInvalidLines, this.diagnostics.invalidLines);
       frontier = next;
     }
+    this.diagnostics.invalidLines = maxObservedInvalidLines;
 
     const nodes = [...selected.values()].sort(compareEvents);
     const byKey = new Map<string, ChronicleEvent[]>();
@@ -353,7 +360,7 @@ export class ChronicleSqliteQueryEngine {
     return {
       nodes,
       edges,
-      truncated: seedCount > nodeLimit || selected.size >= nodeLimit,
+      truncated,
     };
   }
 

@@ -358,4 +358,55 @@ describe('SQLite query parity with the JSONL engine', () => {
     expect(first.invalidLines).toBe(2);
     expect(second.invalidLines).toBe(2);
   });
+
+  it('reports truncated=false when graph node count equals maxNodes, updates JSONL diagnostics.invalidLines on query/graph, and reports deletedBytes on purge dryRun (F678)', async () => {
+    const legacy = await ChronicleQueryEngine.fromDirectory(dir);
+    const sqlite = new ChronicleSqliteQueryEngine(db);
+
+    const legacyFull = await legacy.graph({ traceId: 'trace-a' }, 2, 100);
+    const exactLimit = legacyFull.nodes.length;
+    expect(exactLimit).toBeGreaterThan(0);
+
+    const legacyExact = await legacy.graph({ traceId: 'trace-a' }, 2, exactLimit);
+    const sqliteExact = await sqlite.graph({ traceId: 'trace-a' }, 2, exactLimit);
+    expect(legacyExact.nodes).toHaveLength(exactLimit);
+    expect(legacyExact.truncated).toBe(false);
+    expect(sqliteExact.nodes).toHaveLength(exactLimit);
+    expect(sqliteExact.truncated).toBe(false);
+
+    if (exactLimit > 1) {
+      const legacyTrunc = await legacy.graph({ traceId: 'trace-a' }, 2, exactLimit - 1);
+      const sqliteTrunc = await sqlite.graph({ traceId: 'trace-a' }, 2, exactLimit - 1);
+      expect(legacyTrunc.truncated).toBe(true);
+      expect(sqliteTrunc.truncated).toBe(true);
+    }
+
+    await fs.appendFile(path.join(dir, '2026-03-02.events.jsonl'), '{corrupt-line\n', 'utf8');
+    const legacyCorrupt = await ChronicleQueryEngine.fromDirectory(dir);
+    const qRes = await legacyCorrupt.query({});
+    expect(qRes.invalidLines).toBe(1);
+    expect(legacyCorrupt.diagnostics.invalidLines).toBe(1);
+
+    const legacyCorruptGraph = await ChronicleQueryEngine.fromDirectory(dir);
+    await legacyCorruptGraph.graph({ traceId: 'trace-a' }, 1, 10);
+    expect(legacyCorruptGraph.diagnostics.invalidLines).toBe(1);
+
+    const sqliteDir = await fs.mkdtemp(path.join(os.tmpdir(), 'chronicle-purge-dry-'));
+    try {
+      let currentNow = new Date('2026-03-01T10:00:00.000Z');
+      const j = new ChronicleSqliteJournal({
+        directory: sqliteDir,
+        now: () => currentNow,
+      });
+      await j.append(tool('tool.started', 'read', 'src/a.ts'));
+      await j.flush();
+      currentNow = new Date('2026-03-10T10:00:00.000Z');
+      const dry = await j.purge({ retentionDays: 1, dryRun: true });
+      expect(dry.deletedCount).toBe(1);
+      expect(dry.deletedBytes).toBeGreaterThan(0);
+      j.close();
+    } finally {
+      await fs.rm(sqliteDir, { recursive: true, force: true });
+    }
+  });
 });

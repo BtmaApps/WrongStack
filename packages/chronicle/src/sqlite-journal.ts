@@ -240,7 +240,12 @@ export class ChronicleSqliteJournal extends ChronicleSqliteJournalCore {
       const days = this.db
         .prepare('SELECT DISTINCT day FROM events WHERE day < ? ORDER BY day')
         .all(cutoff) as Array<{ day: string }>;
-      return { ...empty, deletedCount: count, candidates: days.map((row) => row.day) };
+      return {
+        ...empty,
+        deletedCount: count,
+        deletedBytes: Number(doomed.bytes),
+        candidates: days.map((row) => row.day),
+      };
     }
 
     try {
