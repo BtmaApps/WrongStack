@@ -39,12 +39,14 @@ export interface ReDoSResult {
 
 export interface ReDoSOptions {
   /** Wall-clock budget in ms. Default 50. */
-  budgetMs?: number;
+  budgetMs?: number | undefined;
   /**
    * Optional hook invoked exactly once when the budget is exceeded.
    * Called synchronously after the regex is terminated. Default: no-op.
    */
-  onTimeout?: (info: { regex: RegExp; input: string; budgetMs: number; elapsedMs: number }) => void;
+  onTimeout?:
+    | ((info: { regex: RegExp; input: string; budgetMs: number; elapsedMs: number }) => void)
+    | undefined;
 }
 
 /**
@@ -71,7 +73,10 @@ export function withReDoSGuard(
   budgetMs: number = 250,
   options: ReDoSOptions = {},
 ): Promise<ReDoSResult> {
-  const opts = { budgetMs, ...options };
+  const rawBudget = options.budgetMs ?? budgetMs;
+  const effectiveBudgetMs =
+    typeof rawBudget === 'number' && Number.isFinite(rawBudget) && rawBudget > 0 ? rawBudget : 250;
+  const opts = { ...options, budgetMs: effectiveBudgetMs };
   const id = ++callSeq;
 
   // Take the idle warm worker, or spawn one. Clearing `warm` marks this

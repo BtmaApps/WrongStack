@@ -154,6 +154,16 @@ describe('withReDoSGuard', () => {
     expect(seen[0]?.budgetMs).toBe(100);
   }, 20_000);
 
+  it('preserves positional budgetMs when options.budgetMs is undefined (F643)', async () => {
+    const seen: Array<{ budgetMs: number }> = [];
+    await withReDoSGuard(/^(a+)+$/, `${'a'.repeat(40)}b`, 90, {
+      budgetMs: undefined,
+      onTimeout: (info) => seen.push(info),
+    });
+    expect(seen).toHaveLength(1);
+    expect(seen[0]?.budgetMs).toBe(90);
+  }, 20_000);
+
   it('guardedMatcher binds a regex and budget for repeated use', async () => {
     // The watchdog races the pooled worker's THREAD SCHEDULING, not regex
     // cost — under full-suite CPU contention a 100ms bound flaked once
