@@ -344,6 +344,21 @@ export function redactCommandArgs(
     if (attachedPassword) {
       return `${attachedPassword[1]}${attachedPassword[2] ?? ''}[REDACTED]`;
     }
+    const attachedShortToken = typeof a === 'string' ? /^(-t=)(.+)$/s.exec(a) : null;
+    if (attachedShortToken) {
+      return `${attachedShortToken[1]}[REDACTED]`;
+    }
+    const attachedUserCred =
+      typeof a === 'string'
+        ? (/^(-u|--(?:[\w-]+-)?user)(=)(.+:.+)$/s.exec(a) ?? /^(-u)([^=\s].*:.+)$/s.exec(a))
+        : null;
+    if (attachedUserCred) {
+      return `${attachedUserCred[1]}${attachedUserCred[2]?.includes(':') ? '' : (attachedUserCred[2] ?? '')}[REDACTED]`;
+    }
+    const attachedCookie = typeof a === 'string' ? /^(--cookie=)(.+)$/is.exec(a) : null;
+    if (attachedCookie) {
+      return `${attachedCookie[1]}[REDACTED]`;
+    }
     const equals = typeof a === 'string' ? a.indexOf('=') : -1;
     // An argv value can contain unquoted whitespace; it is already one token.
     if (equals > 0 && BARE_SENSITIVE_LONG_FLAG.test(a.slice(0, equals))) {

@@ -109,16 +109,21 @@ export function stripCodeFences(s: string): string | null {
   // Whole-payload fence: ```lang? … ```? (closer optional for truncation)
   const opener = /^```[\w+-]*[ \t]*\r?\n?/.exec(trimmed);
   if (opener) {
-    const inner = trimmed
-      .slice(opener[0].length)
-      .replace(/(\r?\n)?[ \t]*```[ \t]*$/, '')
-      .trim();
+    const body = trimmed.slice(opener[0].length);
+    if (/(\r?\n)?[ \t]*```[ \t]*$/.test(body)) {
+      const inner = body.replace(/(\r?\n)?[ \t]*```[ \t]*$/, '').trim();
+      return inner.length > 0 ? inner : null;
+    }
+    const closerInBody = /\r?\n[ \t]*```[ \t]*(?:\r?\n|$)/.exec(body);
+    const inner = (closerInBody ? body.slice(0, closerInBody.index) : body).trim();
     return inner.length > 0 ? inner : null;
   }
   // Fence embedded in prose: extract the first complete fenced block.
-  const embedded = /```[\w+-]*[ \t]*\r?\n([\s\S]*?)\r?\n[ \t]*```/.exec(trimmed);
+  const embedded = /```[\w+-]*[ \t]*(?:\r?\n([\s\S]*?)\r?\n|[ \t]+([^\n`]*?))[ \t]*```/.exec(
+    trimmed,
+  );
   if (embedded) {
-    const inner = (embedded[1] ?? '').trim();
+    const inner = (embedded[1] ?? embedded[2] ?? '').trim();
     return inner.length > 0 ? inner : null;
   }
   return null;

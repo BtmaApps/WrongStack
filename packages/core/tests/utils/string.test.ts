@@ -39,11 +39,13 @@ describe('truncate', () => {
     expect(out.charCodeAt(4)).toBe(0x2026);
   });
 
-  it('handles a max of 0 by returning the input minus its last char + ellipsis', () => {
-    // max=0: 'hi'.slice(0, -1) is 'h' (slice with negative end strips the
-    // last char), so the function returns 'h' + '…' = 'h…'. The function
-    // does not throw on max=0. The behavior is degenerate but stable;
-    // pin it so any future change is deliberate.
-    expect(truncate('hi', 0)).toBe('h…');
+  it('returns an empty string for a max of 0 or below', () => {
+    // The implementation moved to @wrongstack/primitives/string (555046b61)
+    // and deliberately guards `max <= 0` to '' — output never exceeds the
+    // cap, which the old `slice(0, max - 1) + '…'` quirk violated ('h…' is
+    // two characters for max=0). The old pin documented that quirk as
+    // "degenerate but stable"; this pin documents its deliberate removal.
+    expect(truncate('hi', 0)).toBe('');
+    expect(truncate('hi', -1)).toBe('');
   });
 });
