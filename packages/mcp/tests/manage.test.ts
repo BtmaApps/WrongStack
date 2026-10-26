@@ -243,6 +243,31 @@ describe('enable / disable', () => {
     expect((registry as { stop: ReturnType<typeof vi.fn> }).stop).toHaveBeenCalledWith('github');
     expect((await readServers()).github?.enabled).toBe(false);
   });
+
+  it('disableMcp stops the active slot before calling markDisabled so the live client is not orphaned (F625)', async () => {
+    await addMcp({ name: 'github', enabled: true }, deps(makeRegistry(), { github: githubPreset }));
+    const activeSlots = new Set(['github']);
+    const stoppedSlots: string[] = [];
+    const callOrder: string[] = [];
+    const registry = makeRegistry({
+      stop: vi.fn(async (name: string) => {
+        callOrder.push(`stop:${name}`);
+        // Mirrors MCPRegistry.stop: only closes the client if the slot is still in `this.servers`.
+        if (activeSlots.has(name)) {
+          stoppedSlots.push(name);
+        }
+      }),
+      markDisabled: vi.fn((cfg: MCPServerConfig) => {
+        callOrder.push(`markDisabled:${cfg.name}`);
+        // Mirrors MCPRegistry.markDisabled: deletes `cfg.name` from `this.servers`.
+        activeSlots.delete(cfg.name);
+      }),
+    });
+    const r = await disableMcp('github', deps(registry));
+    expect(r.ok).toBe(true);
+    expect(stoppedSlots).toEqual(['github']);
+    expect(callOrder).toEqual(['stop:github', 'markDisabled:github']);
+  });
 });
 
 describe('restart / discover', () => {

@@ -469,8 +469,8 @@ export async function disableMcp(name: string, deps: McpManageDeps): Promise<Mcp
   cfg.enabled = false;
   servers[name] = cfg;
   await persist(deps.configPath, full, servers);
-  trackDisabled(deps.registry, { ...cfg, name });
   await safeStop(name, deps);
+  trackDisabled(deps.registry, { ...cfg, name });
   return {
     ok: true,
     message: `Server "${name}" disabled`,
