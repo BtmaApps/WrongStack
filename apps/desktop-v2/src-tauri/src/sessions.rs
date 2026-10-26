@@ -337,9 +337,14 @@ impl HostState {
         Ok(())
     }
     fn open_agent(self: &Arc<Self>, s: &Session) -> Result<()> {
-        self.start_engine(&s.id, &s.workdir)
+        self.start_engine(&s.id, &s.workdir, true)
     }
-    pub(crate) fn start_engine(self: &Arc<Self>, runtime_id: &str, workdir: &str) -> Result<()> {
+    pub(crate) fn start_engine(
+        self: &Arc<Self>,
+        runtime_id: &str,
+        workdir: &str,
+        bind_session: bool,
+    ) -> Result<()> {
         let reservation = TcpListener::bind("127.0.0.1:0").map_err(err)?;
         let port = reservation.local_addr().map_err(err)?.port();
         let token = format!("{}{}", Uuid::new_v4().simple(), Uuid::new_v4().simple());
@@ -425,6 +430,7 @@ impl HostState {
                             .dir
                             .join("transcripts")
                             .join(format!("{id}.events.jsonl")),
+                        bind_session,
                     ) {
                         if let Some(live) = host.live.lock().unwrap().get_mut(&id) {
                             live.engine = Some(engine);

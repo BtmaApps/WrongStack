@@ -1,0 +1,142 @@
+.approval-card.tool-approval {
+  background: var(--raised);
+  border: 1px solid var(--border);
+  padding: 18px;
+}
+.tool-approval > header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.approval-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--accent);
+  flex: none;
+}
+.tool-approval h3 {
+  margin: 4px 0;
+  font-size: 16px;
+  overflow-wrap: anywhere;
+}
+.tool-approval header p {
+  margin: 4px 0 12px;
+}
+.approval-risk {
+  margin-left: auto;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px 7px;
+  color: var(--muted);
+  font-size: 10px;
+}
+.approval-destructive .approval-risk {
+  color: var(--danger);
+}
+.tool-approval .approval-notice,
+.tool-approval .approval-deadline,
+.tool-approval .approval-waiting {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.approval-command,
+.approval-arguments,
+.approval-diff,
+.approval-pattern {
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  margin: 12px 0;
+  padding: 10px;
+  min-width: 0;
+}
+.approval-command > strong,
+.approval-arguments > strong,
+.approval-diff > strong,
+.approval-pattern > strong {
+  display: block;
+  color: var(--muted);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 8px;
+}
+.tool-approval pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 220px;
+  overflow: auto;
+  margin: 0;
+  font: 11px / 1.6 monospace;
+}
+.approval-arguments dl {
+  margin: 0;
+}
+.approval-arguments dl > div {
+  display: grid;
+  grid-template-columns: minmax(100px, 160px) minmax(0, 1fr);
+  gap: 8px;
+  border-top: 1px solid var(--border);
+  padding: 7px 0;
+}
+.approval-arguments dt {
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: capitalize;
+  overflow-wrap: anywhere;
+}
+.approval-arguments dd {
+  margin: 0;
+  min-width: 0;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+.approval-arguments ol {
+  margin: 0;
+  padding-left: 20px;
+}
+.approval-arguments li {
+  padding: 2px 0;
+}
+.approval-empty {
+  color: var(--muted);
+}
+.approval-pattern code {
+  display: block;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 11px;
+}
+.approval-scope {
+  display: grid;
+  gap: 6px;
+  font-size: 11px;
+}
+.approval-scope select {
+  max-width: 100%;
+  width: 100%;
+  color: var(--text);
+  background: var(--base);
+  border: 1px solid var(--border);
+  padding: 8px;
+  border-radius: 4px;
+}
+.approval-scope small {
+  color: var(--muted);
+}
+.tool-approval .approval-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 15px;
+}
+@media (max-width: 900px) {
+  .approval-arguments dl > div {
+    grid-template-columns: 1fr;
+  }
+}

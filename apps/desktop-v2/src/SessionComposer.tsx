@@ -32,6 +32,7 @@ import {
 import type { EngineCommand, EngineSend } from './engine-operations';
 import type { EngineState } from './engine-state';
 import { Modal } from './Modal';
+import { NextStepsPanel } from './NextStepsPanel';
 import { PromptRefinement } from './PromptRefinement';
 import { PromptWorkspace } from './PromptWorkspace';
 import { SessionContextPanel } from './SessionContextPanel';
@@ -336,6 +337,16 @@ export function SessionComposer({
         </p>
       )}
       {input.popup}
+      {!state.running &&
+        !state.hydrating &&
+        !state.inputs.length &&
+        !state.approvals.length &&
+        state.nextSteps.length > 0 && (
+          <NextStepsPanel
+            steps={state.nextSteps}
+            onAdd={(text) => input.replace(appendToDraft(currentDraft.current, text))}
+          />
+        )}
       {state.queue.length > 0 && (
         <details className="composer-queue" ref={queuePanel}>
           <summary>

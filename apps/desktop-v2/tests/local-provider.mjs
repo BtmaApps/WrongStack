@@ -115,10 +115,16 @@ export async function startLocalProvider() {
                   .filter((part) => part.type === 'text')
                   .map((part) => part.text ?? ''),
           )
-          .findLast((text) => /^\[native-composer-/.test(text.trim())) ?? '';
+          .findLast(
+            (text) =>
+              /^\[native-composer-/.test(text.trim()) ||
+              text.includes('[native-composer-nextstep-selected]'),
+          ) ?? '';
       const answer = refiner
         ? 'Build the desktop composer and preserve the requested session boundaries.\n---\nImplement the desktop composer while keeping the requested session boundaries.'
-        : fixtureMarkdown;
+        : composerInstruction.trim().startsWith('[native-composer-nextsteps]')
+          ? `${fixtureMarkdown}\n\n<nextsteps>\n1. [native-composer-nextstep-selected] Inspect the result\n2. Run the checks\n</nextsteps>`
+          : fixtureMarkdown;
       calls.push({
         path: request.url,
         authorized: request.headers.authorization === `Bearer ${fixtureKey}`,
@@ -162,6 +168,38 @@ export async function startLocalProvider() {
           body.tools?.some((tool) => tool.function?.name === 'clarify'),
           'Real clarify tool must be offered by the engine',
         );
+      const approvalUser =
+        body.messages?.findLastIndex(
+          (message) =>
+            message.role === 'user' &&
+            typeof message.content === 'string' &&
+            /^\[native-composer-approval-(allow|deny|remember|again)\]/.test(
+              message.content.trim(),
+            ),
+        ) ?? -1;
+      const approvalChallenge =
+        approvalUser < 0
+          ? null
+          : body.messages[approvalUser].content.match(
+              /\[native-composer-approval-(allow|deny|remember|again)\]/,
+            )?.[1];
+      const approvalId = `desktop-approval-${approvalChallenge}`;
+      const approvalReply =
+        approvalChallenge &&
+        body.messages
+          .slice(approvalUser + 1)
+          .find((message) => message.role === 'tool' && message.tool_call_id === approvalId);
+      if (approvalReply)
+        toolResults.push({
+          challenge: `approval-${approvalChallenge}`,
+          content: approvalReply.content,
+        });
+      const needsApproval = approvalChallenge && !approvalReply;
+      if (needsApproval)
+        assert.ok(
+          body.tools?.some((tool) => tool.function?.name === 'exec'),
+          'Real exec tool must be offered by the engine',
+        );
       const toolCall = needsForm
         ? {
             index: 0,
@@ -180,7 +218,24 @@ export async function startLocalProvider() {
               ),
             },
           }
-        : undefined;
+        : needsApproval
+          ? {
+              index: 0,
+              id: approvalId,
+              type: 'function',
+              function: {
+                name: 'exec',
+                arguments: JSON.stringify({
+                  command: 'git',
+                  args:
+                    approvalChallenge === 'allow' || approvalChallenge === 'deny'
+                      ? ['config', '--local', 'desktopfixture.first', 'yes']
+                      : ['config', '--local', 'desktopfixture.second', 'yes'],
+                  cwd: '.',
+                }),
+              },
+            }
+          : undefined;
       if (!body.stream) {
         response.setHeader('content-type', 'application/json');
         response.end(

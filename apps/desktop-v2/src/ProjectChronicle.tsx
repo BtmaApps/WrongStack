@@ -11,6 +11,7 @@ import {
   X,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ChronicleInsights } from './ChronicleInsights';
 import {
   chronicleGraph,
   chronicleQuery,
@@ -169,6 +170,7 @@ export function ProjectChronicle({
           Refresh journal
         </button>
       </header>
+      <ChronicleInsights command={command} onOpenFile={onOpenFile} />
       <div className="chronicle-metrics">
         {[
           ['Matching events', data['total']],

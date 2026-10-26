@@ -1,0 +1,151 @@
+.session-activity {
+  min-width: 0;
+  padding: 20px;
+  overflow: auto;
+}
+.session-activity-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: end;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+.session-activity-header h2 {
+  margin: 6px 0;
+  font-size: 21px;
+}
+.session-activity-header p {
+  color: var(--muted);
+  font-size: 11px;
+  margin: 0;
+}
+.session-activity-header nav {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.session-activity-header nav button {
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.session-activity-header nav button[aria-pressed="true"] {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.activity-list {
+  display: grid;
+  gap: 7px;
+}
+.activity-entry {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--raised);
+  overflow: hidden;
+}
+.activity-entry > summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  list-style: none;
+  min-width: 0;
+}
+.activity-entry > summary::-webkit-details-marker {
+  display: none;
+}
+.activity-entry-icon {
+  color: var(--accent);
+  display: flex;
+  flex: none;
+}
+.activity-entry-label {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+}
+.activity-entry-label strong {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.activity-entry-label small,
+.activity-metric {
+  color: var(--muted);
+  font-size: 10px;
+}
+.activity-metric {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+}
+.activity-failed > summary > svg {
+  color: var(--danger);
+}
+.activity-entry-body {
+  border-top: 1px solid var(--border);
+  padding: 10px 12px;
+  font-size: 11px;
+}
+.activity-entry-body h4 {
+  margin: 10px 0 6px;
+  color: var(--muted);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.activity-entry-body pre {
+  max-height: 240px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: 11px / 1.6 monospace;
+}
+.activity-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.session-activity .activity-files button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px;
+  text-align: left;
+  min-width: 0;
+  max-width: 100%;
+}
+.activity-files span {
+  overflow-wrap: anywhere;
+}
+.activity-files small {
+  color: var(--muted);
+}
+.session-activity-compact {
+  max-height: 45vh;
+  padding: 8px 0;
+}
+.chat-run-activity {
+  margin: 10px 0;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 8px 10px;
+}
+.chat-run-activity > summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 11px;
+}
+@media (max-width: 900px) {
+  .activity-entry > summary {
+    flex-wrap: wrap;
+  }
+}

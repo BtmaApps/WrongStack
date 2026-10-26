@@ -1,4 +1,9 @@
 import type { UserInputRequest } from '@wrongstack/contracts/types';
+import {
+  type ParsedNextStep,
+  parseNextSteps,
+  projectNextStepsToolInput,
+} from '@wrongstack/webui-protocol';
 import { type ComposerAttachment, transcriptAttachments } from './composer-attachments';
 import { contentText, entries, record } from './engine-values';
 import { parseInputRequest } from './input-form-model';
@@ -39,6 +44,7 @@ export interface EngineState {
   inputs: UserInputRequest[];
   providerTests: Record<string, ProviderTestRun>;
   activity: EngineEvent[];
+  nextSteps: ParsedNextStep[];
   results: Record<string, Record<string, unknown>>;
   error: string;
 }
@@ -59,6 +65,7 @@ export const emptyEngineState: EngineState = {
   inputs: [],
   providerTests: {},
   activity: [],
+  nextSteps: [],
   results: {},
   error: '',
 };
@@ -150,6 +157,7 @@ export function reduceEngine(state: EngineState, input: unknown): EngineState {
           ? p['needsSetup']
           : !p['provider'] || p['provider'] === 'unconfigured' || !p['model'],
     };
+    if (p['reset'] === true) next.nextSteps = [];
     if (!state.messages.length && Array.isArray(p['replayMessages'])) {
       next.messages = entries(p['replayMessages'])
         .filter((m) => m['role'] === 'user' || m['role'] === 'assistant')
@@ -197,6 +205,7 @@ export function reduceEngine(state: EngineState, input: unknown): EngineState {
         },
       ];
     next.running = true;
+    next.nextSteps = [];
     next.error = '';
   }
   if (
@@ -212,6 +221,7 @@ export function reduceEngine(state: EngineState, input: unknown): EngineState {
       if (!state.messages.some((message) => message.id === pending.id))
         next.messages = [...state.messages, pending];
       next.running = true;
+      next.nextSteps = [];
       next.error = '';
     }
   }
@@ -246,6 +256,7 @@ export function reduceEngine(state: EngineState, input: unknown): EngineState {
           },
         ];
       next.running = true;
+      next.nextSteps = [];
       next.error = '';
     }
   }
@@ -282,6 +293,29 @@ export function reduceEngine(state: EngineState, input: unknown): EngineState {
     next.inputs = state.inputs.filter((item) => item.id !== p['requestId']);
   if (event.type === 'run.result') {
     next.running = false;
+    if (p['status'] === 'done') {
+      const parsed = parseNextSteps(contentText(p['finalText'])).steps;
+      const start = state.activity.findLastIndex((entry) => entry.type === 'run.result') + 1;
+      const inputs = new Map<string, ParsedNextStep[]>();
+      let toolSteps: ParsedNextStep[] = [];
+      for (const entry of state.activity.slice(start)) {
+        if (
+          entry.type === 'tool.started' &&
+          entry.payload['name'] === 'nextsteps' &&
+          typeof entry.payload['id'] === 'string'
+        )
+          inputs.set(entry.payload['id'], projectNextStepsToolInput(entry.payload['input']));
+        if (
+          entry.type === 'tool.executed' &&
+          entry.payload['name'] === 'nextsteps' &&
+          entry.payload['ok'] === true &&
+          typeof entry.payload['id'] === 'string'
+        )
+          toolSteps =
+            inputs.get(entry.payload['id']) ?? projectNextStepsToolInput(entry.payload['input']);
+      }
+      next.nextSteps = parsed.length ? parsed : toolSteps;
+    } else next.nextSteps = [];
     if (p['status'] === 'failed')
       next.error = String(record(p['error'])['message'] ?? 'Agent run failed');
   }
@@ -301,6 +335,8 @@ export function reduceEngine(state: EngineState, input: unknown): EngineState {
     event.type.startsWith('tool.') ||
     event.type.startsWith('codemap.') ||
     event.type.startsWith('iteration.') ||
+    event.type === 'provider.thinking_delta' ||
+    event.type === 'provider.retry' ||
     event.type === 'user.input_resolved' ||
     event.type === 'run.result'
   )

@@ -41,6 +41,19 @@ export async function exerciseNativeEvidence({ page, rpc, project, waitFor, arti
   await page.getByRole('button', { name: 'Open working file', exact: true }).click();
   await page.locator('.native-file-content').filter({ hasText: 'reviewed = 2' }).waitFor();
   await tool('Chronicle').click();
+  const insights = page.locator('.chronicle-insights');
+  await insights.locator('summary').click();
+  await insights.getByText('fixture-provider / fixture-model', { exact: true }).waitFor();
+  await insights.getByRole('button', { name: 'tasks', exact: true }).click();
+  await insights.getByText('fixture-task', { exact: true }).waitFor();
+  await insights.getByRole('button', { name: 'files', exact: true }).click();
+  await insights.getByText('review-fixture.ts', { exact: true }).first().waitFor();
+  await insights.getByRole('button', { name: 'Open project file', exact: true }).first().waitFor();
+  await page.screenshot({
+    path: join(artifactDir, 'native-chronicle-insights.png'),
+    fullPage: true,
+  });
+  await insights.locator('summary').click();
   await page.getByLabel('Search Chronicle', { exact: true }).fill('Native Chronicle');
   await page.getByRole('button', { name: 'Apply filters', exact: true }).click();
   await page.getByRole('button', { name: 'Load older events', exact: true }).waitFor();

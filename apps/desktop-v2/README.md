@@ -63,8 +63,9 @@ explicit engine executable. There is no fallback to `wstack --webui`.
 - A dedicated session workbench replaces the fleet cards while working. Native session tabs
   survive UI restart; closing a tab detaches without killing the session. Unsent drafts remain
   isolated per session while the UI is open. Returning to the fleet keeps the open tabs available.
-- Dedicated desktop chat/composer, streamed messages, tool activity, one-time allow/deny approval
-  cards, read-only files and before/after diff review, skills reader,
+- Dedicated desktop chat/composer, streamed messages, grouped session activity and readable approval
+  cards with command arguments, edit previews and remembered policy scopes; completed-turn next
+  steps can be selected and added to a draft. File review, skills reader,
   native provider/key onboarding, session model selection, reported token usage,
   and estimated cost.
 - The session composer keeps model/effort beside one delivery-mode selector. BTW reaches the current

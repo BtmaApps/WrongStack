@@ -35,6 +35,32 @@ export async function seedNativeChronicle({ rpc, project, waitFor }) {
   });
   try {
     for (const input of [
+      ...[
+        'provider.attempt.started',
+        'provider.attempt.completed',
+        'sdd.task.completed',
+        'file.event',
+      ].map((eventType, i) => ({
+        eventType,
+        outcome: 'success',
+        scope: {
+          installationId: 'native-fixture',
+          machineId: 'native-fixture',
+          agentId: 'fixture-reviewer',
+          sessionId: 'fixture-story',
+          taskId: 'fixture-task',
+          kanbanBoardId: 'fixture-board',
+        },
+        correlation: { traceId: 'native-insights-proof', spanId: `native-insights-${i}` },
+        runtime: { providerId: 'fixture-provider', modelId: 'fixture-model' },
+        resource: { kind: 'file', id: 'review-fixture.ts', path: 'review-fixture.ts' },
+        attributes: {
+          summary: 'Metrics fixture',
+          runId: 'fixture-run',
+          toolName: 'edit',
+          operation: 'write',
+        },
+      })),
       ...['tool.started', 'file.changed', 'tool.completed'].map((eventType, i) => ({
         eventType,
         outcome: i === 0 ? 'started' : 'success',

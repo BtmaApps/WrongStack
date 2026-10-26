@@ -11,15 +11,18 @@ import { createSqliteMemoryPort, getSageSurface } from '../../../packages/sage/d
 import { portableDirectory } from '../scripts/portable.ts';
 import { fixtureKey, fixtureModel, fixtureText, startLocalProvider } from './local-provider.mjs';
 import { exerciseNativeAppearance } from './native-appearance.mjs';
+import { exerciseNativeApprovals } from './native-approvals.mjs';
 import { exerciseNativeAtlas } from './native-atlas.mjs';
 import { exerciseNativeAttachments } from './native-attachments.mjs';
 import { seedNativeChronicle } from './native-chronicle-fixture.mjs';
+import { exerciseNativeChronicleInsights } from './native-chronicle-insights.mjs';
 import { exerciseNativeComposer } from './native-composer.mjs';
 import { exerciseNativeComposerResources } from './native-composer-resources.mjs';
 import { exerciseNativeConversation } from './native-conversation.mjs';
 import { exerciseNativeEvidence } from './native-evidence.mjs';
 import { exerciseNativeFiles } from './native-files.mjs';
 import { exerciseNativeTaskExecution } from './native-kanban-execution.mjs';
+import { exerciseNativeNextSteps } from './native-next-steps.mjs';
 import { exerciseNativeProjects } from './native-projects.mjs';
 import { exerciseNativeSage } from './native-sage.mjs';
 import { exerciseNativeSettingsManagement } from './native-settings-management.mjs';
@@ -30,10 +33,19 @@ import { exerciseNativeSkills } from './native-skills.mjs';
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 const companion = process.argv.includes('--companion');
 const composerOnly = process.argv.includes('--composer');
+const chronicleOnly = process.argv.includes('--chronicle');
 const artifactDir = resolve(
   root,
   '.temp_files/desktop-v2-native',
-  composerOnly ? (companion ? 'composer-companion' : 'composer') : companion ? 'companion' : '.',
+  chronicleOnly
+    ? 'chronicle'
+    : composerOnly
+      ? companion
+        ? 'composer-companion'
+        : 'composer'
+      : companion
+        ? 'companion'
+        : '.',
 );
 await mkdir(artifactDir, { recursive: true });
 const dir = await mkdtemp(join(tmpdir(), 'wrongstack-desktop-v2-'));
@@ -51,7 +63,9 @@ const portableDir = join(dir, 'Portable Desktop');
 if (bundled && !release) throw new Error('--bundled requires --release');
 if (bundled) {
   await mkdir(portableDir);
-  const source = portableDirectory(resolve(root, 'apps/desktop-v2'));
+  const source =
+    process.env.WRONGSTACK_DESKTOP_TEST_PORTABLE ??
+    portableDirectory(resolve(root, 'apps/desktop-v2'));
   portableIdentity = source.split(/[/\\]/).at(-1);
   const manifest = (await readFile(join(source, 'SHA256SUMS'), 'utf8'))
     .trim()
@@ -386,561 +400,585 @@ try {
     .getByRole('button', { name: 'Close prompt workspace', exact: true })
     .click();
   console.log('PASS: project-owned prompt library without a desktop conversation');
-  if (!composerOnly) {
-    await exerciseNativeProjects({
-      page,
-      rpc: workspaceRpc,
-      waitFor,
-      artifactDir,
-      project: a,
-      otherProject: b,
-    });
+  if (chronicleOnly) {
     await seedNativeChronicle({ rpc: workspaceRpc, project: a, waitFor });
-    await exerciseNativeSettingsPolicy({ page, rpc: workspaceRpc, waitFor, artifactDir });
-    await exerciseNativeSettingsManagement({
-      page,
-      rpc: workspaceRpc,
-      waitFor,
-      artifactDir,
-      instructionsPath: join(dir, 'wrongstack/AGENTS.md'),
-      configPath: join(dir, 'wrongstack/profiles/default/config.json'),
+    await exerciseNativeChronicleInsights({ page, rpc: workspaceRpc, project: a, artifactDir });
+    assert.deepEqual(errors, []);
+    result = {
+      result: 'PASS',
+      scope: 'chronicle',
+      portableIdentity,
+      bundledEngine: bundled,
+      portableChecksumsVerified: bundled,
+      artifacts: artifactDir,
+    };
+  } else {
+    if (!composerOnly) {
+      await exerciseNativeProjects({
+        page,
+        rpc: workspaceRpc,
+        waitFor,
+        artifactDir,
+        project: a,
+        otherProject: b,
+      });
+      await seedNativeChronicle({ rpc: workspaceRpc, project: a, waitFor });
+      await exerciseNativeSettingsPolicy({ page, rpc: workspaceRpc, waitFor, artifactDir });
+      await exerciseNativeSettingsManagement({
+        page,
+        rpc: workspaceRpc,
+        waitFor,
+        artifactDir,
+        instructionsPath: join(dir, 'wrongstack/AGENTS.md'),
+        configPath: join(dir, 'wrongstack/profiles/default/config.json'),
+      });
+      await exerciseNativeSage({ page, waitFor, artifactDir, project: a, rpc: workspaceRpc });
+      await exerciseNativeFiles({ page, waitFor, artifactDir, project: a, rpc: workspaceRpc });
+      await exerciseNativeAtlas({ page, waitFor, artifactDir, project: a, rpc: workspaceRpc });
+      await exerciseNativeEvidence({ page, waitFor, artifactDir, project: a, rpc: workspaceRpc });
+      await exerciseNativeSkills({ page, waitFor, artifactDir, project: a, rpc: workspaceRpc });
+      await page
+        .getByRole('navigation', { name: 'Main navigation' })
+        .getByRole('button', { name: 'Mission control', exact: true })
+        .click();
+    }
+    // Exercise the visible create-session flow against the real native commands.
+    await page.getByRole('button', { name: 'New session', exact: true }).click();
+    await page.getByRole('button', { name: 'Terminal A persistent native shell' }).click();
+    await page.getByLabel('Session name').fill('Native UI terminal');
+    await page.getByRole('button', { name: 'Create terminal session' }).click();
+    await page
+      .locator('.breadcrumb-session')
+      .getByText('Native UI terminal', { exact: true })
+      .waitFor();
+    const first = (await rpc('snapshot')).sessions.find((s) => s.title === 'Native UI terminal');
+    sessions.push(first.id);
+    const second = await rpc('session.open', {
+      projectId: a.id,
+      kind: 'terminal',
+      title: 'Concurrent terminal',
     });
-    await exerciseNativeSage({ page, waitFor, artifactDir, project: a, rpc: workspaceRpc });
-    await exerciseNativeFiles({ page, waitFor, artifactDir, project: a, rpc: workspaceRpc });
-    await exerciseNativeAtlas({ page, waitFor, artifactDir, project: a, rpc: workspaceRpc });
-    await exerciseNativeEvidence({ page, waitFor, artifactDir, project: a, rpc: workspaceRpc });
-    await exerciseNativeSkills({ page, waitFor, artifactDir, project: a, rpc: workspaceRpc });
-    await page
-      .getByRole('navigation', { name: 'Main navigation' })
-      .getByRole('button', { name: 'Mission control', exact: true })
-      .click();
-  }
-  // Exercise the visible create-session flow against the real native commands.
-  await page.getByRole('button', { name: 'New session', exact: true }).click();
-  await page.getByRole('button', { name: 'Terminal A persistent native shell' }).click();
-  await page.getByLabel('Session name').fill('Native UI terminal');
-  await page.getByRole('button', { name: 'Create terminal session' }).click();
-  await page
-    .locator('.breadcrumb-session')
-    .getByText('Native UI terminal', { exact: true })
-    .waitFor();
-  const first = (await rpc('snapshot')).sessions.find((s) => s.title === 'Native UI terminal');
-  sessions.push(first.id);
-  const second = await rpc('session.open', {
-    projectId: a.id,
-    kind: 'terminal',
-    title: 'Concurrent terminal',
-  });
-  sessions.push(second.id);
-  const third = await rpc('session.open', {
-    projectId: b.id,
-    kind: 'terminal',
-    title: 'Other project terminal',
-  });
-  sessions.push(third.id);
-  for (const id of sessions) {
-    await rpc('session.resize', { id, rows: 40, cols: 120 });
-    await assert.rejects(rpc('session.resize', { id, rows: 0, cols: 80 }), /between 1 and 500/);
-    await rpc('session.write', { id, data: "Write-Output ('WRONGSTACK_'+'NATIVE_READY')\r" });
-  }
-  const output = async (id) =>
-    Buffer.from((await rpc('session.read', { id, offset: 0 })).bytes).toString();
-  await waitFor(
-    async () =>
-      (await Promise.all(sessions.map(output))).every((s) => s.includes('WRONGSTACK_NATIVE_READY')),
-    'Three real terminal outputs',
-  );
-  await page.locator('.xterm-screen').waitFor();
-  await page.screenshot({ path: join(artifactDir, 'native-sessions.png'), fullPage: true });
-  await page.reload();
-  await page.getByText('Local engine connected', { exact: true }).waitFor();
-  assert.equal(
-    (await rpc('snapshot')).sessions.filter((s) => s.kind === 'terminal' && s.status === 'running')
-      .length,
-    3,
-  );
-  // Kill only the disposable UI process, then relaunch: the host and PTYs must be identical.
-  await stopUi();
-  assert.equal((await rpc('snapshot')).hostPid, initialPid);
-  await launch();
-  assert.equal((await rpc('snapshot')).hostPid, initialPid);
-  await rpc('session.write', { id: first.id, data: "Write-Output ('REATTACH_'+'PASSED')\r" });
-  await waitFor(
-    async () => (await output(first.id)).includes('REATTACH_PASSED'),
-    'Terminal reattach after UI restart',
-  );
-  console.log('PASS: three PTYs, reload, and UI restart');
-  // Real WrongStack backend; every project/session screen stays in the native shell.
-  const agent = await rpc('session.open', {
-    projectId: a.id,
-    kind: 'agent',
-    title: 'WrongStack engine proof',
-  });
-  sessions.push(agent.id);
-  await waitFor(
-    async () => {
-      const s = (await rpc('snapshot')).sessions.find((s) => s.id === agent.id);
-      if (s.status === 'error') throw new Error(s.error);
-      return s.status === 'running';
-    },
-    'WrongStack engine readiness',
-    100000,
-  );
-  const identity = await waitFor(async () => {
-    const info = await rpc('engine.identity', { id: agent.id });
-    return info.sessionId ? info : null;
-  }, 'Native core session identity');
-  await page.locator('.tree-session').filter({ hasText: 'WrongStack engine proof' }).click();
-  await page.locator('[data-engine-session="' + identity.sessionId + '"]').waitFor();
-  await page.getByRole('textbox', { name: 'Message WrongStack' }).waitFor();
-  assert.equal(
-    await page.getByRole('button', { name: 'Send message', exact: true }).isEnabled(),
-    false,
-  );
-  await page.getByRole('button', { name: 'Configure provider', exact: true }).waitFor();
-  await page
-    .getByRole('textbox', { name: 'Message WrongStack' })
-    .fill('Keep this native session draft.');
-  await page.getByRole('button', { name: 'Fleet', exact: true }).click();
-  await page.locator('.session-card-main').filter({ hasText: 'Concurrent terminal' }).click();
-  await page.locator('.session-tab-label').filter({ hasText: 'WrongStack engine proof' }).click();
-  assert.equal(
-    await page.getByRole('textbox', { name: 'Message WrongStack' }).inputValue(),
-    'Keep this native session draft.',
-  );
-  await page.getByRole('textbox', { name: 'Message WrongStack' }).fill('');
-  await exerciseNativeAppearance({ page, rpc, waitFor, artifactDir });
-  assert.equal(
-    page.context().pages().length,
-    1,
-    'Agent must stay inside the desktop, without a WebUI window',
-  );
-  await assert.rejects(rpc('session.endpoint', { id: agent.id }), /Unknown method/);
-  await rpc('engine.send', { id: agent.id, message: { type: 'stats.get', payload: {} } });
-  await waitFor(
-    async () =>
-      (await rpc('engine.events', { id: agent.id, offset: 0 })).events.some(
-        (e) => e.type === 'stats.get',
-      ),
-    'Real core stats response',
-  );
-  await page
-    .getByRole('navigation', { name: 'Agent workspace views' })
-    .getByRole('button', { name: 'Files', exact: true })
-    .click();
-  await page.getByRole('treeitem', { name: 'README.md', exact: true }).click();
-  await page
-    .locator('.native-file-content')
-    .getByText('Native desktop fixture: all screens stay in Tauri.', { exact: true })
-    .waitFor();
-  assert.equal(
-    (await rpc('engine.events', { id: agent.id, offset: 0 })).events.some(
-      (event) => event.type === 'files.read',
-    ),
-    false,
-    'Files opened beside a conversation use project services, preserving older conversation engines',
-  );
-  await page
-    .getByRole('navigation', { name: 'Agent workspace views' })
-    .getByRole('button', { name: 'Settings', exact: true })
-    .click();
-  await page.getByRole('heading', { name: 'Default model' }).waitFor();
-  await page
-    .getByLabel('Credential provider', { exact: true })
-    .locator('option[value="openai"]')
-    .waitFor({ state: 'attached' });
-  // Configure the real backend exclusively through the desktop-owned settings.
-  await page.getByRole('button', { name: 'Custom endpoint', exact: true }).click();
-  const fillConnection = async () => {
-    await page.getByLabel('Custom provider ID', { exact: true }).fill('desktop-local');
-    await page.getByLabel('Provider base URL', { exact: true }).fill(providerFixture.baseUrl);
-    await page.getByLabel('Custom model ID', { exact: true }).fill(fixtureModel);
-    await page.getByLabel('Provider API key', { exact: true }).fill(fixtureKey);
-    await page
-      .getByRole('checkbox', { name: 'This model supports tool calls', exact: true })
-      .check();
-    await page
-      .getByRole('checkbox', { name: 'This model supports image input', exact: true })
-      .check();
-  };
-  await fillConnection();
-  await page.screenshot({ path: join(artifactDir, 'native-provider-setup.png'), fullPage: true });
-  await page.getByRole('button', { name: 'Save and use provider', exact: true }).click();
-  await page.locator('.model-selector').getByText(fixtureModel, { exact: true }).waitFor();
-  await page.getByRole('textbox', { name: 'Message WrongStack' }).waitFor();
-  // Configure the ordinary chat cases explicitly; the composer exercise below
-  // separately verifies the profile's automatic refinement workflow.
-  await page.locator('.composer-options').getByLabel('Composer options', { exact: true }).click();
-  await page.getByRole('checkbox', { name: 'Refine before sending', exact: true }).uncheck();
-  await waitFor(
-    async () =>
-      !(await page
-        .getByRole('checkbox', { name: 'Refine before sending', exact: true })
-        .isChecked()),
-    'Explicit direct-send preference',
-  );
-  await page.locator('.composer-options').getByLabel('Composer options', { exact: true }).click();
-  assert.equal(
-    await page.getByRole('button', { name: 'Configure provider', exact: true }).count(),
-    0,
-  );
-  await page
-    .getByRole('textbox', { name: 'Message WrongStack' })
-    .fill('Reply with the native connection verification sentence. Do not call tools.');
-  await page.getByRole('button', { name: 'Send message', exact: true }).click();
-  await page
-    .locator('.chat-message.assistant')
-    .filter({ hasText: fixtureText })
-    .first()
-    .waitFor({ timeout: 60000 });
-  await waitFor(
-    async () => !(await page.getByRole('button', { name: 'Stop run', exact: true }).count()),
-    'Native streamed run completion',
-    60000,
-  );
-  assert.ok(providerFixture.calls.some((call) => call.authorized && call.stream === true));
-  await exerciseNativeConversation({ page, identity, artifactDir, waitFor, providerFixture });
-  await exerciseNativeComposer({
-    page,
-    identity,
-    agent,
-    rpc,
-    artifactDir,
-    waitFor,
-    providerFixture,
-  });
-  await exerciseNativeComposerResources({
-    page,
-    project: a,
-    otherProject: b,
-    identity,
-    agent,
-    rpc: workspaceRpc,
-    engineRpc: rpc,
-    artifactDir,
-    waitFor,
-    providerFixture,
-  });
-  await exerciseNativeAttachments({ page, agent, rpc, artifactDir, waitFor, providerFixture });
-  if (!composerOnly) {
-    const views = () => page.getByRole('navigation', { name: 'Agent workspace views' });
-    const assistSessions = (await rpc('snapshot')).sessions.length;
-    await views().getByRole('button', { name: 'Files', exact: true }).click();
-    await page.getByRole('treeitem', { name: 'README.md', exact: true }).click();
-    if (await page.getByRole('button', { name: 'Expand file details', exact: true }).count())
-      await page.getByRole('button', { name: 'Expand file details', exact: true }).click();
-    await page
-      .locator('.file-evidence-drawer')
-      .getByRole('button', { name: 'Ask AI', exact: true })
-      .click();
-    await page.getByLabel('Code analysis preset', { exact: true }).selectOption('overview');
-    const assistCalls = providerFixture.calls.length;
-    await page.getByRole('button', { name: 'Run analysis', exact: true }).click();
-    await page
-      .locator('.code-assist-answer')
-      .filter({ hasText: fixtureText })
-      .waitFor({ timeout: 60000 });
-    assert.ok(
-      providerFixture.calls.length > assistCalls,
-      'Code Assist makes a real authenticated provider call',
+    sessions.push(second.id);
+    const third = await rpc('session.open', {
+      projectId: b.id,
+      kind: 'terminal',
+      title: 'Other project terminal',
+    });
+    sessions.push(third.id);
+    for (const id of sessions) {
+      await rpc('session.resize', { id, rows: 40, cols: 120 });
+      await assert.rejects(rpc('session.resize', { id, rows: 0, cols: 80 }), /between 1 and 500/);
+      await rpc('session.write', { id, data: "Write-Output ('WRONGSTACK_'+'NATIVE_READY')\r" });
+    }
+    const output = async (id) =>
+      Buffer.from((await rpc('session.read', { id, offset: 0 })).bytes).toString();
+    await waitFor(
+      async () =>
+        (await Promise.all(sessions.map(output))).every((s) =>
+          s.includes('WRONGSTACK_NATIVE_READY'),
+        ),
+      'Three real terminal outputs',
     );
+    await page.locator('.xterm-screen').waitFor();
+    await page.screenshot({ path: join(artifactDir, 'native-sessions.png'), fullPage: true });
+    await page.reload();
+    await page.getByText('Local engine connected', { exact: true }).waitFor();
     assert.equal(
-      (await rpc('snapshot')).sessions.length,
-      assistSessions,
-      'Code Assist does not create a desktop conversation',
+      (await rpc('snapshot')).sessions.filter(
+        (s) => s.kind === 'terminal' && s.status === 'running',
+      ).length,
+      3,
     );
-    await page.screenshot({ path: join(artifactDir, 'native-code-assist.png'), fullPage: true });
-    console.log(
-      'PASS: desktop Code Assist runs through the real provider without creating a conversation',
+    // Kill only the disposable UI process, then relaunch: the host and PTYs must be identical.
+    await stopUi();
+    assert.equal((await rpc('snapshot')).hostPid, initialPid);
+    await launch();
+    assert.equal((await rpc('snapshot')).hostPid, initialPid);
+    await rpc('session.write', { id: first.id, data: "Write-Output ('REATTACH_'+'PASSED')\r" });
+    await waitFor(
+      async () => (await output(first.id)).includes('REATTACH_PASSED'),
+      'Terminal reattach after UI restart',
     );
-    await page.locator('.project-item').filter({ hasText: a.name }).click();
+    console.log('PASS: three PTYs, reload, and UI restart');
+    // Real WrongStack backend; every project/session screen stays in the native shell.
+    const agent = await rpc('session.open', {
+      projectId: a.id,
+      kind: 'agent',
+      title: 'WrongStack engine proof',
+    });
+    sessions.push(agent.id);
+    await waitFor(
+      async () => {
+        const s = (await rpc('snapshot')).sessions.find((s) => s.id === agent.id);
+        if (s.status === 'error') throw new Error(s.error);
+        return s.status === 'running';
+      },
+      'WrongStack engine readiness',
+      100000,
+    );
+    const identity = await waitFor(async () => {
+      const info = await rpc('engine.identity', { id: agent.id });
+      return info.sessionId ? info : null;
+    }, 'Native core session identity');
+    await page.locator('.tree-session').filter({ hasText: 'WrongStack engine proof' }).click();
+    await page.locator('[data-engine-session="' + identity.sessionId + '"]').waitFor();
+    await page.getByRole('textbox', { name: 'Message WrongStack' }).waitFor();
+    assert.equal(
+      await page.getByRole('button', { name: 'Send message', exact: true }).isEnabled(),
+      false,
+    );
+    await page.getByRole('button', { name: 'Configure provider', exact: true }).waitFor();
     await page
-      .getByRole('navigation', { name: `${a.name} workspace` })
+      .getByRole('textbox', { name: 'Message WrongStack' })
+      .fill('Keep this native session draft.');
+    await page.getByRole('button', { name: 'Fleet', exact: true }).click();
+    await page.locator('.session-card-main').filter({ hasText: 'Concurrent terminal' }).click();
+    await page.locator('.session-tab-label').filter({ hasText: 'WrongStack engine proof' }).click();
+    assert.equal(
+      await page.getByRole('textbox', { name: 'Message WrongStack' }).inputValue(),
+      'Keep this native session draft.',
+    );
+    await page.getByRole('textbox', { name: 'Message WrongStack' }).fill('');
+    await exerciseNativeAppearance({ page, rpc, waitFor, artifactDir });
+    assert.equal(
+      page.context().pages().length,
+      1,
+      'Agent must stay inside the desktop, without a WebUI window',
+    );
+    await assert.rejects(rpc('session.endpoint', { id: agent.id }), /Unknown method/);
+    await rpc('engine.send', { id: agent.id, message: { type: 'stats.get', payload: {} } });
+    await waitFor(
+      async () =>
+        (await rpc('engine.events', { id: agent.id, offset: 0 })).events.some(
+          (e) => e.type === 'stats.get',
+        ),
+      'Real core stats response',
+    );
+    await page
+      .getByRole('navigation', { name: 'Agent workspace views' })
       .getByRole('button', { name: 'Files', exact: true })
       .click();
     await page.getByRole('treeitem', { name: 'README.md', exact: true }).click();
-    if (await page.getByRole('button', { name: 'Expand file details', exact: true }).count())
-      await page.getByRole('button', { name: 'Expand file details', exact: true }).click();
     await page
-      .locator('.file-evidence-drawer')
-      .getByRole('button', { name: 'Ask AI', exact: true })
-      .click();
-    await page.getByRole('button', { name: 'Run analysis', exact: true }).click();
-    await page
-      .locator('.code-assist-answer')
-      .filter({ hasText: fixtureText })
-      .waitFor({ timeout: 60000 });
+      .locator('.native-file-content')
+      .getByText('Native desktop fixture: all screens stay in Tauri.', { exact: true })
+      .waitFor();
     assert.equal(
-      (await rpc('snapshot')).sessions.length,
-      assistSessions,
-      'Project Code Assist stays session-free',
-    );
-    await page.locator('.tree-session').filter({ hasText: 'WrongStack engine proof' }).click();
-    console.log(
-      'PASS: project Code Assist uses saved profile configuration without a conversation',
-    );
-    await exerciseNativeTaskExecution({
-      page,
-      rpc: workspaceRpc,
-      project: a,
-      waitFor,
-      artifactDir,
-      providerFixture,
-    });
-    await page.locator('.tree-session').filter({ hasText: 'WrongStack engine proof' }).click();
-    await views().getByRole('button', { name: 'Settings', exact: true }).click();
-    await page
-      .locator(`#native-model-catalog option[value="${fixtureModel}"]`)
-      .waitFor({ state: 'attached' });
-    assert.equal(
-      await page.getByLabel('Default provider', { exact: true }).inputValue(),
-      'desktop-local',
-      'Provider selection hydrates after settings remount',
-    );
-    assert.equal(
-      await page.getByLabel('Default model', { exact: true }).inputValue(),
-      fixtureModel,
-      'Saved model survives asynchronous journal replay',
-    );
-    assert.equal(await page.getByLabel('Provider API key', { exact: true }).inputValue(), '');
-    await page.locator('.saved-key code').filter({ hasText: '…7654' }).waitFor();
-    assert.ok(
-      !(await page.content()).includes(fixtureKey),
-      'The saved credential is never reflected in renderer markup',
-    );
-    // A duplicate is a real backend refusal, not a client-only validation error.
-    await page.getByRole('button', { name: 'Custom endpoint', exact: true }).click();
-    await fillConnection();
-    await page.getByRole('button', { name: 'Save and use provider', exact: true }).click();
-    await page.getByRole('alert').filter({ hasText: 'already exists' }).waitFor();
-    assert.equal(await page.getByLabel('Provider API key', { exact: true }).inputValue(), '');
-    // Exercise the vault-backed key.add route as well as provider.add.
-    await page.getByRole('button', { name: 'Provider API key', exact: true }).click();
-    await page.getByLabel('Credential provider', { exact: true }).selectOption('desktop-local');
-    await page.getByLabel('Provider API key', { exact: true }).fill(fixtureKey);
-    await page.getByLabel('Key label', { exact: true }).fill('desktop');
-    await page.getByRole('button', { name: 'Save API key', exact: true }).click();
-    await page.locator('.provider-result.saved').waitFor();
-    assert.equal(await page.getByLabel('Provider API key', { exact: true }).inputValue(), '');
-    await page.setViewportSize({ width: 800, height: 640 });
-    assert.equal(
-      await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
+      (await rpc('engine.events', { id: agent.id, offset: 0 })).events.some(
+        (event) => event.type === 'files.read',
+      ),
       false,
+      'Files opened beside a conversation use project services, preserving older conversation engines',
     );
-    await page.screenshot({
-      path: join(artifactDir, 'native-provider-compact.png'),
-      fullPage: true,
-    });
-    await page.setViewportSize({ width: 1480, height: 960 });
-    const profileDirs = (
-      await readdir(join(dir, 'wrongstack/profiles'), { withFileTypes: true })
-    ).filter((entry) => entry.isDirectory());
-    assert.equal(profileDirs.length, 1, 'A single isolated test profile');
-    const savedConfig = await readFile(
-      join(dir, 'wrongstack/profiles', profileDirs[0].name, 'config.json'),
-      'utf8',
-    );
-    assert.ok(savedConfig.includes('desktop-local'), 'Provider configuration is persisted');
-    assert.ok(!savedConfig.includes(fixtureKey), 'Provider keys must be encrypted at rest');
-    const journal = await readFile(join(dir, 'transcripts', `${agent.id}.events.jsonl`), 'utf8');
-    assert.ok(
-      !journal.includes(fixtureKey),
-      'Provider credentials must never enter the engine journal',
-    );
-    console.log(
-      'PASS: native provider onboarding, encrypted vault, streamed local chat, and backend failure handling',
-    );
-    await page.getByRole('button', { name: 'Back to conversation', exact: true }).click();
     await page
       .getByRole('navigation', { name: 'Agent workspace views' })
-      .getByRole('button', { name: 'Chat', exact: true })
+      .getByRole('button', { name: 'Settings', exact: true })
       .click();
-    await page.screenshot({ path: join(artifactDir, 'native-agent.png'), fullPage: true });
-    await waitFor(async () => {
-      const saved = JSON.parse((await rpc('snapshot')).layout ?? '{}');
-      return (
-        saved.section === 'fleet' &&
-        saved.selected === agent.id &&
-        saved.openSessionIds?.includes(agent.id) &&
-        saved.openSessionIds?.includes(second.id)
-      );
-    }, 'Persisted native session tabs');
-    await stopUi();
-    await launch();
-    assert.equal(
-      (await rpc('engine.identity', { id: agent.id })).sessionId,
-      identity.sessionId,
-      'UI restart must retain the same core session',
-    );
-    await page.locator('.session-tab-label').filter({ hasText: 'WrongStack engine proof' }).click();
-    assert.equal(await page.locator('.session-tab').count(), 3);
-    await page.locator('[data-engine-session="' + identity.sessionId + '"]').waitFor();
+    await page.getByRole('heading', { name: 'Default model' }).waitFor();
+    await page
+      .getByLabel('Credential provider', { exact: true })
+      .locator('option[value="openai"]')
+      .waitFor({ state: 'attached' });
+    // Configure the real backend exclusively through the desktop-owned settings.
+    await page.getByRole('button', { name: 'Custom endpoint', exact: true }).click();
+    const fillConnection = async () => {
+      await page.getByLabel('Custom provider ID', { exact: true }).fill('desktop-local');
+      await page.getByLabel('Provider base URL', { exact: true }).fill(providerFixture.baseUrl);
+      await page.getByLabel('Custom model ID', { exact: true }).fill(fixtureModel);
+      await page.getByLabel('Provider API key', { exact: true }).fill(fixtureKey);
+      await page
+        .getByRole('checkbox', { name: 'This model supports tool calls', exact: true })
+        .check();
+      await page
+        .getByRole('checkbox', { name: 'This model supports image input', exact: true })
+        .check();
+    };
+    await fillConnection();
+    await page.screenshot({ path: join(artifactDir, 'native-provider-setup.png'), fullPage: true });
+    await page.getByRole('button', { name: 'Save and use provider', exact: true }).click();
     await page.locator('.model-selector').getByText(fixtureModel, { exact: true }).waitFor();
+    await page.getByRole('textbox', { name: 'Message WrongStack' }).waitFor();
+    // Configure the ordinary chat cases explicitly; the composer exercise below
+    // separately verifies the profile's automatic refinement workflow.
+    await page.locator('.composer-options').getByLabel('Composer options', { exact: true }).click();
+    await page.getByRole('checkbox', { name: 'Refine before sending', exact: true }).uncheck();
     await waitFor(
-      () =>
-        page.evaluate(
-          () =>
-            document.documentElement.dataset.mode === 'light' &&
-            document.documentElement.dataset.accent === 'blue-navy',
-        ),
-      'Appearance survives UI restart',
+      async () =>
+        !(await page
+          .getByRole('checkbox', { name: 'Refine before sending', exact: true })
+          .isChecked()),
+      'Explicit direct-send preference',
     );
-    await page
-      .locator('.chat-message.assistant')
-      .filter({ hasText: fixtureText })
-      .first()
-      .waitFor();
-    await page
-      .getByRole('navigation', { name: 'Main navigation' })
-      .getByRole('button', { name: 'Mission control' })
-      .click();
-    await page.getByRole('heading', { name: 'Mission control.' }).waitFor();
-    assert.equal(await page.locator('.session-card').count(), 4);
-    await page
-      .getByRole('navigation', { name: 'Main navigation' })
-      .getByRole('button', { name: 'Projects' })
-      .click();
-    await page.getByRole('heading', { name: 'Your projects.' }).waitFor();
-    assert.equal(await page.locator('.project-card').count(), 3);
-    await page
-      .getByRole('navigation', { name: 'Main navigation' })
-      .getByRole('button', { name: 'Activity' })
-      .click();
-    assert.equal(await page.locator('.timeline > button').count(), 4);
-    await page.keyboard.press('Control+k');
-    await page.getByRole('dialog').waitFor();
-    await page.getByLabel('Search projects and sessions').fill('Project Beta');
-    await page.getByRole('dialog').getByRole('button', { name: 'Project Beta' }).click();
-    await page.getByRole('heading', { name: 'Project Beta.' }).waitFor();
-    await page.setViewportSize({ width: 800, height: 640 });
+    await page.locator('.composer-options').getByLabel('Composer options', { exact: true }).click();
     assert.equal(
-      await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
-      false,
+      await page.getByRole('button', { name: 'Configure provider', exact: true }).count(),
+      0,
     );
-    await page.screenshot({ path: join(artifactDir, 'native-compact.png'), fullPage: true });
-    await page.setViewportSize({ width: 1480, height: 960 });
-    await page
-      .getByRole('navigation', { name: 'Main navigation' })
-      .getByRole('button', { name: 'Mission control' })
-      .click();
-    await page.screenshot({ path: join(artifactDir, 'native-fleet.png'), fullPage: true });
-    // A new engine process must decrypt and use the saved connection, without setup.
-    const fresh = await rpc('session.open', {
-      projectId: a.id,
-      kind: 'agent',
-      title: 'Saved provider proof',
-    });
-    sessions.push(fresh.id);
-    const freshIdentity = await waitFor(
-      async () => {
-        const info = await rpc('engine.identity', { id: fresh.id });
-        return info.sessionId && info.provider === 'desktop-local' && !info.needsSetup
-          ? info
-          : null;
-      },
-      'New engine loads the encrypted provider',
-      100000,
-    );
-    await page.locator('.session-card-main').filter({ hasText: 'Saved provider proof' }).click();
-    await page.locator(`[data-engine-session="${freshIdentity.sessionId}"]`).waitFor();
     await page
       .getByRole('textbox', { name: 'Message WrongStack' })
-      .fill('Confirm the saved native provider connection. Do not call tools.');
-    const previousCalls = providerFixture.calls.length;
+      .fill('Reply with the native connection verification sentence. Do not call tools.');
     await page.getByRole('button', { name: 'Send message', exact: true }).click();
     await page
       .locator('.chat-message.assistant')
       .filter({ hasText: fixtureText })
       .first()
       .waitFor({ timeout: 60000 });
-    assert.ok(
-      providerFixture.calls.length > previousCalls,
-      'Fresh engine made an authenticated provider request',
+    await waitFor(
+      async () => !(await page.getByRole('button', { name: 'Stop run', exact: true }).count()),
+      'Native streamed run completion',
+      60000,
     );
-    console.log('PASS: new engine process decrypts and uses the saved provider');
-    assert.deepEqual(errors, []);
-    result = {
-      result: 'PASS',
-      binary: release ? 'release' : 'debug',
-      bundledEngine: bundled,
-      portableChecksumsVerified: bundled,
-      portableIdentity,
-      noBunOnPath: bundled,
-      nativeUi: true,
-      concurrentPtys: 3,
-      multiProject: true,
-      reload: true,
-      appRestart: true,
-      nativeEngineSession: true,
-      noWebuiWindow: true,
-      nativeFileRead: true,
-      coreSessionReattach: true,
-      persistentSessionTabs: true,
-      sessionDraftIsolation: true,
-      engineEndpointNotExposed: true,
-      workspaceNavigation: true,
-      nativeCompactLayout: true,
-      nativeProviderOnboarding: true,
-      encryptedProviderVault: true,
-      providerCredentialNotJournaled: true,
-      localProviderStream: true,
-      providerFailureAcknowledged: true,
-      savedProviderNewEngine: true,
-      nativeMarkdown: true,
-      nativeCopy: true,
-      nativeProjectLinks: true,
-      realClarifySubmitAndCancel: true,
-      pendingInputReload: true,
-      inputDraftIsolation: true,
-      nativeAppearance: true,
-      appearancePersistence: true,
-      multiProjectNavigation: true,
-      nativeWorkspaceManagement: true,
-      projectWorkspacesWithoutSessions: true,
-      companionHostCompatibility: companion,
-      projectMemoryGraph: true,
-      sageStructuredLibraryAndLifecycleFilter: true,
-      projectKanbanDrag: true,
-      kanbanBoardListAndTaskDetails: true,
-      codeAtlasIndexAndDrilldown: true,
-      atlasSubsystemMatrixAndImpactViews: true,
-      projectAutomationWithoutSessions: true,
-      separateWrongStackSettings: true,
-      nativeFileManager: true,
-      nativeFileEvidenceDrawer: true,
-      nativeFileMutationsAndConflict: true,
-      nativeGitStageUnstageReview: true,
-      sageReviewDoctorAudienceRetrieval: true,
-      atlasDetailedAnalysis: true,
-      projectChronicleEvidence: true,
-      repositoryCommitHistory: true,
-      nativeCodeAssist: true,
-      nativeSkillLibrary: true,
-      artifacts: artifactDir,
-    };
-  } else {
-    assert.deepEqual(errors, []);
-    result = {
-      result: 'PASS',
-      scope: 'composer',
-      portableIdentity,
-      bundledEngine: bundled,
-      portableChecksumsVerified: bundled,
-      nativeComposer: true,
-      nativeAttachments: true,
-      projectPromptResources: true,
-      nativeFileAndSkillMentions: true,
-      sessionContextInspector: true,
-      nativeConversationForms: true,
-      sessionModelAndEffort: true,
-      persistentPromptQueue: true,
-      btwMailbox: true,
-      stopAndSteer: true,
-      refinementPreviewAndApproval: true,
-      compactComposer: true,
-      companionHostCompatibility: companion,
-      artifacts: artifactDir,
-    };
+    assert.ok(providerFixture.calls.some((call) => call.authorized && call.stream === true));
+    await exerciseNativeConversation({ page, identity, artifactDir, waitFor, providerFixture });
+    await exerciseNativeComposer({
+      page,
+      identity,
+      agent,
+      rpc,
+      artifactDir,
+      waitFor,
+      providerFixture,
+    });
+    await exerciseNativeComposerResources({
+      page,
+      project: a,
+      otherProject: b,
+      identity,
+      agent,
+      rpc: workspaceRpc,
+      engineRpc: rpc,
+      artifactDir,
+      waitFor,
+      providerFixture,
+    });
+    await exerciseNativeAttachments({ page, agent, rpc, artifactDir, waitFor, providerFixture });
+    await exerciseNativeApprovals({ page, agent, rpc, artifactDir, waitFor, providerFixture });
+    await exerciseNativeNextSteps({ page, artifactDir, waitFor, providerFixture });
+    if (!composerOnly) {
+      const views = () => page.getByRole('navigation', { name: 'Agent workspace views' });
+      const assistSessions = (await rpc('snapshot')).sessions.length;
+      await views().getByRole('button', { name: 'Files', exact: true }).click();
+      await page.getByRole('treeitem', { name: 'README.md', exact: true }).click();
+      if (await page.getByRole('button', { name: 'Expand file details', exact: true }).count())
+        await page.getByRole('button', { name: 'Expand file details', exact: true }).click();
+      await page
+        .locator('.file-evidence-drawer')
+        .getByRole('button', { name: 'Ask AI', exact: true })
+        .click();
+      await page.getByLabel('Code analysis preset', { exact: true }).selectOption('overview');
+      const assistCalls = providerFixture.calls.length;
+      await page.getByRole('button', { name: 'Run analysis', exact: true }).click();
+      await page
+        .locator('.code-assist-answer')
+        .filter({ hasText: fixtureText })
+        .waitFor({ timeout: 60000 });
+      assert.ok(
+        providerFixture.calls.length > assistCalls,
+        'Code Assist makes a real authenticated provider call',
+      );
+      assert.equal(
+        (await rpc('snapshot')).sessions.length,
+        assistSessions,
+        'Code Assist does not create a desktop conversation',
+      );
+      await page.screenshot({ path: join(artifactDir, 'native-code-assist.png'), fullPage: true });
+      console.log(
+        'PASS: desktop Code Assist runs through the real provider without creating a conversation',
+      );
+      await page.locator('.project-item').filter({ hasText: a.name }).click();
+      await page
+        .getByRole('navigation', { name: `${a.name} workspace` })
+        .getByRole('button', { name: 'Files', exact: true })
+        .click();
+      await page.getByRole('treeitem', { name: 'README.md', exact: true }).click();
+      if (await page.getByRole('button', { name: 'Expand file details', exact: true }).count())
+        await page.getByRole('button', { name: 'Expand file details', exact: true }).click();
+      await page
+        .locator('.file-evidence-drawer')
+        .getByRole('button', { name: 'Ask AI', exact: true })
+        .click();
+      await page.getByRole('button', { name: 'Run analysis', exact: true }).click();
+      await page
+        .locator('.code-assist-answer')
+        .filter({ hasText: fixtureText })
+        .waitFor({ timeout: 60000 });
+      assert.equal(
+        (await rpc('snapshot')).sessions.length,
+        assistSessions,
+        'Project Code Assist stays session-free',
+      );
+      await page.locator('.tree-session').filter({ hasText: 'WrongStack engine proof' }).click();
+      console.log(
+        'PASS: project Code Assist uses saved profile configuration without a conversation',
+      );
+      await exerciseNativeTaskExecution({
+        page,
+        rpc: workspaceRpc,
+        project: a,
+        waitFor,
+        artifactDir,
+        providerFixture,
+      });
+      await page.locator('.tree-session').filter({ hasText: 'WrongStack engine proof' }).click();
+      await views().getByRole('button', { name: 'Settings', exact: true }).click();
+      await page
+        .locator(`#native-model-catalog option[value="${fixtureModel}"]`)
+        .waitFor({ state: 'attached' });
+      assert.equal(
+        await page.getByLabel('Default provider', { exact: true }).inputValue(),
+        'desktop-local',
+        'Provider selection hydrates after settings remount',
+      );
+      assert.equal(
+        await page.getByLabel('Default model', { exact: true }).inputValue(),
+        fixtureModel,
+        'Saved model survives asynchronous journal replay',
+      );
+      assert.equal(await page.getByLabel('Provider API key', { exact: true }).inputValue(), '');
+      await page.locator('.saved-key code').filter({ hasText: '…7654' }).waitFor();
+      assert.ok(
+        !(await page.content()).includes(fixtureKey),
+        'The saved credential is never reflected in renderer markup',
+      );
+      // A duplicate is a real backend refusal, not a client-only validation error.
+      await page.getByRole('button', { name: 'Custom endpoint', exact: true }).click();
+      await fillConnection();
+      await page.getByRole('button', { name: 'Save and use provider', exact: true }).click();
+      await page.getByRole('alert').filter({ hasText: 'already exists' }).waitFor();
+      assert.equal(await page.getByLabel('Provider API key', { exact: true }).inputValue(), '');
+      // Exercise the vault-backed key.add route as well as provider.add.
+      await page.getByRole('button', { name: 'Provider API key', exact: true }).click();
+      await page.getByLabel('Credential provider', { exact: true }).selectOption('desktop-local');
+      await page.getByLabel('Provider API key', { exact: true }).fill(fixtureKey);
+      await page.getByLabel('Key label', { exact: true }).fill('desktop');
+      await page.getByRole('button', { name: 'Save API key', exact: true }).click();
+      await page.locator('.provider-result.saved').waitFor();
+      assert.equal(await page.getByLabel('Provider API key', { exact: true }).inputValue(), '');
+      await page.setViewportSize({ width: 800, height: 640 });
+      assert.equal(
+        await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
+        false,
+      );
+      await page.screenshot({
+        path: join(artifactDir, 'native-provider-compact.png'),
+        fullPage: true,
+      });
+      await page.setViewportSize({ width: 1480, height: 960 });
+      const profileDirs = (
+        await readdir(join(dir, 'wrongstack/profiles'), { withFileTypes: true })
+      ).filter((entry) => entry.isDirectory());
+      assert.equal(profileDirs.length, 1, 'A single isolated test profile');
+      const savedConfig = await readFile(
+        join(dir, 'wrongstack/profiles', profileDirs[0].name, 'config.json'),
+        'utf8',
+      );
+      assert.ok(savedConfig.includes('desktop-local'), 'Provider configuration is persisted');
+      assert.ok(!savedConfig.includes(fixtureKey), 'Provider keys must be encrypted at rest');
+      const journal = await readFile(join(dir, 'transcripts', `${agent.id}.events.jsonl`), 'utf8');
+      assert.ok(
+        !journal.includes(fixtureKey),
+        'Provider credentials must never enter the engine journal',
+      );
+      console.log(
+        'PASS: native provider onboarding, encrypted vault, streamed local chat, and backend failure handling',
+      );
+      await page.getByRole('button', { name: 'Back to conversation', exact: true }).click();
+      await page
+        .getByRole('navigation', { name: 'Agent workspace views' })
+        .getByRole('button', { name: 'Chat', exact: true })
+        .click();
+      await page.screenshot({ path: join(artifactDir, 'native-agent.png'), fullPage: true });
+      await waitFor(async () => {
+        const saved = JSON.parse((await rpc('snapshot')).layout ?? '{}');
+        return (
+          saved.section === 'fleet' &&
+          saved.selected === agent.id &&
+          saved.openSessionIds?.includes(agent.id) &&
+          saved.openSessionIds?.includes(second.id)
+        );
+      }, 'Persisted native session tabs');
+      await stopUi();
+      await launch();
+      assert.equal(
+        (await rpc('engine.identity', { id: agent.id })).sessionId,
+        identity.sessionId,
+        'UI restart must retain the same core session',
+      );
+      await page
+        .locator('.session-tab-label')
+        .filter({ hasText: 'WrongStack engine proof' })
+        .click();
+      assert.equal(await page.locator('.session-tab').count(), 3);
+      await page.locator('[data-engine-session="' + identity.sessionId + '"]').waitFor();
+      await page.locator('.model-selector').getByText(fixtureModel, { exact: true }).waitFor();
+      await waitFor(
+        () =>
+          page.evaluate(
+            () =>
+              document.documentElement.dataset.mode === 'light' &&
+              document.documentElement.dataset.accent === 'blue-navy',
+          ),
+        'Appearance survives UI restart',
+      );
+      await page
+        .locator('.chat-message.assistant')
+        .filter({ hasText: fixtureText })
+        .first()
+        .waitFor();
+      await page
+        .getByRole('navigation', { name: 'Main navigation' })
+        .getByRole('button', { name: 'Mission control' })
+        .click();
+      await page.getByRole('heading', { name: 'Mission control.' }).waitFor();
+      assert.equal(await page.locator('.session-card').count(), 4);
+      await page
+        .getByRole('navigation', { name: 'Main navigation' })
+        .getByRole('button', { name: 'Projects' })
+        .click();
+      await page.getByRole('heading', { name: 'Your projects.' }).waitFor();
+      assert.equal(await page.locator('.project-card').count(), 3);
+      await page
+        .getByRole('navigation', { name: 'Main navigation' })
+        .getByRole('button', { name: 'Activity' })
+        .click();
+      assert.equal(await page.locator('.timeline > button').count(), 4);
+      await page.keyboard.press('Control+k');
+      await page.getByRole('dialog').waitFor();
+      await page.getByLabel('Search projects and sessions').fill('Project Beta');
+      await page.getByRole('dialog').getByRole('button', { name: 'Project Beta' }).click();
+      await page.getByRole('heading', { name: 'Project Beta.' }).waitFor();
+      await page.setViewportSize({ width: 800, height: 640 });
+      assert.equal(
+        await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
+        false,
+      );
+      await page.screenshot({ path: join(artifactDir, 'native-compact.png'), fullPage: true });
+      await page.setViewportSize({ width: 1480, height: 960 });
+      await page
+        .getByRole('navigation', { name: 'Main navigation' })
+        .getByRole('button', { name: 'Mission control' })
+        .click();
+      await page.screenshot({ path: join(artifactDir, 'native-fleet.png'), fullPage: true });
+      // A new engine process must decrypt and use the saved connection, without setup.
+      const fresh = await rpc('session.open', {
+        projectId: a.id,
+        kind: 'agent',
+        title: 'Saved provider proof',
+      });
+      sessions.push(fresh.id);
+      const freshIdentity = await waitFor(
+        async () => {
+          const info = await rpc('engine.identity', { id: fresh.id });
+          return info.sessionId && info.provider === 'desktop-local' && !info.needsSetup
+            ? info
+            : null;
+        },
+        'New engine loads the encrypted provider',
+        100000,
+      );
+      await page.locator('.session-card-main').filter({ hasText: 'Saved provider proof' }).click();
+      await page.locator(`[data-engine-session="${freshIdentity.sessionId}"]`).waitFor();
+      await page
+        .getByRole('textbox', { name: 'Message WrongStack' })
+        .fill('Confirm the saved native provider connection. Do not call tools.');
+      const previousCalls = providerFixture.calls.length;
+      await page.getByRole('button', { name: 'Send message', exact: true }).click();
+      await page
+        .locator('.chat-message.assistant')
+        .filter({ hasText: fixtureText })
+        .first()
+        .waitFor({ timeout: 60000 });
+      assert.ok(
+        providerFixture.calls.length > previousCalls,
+        'Fresh engine made an authenticated provider request',
+      );
+      console.log('PASS: new engine process decrypts and uses the saved provider');
+      assert.deepEqual(errors, []);
+      result = {
+        result: 'PASS',
+        binary: release ? 'release' : 'debug',
+        bundledEngine: bundled,
+        portableChecksumsVerified: bundled,
+        portableIdentity,
+        noBunOnPath: bundled,
+        nativeUi: true,
+        concurrentPtys: 3,
+        multiProject: true,
+        reload: true,
+        appRestart: true,
+        nativeEngineSession: true,
+        noWebuiWindow: true,
+        nativeFileRead: true,
+        coreSessionReattach: true,
+        persistentSessionTabs: true,
+        sessionDraftIsolation: true,
+        engineEndpointNotExposed: true,
+        workspaceNavigation: true,
+        nativeCompactLayout: true,
+        nativeProviderOnboarding: true,
+        encryptedProviderVault: true,
+        providerCredentialNotJournaled: true,
+        localProviderStream: true,
+        providerFailureAcknowledged: true,
+        savedProviderNewEngine: true,
+        nativeMarkdown: true,
+        nativeCopy: true,
+        nativeProjectLinks: true,
+        realClarifySubmitAndCancel: true,
+        pendingInputReload: true,
+        inputDraftIsolation: true,
+        nativeAppearance: true,
+        appearancePersistence: true,
+        multiProjectNavigation: true,
+        nativeWorkspaceManagement: true,
+        projectWorkspacesWithoutSessions: true,
+        companionHostCompatibility: companion,
+        projectMemoryGraph: true,
+        sageStructuredLibraryAndLifecycleFilter: true,
+        projectKanbanDrag: true,
+        kanbanBoardListAndTaskDetails: true,
+        codeAtlasIndexAndDrilldown: true,
+        atlasSubsystemMatrixAndImpactViews: true,
+        projectAutomationWithoutSessions: true,
+        separateWrongStackSettings: true,
+        nativeFileManager: true,
+        nativeFileEvidenceDrawer: true,
+        nativeFileMutationsAndConflict: true,
+        nativeGitStageUnstageReview: true,
+        sageReviewDoctorAudienceRetrieval: true,
+        atlasDetailedAnalysis: true,
+        projectChronicleEvidence: true,
+        repositoryCommitHistory: true,
+        nativeCodeAssist: true,
+        nativeSkillLibrary: true,
+        artifacts: artifactDir,
+      };
+    } else {
+      assert.deepEqual(errors, []);
+      result = {
+        result: 'PASS',
+        scope: 'composer',
+        portableIdentity,
+        bundledEngine: bundled,
+        portableChecksumsVerified: bundled,
+        nativeComposer: true,
+        nativeAttachments: true,
+        nativeToolApprovals: true,
+        nativeNextSteps: true,
+        projectPromptResources: true,
+        nativeFileAndSkillMentions: true,
+        sessionContextInspector: true,
+        nativeConversationForms: true,
+        sessionModelAndEffort: true,
+        persistentPromptQueue: true,
+        btwMailbox: true,
+        stopAndSteer: true,
+        refinementPreviewAndApproval: true,
+        compactComposer: true,
+        companionHostCompatibility: companion,
+        artifacts: artifactDir,
+      };
+    }
   }
 } catch (error) {
   console.error('Native smoke failure:', error);

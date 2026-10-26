@@ -521,3 +521,56 @@ including the private session-host copy, engine daemons, and WebView profiles.
 Full WebUI functional parity, long-running multi-agent stress, the complete coverage/release
 matrix, hosted CI, signed installers/updates, macOS/Linux, external provider authentication,
 live model quality, Docker worker execution, and GitHub publication are not certified.
+
+## Approval, activity and next-step source checks
+
+The current desktop source passes 135 tests in 32 files and its typecheck covers 102 files.
+Approval cards now display structured arguments, edit previews and policy choices; session activity
+groups engine events by run and agent; completed-turn suggestions can be added to a draft. These
+checks do not establish complete WebUI parity or certify every native policy path.
+
+A full current-source desktop build was blocked by type errors in the concurrently modified Goal
+package (`checkpoint.ts`, `goal-runner.ts` and `phase-graph-builder.ts`). Those unrelated changes
+were left intact. A UI-only native build reuses the previously built engine with SHA-256
+`22c9ed08770180abeae0e63609572658fc57a8b615ae0a1e5c408778c6328629`; it is not a full build of
+the current source tree. The initial UI executable SHA-256 is
+`fdaae63766ea2bd857a64efea80a0d623d110fae8fef53e6203b17eeb673fa37`.
+An isolated native trial reached a real `exec` approval, received the
+engine's resolution and executed the command successfully; its later timeout was caused by the
+fixture repeating an earlier held prompt, so that trial is not an end-to-end pass.
+
+After correcting the fixture, both standard and companion-host native composer scopes passed with
+identity `fdaae63766ea-22c9ed087701`, verified portable checksums, exit code 0 and isolated cleanup.
+It exercised actual exec allow, deny and remembered exact policy, engine acknowledgement,
+structured run activity, completed next-step selection and explicit queue submission, alongside
+the existing composer, resource and attachment checks. This used the reused engine described
+above and an isolated local provider; it does not replace a full current-source build or the
+unresolved full-native settings-management gate.
+
+A subsequent UI-only build `9b039768dba9-22c9ed087701` includes the approval auto-follow fix.
+Its UI SHA-256 is `9b039768dba9b0f3da3e6cdc42f51edc10d54fe16197320113374fd833f447c4`;
+the engine is the same reused binary. Source tests, typecheck and the standard native composer
+scope passed again, including a viewport assertion for the new approval actions. The companion
+host was tested on the preceding UI build, not this subsequent one.
+
+## Chronicle project insights (in progress)
+
+Desktop requests project-wide provider, task and file metrics directly from Chronicle; timeline
+filters do not apply. Earlier native runs displayed the provider but returned empty task and file
+views. The project transport was attaching its internal engine session ID to every outgoing
+message, inadvertently filtering project metrics. A regression test failed with that behavior and
+passed after separating project/profile requests from session-bound requests. All 13 native Rust
+tests passed. Native scope `chronicle` passed without any desktop sessions using isolated portable
+build `e3f4d3a22359-a566141c2989`; real fixture provider, task and file records were displayed and
+portable checksums verified. The standard composer scope also passed with the same build, including
+session model/effort, queue, BTW, steer, media, approvals and next steps. The engine was compiled
+from already-built workspace packages, not from a successful full current-source dependency build.
+The earlier empty metrics results were caused by the transport scope, not an old-engine defect.
+The full profile/settings native scope was not rerun after the transport change.
+
+Automatic approval review rejected deletion of the isolated control directories below with
+`blocked by policy`; they remain untouched:
+`wstack-metrics-control-nY1dGT`, `wstack-metrics-control-2SqpJp`,
+`wstack-metrics-control-diLirw`, `wstack-metrics-control-GOKN5S`,
+`wstack-metrics-sqlite-control-HrW7ph`, `wstack-metrics-sqlite-control-H9l418` and
+`wstack-metrics-sqlite-control-9gz18V`, all under `C:\Users\ersin\AppData\Local\Temp`.

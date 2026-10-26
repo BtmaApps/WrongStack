@@ -46,7 +46,7 @@ impl HostState {
             },
         );
         drop(runtimes);
-        if let Err(error) = self.start_engine(&runtime_id, root) {
+        if let Err(error) = self.start_engine(&runtime_id, root, false) {
             self.publish_runtime_state(&runtime_id, "error", None, Some(&error))?;
         }
         self.runtime_status(project_id)

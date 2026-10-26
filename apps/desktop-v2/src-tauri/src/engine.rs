@@ -25,12 +25,37 @@ pub struct Engine {
     path: PathBuf,
 }
 
+fn scope_message(message: &mut Value, identity: &Value, bind_session: bool) {
+    if bind_session {
+        if let Some(id) = identity["sessionId"].as_str() {
+            if !message["payload"].is_object() {
+                message["payload"] = json!({});
+            }
+            message["payload"]["sessionId"] = json!(id);
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::Engine;
+    use super::{scope_message, Engine};
     use serde_json::json;
     use std::fs;
     use uuid::Uuid;
+
+    #[test]
+    fn project_requests_preserve_project_scope_and_session_requests_bind_identity() {
+        let identity = json!({"sessionId":"internal-session"});
+        let mut project = json!({"type":"chronicle.metrics","payload":{"view":"tasks"}});
+        scope_message(&mut project, &identity, false);
+        assert!(project["payload"].get("sessionId").is_none());
+        let mut selected = json!({"type":"chronicle.metrics","payload":{"sessionId":"explicit"}});
+        scope_message(&mut selected, &identity, false);
+        assert_eq!(selected["payload"]["sessionId"], "explicit");
+        let mut session = json!({"type":"user_message","payload":{"sessionId":"wrong"}});
+        scope_message(&mut session, &identity, true);
+        assert_eq!(session["payload"]["sessionId"], "internal-session");
+    }
 
     #[test]
     fn journal_reports_more_at_both_event_and_byte_limits() {
@@ -67,7 +92,7 @@ mod tests {
     }
 }
 impl Engine {
-    pub fn connect(port: u16, token: &str, path: &Path) -> Result<Arc<Self>> {
+    pub fn connect(port: u16, token: &str, path: &Path, bind_session: bool) -> Result<Arc<Self>> {
         let stream = TcpStream::connect_timeout(
             &format!("127.0.0.1:{port}").parse().map_err(err)?,
             Duration::from_millis(400),
@@ -108,12 +133,7 @@ impl Engine {
                 loop {
                     while let Ok(mut message) = receiver.try_recv() {
                         let identity = owner.identity.lock().map_err(err)?;
-                        if let Some(id) = identity["sessionId"].as_str() {
-                            if !message["payload"].is_object() {
-                                message["payload"] = json!({});
-                            }
-                            message["payload"]["sessionId"] = json!(id);
-                        }
+                        scope_message(&mut message, &identity, bind_session);
                         drop(identity);
                         socket
                             .send(Message::Text(message.to_string().into()))

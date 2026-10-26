@@ -1,5 +1,5 @@
+import { stripNextStepsBlock } from '@wrongstack/webui-protocol';
 import {
-  Check,
   ChevronDown,
   FolderCode,
   GitCompareArrows,
@@ -10,7 +10,6 @@ import {
   Settings2,
   Square,
   Workflow,
-  X,
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AttachmentPreview } from './ComposerAttachments';
@@ -18,7 +17,7 @@ import { CopyButton } from './CopyButton';
 import type { ComposerAttachment } from './composer-attachments';
 import { type ComposerFileReference, splitReferenceMessage } from './composer-resources-model';
 import { EngineDataView } from './EngineDataView';
-import { contentText, type EngineState, record } from './engine-state';
+import { type EngineState, record } from './engine-state';
 import { workspaceFilePath } from './file-model';
 import { InputRequestCard } from './InputRequestCard';
 import type { InputDraft } from './input-form-model';
@@ -26,7 +25,9 @@ import { MarkdownContent } from './MarkdownContent';
 import { markdownTarget } from './markdown-target';
 import { ProjectSessionTools } from './ProjectSessionTools';
 import { openExternal } from './platform';
+import { SessionActivity } from './SessionActivity';
 import { SessionComposer } from './SessionComposer';
+import { ToolApprovalCard } from './ToolApprovalCard';
 import type { ProjectPage } from './useDesktop';
 import { useEngine } from './useEngine';
 import { WorkspaceTools } from './WorkspaceTools';
@@ -94,7 +95,7 @@ export function EngineWorkspace({
   useEffect(() => {
     if (!state.inputs.length && following.current)
       end.current?.scrollIntoView({ block: 'nearest' });
-  }, [state.messages, state.inputs]);
+  }, [state.messages, state.inputs, state.approvals]);
   const resolved = state.results['user.input_resolved']?.['requestId'];
   useEffect(() => {
     if (typeof resolved === 'string') onInputDraftChange(`${id}:${resolved}`, null);
@@ -102,6 +103,15 @@ export function EngineWorkspace({
   const perform = (type: string, payload?: Record<string, unknown>) => {
     void send(type, payload).catch(onError);
   };
+  const recentEvents = state.activity.slice(
+    state.activity.findLastIndex((event) => event.type === 'run.result') + 1,
+  );
+  const liveTools = new Set(
+    recentEvents
+      .filter((event) => event.type === 'tool.started' || event.type === 'tool.executed')
+      .map((event) => event.payload['id'])
+      .filter((id) => typeof id === 'string'),
+  ).size;
   const openLink = useCallback(
     (url: string) => {
       const target = markdownTarget(url);
@@ -246,7 +256,7 @@ export function EngineWorkspace({
                   </header>
                   <div className={message.role === 'user' ? 'user-chat-body' : undefined}>
                     {message.role === 'assistant' ? (
-                      <MarkdownContent text={message.text} onLink={openLink} />
+                      <MarkdownContent text={stripNextStepsBlock(message.text)} onLink={openLink} />
                     ) : (
                       <UserComposerMessage text={message.text} />
                     )}
@@ -267,40 +277,38 @@ export function EngineWorkspace({
               />
             ))}
             {state.approvals.map((approval) => (
-              <article className="approval-card" key={String(approval['id'])}>
-                <span className="eyebrow">APPROVAL REQUIRED</span>
-                <h3>{String(approval['toolName'])}</h3>
-                <p>
-                  {String(
-                    approval['boundaryReason'] ??
-                      'WrongStack is requesting permission to run this tool.',
-                  )}
-                </p>
-                <pre>{JSON.stringify(approval['input'], null, 2)}</pre>
-                <div>
-                  <button
-                    type="button"
-                    className="button secondary"
-                    onClick={() =>
-                      perform('tool.confirm_result', { id: approval['id'], decision: 'no' })
-                    }
-                  >
-                    <X size={14} />
-                    Deny
-                  </button>
-                  <button
-                    type="button"
-                    className="button primary"
-                    onClick={() =>
-                      perform('tool.confirm_result', { id: approval['id'], decision: 'yes' })
-                    }
-                  >
-                    <Check size={14} />
-                    Allow once
-                  </button>
-                </div>
-              </article>
+              <ToolApprovalCard
+                key={String(approval['id'])}
+                approval={approval}
+                send={send}
+                connected={state.connected}
+              />
             ))}
+            {state.running &&
+              !state.inputs.length &&
+              recentEvents.some(
+                (event) =>
+                  ['tool.started', 'tool.progress', 'tool.executed'].includes(event.type) ||
+                  event.type === 'provider.thinking_delta' ||
+                  event.type === 'provider.retry',
+              ) && (
+                <details className="chat-run-activity">
+                  <summary>
+                    Run activity
+                    {liveTools
+                      ? ` · ${liveTools} ${liveTools === 1 ? 'tool call' : 'tool calls'}`
+                      : ''}
+                  </summary>
+                  <SessionActivity
+                    compact
+                    events={recentEvents}
+                    onOpenFile={(path) => {
+                      setFileTarget(path);
+                      setTab('files');
+                    }}
+                  />
+                </details>
+              )}
             {state.running && (
               <div className="agent-working">
                 <LoaderCircle size={13} className="spin" />
@@ -355,30 +363,13 @@ export function EngineWorkspace({
           )}
         </>
       ) : tab === 'activity' ? (
-        <div className="native-activity">
-          {state.activity.map((event, index) => (
-            <article key={index}>
-              <span
-                className={`status-dot ${event.type === 'tool.executed' && event.payload['ok'] === false ? 'error' : 'running'}`}
-              />
-              <div>
-                <strong>{String(event.payload['name'] ?? event.type.replaceAll('.', ' '))}</strong>
-                <p>
-                  {contentText(event.payload['output']) ||
-                    contentText(event.payload['text']) ||
-                    (event.payload['durationMs'] !== undefined
-                      ? `${event.payload['durationMs']} ms`
-                      : 'Agent activity')}
-                </p>
-              </div>
-            </article>
-          ))}
-          {!state.activity.length && (
-            <p className="quiet-state">
-              Tool calls and verification results appear here as the agent works.
-            </p>
-          )}
-        </div>
+        <SessionActivity
+          events={state.activity}
+          onOpenFile={(path) => {
+            setFileTarget(path);
+            setTab('files');
+          }}
+        />
       ) : tab === 'skills' || tab === 'files' || tab === 'changes' ? (
         <ProjectSessionTools
           projectId={projectId}
