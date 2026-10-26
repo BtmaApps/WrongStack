@@ -19,7 +19,7 @@ export function fileToolStats(
       // `read` right-aligns line numbers to a common width, so every line before
       // a digit-width boundary is emitted with leading spaces ("  1→…"). Anchor on
       // optional whitespace or those lines are silently dropped from the count.
-      const lines = result.text.split('\n').filter((line) => /^\s*\d+→/.test(line));
+      const lines = result.text.split(/\r?\n/).filter((line) => /^\s*\d+→/.test(line));
       // Summary, binary, PDF, and already-shown stubs have no numbered source lines.
       if (!lines.length) return undefined;
       return {
@@ -32,7 +32,7 @@ export function fileToolStats(
     return serializedReadStats(output);
   }
   if (name === 'write' && result?.created === true && typeof result.diff === 'string') {
-    const created = /^\+\+\+ [^\n]+\n\+ \(new file, (\d+) lines\)$/.exec(result.diff);
+    const created = /^\+\+\+ [^\r\n]+\r?\n\+ \(new file, (\d+) lines\)$/.exec(result.diff);
     if (created) return { addedLines: Number(created[1]), removedLines: 0, partial: false };
   }
   if (result && typeof result.diff === 'string' && result.diff.startsWith('--- ')) {
@@ -46,7 +46,7 @@ export function fileToolStats(
   // Serialized `write` for a new file: `write (… created=true)` followed by a
   // one-line diff whose marker names the exact size.
   if (name === 'write') {
-    const created = /\n\+\+\+ [^\n]+\n\+ \(new file, (\d+) lines\)/.exec(output);
+    const created = /\r?\n\+\+\+ [^\r\n]+\r?\n\+ \(new file, (\d+) lines\)/.exec(output);
     if (created) return { addedLines: Number(created[1]), removedLines: 0, partial: false };
   }
   return serializedDiffStats(output);
@@ -64,7 +64,7 @@ export function fileToolStats(
  * that need exactness prefer it.
  */
 function serializedReadStats(output: string): Record<string, unknown> | undefined {
-  const lines = output.split('\n');
+  const lines = output.split(/\r?\n/);
   let readLines = 0;
   for (const line of lines) if (/^\s*\d+→/.test(line)) readLines++;
   // Summary, binary, PDF, and already-shown stubs have no numbered source lines.
@@ -92,7 +92,7 @@ function serializedReadStats(output: string): Record<string, unknown> | undefine
  * are marked partial.
  */
 function serializedDiffStats(output: string): Record<string, unknown> | undefined {
-  const lines = output.split('\n');
+  const lines = output.split(/\r?\n/);
   let start = -1;
   for (let i = 0; i + 1 < lines.length; i++) {
     if (lines[i]!.startsWith('--- ') && lines[i + 1]!.startsWith('+++ ')) {
@@ -192,7 +192,7 @@ function patchFileDeltas(
   diff: string,
   strip: number,
 ): { files: PatchFileDelta[]; truncated: boolean } {
-  const lines = diff.split('\n');
+  const lines = diff.split(/\r?\n/);
   const files: PatchFileDelta[] = [];
   let current: PatchFileDelta | undefined;
   let inHunk = false;
@@ -203,9 +203,9 @@ function patchFileDeltas(
     if (!inHunk && line.startsWith('--- ') && lines[i + 1]?.startsWith('+++ ')) {
       // `/dev/null` is matched BEFORE stripping: `patch -p1` would otherwise
       // reduce it to `dev/null` and a deletion would be attributed to a file
-      // that does not exist.
-      const rawOld = line.slice(4).trim();
-      const rawNew = lines[i + 1]!.slice(4).trim();
+      // that does not exist. Strip optional GNU diff `\t<timestamp>` metadata.
+      const rawOld = line.slice(4).split('\t')[0]!.trim();
+      const rawNew = lines[i + 1]!.slice(4).split('\t')[0]!.trim();
       const path =
         rawNew === '/dev/null'
           ? stripComponents(rawOld, strip)
@@ -275,7 +275,7 @@ function countHunks(diff: string): { addedLines: number; removedLines: number } 
   let addedLines = 0;
   let removedLines = 0;
   let inHunk = false;
-  for (const line of diff.split('\n')) {
+  for (const line of diff.split(/\r?\n/)) {
     if (line.startsWith('@@ ')) {
       inHunk = true;
       continue;

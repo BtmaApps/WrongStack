@@ -318,4 +318,59 @@ describe('file tool numeric evidence', () => {
       partial: true,
     });
   });
+  it('parses multi-file CRLF unified diffs with blank context lines and GNU diff header timestamps', () => {
+    const crlfMultiPatch = [
+      '--- a/src/first.ts',
+      '+++ b/src/first.ts',
+      '@@ -1,3 +1,3 @@',
+      ' const x = 1;',
+      '',
+      '-const y = 2;',
+      '+const y = 3;',
+      '--- a/src/second.ts',
+      '+++ b/src/second.ts',
+      '@@ -1,1 +1,2 @@',
+      ' export const s = 1;',
+      '+export const t = 2;',
+    ].join('\r\n');
+    expect(
+      fileToolStats('patch', JSON.stringify({ applied: 2, rejected: 0 }), {
+        patch: crlfMultiPatch,
+      }),
+    ).toEqual({
+      addedLines: 2,
+      removedLines: 1,
+      partial: false,
+      patchFiles: [
+        { path: 'src/first.ts', addedLines: 1, removedLines: 1 },
+        { path: 'src/second.ts', addedLines: 1, removedLines: 0 },
+      ],
+    });
+
+    const gnuTimestampPatch = [
+      '--- a/src/deleted.ts\t2026-10-25 12:00:00.000000000 +0000',
+      '+++ /dev/null\t1970-01-01 00:00:00.000000000 +0000',
+      '@@ -1,2 +0,0 @@',
+      '-line1',
+      '-line2',
+      '--- a/src/modified.ts\t2026-10-25 12:00:00.000000000 +0000',
+      '+++ b/src/modified.ts\t2026-10-25 12:00:01.000000000 +0000',
+      '@@ -1,1 +1,1 @@',
+      '-old',
+      '+new',
+    ].join('\n');
+    expect(
+      fileToolStats('patch', JSON.stringify({ applied: 2, rejected: 0 }), {
+        patch: gnuTimestampPatch,
+      }),
+    ).toEqual({
+      addedLines: 1,
+      removedLines: 3,
+      partial: false,
+      patchFiles: [
+        { path: 'src/deleted.ts', addedLines: 0, removedLines: 2 },
+        { path: 'src/modified.ts', addedLines: 1, removedLines: 1 },
+      ],
+    });
+  });
 });
