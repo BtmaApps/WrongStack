@@ -123,6 +123,21 @@ describe('batch scanner finding normalization', () => {
     ]);
     expect(result.scannedFiles).toBe(1);
   });
+
+  it('normalizes ./ prefixes, whitespace, and echoed === file === section headers (F35)', async () => {
+    const dir = await project({ 'app.ts': 'eval(input);' });
+    const result = await scan(
+      dir,
+      reply([
+        { file: './app.ts', severity: 'high', title: 'DotSlash' },
+        { file: '  === app.ts ===  ', severity: 'critical', title: 'HeaderEcho' },
+      ]),
+    );
+    expect(result.findings.map((f) => ({ file: f.file, title: f.title }))).toEqual([
+      { file: 'app.ts', title: 'HeaderEcho' },
+      { file: 'app.ts', title: 'DotSlash' },
+    ]);
+  });
 });
 
 describe('scan inputs at the project boundary', () => {

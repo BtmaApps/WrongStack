@@ -171,6 +171,16 @@ describe('createSecuritySlashCommand', () => {
           reportOptions: { format: 'html' },
         }),
       );
+
+      orchestratorMocks.run.mockClear();
+      await cmd.run('scan --depth=quick --format=json', fakeCtx());
+      expect(orchestratorMocks.run).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          scanOptions: expect.objectContaining({ depth: 'quick' }),
+          reportOptions: { format: 'json' },
+        }),
+      );
     });
 
     it('uses default depth/format when not specified', async () => {

@@ -107,4 +107,16 @@ describe('GitignoreUpdater', () => {
     expect(result.added).toContain('security-reports/');
     expect(result.added).toContain('security-reports/*');
   });
+
+  it('deduplicates and trims entries on initial creation and subsequent updates (F35)', async () => {
+    const u = new GitignoreUpdater({
+      gitignorePath,
+      entries: [' security-reports/ ', 'security-reports/', 'security-reports/*', '   '],
+    });
+    const first = await u.update();
+    expect(first.added).toEqual(['security-reports/', 'security-reports/*']);
+    const second = await u.update();
+    expect(second.added).toEqual([]);
+    expect(await u.isEntryIgnored('  security-reports/  ')).toBe(true);
+  });
 });

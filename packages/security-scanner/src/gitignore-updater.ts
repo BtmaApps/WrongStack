@@ -27,7 +27,9 @@ export class GitignoreUpdater {
       const content = await readFile(this.options.gitignorePath, 'utf-8');
       const lines = new Set(content.split(/\r?\n/).map((l) => l.trim()));
 
-      for (const entry of this.options.entries) {
+      for (const rawEntry of this.options.entries) {
+        const entry = rawEntry.trim();
+        if (!entry) continue;
         if (lines.has(entry)) {
           existing.push(entry);
         } else {
@@ -50,10 +52,17 @@ export class GitignoreUpdater {
       }
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
-        // .gitignore doesn't exist, create it
-        const content = this.options.entries.join('\n') + '\n';
-        await atomicWrite(this.options.gitignorePath, content);
-        added.push(...this.options.entries);
+        try {
+          // .gitignore doesn't exist, create it with deduplicated trimmed entries
+          const uniqueEntries = [
+            ...new Set(this.options.entries.map((e) => e.trim()).filter(Boolean)),
+          ];
+          const content = uniqueEntries.length > 0 ? `${uniqueEntries.join('\n')}\n` : '';
+          await atomicWrite(this.options.gitignorePath, content);
+          added.push(...uniqueEntries);
+        } catch (writeErr) {
+          errors.push(`Failed to update .gitignore: ${writeErr}`);
+        }
       } else {
         errors.push(`Failed to update .gitignore: ${err}`);
       }
@@ -66,7 +75,7 @@ export class GitignoreUpdater {
     try {
       const content = await readFile(this.options.gitignorePath, 'utf-8');
       const lines = content.split(/\r?\n/).map((l) => l.trim());
-      return lines.includes(entry);
+      return lines.includes(entry.trim());
     } catch {
       return false;
     }

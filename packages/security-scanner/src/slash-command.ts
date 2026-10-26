@@ -402,7 +402,14 @@ function parseArgs(args: string): Record<string, string> {
     const part = parts[i];
     if (!part?.startsWith('--')) continue;
 
-    const key = part.slice(2);
+    const rawKey = part.slice(2);
+    const eqIndex = rawKey.indexOf('=');
+    if (eqIndex > 0) {
+      result[rawKey.slice(0, eqIndex)] = rawKey.slice(eqIndex + 1);
+      continue;
+    }
+
+    const key = rawKey;
     const next = parts[i + 1];
     if (next && !next.startsWith('--')) {
       result[key] = next;

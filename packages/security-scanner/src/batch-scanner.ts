@@ -263,13 +263,18 @@ export class BatchScanner {
             (item): item is NonNullable<typeof item> => typeof item === 'object' && item !== null,
           )
           .flatMap((item, idx): Finding[] => {
-            const rawFile =
-              typeof item.file === 'string' && item.file.trim().length > 0
+            const cleanedFile =
+              typeof item.file === 'string'
                 ? item.file
-                : defaultFile;
-            const normalizedFile = (
+                    .trim()
+                    .replace(/^===\s*(.*?)\s*===$/, '$1')
+                    .trim()
+                : '';
+            const rawFile = cleanedFile.length > 0 ? cleanedFile : defaultFile;
+            const relFile = (
               path.isAbsolute(rawFile) ? path.relative(opts.projectRoot, rawFile) : rawFile
             ).replace(/\\/g, '/');
+            const normalizedFile = path.posix.normalize(relFile).replace(/^\.\//, '');
             if (!scannedFiles.has(normalizedFile)) return [];
             const category = validCategories.includes(item.category as Finding['category'])
               ? (item.category as Finding['category'])
