@@ -127,6 +127,9 @@ export interface ProviderEventMap {
   /**
    * Fired once when a provider call ultimately fails (retries exhausted, or
    * non-retryable error). Same shape as `provider.retry` minus the delay.
+   * `retryable` is true when the failure is transient (timeout, 5xx, network,
+   * rate limit) so re-running the turn later can succeed; hosts gate their
+   * failed-run auto-resume on it.
    */
   'provider.error': {
     sessionId?: string | undefined;

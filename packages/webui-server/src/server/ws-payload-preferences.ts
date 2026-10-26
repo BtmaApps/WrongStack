@@ -4,6 +4,7 @@ import {
   type LimitsBudgetKey,
   type LimitsScalarKey,
   limitValueError,
+  streamWatchdogMsError,
 } from '@wrongstack/contracts/types';
 import { FORBIDDEN_PROTO_KEYS } from '@wrongstack/core/utils';
 import {
@@ -161,6 +162,24 @@ function validateLimitsValue(value: unknown, path: string): string | null {
     }
     if (!LIMITS_SCALAR_FIELDS.has(field)) return `${path} has unknown field: ${field}`;
     const error = limitValueError(field as LimitsScalarKey, v);
+    if (error) return `${path}.${field} ${error}`;
+  }
+  return null;
+}
+/**
+ * Stream watchdogs (`Config.modelRuntime.streaming`), sent whole. An absent
+ * field means the built-in default; `0` disables that watchdog.
+ */
+const STREAM_TIMEOUTS_PREF_KEYS = new Set(['streamTimeouts']);
+const STREAM_TIMEOUT_FIELDS: ReadonlySet<string> = new Set(['hangTimeoutMs', 'headersTimeoutMs']);
+
+/** Known fields only, each `0` or whole seconds inside the CLI's 1–3600 s range. */
+function validateStreamTimeoutsValue(value: unknown, path: string): string | null {
+  if (!isRecord(value)) return `${path} must be an object`;
+  for (const [field, v] of Object.entries(value)) {
+    if (!STREAM_TIMEOUT_FIELDS.has(field)) return `${path} has unknown field: ${field}`;
+    if (v === undefined) continue;
+    const error = streamWatchdogMsError(v);
     if (error) return `${path}.${field} ${error}`;
   }
   return null;
@@ -472,6 +491,9 @@ function validatePreferenceValue(key: string, value: unknown): string | null {
   if (LIMITS_PREF_KEYS.has(key)) {
     return validateLimitsValue(value, `prefs.update payload.${key}`);
   }
+  if (STREAM_TIMEOUTS_PREF_KEYS.has(key)) {
+    return validateStreamTimeoutsValue(value, `prefs.update payload.${key}`);
+  }
   if (TELEGRAM_CHAT_ID_PREF_KEYS.has(key)) {
     return validateTelegramChatId(value, `prefs.update payload.${key}`);
   }
@@ -513,6 +535,7 @@ export const VALIDATED_PREF_KEYS: ReadonlySet<string> = new Set<string>([
   ...MODEL_MATRIX_PREF_KEYS,
   ...MODEL_TIERS_PREF_KEYS,
   ...LIMITS_PREF_KEYS,
+  ...STREAM_TIMEOUTS_PREF_KEYS,
   ...SUBAGENT_MODEL_PLAN_PREF_KEYS,
   ...TELEGRAM_CHAT_ID_PREF_KEYS,
   ...Object.keys(ENUM_PREF_KEYS),

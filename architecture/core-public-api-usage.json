@@ -129,9 +129,9 @@
       "runtimeOrMixed": 14
     },
     "@wrongstack/core/security": {
-      "files": 266,
+      "files": 267,
       "typeOnly": 31,
-      "runtimeOrMixed": 238
+      "runtimeOrMixed": 239
     },
     "@wrongstack/core/session-catalog": {
       "files": 18,
@@ -8273,6 +8273,12 @@
     {
       "specifier": "@wrongstack/core/security",
       "file": "packages/webui-server/tests/start-webui-remediation.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/webui-server/tests/stream-timeouts-prefs.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

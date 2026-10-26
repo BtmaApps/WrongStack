@@ -103,6 +103,15 @@ export function seedContextMeta(config: Config, context: { meta: Record<string, 
     meta['reasoningPreserve'] = mr.reasoning?.preserve === true;
     meta['cacheTtl'] = mr.cache?.ttl ?? 'default';
   }
+  {
+    // Only the fields the user chose; an absent one means the built-in default.
+    const streaming = (config.modelRuntime?.streaming ?? {}) as Record<string, unknown>;
+    const streamTimeouts: Record<string, number> = {};
+    for (const field of ['hangTimeoutMs', 'headersTimeoutMs']) {
+      if (typeof streaming[field] === 'number') streamTimeouts[field] = streaming[field];
+    }
+    meta['streamTimeouts'] = streamTimeouts;
+  }
   // Refiner + TUI visual prefs — parity with the CLI server's seeding so the
   // SettingsPanel shows persisted values on the standalone server too.
   meta['refinerProvider'] = (autonomyCfg['refinerProvider'] as string) ?? '';

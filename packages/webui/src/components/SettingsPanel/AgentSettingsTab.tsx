@@ -7,6 +7,7 @@ import { useSessionStore } from '@/stores/session-store';
 import { ModelSelectDialog } from '../ModelSelectDialog';
 import { PreferenceSelect, PreferenceSlider } from './PreferenceControls';
 import { PreferenceToggle } from './PreferenceToggle';
+import { StreamTimeoutsSection } from './StreamTimeoutsSection';
 import { YoloConfirmList } from './YoloConfirmList';
 
 export function AgentSettingsTab({
@@ -284,6 +285,9 @@ export function AgentSettingsTab({
         />
         <p className="text-xs text-muted-foreground mt-2">{t('settings:agent.capsHint')}</p>
       </div>
+
+      {/* Stream watchdogs (modelRuntime.streaming) */}
+      <StreamTimeoutsSection syncPref={syncPref} />
     </div>
   );
 }

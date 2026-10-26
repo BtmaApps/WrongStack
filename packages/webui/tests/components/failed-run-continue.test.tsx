@@ -83,6 +83,11 @@ describe('autoTriggerMsFor', () => {
   it('gives plain failures the default 15s window', () => {
     expect(autoTriggerMsFor('Agent is already processing a request.')).toBe(15_000);
   });
+
+  it('doubles the window per automatic resume', () => {
+    expect(autoTriggerMsFor('Error: stream timeout', 2)).toBe(30_000);
+    expect(autoTriggerMsFor('Error: stream timeout', 3)).toBe(60_000);
+  });
 });
 
 describe('countdown', () => {
@@ -99,7 +104,8 @@ describe('countdown', () => {
     }
 
     expect(sendMessage).toHaveBeenCalledTimes(1);
-    expect(sendMessage.mock.calls[0]?.[0]).toContain('continue from where it stopped');
+    expect(sendMessage.mock.calls[0]?.[0]).toContain('Automatic resume 1 of 3');
+    expect(sendMessage.mock.calls[0]?.[0]).toContain('Chimera review: 2 findings');
     // Fired once — the button row is gone after the continuation is sent.
     expect(screen.queryByRole('button', { name: /Continue/ })).toBeNull();
   });
@@ -107,6 +113,26 @@ describe('countdown', () => {
   it('counts down from 15s on a plain failure', () => {
     renderWith();
     expect(continueButton().textContent).toContain('15s');
+  });
+
+  it('backs off on a later resume and numbers its prompt', async () => {
+    render(
+      <FailedRunContinue
+        text="Error: stream timeout"
+        timestamp={Date.now()}
+        autoArm
+        resumeAttempt={2}
+      />,
+    );
+    expect(continueButton().textContent).toContain('30s');
+    for (let step = 0; step < 30; step += 1) {
+      await act(async () => {
+        vi.advanceTimersByTime(1_000);
+      });
+    }
+    expect(sendMessage).toHaveBeenCalledTimes(1);
+    expect(sendMessage.mock.calls[0]?.[0]).toContain('Automatic resume 2 of 3');
+    expect(sendMessage.mock.calls[0]?.[0]).toContain('(stream timeout)');
   });
 
   it('cancel disarms the auto-fire but keeps the manual button', async () => {

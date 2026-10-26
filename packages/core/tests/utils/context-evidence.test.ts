@@ -59,6 +59,17 @@ describe('recordUserIntentEvidence', () => {
     );
   });
 
+  it('tells the leader to keep working instead of stopping to ask', () => {
+    const ctx = makeCtx();
+    recordUserIntentEvidence(ctx, 'Build the invoice export');
+    const text = buildMissionAnchorBlock(ctx)?.text ?? '';
+    expect(text).toContain('keep working');
+    expect(text).toContain('"should I continue?"');
+    expect(text).toContain('try a different approach before reporting a blocker');
+    // Persistence never overrides the done-means-stop rule.
+    expect(text).toContain('stop immediately and deliver the final response');
+  });
+
   it('replaces the mission anchor when a new real user run starts', () => {
     const ctx = makeCtx();
     recordUserIntentEvidence(ctx, 'Implement the auth module');

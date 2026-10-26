@@ -1,3 +1,11 @@
+import {
+  DEFAULT_FAILED_RUN_RESUME_BASE_MS,
+  failedRunResumeDelayMs,
+  failedRunResumePrompt,
+  isResumableRunFailure,
+  MAX_FAILED_RUN_RESUMES,
+} from '@wrongstack/contracts/types/failed-run-resume';
+import type { RunResult } from '@wrongstack/contracts/types/run-result';
 import { color, estimateRequestTokensCalibrated } from '@wrongstack/core/utils';
 import {
   type AutoProceedLoopGuard,
@@ -6,6 +14,65 @@ import {
 import type { ReplOptions } from './repl-options.js';
 import { parseSuggestionsFromOutput } from './repl-suggestions.js';
 import { setAutoSuggestions, setSuggestions } from './services/suggestion-store.js';
+
+/**
+ * A run a provider killed on a transient failure (timeout, 5xx, dropped
+ * connection), and how many automatic resumes it has had in a row. An object
+ * the REPL holds, not loose `let`s: runs update it from inside callbacks,
+ * which control-flow narrowing cannot see.
+ */
+export interface FailedRunState {
+  pending: { reason: string } | null;
+  resumes: number;
+}
+
+export function createFailedRunState(): FailedRunState {
+  return { pending: null, resumes: 0 };
+}
+
+/** Record how a run ended: a completed run resets the count for the next outage. */
+export function noteFailedRun(state: FailedRunState, result: RunResult): void {
+  if (result.status === 'done') state.resumes = 0;
+  state.pending = isResumableRunFailure(result.status, result.error)
+    ? { reason: result.error?.message ?? '' }
+    : null;
+}
+
+/**
+ * Resume the pending failed run, waiting longer each time, or say why the
+ * resumes stopped once the budget is spent. True when a resume was submitted.
+ */
+export async function resumeFailedRun(
+  opts: ReplOptions,
+  state: FailedRunState,
+  ctrl: AbortController,
+  loopGuard: AutoProceedLoopGuard,
+  onRunResult: (result: RunResult) => void,
+): Promise<boolean> {
+  const reason = state.pending?.reason ?? '';
+  state.pending = null;
+  if (state.resumes >= MAX_FAILED_RUN_RESUMES) {
+    opts.renderer.writeWarning(
+      `Auto-proceed paused: the run failed on a provider error ${MAX_FAILED_RUN_RESUMES + 1} times in a row. ` +
+        'Switch the model (/model) or add a fallback (/fallback), then enter input to continue. Autonomy stays on.',
+    );
+    return false;
+  }
+  state.resumes += 1;
+  const delay = failedRunResumeDelayMs(
+    state.resumes,
+    Math.max(opts.autoProceedDelayMs ?? 0, DEFAULT_FAILED_RUN_RESUME_BASE_MS),
+  );
+  return runAutoProceed(
+    opts,
+    failedRunResumePrompt(state.resumes, reason),
+    delay,
+    ctrl,
+    loopGuard,
+    false,
+    onRunResult,
+  );
+}
 
 /**
  * Run the full auto-proceed cycle: countdown, feed suggestion to agent,
@@ -28,6 +95,8 @@ export async function runAutoProceed(
    * halt only fires if the board stays frozen after that steer.
    */
   grounded = false,
+  /** Sees every run this feeds, so the caller can track provider failures. */
+  onRunResult?: (result: RunResult) => void,
 ): Promise<boolean> {
   const truncated = suggestion.length > 80 ? `${suggestion.slice(0, 77)}…` : suggestion;
   console.log(
@@ -102,6 +171,7 @@ export async function runAutoProceed(
       signal: ctrl.signal,
       inputOrigin: 'continuation',
     });
+    onRunResult?.(runResult);
     console.log(
       JSON.stringify({
         level: 'info',

@@ -121,6 +121,11 @@ export interface LocalPrefs {
     subagentDefaultBudget?: { maxIterations?: number; maxToolCalls?: number; timeoutMs?: number };
   };
   /**
+   * Stream watchdogs (`Config.modelRuntime.streaming`), in ms. An unset field
+   * means the built-in default; `0` disables that watchdog.
+   */
+  streamTimeouts: { hangTimeoutMs?: number; headersTimeoutMs?: number };
+  /**
    * Deterministic cost tiers. A level binds a fallback profile, a spend budget
    * and runtime overrides under one name; `routing` maps a role/phase/`*` to a
    * level; `leader` governs how much authority the leader has over its own tier.
@@ -437,6 +442,7 @@ export const DEFAULTS: LocalPrefsData = {
   subagentModelPlan: { enabled: true, lock: true, followSessionModel: false, slots: [] },
   modelTiers: {},
   limits: {},
+  streamTimeouts: {},
   fallbackAuto: true,
   modelAvailabilitySchedule: [],
   featureMcp: true,

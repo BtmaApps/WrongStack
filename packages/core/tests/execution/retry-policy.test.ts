@@ -31,6 +31,16 @@ describe('DefaultRetryPolicy', () => {
     }
   });
 
+  it('retries a hung stream once: each attempt already cost a watchdog window', () => {
+    const err = new ProviderError('stream stalled', 599, true, 'x');
+    expect(err.kind).toBe('stream_hang');
+    expect(p.maxAttempts(err)).toBe(1);
+    expect(p.shouldRetry(err, 0)).toBe(true);
+    expect(p.shouldRetry(err, 1)).toBe(false);
+    // A plain 408 fails fast and keeps the ordinary budget.
+    expect(p.maxAttempts(new ProviderError('timeout', 408, true, 'x'))).toBe(MODEL_RETRIES);
+  });
+
   it('never replays a depleted quota against the same model', () => {
     // quota_exhausted IS fallback-worthy: skipping the in-place retries hands
     // the error straight to the chain instead of delaying the hop.

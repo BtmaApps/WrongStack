@@ -18,7 +18,7 @@
 
 import { EventBus } from '@wrongstack/contracts/kernel/events';
 import type { Config } from '@wrongstack/contracts/types/config';
-import { ProviderError } from '@wrongstack/contracts/types/provider';
+import { ProviderError, StreamHangError } from '@wrongstack/contracts/types/provider';
 import { describe, expect, it, vi } from 'vitest';
 import { createFallbackModelExtension } from '../../src/core/fallback-model.js';
 import { runProviderWithRetry } from '../../src/core/provider-runner.js';
@@ -158,5 +158,65 @@ describe('retry MODEL_RETRIES times, then the next model in the chain', () => {
     expect(calls.filter((c) => c === 'p1/m1')).toHaveLength(budget);
     expect(calls.filter((c) => c === 'p2/m2')).toHaveLength(budget);
     expect(calls.filter((c) => c === 'p3/m3')).toHaveLength(budget);
+  });
+});
+
+describe('a hung stream hands the turn to the fallback chain', () => {
+  it('retries a hanging primary once, then answers from the next model', async () => {
+    // Every call to p1 stalls past the watchdog. At MODEL_RETRIES each of those
+    // calls cost a whole watchdog window, so the chain was reached minutes late.
+    const calls: string[] = [];
+    const build = (id: string) =>
+      ({
+        id,
+        capabilities: { maxContext: 200_000, streaming: false },
+        complete: async (req: { model: string }) => {
+          calls.push(`${id}/${req.model}`);
+          if (id === 'p1') {
+            throw new StreamHangError({
+              providerId: id,
+              model: req.model,
+              hangTimeoutMs: 60_000,
+              bytesReceived: 0,
+              elapsedMs: 60_000,
+            });
+          }
+          return { content: [{ type: 'text', text: 'ok' }], usage: {} };
+        },
+      }) as never;
+    const events = new EventBus();
+    const fallbacks: Array<{ from: { model: string }; to: { model: string } }> = [];
+    events.on('provider.fallback', (e) => fallbacks.push(e));
+    const retry = new DefaultRetryPolicy();
+    vi.spyOn(retry, 'delayMs').mockReturnValue(0);
+    const ext = createFallbackModelExtension({
+      getConfig: () => config,
+      buildProvider: (id) => build(id),
+      events,
+      logger,
+    });
+    const ctx = { provider: build('p1'), model: 'm1', session: { id: 's1' } } as never as {
+      provider: { id: string };
+      model: string;
+    };
+    const inner = (c: typeof ctx, request: { model: string }) =>
+      runProviderWithRetry({
+        provider: c.provider as never,
+        request: { ...request, messages: [] } as never,
+        signal: new AbortController().signal,
+        ctx: c as never,
+        events,
+        retry,
+        logger,
+      });
+
+    const result = await (ext.wrapProviderRunner as any)(ctx, { model: 'm1' }, inner);
+
+    // One retry on the hanging model, then the chain.
+    expect(calls).toEqual(['p1/m1', 'p1/m1', 'p2/m2']);
+    expect(result).toMatchObject({ content: [{ type: 'text', text: 'ok' }] });
+    expect(ctx.model).toBe('m2');
+    expect(fallbacks).toHaveLength(1);
+    expect(fallbacks[0]).toMatchObject({ from: { model: 'm1' }, to: { model: 'm2' } });
   });
 });

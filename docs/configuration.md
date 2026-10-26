@@ -1062,6 +1062,42 @@ The TUI `/settings` picker and WebUI Settings panel expose the top-level
 reasoning and cache controls. Use `modelMatrix[*].modelRuntime` for
 role-specific subagent overrides.
 
+### Stream timeouts (`modelRuntime.streaming`)
+
+Two watchdogs end a model call that has gone silent:
+
+| Field | Default | What it bounds |
+|---|---|---|
+| `hangTimeoutMs` | 60s (240s on MiniMax and Z.AI) | Silence between two chunks of a streaming response |
+| `headersTimeoutMs` | 60s (180s on MiniMax and Z.AI) | Wait for the response headers |
+
+Values are whole seconds in milliseconds, 1–3600 seconds. `0` turns a watchdog
+off, so a dead connection is never detected and only Esc ends the turn. Raise
+them for models that think silently for a long time.
+
+Set them with `/settings stream-watchdog <gap|off> [headers|off]` in the CLI and
+TUI, or in WebUI under Settings → Agent → Stream timeouts. A change reaches the
+providers built after it (a model switch, a fallback hop, a new session), not the
+connection already in use.
+
+### What happens when a model call fails
+
+1. **Retries on the same model.** Rate limits, overloads, 5xx, network errors
+   and HTTP 408 get 3 retries with growing backoff. A stream the watchdog
+   declared hung gets 1, because each attempt already took a whole watchdog
+   window.
+2. **Fallback.** The turn moves to the next model of the fallback chain
+   (`fallbackBridge`, `fallbackModels`, the selected profile, then the automatic
+   chain while `fallbackAuto` is on). With only one keyed provider and model
+   there is nothing to move to.
+3. **Automatic resume.** In `auto` autonomy, a run that still failed on a
+   transient provider error is resumed by the host. This happens up to 3 times
+   in a row, waiting 15s, 30s and 60s (longer when your auto-proceed delay is
+   longer than 15s; WebUI waits 30s, 60s and 120s after a Chimera report). A
+   completed run resets the count. After the third failed resume the session pauses and says so: switch
+   the model or add a fallback, then send a message. Context overflow, auth and
+   bad-request failures are never resumed, because a resend fails the same way.
+
 ### Prompt caching across providers
 
 Caching is provider-agnostic. Each request carries a stable cache-partition key

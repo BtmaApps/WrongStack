@@ -1,3 +1,4 @@
+import type { RunResult } from '@wrongstack/contracts/types/run-result';
 import { detectContinueIntent, InputBuilder, resolveContinuation } from '@wrongstack/core/agent';
 import {
   color,
@@ -10,7 +11,12 @@ import { createAutoProceedLoopGuard } from '@wrongstack/tools/auto-proceed-loop-
 import { todoTool } from '@wrongstack/tools/todo';
 import { contextOverflowHint } from './context-overflow-diagnostic.js';
 import { type PredictLLMProvider, predictNextTasks } from './next-task-predictor.js';
-import { runAutoProceed } from './repl-auto-proceed.js';
+import {
+  createFailedRunState,
+  noteFailedRun,
+  resumeFailedRun,
+  runAutoProceed,
+} from './repl-auto-proceed.js';
 import { registerReplClient } from './repl-client-registration.js';
 import { runReplEternalLoop } from './repl-eternal-loop.js';
 import { renderGoalBanner } from './repl-goal-banner.js';
@@ -57,6 +63,9 @@ export async function runRepl(opts: ReplOptions): Promise<number> {
   }
   let autoIterCount = 0;
   let autoCapWarned = false;
+  // Runs a provider killed on a transient failure resume on their own in `auto`.
+  const failure = createFailedRunState();
+  const noteRunResult = (result: RunResult): void => noteFailedRun(failure, result);
   const autoProceedLoopGuard = createAutoProceedLoopGuard();
   let exiting = false;
   const onSigint = () => {
@@ -128,7 +137,18 @@ export async function runRepl(opts: ReplOptions): Promise<number> {
           );
         }
 
-        if (mode === 'auto') {
+        if (mode === 'auto' && failure.pending) {
+          const ctrl = new AbortController();
+          activeCtrl = ctrl;
+          try {
+            if (await resumeFailedRun(opts, failure, ctrl, autoProceedLoopGuard, noteRunResult)) {
+              autoIterCount++;
+              continue;
+            }
+          } finally {
+            activeCtrl = undefined;
+          }
+        } else if (mode === 'auto') {
           let top: string;
           let groundedTodo = false;
           if (suggestions.length > 0) {
@@ -190,6 +210,7 @@ export async function runRepl(opts: ReplOptions): Promise<number> {
                   ctrl,
                   autoProceedLoopGuard,
                   groundedTodo,
+                  noteRunResult,
                 );
                 if (submitted) {
                   autoIterCount++;
@@ -218,6 +239,7 @@ export async function runRepl(opts: ReplOptions): Promise<number> {
       interrupts = 0;
       autoIterCount = 0;
       autoCapWarned = false;
+      Object.assign(failure, createFailedRunState());
       autoProceedLoopGuard.reset();
 
       if (trimmed === 'q') {
@@ -437,6 +459,7 @@ export async function runRepl(opts: ReplOptions): Promise<number> {
           signal: runCtrl.signal,
           inputOrigin: continuationInput ? 'continuation' : 'user',
         });
+        noteRunResult(result);
         opts.onAgentIterationComplete?.(
           estimateRequestTokensCalibrated(
             opts.agent.ctx.messages,

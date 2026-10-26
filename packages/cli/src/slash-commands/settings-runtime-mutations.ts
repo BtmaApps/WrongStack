@@ -1,6 +1,7 @@
 /** `/settings` mutations for versioning, the shell circuit breaker and model-runtime behaviour. */
 
 import { isReasoningEffort, REASONING_EFFORT_LEVELS } from '@wrongstack/contracts/types';
+import { parseStreamWatchdogSeconds } from '@wrongstack/contracts/types/config/runtime';
 import { color } from '@wrongstack/core/utils';
 import { getProcessRegistry } from '@wrongstack/tools';
 import { persistAutonomySetting, persistConfigSetting } from '../settings-menu.js';
@@ -178,14 +179,8 @@ export async function executeModelRuntimeSettings(
     // Two watchdogs, one setting: the gap between stream chunks and the wait
     // for response headers. Seconds because that is the scale users reason
     // in; `off` disables a watchdog, leaving only the caller's own abort.
-    const parse = (raw: string | undefined): number | 'invalid' | undefined => {
-      if (raw === undefined || raw === '') return undefined;
-      const lower = raw.toLowerCase();
-      if (lower === 'off' || lower === '0') return 0;
-      const secs = Number(lower.replace(/s$/, ''));
-      if (!Number.isFinite(secs) || secs < 1 || secs > 3_600) return 'invalid';
-      return Math.round(secs) * 1000;
-    };
+    // Same rules as the WebUI settings field (one parser in contracts).
+    const parse = parseStreamWatchdogSeconds;
     const usage = {
       message:
         `${color.amber('Usage:')} /settings stream-watchdog <gap-seconds|off> [headers-seconds|off]` +

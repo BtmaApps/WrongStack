@@ -69,7 +69,23 @@ export function createStandaloneModelRuntimeMiddleware(deps: {
 }
 
 /**
- * Project the reasoning / cache controls of a `prefs.update` payload onto a
+ * The `streamTimeouts` pref of a payload as a `modelRuntime.streaming` value
+ * (numeric fields only), or undefined when the payload does not carry it.
+ */
+export function streamTimeoutsPref(
+  payload: Record<string, unknown>,
+): { hangTimeoutMs?: number; headersTimeoutMs?: number } | undefined {
+  const raw = payload['streamTimeouts'];
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
+  const rec = raw as Record<string, unknown>;
+  const out: { hangTimeoutMs?: number; headersTimeoutMs?: number } = {};
+  if (typeof rec['hangTimeoutMs'] === 'number') out.hangTimeoutMs = rec['hangTimeoutMs'];
+  if (typeof rec['headersTimeoutMs'] === 'number') out.headersTimeoutMs = rec['headersTimeoutMs'];
+  return out;
+}
+
+/**
+ * Project the reasoning / cache / stream-watchdog controls of a `prefs.update` payload onto a
  * `Config.modelRuntime` value. Returns undefined when the payload touches
  * none of them. The one projection behind both the persisted config and the
  * live copy the middleware above reads.
@@ -83,8 +99,16 @@ export function projectModelRuntimePrefs(
     typeof payload['reasoningEffort'] === 'string' ||
     typeof payload['reasoningPreserve'] === 'boolean' ||
     typeof payload['cacheTtl'] === 'string';
-  if (!touched) return undefined;
+  const streamTimeouts = streamTimeoutsPref(payload);
+  if (!touched && !streamTimeouts) return undefined;
   const mr: Record<string, unknown> = { ...((current as Record<string, unknown>) ?? {}) };
+  // Stream watchdogs → `modelRuntime.streaming`, replaced whole: the client
+  // sends the full pair and an absent field means "built-in default".
+  if (streamTimeouts) {
+    if (Object.keys(streamTimeouts).length > 0) mr['streaming'] = streamTimeouts;
+    else delete mr['streaming'];
+  }
+  if (!touched) return mr;
   const reasoning: Record<string, unknown> = {
     ...((mr['reasoning'] as Record<string, unknown>) ?? {}),
   };

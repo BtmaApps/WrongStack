@@ -1,3 +1,7 @@
+import {
+  failedRunResumeDelayMs,
+  failedRunResumePrompt,
+} from '@wrongstack/contracts/types/failed-run-resume';
 import { useEffect, useRef, useState } from 'react';
 import { useAppTranslation } from '@/i18n';
 import { getWSClient } from '@/lib/ws-client';
@@ -13,8 +17,13 @@ const CHIMERA_PATTERN = /chimera/i;
  *  old session never auto-fires a run nobody asked for. */
 const FRESH_FAILURE_WINDOW_MS = 60_000;
 
-export function autoTriggerMsFor(text: string): number {
-  return CHIMERA_PATTERN.test(text) ? 30_000 : 15_000;
+export function autoTriggerMsFor(text: string, resumeAttempt = 1): number {
+  return failedRunResumeDelayMs(resumeAttempt, CHIMERA_PATTERN.test(text) ? 30_000 : 15_000);
+}
+
+/** The provider's message from an `Error: …` bubble, for the resume prompt. */
+function failureReason(text: string): string {
+  return text.replace(/^Error:\s*/, '').split('\n')[0] ?? '';
 }
 
 /**
@@ -35,11 +44,14 @@ export function FailedRunContinue({
   text,
   timestamp,
   autoArm = false,
+  resumeAttempt,
   messageId,
 }: {
   text: string;
   timestamp?: number;
   autoArm?: boolean;
+  /** Which automatic resume this countdown sends (1-based); unset = first. */
+  resumeAttempt?: number | undefined;
   messageId?: string;
 }) {
   const { t } = useAppTranslation();
@@ -48,15 +60,18 @@ export function FailedRunContinue({
   const wsUrl = useConfigStore((s) => s.wsUrl);
   const { canAutoSubmit, recordPrompt, recordAutoSubmit } = useAutoSubmitStreak();
 
-  const prompt = t('activity:failedRun.continuePrompt', {
+  const manualPrompt = t('activity:failedRun.continuePrompt', {
     defaultValue:
       'The previous run failed — continue from where it stopped and finish the remaining work.',
   });
+  // The automatic send carries its attempt number: identical resumes would
+  // trip the shared loop guard on the second one and end the session's work.
+  const autoPrompt = failedRunResumePrompt(resumeAttempt ?? 1, failureReason(text));
 
   const [remainingMs, setRemainingMs] = useState<number | null>(() => {
     if (!autoArm) return null;
     if (timestamp === undefined || Date.now() - timestamp >= FRESH_FAILURE_WINDOW_MS) return null;
-    return autoTriggerMsFor(text);
+    return autoTriggerMsFor(text, resumeAttempt);
   });
   const firedRef = useRef(false);
   const [gone, setGone] = useState(false);
@@ -66,7 +81,7 @@ export function FailedRunContinue({
     if (messageId) useChatStore.getState().updateMessage(messageId, { autoContinue: false });
   };
 
-  const fire = () => {
+  const fire = (automatic: boolean) => {
     if (firedRef.current) return;
     firedRef.current = true;
     disarm();
@@ -75,6 +90,7 @@ export function FailedRunContinue({
     if (!canAutoSubmit()) return;
     const client = getWSClient(wsUrl);
     if (!client.isConnected) return;
+    const prompt = automatic ? autoPrompt : manualPrompt;
     // Same shared streak guard the auto-submit path uses — one session-wide
     // loop breaker for every automated send.
     if (!recordPrompt(prompt)) {
@@ -99,7 +115,7 @@ export function FailedRunContinue({
   useEffect(() => {
     if (remainingMs === null) return;
     if (remainingMs <= 0) {
-      fire();
+      fire(true);
       return;
     }
     if (useChatStore.getState().isLoading) {
@@ -120,7 +136,7 @@ export function FailedRunContinue({
     <div className="mt-2 flex items-center gap-2">
       <button
         type="button"
-        onClick={fire}
+        onClick={() => fire(false)}
         className="inline-flex items-center gap-1.5 rounded-md border border-primary/40 bg-primary/10 px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-primary/15"
       >
         ▶ {t('activity:failedRun.continue', { defaultValue: 'Continue' })}

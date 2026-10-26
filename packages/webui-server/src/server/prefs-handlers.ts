@@ -18,6 +18,7 @@ import { getProcessRegistry } from '@wrongstack/tools';
 import type { WebSocket } from 'ws';
 import { type PendingConfirm, resolveYoloEligiblePendingConfirms } from './pending-confirms.js';
 import { SESSION_SCOPED_PREF_KEYS } from './session-scoped-prefs.js';
+import { streamTimeoutsPref } from './standalone-pipelines.js';
 import {
   buildSystemPromptInfo,
   isScoutSuggested,
@@ -496,6 +497,19 @@ export async function handlePrefsUpdate(
   if (typeof payload['readSymbols'] === 'boolean') {
     sessionMeta['tools.read.advancedMode'] = payload['readSymbols'];
     ctx.meta['tools.read.advancedMode'] = payload['readSymbols'];
+  }
+  // Stream watchdogs: providers read the process-wide defaults when they are
+  // CONSTRUCTED, so installing them here reaches every provider built from now
+  // on (a model switch, a fallback hop) — not the instance already in use,
+  // which new tabs share. A cleared field goes back to the built-in 60s, which is also
+  // what lets the MiniMax / Z.AI floors apply again.
+  const streamTimeouts = streamTimeoutsPref(payload);
+  if (streamTimeouts) {
+    const providers = await import('@wrongstack/providers');
+    providers.setStreamTimeoutDefaults({
+      hangTimeoutMs: streamTimeouts.hangTimeoutMs ?? providers.DEFAULT_STREAM_HANG_TIMEOUT_MS,
+      headersTimeoutMs: streamTimeouts.headersTimeoutMs ?? providers.DEFAULT_HEADERS_TIMEOUT_MS,
+    });
   }
   if (typeof payload['debugStream'] === 'boolean') {
     void import('@wrongstack/providers').then(({ setDebugStreamEnabled }) =>

@@ -69,6 +69,68 @@ export interface ModelRuntimeStreamingConfig {
 }
 
 /**
+ * Range a user-set stream watchdog may take, in whole seconds — the same range
+ * `/settings stream-watchdog` accepts. `0` (off) sits outside it on purpose:
+ * it is a separate choice, not a very short budget.
+ */
+export const STREAM_WATCHDOG_MIN_SECONDS = 1;
+export const STREAM_WATCHDOG_MAX_SECONDS = 3_600;
+
+/**
+ * The built-in watchdogs an unset field falls back to, restated for settings
+ * surfaces that cannot import `@wrongstack/providers` (the browser). The
+ * provider values are the authority; a webui-server test pins these to them.
+ */
+export const STREAM_WATCHDOG_DEFAULTS = {
+  hangTimeoutMs: 60_000,
+  headersTimeoutMs: 60_000,
+  /** MiniMax and Z.AI, which routinely exceed the minute (stream-timeout-floors.ts). */
+  slowBackendHangTimeoutMs: 240_000,
+  slowBackendHeadersTimeoutMs: 180_000,
+} as const;
+
+/**
+ * Parse what a user typed for one watchdog, with the CLI's rules: empty →
+ * undefined (built-in default), `off` / `0` → 0 (disabled), otherwise seconds
+ * (an optional trailing `s`) inside the range above, rounded to whole seconds
+ * and returned as milliseconds. Anything else is `'invalid'`.
+ */
+export function parseStreamWatchdogSeconds(
+  raw: string | undefined,
+): number | 'invalid' | undefined {
+  if (raw === undefined) return undefined;
+  const lower = raw.trim().toLowerCase();
+  if (lower === '') return undefined;
+  if (lower === 'off' || lower === '0') return 0;
+  const secs = Number(lower.replace(/s$/, ''));
+  if (
+    !Number.isFinite(secs) ||
+    secs < STREAM_WATCHDOG_MIN_SECONDS ||
+    secs > STREAM_WATCHDOG_MAX_SECONDS
+  ) {
+    return 'invalid';
+  }
+  return Math.round(secs) * 1000;
+}
+
+/**
+ * Why a stored watchdog value (milliseconds) is unacceptable, or null. Valid
+ * values are exactly what `parseStreamWatchdogSeconds` can produce: `0`, or a
+ * whole number of seconds inside the range.
+ */
+export function streamWatchdogMsError(value: unknown): string | null {
+  if (value === 0) return null;
+  if (typeof value !== 'number' || !Number.isInteger(value) || value % 1000 !== 0) {
+    return 'must be 0 (off) or a whole number of seconds in milliseconds';
+  }
+  const secs = value / 1000;
+  if (secs < STREAM_WATCHDOG_MIN_SECONDS || secs > STREAM_WATCHDOG_MAX_SECONDS) {
+    return `must be 0 (off) or ${STREAM_WATCHDOG_MIN_SECONDS}–${STREAM_WATCHDOG_MAX_SECONDS} seconds`;
+  }
+  return null;
+}
+
+/**
  * Selects which built-in/base system identity prompt file is used when building
  * the host system prompt. Surfaces keep `default` unless explicitly told to use
  * the lite, pro, or scout prompt. `scout` is the general-purpose identity: it

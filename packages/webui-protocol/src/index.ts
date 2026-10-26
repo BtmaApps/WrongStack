@@ -21,6 +21,15 @@ export type {
   Message,
   SessionMarker,
 } from '@wrongstack/contracts/types';
+// One automatic-resume policy for every surface after a provider failure, so
+// VibeUI cannot drift from the TUI, REPL and WebUI.
+export {
+  DEFAULT_FAILED_RUN_RESUME_BASE_MS,
+  failedRunResumeDelayMs,
+  failedRunResumePrompt,
+  isResumableRunFailure,
+  MAX_FAILED_RUN_RESUMES,
+} from '@wrongstack/contracts/types/failed-run-resume';
 // Browser surfaces must project a resumed session through the SAME function
 // the TUI and the servers use, or the ordering drifts again — which is exactly
 // how the four separate replay renderers came about.

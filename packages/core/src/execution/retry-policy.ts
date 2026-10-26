@@ -31,7 +31,8 @@ const MAX_RETRY_AFTER_MS = 60_000;
  * predictable across every surface that runs the agent loop (leader, host
  * subagents, Chimera reviewers, SDD workers — they all resolve this one
  * policy from the container): try the model {@link MODEL_RETRIES} times, then
- * fail over.
+ * fail over. The one exception is a hung stream, whose attempts are measured
+ * in watchdog minutes, not milliseconds — see {@link HUNG_STREAM_RETRIES}.
  *
  * Exhaustive by construction (`Record<ProviderErrorKind, …>`) — adding a new
  * kind refuses to compile until it gets an attempt budget.
@@ -45,13 +46,25 @@ const MAX_RETRY_AFTER_MS = 60_000;
  */
 export const MODEL_RETRIES = 3;
 
+/**
+ * Retries for a stream that hung — the one kind where a single attempt costs a
+ * whole watchdog window (60s by default, up to 240s on MiniMax / Z.AI) instead
+ * of failing in milliseconds. At {@link MODEL_RETRIES} a hanging model held the
+ * turn for four windows plus backoff (about 4.5 minutes at 60s) before the
+ * fallback chain was even consulted, and the run looked frozen. One retry still
+ * absorbs a one-off stall; a model that hangs twice in a row is handed to the
+ * chain. "How long until another model is tried" stays bounded by time, not by
+ * a count that means different things for different kinds.
+ */
+const HUNG_STREAM_RETRIES = 1;
+
 const MAX_ATTEMPTS_BY_KIND: Record<ProviderErrorKind, number> = {
   rate_limit: MODEL_RETRIES,
   overloaded: MODEL_RETRIES,
   server: MODEL_RETRIES,
   timeout: MODEL_RETRIES,
   network: MODEL_RETRIES,
-  stream_hang: MODEL_RETRIES,
+  stream_hang: HUNG_STREAM_RETRIES,
   quota_exhausted: 0,
   auth: 0,
   invalid_request: 0,

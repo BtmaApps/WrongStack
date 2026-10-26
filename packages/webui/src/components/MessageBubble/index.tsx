@@ -405,6 +405,7 @@ export const MessageBubble = memo(function MessageBubble({
                               text={message.content}
                               timestamp={message.timestamp}
                               autoArm={autonomy === 'auto' && message.autoContinue === true}
+                              resumeAttempt={message.resumeAttempt}
                               messageId={message.id}
                             />
                           )}

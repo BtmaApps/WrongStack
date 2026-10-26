@@ -807,3 +807,29 @@ describe('prefs.update limits', () => {
     expect(validatePrefsUpdatePayload({ limits })).toMatchObject({ ok: false });
   });
 });
+
+describe('prefs.update streamTimeouts', () => {
+  it('accepts the whole pair the WebUI Stream timeouts section sends', () => {
+    expect(
+      validatePrefsUpdatePayload({
+        streamTimeouts: { hangTimeoutMs: 300_000, headersTimeoutMs: 0 },
+      }),
+    ).toMatchObject({ ok: true });
+    expect(validatePrefsUpdatePayload({ streamTimeouts: {} })).toMatchObject({ ok: true });
+    expect(
+      validatePrefsUpdatePayload({ streamTimeouts: { headersTimeoutMs: 3_600_000 } }),
+    ).toMatchObject({ ok: true });
+  });
+
+  it.each([
+    ['not an object', 5],
+    ['an unknown field', { totalTimeoutMs: 60_000 }],
+    ['below one second', { hangTimeoutMs: 500 }],
+    ['above an hour', { hangTimeoutMs: 3_601_000 }],
+    ['not whole seconds', { hangTimeoutMs: 1_500 }],
+    ['negative', { headersTimeoutMs: -1_000 }],
+    ['a string', { headersTimeoutMs: '60000' }],
+  ])('rejects %s', (_label, streamTimeouts) => {
+    expect(validatePrefsUpdatePayload({ streamTimeouts })).toMatchObject({ ok: false });
+  });
+});

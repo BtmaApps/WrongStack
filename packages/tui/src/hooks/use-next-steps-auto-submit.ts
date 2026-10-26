@@ -1,4 +1,10 @@
 import type { ContentBlock } from '@wrongstack/contracts/types';
+import {
+  DEFAULT_FAILED_RUN_RESUME_BASE_MS,
+  failedRunResumeDelayMs,
+  failedRunResumePrompt,
+  MAX_FAILED_RUN_RESUMES,
+} from '@wrongstack/contracts/types/failed-run-resume';
 import { resolveContinuation, type TodoItem } from '@wrongstack/core/agent';
 import {
   createAutoProceedLoopGuard,
@@ -23,11 +29,7 @@ import type { Action } from '../app-action-type.js';
 import type { AppProps } from '../app-props.js';
 import type { State } from '../app-state.js';
 import type { RunBlocksOptions } from '../tui-host-capabilities.js';
-import {
-  createFailedRunTracker,
-  FAILED_RUN_CONTINUE_PROMPT,
-  type FailedRunTracker,
-} from './failed-run-tracker.js';
+import { createFailedRunTracker, type FailedRunTracker } from './failed-run-tracker.js';
 
 interface NextStepsAutoSubmitOptions {
   state: State;
@@ -55,6 +57,10 @@ interface AutoProceedCandidateInput {
   autonomyNextPrompt?: string | undefined;
   /** The last run died on a retryable provider failure (see failed-run-tracker). */
   failedRun?: boolean | undefined;
+  /** 1-based number of this automatic resume (default 1). */
+  failedRunAttempt?: number | undefined;
+  /** The provider's description of the failure, quoted in the resume prompt. */
+  failedRunReason?: string | undefined;
 }
 
 interface AutoProceedCandidate {
@@ -85,7 +91,19 @@ export function selectAutoProceedCandidate({
   yolo = false,
   autonomyNextPrompt,
   failedRun = false,
+  failedRunAttempt = 1,
+  failedRunReason,
 }: AutoProceedCandidateInput): AutoProceedCandidate | null {
+  // A run an API error killed resumes first. Its work is mid-flight in the
+  // transcript; re-feeding the todo continuation instead hands the grounded
+  // guard an unchanged board, which it reads as a stall and demotes the todo.
+  if (failedRun) {
+    return {
+      source: 'failed-run',
+      prompt: failedRunResumePrompt(failedRunAttempt, failedRunReason),
+      label: `resume after the API error (${failedRunAttempt}/${MAX_FAILED_RUN_RESUMES})`,
+    };
+  }
   const todo = resolveContinuation({ todos, suggestions: [] });
   if (todo.source === 'todo') {
     return { source: 'todo', prompt: todo.text, label: todo.label, todoId: todo.todoId };
@@ -103,15 +121,7 @@ export function selectAutoProceedCandidate({
 
   const suggestion = suggestions.find((item) => item.trim().length > 0)?.trim();
   if (suggestion) return { source: 'suggestion', prompt: suggestion, label: suggestion };
-  // Last resort: a run an API error killed with nothing else to go on. Without
-  // it an 'auto' session stopped dead on a dropped connection mid-task.
-  return failedRun
-    ? {
-        source: 'failed-run',
-        prompt: FAILED_RUN_CONTINUE_PROMPT,
-        label: 'resume after the API error',
-      }
-    : null;
+  return null;
 }
 
 /** Owns grounded next-step countdowns and automatic-turn loop guards. */
@@ -278,19 +288,14 @@ export function useNextStepsAutoSubmit({
     // visible suggestions; do not keep re-arming countdowns and warnings.
     if (autoSubmitCapWarnedRef.current) return;
 
-    // The last run died on a non-retryable provider failure (context
-    // overflow, auth, bad request). Pivoting to the next todo would hit the
-    // same wall every turn — #422 saw it resubmit every ~90 s for 12 hours.
-    const blockedBy = failedRunTrackerRef.current?.blocked();
-    if (blockedBy) {
+    // The last run died on a failure no retry fixes (context overflow, auth,
+    // bad request), or every automatic resume failed too. Pivoting to the next
+    // todo would hit the same wall every turn — #422 saw it resubmit every
+    // ~90 s for 12 hours.
+    const paused = failedRunTrackerRef.current?.pauseNotice();
+    if (paused) {
       autoSubmitCapWarnedRef.current = true;
-      dispatch({
-        type: 'addEntry',
-        entry: {
-          kind: 'warn',
-          text: `Auto-proceed paused: the last run failed on a provider error that a retry will not fix (${blockedBy.slice(0, 160)}). Type anything to continue (autonomy stays on).`,
-        },
-      });
+      dispatch({ type: 'addEntry', entry: { kind: 'warn', text: paused } });
       return;
     }
 
@@ -312,6 +317,8 @@ export function useNextStepsAutoSubmit({
       yolo: isYolo,
       autonomyNextPrompt,
       failedRun: failedRunTrackerRef.current?.pending() ?? false,
+      failedRunAttempt: failedRunTrackerRef.current?.nextAttempt(),
+      failedRunReason: failedRunTrackerRef.current?.reason(),
     });
     // Snapshot the FULL todo list (including skipped items) so the countdown
     // handler can re-evaluate if a grounded prompt stalls and needs to advance
@@ -347,8 +354,16 @@ export function useNextStepsAutoSubmit({
       return;
     }
 
-    // Use the same delay as auto-proceed countdown
-    const delay = cfg?.delayMs ?? 45_000;
+    // Use the same delay as auto-proceed countdown; a resume after a provider
+    // failure backs off further each time so a struggling provider recovers.
+    const baseDelay = cfg?.delayMs ?? 45_000;
+    const delay =
+      candidate.source === 'failed-run'
+        ? failedRunResumeDelayMs(
+            failedRunTrackerRef.current?.nextAttempt() ?? 1,
+            Math.max(baseDelay, DEFAULT_FAILED_RUN_RESUME_BASE_MS),
+          )
+        : baseDelay;
 
     nextStepsAutoSubmitSuggestionRef.current = candidate.prompt;
     nextStepsAutoSubmitSourceRef.current = candidate.source;
@@ -436,7 +451,8 @@ export function useNextStepsAutoSubmit({
           // unfinished work. Only when no more todos remain do we halt.
           //
           // Give model suggestions one explicit recovery turn too. Provider
-          // failures retain their separate single-retry policy.
+          // failures carry their attempt number, so each resume is distinct;
+          // their budget is the failed-run tracker's, not this guard's.
           const repetition =
             source === 'todo'
               ? autoSubmitLoopGuardRef.current.recordGrounded(suggestion)
@@ -551,7 +567,7 @@ export function useNextStepsAutoSubmit({
               suggestion.length > 100 ? `${suggestion.slice(0, 97)}…` : suggestion;
             const reason =
               source === 'failed-run'
-                ? 'the run failed on an API error again after one automatic retry'
+                ? 'the same resume prompt came back after a provider error'
                 : source === 'todo'
                   ? stalledMatchFailed
                     ? 'the stalled prompt could not be matched to any todo on the board'

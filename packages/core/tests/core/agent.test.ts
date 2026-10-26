@@ -5,6 +5,7 @@ import { Container } from '@wrongstack/contracts/kernel/container';
 import { EventBus } from '@wrongstack/contracts/kernel/events';
 import { TOKENS } from '@wrongstack/contracts/kernel/tokens';
 import { type AgentError, isAgentError } from '@wrongstack/contracts/types/errors';
+import { isResumableRunFailure } from '@wrongstack/contracts/types/failed-run-resume';
 import type {
   Capabilities,
   Provider,
@@ -12,7 +13,7 @@ import type {
   Response,
   StreamEvent,
 } from '@wrongstack/contracts/types/provider';
-import { ProviderError } from '@wrongstack/contracts/types/provider';
+import { ProviderError, StreamHangError } from '@wrongstack/contracts/types/provider';
 import type { BuildContext } from '@wrongstack/contracts/types/system-prompt';
 import type { Tool } from '@wrongstack/contracts/types/tool';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -1593,6 +1594,99 @@ describe('Agent — additional coverage', () => {
     expect(errors[0]?.providerId).toBe('doomed');
     expect(errors[0]?.status).toBe(400);
     expect(errors[0]?.description).toContain('invalid request (400)');
+    // A bad request fails the same way on every resend: hosts must not resume.
+    expect((errors[0] as { retryable?: boolean } | undefined)?.retryable).toBe(false);
+  });
+
+  it('marks a transient provider.error retryable so hosts can resume the run', async () => {
+    // provider.error used to say `retryable: false` for every failure, so the
+    // TUI took a stream timeout for a permanent error and stopped auto-proceed.
+    class OutageProvider implements Provider {
+      readonly id = 'outage';
+      readonly capabilities: Capabilities = {
+        tools: false,
+        parallelTools: false,
+        vision: false,
+        streaming: false,
+        promptCache: false,
+        systemPrompt: true,
+        jsonMode: false,
+        maxContext: 100_000,
+        cacheControl: 'none',
+      };
+      async complete(): Promise<Response> {
+        throw new ProviderError('outage HTTP 503', 503, true, 'outage');
+      }
+      // biome-ignore lint/correctness/useYield: stub
+      async *stream(): AsyncIterable<StreamEvent> {
+        throw new Error('not used');
+      }
+    }
+    const provider = new OutageProvider();
+    const { agent, tmp, ctx } = await buildAgent(provider as never as MockProvider);
+    cleanupDirs.push(tmp);
+    (agent as never as { container: Container }).container.override(TOKENS.RetryPolicy, () => ({
+      shouldRetry: () => false,
+      delayMs: () => 1,
+      maxAttempts: () => 1,
+    }));
+    (ctx as never as { provider: Provider }).provider = provider;
+
+    const errors: Array<{ retryable: boolean }> = [];
+    (agent as never as { events: EventBus }).events.on('provider.error', (e) => errors.push(e));
+
+    const result = await agent.run('ping');
+    expect(result.status).toBe('failed');
+    expect(errors.length).toBeGreaterThan(0);
+    expect(errors.every((e) => e.retryable === true)).toBe(true);
+  });
+
+  it('hands hosts a run result their auto-resume accepts after a stream hang', async () => {
+    // REPL, WebUI and VibeUI decide from RunResult.error alone; a hang must
+    // arrive there as a recoverable PROVIDER_* failure, a bad request must not.
+    const runWith = async (error: () => Error) => {
+      const provider = {
+        id: 'hang',
+        capabilities: {
+          tools: false,
+          parallelTools: false,
+          vision: false,
+          streaming: false,
+          promptCache: false,
+          systemPrompt: true,
+          jsonMode: false,
+          maxContext: 100_000,
+          cacheControl: 'none' as const,
+        },
+        async complete(): Promise<Response> {
+          throw error();
+        },
+      } as never as MockProvider;
+      const { agent, tmp, ctx } = await buildAgent(provider);
+      cleanupDirs.push(tmp);
+      (agent as never as { container: Container }).container.override(TOKENS.RetryPolicy, () => ({
+        shouldRetry: () => false,
+        delayMs: () => 1,
+        maxAttempts: () => 1,
+      }));
+      (ctx as never as { provider: Provider }).provider = provider as never as Provider;
+      return agent.run('ping');
+    };
+
+    const hung = await runWith(
+      () =>
+        new StreamHangError({
+          providerId: 'hang',
+          model: 'test-model',
+          hangTimeoutMs: 60_000,
+          bytesReceived: 0,
+          elapsedMs: 60_000,
+        }),
+    );
+    expect(isResumableRunFailure(hung.status, hung.error)).toBe(true);
+
+    const rejected = await runWith(() => new ProviderError('bad HTTP 400', 400, false, 'hang'));
+    expect(isResumableRunFailure(rejected.status, rejected.error)).toBe(false);
   });
 
   it('typed RunResult.error: provider error becomes WrongStackError', async () => {

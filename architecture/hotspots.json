@@ -55,8 +55,8 @@
       "relativeImports": 5
     },
     "packages/vibeui/src/lib/use-session.ts": {
-      "lines": 757,
-      "relativeImports": 7
+      "lines": 750,
+      "relativeImports": 8
     },
     "packages/webui/src/components/codemap-model.ts": {
       "lines": 1098,

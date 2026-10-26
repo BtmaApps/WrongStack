@@ -4,16 +4,20 @@ import { toWrongStackError } from '@wrongstack/contracts/types/errors';
 import type { Logger } from '@wrongstack/contracts/types/logger';
 import type { Tracer } from '@wrongstack/contracts/types/observability';
 import type { Provider, Request, Response } from '@wrongstack/contracts/types/provider';
-import { isSafetyPolicyRefusal, ProviderError } from '@wrongstack/contracts/types/provider';
+import {
+  isRetryableKind,
+  isSafetyPolicyRefusal,
+  ProviderError,
+} from '@wrongstack/contracts/types/provider';
 import {
   parseProviderReportedMaxOutput,
   recordProviderReportedMaxOutput,
 } from '@wrongstack/contracts/types/provider-output-caps';
 import type { ProviderStatusTrackerPort } from '@wrongstack/contracts/types/provider-status';
 import type { RetryPolicy } from '@wrongstack/contracts/types/retry-policy';
-import { createChroniclePromptManifest } from '../utils/chronicle-prompt-manifest.js';
 import { runWithNetworkTelemetry } from '../observability/network-telemetry.js';
 import { scrubErrorText } from '../security/error-sanitize.js';
+import { createChroniclePromptManifest } from '../utils/chronicle-prompt-manifest.js';
 import { adaptDocumentsForModel } from '../utils/document-blocks.js';
 import {
   deactivateProxyOnConnectionFailure,
@@ -366,7 +370,13 @@ export async function runProviderWithRetry(opts: RunProviderOptions): Promise<Re
           providerId: isProviderErr ? err.providerId : provider.id,
           status: isProviderErr ? err.status : 0,
           description,
-          retryable: false,
+          // In-place retries are over either way; this says whether re-running
+          // the turn later can succeed (timeout, 5xx, network), which hosts use
+          // to auto-resume. Safety refusals repeat on resend, so never.
+          retryable:
+            isProviderErr &&
+            isRetryableKind((err as ProviderError).kind) &&
+            !isSafetyPolicyRefusal(err),
           ...(providerErrorBody ? { errorBody: providerErrorBody } : {}),
         });
         logger.error(`Provider call failed after ${attempt + 1} attempt(s) — ${description}`, {

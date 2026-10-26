@@ -115,6 +115,9 @@ export interface ChatMessage {
    *  countdown may auto-fire for, in `auto` autonomy. Every other error —
    *  loop guard, iteration limit, auth, bad request — keeps a manual button. */
   autoContinue?: boolean | undefined;
+  /** 1-based automatic resume this failure's countdown would send; it sets
+   *  the countdown's back-off and numbers the prompt for the loop guard. */
+  resumeAttempt?: number | undefined;
   timestamp: number;
   usage?: Usage | undefined;
   streaming?: boolean | undefined;

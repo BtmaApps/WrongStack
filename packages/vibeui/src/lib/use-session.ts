@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { isActiveAgent } from './agent-state';
 import type { Artifact } from './artifacts';
 import { compactionQueueNotice, pendingOpFailureNotice } from './component-guards';
+import { useFailedRunResume } from './failed-run-resume';
 import { clientId } from './ids';
 import {
   draftKey,
@@ -437,6 +438,8 @@ export function useSession() {
     [connection, ready, dispatch, notice, updateQueue, send, setQueuePaused],
   );
 
+  useFailedRunResume({ subscribe, current, ownedRuns, stopping, queueRef, notice, dispatch });
+
   useEffect(() => {
     if (
       connection !== 'open' ||
@@ -470,9 +473,7 @@ export function useSession() {
     (id?: string) => {
       if (
         current.current.running ||
-        current.current.agents.some((agent) =>
-          ['running', 'busy', 'starting', 'spawned', 'working', 'active'].includes(agent.status),
-        ) ||
+        current.current.agents.some((agent) => isActiveAgent(agent.status)) ||
         pendingSwitch.current.active ||
         pendingModel.current ||
         compacting.current
@@ -520,11 +521,7 @@ export function useSession() {
   );
 
   return {
-    hasActiveWork:
-      state.running ||
-      state.agents.some((agent) =>
-        ['running', 'busy', 'starting', 'spawned', 'working', 'active'].includes(agent.status),
-      ),
+    hasActiveWork: state.running || state.agents.some((agent) => isActiveAgent(agent.status)),
     stopAll: () => {
       const s = current.current;
       if (!ready || connection !== 'open' || !s.id || pendingSwitch.current.active) return false;
@@ -563,9 +560,7 @@ export function useSession() {
       state.running ||
       modelPending ||
       compactPending ||
-      state.agents.some((agent) =>
-        ['running', 'busy', 'starting', 'spawned', 'working', 'active'].includes(agent.status),
-      ),
+      state.agents.some((agent) => isActiveAgent(agent.status)),
     clearContext: () => {
       const s = current.current;
       if (
@@ -573,9 +568,7 @@ export function useSession() {
         pendingSwitch.current.active ||
         pendingModel.current ||
         compacting.current ||
-        s.agents.some((agent) =>
-          ['running', 'busy', 'starting', 'spawned', 'working', 'active'].includes(agent.status),
-        )
+        s.agents.some((agent) => isActiveAgent(agent.status))
       )
         return false;
       if (!send('context.clear', { sessionId: s.id })) return false;

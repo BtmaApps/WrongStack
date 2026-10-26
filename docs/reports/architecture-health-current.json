@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-26T09:11:03.688Z",
+  "generatedAt": "2026-10-26T19:01:25.363Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 45,
-    "sourceFiles": 5193,
-    "testFiles": 4576,
-    "sourceLines": 1133313,
+    "sourceFiles": 5197,
+    "testFiles": 4580,
+    "sourceLines": 1134073,
     "workspaceEdges": 223,
-    "moduleEdges": 15471,
+    "moduleEdges": 15475,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 3,
@@ -313,7 +313,7 @@
     {
       "name": "@wrongstack/contracts",
       "dir": "packages/contracts",
-      "sourceFiles": 125,
+      "sourceFiles": 126,
       "testFiles": 3,
       "workspaceDependencies": [
         "@wrongstack/kanban",
@@ -1015,8 +1015,8 @@
     {
       "name": "@wrongstack/vibeui",
       "dir": "packages/vibeui",
-      "sourceFiles": 68,
-      "testFiles": 23,
+      "sourceFiles": 69,
+      "testFiles": 24,
       "workspaceDependencies": [
         "@wrongstack/webui-protocol"
       ],
@@ -1029,15 +1029,15 @@
         {
           "path": "packages/vibeui/tsconfig.test.json",
           "error": null,
-          "testFiles": 23
+          "testFiles": 24
         }
       ]
     },
     {
       "name": "@wrongstack/webui",
       "dir": "packages/webui",
-      "sourceFiles": 769,
-      "testFiles": 508,
+      "sourceFiles": 771,
+      "testFiles": 510,
       "workspaceDependencies": [
         "@wrongstack/contracts",
         "@wrongstack/core",
@@ -1062,7 +1062,7 @@
         {
           "path": "packages/webui/tsconfig.test.json",
           "error": null,
-          "testFiles": 508
+          "testFiles": 510
         }
       ]
     },
@@ -1120,7 +1120,7 @@
       "name": "@wrongstack/webui-server",
       "dir": "packages/webui-server",
       "sourceFiles": 305,
-      "testFiles": 309,
+      "testFiles": 310,
       "workspaceDependencies": [
         "@wrongstack/builtin-plugins",
         "@wrongstack/chronicle",
@@ -1153,7 +1153,7 @@
         {
           "path": "packages/webui-server/tsconfig.test.json",
           "error": null,
-          "testFiles": 309
+          "testFiles": 310
         }
       ]
     },
@@ -23236,6 +23236,12 @@
         ]
       },
       {
+        "file": "packages/vibeui/tests/failed-run-resume.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/vibeui/tests/file-shelf-view.test.ts",
         "projects": [
           "root-node"
@@ -25426,6 +25432,12 @@
         ]
       },
       {
+        "file": "packages/webui-server/tests/stream-timeouts-prefs.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/webui-server/tests/surface-projections.test.ts",
         "projects": [
           "root-node"
@@ -26992,6 +27004,12 @@
         ]
       },
       {
+        "file": "packages/webui/tests/components/stream-timeouts-settings.test.tsx",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
         "file": "packages/webui/tests/components/streaming-markdown.test.ts",
         "projects": [
           "webui-jsdom"
@@ -27245,6 +27263,12 @@
       },
       {
         "file": "packages/webui/tests/hooks/error-frame-lane-routing.test.ts",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
+        "file": "packages/webui/tests/hooks/failed-run-resume-budget.test.ts",
         "projects": [
           "webui-jsdom"
         ]
@@ -28977,8 +29001,8 @@
     },
     {
       "file": "packages/vibeui/src/lib/use-session.ts",
-      "lines": 757,
-      "relativeImports": 7
+      "lines": 750,
+      "relativeImports": 8
     },
     {
       "file": "packages/webui/src/components/codemap-model.ts",
@@ -29028,14 +29052,14 @@
       "relativeImports": 5
     },
     {
-      "file": "packages/vibeui/src/lib/use-session.ts",
-      "lines": 757,
-      "relativeImports": 7
-    },
-    {
       "file": "packages/cli/src/fleet/host-skill-companion.ts",
       "lines": 753,
       "relativeImports": 3
+    },
+    {
+      "file": "packages/vibeui/src/lib/use-session.ts",
+      "lines": 750,
+      "relativeImports": 8
     },
     {
       "file": "apps/desktop/src/main/main.ts",

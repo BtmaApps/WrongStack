@@ -354,6 +354,21 @@ describe('seedContextMeta', () => {
     expect(context.meta['cacheTtl']).toBe('default');
   });
 
+  it('seeds streamTimeouts with only the watchdogs the user set', () => {
+    const context = { meta: {} };
+    seedContextMeta(
+      makeConfig({
+        modelRuntime: { streaming: { hangTimeoutMs: 300_000, headersTimeoutMs: 0 } },
+      }),
+      context,
+    );
+    expect(context.meta['streamTimeouts']).toEqual({ hangTimeoutMs: 300_000, headersTimeoutMs: 0 });
+
+    const unset = { meta: {} };
+    seedContextMeta(makeConfig(), unset);
+    expect(unset.meta['streamTimeouts']).toEqual({});
+  });
+
   it('handles hq config', () => {
     const context = { meta: {} };
     seedContextMeta(

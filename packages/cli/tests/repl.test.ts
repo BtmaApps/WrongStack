@@ -1,5 +1,6 @@
 import type { AttachmentStore, TokenCounter } from '@wrongstack/contracts/types';
-import { AgentError } from '@wrongstack/contracts/types';
+import { AgentError, WrongStackError } from '@wrongstack/contracts/types';
+import { MAX_FAILED_RUN_RESUMES } from '@wrongstack/contracts/types/failed-run-resume';
 import type { Agent, Context, RunResult, TodoItem } from '@wrongstack/core/agent';
 import type { SlashCommandRegistry } from '@wrongstack/core/registry';
 import { describe, expect, it, vi } from 'vitest';
@@ -722,6 +723,62 @@ describe('runRepl', () => {
         run.mock.calls as unknown as Array<[Array<{ text?: string }>]>
       )[1]?.[0];
       expect(secondTurnBlocks?.[0]?.text).toContain('Run the focused check');
+    });
+
+    it('auto mode resumes a run a provider killed, with back-off, up to the budget', async () => {
+      // Every run dies on a stream timeout: the REPL used to print the error
+      // and wait for input. Now it resumes three times, then pauses.
+      vi.useFakeTimers();
+      try {
+        const run = vi.fn(
+          async (): Promise<RunResult> => ({
+            status: 'failed',
+            error: new WrongStackError({
+              message: 'stream timeout',
+              code: 'PROVIDER_NETWORK_ERROR',
+              subsystem: 'provider',
+              recoverable: true,
+            }),
+            iterations: 1,
+          }),
+        );
+        const agent = makeFakeAgent({ run });
+        const renderer = makeFakeRenderer();
+        const reader = makeFakeReader(['build the app\n', '/exit\n']);
+        const done = runRepl({
+          agent,
+          renderer,
+          reader,
+          slashRegistry: makeExitRegistry(),
+          attachments: makeFakeAttachmentStore(),
+          banner: false,
+          getAutonomy: () => 'auto',
+          autoProceedDelayMs: 0,
+          getSuggestions: () => [],
+        });
+        let settled = false;
+        void done.finally(() => {
+          settled = true;
+        });
+        // 15s + 30s + 60s of back-off, stepped so each interval tick runs.
+        for (let elapsed = 0; elapsed < 200_000 && !settled; elapsed += 1_000) {
+          await vi.advanceTimersByTimeAsync(1_000);
+        }
+        await done;
+
+        const prompts = run.mock.calls.map((c: unknown[]) =>
+          ((c[0] as Array<{ text?: string }>) ?? []).map((b) => b.text ?? '').join(' '),
+        );
+        expect(prompts).toHaveLength(1 + MAX_FAILED_RUN_RESUMES);
+        expect(prompts[1]).toContain('Automatic resume 1 of 3');
+        expect(prompts[1]).toContain('stream timeout');
+        expect(prompts[3]).toContain('Automatic resume 3 of 3');
+        expect(renderer.writeWarning).toHaveBeenCalledWith(
+          expect.stringContaining('times in a row'),
+        );
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it('off mode does not auto-proceed', async () => {

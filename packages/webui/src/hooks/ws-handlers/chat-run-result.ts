@@ -1,3 +1,7 @@
+import {
+  isResumableRunFailure,
+  MAX_FAILED_RUN_RESUMES,
+} from '@wrongstack/contracts/types/failed-run-resume';
 import { expectDefined } from '@wrongstack/core/utils/expect-defined';
 import { parseNextSteps } from '@wrongstack/tools/next-steps';
 import { toWireImages } from '@/components/ChatInput/image-attachments';
@@ -17,6 +21,12 @@ import { useConfigStore, useSessionStore, useSessionTabStore } from '@/stores';
 import { useBugHuntRunStore } from '@/stores/bug-hunt-run-store';
 import type { ChatLaneActions } from '@/stores/chat-lanes';
 import type { QueuedItem } from '@/stores/chat-store';
+import {
+  canResumeFailedRun,
+  nextFailedRunResumeAttempt,
+  recordFailedRunResume,
+  resetFailedRunResumes,
+} from '@/stores/failed-run-resumes';
 import type { WSServerMessage } from '@/types';
 import {
   completedToolNextSteps,
@@ -43,10 +53,7 @@ export function isAutoContinuableRunError(
   error: { code?: string | undefined; recoverable?: boolean | undefined } | undefined,
   status: string,
 ): boolean {
-  if (status !== 'failed') return false;
-  if (error?.recoverable !== true) return false;
-  const code = error.code ?? '';
-  return code.startsWith('PROVIDER_') && code !== 'PROVIDER_CONTEXT_OVERFLOW';
+  return isResumableRunFailure(status, error);
 }
 
 export function handleRunResult(msg: WSServerMessage) {
@@ -187,6 +194,8 @@ export function handleRunResult(msg: WSServerMessage) {
     }
   }
   chat.setRunStart(null);
+  // A completed run ends the outage; the next failure gets the full budget.
+  if (payload.status === 'done') resetFailedRunResumes(chat.sessionId);
 
   if (payload.status !== 'done') {
     bugHuntRuns.stop(chat.sessionId, payload.requestId);
@@ -232,12 +241,24 @@ export function handleRunResult(msg: WSServerMessage) {
     if (payload.requestId) {
       chat.updateMessage(payload.requestId, { status: 'failed' });
     }
+    // A provider that times out once tends to time out again: allow a few
+    // automatic resumes with a growing wait, then stop and say why.
+    const transient = isAutoContinuableRunError(payload.error, payload.status);
+    const resumable = transient && canResumeFailedRun(chat.sessionId);
+    const resumeAttempt = resumable ? nextFailedRunResumeAttempt(chat.sessionId) : undefined;
+    if (resumable) recordFailedRunResume(chat.sessionId);
     chat.addMessage({
       role: 'assistant',
       content: `Error: ${payload.error.message}`,
       isError: true,
-      ...(isAutoContinuableRunError(payload.error, payload.status) ? { autoContinue: true } : {}),
+      ...(resumable ? { autoContinue: true, resumeAttempt } : {}),
     });
+    if (transient && !resumable) {
+      chat.addMessage({
+        role: 'assistant',
+        content: `Automatic resume paused: the run failed on a provider error ${MAX_FAILED_RUN_RESUMES + 1} times in a row. Switch the model or add a fallback model, then press Continue.`,
+      });
+    }
     const isSilentAbort =
       payload.status === 'aborted' ||
       payload.error.message === 'User aborted' ||

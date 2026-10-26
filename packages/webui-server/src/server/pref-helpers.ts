@@ -65,6 +65,8 @@ export const PREF_KEYS = [
   'reasoningEffort',
   'reasoningPreserve',
   'cacheTtl',
+  // Stream watchdogs (Config.modelRuntime.streaming), sent whole, in ms.
+  'streamTimeouts',
   'fallbackModels',
   'fallbackProfiles',
   'favoriteModels',
