@@ -421,6 +421,7 @@ export class GovernanceCapabilityGrantRegistry {
     nonEmpty(revokedBy, 'revokedBy');
     if (revokedBy.length > 512) throw new Error('revokedBy must contain at most 512 characters.');
     const revokedAtMs = this.now();
+    if (record.expiresAtMs <= revokedAtMs) return false;
     this.appendAudit({
       type: 'grant_revoked',
       grantId: record.grantId,

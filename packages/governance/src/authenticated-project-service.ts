@@ -468,13 +468,18 @@ export class AuthenticatedGovernanceProjectService {
       }
     }
     const reservation = this.receipts.reserve({ input: request, wireInput: input, credential });
+    const revokesCurrentGrant = authentication.grant.grantId === request.grantId;
+    const reason = (request.reason ?? `revoked by ${authentication.client.clientId}`).slice(0, 512);
     let revoked: boolean;
     try {
-      revoked = this.grants.revoke(
-        request.grantId,
-        (request.reason ?? `revoked by ${authentication.client.clientId}`).slice(0, 512),
-        authentication.client.clientId,
-      );
+      revoked = this.grants.revoke(request.grantId, reason, authentication.client.clientId);
+      const attachedModelGrantId = this.#attachmentModelGrantByControlGrant.get(request.grantId);
+      if (attachedModelGrantId !== undefined) {
+        if (revoked) {
+          this.grants.revoke(attachedModelGrantId, reason, authentication.client.clientId);
+        }
+        this.#attachmentModelGrantByControlGrant.delete(request.grantId);
+      }
     } catch {
       if (reservation) this.receipts.release(reservation);
       return invalidManagementRequest(request.requestId);
@@ -491,7 +496,7 @@ export class AuthenticatedGovernanceProjectService {
     // Revoke is the security-critical operation that must never be blocked by a
     // saturated retry-receipt cache. If reservation failed, we still perform the
     // revoke and skip caching its receipt.
-    if (reservation && revoked) this.receipts.commit(reservation, response);
+    if (reservation && revoked) this.receipts.commit(reservation, response, revokesCurrentGrant);
     else if (reservation) this.receipts.release(reservation);
     return response;
   }

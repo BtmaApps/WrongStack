@@ -1278,4 +1278,93 @@ describe('governance capability grant registry — daemon self-grant exclusion',
     expect(registry.hasActiveGrants('governance-daemon-owner')).toBe(true);
     expect(registry.hasActiveGrants('trusted-server')).toBe(true);
   });
+
+  it('refuses to revoke expired grants, replays self-revocation receipts idempotently, revokes paired attachment model grants on control grant revocation, and verifies observation_hash on read (F679)', () => {
+    const { registry, advance, auditEvents } = registryHarness();
+    const service = openService('project-1');
+    const authenticated = new AuthenticatedGovernanceProjectService(service, registry);
+
+    // 1. Expired grant cannot be revoked and still sweeps as grant_expired
+    const expiring = registry.issue({
+      clientId: 'expiring-client',
+      capabilities: ['task_read'],
+      ttlMs: 5_000,
+    });
+    advance(5_000);
+    expect(registry.revoke(expiring.grant.grantId, 'too late')).toBe(false);
+    expect(registry.getGrant(expiring.grant.grantId)?.status).toBe('expired');
+    expect(registry.sweepExpired()).toBe(1);
+    expect(auditEvents.at(-1)?.type).toBe('grant_expired');
+
+    // 2. Self-revocation replays idempotently
+    const selfAdmin = registry.issue({
+      clientId: 'self-admin',
+      capabilities: ['capability_admin'],
+      ttlMs: 30_000,
+    });
+    const selfCred = {
+      token: selfAdmin.token,
+      projectId: 'project-1',
+      clientId: 'self-admin',
+    };
+    const selfRevokeReq = {
+      protocolVersion: GOVERNANCE_SERVICE_PROTOCOL_VERSION,
+      requestId: 'revoke-self-f679',
+      type: 'revoke_capability_grant',
+      grantId: selfAdmin.grant.grantId,
+      reason: 'stepping down',
+    } as const;
+    const firstSelf = authenticated.handleUnknown(selfRevokeReq, selfCred);
+    const retrySelf = authenticated.handleUnknown(selfRevokeReq, selfCred);
+    expect(retrySelf).toEqual(firstSelf);
+    expect(retrySelf).toMatchObject({
+      ok: true,
+      result: {
+        type: 'capability_grant_revoked',
+        grantId: selfAdmin.grant.grantId,
+        revoked: true,
+      },
+    });
+
+    // 3. Revoking attachment controlGrantId also revokes paired modelGrantId
+    const broker = registry.issue({
+      clientId: 'broker-f679',
+      capabilities: ['runtime_attach'],
+      ttlMs: 30_000,
+    });
+    const admin2 = registry.issue({
+      clientId: 'admin-f679',
+      capabilities: ['capability_admin'],
+      ttlMs: 30_000,
+    });
+    const claimed = authenticated.handleUnknown(
+      {
+        protocolVersion: GOVERNANCE_SERVICE_PROTOCOL_VERSION,
+        requestId: 'claim-f679',
+        type: 'claim_runtime_attachment',
+        controlClientId: 'ctrl-f679',
+        modelClientId: 'mdl-f679',
+        modelCapabilities: ['task_read'],
+        ttlMs: 20_000,
+      },
+      { token: broker.token, projectId: 'project-1', clientId: 'broker-f679' },
+    );
+    if (!claimed.ok || claimed.result.type !== 'runtime_attachment_claimed') {
+      throw new Error('Expected runtime attachment claim');
+    }
+    const revokeCtrl = authenticated.handleUnknown(
+      {
+        protocolVersion: GOVERNANCE_SERVICE_PROTOCOL_VERSION,
+        requestId: 'revoke-ctrl-f679',
+        type: 'revoke_capability_grant',
+        grantId: claimed.result.control.grant.grantId,
+      },
+      { token: admin2.token, projectId: 'project-1', clientId: 'admin-f679' },
+    );
+    expect(revokeCtrl).toMatchObject({ ok: true });
+    expect(registry.getGrant(claimed.result.control.grant.grantId)?.status).toBe('revoked');
+    expect(registry.getGrant(claimed.result.model.grant.grantId)?.status).toBe('revoked');
+
+    authenticated.close();
+  });
 });

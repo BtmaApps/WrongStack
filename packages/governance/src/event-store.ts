@@ -662,7 +662,8 @@ export class SqliteGovernanceEventStore implements GovernanceEventStore {
       observation.taskId !== row.task_id ||
       observation.source !== row.source ||
       observation.category !== row.category ||
-      observation.observedAt !== row.observed_at
+      observation.observedAt !== row.observed_at ||
+      observationHash(observation) !== row.observation_hash
     ) {
       throw new GovernanceStoreCorruptionError(
         `Stored observation columns do not match payload for ${row.observation_id}.`,
