@@ -257,7 +257,16 @@ export function useSessionTranscript(
     fetchJson<TranscriptResponse>(`/api/sessions/${encodeURIComponent(sessionId)}/events?${qs}`)
       .then((data) => {
         if (cancelled) return;
-        setTranscript((prev) => applyFetch(prev, data.entries));
+        setTranscript((prev) => {
+          let next = applyFetch(prev, data.entries);
+          for (const e of useHqStore.getState().events) {
+            if (e.type !== 'session.transcript' || e.sessionId !== sessionId) continue;
+            const payload = e.payload as HqTranscriptAppendPayload;
+            if (!Array.isArray(payload.entries)) continue;
+            next = applyLiveBatch(next, payload.fromSeq, payload.entries);
+          }
+          return next;
+        });
         setMeta({ source: data.source, projectName: data.projectName, total: data.total });
         setLoading(false);
       })

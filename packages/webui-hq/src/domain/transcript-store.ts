@@ -121,7 +121,9 @@ export function applyFetch(
 ): TranscriptState {
   const next = createTranscriptState();
   next.rev = state.rev + 1;
+  next.consumedBatches = new Set(state.consumedBatches);
   for (const src of entries) foldEntry(next, src, true);
+  for (const prev of state.entries) foldEntry(next, prev, false);
   return next;
 }
 

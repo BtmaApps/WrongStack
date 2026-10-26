@@ -171,4 +171,51 @@ describe('useSessionTranscript session switch', () => {
     expect(texts()).toBe('00');
     expect(latestMeta).toEqual({ total: 2, source: 'stream' });
   });
+
+  it('preserves live session.transcript batches that arrived while fetchJson was in flight (F661)', async () => {
+    let resolveFetch!: (val: unknown) => void;
+    fetchJson.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveFetch = resolve;
+      }),
+    );
+
+    container = document.createElement('div');
+    document.body.append(container);
+    const created = createRoot(container);
+    root = created;
+    await act(async () => {
+      created.render(<Probe sessionId="A" />);
+    });
+    await flush();
+
+    // Live batch arrives while HTTP fetch is still pending
+    await act(async () => {
+      useHqStore.setState({
+        events: [
+          {
+            id: 'e-live',
+            type: 'session.transcript',
+            sessionId: 'A',
+            clientId: 'c',
+            seq: 1,
+            payload: { fromSeq: 1, entries: [entry('A-live', 'assistant')] },
+          } as never,
+        ],
+      });
+    });
+    await flush();
+    expect(texts()).toBe('A-live');
+
+    // Now the initial HTTP fetch resolves with the earlier seed entry
+    await act(async () => {
+      resolveFetch({
+        sessionId: 'A',
+        total: 1,
+        entries: [entry('A-seed', 'user')],
+      });
+    });
+    await flush();
+    expect(texts()).toBe('A-seed|A-live');
+  });
 });
