@@ -349,28 +349,70 @@ export function matchTodoIdFromPrompt(
   prompt: string,
 ): StalledTodoMatch | null {
   if (todos.length === 0 || !prompt) return null;
-  const lowerPrompt = prompt.toLowerCase();
+  const lowerPrompt = prompt.replace(/\s+/g, ' ').toLowerCase();
+  const normalizeLabel = (raw: string): string => raw.replace(/\s+/g, ' ').trim().toLowerCase();
+  const matchesLabel = (label: string): boolean => {
+    if (!label) return false;
+    if (label.length > 5) return lowerPrompt.includes(label);
+    const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return new RegExp(`(?:^|[^a-z0-9])${escaped}(?:$|[^a-z0-9])`).test(lowerPrompt);
+  };
+  // True when `label` is the text that directly follows a "Proceed with: "
+  // marker in the prompt. The label must be a *prefix* of that payload so a
+  // shorter label ("fix") cannot claim a longer, different item ("fix the
+  // parser"); the caller resolves that by preferring the longest match.
+  const hasProceedWithLabel = (haystack: string, label: string): boolean => {
+    const prefix = 'proceed with: ';
+    let from = 0;
+    for (;;) {
+      const idx = haystack.indexOf(prefix, from);
+      if (idx < 0) return false;
+      if (haystack.startsWith(label, idx + prefix.length)) return true;
+      from = idx + prefix.length;
+    }
+  };
 
-  // 1. In-progress item — resolveContinuation promotes this first.
-  const inProgress = todos.find((t) => t.status === 'in_progress');
-  if (inProgress) {
-    const label = (inProgress.activeForm ?? inProgress.content).toLowerCase();
-    if (label.length > 5 && lowerPrompt.includes(label)) {
+  // 1. Check explicit "Proceed with: <label>" text first when present so short or
+  //    multiline todo labels match the exact item targeted by the continuation.
+  //    The label mirrors generateAdvancementPrompt's selection (activeForm is
+  //    the label only for in-progress items, otherwise it is the content), and
+  //    the longest matching label wins so a prefix-only label cannot steal the
+  //    match from the real target.
+  let proceedMatch: StalledTodoMatch | null = null;
+  let proceedMatchLength = -1;
+  for (const t of todos) {
+    if (t.status === 'completed') continue;
+    const label = normalizeLabel(
+      t.status === 'in_progress' && t.activeForm ? t.activeForm : t.content,
+    );
+    if (!label) continue;
+    if (!hasProceedWithLabel(lowerPrompt, label)) continue;
+    if (label.length > proceedMatchLength) {
+      proceedMatchLength = label.length;
+      proceedMatch = { id: t.id, content: t.activeForm ?? t.content };
+    }
+  }
+  if (proceedMatch) return proceedMatch;
+
+  // 2. In-progress items — resolveContinuation promotes these first.
+  for (const inProgress of todos) {
+    if (inProgress.status !== 'in_progress') continue;
+    const label = normalizeLabel(inProgress.activeForm ?? inProgress.content);
+    if (matchesLabel(label)) {
       return { id: inProgress.id, content: inProgress.activeForm ?? inProgress.content };
     }
   }
 
-  // 2. Any pending item whose content appears in the prompt (board snapshot).
+  // 3. Any pending item whose content appears in the prompt (board snapshot).
   for (const t of todos) {
-    if (t.status === 'completed') continue;
-    if (inProgress && t.id === inProgress.id) continue;
-    const label = (t.activeForm ?? t.content).toLowerCase();
-    if (label.length > 5 && lowerPrompt.includes(label)) {
+    if (t.status === 'completed' || t.status === 'in_progress') continue;
+    const label = normalizeLabel(t.activeForm ?? t.content);
+    if (matchesLabel(label)) {
       return { id: t.id, content: t.activeForm ?? t.content };
     }
   }
 
-  // 3. Last resort — pick the first non-completed todo.
+  // 4. Last resort — pick the first non-completed todo.
   const firstOpen = todos.find((t) => t.status !== 'completed');
   return firstOpen
     ? { id: firstOpen.id, content: firstOpen.activeForm ?? firstOpen.content }

@@ -128,4 +128,26 @@ describe('makeSkillTool — resource listing containment', () => {
     const paths = out.resources.map((r) => r.path).sort();
     expect(paths).toEqual(['references/REF.md', 'scripts/extract.py']);
   });
+
+  // Entries were labelled against the realpath while joined from the linked
+  // path, so a skill reached through a link (e.g. ~/.claude/skills symlinked
+  // to a dotfiles repo) listed `../../<link>/…` paths loadResource rejects.
+  it('lists loadable relative paths when the skill directory is reached through a link', async () => {
+    const realParent = path.join(tmp, 'real');
+    await fs.mkdir(path.join(realParent, 'myskill', 'references'), { recursive: true });
+    await fs.writeFile(path.join(realParent, 'myskill', 'references', 'REF.md'), '# ref');
+    const linkParent = path.join(tmp, 'linked');
+    if (!(await linkDir(realParent, linkParent))) return;
+
+    const tool = await buildTool(path.join(linkParent, 'myskill'));
+    const opts = { signal: new AbortController().signal };
+    const out = await tool.execute({ name: 'myskill' }, {} as never, opts);
+    expect(out.resources.map((r) => r.path)).toEqual(['references/REF.md']);
+    const loaded = await tool.execute(
+      { name: 'myskill', resource: 'references/REF.md' },
+      {} as never,
+      opts,
+    );
+    expect(loaded.loadedResource?.content).toBe('# ref');
+  });
 });

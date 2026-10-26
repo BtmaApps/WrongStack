@@ -446,4 +446,22 @@ describe('CircuitBreaker', () => {
     cb.afterCall(5, false); // probe succeeds -> closed
     expect(cb.canProceed).toBe(true);
   });
+
+  it('ignores afterCall completions while open and unadmitted afterCall in half-open (F34)', () => {
+    const cb = new CircuitBreaker({ maxConsecutiveFailures: 2, cooldownMs: 1_000 });
+    cb.afterCall(10, true);
+    cb.afterCall(10, true);
+    expect(cb.snapshot().state).toBe('open');
+
+    // In-flight completion while open must not reset consecutiveFailures or pollute window
+    cb.afterCall(10, false);
+    expect(cb.snapshot().consecutiveFailures).toBe(2);
+    expect(cb.snapshot().callsInWindow).toBe(0);
+
+    // Advance past cooldown and observe via snapshot() without admitting a probe via beforeCall/canProceed
+    vi.advanceTimersByTime(1_100);
+    expect(cb.snapshot().state).toBe('half-open');
+    cb.afterCall(0, false);
+    expect(cb.snapshot().state).toBe('half-open');
+  });
 });

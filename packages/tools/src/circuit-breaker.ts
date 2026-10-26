@@ -108,6 +108,7 @@ export class CircuitBreaker {
    * tripped on, re-admitted at the moment it was supposed to probe.
    */
   private halfOpenProbeInFlight = false;
+  private halfOpenProbeAdmitted = false;
   /** Timestamp when the breaker was opened (for cooldown calculation). */
   private openedAt: number | null = null;
   /** When the breaker last tripped; calls that started earlier are not the probe. */
@@ -161,7 +162,10 @@ export class CircuitBreaker {
     if (!this.enabled) return true;
     this._checkStateTransition();
     if (this.state === 'open') return false;
-    if (this.state === 'half-open' && this.halfOpenProbeInFlight) return false;
+    if (this.state === 'half-open') {
+      if (this.halfOpenProbeInFlight) return false;
+      this.halfOpenProbeAdmitted = true;
+    }
     return true;
   }
 
@@ -210,6 +214,7 @@ export class CircuitBreaker {
     if (this.state === 'half-open') {
       if (this.halfOpenProbeInFlight) return false;
       this.halfOpenProbeInFlight = true;
+      this.halfOpenProbeAdmitted = true;
     }
     return true;
   }
@@ -225,10 +230,12 @@ export class CircuitBreaker {
    */
   afterCall(durationMs: number, failed: boolean, bypass = false): void {
     if (bypass || !this.enabled) return;
+    if (this.state === 'open') return;
 
     const now = Date.now();
 
     if (this.state === 'half-open') {
+      if (!this.halfOpenProbeInFlight && !this.halfOpenProbeAdmitted) return;
       // Only the probe decides. A call admitted before the last trip that is
       // only now finishing says nothing about recovery, and letting its
       // success close the breaker re-admitted the burst mid-probe.
@@ -297,6 +304,7 @@ export class CircuitBreaker {
     this.lastTripAt = this.openedAt;
     this.consecutiveSlowCalls = 0;
     this.halfOpenProbeInFlight = false;
+    this.halfOpenProbeAdmitted = false;
     // P3 #23 (before-release.md): clear the window on trip. Old records are
     // irrelevant once tripped — the breaker starts fresh after cooldown
     // (half-open → closed resets the counters). Without this the window array
@@ -320,6 +328,7 @@ export class CircuitBreaker {
     this.window = [];
     this.openedAt = null;
     this.halfOpenProbeInFlight = false;
+    this.halfOpenProbeAdmitted = false;
     // Only notify on a real recovery (open/half-open → closed), not on the
     // initial closed state or an idempotent re-reset.
     if (wasRecovering) {

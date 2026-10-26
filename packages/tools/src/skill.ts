@@ -338,8 +338,11 @@ async function listResources(skillDir: string): Promise<SkillResource[]> {
   // `dir` is the starting directory to walk. The round-1 fix accidentally
   // swapped `realRoot` and `skillDir` between the rootReal and dir positions,
   // which typechecked as `string | undefined` against `dir: string`. Pass
-  // `realRoot` as the boundary and `skillDir` as the starting directory.
-  await walk(realRoot ?? path.resolve(skillDir), realRoot, skillDir, out);
+  // `realRoot` as the boundary and `skillDir` as the starting directory. The
+  // label root must be the string form too: entries are joined from `skillDir`,
+  // so labelling them against the realpath of a linked skill dir produced
+  // `../../<link>/…` paths that `loadResource` rejects.
+  await walk(path.resolve(skillDir), realRoot, skillDir, out);
   out.sort((a, b) => a.path.localeCompare(b.path));
   return out.slice(0, MAX_LISTED_RESOURCES);
 }

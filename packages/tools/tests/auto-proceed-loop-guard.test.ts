@@ -534,6 +534,40 @@ describe('matchTodoIdFromPrompt', () => {
     expect(result).not.toBeNull();
     expect(result!.id).toBe('t2');
   });
+
+  it('matches the "Proceed with:" payload using the producer label rule for non-in_progress todos', () => {
+    // generateAdvancementPrompt only uses activeForm for in-progress items;
+    // for a pending todo the emitted label is its content. The matcher must
+    // use the same rule or it misses the targeted item entirely.
+    const todos = [
+      { id: 'other', content: 'Write docs', status: 'pending' },
+      { id: 'target', content: 'Fix login', status: 'pending', activeForm: 'Fixing login' },
+    ];
+    const prompt = generateAdvancementPrompt(
+      { id: 'stalled', content: 'Stalled item' },
+      todos[1]!,
+      1,
+      todos,
+    );
+    expect(prompt).toContain('Proceed with: Fix login');
+    expect(matchTodoIdFromPrompt(todos, prompt)?.id).toBe('target');
+  });
+
+  it('does not let a prefix-only label steal the "Proceed with:" match', () => {
+    // "Fix" must not claim the payload emitted for "Fix the parser".
+    const todos = [
+      { id: 'prefix', content: 'Fix', status: 'pending' },
+      { id: 'target', content: 'Fix the parser', status: 'pending' },
+    ];
+    const prompt = generateAdvancementPrompt(
+      { id: 'stalled', content: 'Stalled item' },
+      todos[1]!,
+      1,
+      todos,
+    );
+    expect(prompt).toContain('Proceed with: Fix the parser');
+    expect(matchTodoIdFromPrompt(todos, prompt)?.id).toBe('target');
+  });
 });
 
 describe('MAX_ADVANCEMENT_ATTEMPTS', () => {
@@ -563,5 +597,31 @@ describe('MAX_ADVANCEMENT_ATTEMPTS', () => {
       'Board:\n  [ ] Update the prefix configuration',
     );
     expect(matched?.id).toBe('real-pending');
+  });
+
+  it('matches short whole-word labels, multiline labels, and secondary in_progress todos in matchTodoIdFromPrompt (F34)', () => {
+    const shortTodos = [
+      { id: 't1', content: 'Setup', status: 'pending' },
+      { id: 't2', content: 'Tests', status: 'pending' },
+    ];
+    expect(matchTodoIdFromPrompt(shortTodos, 'Proceed with: Tests')?.id).toBe('t2');
+
+    const multilineTodos = [
+      { id: 't1', content: 'First task', status: 'pending' },
+      { id: 't2', content: 'Fix bug\nin parser', status: 'pending' },
+    ];
+    const advPrompt = generateAdvancementPrompt(
+      multilineTodos[0]!,
+      multilineTodos[1]!,
+      1,
+      multilineTodos,
+    );
+    expect(matchTodoIdFromPrompt(multilineTodos, advPrompt)?.id).toBe('t2');
+
+    const multiInProgress = [
+      { id: 'ip1', content: 'Other work', status: 'in_progress' },
+      { id: 'ip2', content: 'Build', status: 'in_progress' },
+    ];
+    expect(matchTodoIdFromPrompt(multiInProgress, 'Now working on Build')?.id).toBe('ip2');
   });
 });
