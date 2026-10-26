@@ -39,7 +39,9 @@ export interface OptionalCouncilRequest<T> extends OptionalLlmRequest<T> {
 /** Remove one outer Markdown fence without modifying inner code fences. */
 export function stripOuterMarkdownFence(text: string): string {
   const trimmed = text.trim();
-  const match = trimmed.match(/^```(?:[a-z0-9_-]+)?\s*\r?\n([\s\S]*?)\r?\n```$/i);
+  const match =
+    trimmed.match(/^```(?:[a-z0-9_-]+)?[ \t]*\r?\n([\s\S]*?)\r?\n[ \t]*```$/i) ??
+    trimmed.match(/^```(?:[a-z0-9_-]+)?[ \t]+([^\r\n`]+?)[ \t]*```$/i);
   return (match?.[1] ?? trimmed).trim();
 }
 
@@ -79,7 +81,12 @@ export async function runOptionalPluginLlm<T>(
     if (request.options?.signal?.aborted) {
       return { used: false, value: null, fallbackReason: 'cancelled' };
     }
-    const parsed = request.parse(response.text);
+    let parsed: T | null;
+    try {
+      parsed = request.parse(response.text);
+    } catch {
+      parsed = null;
+    }
     if (parsed === null) {
       request.api.log.warn(`${request.label}: ignored invalid LLM response`);
       return { used: false, value: null, fallbackReason: 'invalid-response' };
@@ -127,7 +134,14 @@ export async function runOptionalPluginCouncil<T>(
       if (request.options?.signal?.aborted || result.status === 'cancelled') {
         return { used: false, value: null, fallbackReason: 'cancelled' };
       }
-      const parsed = result.status === 'decided' ? request.parse(result.answer ?? '') : null;
+      let parsed: T | null = null;
+      if (result.status === 'decided') {
+        try {
+          parsed = request.parse(result.answer ?? '');
+        } catch {
+          parsed = null;
+        }
+      }
       if (parsed !== null) return { used: true, value: parsed, fallbackReason: null };
       request.api.log.warn(
         `${request.label}: Council did not return a valid answer; trying One Shot`,

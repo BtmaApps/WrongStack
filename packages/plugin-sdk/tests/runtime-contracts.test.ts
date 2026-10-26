@@ -7,9 +7,12 @@ import {
   BoundedSet,
   clearLocalBinCache,
   type LanguageRuntime,
+  parseLlmJsonObject,
   resolveNodeBin,
   resolveRunnerCommand,
+  runOptionalPluginLlm,
   runRunnerCommand,
+  stripOuterMarkdownFence,
 } from '../src/runtime/index.js';
 
 const directories: string[] = [];
@@ -55,6 +58,49 @@ describe('runtime helper contracts', () => {
       cmd: 'pnpm',
       args: ['dlx', 'tsc', '--noEmit'],
       display: 'pnpm dlx tsc --noEmit',
+    });
+
+    const absCmdShim = path.join(projectRoot, 'node_modules', '.bin', 'tsc.cmd');
+    expect(resolveRunnerCommand(runtime, `${absCmdShim} --noEmit`, { projectRoot })).toEqual({
+      cmd: absCmdShim,
+      args: ['--noEmit'],
+      display: `${absCmdShim} --noEmit`,
+    });
+
+    const absLauncher = path.join(projectRoot, 'bin', 'pnpm.cmd');
+    expect(
+      resolveRunnerCommand(runtime, `${absLauncher} exec tsc --noEmit`, { projectRoot }),
+    ).toEqual({
+      cmd: absLauncher,
+      args: ['exec', 'tsc', '--noEmit'],
+      display: `${absLauncher} exec tsc --noEmit`,
+    });
+    expect(
+      resolveRunnerCommand(runtime, `${absLauncher} tsc --noEmit`, { projectRoot }),
+    ).toBeNull();
+  });
+
+  it('strips indented or single-line outer markdown fences and classifies parse throws as invalid-response', async () => {
+    expect(parseLlmJsonObject('```json\n{"ok":true}\n  ```')).toEqual({ ok: true });
+    expect(parseLlmJsonObject('```json {"ok":true,"n":2} ```')).toEqual({ ok: true, n: 2 });
+    expect(stripOuterMarkdownFence('```md\nLine 1\n```ts\nx\n```\n  ```')).toBe(
+      'Line 1\n```ts\nx\n```',
+    );
+
+    const res = await runOptionalPluginLlm({
+      requested: true,
+      prompt: 'return json',
+      label: 'test',
+      api: {
+        llm: { complete: async () => ({ text: '{malformed' }) } as never,
+        log: { info: () => {}, warn: () => {}, error: () => {}, debug: () => {} } as never,
+      },
+      parse: (text) => JSON.parse(text) as { ok: boolean },
+    });
+    expect(res).toEqual({
+      used: false,
+      value: null,
+      fallbackReason: 'invalid-response',
     });
   });
 
