@@ -74,6 +74,32 @@ export function pendingQuestions(record: RequirementIntakeRecord): IntakeQuestio
     .sort((a, b) => a.order - b.order);
 }
 
+/** Catalog fields that map to a record property directly. */
+const FIELD_TO_RECORD_PROPERTY: Readonly<
+  Record<string, (record: RequirementIntakeRecord) => boolean>
+> = {
+  description_scope: () => true, // always answered by the original request
+  business_goal: (record) =>
+    record.businessGoal !== undefined && record.businessGoal.trim().length > 0,
+  target_users: (record) => (record.targetUsers?.length ?? 0) > 0,
+  expected_outcome: (record) =>
+    record.expectedOutcome !== undefined && record.expectedOutcome.trim().length > 0,
+  scope_notes: (record) => record.scopeNotes !== undefined && record.scopeNotes.trim().length > 0,
+  project_component: (record) => (record.providedContext?.length ?? 0) > 0,
+  provided_context: (record) => (record.providedContext?.length ?? 0) > 0,
+  constraints: (record) => (record.constraints?.length ?? 0) > 0,
+  related_resources: (record) => (record.relatedResources?.length ?? 0) > 0,
+  priority: (record) => record.priority !== undefined && record.priority !== 'unspecified',
+  attachments: (record) => (record.attachments?.length ?? 0) > 0,
+};
+
+export function isFieldPresentOnRecord(record: RequirementIntakeRecord, field: string): boolean {
+  if (Object.hasOwn(FIELD_TO_RECORD_PROPERTY, field)) {
+    if (FIELD_TO_RECORD_PROPERTY[field]?.(record)) return true;
+  }
+  return record.answers?.some((answer) => answer.field === field) ?? false;
+}
+
 /** Merge a question template into a record's question list (no duplicates). */
 export function upsertQuestion(
   record: RequirementIntakeRecord,
@@ -81,6 +107,7 @@ export function upsertQuestion(
 ): boolean {
   const existing = record.questions.find((question) => question.field === template.field);
   if (existing) return false;
-  record.questions.push(makeQuestion(template, record.questions.length, false));
-  return true;
+  const skipped = isFieldPresentOnRecord(record, template.field);
+  record.questions.push(makeQuestion(template, record.questions.length, skipped));
+  return !skipped;
 }

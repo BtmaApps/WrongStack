@@ -185,5 +185,78 @@ describe('VIBE Protocol — Requirement Intake', () => {
       expect(promoted.vibeProtocol?.isVibeMode).toBe(true);
       expect(promoted.vibeProtocol?.stage).toBe('synthesizer');
     });
+
+    it('synchronizes VIBE state on addAnswer/updateAnswer, updates question.answer on repeated answers, clears fieldSources on blank optional strings, and marks populated fields answered (F677)', async () => {
+      const harness = makeHarness({
+        generator: {
+          async generate() {
+            return {
+              suggested_questions: [
+                { field: 'business_goal', question: 'What is the business goal?' },
+                { field: 'description_scope', question: 'What is the scope?' },
+                { field: 'security_review', question: 'Which security review?' },
+              ],
+            };
+          },
+        },
+      });
+      const { record } = await harness.service.createIntake(
+        {
+          projectId: 'proj_alpha',
+          originalRequest: 'Add enterprise SAML SSO',
+          requestedBy: 'user-alice',
+        },
+        ALICE,
+      );
+
+      await harness.service.addAnswer(
+        record.id,
+        { field: 'business_goal', answer: 'First goal' },
+        ALICE,
+      );
+      const afterSecond = await harness.service.addAnswer(
+        record.id,
+        { field: 'business_goal', answer: '[VIBE] Second goal with VIBE' },
+        ALICE,
+      );
+      expect(afterSecond.isVibeMode).toBe(true);
+      expect(afterSecond.vibeProtocol?.stage).toBe('synthesizer');
+      expect(afterSecond.questions.find((q) => q.field === 'business_goal')?.answer).toBe(
+        '[VIBE] Second goal with VIBE',
+      );
+
+      const afterUpdate = await harness.service.updateIntake(
+        record.id,
+        {
+          businessGoal: '   ',
+          expectedOutcome: 'SAML login works',
+        },
+        ALICE,
+      );
+      expect(afterUpdate.businessGoal).toBeUndefined();
+      expect(afterUpdate.fieldSources.business_goal).toBeUndefined();
+      expect(afterUpdate.questions.find((q) => q.field === 'expected_outcome')?.status).toBe(
+        'answered',
+      );
+
+      const custom = await harness.service.createIntake(
+        {
+          projectId: 'proj_alpha',
+          originalRequest: 'Custom catalog intake',
+          requestedBy: 'user-alice',
+          businessGoal: 'Supplied goal',
+          questions: [{ field: 'custom_q', question: 'Custom question?' }],
+        },
+        ALICE,
+      );
+      const proposals = await harness.service.generateSuggestions(custom.record.id, ALICE);
+      for (const proposal of proposals) {
+        await harness.service.acceptSuggestion(custom.record.id, proposal.id, ALICE);
+      }
+      const pendingFields = (await harness.service.pendingQuestions(custom.record.id, ALICE)).map(
+        (q) => q.field,
+      );
+      expect(pendingFields).toEqual(['custom_q', 'security_review']);
+    });
   });
 });

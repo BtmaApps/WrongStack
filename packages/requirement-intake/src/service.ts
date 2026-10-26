@@ -41,6 +41,7 @@ import {
   assertIntakeSubmitReady,
   buildNewIntakeRecord,
   findSuggestionProposal,
+  markQuestionAnswered,
   markUserSources,
 } from './service-helpers.js';
 import {
@@ -266,14 +267,42 @@ export class RequirementIntakeService {
         if (validated.priority !== undefined) {
           next.priority = validated.priority;
           next.fieldSources.priority = 'user';
+          if (validated.priority !== 'unspecified') {
+            markQuestionAnswered(next, 'priority', validated.priority);
+          }
         }
         applyOptionalString(next, 'businessGoal', validated.businessGoal);
+        if (validated.businessGoal !== undefined && next.businessGoal !== undefined) {
+          markQuestionAnswered(next, 'business_goal', next.businessGoal);
+        }
         applyOptionalString(next, 'expectedOutcome', validated.expectedOutcome);
+        if (validated.expectedOutcome !== undefined && next.expectedOutcome !== undefined) {
+          markQuestionAnswered(next, 'expected_outcome', next.expectedOutcome);
+        }
         applyOptionalString(next, 'scopeNotes', validated.scopeNotes);
-        if (validated.targetUsers !== undefined) next.targetUsers = [...validated.targetUsers];
-        if (validated.constraints !== undefined) next.constraints = [...validated.constraints];
-        if (validated.providedContext !== undefined)
+        if (validated.scopeNotes !== undefined && next.scopeNotes !== undefined) {
+          markQuestionAnswered(next, 'scope_notes', next.scopeNotes);
+        }
+        if (validated.targetUsers !== undefined) {
+          next.targetUsers = [...validated.targetUsers];
+          if (next.targetUsers.length > 0) {
+            markQuestionAnswered(next, 'target_users', next.targetUsers.join(', '));
+          }
+        }
+        if (validated.constraints !== undefined) {
+          next.constraints = [...validated.constraints];
+          if (next.constraints.length > 0) {
+            markQuestionAnswered(next, 'constraints', next.constraints.join(', '));
+          }
+        }
+        if (validated.providedContext !== undefined) {
           next.providedContext = [...validated.providedContext];
+          if (next.providedContext.length > 0) {
+            const joined = next.providedContext.join(', ');
+            markQuestionAnswered(next, 'provided_context', joined);
+            markQuestionAnswered(next, 'project_component', joined);
+          }
+        }
         if (validated.metadata !== undefined) next.metadata = validated.metadata;
         const wasVibeLocked = next.isVibeMode === true || next.vibeProtocol?.isVibeMode === true;
         const textTriggersVibe =

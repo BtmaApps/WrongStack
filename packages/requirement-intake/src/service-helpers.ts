@@ -30,7 +30,7 @@ import type {
   RequirementIntakeRecord,
 } from './types.js';
 import { deterministicSummary, deterministicTitle, normalizeRequestType } from './validation.js';
-import { deriveVibeState } from './vibe.js';
+import { deriveVibeState, hasVibeTag } from './vibe.js';
 
 function splitItems(raw: string): string[] {
   return raw
@@ -276,6 +276,9 @@ export function applySuggestionProposal(
       if ((INTAKE_PRIORITIES as readonly string[]).includes(value)) {
         record.priority = value as IntakePriority;
         record.fieldSources.priority = 'llm';
+        if (value !== 'unspecified') {
+          markQuestionAnswered(record, 'priority', value);
+        }
       }
       break;
     }
@@ -283,18 +286,21 @@ export function applySuggestionProposal(
       const value = assertSuggestionString(proposal.value, 'constraint', MAX_STRING_FIELD_LENGTH);
       appendItems(record.constraints, value);
       record.fieldSources.constraints = 'llm';
+      markQuestionAnswered(record, 'constraints', value);
       break;
     }
     case 'target_user': {
       const value = assertSuggestionString(proposal.value, 'target_user', MAX_STRING_FIELD_LENGTH);
       appendItems(record.targetUsers, value);
       record.fieldSources.target_users = 'llm';
+      markQuestionAnswered(record, 'target_users', value);
       break;
     }
     case 'outcome': {
       const value = assertSuggestionString(proposal.value, 'outcome', MAX_ANSWER_LENGTH);
       record.expectedOutcome = value;
       record.fieldSources.expected_outcome = 'llm';
+      markQuestionAnswered(record, 'expected_outcome', value);
       break;
     }
     case 'question': {
@@ -345,7 +351,14 @@ export function markUserSources(record: RequirementIntakeRecord, changedKeys: st
   for (const key of changedKeys) {
     const sourceField = mapping[key];
     if (sourceField) {
-      record.fieldSources[sourceField] = 'user';
+      if (
+        (key === 'businessGoal' || key === 'expectedOutcome' || key === 'scopeNotes') &&
+        record[key] === undefined
+      ) {
+        delete record.fieldSources[sourceField];
+      } else {
+        record.fieldSources[sourceField] = 'user';
+      }
     }
   }
 }
@@ -356,9 +369,28 @@ export function markQuestionAnswered(
   value: string,
 ): void {
   const question = record.questions.find((candidate) => candidate.field === field);
-  if (question && question.status === 'unanswered') {
+  if (question && (question.status === 'unanswered' || question.status === 'answered')) {
     question.status = 'answered';
     question.answer = value;
+  }
+}
+
+function syncVibeFromAnswer(
+  record: RequirementIntakeRecord,
+  answerText: string,
+  now: number,
+): void {
+  if (
+    record.isVibeMode === true ||
+    record.vibeProtocol?.isVibeMode === true ||
+    hasVibeTag(answerText)
+  ) {
+    record.isVibeMode = true;
+    record.vibeProtocol = deriveVibeState(
+      answerText,
+      record.vibeProtocol ? { ...record.vibeProtocol, isVibeMode: true } : undefined,
+      now,
+    );
   }
 }
 
@@ -382,6 +414,7 @@ export function applyAnswerToRecord(
   };
   record.answers.push(answer);
   markQuestionAnswered(record, validated.field, validated.answer);
+  syncVibeFromAnswer(record, validated.answer, now);
   const mapping = ANSWER_FIELD_MAPPING[validated.field];
   if (mapping) {
     const before = mapping.list?.(record).slice();
@@ -411,14 +444,16 @@ export function applyAnswerUpdateToRecord(
       { field: 'answerId', message: `answer not found: ${answerId}` },
     ]);
   }
+  const now = Date.now();
   const previous = answer.answer;
   answer.answer = newAnswer;
-  answer.answeredAt = Date.now();
+  answer.answeredAt = now;
   const question = record.questions.find((candidate) => candidate.field === answer.field);
   if (question) {
     question.answer = newAnswer;
     question.status = 'answered';
   }
+  syncVibeFromAnswer(record, newAnswer, now);
   const mapping = ANSWER_FIELD_MAPPING[answer.field];
   const list = mapping?.list?.(record);
   let contribution: string[] | undefined;
