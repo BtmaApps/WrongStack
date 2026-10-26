@@ -59,7 +59,7 @@ export {
   type GoalRunnerOptions,
 } from './goal-runner.js';
 export { type GoalSummary, summarizeGoal } from './goal-summary.js';
-export { prepareGoalWorkspace } from './goal-workspace.js';
+export { prepareGoalWorkspace, releaseGoalWorkspaceHold } from './goal-workspace.js';
 export {
   buildGoalRefinementPrompt,
   parseGoalRefinement,

@@ -13,6 +13,7 @@
 import { resolve, sep } from 'node:path';
 import type { EventBus } from '@wrongstack/contracts/kernel/events';
 import type { GitRunner } from './worktree-git.js';
+import { isManagedWorktreeHeld } from './worktree-hold.js';
 import type { WorktreeHandle } from './worktree-types.js';
 
 /** Manager state these operations read and mutate. */
@@ -30,24 +31,74 @@ export interface ManagedOpsContext {
 export async function cleanupAllManaged(ctx: ManagedOpsContext): Promise<{ removed: number }> {
   const root = resolve(ctx.worktreesRoot);
   let removed = 0;
+  const failedDirs = new Set<string>();
+  const survivingBranches = new Set<string>();
   try {
     const listed = await ctx.runGit(['worktree', 'list', '--porcelain'], ctx.projectRoot);
-    // Porcelain emits a `worktree <abs-path>` line per checkout (blank-line
-    // separated records). Match the ones under our worktrees root.
+    // Porcelain emits blank-line-separated records with `worktree <abs-path>`
+    // and optional `branch refs/heads/<name>`. Match checkouts under our root.
+    let curDir: string | null = null;
+    let curBranch: string | undefined;
+    const records: Array<{ dir: string; branch?: string | undefined }> = [];
+    const flush = (): void => {
+      if (curDir) {
+        const dir = resolve(curDir);
+        if (dir !== root && (dir === root || dir.startsWith(root + sep))) {
+          records.push({ dir, branch: curBranch });
+        }
+      }
+      curDir = null;
+      curBranch = undefined;
+    };
     for (const line of listed.stdout.split('\n')) {
       const m = line.match(/^worktree\s+(.+?)\s*$/);
-      if (!m?.[1]) continue;
-      const dir = resolve(m[1]);
-      if (dir !== root && (dir === root || dir.startsWith(root + sep))) {
-        const rm = await ctx.runGit(['worktree', 'remove', '--force', dir], ctx.projectRoot);
-        if (rm.code === 0) removed++;
+      if (m?.[1]) {
+        flush();
+        curDir = m[1];
+      } else if (line.startsWith('branch ')) {
+        curBranch = line
+          .slice('branch '.length)
+          .trim()
+          .replace(/^refs\/heads\//, '');
+      } else if (line.trim() === '') {
+        flush();
+      }
+    }
+    flush();
+
+    for (const rec of records) {
+      // A checkout held by a live owner (a running isolated Goal, here or in
+      // another process) is not a leftover: keep it and its branch, exactly
+      // like a checkout whose removal failed.
+      if (await isManagedWorktreeHeld(root, rec.dir)) {
+        failedDirs.add(rec.dir);
+        if (rec.branch) survivingBranches.add(rec.branch);
+        continue;
+      }
+      try {
+        const rm = await ctx.runGit(['worktree', 'remove', '--force', rec.dir], ctx.projectRoot);
+        if (rm.code === 0) {
+          removed++;
+        } else {
+          failedDirs.add(rec.dir);
+          if (rec.branch) survivingBranches.add(rec.branch);
+        }
+      } catch {
+        failedDirs.add(rec.dir);
+        if (rec.branch) survivingBranches.add(rec.branch);
       }
     }
   } catch {
     // best-effort
   }
+  for (const h of ctx.handles.values()) {
+    if (failedDirs.has(resolve(h.dir))) {
+      survivingBranches.add(h.branch);
+    }
+  }
   // Delete every wstack/ap/* branch (covers branches whose worktree was already
-  // gone, e.g. a merged task whose checkout was released but branch lingered).
+  // gone, e.g. a merged task whose checkout was released but branch lingered),
+  // except branches belonging to checkouts whose removal failed.
   try {
     const branches = await ctx.runGit(
       ['branch', '--list', '--format=%(refname:short)', 'wstack/ap/*'],
@@ -57,20 +108,33 @@ export async function cleanupAllManaged(ctx: ManagedOpsContext): Promise<{ remov
       .split('\n')
       .map((s) => s.trim())
       .filter(Boolean)) {
-      await ctx.runGit(['branch', '-D', b], ctx.projectRoot);
+      if (survivingBranches.has(b) || b.startsWith('-')) continue;
+      await ctx.runGit(['branch', '-D', '--', b], ctx.projectRoot);
     }
   } catch {
     // best-effort
   }
   await ctx.runGit(['worktree', 'prune'], ctx.projectRoot).catch(() => undefined);
-  // Drop any in-memory handles too, so a still-live manager forgets them.
-  ctx.handles.clear();
-  ctx.usedSlugs.clear();
+  // Drop in-memory handles whose checkouts actually came off disk; preserve
+  // handles and slugs for checkouts whose removal failed.
+  if (failedDirs.size === 0) {
+    ctx.handles.clear();
+    ctx.usedSlugs.clear();
+  } else {
+    ctx.usedSlugs.clear();
+    for (const [ownerId, h] of [...ctx.handles]) {
+      if (failedDirs.has(resolve(h.dir))) {
+        ctx.usedSlugs.add(h.slug);
+      } else {
+        ctx.handles.delete(ownerId);
+      }
+    }
+  }
   ctx.emit('worktree.released', {
     handleId: 'cleanup-all',
     ownerId: 'cleanup-all',
     branch: 'wstack/ap/*',
-    kept: false,
+    kept: failedDirs.size > 0,
   });
   return { removed };
 }
@@ -154,6 +218,7 @@ export async function removeOne(
   if (abs === root || !abs.startsWith(root + sep)) {
     return { removed: false };
   }
+  if (await isManagedWorktreeHeld(root, abs)) return { removed: false };
   let removed = false;
   try {
     const rm = await ctx.runGit(['worktree', 'remove', '--force', abs], ctx.projectRoot);

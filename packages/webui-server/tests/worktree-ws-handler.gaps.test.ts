@@ -8,10 +8,11 @@ vi.mock('@wrongstack/worktree', () => ({
 }));
 vi.mock('@wrongstack/sdd', () => ({
   cleanupStaleSddWorktrees: vi.fn(),
+  sddRunLiveReason: vi.fn(async () => undefined),
 }));
 
 import { WorktreeManager } from '@wrongstack/worktree';
-import { cleanupStaleSddWorktrees } from '@wrongstack/sdd';
+import { cleanupStaleSddWorktrees, sddRunLiveReason } from '@wrongstack/sdd';
 import { WorktreeWebSocketHandler } from '../src/server/worktree-ws-handler.js';
 
 const managerMock = WorktreeManager as unknown as { mockImplementation: (impl: unknown) => void };
@@ -450,6 +451,32 @@ describe('WorktreeWebSocketHandler — per-row operations', () => {
     expect(
       ws.sent.filter((m) => m.type === 'worktree.cleanup_result').at(-1)?.payload,
     ).toMatchObject({ ok: true, removed: 1 });
+    h.dispose();
+  });
+
+  // The orphan list filters only this session's handles, so a row can be the
+  // live checkout of a run in another process. Bulk cleanup honoured the
+  // cross-process board guard; per-row remove and merge did not.
+  it('refuses per-row remove and merge while a run is live in another process', async () => {
+    const liveMock = sddRunLiveReason as unknown as ReturnType<typeof vi.fn>;
+    liveMock.mockResolvedValueOnce('a run appears live (running)');
+    liveMock.mockResolvedValueOnce('a run appears live (running)');
+    const removeOne = vi.fn(async () => ({ removed: true }));
+    const mergeBranch = vi.fn(async () => ({ ok: true }));
+    const { h, ws } = handlerWith({ removeOne, mergeBranch });
+    await h.handleMessage({
+      type: 'worktree.remove',
+      payload: { dir: '/proj/.wrongstack/worktrees/other', branch: 'wstack/ap/other' },
+    });
+    await h.handleMessage({ type: 'worktree.merge', payload: { branch: 'wstack/ap/other' } });
+    expect(removeOne).not.toHaveBeenCalled();
+    expect(mergeBranch).not.toHaveBeenCalled();
+    expect(
+      ws.sent.filter((m) => m.type === 'worktree.cleanup_result').at(-1)?.payload,
+    ).toMatchObject({ ok: false, reason: 'a run appears live (running)' });
+    expect(ws.sent.filter((m) => m.type === 'worktree.merge_result').at(-1)?.payload).toMatchObject(
+      { ok: false, reason: 'a run appears live (running)' },
+    );
     h.dispose();
   });
 

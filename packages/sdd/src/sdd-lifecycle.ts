@@ -164,34 +164,8 @@ export interface CleanupStaleSddResult {
 export async function cleanupStaleSddWorktrees(
   opts: CleanupStaleSddOptions,
 ): Promise<CleanupStaleSddResult> {
-  const now = opts.now?.() ?? Date.now();
-  let latest: SddBoardSnapshot | undefined;
-  try {
-    latest = (await listSddSnapshots(opts.projectRoot, opts.boardsDir, opts.stateTransport))[0];
-  } catch {
-    // A failed authoritative-state read cannot prove that no run is live.
-    // Fail closed instead of force-removing another process's worktrees.
-    return {
-      swept: false,
-      removed: 0,
-      detected: 0,
-      skippedReason: 'SDD workflow state is unavailable',
-    };
-  }
-  if (latest) {
-    const age = now - latest.updatedAt;
-    if (latest.status === 'running' && age < (opts.runningLiveMs ?? 120_000)) {
-      return {
-        swept: false,
-        removed: 0,
-        detected: 0,
-        skippedReason: 'a run appears live (running)',
-      };
-    }
-    if (latest.status === 'paused' && age < (opts.pausedLiveMs ?? 1_800_000)) {
-      return { swept: false, removed: 0, detected: 0, skippedReason: 'a run is paused' };
-    }
-  }
+  const skippedReason = await sddRunLiveReason(opts);
+  if (skippedReason) return { swept: false, removed: 0, detected: 0, skippedReason };
   try {
     const wt = new WorktreeManager({ projectRoot: opts.projectRoot });
     const { removed, detected } = await wt.cleanupStale();
@@ -199,6 +173,38 @@ export async function cleanupStaleSddWorktrees(
   } catch {
     return { swept: false, removed: 0, detected: 0 };
   }
+}
+
+/**
+ * Why managed worktrees must not be touched right now — a run in ANY process
+ * appears live or paused per the latest board — or `undefined` when they may
+ * be. Fails closed when the board state cannot be read. Shared by the bulk
+ * stale sweep and per-worktree remove/merge so both honour the same guard.
+ */
+export async function sddRunLiveReason(
+  opts: Pick<
+    CleanupStaleSddOptions,
+    'projectRoot' | 'boardsDir' | 'stateTransport' | 'runningLiveMs' | 'pausedLiveMs' | 'now'
+  >,
+): Promise<string | undefined> {
+  const now = opts.now?.() ?? Date.now();
+  let latest: SddBoardSnapshot | undefined;
+  try {
+    latest = (await listSddSnapshots(opts.projectRoot, opts.boardsDir, opts.stateTransport))[0];
+  } catch {
+    // A failed authoritative-state read cannot prove that no run is live.
+    // Fail closed instead of force-removing another process's worktrees.
+    return 'SDD workflow state is unavailable';
+  }
+  if (!latest) return undefined;
+  const age = now - latest.updatedAt;
+  if (latest.status === 'running' && age < (opts.runningLiveMs ?? 120_000)) {
+    return 'a run appears live (running)';
+  }
+  if (latest.status === 'paused' && age < (opts.pausedLiveMs ?? 1_800_000)) {
+    return 'a run is paused';
+  }
+  return undefined;
 }
 
 export interface RollbackFromDiskOptions {

@@ -88,7 +88,10 @@ export async function startSddRunFromGraph(
   const worktreesEnabled = config.worktrees ?? process.env['WRONGSTACK_SDD_WORKTREES'] !== '0';
   let worktrees: WorktreeManager | undefined;
   if (worktreesEnabled && (await isGitWorkTree(deps.projectRoot))) {
-    void cleanupStaleSddWorktrees({
+    // Awaited, as the CLI does: a sweep that finds anything stale removes EVERY
+    // managed worktree, so overlapping it with the new run's allocations
+    // deleted the fresh checkouts.
+    await cleanupStaleSddWorktrees({
       projectRoot: deps.projectRoot,
       boardsDir: deps.projectSddBoards,
       stateTransport: 'kanban',

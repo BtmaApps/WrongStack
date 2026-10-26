@@ -8,7 +8,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { WebSocket } from 'ws';
 
 vi.mock('@wrongstack/worktree', () => ({ WorktreeManager: vi.fn() }));
-vi.mock('@wrongstack/sdd', () => ({ cleanupStaleSddWorktrees: vi.fn() }));
+vi.mock('@wrongstack/sdd', () => ({
+  cleanupStaleSddWorktrees: vi.fn(),
+  sddRunLiveReason: vi.fn(async () => undefined),
+}));
 
 import { WorktreeManager } from '@wrongstack/worktree';
 import { cleanupStaleSddWorktrees } from '@wrongstack/sdd';

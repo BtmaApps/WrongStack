@@ -185,6 +185,15 @@ export class SddParallelRun extends SddParallelRunState {
    * the final summary when the graph settles, deadlocks, stops, or hits a backstop.
    */
   async run(): Promise<RunResult> {
+    this.runInFlight = true;
+    try {
+      return await this.runScheduler();
+    } finally {
+      this.runInFlight = false;
+    }
+  }
+
+  private async runScheduler(): Promise<RunResult> {
     this.stopRequested = false;
     this.fatalError = undefined;
     this.restoreRetryMap();

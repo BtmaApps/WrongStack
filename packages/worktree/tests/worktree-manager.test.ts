@@ -10,6 +10,7 @@ import {
   type WorktreeTimelineEvent,
 } from '@wrongstack/contracts/types/worktree-timeline';
 import { describe, expect, it } from 'vitest';
+import { listGitWorktrees } from '../src/git-worktree-list.js';
 import {
   assertSafePath,
   parseConflictPaths,
@@ -1520,5 +1521,139 @@ describe('assertSafePath', () => {
   });
   it('rejects escapes', () => {
     expect(() => assertSafePath('/etc/evil', PROJ)).toThrow(/escapes project root/);
+  });
+});
+
+describe('F23 regressions — cleanupAllManaged survival, conflict resolution staging, linked subagent filtering', () => {
+  it('cleanupAllManaged preserves handles and branches for checkouts whose removal failed', async () => {
+    let lockedDir = '';
+    let lockedBranch = '';
+    let freeDir = '';
+    let freeBranch = '';
+    const deletedBranches: string[] = [];
+    const releasedEvents: Array<Record<string, unknown>> = [];
+
+    const wm = new WorktreeManager({
+      projectRoot: PROJ,
+      events: {
+        emit: (name: string, payload: Record<string, unknown>) => {
+          if (name === 'worktree.released') releasedEvents.push(payload);
+        },
+      } as never,
+      run: async (args) => {
+        if (args[0] === 'rev-parse') return { code: 0, stdout: 'main\n', stderr: '' };
+        if (args[0] === 'worktree' && args[1] === 'list') {
+          return {
+            code: 0,
+            stdout: [
+              `worktree ${path.resolve(PROJ)}\nbranch refs/heads/main`,
+              `worktree ${lockedDir}\nbranch refs/heads/${lockedBranch}`,
+              `worktree ${freeDir}\nbranch refs/heads/${freeBranch}`,
+            ].join('\n\n'),
+            stderr: '',
+          };
+        }
+        if (args[0] === 'worktree' && args[1] === 'remove') {
+          if (args.at(-1) === lockedDir) {
+            return { code: 128, stdout: '', stderr: 'fatal: locked worktree' };
+          }
+          return { code: 0, stdout: '', stderr: '' };
+        }
+        if (args[0] === 'branch' && args[1] === '--list') {
+          return { code: 0, stdout: `${lockedBranch}\n${freeBranch}\n`, stderr: '' };
+        }
+        if (args[0] === 'branch' && args[1] === '-D') {
+          deletedBranches.push(args.at(-1) ?? '');
+          return { code: 0, stdout: '', stderr: '' };
+        }
+        return { code: 0, stdout: '', stderr: '' };
+      },
+    });
+
+    const hLocked = await wm.allocate('owner-locked', { slugHint: 'locked' });
+    const hFree = await wm.allocate('owner-free', { slugHint: 'free' });
+    lockedDir = hLocked.dir;
+    lockedBranch = hLocked.branch;
+    freeDir = hFree.dir;
+    freeBranch = hFree.branch;
+
+    const res = await wm.cleanupAllManaged();
+    expect(res.removed).toBe(1);
+    expect(wm.get('owner-locked')?.id).toBe(hLocked.id);
+    expect(wm.get('owner-free')).toBeUndefined();
+    expect(deletedBranches).toEqual([freeBranch]);
+    expect(releasedEvents.at(-1)?.['kept']).toBe(true);
+  });
+
+  it('tryResolveConflict aborts when git add fails and forwards squash:false to worktree.merged', async () => {
+    await fs.mkdir(PROJ, { recursive: true });
+    await fs.writeFile(path.join(PROJ, 'seed.txt'), 'clean line\n', 'utf8');
+    try {
+      let failAdd = true;
+      const mergedEvents: Array<Record<string, unknown>> = [];
+      const wm = new WorktreeManager({
+        projectRoot: PROJ,
+        events: {
+          emit: (name: string, payload: Record<string, unknown>) => {
+            if (name === 'worktree.merged') mergedEvents.push(payload);
+          },
+        } as never,
+        run: async (args) => {
+          if (args[0] === 'rev-parse') return { code: 0, stdout: 'main\n', stderr: '' };
+          if (args.includes('merge')) {
+            return {
+              code: 1,
+              stdout: 'CONFLICT (content): Merge conflict in seed.txt\n',
+              stderr: '',
+            };
+          }
+          if (args[0] === 'add') {
+            return failAdd
+              ? { code: 128, stdout: '', stderr: 'fatal: index.lock' }
+              : { code: 0, stdout: '', stderr: '' };
+          }
+          if (args.includes('commit')) {
+            return { code: 1, stdout: 'nothing to commit, working tree clean\n', stderr: '' };
+          }
+          return { code: 0, stdout: '', stderr: '' };
+        },
+      });
+
+      const hFail = await wm.allocate('owner-fail-add', { slugHint: 'fail-add' });
+      const resFail = await wm.merge(hFail, { squash: true, resolve: async () => true });
+      expect(resFail.ok).toBe(false);
+      expect(resFail.conflict).toBe(true);
+      expect(hFail.status).toBe('needs-review');
+
+      failAdd = false;
+      const hNoFf = await wm.allocate('owner-noff-res', { slugHint: 'noff-res' });
+      const resNoFf = await wm.merge(hNoFf, { squash: false, resolve: async () => true });
+      expect(resNoFf.ok).toBe(true);
+      expect(resNoFf.resolved).toBe(true);
+      expect(mergedEvents.at(-1)?.['squash']).toBe(false);
+    } finally {
+      await fs.rm(path.join(PROJ, 'seed.txt'), { force: true });
+    }
+  });
+
+  it('listGitWorktrees filters subagent worktrees created under linked worktrees', async () => {
+    const mainRepo = path.join(PROJ, 'main-repo');
+    const linkedWt = path.join(PROJ, 'linked-wt');
+    const subagentUnderLinked = path.join(linkedWt, '.wrongstack', 'worktrees', 'agent-1');
+    const porcelain = [
+      `worktree ${mainRepo}\nHEAD 11111111\nbranch refs/heads/main`,
+      `worktree ${linkedWt}\nHEAD 22222222\nbranch refs/heads/feat-linked`,
+      `worktree ${subagentUnderLinked}\nHEAD 33333333\nbranch refs/heads/wstack/ap/agent-1`,
+    ].join('\n\n');
+
+    const entries = await listGitWorktrees(linkedWt, async () => ({
+      code: 0,
+      stdout: porcelain,
+      stderr: '',
+    }));
+    expect(entries).toEqual([
+      { root: path.resolve(mainRepo), branch: 'main', current: false },
+      { root: path.resolve(linkedWt), branch: 'feat-linked', current: true },
+    ]);
   });
 });

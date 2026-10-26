@@ -46,11 +46,14 @@ export async function tryResolveConflict(
   // else sat in the tree (the managed worktrees under .wrongstack/ went in
   // as embedded-repo gitlinks). Then refuse to commit if any conflict
   // marker survived (a half-resolved file is worse than a clean abort).
-  await host.runGit(['add', '--', ...conflictFiles], host.projectRoot);
+  const added = await host.runGit(['add', '--', ...conflictFiles], host.projectRoot);
+  if (added.code !== 0) return null;
   if (await host.hasConflictMarkers(conflictFiles)) return null;
 
+  const squash = opts.squash ?? true;
   const idArgs = await host.identityArgs(host.projectRoot);
-  const msg = opts.message ?? `merge ${handle.branch} (squash, conflict resolved)`;
+  const msg =
+    opts.message ?? `merge ${handle.branch} (${squash ? 'squash, ' : ''}conflict resolved)`;
   const commit = await host.runGit([...idArgs, 'commit', '-m', msg], host.projectRoot);
   if (commit.code !== 0 && !NOTHING_TO_COMMIT.test(commit.stdout + commit.stderr)) {
     return null;
@@ -63,7 +66,7 @@ export async function tryResolveConflict(
     ownerId: handle.ownerId,
     branch: handle.branch,
     baseBranch: handle.baseBranch,
-    squash: true,
+    squash,
   });
   return { ok: true, resolved: true, conflictFiles };
 }

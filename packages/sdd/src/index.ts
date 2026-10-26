@@ -88,6 +88,7 @@ export {
   cleanupSddWorktrees,
   cleanupStaleWorktrees,
   cleanupStaleSddWorktrees,
+  sddRunLiveReason,
   rollbackSddRunFromDisk,
   destroySddProject,
   applySddLifecycle,

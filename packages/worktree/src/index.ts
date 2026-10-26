@@ -1,4 +1,5 @@
 export { type GitWorktreeEntry, listGitWorktrees } from './git-worktree-list.js';
+export { holdManagedWorktree, isManagedWorktreeHeld } from './worktree-hold.js';
 export {
   type AllocateOpts,
   assertSafePath,

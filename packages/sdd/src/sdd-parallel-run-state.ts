@@ -119,6 +119,12 @@ export abstract class SddParallelRunState {
    * already ended. Cleared again at the top of `run()` so a re-run re-arms.
    */
   protected runReturned = false;
+  /**
+   * True from `run()` entry until it returns. Unlike `isRunning()` it stays
+   * set after `stop()` while the run drains in-flight workers (which may still
+   * squash-merge) and tears down — the window cleanup/rollback must not touch.
+   */
+  protected runInFlight = false;
 
   constructor(protected readonly opts: SddParallelRunOptions) {
     this.slots = Math.min(16, Math.max(1, opts.parallelSlots ?? 2));
@@ -429,6 +435,7 @@ export abstract class SddParallelRunState {
     // Check the complete helper contract while preserving the owner's identity and receivers.
     void ({
       isRunning: this.isRunning,
+      runInFlight: this.runInFlight,
       opts: this.opts,
       taskWorktrees: this.taskWorktrees,
       forgetWorktree: this.forgetWorktree,

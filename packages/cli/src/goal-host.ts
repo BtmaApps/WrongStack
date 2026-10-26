@@ -31,6 +31,7 @@ import {
   PhaseStore,
   prepareGoalGraphForResume,
   prepareGoalWorkspace,
+  releaseGoalWorkspaceHold,
   verifyGoalProject,
 } from '@wrongstack/goal';
 
@@ -62,6 +63,18 @@ export type { GoalHostDeps } from './goal-host-types.js';
 
 /** Default parallel-phase concurrency once worktree isolation is available. */
 const WORKTREE_PHASE_CONCURRENCY = 4;
+
+/**
+ * The run gives up its isolated checkout's hold (placed by
+ * prepareGoalWorkspace) together with its lease, so sweeps protect the
+ * checkout exactly as long as the run owns it.
+ */
+function withWorkspaceHold(goalId: string, release: () => Promise<void>): () => Promise<void> {
+  return async () => {
+    await releaseGoalWorkspaceHold(goalId).catch(() => undefined);
+    await release();
+  };
+}
 
 export function createGoalHost(deps: GoalHostDeps): GoalHostHooks {
   const store = new PhaseStore({ baseDir: deps.storeDir });
@@ -204,9 +217,12 @@ export function createGoalHost(deps: GoalHostDeps): GoalHostHooks {
           process.env['WRONGSTACK_GOAL_WORKTREES'] !== '0' &&
           (await isGitRepo(deps.projectRoot));
         const ownerId = `cli:${process.pid}:${goalId}`;
-        releaseRunLease = isolated
-          ? await store.acquireGoalRunLease(goalId, ownerId)
-          : await store.acquireRunLease(ownerId);
+        releaseRunLease = withWorkspaceHold(
+          goalId,
+          isolated
+            ? await store.acquireGoalRunLease(goalId, ownerId)
+            : await store.acquireRunLease(ownerId),
+        );
         if (abort.signal.aborted) return { ok: false, error: 'Goal start was stopped.' };
         planningGraph = await new PhaseGraphBuilder({
           title: goal,
@@ -454,9 +470,12 @@ export function createGoalHost(deps: GoalHostDeps): GoalHostHooks {
       let releaseRunLease: (() => Promise<void>) | undefined;
       try {
         const ownerId = `cli-resume:${process.pid}:${graph.id}`;
-        releaseRunLease = graph.workspace
-          ? await store.acquireGoalRunLease(graph.id, ownerId)
-          : await store.acquireRunLease(ownerId);
+        releaseRunLease = withWorkspaceHold(
+          graph.id,
+          graph.workspace
+            ? await store.acquireGoalRunLease(graph.id, ownerId)
+            : await store.acquireRunLease(ownerId),
+        );
         if (abort.signal.aborted) return { ok: false, error: 'Goal resume was stopped.' };
         const runRoot = graph.workspace
           ? await prepareGoalWorkspace(deps.projectRoot, graph, deps.events)

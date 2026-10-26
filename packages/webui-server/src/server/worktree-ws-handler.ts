@@ -9,7 +9,7 @@ import {
 } from '@wrongstack/contracts/types/worktree-timeline';
 import { toErrorMessage } from '@wrongstack/core/utils';
 import { WorktreeManager } from '@wrongstack/worktree';
-import { cleanupStaleSddWorktrees } from '@wrongstack/sdd';
+import { cleanupStaleSddWorktrees, sddRunLiveReason } from '@wrongstack/sdd';
 import type { WebSocket } from 'ws';
 import type { WorktreeHandleView, WorktreeOrphanView, WSServerMessage } from './types.js';
 import { sendSerialized } from './ws-utils.js';
@@ -360,6 +360,17 @@ export class WorktreeWebSocketHandler {
       });
       return;
     }
+    // Only this session's handles are filtered out of the orphan list, so a
+    // row can be the live checkout of a run in another process. Apply the
+    // same cross-process board guard the bulk cleanup uses.
+    const liveReason = await this.otherProcessLiveReason();
+    if (liveReason) {
+      this.broadcast({
+        type: 'worktree.cleanup_result',
+        payload: { ok: false, removed: 0, reason: liveReason },
+      });
+      return;
+    }
     const wt = new WorktreeManager({ projectRoot: this.management.projectRoot });
     // A branch-only orphan (no checkout) arrives with just its branch.
     const { removed } = dir ? await wt.removeOne(dir, branch) : await wt.removeBranch(branch ?? '');
@@ -415,6 +426,14 @@ export class WorktreeWebSocketHandler {
       });
       return;
     }
+    const liveReason = await this.otherProcessLiveReason();
+    if (liveReason) {
+      this.broadcast({
+        type: 'worktree.merge_result',
+        payload: { ok: false, branch, reason: liveReason },
+      });
+      return;
+    }
     const wt = new WorktreeManager({ projectRoot: this.management.projectRoot });
     const res = await wt.mergeBranch(branch);
     // Handle-free merge emits nothing; the managed branch's slug is its handle id.
@@ -435,6 +454,15 @@ export class WorktreeWebSocketHandler {
       },
     });
     await this.scanAndBroadcast();
+  }
+
+  /** Cross-process liveness guard shared with `cleanupOrphans` (see sddRunLiveReason). */
+  private otherProcessLiveReason(): Promise<string | undefined> {
+    return sddRunLiveReason({
+      projectRoot: this.management!.projectRoot,
+      boardsDir: this.management!.boardsDir,
+      stateTransport: 'kanban',
+    });
   }
 
   /** Compact change summary for one worktree checkout. */

@@ -4,6 +4,8 @@ import { splitGraphNode } from './graph-split.js';
 import type { SddParallelRunOptions, SddSubtaskSpec } from './sdd-parallel-run-types.js';
 export interface SddParallelControlsHost {
   isRunning(): boolean;
+  /** `run()` has not returned yet — also true while a stopped run drains. */
+  runInFlight: boolean;
   opts: SddParallelRunOptions;
   taskWorktrees: Map<string, WorktreeHandle>;
   forgetWorktree(taskId: string, opts?: { keepBranchLabel?: boolean }): void;
@@ -22,7 +24,7 @@ export interface SddParallelControlsHost {
 }
 
 export async function cleanupWorktrees(host: SddParallelControlsHost): Promise<number> {
-  if (host.isRunning()) return 0;
+  if (host.isRunning() || host.runInFlight) return 0;
   const wt = host.opts.worktrees;
   if (!wt) return 0;
   // Release any handles this run still holds (kept on stop / needs-review).
@@ -39,6 +41,8 @@ export async function rollback(
 ): Promise<{ ok: boolean; reverted: number; reason?: string }> {
   if (host.isRunning())
     return { ok: false, reverted: 0, reason: 'run still active — stop it first' };
+  if (host.runInFlight)
+    return { ok: false, reverted: 0, reason: 'run is still stopping — retry once it finishes' };
   const wt = host.opts.worktrees;
   if (!wt || !host.baseBranch) {
     return { ok: false, reverted: 0, reason: 'no worktree run to roll back' };

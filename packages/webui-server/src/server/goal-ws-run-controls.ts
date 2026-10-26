@@ -6,6 +6,7 @@ import {
   type PhaseStore,
   prepareGoalGraphForResume,
   prepareGoalWorkspace,
+  releaseGoalWorkspaceHold,
 } from '@wrongstack/goal';
 import { toErrorMessage } from '@wrongstack/core/utils';
 import { WorktreeManager } from '@wrongstack/worktree';
@@ -38,6 +39,18 @@ export interface GoalWsRunControlsHost {
   buildState(activePhaseId?: string): Record<string, unknown>;
 }
 
+/**
+ * The run gives up its isolated checkout's hold (placed by
+ * prepareGoalWorkspace) together with its lease, so sweeps protect the
+ * checkout exactly as long as the run owns it.
+ */
+function withWorkspaceHold(goalId: string, release: () => Promise<void>): () => Promise<void> {
+  return async () => {
+    await releaseGoalWorkspaceHold(goalId).catch(() => undefined);
+    await release();
+  };
+}
+
 export async function handleStart(
   host: GoalWsRunControlsHost,
   payload?: Record<string, unknown>,
@@ -66,7 +79,7 @@ export async function handleStart(
   try {
     const ownerId = `webui:${process.pid}:${host.goalId ?? crypto.randomUUID()}`;
     releaseRunLease = host.goalId
-      ? await host.store.acquireGoalRunLease(host.goalId, ownerId)
+      ? withWorkspaceHold(host.goalId, await host.store.acquireGoalRunLease(host.goalId, ownerId))
       : await host.store.acquireRunLease(ownerId);
     if (!host.stopping) {
       host.releaseRunLease = releaseRunLease;
@@ -127,7 +140,7 @@ export async function handleResumeGraph(
     // hold the legacy run lease or surface as a lease-busy error.
     if (!graph) throw new Error(`Saved Goal not found: ${graphId}`);
     releaseRunLease = graph.workspace
-      ? await host.store.acquireGoalRunLease(graphId, ownerId)
+      ? withWorkspaceHold(graphId, await host.store.acquireGoalRunLease(graphId, ownerId))
       : await host.store.acquireRunLease(ownerId);
     if (host.stopping) return;
     const runRoot =

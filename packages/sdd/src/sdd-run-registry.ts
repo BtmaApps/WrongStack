@@ -46,6 +46,12 @@ export interface SddRunControl {
   /** Latest board snapshot (built on demand). */
   snapshot(): SddBoardSnapshot;
   isRunning(): boolean;
+  /**
+   * Settles once `run()` returned and its teardown finished. `isRunning()`
+   * turns false on the stop REQUEST, while in-flight workers may still merge
+   * and the projector still writes — destructive work must wait on this.
+   */
+  settled?: Promise<unknown> | undefined;
 }
 
 /**

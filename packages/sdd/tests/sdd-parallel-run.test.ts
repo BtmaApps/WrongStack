@@ -690,6 +690,49 @@ describe('SddParallelRun — Layer 2: lifecycle (merged commits / cleanup / roll
     expect(res.ok).toBe(true);
     expect(wt.calls).toContain('revert:');
   });
+
+  // stop() drops isRunning() at once, but run() still drains its workers — a
+  // worker finishing after the stop squash-merges. Cleanup/rollback in that
+  // window deleted the live checkout and "reverted" a list missing the merge.
+  it('refuses cleanup + rollback while a stopped run still drains a worker', async () => {
+    const wt = fakeWorktrees();
+    const { run, t1, t2 } = await makeHarness({ worktrees: wt.wm, maxFailedRetrySweeps: 0 });
+    const releases: Array<() => void> = [];
+    let bothStarted!: () => void;
+    const workersStarted = new Promise<void>((resolve) => {
+      bothStarted = resolve;
+    });
+    const coord = fakeCoordinator({
+      awaitTasks: vi.fn(
+        (ids: string[]) =>
+          new Promise((resolve) => {
+            releases.push(() => resolve(ids.map(okResult)));
+            if (releases.length === 2) bothStarted();
+          }),
+      ),
+    });
+    (run as never as { buildCoordinator: () => void }).buildCoordinator = () => {
+      (run as never as { coordinator: unknown }).coordinator = coord;
+    };
+
+    const runPromise = run.run();
+    await workersStarted;
+    run.stop();
+    expect(run.isRunning()).toBe(false);
+    expect(await run.rollback()).toMatchObject({ ok: false, reason: /still stopping/ });
+    expect(await run.cleanupWorktrees()).toBe(0);
+    expect(wt.calls.some((c) => c.endsWith(':remove') || c === 'cleanupAllManaged')).toBe(false);
+
+    for (const release of releases) release();
+    await runPromise;
+    expect(
+      run
+        .getMergedCommits()
+        .map((c) => c.taskId)
+        .sort(),
+    ).toEqual([t1.id, t2.id].sort());
+    expect(await run.rollback()).toEqual({ ok: true, reverted: 2 });
+  });
 });
 
 describe('SddParallelRun — Layer 2: robustness', () => {

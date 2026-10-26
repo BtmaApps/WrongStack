@@ -225,6 +225,9 @@ export function startSddRun(opts: StartSddRunOptions): SddRunHandle {
     getMergedCommits: () => run.getMergedCommits(),
     snapshot: () => projector.snapshot(),
     isRunning: () => run.isRunning(),
+    get settled() {
+      return completion.catch(() => undefined);
+    },
   });
 
   // Cross-process control channel: Kanban's elected project daemon owns an

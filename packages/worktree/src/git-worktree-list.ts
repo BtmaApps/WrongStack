@@ -32,6 +32,19 @@ function isInside(child: string, parent: string): boolean {
   return rel !== '' && rel !== '..' && !rel.startsWith(`..${path.sep}`) && !path.isAbsolute(rel);
 }
 
+function isManagedSubagentWorktree(dir: string, mainRoot: string, projectRoot: string): boolean {
+  if (
+    isInside(dir, path.join(mainRoot, '.wrongstack', 'worktrees')) ||
+    isInside(dir, path.join(projectRoot, '.wrongstack', 'worktrees'))
+  ) {
+    return true;
+  }
+  const normalized = path.resolve(dir).replace(/\\/g, '/');
+  return (process.platform === 'win32' ? normalized.toLowerCase() : normalized).includes(
+    '/.wrongstack/worktrees/',
+  );
+}
+
 /** Parse `git worktree list --porcelain` output. */
 function parseWorktreePorcelain(output: string, projectRoot: string): GitWorktreeEntry[] {
   const records = output.split(/\r?\n\r?\n/);
@@ -44,7 +57,7 @@ function parseWorktreePorcelain(output: string, projectRoot: string): GitWorktre
     // The first record is always the main worktree.
     mainRoot ??= dir;
     if (lines.includes('bare') || lines.some((l) => l.startsWith('prunable'))) continue;
-    if (isInside(dir, path.join(mainRoot, '.wrongstack', 'worktrees'))) continue;
+    if (isManagedSubagentWorktree(dir, mainRoot, projectRoot)) continue;
     const ref = lines.find((l) => l.startsWith('branch '))?.slice('branch '.length);
     entries.push({
       root: path.resolve(dir),

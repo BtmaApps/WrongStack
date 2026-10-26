@@ -61,6 +61,9 @@ export function createRuntimeLifecycleDeps(input: RuntimeLifecycleDepsInput): Li
       else if (active?.isRunning()) {
         return { op, ok: false, reason: 'Stop the run first (Ctrl+C), then retry.' };
       }
+      // isRunning() is false from the stop REQUEST on, while a stopped run
+      // still drains (late merges, final board). Every op waits for it.
+      await active?.settled;
       const { applySddLifecycle } = await import('@wrongstack/sdd');
       return applySddLifecycle(op, {
         projectRoot: input.projectRoot,

@@ -255,7 +255,12 @@ export function createSddHandlers(
       });
     },
     onSddDestroy: async (destroyOpts?: { revertMerged?: boolean | undefined }) => {
-      sddRunRegistry.getActive()?.stop();
+      const active = sddRunRegistry.getActive();
+      active?.stop();
+      // A stopped run still drains workers (which can merge) and writes its
+      // final board; wiping before that lands reverts too little and lets the
+      // run resurrect what destroy removed.
+      await active?.settled;
       const sddApi = await import('@wrongstack/sdd');
       return sddApi.destroySddProject({
         projectRoot,
