@@ -20,7 +20,8 @@ export function initializeSqliteTextIndex(db: DatabaseSync, index: SqliteTextInd
   identifiers(index);
   const { table, key, source, field, column } = index;
   const columns = db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
-  if (!columns.some((entry) => entry.name === column)) {
+  const columnLower = column.toLowerCase();
+  if (!columns.some((entry) => entry.name.toLowerCase() === columnLower)) {
     db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} TEXT`);
   }
   db.exec(`
@@ -47,17 +48,20 @@ export function withSqliteTextIndex<T>(
   const savepoint = 'ws_text_index';
   stmt(`SAVEPOINT ${savepoint}`).run();
   try {
+    const name = `${table.toLowerCase()}.${column.toLowerCase()}`;
+    const current = stmt('SELECT revision FROM ws_text_index_revisions WHERE name=?').get(name) as
+      | { revision: string }
+      | undefined;
     if (index.revision) {
-      const name = `${table}.${column}`;
-      const current = stmt('SELECT revision FROM ws_text_index_revisions WHERE name=?').get(name) as
-        | { revision: string }
-        | undefined;
       if (current?.revision !== index.revision) {
         stmt(`UPDATE ${table} SET ${column}=NULL`).run();
         stmt(
           'INSERT INTO ws_text_index_revisions(name,revision) VALUES (?,?) ON CONFLICT(name) DO UPDATE SET revision=excluded.revision',
         ).run(name, index.revision);
       }
+    } else if (current !== undefined) {
+      stmt(`UPDATE ${table} SET ${column}=NULL`).run();
+      stmt('DELETE FROM ws_text_index_revisions WHERE name=?').run(name);
     }
     const pending = stmt(
       `SELECT ${key} AS key, CASE WHEN json_valid(${source})

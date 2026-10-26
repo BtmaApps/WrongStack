@@ -35,6 +35,38 @@ describe('SQLite Unicode text index', () => {
       db.close();
     }
   });
+
+  it('invalidates cached revision folds when revision is subsequently omitted and matches existing columns case-insensitively (F655)', () => {
+    const Database = loadRuntimeDatabaseSync();
+    const db = new Database(':memory:');
+    try {
+      db.exec('CREATE TABLE records(id TEXT PRIMARY KEY, data TEXT NOT NULL, UNICODE_TEXT TEXT)');
+      expect(() => initializeSqliteTextIndex(db, index)).not.toThrow();
+      db.prepare('INSERT INTO records(id,data) VALUES (?,?)').run(
+        'city',
+        JSON.stringify({ text: 'İstanbul' }),
+      );
+      expect(
+        withSqliteTextIndex(
+          db.prepare.bind(db),
+          { ...index, revision: 'tr' },
+          (value) => String(value).toLocaleLowerCase('tr'),
+          () => db.prepare('SELECT unicode_text AS unicode_text FROM records').get(),
+        ),
+      ).toEqual({ unicode_text: 'istanbul' });
+
+      expect(
+        withSqliteTextIndex(
+          db.prepare.bind(db),
+          index,
+          (value) => String(value).toLocaleLowerCase('en'),
+          () => db.prepare('SELECT unicode_text AS unicode_text FROM records').get(),
+        ),
+      ).toEqual({ unicode_text: 'i\u0307stanbul' });
+    } finally {
+      db.close();
+    }
+  });
   it('migrates existing rows and refreshes text changed by older writers', () => {
     const Database = loadRuntimeDatabaseSync();
     const db = new Database(':memory:');
