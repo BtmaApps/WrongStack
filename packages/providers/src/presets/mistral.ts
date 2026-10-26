@@ -7,7 +7,7 @@
  * For exotic providers the same pattern still applies — only the
  * `parseStreamEvent` body changes.
  */
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import type { Request, StopReason, StreamEvent, Usage } from '@wrongstack/contracts/types';
 import { safeParse } from '@wrongstack/core/utils';
 import { parseToolInput } from '../_tool-input.js';
@@ -16,6 +16,7 @@ import { capabilitiesForFamily } from '../family-capabilities.js';
 import { type BuildBodyContext, resolveMaxOutputTokens } from '../model-output-limits.js';
 import { stripCacheControl } from '../object-utils.js';
 import { normalizeOpenAIChatUsage, type OpenAIChatUsageWire } from '../openai-chat-usage.js';
+import { streamedToolCallIndex } from '../openai-shared.js';
 import { applyPromptCacheKey } from '../prompt-cache-key.js';
 import { messagesToOpenAI, toolsToOpenAI } from '../tool-format/to-openai.js';
 import { defineWireFormat } from '../wire-format.js';
@@ -131,7 +132,7 @@ export const mistralWireFormat = defineWireFormat<MistralStreamState>({
               >
             | undefined;
           tool_calls?: {
-            index: number;
+            index?: number | undefined;
             id?: string | undefined;
             function?: { name?: string | undefined; arguments?: string | undefined };
           }[];
@@ -184,7 +185,8 @@ export const mistralWireFormat = defineWireFormat<MistralStreamState>({
     }
     for (const tc of choice?.delta?.tool_calls ?? []) {
       closeThinking(out, state);
-      let block = state.toolCalls.get(tc.index);
+      const idx = streamedToolCallIndex(state.toolCalls, tc);
+      let block = state.toolCalls.get(idx);
       if (!block) {
         block = {
           id: tc.id,
@@ -193,7 +195,7 @@ export const mistralWireFormat = defineWireFormat<MistralStreamState>({
           emittedStart: false,
           emittedArgLength: 0,
         };
-        state.toolCalls.set(tc.index, block);
+        state.toolCalls.set(idx, block);
       } else {
         if (tc.id && !block.id) block.id = tc.id;
         if (tc.function?.name && !block.name) block.name = tc.function.name;
@@ -239,16 +241,16 @@ function closeMessage(
   closeThinking(out, state);
   // Close out tool calls with parsed JSON
   for (const block of state.toolCalls.values()) {
-    if (block.id && block.name) {
-      if (!block.emittedStart) {
-        out.push({ type: 'tool_use_start', id: block.id, name: block.name });
-      }
-      out.push({
-        type: 'tool_use_stop',
-        id: block.id,
-        input: parseToolInput(block.partial),
-      });
+    if (!block.name) continue;
+    if (!block.id) block.id = mistralToolCallId(randomUUID());
+    if (!block.emittedStart) {
+      out.push({ type: 'tool_use_start', id: block.id, name: block.name });
     }
+    out.push({
+      type: 'tool_use_stop',
+      id: block.id,
+      input: parseToolInput(block.partial),
+    });
   }
   out.push({ type: 'message_stop', stopReason, usage });
   return out;

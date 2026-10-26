@@ -92,8 +92,12 @@ export function shouldEmitReasoningEffort(req: Request): boolean {
  * call #2's arguments to call #1 (unparseable JSON) and dropped call #2.
  */
 export function streamedToolCallIndex(
-  byIndex: ReadonlyMap<number, { id?: string | undefined }>,
-  toolCall: { index?: number | undefined; id?: string | undefined },
+  byIndex: ReadonlyMap<number, { id?: string | undefined; name?: string | undefined }>,
+  toolCall: {
+    index?: number | undefined;
+    id?: string | undefined;
+    function?: { name?: string | undefined } | undefined;
+  },
 ): number {
   if (typeof toolCall.index === 'number') return toolCall.index;
   let last = -1;
@@ -102,8 +106,10 @@ export function streamedToolCallIndex(
     if (key > last) last = key;
   }
   if (last === -1) return 0;
+  const lastEntry = byIndex.get(last);
+  if (toolCall.function?.name && lastEntry?.name) return last + 1;
   // No id continues the latest call; so does the first id of a call that
   // started without one.
-  if (!toolCall.id || !byIndex.get(last)?.id) return last;
+  if (!toolCall.id || !lastEntry?.id) return last;
   return last + 1;
 }

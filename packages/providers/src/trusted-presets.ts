@@ -98,10 +98,7 @@ const LEGACY_PRESET_BASE_URLS: Readonly<Record<string, readonly string[]>> = {
  * live config is frozen, and a saved config is only rewritten on the next
  * credential write (see {@link rehydrateCanonicalProviderConfig}).
  */
-export function withCurrentPresetEndpoint(
-  cfg: ProviderConfig,
-  presetId: string,
-): ProviderConfig {
+export function withCurrentPresetEndpoint(cfg: ProviderConfig, presetId: string): ProviderConfig {
   const preset = TRUSTED_PROVIDER_PRESETS[presetId];
   if (!preset || cfg.baseUrl === undefined) return cfg;
   if (!LEGACY_PRESET_BASE_URLS[preset.id]?.includes(cfg.baseUrl)) return cfg;

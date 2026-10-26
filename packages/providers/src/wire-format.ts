@@ -109,7 +109,7 @@ export class WireFormatProvider<S = Record<string, unknown>> extends WireAdapter
   ) {
     super(opts.apiKey, opts.baseUrl ?? cfg.defaultBaseUrl, opts.fetchImpl, opts.streamOpts);
     this.id = opts.id ?? cfg.id;
-    this.capabilities = cfg.capabilities;
+    this.capabilities = { ...cfg.capabilities };
     this.cfg = cfg;
   }
 

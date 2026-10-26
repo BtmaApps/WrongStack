@@ -54,7 +54,7 @@ function isAnthropicHost(baseUrl: string): boolean {
 
 export class AnthropicProvider extends WireFormatProvider<AnthropicStreamState> {
   override readonly id: string;
-  override readonly capabilities: Capabilities = anthropicWireFormat.capabilities;
+  override readonly capabilities: Capabilities = { ...anthropicWireFormat.capabilities };
 
   private readonly opts: AnthropicProviderOptions;
 

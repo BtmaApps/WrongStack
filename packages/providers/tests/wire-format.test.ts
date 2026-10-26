@@ -435,4 +435,59 @@ describe('defineWireFormat', () => {
     const reserialized = messagesToOpenAI(undefined, [msg]);
     expect(reserialized[0]?.tool_calls?.[0]?.function.arguments).toBe('{"secret":"[REDACTED]"}');
   });
+
+  it('isolates provider.capabilities per AnthropicProvider and WireFormatProvider instance (F668)', async () => {
+    const { AnthropicProvider } = await import('../src/anthropic.js');
+    const { mistralWireFormat } = await import('../src/presets/mistral.js');
+
+    const a1 = new AnthropicProvider({ apiKey: 'k1' });
+    const a2 = new AnthropicProvider({ apiKey: 'k2' });
+    a1.capabilities.maxContext = 200_000;
+    expect(a2.capabilities.maxContext).toBe(0);
+
+    const m1 = new WireFormatProvider(mistralWireFormat, { apiKey: 'k1' });
+    const m2 = new WireFormatProvider(mistralWireFormat, { apiKey: 'k2' });
+    m1.capabilities.maxContext = 128_000;
+    expect(m2.capabilities.maxContext).toBe(0);
+    expect(mistralWireFormat.capabilities.maxContext).toBe(0);
+  });
+
+  it('mistralWireFormat separates parallel streamed tool_calls when index or id is omitted (F669)', async () => {
+    const { mistralWireFormat } = await import('../src/presets/mistral.js');
+    const state = mistralWireFormat.createStreamState('mistral-large-latest', 'mistral');
+    const events: StreamEvent[] = [
+      ...mistralWireFormat.parseStreamEvent(
+        {
+          data: JSON.stringify({
+            id: 'cmpl-1',
+            model: 'mistral-large-latest',
+            choices: [
+              {
+                delta: {
+                  tool_calls: [
+                    { id: 'call00001', function: { name: 'tool_one', arguments: '{"a":1}' } },
+                    { id: 'call00002', function: { name: 'tool_two', arguments: '{"b":2}' } },
+                    { function: { name: 'tool_no_id', arguments: '{"c":3}' } },
+                  ],
+                },
+                finish_reason: 'tool_calls',
+              },
+            ],
+          }),
+        },
+        state,
+      ),
+      ...mistralWireFormat.parseStreamEvent({ data: '[DONE]' }, state),
+    ];
+
+    const starts = events.filter(
+      (e): e is Extract<StreamEvent, { type: 'tool_use_start' }> => e.type === 'tool_use_start',
+    );
+    const stops = events.filter(
+      (e): e is Extract<StreamEvent, { type: 'tool_use_stop' }> => e.type === 'tool_use_stop',
+    );
+    expect(starts.map((s) => s.name)).toEqual(['tool_one', 'tool_two', 'tool_no_id']);
+    expect(stops.map((s) => s.input)).toEqual([{ a: 1 }, { b: 2 }, { c: 3 }]);
+    expect(stops.every((s) => /^[A-Za-z0-9]{9}$/.test(s.id))).toBe(true);
+  });
 });
