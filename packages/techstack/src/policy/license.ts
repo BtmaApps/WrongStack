@@ -94,12 +94,12 @@ const RESTRICTIVE_LICENSES = new Set([
 /** Categories an AND operand imposes on the whole expression; 0 = none. */
 const STRICT_CATEGORY_RANK: Readonly<Record<LicenseCategory, number>> = {
   permissive: 0,
-  weak_copyleft: 0,
+  weak_copyleft: 1,
   unknown: 0,
-  unlicensed: 1,
-  restrictive: 2,
-  strong_copyleft: 3,
-  network_copyleft: 4,
+  unlicensed: 2,
+  restrictive: 3,
+  strong_copyleft: 4,
+  network_copyleft: 5,
 };
 
 /** Normalize raw license identifier string for SPDX lookup. */

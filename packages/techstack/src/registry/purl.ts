@@ -152,8 +152,9 @@ export function parsePurl(purl: string): PurlParts | undefined {
   // Split version
   let version: string | undefined;
   const atIdx = main.lastIndexOf('@');
-  if (atIdx > 0) {
-    // Must be after the type prefix (i.e., not @scope)
+  const lastSlashIdx = main.lastIndexOf('/');
+  if (atIdx > 0 && atIdx > lastSlashIdx) {
+    // Must be after the last '/' (so unencoded @scope/name without a version is not mistaken for @version)
     if (atIdx === main.length - 1) return undefined;
     version = decodePurlSegment(main.slice(atIdx + 1));
     main = main.slice(0, atIdx);
@@ -173,8 +174,12 @@ export function parsePurl(purl: string): PurlParts | undefined {
     // Most ecosystems use namespace/name; npm uses @scope/name encoded as %40scope/name
     namespace = decodePurlSegment(remainder.slice(0, nsSlashIdx));
     name = decodePurlSegment(remainder.slice(nsSlashIdx + 1));
-  } else if (nsSlashIdx >= 0 && type === 'npm' && remainder.startsWith('%40')) {
-    // npm scoped: %40scope/name
+  } else if (
+    nsSlashIdx >= 0 &&
+    type === 'npm' &&
+    (remainder.startsWith('%40') || remainder.startsWith('@'))
+  ) {
+    // npm scoped: %40scope/name or unencoded @scope/name
     namespace = decodePurlSegment(remainder.slice(0, nsSlashIdx));
     name = decodePurlSegment(remainder.slice(nsSlashIdx + 1));
   } else {

@@ -6,7 +6,12 @@
  * createLicenseFinding() returned no finding at all.
  */
 import { describe, expect, it } from 'vitest';
-import { assessLicense, createLicenseFinding } from '../../src/index.js';
+import {
+  assessLicense,
+  createLicenseFinding,
+  parsePurl,
+  parsePurlEcosystem,
+} from '../../src/index.js';
 
 describe('license AND expressions', () => {
   it.each([
@@ -25,9 +30,25 @@ describe('license AND expressions', () => {
   it.each([
     ['GPL-2.0 OR LGPL-2.1', 'weak_copyleft'],
     ['LGPL-2.1 AND MIT', 'weak_copyleft'],
+    ['MPL-2.0 AND MIT', 'weak_copyleft'],
+    ['MIT AND EPL-2.0', 'weak_copyleft'],
     ['MIT AND Apache-2.0', 'permissive'],
     ['MIT OR Apache-2.0', 'permissive'],
   ])('%s keeps its previous category', (expression, category) => {
     expect(assessLicense(expression).category).toBe(category);
+    expect(createLicenseFinding('dep@1.0.0', 'dep', expression)).toBeNull();
+  });
+
+  it('parses versionless and unencoded scoped npm PURLs cleanly (F46)', () => {
+    expect(parsePurlEcosystem('pkg:npm/@types/node')).toEqual({
+      ecosystem: 'npm',
+      name: '@types/node',
+    });
+    expect(parsePurl('pkg:npm/@types/node@22.0.0')).toEqual({
+      type: 'npm',
+      namespace: '@types',
+      name: 'node',
+      version: '22.0.0',
+    });
   });
 });
