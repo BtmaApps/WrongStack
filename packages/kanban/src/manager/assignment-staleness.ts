@@ -2,8 +2,14 @@ import type { KanbanAgentAssignment } from '../types.js';
 
 export const STAMPLESS_ASSIGNMENT_STALE_MS = 10 * 60 * 1000;
 
+/**
+ * An unparseable expiry (a worker heartbeat wrote `"in 5 minutes"`) compared
+ * as NaN and never expired, wedging the task in `running` for good: fail closed.
+ */
 export function isLeaseExpired(expiresAt: string | undefined, now: string): boolean {
-  return expiresAt !== undefined && Date.parse(expiresAt) <= Date.parse(now);
+  if (expiresAt === undefined) return false;
+  const expiresMs = Date.parse(expiresAt);
+  return !Number.isFinite(expiresMs) || expiresMs <= Date.parse(now);
 }
 
 /** Shared by recovery, claiming and queue classification; timestamps are instants. */
@@ -17,6 +23,7 @@ export function isAssignmentStale(
   const stamplessAndSilent =
     assignment.leaseExpiresAt === undefined &&
     (lastSignalAt === undefined ||
+      !Number.isFinite(Date.parse(lastSignalAt)) ||
       Date.parse(now) - Date.parse(lastSignalAt) >= STAMPLESS_ASSIGNMENT_STALE_MS);
   return isLeaseExpired(assignment.leaseExpiresAt, now) || stamplessAndSilent;
 }

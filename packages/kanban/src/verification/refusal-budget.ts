@@ -13,7 +13,8 @@
  * `completion-park.ts` re-exports both functions, so existing importers are
  * unaffected.
  */
-import type { KanbanTask } from '../types.js';
+import { syncTaskColumnForStatus } from '../manager/task-column-helpers.js';
+import type { KanbanBoard, KanbanTask } from '../types.js';
 
 /**
  * Start the refusal budget over.
@@ -28,10 +29,21 @@ import type { KanbanTask } from '../types.js';
  *
  * Clearing the park without clearing the counter would be worse than leaving
  * both: the card would look live and re-park on its first refusal.
+ *
+ * Re-scoping callers pass `board`: on a legacy board the park also wrote
+ * `status: 'blocked'`, and dropping the park while keeping that status left a
+ * card no queue reports as parked and no gate sweep (which looks for `review`)
+ * would ever retry. Such a card goes back to `review`, where it was refused.
  */
-export function clearGateRefusals(task: KanbanTask): void {
+export function clearGateRefusals(task: KanbanTask, board?: KanbanBoard): void {
+  const wasParked = task.park !== undefined;
   delete task.verificationAttempts;
   delete task.park;
+  if (board && wasParked && board.lifecycle?.mode !== 'managed' && task.status === 'blocked') {
+    const previousColumnId = task.columnId;
+    task.status = 'review';
+    syncTaskColumnForStatus(board, task, previousColumnId);
+  }
 }
 
 /** Whether retrying this card unchanged is known to be pointless. */

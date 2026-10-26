@@ -23,6 +23,7 @@ import { tmpdir } from 'node:os';
 import { join, sep } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { KanbanBoard, KanbanTask } from '../src/types.js';
+import { tryParseTestJson } from '../src/verification/test-output-parser.js';
 import {
   DEFAULT_ALLOWED_COMMANDS,
   DEFAULT_BLOCKED_COMMANDS,
@@ -310,6 +311,54 @@ describe('parseGitNumstat', () => {
 
   it('handles blank lines', () => {
     expect(parseGitNumstat('   \n5\t2\tsrc/file.ts\n\n')).toHaveLength(1);
+  });
+
+  it('parses CRLF line endings and tabbed non-rename file paths across name-status and numstat', () => {
+    const ops = parseGitNameStatus('A\tsrc/win.ts\r\nA\tsrc/tab\tname.ts\r\n');
+    const diff = parseGitNumstat('5\t1\tsrc/win.ts\r\n2\t0\tsrc/tab\tname.ts\r\n', ops);
+    expect(diff).toEqual([
+      { path: 'src/win.ts', operation: 'create', linesAdded: 5, linesRemoved: 1 },
+      { path: 'src/tab\tname.ts', operation: 'create', linesAdded: 2, linesRemoved: 0 },
+    ]);
+  });
+
+  it('aggregates testResults assertion counts and rejects negative top-level counts in tryParseTestJson', () => {
+    const suiteOnly = tryParseTestJson(
+      JSON.stringify({
+        testResults: [
+          {
+            assertionResults: [
+              { status: 'passed' },
+              { status: 'passed' },
+              { status: 'failed' },
+              { status: 'pending' },
+            ],
+          },
+        ],
+      }),
+      'suite.test.ts',
+    );
+    expect(suiteOnly).toEqual({
+      testPattern: 'suite.test.ts',
+      passed: 2,
+      failed: 1,
+      skipped: 1,
+    });
+
+    const negativeCounts = tryParseTestJson(
+      JSON.stringify({
+        testResults: [],
+        numPassedTests: -4,
+        numFailedTests: -1,
+      }),
+      'neg.test.ts',
+    );
+    expect(negativeCounts).toEqual({
+      testPattern: 'neg.test.ts',
+      passed: 0,
+      failed: 0,
+      skipped: 0,
+    });
   });
 });
 

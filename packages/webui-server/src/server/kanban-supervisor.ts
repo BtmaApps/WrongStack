@@ -38,6 +38,8 @@ const SUPERVISOR_EVENT_CONTEXT = {
 } as const;
 
 export interface KanbanSupervisorDispatchOptions {
+  role?: string | undefined;
+  allowedCapabilities?: readonly string[] | undefined;
   provider?: string | undefined;
   model?: string | undefined;
   fallbackProfile?: string | undefined;
@@ -61,6 +63,7 @@ export interface KanbanSupervisorDispatchOptions {
           taskId?: string;
           projectRoot?: string;
           managementToken?: string;
+          leaseId?: string;
         };
       }
     | undefined;
@@ -590,8 +593,11 @@ async function sweepGateParkedTasks(
   let lastBoard: KanbanBoard | undefined;
   for (const task of parked) {
     try {
+      // `parked` comes from an earlier read; the card may have been reopened
+      // for another worker since, so the gate re-checks it under the lock.
       const finalized = await finalizeTaskCompletion(resolveProjectRoot(deps), board.id, task.id, {
         eventContext: SUPERVISOR_EVENT_CONTEXT,
+        requireCompletedAssignment: true,
       });
       if (finalized) lastBoard = finalized.board;
     } catch (error) {

@@ -12,6 +12,29 @@ export interface CommandResult {
   rejected?: boolean | undefined;
 }
 
+/** cmd.exe metacharacters — same set as core's `buildWin32CmdShimInvocation`. */
+const WIN32_CMD_META = /[&|<>"%^\r\n\0]/;
+
+/**
+ * A Windows `.cmd` shim needs cmd.exe, but `spawn(..., { shell: true })` joins
+ * command and args unquoted (DEP0190): a project path with a space split the
+ * shim path and nothing ran. Quote every token behind `call`, as core's
+ * `buildWin32CmdShimInvocation` does (kanban sits below core and cannot import
+ * it). Tokens carrying cmd metacharacters are refused, never escaped.
+ */
+function win32CmdShimSpawn(
+  command: string,
+  args: readonly string[],
+): { command: string; args: string[] } | string {
+  const bad = [command, ...args].find((token) => WIN32_CMD_META.test(token));
+  if (bad !== undefined) {
+    return `Refusing to run a .cmd shim with a cmd.exe metacharacter in ${JSON.stringify(bad)}.`;
+  }
+  const quote = (token: string) => `"${token.replace(/(\\+)$/, '$1$1')}"`;
+  const line = ['call', quote(command), ...args.map(quote)].join(' ');
+  return { command: process.env['COMSPEC'] ?? 'cmd.exe', args: ['/d', '/c', line] };
+}
+
 export class VerificationProcessRunner {
   constructor(readonly projectRoot: string) {}
 
@@ -128,14 +151,26 @@ export class VerificationProcessRunner {
   ): Promise<CommandResult> {
     const start = Date.now();
     const displayCommand = [command, ...args].join(' ');
+    const shim =
+      opts.shell && process.platform === 'win32' ? win32CmdShimSpawn(command, args) : null;
+    if (typeof shim === 'string') {
+      return { command: displayCommand, exitCode: -1, stdout: '', stderr: shim, durationMs: 0 };
+    }
     return new Promise<CommandResult>((resolve) => {
       const detachedProcessGroup = process.platform !== 'win32';
-      const child = spawn(command, args, {
-        cwd: opts.cwd,
-        shell: opts.shell ?? false,
-        windowsHide: true,
-        detached: detachedProcessGroup,
-      });
+      const child = shim
+        ? spawn(shim.command, shim.args, {
+            cwd: opts.cwd,
+            windowsHide: true,
+            windowsVerbatimArguments: true,
+            detached: detachedProcessGroup,
+          })
+        : spawn(command, args, {
+            cwd: opts.cwd,
+            shell: opts.shell ?? false,
+            windowsHide: true,
+            detached: detachedProcessGroup,
+          });
       const stdout = new BoundedProcessOutput();
       const stderr = new BoundedProcessOutput();
       let timedOut = false;

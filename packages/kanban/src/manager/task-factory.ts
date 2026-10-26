@@ -415,7 +415,9 @@ export function applyTaskPatch(
     task.description !== previousDescription ||
     (task.childTaskIds ?? []).join(',') !== previousChildIds
   ) {
-    clearGateRefusals(task);
+    // An explicit status or column in the same patch wins over un-parking.
+    const placedExplicitly = input.status !== undefined || input.columnId !== undefined;
+    clearGateRefusals(task, placedExplicitly ? undefined : board);
   }
   if (shouldReorder) {
     if (previousColumnId !== task.columnId) normalizeColumnTaskOrders(board, previousColumnId);

@@ -59,7 +59,7 @@ export async function addCheckToTask(
     stampAtomicityAssessment(board, task);
     // The card is now held to something it was not held to when the gate
     // refused it, so the refusal budget starts over.
-    clearGateRefusals(task);
+    clearGateRefusals(task, board);
     task.updatedAt = nowIso();
     board.updatedAt = task.updatedAt;
     event = createKanbanEvent(board.id, task, 'task.check.added', {
@@ -121,7 +121,7 @@ export async function updateCheckOnTask(
     // ordinary verification flow, and resetting there would hand the card an
     // unlimited budget and make the gate unable to ever park anything.
     if (definitionChanged) {
-      clearGateRefusals(task);
+      clearGateRefusals(task, board);
     }
     task.updatedAt = nowIso();
     board.updatedAt = task.updatedAt;
@@ -174,7 +174,7 @@ export async function removeCheckFromTask(
     // Dropping a criterion is the truthful escape this function exists for
     // (see above). Leaving a spent budget behind would defeat it: the card
     // would re-park on its very next refusal.
-    clearGateRefusals(task);
+    clearGateRefusals(task, board);
     for (const node of board.contractGraph?.nodes ?? []) {
       if (node.checkId === checkId) delete node.checkId;
     }

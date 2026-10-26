@@ -85,6 +85,10 @@ export async function recoverStaleTaskAssignments(
         assignment.status = 'failed';
         assignment.error = reason;
         delete assignment.completedAt;
+        // Recovery revokes the dead owner's lease in EVERY mode (retry and
+        // release drop it too). Kept here, the fence still matched the old
+        // worker: a late start/complete revived the failed task.
+        delete assignment.leaseId;
         // Managed boards: preserve lifecycle stage. Only the assignment
         // status changes — the card's lifecycle column is authoritative and
         // must not be overridden by a raw status→column sync. A reviewer
@@ -112,6 +116,7 @@ export async function recoverStaleTaskAssignments(
           assignment.status = 'failed';
           assignment.error = `${reason}; max attempts exceeded (${assignment.maxAttempts})`;
           delete assignment.completedAt;
+          delete assignment.leaseId;
           if (!isManaged) task.status = 'failed';
           delete task.completedAt;
         } else {

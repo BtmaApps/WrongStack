@@ -230,6 +230,16 @@ export async function handleKanbanAssignmentAction(
       if (!input.boardId || !input.taskId) {
         throw invalidInput('heartbeat_assignment requires boardId and taskId.');
       }
+      // Stored verbatim and later compared as instants: a free-form value
+      // ("in 5 minutes") must be refused here, where the worker can retry.
+      for (const [field, value] of [
+        ['heartbeatAt', input.heartbeatAt],
+        ['leaseExpiresAt', input.leaseExpiresAt],
+      ] as const) {
+        if (value !== undefined && !Number.isFinite(Date.parse(value))) {
+          throw invalidInput(`heartbeat_assignment ${field} must be an ISO-8601 timestamp.`);
+        }
+      }
       const board = await heartbeatTaskAssignment(
         projectRoot,
         input.boardId,

@@ -42,9 +42,9 @@ export function parseGitNameStatus(output: string): Map<string, FileDiffEntry['o
     }
     return operations;
   }
-  for (const line of output.split('\n').filter(Boolean)) {
+  for (const line of output.split(/\r?\n/).filter(Boolean)) {
     const [status = '', ...pathParts] = line.split('\t');
-    const filePath = pathParts.at(-1);
+    const filePath = /^[RC]/.test(status) ? pathParts.at(-1) : pathParts.join('\t');
     if (!filePath) continue;
     operations.set(filePath, operationOf(status));
   }
@@ -79,14 +79,14 @@ export function parseGitNumstat(
     return entries;
   }
   return output
-    .split('\n')
+    .split(/\r?\n/)
     .filter((l) => l.trim())
     .map((line) => {
       const parts = line.split('\t');
       if (parts.length < 3) return null;
       const added = parseInt(parts[0]!, 10) || 0;
       const removed = parseInt(parts[1]!, 10) || 0;
-      const filePath = parts[2] ?? '';
+      const filePath = parts.slice(2).join('\t');
       return {
         path: filePath,
         operation: operations.get(filePath) ?? 'modify',
@@ -149,6 +149,31 @@ export function parseTestJsonObject(output: string): Record<string, unknown> | n
   return null;
 }
 
+function aggregateAssertionCounts(
+  testResults: unknown,
+): { passed: number; failed: number; skipped: number } | null {
+  if (!Array.isArray(testResults)) return null;
+  let passed = 0;
+  let failed = 0;
+  let skipped = 0;
+  let sawAssertions = false;
+  for (const suite of testResults) {
+    if (!suite || typeof suite !== 'object') continue;
+    const assertions = (suite as Record<string, unknown>)['assertionResults'];
+    if (!Array.isArray(assertions)) continue;
+    for (const assertion of assertions) {
+      if (!assertion || typeof assertion !== 'object') continue;
+      const status = (assertion as Record<string, unknown>)['status'];
+      if (typeof status !== 'string') continue;
+      sawAssertions = true;
+      if (status === 'passed') passed += 1;
+      else if (status === 'failed') failed += 1;
+      else if (status === 'pending' || status === 'skipped' || status === 'todo') skipped += 1;
+    }
+  }
+  return sawAssertions ? { passed, failed, skipped } : null;
+}
+
 /** Try to parse JSON test runner output. */
 export function tryParseTestJson(
   output: string,
@@ -161,17 +186,20 @@ export function tryParseTestJson(
       const numFailedTestsValue = parsed['numFailedTests'];
       const numSkippedTestsValue = parsed['numSkippedTests'];
       const successValue = parsed['success'];
-      const numPassed =
-        typeof numPassedTestsValue === 'number'
-          ? numPassedTestsValue
+      const aggregated = aggregateAssertionCounts(parsed['testResults']);
+      const numPassed = isTestCount(numPassedTestsValue)
+        ? numPassedTestsValue
+        : aggregated
+          ? aggregated.passed
           : typeof successValue === 'boolean'
             ? successValue
               ? 1
               : 0
             : 0;
-      const numFailed =
-        typeof numFailedTestsValue === 'number'
-          ? numFailedTestsValue
+      const numFailed = isTestCount(numFailedTestsValue)
+        ? numFailedTestsValue
+        : aggregated
+          ? aggregated.failed
           : typeof successValue === 'boolean'
             ? successValue
               ? 0
@@ -181,10 +209,12 @@ export function tryParseTestJson(
       // and never emit `numSkippedTests`, so reading only that key recorded 0.
       const pending = parsed['numPendingTests'];
       const todo = parsed['numTodoTests'];
-      const numSkipped =
-        typeof numSkippedTestsValue === 'number'
-          ? numSkippedTestsValue
-          : (isTestCount(pending) ? pending : 0) + (isTestCount(todo) ? todo : 0);
+      const pendingPlusTodo = (isTestCount(pending) ? pending : 0) + (isTestCount(todo) ? todo : 0);
+      const numSkipped = isTestCount(numSkippedTestsValue)
+        ? numSkippedTestsValue
+        : pendingPlusTodo > 0 || !aggregated
+          ? pendingPlusTodo
+          : aggregated.skipped;
       return {
         testPattern: pattern,
         passed: numPassed,

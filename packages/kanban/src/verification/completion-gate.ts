@@ -52,6 +52,13 @@ export interface CompletionGateOptions {
   enforcement?: KanbanCompletionGateEnforcement | undefined;
   /** Session that owns this completion — stamped on every gate event. */
   eventContext: KanbanEventContext;
+  /**
+   * Finalize only while the card's assignment is still `completed`. For
+   * lease-less callers that picked the card from an earlier board read (the
+   * supervisor sweep): a card reopened for another worker since then is no
+   * longer theirs to finalize.
+   */
+  requireCompletedAssignment?: boolean | undefined;
 }
 
 export interface CompletionGateResult {
@@ -230,6 +237,7 @@ export async function finalizeTaskCompletion(
     ) {
       return null;
     }
+    if (options.requireCompletedAssignment && task.assignment?.status !== 'completed') return null;
     // Managed cards advance only through transitionTask. Completion callers may
     // persist assignment results, but cannot project lifecycle stages here.
     if (board.lifecycle?.mode === 'managed') return null;

@@ -252,6 +252,22 @@ describe('re-scoping a parked card returns its budget', () => {
     expect((await taskOf(boardId, taskId)).park).toBeUndefined();
   });
 
+  it('a re-scoped legacy card leaves `blocked` and returns to review', async () => {
+    // The park wrote `blocked`; clearing only the record left a card that was
+    // no longer reported as parked and that the gate sweep (which looks for
+    // `review`) would never retry.
+    const { boardId, taskId } = await parked();
+    await updateTask(tmpDir, boardId, taskId, { title: 'Narrowed title' });
+    expect((await taskOf(boardId, taskId)).status).toBe('review');
+
+    const explicit = await parked();
+    await updateTask(tmpDir, explicit.boardId, explicit.taskId, {
+      description: 'Narrowed',
+      status: 'blocked',
+    });
+    expect((await taskOf(explicit.boardId, explicit.taskId)).status).toBe('blocked');
+  });
+
   it('an unrelated patch leaves the park alone', async () => {
     const { boardId, taskId } = await parked();
     await updateTask(tmpDir, boardId, taskId, { priority: 'high' });

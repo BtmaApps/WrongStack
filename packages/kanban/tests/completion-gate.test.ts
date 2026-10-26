@@ -251,6 +251,19 @@ describe('finalizeTaskCompletion', () => {
     expect(result?.task.status).toBe('completed');
   });
 
+  it('requireCompletedAssignment leaves a card that was reopened for another worker alone', async () => {
+    // The supervisor sweep picks cards from an earlier read and has no lease;
+    // this is how it avoids finalizing a card it no longer sees as completed.
+    const { boardId, taskId } = await reclaimedCard();
+    const result = await finalizeTaskCompletion(tmpDir, boardId, taskId, {
+      requireCompletedAssignment: true,
+    });
+    expect(result).toBeNull();
+    const after = (await getBoard(tmpDir, boardId))!.tasks.find((t) => t.id === taskId)!;
+    expect(after.status).toBe('ready');
+    expect(after.verificationReport).toBeUndefined();
+  });
+
   it('supports unique task id prefix in enforceCompletionGate', async () => {
     const { boardId, taskId } = await boardWithTask({ gate: 'soft', checkStatus: 'passed' });
     const prefix = taskId.slice(0, 8);
