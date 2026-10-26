@@ -201,7 +201,16 @@ export class SddBoardStore {
   // ── internal ────────────────────────────────────────────────────────────
 
   private safe(runId: string): string {
-    return runId.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const cleaned = runId.replace(/[^a-zA-Z0-9._-]/g, '_');
+    if (
+      cleaned.length === 0 ||
+      cleaned === '.' ||
+      cleaned === '..' ||
+      cleaned.toLowerCase() === '_index'
+    ) {
+      return `_run_${cleaned}`;
+    }
+    return cleaned;
   }
 
   private async ensureBaseDir(): Promise<void> {
@@ -346,11 +355,21 @@ export class SddBoardStore {
     const entries: SddBoardIndexEntry[] = [];
     for (const file of files) {
       if (!file.isFile() || !file.name.endsWith('.json') || file.name === '_index.json') continue;
-      const runId = file.name.slice(0, -'.json'.length);
-      const snapshot = await this.load(runId);
+      const fileStem = file.name.slice(0, -'.json'.length);
+      let snapshot: SddBoardSnapshot | null = null;
+      try {
+        const raw = await fsp.readFile(path.join(this.baseDir, file.name), 'utf8');
+        const value = JSON.parse(raw);
+        if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+          snapshot = value as SddBoardSnapshot;
+        }
+      } catch {
+        snapshot = null;
+      }
       if (
         !snapshot ||
-        snapshot.runId !== runId ||
+        typeof snapshot.runId !== 'string' ||
+        this.safe(snapshot.runId) !== fileStem ||
         typeof snapshot.title !== 'string' ||
         typeof snapshot.status !== 'string' ||
         !Number.isFinite(snapshot.updatedAt) ||
@@ -360,7 +379,7 @@ export class SddBoardStore {
       )
         continue;
       entries.push({
-        runId,
+        runId: snapshot.runId,
         specId: snapshot.specId,
         title: snapshot.title,
         status: snapshot.status,

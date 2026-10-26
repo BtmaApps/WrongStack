@@ -284,6 +284,32 @@ describe('SddBoardStore', () => {
     expect(await refusingStore.drainControl('run')).toEqual([]);
     expect(truncateAttempts).toBe(1);
   });
+
+  it('preserves sanitized runIds across index rebuild and isolates _index runId from _index.json (F30)', async () => {
+    const store = new SddBoardStore({ baseDir: directory });
+    await store.saveSnapshot(snapshot('plain-run', 10));
+    await store.saveSnapshot(snapshot('run:colon', 20));
+    await store.saveSnapshot(snapshot('run/slash', 25));
+
+    await fs.unlink(path.join(directory, '_index.json'));
+    const rebuilt = new SddBoardStore({ baseDir: directory });
+    await rebuilt.saveSnapshot(snapshot('third-run', 30));
+
+    expect((await rebuilt.list()).map((entry) => entry.runId)).toEqual([
+      'third-run',
+      'run/slash',
+      'run:colon',
+      'plain-run',
+    ]);
+    expect(await rebuilt.load('_index')).toBeNull();
+    await rebuilt.delete('_index');
+    expect((await rebuilt.list()).map((entry) => entry.runId)).toEqual([
+      'third-run',
+      'run/slash',
+      'run:colon',
+      'plain-run',
+    ]);
+  });
 });
 
 describe('sameIndexSignature', () => {
