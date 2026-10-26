@@ -39,6 +39,11 @@ import {
 } from './mailbox-project-server-protocol.js';
 import { dispatchMailboxOperation } from './mailbox-server-dispatch.js';
 import { SQLITE_MAILBOX_FILE, SqliteMailbox } from './sqlite-mailbox.js';
+import {
+  assertMailboxOwnershipAvailable,
+  MAILBOX_OWNER_HEARTBEAT_INTERVAL_MS,
+  type MailboxOwnerIdentity,
+} from './sqlite-mailbox-owner.js';
 
 const DEFAULT_IDLE_MS = 5 * 60_000;
 const DEFAULT_CLIENT_LEASE_MS = 45_000;
@@ -84,6 +89,19 @@ useDaemonPerfDefaults();
 const { projectDir } = parseArgs(process.argv.slice(2));
 const endpoint = mailboxProjectServerEndpoint(projectDir);
 const metadataPath = mailboxProjectServerMetadataPath(projectDir);
+const databasePath = path.join(projectDir, SQLITE_MAILBOX_FILE);
+/**
+ * Identity this daemon claims in the DB-level ownership fence.
+ *
+ * The endpoint embeds the protocol version, so two daemons of different
+ * protocol versions have different endpoints over the SAME database file —
+ * the fence below is the only thing that keeps them from co-owning it.
+ */
+const ownerIdentity: MailboxOwnerIdentity = {
+  endpoint,
+  pid: process.pid,
+  protocolVersion: MAILBOX_PROJECT_SERVER_PROTOCOL_VERSION,
+};
 const idleInput = Number(process.env['WRONGSTACK_MAILBOX_SERVER_IDLE_MS']);
 // Node clamps a timer delay above 2^31-1 ms to 1 ms: a huge "never idle out"
 // value would stop the daemon at once.
@@ -105,6 +123,7 @@ let idleTimer: ReturnType<typeof setTimeout> | undefined;
 let stopping = false;
 let ready = false;
 let stopAutoCompact: (() => void) | undefined;
+let stopOwnerHeartbeat: (() => void) | undefined;
 const stopMemoryWatchdog = startSharedHeapWatchdog({
   collectStats: () => ({
     surface: 'mailbox-project-server',
@@ -424,6 +443,8 @@ async function stop(_reason: string): Promise<void> {
   idleTimer = undefined;
   clearInterval(leaseSweep);
   stopAutoCompact?.();
+  stopOwnerHeartbeat?.();
+  stopOwnerHeartbeat = undefined;
   // WS-059: remove the metadata BEFORE releasing the endpoint. The endpoint
   // bind is the ownership election, so while it is still held no successor
   // daemon can exist — and therefore no successor metadata can be deleted by
@@ -436,6 +457,15 @@ async function stop(_reason: string): Promise<void> {
   // fails and retries, and it cannot spawn a replacement until the endpoint is
   // actually free. The opposite ordering silently corrupts the invariant.
   await removeOwnedMetadata();
+  // Release the DB-level ownership fence while this process still holds the
+  // endpoint. The endpoint bind is the election, so no successor can have
+  // won it yet — the fence row can only be ours to drop, and a successor
+  // that binds a moment later must not find a live owner row.
+  try {
+    mailbox?.releaseOwnership(endpoint);
+  } catch {
+    // A closed store leaves a stale row behind, which is reclaimable.
+  }
   // Stop accepting new clients, then actively close the existing sockets.
   // Waiting for server.close() before closing them deadlocks explicit shutdown:
   // the requester keeps its IPC socket open while server.close() waits for
@@ -514,16 +544,60 @@ void (async () => {
     process.exitCode = 1;
   });
   try {
+    // DB-level ownership fence. The endpoint bind above only arbitrates
+    // between processes that speak the SAME protocol version, so an old
+    // daemon of a previous version can be alive on its own endpoint over
+    // this same database file. Refuse to open it while its owner is live
+    // instead of co-owning the mailbox.
+    assertMailboxOwnershipAvailable(databasePath, endpoint);
+  } catch (error) {
+    process.stderr.write(
+      `mailbox project server refused to start: ${error instanceof Error ? error.message : String(error)}\n`,
+    );
+    void stop('foreign-mailbox-owner').finally(() => {
+      process.exitCode = 1;
+    });
+    return;
+  }
+  try {
     // Open SQLite only after winning the election so losing detached
     // contenders never become DB owners.
     mailbox = new SqliteMailbox(projectDir, events, eventEmitter);
-  } catch {
+    // Claim the ownership fence before serving: the claim re-checks the row
+    // inside one transaction, so a daemon that claimed the database in the
+    // window above is refused here.
+    mailbox.claimOwnership(ownerIdentity);
+  } catch (error) {
+    // The claim can also lose the race against a contender that claimed the
+    // fence in the window above — surface WHY the daemon is exiting instead
+    // of failing silently with exit code 1.
+    process.stderr.write(
+      `mailbox project server refused to start: ${error instanceof Error ? error.message : String(error)}\n`,
+    );
     void stop('sqlite-initialization-failed').finally(() => {
       process.exitCode = 1;
     });
     return;
   }
   stopAutoCompact = mailbox.startAutoCompactTimer();
+  // Refresh the ownership heartbeat so a crashed owner becomes reclaimable
+  // after the stale window instead of fencing the mailbox forever.
+  const ownerHeartbeat = setInterval(() => {
+    try {
+      // A `false` return means another endpoint took the fence: this daemon
+      // must stop serving instead of co-writing the database with the new
+      // owner — the exact split-brain the fence exists to prevent.
+      if (mailbox?.refreshOwnership(ownerIdentity) === false && !stopping) {
+        void stop('mailbox-ownership-lost').finally(() => {
+          process.exitCode = 1;
+        });
+      }
+    } catch {
+      // The store is closing; the stop path releases the fence.
+    }
+  }, MAILBOX_OWNER_HEARTBEAT_INTERVAL_MS);
+  ownerHeartbeat.unref?.();
+  stopOwnerHeartbeat = () => clearInterval(ownerHeartbeat);
   try {
     await writeMetadata();
     metadataGuard.enable();

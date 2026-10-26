@@ -59,6 +59,13 @@ import {
   credentialVerify,
 } from './sqlite-mailbox-credentials.js';
 import {
+  claimMailboxOwnership,
+  type MailboxOwnerIdentity,
+  type MailboxOwnerStore,
+  refreshMailboxOwnership,
+  releaseMailboxOwnership,
+} from './sqlite-mailbox-owner.js';
+import {
   query as delegateQuery,
   unreadCount as delegateUnreadCount,
   type SqliteMailboxQueryHost,
@@ -660,6 +667,44 @@ export class SqliteMailbox implements Mailbox {
       clearInterval(timer);
       if (this.autoCompactTimer === timer) this.autoCompactTimer = null;
     };
+  }
+
+  /**
+   * Claim the DB-level ownership fence for this store.
+   *
+   * The IPC endpoint election only arbitrates between processes that speak the
+   * same protocol version (the version is embedded in the endpoint path), so
+   * during a rolling release an old daemon and a new daemon can both hold
+   * their own endpoint while pointing at this database file. This fence is
+   * the database-level counterpart: the winner records itself in
+   * `mailbox_meta` and refreshes a heartbeat, and a live owner on another
+   * endpoint refuses the claim instead of co-owning the file.
+   *
+   * @throws {MailboxOwnershipConflictError} when a live owner on a different
+   * endpoint holds the database.
+   */
+  claimOwnership(identity: MailboxOwnerIdentity): void {
+    claimMailboxOwnership(this.ownerStore(), identity, Date.now());
+  }
+
+  /**
+   * Refresh the ownership heartbeat.
+   *
+   * Returns `false` once another endpoint owns the database — the caller lost
+   * the fence and must not overwrite the new owner's row.
+   */
+  refreshOwnership(identity: MailboxOwnerIdentity): boolean {
+    return refreshMailboxOwnership(this.ownerStore(), identity, Date.now());
+  }
+
+  /** Release the ownership fence (clean stop). */
+  releaseOwnership(endpoint: string): void {
+    releaseMailboxOwnership(this.ownerStore(), endpoint);
+  }
+
+  /** Bundle of store state the ownership fence operates on. */
+  private ownerStore(): MailboxOwnerStore {
+    return { db: this.db, transaction: (run) => this.transaction(run) };
   }
 
   async close(): Promise<void> {
