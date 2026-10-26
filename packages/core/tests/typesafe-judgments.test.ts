@@ -120,6 +120,58 @@ describe('resolveTypeSafeJudge', () => {
     const b = resolveTypeSafeJudge({ config, feature: 'memoryTriage' });
     expect(a?.client).toBe(b?.client);
   });
+
+  it('does not serve a client gated by an earlier config whose feature switches differ', async () => {
+    const fetch = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({ answers: { c: { type: 'noul', noul: 1 } }, usage: { input_tokens: 1 } }),
+        ),
+    );
+    vi.stubGlobal('fetch', fetch);
+    try {
+      const req = {
+        activityFeature: 'tool',
+        state: {},
+        questions: { c: { type: 'noul' as const, instructions: 'q?' } },
+      };
+      // An earlier, untracked config for the same account had `tool` switched off.
+      resolveTypeSafeJudge({
+        config: { typesafe: { enabled: true, apiKey: 'switch-key', judgments: { tool: false } } },
+        feature: 'brain',
+      });
+      const judge = resolveTypeSafeJudge({
+        config: { typesafe: { enabled: true, apiKey: 'switch-key' } },
+        feature: 'tool',
+      });
+      expect(judge?.unavailableReason).toBeUndefined();
+      await expect(judge!.client.systemOne(req)).resolves.toBeTruthy();
+      expect(fetch).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('still shares one client when the feature switches are equal in any key order', () => {
+    const a = resolveTypeSafeJudge({
+      config: {
+        typesafe: { enabled: true, apiKey: 'k2', judgments: { brain: true, tool: false } },
+      },
+      feature: 'brain',
+    });
+    const b = resolveTypeSafeJudge({
+      config: {
+        typesafe: {
+          enabled: true,
+          apiKey: 'k2',
+          judgments: { tool: false, brain: true, topicShift: undefined },
+        },
+      },
+      feature: 'brain',
+    });
+    expect(a?.client).toBeDefined();
+    expect(a?.client).toBe(b?.client);
+  });
 });
 
 function judgeReturning(result: Partial<SystemOneResult> | Error): TypeSafeJudge {

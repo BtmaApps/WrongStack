@@ -112,6 +112,14 @@ export function resolveTypeSafeJudge(deps: ResolveTypeSafeJudgeDeps): TypeSafeJu
     // Baked into the client's activity observer at build time, so a toggle
     // must not keep serving the client built under the old setting.
     String(logContentWanted(deps.config.typesafe ?? {}, env)),
+    // Likewise the per-feature switches: the client's own gate checks the
+    // judgments map of the config that BUILT it, so serving that client to a
+    // config whose map differs refuses features this config just enabled.
+    JSON.stringify(
+      Object.entries(deps.config.typesafe?.judgments ?? {})
+        .filter(([, on]) => on !== undefined)
+        .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)),
+    ),
     createHash('sha256').update(apiKey).digest('hex').slice(0, 16),
   ].join('\0');
 
