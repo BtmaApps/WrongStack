@@ -71,10 +71,47 @@ describe('changed-file listing with quoted paths', () => {
       'added:feature/impl.ts',
       'added:new file.ts',
       'modified:my notes.ts',
+      'modified:new name.ts',
       'modified:plain.ts',
       'modified:şema.ts',
     ]);
     expect(payload.files.find((f) => f.path === 'şema.ts')?.content).toBe('v2');
+  });
+
+  it('chimera reviews a staged rename whose content also changed', async () => {
+    const body = Array.from({ length: 20 }, (_, i) => `export const v${i} = ${i};\n`).join('');
+    await fs.writeFile(path.join(tmp, 'big.ts'), body);
+    git('add', '-A');
+    git('commit', '-q', '-m', 'big');
+    git('mv', 'big.ts', 'moved.ts');
+    await fs.writeFile(path.join(tmp, 'moved.ts'), `${body}export const added = 1;\n`);
+    git('add', '-A');
+    expect(git('status', '--porcelain').toString()).toContain('R  big.ts -> moved.ts');
+    const bus = new EventBus();
+    const handlers: Record<string, () => Promise<void>> = {};
+    const emitCustom = vi.fn((event: string, payload: unknown) => bus.emitCustom(event, payload));
+    createChimeraPlugin().setup!({
+      config: { provider: 'anthropic', model: 'claude', cwd: tmp },
+      events: bus,
+      onConfigChange: () => undefined,
+      onEvent: (type: string, handler: () => Promise<void>) => {
+        handlers[type] = handler;
+      },
+      onPattern: (pattern: string, handler: (event: string, payload: unknown) => void) =>
+        bus.onPattern(pattern, handler),
+      emitCustom,
+      slashCommands: { register: () => undefined, unregister: () => undefined },
+      log: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
+    } as never);
+    await handlers['session.ended']!();
+
+    const payload = emitCustom.mock.calls.find(([e]) => e === 'chimera.review_needed')?.[1] as {
+      files: Array<{ path: string; status: string; content: string }>;
+    };
+    expect(payload.files.find((f) => f.path === 'moved.ts')).toMatchObject({
+      status: 'modified',
+      content: `${body}export const added = 1;\n`,
+    });
   });
 
   it('auto-review lists real paths and snapshots their content', async () => {

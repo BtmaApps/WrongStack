@@ -67,9 +67,14 @@ async function runGit(
 async function getFileDiff(cwd: string, filePath: string): Promise<string | undefined> {
   const r = await runGit(['diff', '--no-ext-diff', '--no-textconv', 'HEAD', '--', filePath], cwd);
   if (r.code !== 0 || !r.stdout.trim()) return undefined;
-  return r.stdout.length > MAX_DIFF_BYTES
-    ? `${r.stdout.slice(0, MAX_DIFF_BYTES)}\n... (diff truncated at ${MAX_DIFF_BYTES} bytes — please use the read tool to view full file content)`
-    : r.stdout;
+  if (r.stdout.length <= MAX_DIFF_BYTES) return r.stdout;
+  // The capped diff is embedded in the reviewer model's prompt: never split
+  // a surrogate pair at the cut. Dropping the orphaned half of an astral
+  // char keeps the text well-formed (surrogate-safe truncation convention).
+  let end = MAX_DIFF_BYTES;
+  const lastKept = r.stdout.charCodeAt(end - 1);
+  if (lastKept >= 0xd800 && lastKept <= 0xdbff) end -= 1;
+  return `${r.stdout.slice(0, end)}\n... (diff truncated at ${MAX_DIFF_BYTES} bytes — please use the read tool to view full file content)`;
 }
 
 /**

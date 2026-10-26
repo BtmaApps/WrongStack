@@ -300,6 +300,24 @@ describe('parseChimeraReviewReport — edge cases', () => {
     expect(result.findings[0]!.location?.line).toBe(1);
     expect(result.findings[0]!.title).toContain('Inline `not a path` here');
   });
+
+  it('parses file citations containing route groups, dynamic brackets, and scoped @/+ segments', () => {
+    const report = [
+      '### Critical (2)',
+      '1. [SECURITY] `src/app/(auth)/users/[id]/page.tsx:42` — Missing session check',
+      '2. packages/@scope/core+utils/index.ts:19 — Unhandled error',
+    ].join('\n');
+    const result = parseChimeraReviewReport(report, SAMPLE_CONTEXT);
+    expect(result.findings).toHaveLength(2);
+    expect(result.findings[0]!.location).toEqual({
+      file: 'src/app/(auth)/users/[id]/page.tsx',
+      line: 42,
+    });
+    expect(result.findings[1]!.location).toEqual({
+      file: 'packages/@scope/core+utils/index.ts',
+      line: 19,
+    });
+  });
 });
 
 // ── Structured JSON contract (P0-1) ────────────────────────────────

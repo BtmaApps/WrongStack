@@ -231,15 +231,16 @@ async function runSkeleton(
 
   // Validate before writing.
   const validation = await validateSkillNameAvailable(name, skillLoader);
-  if (validation.formatViolations.length > 0) {
-    const issues = [...validation.formatViolations];
-    for (const c of validation.conflicts) {
-      if (c.source === 'project' || c.source === 'user') {
-        issues.push(
-          `collides with existing ${c.source} skill "${c.name}" (use --force to overwrite)`,
-        );
-      }
-    }
+  const blockingConflicts = force
+    ? []
+    : validation.conflicts.filter((c) => c.source === 'project' || c.source === 'user');
+  if (validation.formatViolations.length > 0 || blockingConflicts.length > 0) {
+    const issues = [
+      ...validation.formatViolations,
+      ...blockingConflicts.map(
+        (c) => `collides with existing ${c.source} skill "${c.name}" (use --force to overwrite)`,
+      ),
+    ];
     return { message: `✗ Cannot scaffold "${name}":\n  - ${issues.join('\n  - ')}` };
   }
 
@@ -285,13 +286,19 @@ async function runFromPrompt(
   }
   // Validate the derived name (don't block on shadowing).
   const validation = await validateSkillNameAvailable(draft.suggestedName, skillLoader);
-  if (validation.formatViolations.length > 0) {
+  const blockingConflicts = force
+    ? []
+    : validation.conflicts.filter((c) => c.source === 'project' || c.source === 'user');
+  if (validation.formatViolations.length > 0 || blockingConflicts.length > 0) {
     return {
       message:
         `✗ Derived name "${draft.suggestedName}" has issues:\n  - ` +
         [
           ...validation.formatViolations,
-          ...validation.conflicts.map((c) => `collides with ${c.name}`),
+          ...blockingConflicts.map(
+            (c) =>
+              `collides with existing ${c.source} skill "${c.name}" (use --force to overwrite)`,
+          ),
         ].join('\n  - '),
     };
   }
@@ -332,8 +339,16 @@ function tokenizeSkillArgs(input: string): string[] {
 }
 
 export function parseFlagValue(tokens: string[], flag: string): string | undefined {
-  const idx = tokens.indexOf(flag);
-  if (idx === -1) return undefined;
-  const next = tokens[idx + 1];
-  return next && !next.startsWith('--') ? next : undefined;
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i]!;
+    if (token === flag) {
+      const next = tokens[i + 1];
+      return next && !next.startsWith('--') ? next : undefined;
+    }
+    if (token.startsWith(`${flag}=`)) {
+      const value = token.slice(flag.length + 1);
+      return value.length > 0 ? value : undefined;
+    }
+  }
+  return undefined;
 }

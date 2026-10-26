@@ -199,6 +199,35 @@ describe('/review findings slash commands', () => {
     const output = await executeFindingCommand(['finding', f.id], { projectDir: dir });
     expect(output).toContain(f.id);
   });
+
+  it('supports --flag=value syntax, ignores negative --limit, and resolves unambiguous short finding IDs', async () => {
+    const f = makeFinding({
+      id: 'abcdef12-3456-4789-abcd-ef1234567890',
+      severity: 'critical',
+      title: 'Short ID finding',
+    });
+    await store.upsert([f], {
+      sessionId: 's',
+      reportId: 'r',
+      agentId: 'chimera-review',
+      model: 'test-model',
+    });
+
+    const listOut = await executeFindingCommand(['findings', '--severity=critical', '--limit=-5'], {
+      projectDir: dir,
+    });
+    expect(listOut).toContain('Short ID finding');
+
+    const showOut = await executeFindingCommand(['finding', 'abcdef12'], { projectDir: dir });
+    expect(showOut).toContain('Short ID finding');
+
+    const triageOut = await executeFindingCommand(
+      ['finding', 'abcdef12', 'triage', '--reason=acknowledged'],
+      { projectDir: dir },
+    );
+    expect(triageOut).toContain('triaged');
+    expect((await store.get(f.id))?.status).toBe('triaged');
+  });
 });
 
 // ── Integration ────────────────────────────────────────────────────

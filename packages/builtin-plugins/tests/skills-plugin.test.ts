@@ -298,6 +298,28 @@ describe('buildSkillGeneratorCommand', () => {
     expect(res?.message).toContain('Ready to use');
   });
 
+  it('blocks skeleton and from-prompt when a valid kebab-case name collides with an existing user/project skill unless --force is passed', async () => {
+    const loader = fakeLoader({
+      listEntries: vi.fn().mockResolvedValue([
+        {
+          name: 'existing-skill',
+          source: 'user',
+          trigger: 'when user',
+          path: '/user/existing-skill/SKILL.md',
+          scope: ['user'],
+        },
+      ]),
+    });
+    const cmd = buildSkillGeneratorCommand(loader);
+    const skeletonRes = await cmd.run('skeleton existing-skill', fakeCtx());
+    expect(skeletonRes?.message).toContain('Cannot scaffold "existing-skill"');
+    expect(skeletonRes?.message).toContain('collides with existing user skill');
+
+    const promptRes = await cmd.run('from-prompt "# Existing Skill\nDetails"', fakeCtx());
+    expect(promptRes?.message).toContain('Derived name "existing-skill" has issues');
+    expect(promptRes?.message).toContain('collides with existing user skill');
+  });
+
   it('validate without name shows usage', async () => {
     const res = await buildSkillGeneratorCommand(undefined).run('validate');
     expect(res?.message).toContain('Usage: /skill-gen validate');

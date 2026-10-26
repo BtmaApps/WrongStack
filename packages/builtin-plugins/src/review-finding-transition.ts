@@ -23,6 +23,20 @@ export async function loadStore(ctx: FindingCommandContext) {
   return store;
 }
 
+/**
+ * Resolve a finding by exact ID or unambiguous short-ID prefix (>= 8 chars).
+ */
+export async function resolveFindingId(store: Awaited<ReturnType<typeof loadStore>>, id: string) {
+  const finding = await store.get(id);
+  if (finding) return finding;
+  if (id.length >= 8) {
+    const all = await store.list({ limit: 9999 });
+    const matches = all.filter((f) => f.id.startsWith(id));
+    if (matches.length === 1) return matches[0]!;
+  }
+  return null;
+}
+
 // ── Finding lifecycle commands ─────────────────────────────────────
 
 /** Valid resolution outcomes for the `resolve` action. */
@@ -59,15 +73,20 @@ export async function transitionFinding(
   let reason: string | undefined;
   let outcome: string | undefined;
   for (let i = 0; i < extraArgs.length; i++) {
-    if (extraArgs[i] === '--reason' && i + 1 < extraArgs.length) {
+    const arg = extraArgs[i]!;
+    if (arg === '--reason' && i + 1 < extraArgs.length) {
       reason = extraArgs[++i];
-    } else if (extraArgs[i] === '--outcome' && i + 1 < extraArgs.length) {
+    } else if (arg.startsWith('--reason=')) {
+      reason = arg.slice('--reason='.length);
+    } else if (arg === '--outcome' && i + 1 < extraArgs.length) {
       outcome = extraArgs[++i];
+    } else if (arg.startsWith('--outcome=')) {
+      outcome = arg.slice('--outcome='.length);
     }
   }
 
   const store = await loadStore(ctx);
-  const finding = await store.get(id);
+  const finding = await resolveFindingId(store, id);
   if (!finding) return `Finding not found: ${id}`;
 
   // Treat empty/whitespace-only reason as undefined.

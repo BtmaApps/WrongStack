@@ -8,7 +8,7 @@
  */
 import { FINDING_DEFAULT_PAGE_SIZE } from './review-finding-store.js';
 import type { FindingCommandContext } from './review-finding-transition.js';
-import { loadStore, transitionFinding } from './review-finding-transition.js';
+import { loadStore, resolveFindingId, transitionFinding } from './review-finding-transition.js';
 import type { FindingSeverity, FindingStatus } from './review-finding-types.js';
 import type { ReportLifecycleStatus, ReviewReport } from './review-report-types.js';
 
@@ -107,12 +107,21 @@ async function listFindings(args: string[], ctx: FindingCommandContext): Promise
   let limit = 20;
 
   for (let i = 0; i < args.length; i++) {
-    if (args[i] === '--severity' && i + 1 < args.length) {
+    const arg = args[i]!;
+    if (arg === '--severity' && i + 1 < args.length) {
       severityFilter = args[++i]!;
-    } else if (args[i] === '--status' && i + 1 < args.length) {
+    } else if (arg.startsWith('--severity=')) {
+      severityFilter = arg.slice('--severity='.length);
+    } else if (arg === '--status' && i + 1 < args.length) {
       statusFilter = args[++i]!;
-    } else if (args[i] === '--limit' && i + 1 < args.length) {
-      limit = Number.parseInt(args[++i]!, 10) || 20;
+    } else if (arg.startsWith('--status=')) {
+      statusFilter = arg.slice('--status='.length);
+    } else if (arg === '--limit' && i + 1 < args.length) {
+      const parsed = Number.parseInt(args[++i]!, 10);
+      limit = Number.isFinite(parsed) && parsed > 0 ? parsed : 20;
+    } else if (arg.startsWith('--limit=')) {
+      const parsed = Number.parseInt(arg.slice('--limit='.length), 10);
+      limit = Number.isFinite(parsed) && parsed > 0 ? parsed : 20;
     }
   }
 
@@ -161,7 +170,7 @@ async function listFindings(args: string[], ctx: FindingCommandContext): Promise
 
 async function showFinding(id: string, ctx: FindingCommandContext): Promise<string> {
   const store = await loadStore(ctx);
-  const finding = await store.get(id);
+  const finding = await resolveFindingId(store, id);
   if (!finding) return `Finding not found: ${id}`;
 
   const lines: string[] = [
@@ -181,7 +190,7 @@ async function showFinding(id: string, ctx: FindingCommandContext): Promise<stri
     lines.push('', '**Suggested fix:**', finding.suggestedFix);
   }
 
-  const events = await store.getEvents(id);
+  const events = await store.getEvents(finding.id);
   if (events.length > 0) {
     lines.push('', '**Lifecycle:**', '');
     for (const ev of events) {
@@ -214,10 +223,17 @@ async function listReports(args: string[], ctx: FindingCommandContext): Promise<
   let limit = 15;
 
   for (let i = 0; i < args.length; i++) {
-    if (args[i] === '--status' && i + 1 < args.length) {
+    const arg = args[i]!;
+    if (arg === '--status' && i + 1 < args.length) {
       statusFilter = args[++i]!;
-    } else if (args[i] === '--limit' && i + 1 < args.length) {
-      limit = Number.parseInt(args[++i]!, 10) || 15;
+    } else if (arg.startsWith('--status=')) {
+      statusFilter = arg.slice('--status='.length);
+    } else if (arg === '--limit' && i + 1 < args.length) {
+      const parsed = Number.parseInt(args[++i]!, 10);
+      limit = Number.isFinite(parsed) && parsed > 0 ? parsed : 15;
+    } else if (arg.startsWith('--limit=')) {
+      const parsed = Number.parseInt(arg.slice('--limit='.length), 10);
+      limit = Number.isFinite(parsed) && parsed > 0 ? parsed : 15;
     }
   }
 
@@ -380,8 +396,11 @@ export async function transitionReport(
   // Parse optional --reason.
   let reason: string | undefined;
   for (let i = 0; i < extraArgs.length; i++) {
-    if (extraArgs[i] === '--reason' && i + 1 < extraArgs.length) {
+    const arg = extraArgs[i]!;
+    if (arg === '--reason' && i + 1 < extraArgs.length) {
       reason = extraArgs[++i];
+    } else if (arg.startsWith('--reason=')) {
+      reason = arg.slice('--reason='.length);
     }
   }
 

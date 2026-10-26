@@ -198,7 +198,12 @@ async function getChangedFiles(cwd: string): Promise<ChangedFile[]> {
   )) {
     if (statusCode === 'A' || statusCode === 'A ' || statusCode === ' A' || statusCode === '??') {
       files.push({ path: filePath, status: 'added' });
-    } else if (statusCode.includes('M')) {
+    } else if (
+      statusCode.includes('M') ||
+      statusCode.startsWith('R') ||
+      statusCode.startsWith('C')
+    ) {
+      // A staged rename/copy is `R `/`C ` even when its content changed too.
       files.push({ path: filePath, status: 'modified' });
     }
   }

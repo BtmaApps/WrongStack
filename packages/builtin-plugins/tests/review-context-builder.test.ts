@@ -19,6 +19,8 @@ const MOCK_CONFIG: ResolvedChimeraConfig = {
   fallbackProfile: undefined,
 };
 
+const LONE_SURROGATE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
+
 let tmpDir: string;
 
 function git(args: string[], cwd: string): void {
@@ -87,6 +89,46 @@ describe('buildReviewContext', () => {
     expect(file.diff).toBeDefined();
     expect(file.diff).toContain('initial content');
     expect(file.diff).toContain('modified content');
+  });
+
+  it('never splits a surrogate pair when capping a large diff for the model', async () => {
+    // The capped diff is embedded in the reviewer model's context (auto-review
+    // and chimera). A raw slice at MAX_DIFF_BYTES emits a lone surrogate when
+    // an astral character straddles the cut — ill-formed UTF-16 that
+    // providers reject or mangle (the repo-wide surrogate-safe truncation
+    // convention). Measure-and-shift: hunk headers keep a constant length
+    // across attempts (only the index hashes change), so one shift lands the
+    // emoji's HIGH surrogate exactly at the last kept unit.
+    const runBigDiff = (): string =>
+      execFileSync('git', ['diff', '--no-ext-diff', '--no-textconv', 'HEAD', '--', 'big.txt'], {
+        cwd: tmpDir,
+        encoding: 'utf8',
+        windowsHide: true,
+      });
+    // Track a base version so the straddle write below is a tracked
+    // modification (an untracked file produces no diff at all).
+    await writeAndCommit('big.txt', `${'x'.repeat(99_000)}y\n`, tmpDir);
+    let shift = 0;
+    let line = '';
+    for (let attempt = 0; attempt < 4; attempt++) {
+      line = `${'x'.repeat(99_000 + shift)}😀${'y'.repeat(20)}\n`;
+      await fsp.writeFile(path.join(tmpDir, 'big.txt'), line);
+      const highAt = runBigDiff().indexOf('\uD83D');
+      if (highAt === 99_999) break;
+      shift += 99_999 - highAt;
+    }
+    git(['add', 'big.txt'], tmpDir);
+    const result = await buildReviewContext({
+      cwd: tmpDir,
+      config: MOCK_CONFIG,
+      files: [{ path: 'big.txt', status: 'modified', content: line }],
+    });
+    const file = result.files.find((candidate) => candidate.path === 'big.txt');
+    expect(file?.diff).toBeDefined();
+    expect(
+      LONE_SURROGATE.test(file!.diff!),
+      'capped diff carries an ill-formed lone surrogate into the model prompt',
+    ).toBe(false);
   });
 
   it('does not set diff for added (untracked) files', async () => {

@@ -295,6 +295,44 @@ describe('auto-review change detection', () => {
       message: expect.stringContaining('In-flight:      0 review(s)'),
     });
   });
+
+  it('releases the in-flight slot on chimera.review_complete so subsequent reviews are not blocked (F619)', async () => {
+    const { api, events, emitCustom, onPattern, registered } = makeApi({
+      maxConcurrentReviews: 1,
+      cascadeOn: 'off',
+    });
+    createAutoReviewPlugin().setup!(api);
+    await events['agent.run.started']!();
+
+    await fs.writeFile(path.join(tmp, 'tracked.ts'), 'export const value = 2;\n');
+    await events['iteration.completed']!();
+    expect(reviewPayloads(emitCustom)).toHaveLength(1);
+
+    const command = registered.find((candidate) => candidate.name === 'auto-review');
+    await expect(command!.run('')).resolves.toMatchObject({
+      message: expect.stringContaining('In-flight:      1 review(s)'),
+    });
+
+    const completeListener = onPattern.mock.calls.find(
+      ([pattern]) => pattern === 'chimera.review_complete',
+    )?.[1] as ((event: string, payload: unknown) => void) | undefined;
+    expect(completeListener).toBeDefined();
+
+    completeListener!('chimera.review_complete', {
+      bundle: reviewPayloads(emitCustom)[0]!,
+      reviewText: '## Chimera Review — all clear',
+      status: 'completed',
+      cwd: tmp,
+    });
+
+    await expect(command!.run('')).resolves.toMatchObject({
+      message: expect.stringContaining('In-flight:      0 review(s)'),
+    });
+
+    await fs.writeFile(path.join(tmp, 'tracked.ts'), 'export const value = 3;\n');
+    await events['iteration.completed']!();
+    expect(reviewPayloads(emitCustom)).toHaveLength(2);
+  });
 });
 
 describe('resolveAutoReviewConfig — empty/unknown fallbackProfile', () => {

@@ -248,6 +248,21 @@ describe('/prompts add structured flags', () => {
     ]);
   });
 
+  it('accumulates repeated --var and --tags flags in order (F620)', async () => {
+    const { cmd } = await withCommand();
+    await runCmd(
+      cmd,
+      'add --tags alpha,beta --tags gamma --var "first:First var" --var "second:Second var::multiline" "Repeated" "Use {{first}} and {{second}}"',
+      ctx(),
+    );
+    const entry = (await store.list())[0]!;
+    expect(entry.tags).toEqual(['alpha', 'beta', 'gamma']);
+    expect(entry.variables).toEqual([
+      { name: 'first', description: 'First var', required: true },
+      { name: 'second', description: 'Second var', required: true, multiline: true },
+    ]);
+  });
+
   it('favorite verb sets favorite via the store fallback', async () => {
     const { cmd } = await withCommand();
     await store.save(store.createNew('Star Me', 'x'));

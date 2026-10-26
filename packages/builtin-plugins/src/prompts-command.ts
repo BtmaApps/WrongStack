@@ -268,7 +268,9 @@ function parseFlags(input: string): { flags: Record<string, string>; positional:
   while (s.startsWith('--') && (m = flagRe.exec(s))) {
     const name = expectDefined(m[1]);
     const rawVal = m[2] ?? m[3] ?? 'true';
-    flags[name] = unquote(rawVal);
+    const val = unquote(rawVal);
+    flags[name] =
+      (name === 'var' || name === 'tags') && flags[name] ? `${flags[name]},${val}` : val;
     s = s.slice(m[0].length);
   }
   return { flags, positional: s.trim() };

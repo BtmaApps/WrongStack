@@ -50,9 +50,11 @@ export {
 };
 
 interface InFlightReview {
+  bundle: ChimeraReviewNeededPayload;
   files: string[];
   startedAt: number;
   subagentType: 'review' | 'cascade';
+  timer?: ReturnType<typeof setTimeout> | undefined;
 }
 
 function buildAutoReviewCommand(
@@ -156,7 +158,24 @@ export function createAutoReviewPlugin(): Plugin {
           },
           5 * 60 * 1000,
         );
+        entry.timer = timer;
         timer.unref();
+      };
+      const releaseInFlight = (bundle: ChimeraReviewNeededPayload | undefined): boolean => {
+        if (!bundle) return false;
+        let idx = inFlight.findIndex((entry) => entry.bundle === bundle);
+        if (idx === -1 && Array.isArray(bundle.files)) {
+          const paths = bundle.files.map((file) => file.path);
+          idx = inFlight.findIndex(
+            (entry) =>
+              entry.files.length === paths.length &&
+              entry.files.every((file, i) => file === paths[i]),
+          );
+        }
+        if (idx === -1) return false;
+        const [removed] = inFlight.splice(idx, 1);
+        if (removed?.timer) clearTimeout(removed.timer);
+        return true;
       };
 
       api.onConfigChange(() => {
@@ -402,6 +421,7 @@ export function createAutoReviewPlugin(): Plugin {
           }
           const emittedPaths = new Set(emittedBundle.files.map((file) => file.path));
           const inflightEntry: InFlightReview = {
+            bundle: emittedBundle,
             files: [...emittedPaths],
             startedAt: now,
             subagentType: 'review',
@@ -517,6 +537,7 @@ export function createAutoReviewPlugin(): Plugin {
               return;
             }
             const inflightEntry: InFlightReview = {
+              bundle: emittedBundle,
               files: emittedBundle.files.map((file) => file.path),
               startedAt: Date.now(),
               subagentType: 'review',
@@ -538,7 +559,15 @@ export function createAutoReviewPlugin(): Plugin {
       api.onPattern('chimera.review_complete', (_event, payload) => {
         try {
           const p = payload as ChimeraReviewCompletePayload;
-          if (!p.reviewText) return;
+          if (
+            releaseInFlight(p?.bundle) &&
+            !sessionEnded &&
+            pendingFiles.size > 0 &&
+            !pendingReviewTimer
+          ) {
+            schedulePendingReview(resolved.debounceMs);
+          }
+          if (!p?.reviewText) return;
 
           const cascadeOn = p.bundle.cascadeOn ?? 'off';
           if (cascadeOn === 'off') return;

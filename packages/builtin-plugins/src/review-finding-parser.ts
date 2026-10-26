@@ -85,7 +85,7 @@ const CONFIDENCES = new Set<FindingConfidence>(['high', 'medium', 'low']);
  * contract). Untagged fences are never treated as the findings block so an
  * example JSON snippet in report prose cannot hijack the parse.
  */
-const FENCED_BLOCK = /```json[ \t]*\r?\n([\s\S]*?)\r?\n```/gi;
+const FENCED_BLOCK = /```json[ \t]*\r?\n([\s\S]*?)\r?\n[ \t]*```/gi;
 
 /**
  * Extract the structured findings JSON block from a report. Returns the
@@ -327,7 +327,7 @@ function parseFindingSegment(
   // when the description contains an inline backtick construct that is not
   // a citation. Backticks further into the description are preserved verbatim.
   const citationMatch = remaining.match(
-    /^(`+)([a-zA-Z_./\\:][^`]*[a-zA-Z0-9_./\\:])\1(?=\s*[—–-]|\s*$)/,
+    /^(`+)([a-zA-Z0-9_./\\:@+[\]()][^`]*[a-zA-Z0-9_./\\:@+[\]()])\1(?=\s*[—–-]|\s*$)/,
   );
   if (citationMatch) {
     const inner = citationMatch[2]!;
@@ -343,7 +343,7 @@ function parseFindingSegment(
   let desc = remaining;
 
   const refMatch = remaining.match(
-    /^([a-zA-Z_./\\][a-zA-Z0-9_./\\-]*\.\w+)(?::(\d+))?\s+(?:[—–]|-)\s+(.+)$/,
+    /^([a-zA-Z_./\\@][a-zA-Z0-9_./\\@+[\]()-]*\.\w+)(?::(\d+))?\s+(?:[—–]|-)\s+(.+)$/,
   );
   if (refMatch) {
     file = refMatch[1]!.trim();
@@ -355,7 +355,7 @@ function parseFindingSegment(
 
   // Fallback: if the remaining text contains a colon-separated path, extract
   if (!file) {
-    const pathMatch = remaining.match(/^([a-zA-Z_./\\][a-zA-Z0-9_./\\-]*\.\w+)(?::(\d+))?/);
+    const pathMatch = remaining.match(/^([a-zA-Z_./\\@][a-zA-Z0-9_./\\@+[\]()-]*\.\w+)(?::(\d+))?/);
     if (pathMatch) {
       file = pathMatch[1]!.trim();
       if (pathMatch[2] !== undefined) {
