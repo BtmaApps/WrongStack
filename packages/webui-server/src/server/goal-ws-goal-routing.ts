@@ -45,8 +45,18 @@ export async function routeToSelectedGoal(
     requestGeneration = goal.stopGeneration;
     for (const client of host.clients) goal.addClient(client.ws);
     if (msg.type !== 'goal.start') {
-      const graph = await host.store.load(selectedId);
-      if (!graph) throw new Error(`Goal not found: ${selectedId}`);
+      // An unloadable id must not stay registered: a graph-less entry counts
+      // as a live Goal in the concurrency guard above.
+      const graph = await host.store.load(selectedId).catch((err: unknown) => {
+        host.goals.delete(selectedId);
+        goal?.dispose();
+        throw err;
+      });
+      if (!graph) {
+        host.goals.delete(selectedId);
+        goal.dispose();
+        throw new Error(`Goal not found: ${selectedId}`);
+      }
       goal.graph = graph;
       goal.runStatus = graph.completedAt
         ? 'completed'

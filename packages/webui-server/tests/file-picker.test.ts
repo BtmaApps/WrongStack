@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { SKIP_DIRS, isHiddenEntry, rankFiles } from '../src/server/file-picker.js';
+import { describe, expect, it } from 'vitest';
+import { isHiddenEntry, rankFiles, SKIP_DIRS } from '../src/server/file-picker.js';
 
 describe('file-picker', () => {
   describe('SKIP_DIRS', () => {
@@ -121,6 +121,11 @@ describe('file-picker', () => {
     it('handles files with no directory component', () => {
       const result = rankFiles(['file.ts'], 'file.ts', 10);
       expect(result).toEqual(['file.ts']);
+    });
+
+    it('matches queries containing Windows backslashes and surrounding whitespace (F32)', () => {
+      const result = rankFiles(files, '  src\\utils\\helper.ts  ', 10);
+      expect(result).toEqual(['src/utils/helper.ts']);
     });
   });
 });

@@ -683,12 +683,38 @@ function relativeDisplayPath(file: string, line: number): string {
   return `${file.replace(/\\/g, '/')}:${line}`;
 }
 
+function isHighSurrogate(code: number): boolean {
+  return code >= 0xd800 && code <= 0xdbff;
+}
+
+function isLowSurrogate(code: number): boolean {
+  return code >= 0xdc00 && code <= 0xdfff;
+}
+
+/**
+ * Fixed-cap truncations of editor text feed the completion prompt, so a cut
+ * must never split a surrogate pair: a lone surrogate makes the request text
+ * ill-formed UTF-16 (providers reject or mangle it — the same class the core
+ * utils truncate surrogate-safely, e.g. sliceUtf16Safe). Snapping the cut by
+ * one code unit drops the orphaned half of the pair and keeps the result
+ * within the cap.
+ */
 function tail(value: string, max: number): string {
-  return value.length <= max ? value : value.slice(value.length - max);
+  if (value.length <= max) return value;
+  let start = value.length - max;
+  if (isLowSurrogate(value.charCodeAt(start)) && isHighSurrogate(value.charCodeAt(start - 1))) {
+    start += 1;
+  }
+  return value.slice(start);
 }
 
 function head(value: string, max: number): string {
-  return value.length <= max ? value : value.slice(0, max);
+  if (value.length <= max) return value;
+  let end = max;
+  if (isLowSurrogate(value.charCodeAt(end)) && isHighSurrogate(value.charCodeAt(end - 1))) {
+    end -= 1;
+  }
+  return value.slice(0, end);
 }
 
 function isInside(root: string, target: string): boolean {

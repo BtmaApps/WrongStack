@@ -169,6 +169,47 @@ describe('createConnectionLifecycle', () => {
     await vi.advanceTimersByTimeAsync(10);
     expect(resolve).toHaveBeenCalledWith('no');
   });
+
+  it('does not leak a client or send initial frames when the socket closes during async authenticate or buildInitialPayload (F613)', async () => {
+    let releaseAuth!: (ok: boolean) => void;
+    let notifyAuthEntered!: () => void;
+    const authEntered = new Promise<void>((r) => {
+      notifyAuthEntered = r;
+    });
+    const clients = new Map<WebSocket, { id: string }>();
+    const registerClient = vi.fn();
+    const send = vi.fn();
+
+    const lifecycle = createConnectionLifecycle({
+      clients,
+      pendingConfirms: new Map([['confirm-1', { resolve: vi.fn(), payload: { id: 'confirm-1' } }]]),
+      authenticate: async () => {
+        notifyAuthEntered();
+        return new Promise<boolean>((r) => {
+          releaseAuth = r;
+        });
+      },
+      createClient: (_ws, id) => ({ id }),
+      registerClient,
+      decode: () => ({ ok: true, message: {} }),
+      dispatch: vi.fn(async () => undefined),
+      send,
+      sessionPayload: (payload) => payload,
+      buildInitialPayload: async () => ({}),
+    });
+
+    const socket = new TestSocket();
+    const run = lifecycle(socket as never, undefined);
+    await authEntered;
+    await socket.emit('close');
+    releaseAuth(true);
+    await run;
+
+    expect(clients.size).toBe(0);
+    expect(registerClient).not.toHaveBeenCalled();
+    expect(send).not.toHaveBeenCalled();
+    expect(socket.listeners.has('error')).toBe(false);
+  });
 });
 
 describe('createConnectionLifecycle verbose rejection logging', () => {

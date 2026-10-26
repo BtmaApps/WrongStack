@@ -248,6 +248,16 @@ describe('custom-context-modes', () => {
         expect(mode.targetLoad).toBe(0.8);
         expect(mode.aggressiveOn).toBe('hard');
       });
+
+      it('rejects non-object thresholds in create and update (F32)', () => {
+        const store = createCustomModeStore('/tmp/.wrongstack');
+        expect(
+          store.create(makeMode({ id: 'bad-create', thresholds: 'bad' as unknown as any })).ok,
+        ).toBe(false);
+        store.create(makeMode({ id: 'my-mode' }));
+        expect(store.update('my-mode', { thresholds: null as unknown as any }).ok).toBe(false);
+        expect(store.update('my-mode', { thresholds: [] as unknown as any }).ok).toBe(false);
+      });
     });
 
     describe('remove', () => {

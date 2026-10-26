@@ -113,4 +113,31 @@ describe('context editor on live-shaped messages', () => {
     ]);
     expect(messages[0]?.content).toBe('keep');
   });
+
+  it('applies an edit when history holds an attached PDF document block', async () => {
+    const document = {
+      type: 'document' as const,
+      source: {
+        type: 'base64' as const,
+        media_type: 'application/pdf' as const,
+        data: 'JVBERi0xLjQK',
+      },
+      name: 'a.pdf',
+      text: 'page 1',
+      pages: 1,
+    };
+    const messages: Message[] = [
+      userTurn('one'),
+      { role: 'assistant', content: 'a1' },
+      { role: 'user', content: [document, { type: 'text', text: 'summarize' }] },
+      { role: 'assistant', content: 'a2' },
+    ];
+    const result = await applyFromSnapshot(mockContext(messages), (proposed) => proposed.slice(2), [
+      { messageIndex: 0 },
+      { messageIndex: 1 },
+    ]);
+    expect('ok' in result).toBe(false);
+    expect(messages).toHaveLength(2);
+    expect(messages[0]?.content).toEqual([document, { type: 'text', text: 'summarize' }]);
+  });
 });

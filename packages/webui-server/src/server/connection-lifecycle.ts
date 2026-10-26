@@ -214,11 +214,29 @@ export function createConnectionLifecycle<Client, Request, Message>(
         (ws as unknown as { off: (event: string, fn: unknown) => void }).off('error', onError);
       }
     };
+    const isSocketClosed = (): boolean => {
+      const state = (ws as { readyState?: unknown }).readyState;
+      return state === 2 || state === 3;
+    };
+    let closedBeforeRegistration = isSocketClosed();
+    const onEarlyClose = (): void => {
+      closedBeforeRegistration = true;
+    };
+    if (typeof ws.on === 'function') ws.on('close', onEarlyClose);
+    const detachEarlyCloseListener = (): void => {
+      if (typeof ws.removeListener === 'function') {
+        ws.removeListener('close', onEarlyClose);
+      } else if (typeof (ws as unknown as { off?: unknown }).off === 'function') {
+        (ws as unknown as { off: (event: string, fn: unknown) => void }).off('close', onEarlyClose);
+      }
+    };
+
     let authenticated = true;
     try {
       if (options.authenticate) authenticated = await options.authenticate(ws, request);
     } catch (error) {
       log('error', 'webui_server.authentication_failed', error);
+      detachEarlyCloseListener();
       detachErrorListener();
       try {
         ws.close?.(1011, 'Authentication failed');
@@ -227,6 +245,7 @@ export function createConnectionLifecycle<Client, Request, Message>(
       }
       return;
     }
+    detachEarlyCloseListener();
     if (!authenticated) {
       detachErrorListener();
       try {
@@ -234,6 +253,10 @@ export function createConnectionLifecycle<Client, Request, Message>(
       } catch {
         /* ignore */
       }
+      return;
+    }
+    if (closedBeforeRegistration || isSocketClosed()) {
+      detachErrorListener();
       return;
     }
 
@@ -408,7 +431,9 @@ export function createConnectionLifecycle<Client, Request, Message>(
       }
     });
 
+    let closedAfterRegistration = false;
     ws.on('close', () => {
+      closedAfterRegistration = true;
       const closing = options.clients.get(ws);
       options.clients.delete(ws);
       options.unregisterClient?.(ws);
@@ -428,6 +453,7 @@ export function createConnectionLifecycle<Client, Request, Message>(
       // `eventEpoch` tells a reconnecting page whether its frame cursors
       // (session-frame-log) still mean anything on this server process.
       const payload = await options.buildInitialPayload();
+      if (closedAfterRegistration || isSocketClosed()) return;
       options.send(ws, {
         type: 'session.start',
         payload: { ...payload, eventEpoch: webuiSessionFrameLog().epoch },

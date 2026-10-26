@@ -45,9 +45,12 @@ function numberField(input: Record<string, unknown>, names: string[]): number | 
 }
 
 function normalizeTarget(projectRoot: string, filePath: string): string {
-  const root =
-    typeof projectRoot === 'string' && projectRoot.length > 0 ? projectRoot : process.cwd();
-  return path.normalize(path.isAbsolute(filePath) ? filePath : path.resolve(root, filePath));
+  const trimmedRoot = typeof projectRoot === 'string' ? projectRoot.trim() : '';
+  const root = trimmedRoot.length > 0 ? trimmedRoot : process.cwd();
+  const trimmedFile = typeof filePath === 'string' ? filePath.trim() : filePath;
+  return path.normalize(
+    path.isAbsolute(trimmedFile) ? trimmedFile : path.resolve(root, trimmedFile),
+  );
 }
 
 export function normalizeCodeMapFileTarget(
@@ -92,7 +95,8 @@ export function extractCodeMapFileTargets(
   rawInput: unknown,
 ): CodeMapFileTarget[] {
   if (typeof toolName !== 'string') return [];
-  const operation = TOOL_OPERATION[toolName.toLowerCase()];
+  const normalizedTool = toolName.trim().toLowerCase();
+  const operation = TOOL_OPERATION[normalizedTool];
   if (!operation || !rawInput || typeof rawInput !== 'object' || Array.isArray(rawInput)) return [];
   const input = rawInput as Record<string, unknown>;
   const rawPaths: string[] = [];
@@ -107,7 +111,10 @@ export function extractCodeMapFileTargets(
   } else if (typeof files === 'string' && files.trim() && !/[?*{}[\]]/.test(files)) {
     rawPaths.push(files.trim());
   }
-  if ((toolName === 'patch' || toolName === 'apply_patch') && typeof input['patch'] === 'string') {
+  if (
+    (normalizedTool === 'patch' || normalizedTool === 'apply_patch') &&
+    typeof input['patch'] === 'string'
+  ) {
     rawPaths.push(...patchTargets(input['patch']));
   }
 

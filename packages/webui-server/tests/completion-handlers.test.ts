@@ -377,6 +377,144 @@ describe('completion WebSocket handler', { timeout: 30_000 }, () => {
       },
     ]);
   });
+
+  it('never splits a surrogate pair when the prefix/suffix cap cut lands inside one', async () => {
+    const { handleCompletionRequest } = await import('@wrongstack/webui-server');
+    const complete = vi.fn(async (_req: unknown) => ({
+      content: [{ type: 'text', text: '{"items":[]}' }],
+      stopReason: 'end_turn',
+      usage: { input: 1, output: 1 },
+      model: 'test-model',
+    }));
+    const provider = {
+      id: 'mock',
+      capabilities: { structuredOutput: false, jsonMode: true },
+      complete,
+    } as never as Provider;
+    const ws = createMockWs();
+    const emoji = '😀'; // U+1F600 = D83D DE00
+
+    await handleCompletionRequest(
+      ws,
+      {
+        type: 'completion.request',
+        payload: {
+          requestId: 'r-surrogate-cut',
+          filePath: 'src/user-repository.ts',
+          language: 'typescript',
+          lineNumber: 1,
+          column: 1,
+          prefix: `x${emoji}${'y'.repeat(11_999)}`, // 12_002 units → tail cut splits the pair
+          suffix: `${'z'.repeat(3_999)}${emoji}w`, // 4_002 units → head cut splits the pair
+          allowLlm: true,
+        },
+      },
+      { projectRoot: tempDir, provider, model: 'test-model' },
+    );
+
+    expect(complete).toHaveBeenCalledOnce();
+    const request = complete.mock.calls[0]?.[0] as
+      | { messages: Array<{ content: string }> }
+      | undefined;
+    const prompt = request?.messages[0]?.content ?? '';
+    expect(prompt.length).toBeGreaterThan(0);
+    // No ill-formed lone surrogate may reach the model request (checked on the
+    // raw content string — JSON.stringify would escape the surrogate away).
+    expect(
+      /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/.test(prompt),
+      'completion prompt carries a lone surrogate after cap truncation',
+    ).toBe(false);
+  });
+
+  it('keeps a pair-aligned prefix cap cut lossless', async () => {
+    const { handleCompletionRequest } = await import('@wrongstack/webui-server');
+    const complete = vi.fn(async (_req: unknown) => ({
+      content: [{ type: 'text', text: '{"items":[]}' }],
+      stopReason: 'end_turn',
+      usage: { input: 1, output: 1 },
+      model: 'test-model',
+    }));
+    const provider = {
+      id: 'mock',
+      capabilities: { structuredOutput: false, jsonMode: true },
+      complete,
+    } as never as Provider;
+    const ws = createMockWs();
+    const emoji = '😀';
+
+    await handleCompletionRequest(
+      ws,
+      {
+        type: 'completion.request',
+        payload: {
+          requestId: 'r-surrogate-aligned',
+          filePath: 'src/user-repository.ts',
+          language: 'typescript',
+          lineNumber: 1,
+          column: 1,
+          prefix: emoji.repeat(6_001), // 12_002 units → cut at 2, a pair boundary
+          suffix: 'const x = 1;',
+          allowLlm: true,
+        },
+      },
+      { projectRoot: tempDir, provider, model: 'test-model' },
+    );
+
+    expect(complete).toHaveBeenCalledOnce();
+    const request = complete.mock.calls[0]?.[0] as
+      | { messages: Array<{ content: string }> }
+      | undefined;
+    const prompt = request?.messages[0]?.content ?? '';
+    expect(
+      /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/.test(prompt),
+      'aligned cut produced a lone surrogate',
+    ).toBe(false);
+    // The prompt embeds the capped prefix twice (`Current line prefix` and
+    // <prefix>): 6_000 emojis per embedding must survive the aligned cut.
+    expect((prompt.match(/\u{1F600}/gu) ?? []).length).toBe(12_000);
+  });
+
+  it('leaves prefix/suffix fields below the caps verbatim', async () => {
+    const { handleCompletionRequest } = await import('@wrongstack/webui-server');
+    const complete = vi.fn(async (_req: unknown) => ({
+      content: [{ type: 'text', text: '{"items":[]}' }],
+      stopReason: 'end_turn',
+      usage: { input: 1, output: 1 },
+      model: 'test-model',
+    }));
+    const provider = {
+      id: 'mock',
+      capabilities: { structuredOutput: false, jsonMode: true },
+      complete,
+    } as never as Provider;
+    const ws = createMockWs();
+
+    await handleCompletionRequest(
+      ws,
+      {
+        type: 'completion.request',
+        payload: {
+          requestId: 'r-surrogate-short',
+          filePath: 'src/user-repository.ts',
+          language: 'typescript',
+          lineNumber: 1,
+          column: 1,
+          prefix: 'hello 😀 world',
+          suffix: 'const x = 1;',
+          allowLlm: true,
+        },
+      },
+      { projectRoot: tempDir, provider, model: 'test-model' },
+    );
+
+    expect(complete).toHaveBeenCalledOnce();
+    const request = complete.mock.calls[0]?.[0] as
+      | { messages: Array<{ content: string }> }
+      | undefined;
+    const prompt = request?.messages[0]?.content ?? '';
+    expect(prompt.includes('hello 😀 world')).toBe(true);
+    expect(prompt.includes('const x = 1;')).toBe(true);
+  });
 });
 
 function createMockWs() {

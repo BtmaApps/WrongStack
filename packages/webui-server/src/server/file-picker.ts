@@ -51,7 +51,7 @@ export function isHiddenEntry(name: string): boolean {
  */
 export function rankFiles(paths: readonly string[], query: string, limit: number): string[] {
   if (typeof query !== 'string') return [];
-  const q = query.toLowerCase();
+  const q = query.trim().replaceAll('\\', '/').toLowerCase();
   const normalizedLimit =
     typeof limit === 'number' && Number.isFinite(limit) ? Math.max(0, Math.floor(limit)) : 0;
   const scored: Array<{ path: string; score: number }> = [];

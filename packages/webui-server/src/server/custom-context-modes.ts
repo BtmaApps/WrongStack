@@ -159,6 +159,14 @@ export function createCustomModeStore(wrongstackDir: string): CustomModeStore {
     if (mode.aggressiveOn !== undefined && !validAggressiveOn(mode.aggressiveOn)) {
       return { ok: false, error: 'aggressiveOn must be warn, soft, or hard' };
     }
+    if (
+      mode.thresholds !== undefined &&
+      (typeof mode.thresholds !== 'object' ||
+        mode.thresholds === null ||
+        Array.isArray(mode.thresholds))
+    ) {
+      return { ok: false, error: 'thresholds must satisfy 0 <= warn <= soft <= hard <= 1' };
+    }
     const entry: CustomContextMode = {
       id,
       name: mode.name.trim(),
@@ -205,7 +213,10 @@ export function createCustomModeStore(wrongstackDir: string): CustomModeStore {
     if (!existing) {
       return { ok: false, error: `Mode "${normalizedId}" not found` };
     }
-    const next: CustomContextMode = { ...existing };
+    const next: CustomContextMode = {
+      ...existing,
+      thresholds: { ...existing.thresholds },
+    };
     if (patch.name !== undefined) {
       if (typeof patch.name !== 'string' || patch.name.trim().length === 0) {
         return { ok: false, error: 'name is required' };
@@ -218,7 +229,14 @@ export function createCustomModeStore(wrongstackDir: string): CustomModeStore {
       }
       next.description = patch.description;
     }
-    if (patch.thresholds) {
+    if (patch.thresholds !== undefined) {
+      if (
+        typeof patch.thresholds !== 'object' ||
+        patch.thresholds === null ||
+        Array.isArray(patch.thresholds)
+      ) {
+        return { ok: false, error: 'thresholds must satisfy 0 <= warn <= soft <= hard <= 1' };
+      }
       next.thresholds = {
         warn: patch.thresholds.warn ?? existing.thresholds.warn,
         soft: patch.thresholds.soft ?? existing.thresholds.soft,

@@ -4,7 +4,9 @@ import {
   base64DecodedBytes,
   isAllowedImageMediaType,
   isValidImageBase64,
+  MAX_INCOMING_DOCUMENT_BYTES,
   MAX_INCOMING_IMAGE_BYTES,
+  PDF_MEDIA_TYPE,
 } from '@wrongstack/core/utils';
 import type { ContextEditorValidationError } from './context-editor-types.js';
 
@@ -336,6 +338,66 @@ function validateBlock(
         thinking,
         ...(typeof signature === 'string' ? { signature } : {}),
         ...(providerMeta === undefined ? {} : { providerMeta }),
+      };
+    }
+    case 'document': {
+      // Every proposal carries the whole history, so a session with an attached
+      // PDF must round-trip its document block. Hold it to the ingest rules of
+      // `parseIncomingAttachments`: this must not become a second PDF path.
+      const source = value['source'];
+      if (
+        !isRecord(source) ||
+        source['type'] !== 'base64' ||
+        source['media_type'] !== PDF_MEDIA_TYPE ||
+        typeof source['data'] !== 'string' ||
+        !isValidImageBase64(source['data']) ||
+        !source['data'].startsWith('JVBERi0')
+      ) {
+        error(
+          errors,
+          `${path}/source`,
+          'INVALID_DOCUMENT_SOURCE',
+          'document.source must be base64 application/pdf data.',
+        );
+        return undefined;
+      }
+      const data = source['data'];
+      if (base64DecodedBytes(data) > MAX_INCOMING_DOCUMENT_BYTES) {
+        error(
+          errors,
+          `${path}/source/data`,
+          'DOCUMENT_TOO_LARGE',
+          `document.source.data exceeds the ${MAX_INCOMING_DOCUMENT_BYTES / (1024 * 1024)} MB limit.`,
+        );
+        return undefined;
+      }
+      const text = value['text'];
+      if (typeof text !== 'string' || text.length > MAX_STRING_LENGTH) {
+        error(errors, `${path}/text`, 'INVALID_DOCUMENT_TEXT', 'document.text must be a string.');
+        return undefined;
+      }
+      const name = value['name'];
+      // The name lands inside the `<attached-pdf name="…">` fallback wrapper.
+      if (name !== undefined && (typeof name !== 'string' || /["<>\r\n]/.test(name))) {
+        error(errors, `${path}/name`, 'INVALID_DOCUMENT_NAME', 'document.name is invalid.');
+        return undefined;
+      }
+      const pages = value['pages'];
+      if (pages !== undefined && (!Number.isSafeInteger(pages) || (pages as number) < 0)) {
+        error(
+          errors,
+          `${path}/pages`,
+          'INVALID_DOCUMENT_PAGES',
+          'document.pages must be a non-negative integer.',
+        );
+        return undefined;
+      }
+      return {
+        type: 'document',
+        source: { type: 'base64', media_type: PDF_MEDIA_TYPE, data },
+        text,
+        ...(typeof name === 'string' ? { name } : {}),
+        ...(typeof pages === 'number' ? { pages } : {}),
       };
     }
     default:
