@@ -132,7 +132,7 @@ const AUTHORIZATION_HEADER_PATTERN = /\bAuthorization\s*:\s*(?:[A-Za-z]+\s+)?[^\
  */
 const COOKIE_HEADER_PATTERN =
   /\bCookie\s*:\s*[^\s=;"']+\s*=\s*(?:"[^"\n]*"|'[^'\n]*'|[^\s"';]*)(?:;\s*[^\s=;"']+\s*=\s*(?:"[^"\n]*"|'[^'\n]*'|[^\s"';]*))*/gi;
-const COOKIE_FLAG_PATTERN = /--cookie(?![\w-])[=\s]+(?:"[^"\n]*"|'[^'\n]*'|[^\s]+)/g;
+const COOKIE_FLAG_PATTERN = /--cookie(?![\w-])[=\s]+(?:"[^"\n]*"|'[^'\n]*'|[^\s]+)/gi;
 /**
  * Shared: the password in URL userinfo (`https://user:TOKEN@host`,
  * `postgres://app:PW@db`). Look-arounds keep `scheme://` and `@host` out of the
@@ -311,6 +311,7 @@ export function redactSecrets(text: string): string {
 // ["--db-password", "s3cr3t"] redacts like ["--password", "s3cr3t"] while
 // ["--token-file", "/path"] stays visible.
 const BARE_SENSITIVE_LONG_FLAG = new RegExp(`^--(?:[\\w-]+-)?(?:${KEYWORDS})$`, 'i');
+const BARE_COOKIE_FLAG = /^--cookie$/i;
 // Short flags that carry a secret when bare (e.g. ["-p", "s3cr3t"]).
 const BARE_SENSITIVE_SHORT_FLAG = /^-(?:password|p|t|a)$/i;
 // curl-style user flags: the next arg is a secret only as `user:pass`.
@@ -371,7 +372,9 @@ export function redactCommandArgs(
     const next = redactedArgs[i + 1];
     if (flag === undefined || next === undefined) continue;
     const isBareSensitive =
-      (BARE_SENSITIVE_LONG_FLAG.test(flag) || BARE_SENSITIVE_SHORT_FLAG.test(flag)) &&
+      (BARE_SENSITIVE_LONG_FLAG.test(flag) ||
+        BARE_COOKIE_FLAG.test(flag) ||
+        BARE_SENSITIVE_SHORT_FLAG.test(flag)) &&
       !flag.includes('[REDACTED]');
     // Only redact the following arg if it looks like a value, not another flag.
     if (isBareSensitive && !next.startsWith('-')) {

@@ -107,15 +107,16 @@ export function stripCodeFences(s: string): string | null {
   if (typeof s !== 'string') return null;
   const trimmed = s.trim();
   // Whole-payload fence: ```lang? … ```? (closer optional for truncation)
-  const opener = /^```[\w+-]*[ \t]*\r?\n?/.exec(trimmed);
+  const opener = /^```[\w+-]*[ \t]*(\r?\n)?/.exec(trimmed);
   if (opener) {
     const body = trimmed.slice(opener[0].length);
-    if (/(\r?\n)?[ \t]*```[ \t]*$/.test(body)) {
-      const inner = body.replace(/(\r?\n)?[ \t]*```[ \t]*$/, '').trim();
-      return inner.length > 0 ? inner : null;
-    }
-    const closerInBody = /\r?\n[ \t]*```[ \t]*(?:\r?\n|$)/.exec(body);
-    const inner = (closerInBody ? body.slice(0, closerInBody.index) : body).trim();
+    const closer = opener[1]
+      ? /(?:^|\r?\n)[ \t]*```[ \t]*(?:\r?\n|$)/.exec(body)
+      : /[ \t]*```[ \t]*(?:\r?\n|$)/.exec(body);
+    const rawInner = closer
+      ? body.slice(0, closer.index)
+      : body.replace(/(\r?\n)?[ \t]*```[ \t]*$/, '');
+    const inner = rawInner.trim();
     return inner.length > 0 ? inner : null;
   }
   // Fence embedded in prose: extract the first complete fenced block.

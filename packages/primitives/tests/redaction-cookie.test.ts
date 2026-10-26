@@ -6,6 +6,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { redactCommand, redactCommandArgs, redactSecrets } from '../src/redact-command.js';
+import { stripCodeFences } from '../src/safe-json.js';
 
 const SID = 'sess_9f8e7d6c5b4a39281706';
 
@@ -36,5 +37,28 @@ describe('cookie credentials', () => {
       expect(redactCommand(line)).toBe(line);
       expect(redactSecrets(line)).toBe(line);
     }
+  });
+
+  it('redacts split ["--cookie", value] argv and case-variant --COOKIE flags (F656)', () => {
+    expect(redactCommandArgs('curl', ['--cookie', `session=${SID}`, 'https://x']).args).toEqual([
+      '--cookie',
+      '[REDACTED]',
+      'https://x',
+    ]);
+    expect(redactCommandArgs('curl', ['--COOKIE', `session=${SID}`]).args).toEqual([
+      '--COOKIE',
+      '[REDACTED]',
+    ]);
+    expect(redactCommand(`curl --COOKIE "session=${SID}" https://x`)).toBe(
+      'curl --COOKIE [REDACTED] https://x',
+    );
+    expect(redactSecrets(`curl --COOKIE "session=${SID}" https://x`)).not.toContain(SID);
+  });
+
+  it('unwraps the first fenced block when followed by a second fence or trailing prose on a single-line fence (F657)', () => {
+    expect(stripCodeFences('```json\n{"a": 1}\n```\nExample:\n```json\n{"b": 2}\n```')).toBe(
+      '{"a": 1}',
+    );
+    expect(stripCodeFences('```json {"a": 1} ```\nHope that helps!')).toBe('{"a": 1}');
   });
 });
