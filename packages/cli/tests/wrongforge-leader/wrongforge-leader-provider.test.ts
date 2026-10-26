@@ -20,6 +20,10 @@ interface Scripted {
   /** Answer the FIRST terminal-record GET with 503 (transient; undici never retries a status). */
   failRecordGetOnce?: boolean | undefined;
   queued?: boolean | undefined;
+  /** Finish every task as `failed` with this error (until cleared). */
+  failure?: { code: string; message: string } | undefined;
+  /** Status `POST /v1/sessions/:id/compact` answers with. */
+  compactStatus?: number | undefined;
 }
 
 /** WrongForge's task API, enough for the leader: info, tasks (async + wait), sessions, events. */
@@ -61,6 +65,10 @@ async function fakeWrongForge(script: Scripted) {
         cancels.push(decodeURIComponent(c[1] ?? ''));
         return send(200, { ok: true });
       }
+      if (req.method === 'POST' && /^\/v1\/sessions\/[^/]+\/compact$/.test(url.pathname)) {
+        const status = script.compactStatus ?? 200;
+        return send(status, status === 200 ? { ok: true } : { error: { code: 'bad_gateway' } });
+      }
       const s = /^\/v1\/sessions\/([^/]+)$/.exec(url.pathname);
       if (s) {
         return sessions.has(decodeURIComponent(s[1] ?? ''))
@@ -83,7 +91,7 @@ async function fakeWrongForge(script: Scripted) {
         const after = Number(url.searchParams.get('after') ?? 0);
         const page = events.filter((e) => e.seq > after);
         return send(200, {
-          status: 'completed',
+          status: script.failure ? 'failed' : 'completed',
           terminal: true,
           events: page,
           next_after: page.at(-1)?.seq ?? after,
@@ -93,6 +101,9 @@ async function fakeWrongForge(script: Scripted) {
         recordGets += 1;
         if (script.failRecordGetOnce && recordGets === 1)
           return send(503, { error: { code: 'unavailable', message: 'restart in progress' } });
+        if (script.failure) {
+          return send(200, { task: { id: lastId, status: 'failed', error: script.failure } });
+        }
         return send(200, { task: { id: lastId, status: 'completed', result: script.result } });
       }
       return send(404, { error: {} });
@@ -275,6 +286,75 @@ describe('WrongForge as the leader', () => {
     // The next turn continues the same WrongForge session.
     await drain(provider.stream(req('and now this'), { signal: new AbortController().signal }));
     expect(wf.submitted[1]).toMatchObject({ session_id: 'wsl-S1', prompt: 'and now this' });
+  });
+
+  it('moves an overflowed conversation to a fresh WrongForge session seeded from WrongStack (#422)', async () => {
+    const script: Scripted = {
+      events: [],
+      result: { text: 'ok', steps: 1, tool_calls: 0 },
+      failure: { code: 'context_overflow', message: 'prompt is too long' },
+    };
+    const wf = await fakeWrongForge(script);
+    closers.push(wf.close);
+    process.env['WRONGFORGE_URL'] = wf.url;
+    bindAcpLeaderHost(fakeHost().host);
+    const provider = new WrongForgeLeaderProvider({
+      bootConfig: {} as Config,
+      buildProvider: () => undefined,
+    });
+    const signal = new AbortController().signal;
+
+    await expect(drain(provider.stream(req('go on'), { signal }))).rejects.toMatchObject({
+      kind: 'context_overflow',
+      retryable: false,
+      message: expect.stringContaining('fresh WrongForge session'),
+    });
+    expect(wf.submitted[0]).toMatchObject({ session_id: 'wsl-S1' });
+
+    // The next turn runs in a new session and carries the conversation so far.
+    script.failure = undefined;
+    const followUp: Request = {
+      ...req('continue'),
+      messages: [
+        { role: 'user', content: 'go on' },
+        { role: 'assistant', content: 'working on the migration' },
+        { role: 'user', content: 'continue' },
+      ],
+    };
+    await drain(provider.stream(followUp, { signal }));
+    expect(wf.submitted[1]).toMatchObject({ session_id: 'wsl-S1-r1' });
+    expect(String(wf.submitted[1]?.['prompt'])).toContain('working on the migration');
+  });
+
+  it('starts a fresh WrongForge session when its compaction fails, but not when it is unreachable', async () => {
+    const script: Scripted = {
+      events: [],
+      result: { text: 'ok', steps: 1, tool_calls: 0 },
+      compactStatus: 502,
+    };
+    const wf = await fakeWrongForge(script);
+    closers.push(wf.close);
+    process.env['WRONGFORGE_URL'] = wf.url;
+    bindAcpLeaderHost(fakeHost().host);
+    const provider = new WrongForgeLeaderProvider({
+      bootConfig: {} as Config,
+      buildProvider: () => undefined,
+    });
+    const signal = new AbortController().signal;
+    await drain(provider.stream(req('hi'), { signal }));
+
+    await expect(provider.compactOwnContext({ sessionId: 'S1', signal })).rejects.toThrow(
+      /fresh WrongForge session/,
+    );
+    await drain(provider.stream(req('again'), { signal }));
+    expect(wf.submitted[1]).toMatchObject({ session_id: 'wsl-S1-r1' });
+
+    // WrongForge gone: the error surfaces and the session is kept.
+    await wf.close();
+    closers.splice(closers.indexOf(wf.close), 1);
+    await expect(provider.compactOwnContext({ sessionId: 'S1', signal })).rejects.not.toThrow(
+      /fresh WrongForge session/,
+    );
   });
 
   it("rewrites a required-skills marker to name the gateway's skill tool", async () => {

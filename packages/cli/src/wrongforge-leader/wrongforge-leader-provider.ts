@@ -108,6 +108,10 @@ const CAPABILITIES: Capabilities = {
 interface LeaderSession {
   /** The WrongForge session this WrongStack session runs in. */
   wfSessionId: string;
+  /** `wfSessionId` before any reset; resets append `-r<n>` to it. */
+  baseId: string;
+  /** How many times the WrongForge session was replaced (see `resetWfSession`). */
+  resets: number;
   gateway?: Promise<LeaderGateway | undefined> | undefined;
   /** WrongForge already has this conversation (its session existed, or a turn ran). */
   joined?: boolean;
@@ -457,7 +461,7 @@ export class WrongForgeLeaderProvider implements Provider {
       queue.end();
     })().catch((err: unknown) => {
       blocks.close();
-      queue.fail(providerError(err, this.id));
+      queue.fail(this.recoverOverflow(leader, providerError(err, this.id)));
     });
 
     try {
@@ -500,10 +504,40 @@ export class WrongForgeLeaderProvider implements Provider {
     }
   }
 
+  /**
+   * WrongForge's own session overflowed. Its history lives server-side, so
+   * WrongStack's compaction cannot shrink it and every later turn in that
+   * session overflows again (#422). Move this conversation to a fresh
+   * WrongForge session instead: the next turn joins it with WrongStack's own
+   * history (`earlierConversation`, size-capped), the same path a session that
+   * WrongForge never saw takes. The overflowed session is left for
+   * WrongForge to expire; nothing is deleted.
+   */
+  private recoverOverflow(leader: LeaderSession, error: ProviderError): ProviderError {
+    if (error.kind !== 'context_overflow') return error;
+    this.resetWfSession(leader);
+    return new ProviderError(
+      `${error.message} — WrongStack moved this conversation to a fresh WrongForge ` +
+        'session; your next message continues there with the conversation so far.',
+      error.status,
+      false,
+      this.id,
+      { kind: 'context_overflow', ...(error.body ? { body: error.body } : {}) },
+    );
+  }
+
+  private resetWfSession(leader: LeaderSession): void {
+    leader.resets += 1;
+    leader.wfSessionId = `${leader.baseId}-r${leader.resets}`;
+    leader.joined = false;
+    leader.context = undefined;
+  }
+
   private sessionFor(key: string): LeaderSession {
     let leader = this.sessions.get(key);
     if (!leader) {
-      leader = { wfSessionId: `wsl-${safeWfId(key)}` };
+      const baseId = `wsl-${safeWfId(key)}`;
+      leader = { wfSessionId: baseId, baseId, resets: 0 };
       this.sessions.set(key, leader);
     }
     return leader;
@@ -539,7 +573,20 @@ export class WrongForgeLeaderProvider implements Provider {
         opts.signal,
       );
     } catch (err) {
-      throw providerError(err, this.id);
+      // A session too large to compact (#422: WrongForge answered 502) would
+      // overflow on every turn; start over the same way an overflow does.
+      // An unreachable WrongForge or a bad key is not that; keep the session.
+      const error = providerError(err, this.id);
+      if (error.status < 500 && error.kind !== 'context_overflow') throw error;
+      this.resetWfSession(leader);
+      throw new ProviderError(
+        `${error.message} — compaction failed, so WrongStack moved this conversation to a ` +
+          'fresh WrongForge session; your next message continues there with the conversation so far.',
+        error.status,
+        false,
+        this.id,
+        { kind: error.kind },
+      );
     }
     // WrongForge measures the compacted context on the next request.
     leader.context = undefined;
