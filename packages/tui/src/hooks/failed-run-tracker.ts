@@ -15,6 +15,13 @@ export interface FailedRunTracker {
   pending(): boolean;
   /** Take the pending failure (the auto-proceed loop is acting on it). */
   consume(): boolean;
+  /**
+   * The provider's description when the last leader run died on a
+   * NON-retryable failure (context overflow, auth, bad request). Another
+   * automatic turn would fail the same way, so auto-proceed must stop and
+   * ask instead of pivoting to the next todo (#422). Cleared by the next run.
+   */
+  blocked(): string | null;
   dispose(): void;
 }
 
@@ -36,8 +43,9 @@ export function createFailedRunTracker(
   events: Events,
   leaderSessionId: () => string | undefined,
 ): FailedRunTracker {
-  let providerFailure: { retryable: boolean } | null = null;
+  let providerFailure: { retryable: boolean; description: string } | null = null;
   let pendingFailure = false;
+  let blockedBy: string | null = null;
   const isLeader = (sessionId: string | undefined): boolean => {
     const leader = leaderSessionId();
     return sessionId === undefined || leader === undefined || sessionId === leader;
@@ -47,10 +55,11 @@ export function createFailedRunTracker(
       if (!isLeader(e.sessionId)) return;
       providerFailure = null;
       pendingFailure = false;
+      blockedBy = null;
     }),
     events.on('provider.error', (e) => {
       if (!isLeader(e.sessionId)) return;
-      providerFailure = { retryable: e.retryable };
+      providerFailure = { retryable: e.retryable, description: e.description };
     }),
     events.on('provider.response', (e) => {
       if (!isLeader(e.sessionId)) return;
@@ -59,11 +68,16 @@ export function createFailedRunTracker(
     events.on('agent.run.completed', (e) => {
       if (!isLeader(e.sessionId)) return;
       pendingFailure = e.status === 'failed' && providerFailure?.retryable === true;
+      blockedBy =
+        e.status === 'failed' && providerFailure?.retryable === false
+          ? providerFailure.description || 'non-retryable provider error'
+          : null;
       providerFailure = null;
     }),
   ];
   return {
     pending: () => pendingFailure,
+    blocked: () => blockedBy,
     consume() {
       const had = pendingFailure;
       pendingFailure = false;

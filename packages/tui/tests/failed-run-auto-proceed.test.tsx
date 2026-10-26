@@ -115,7 +115,11 @@ describe('useNextStepsAutoSubmit: a run an API error killed', () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => vi.useRealTimers());
 
-  function setup(autonomy: 'auto' | 'off') {
+  function setup(
+    autonomy: 'auto' | 'off',
+    todos: Array<{ id: string; content: string; status: string }> = [],
+    initialStatus: 'idle' | 'running' = 'idle',
+  ) {
     const events = new EventBus();
     const runBlocks = vi.fn(async (_blocks: unknown) => undefined);
     const dispatch = vi.fn();
@@ -123,7 +127,7 @@ describe('useNextStepsAutoSubmit: a run an API error killed', () => {
     // callbacks are effect dependencies, and the agent keys the tracker.
     const stable = {
       autonomyLive: autonomy,
-      agent: { ctx: { todos: [], session: { id: 'leader' } }, events } as never,
+      agent: { ctx: { todos, session: { id: 'leader' } }, events } as never,
       getAutonomy: () => autonomy,
       getSettings: () => ({ delayMs: 0, autoProceedMaxIterations: 0 }) as never,
       getSuggestions: () => [],
@@ -141,7 +145,7 @@ describe('useNextStepsAutoSubmit: a run an API error killed', () => {
     });
     const hook = renderHook(
       ({ status }: { status: 'idle' | 'running' }) => useNextStepsAutoSubmit(options(status)),
-      { initialProps: { status: 'idle' as 'idle' | 'running' } },
+      { initialProps: { status: initialStatus } },
     );
     return { emit: emitter(events), runBlocks, dispatch, hook };
   }
@@ -191,5 +195,23 @@ describe('useNextStepsAutoSubmit: a run an API error killed', () => {
     await tick(3_000);
     expect(off.runBlocks).not.toHaveBeenCalled();
     off.hook.unmount();
+  });
+
+  it('pauses instead of pivoting to the next todo after a non-retryable failure (#422)', async () => {
+    // Real order: the run is in flight, fails, and the session goes idle.
+    const { emit, runBlocks, dispatch, hook } = setup(
+      'auto',
+      [{ id: 't1', content: 'Finish the migration', status: 'in_progress' }],
+      'running',
+    );
+    failRun(emit, { retryable: false });
+    hook.rerender({ status: 'idle' });
+    await tick(3_000);
+    expect(runBlocks).not.toHaveBeenCalled();
+    const warned = dispatch.mock.calls
+      .map(([action]) => action as { entry?: { kind: string; text: string } })
+      .some((a) => a.entry?.kind === 'warn' && a.entry.text.includes('a retry will not fix'));
+    expect(warned).toBe(true);
+    hook.unmount();
   });
 });

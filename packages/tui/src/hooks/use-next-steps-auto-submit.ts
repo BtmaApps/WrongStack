@@ -278,6 +278,22 @@ export function useNextStepsAutoSubmit({
     // visible suggestions; do not keep re-arming countdowns and warnings.
     if (autoSubmitCapWarnedRef.current) return;
 
+    // The last run died on a non-retryable provider failure (context
+    // overflow, auth, bad request). Pivoting to the next todo would hit the
+    // same wall every turn — #422 saw it resubmit every ~90 s for 12 hours.
+    const blockedBy = failedRunTrackerRef.current?.blocked();
+    if (blockedBy) {
+      autoSubmitCapWarnedRef.current = true;
+      dispatch({
+        type: 'addEntry',
+        entry: {
+          kind: 'warn',
+          text: `Auto-proceed paused: the last run failed on a provider error that a retry will not fix (${blockedBy.slice(0, 160)}). Type anything to continue (autonomy stays on).`,
+        },
+      });
+      return;
+    }
+
     const suggestions = getSuggestions?.() ?? [];
     const isYolo = getYolo?.() ?? false;
     // Filter out todos that the continuation tracker has marked skipped

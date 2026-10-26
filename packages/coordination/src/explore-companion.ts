@@ -37,6 +37,7 @@
 
 import { randomUUID } from 'node:crypto';
 import type { EventBus, TrackedAgentSnapshot } from '@wrongstack/contracts/kernel/events';
+import { ProviderError } from '@wrongstack/contracts/types';
 import {
   exploreFileKey,
   exploreIgnoredPath,
@@ -508,6 +509,9 @@ export class ExploreCompanion {
   }
 
   private trackError(err: Error): void {
+    // A provider failure (overflow, quota, outage) names no code; probing its
+    // prose sent the companion after "WrongForge" and "The" (#422).
+    if (ProviderError.isProviderError(err)) return;
     const tokens = extractExploreSubjects(err.message);
     for (const token of tokens.slice(0, 2)) {
       this.engage({

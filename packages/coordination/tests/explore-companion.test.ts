@@ -1,4 +1,5 @@
 import { EventBus, type TrackedAgentSnapshot } from '@wrongstack/contracts/kernel/events';
+import { ProviderError } from '@wrongstack/contracts/types';
 import { ToolCapabilities } from '@wrongstack/core/security';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { agentPrompt } from '../../agent-catalog/src/agent-prompts.js';
@@ -357,6 +358,39 @@ describe('ExploreCompanion trigger mapping', () => {
     expect(h.probes.every((p) => p.source === 'error_symbol')).toBe(true);
     // The file regex captures the path-qualified token as written in the error.
     expect(h.probes.some((p) => p.subject === 'token:src/missing.ts')).toBe(true);
+  });
+
+  it('provider errors and plain prose never become probes (#422)', async () => {
+    const h = makeHarness();
+    h.events.emit('error', {
+      sessionId: LEADER_SESSION,
+      phase: 'llm',
+      err: new ProviderError(
+        'WrongForge context_overflow: The session exceeds the model context window.',
+        413,
+        false,
+        'wrongforge',
+        { kind: 'context_overflow' },
+      ),
+    });
+    h.events.emit('error', {
+      sessionId: LEADER_SESSION,
+      phase: 'tool',
+      err: new Error('The command timed out. Please retry later.'),
+    });
+    await flush();
+    expect(h.probes).toHaveLength(0);
+  });
+
+  it('identifier-shaped symbols in a code error still probe', async () => {
+    const h = makeHarness();
+    h.events.emit('error', {
+      sessionId: LEADER_SESSION,
+      phase: 'tool',
+      err: new Error('The TaxRule lookup failed: MAX_RETRIES reached'),
+    });
+    await flush();
+    expect(h.probes.map((p) => p.subject).sort()).toEqual(['token:MAX_RETRIES', 'token:TaxRule']);
   });
 
   it('per-signal kill switch disables the edit signal', async () => {

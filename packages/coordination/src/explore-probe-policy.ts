@@ -190,6 +190,9 @@ const ERROR_BOILERPLATE = new Set([
   'ERR_MODULE_NOT_FOUND',
 ]);
 
+/** A second hump, an underscore or a digit — what separates `TaxRule` from "The". */
+const IDENTIFIER_SHAPE = /^[A-Z](?:[a-z0-9]*[A-Z]|.*[_0-9])/;
+
 /** Preserve path-qualified hints; don't spend the two error slots on "Cannot". */
 export function extractExploreSubjects(
   text: string,
@@ -206,6 +209,9 @@ export function extractExploreSubjects(
   }
   for (const m of text.matchAll(/\b[A-Z][A-Za-z0-9_]{2,}\b/g)) {
     const value = m[0];
+    // Only identifier-shaped words (`UserService`, `MAX_RETRIES`, `Tax2`): a
+    // sentence-initial "The" or "Please" is prose, not a symbol (#422).
+    if (!IDENTIFIER_SHAPE.test(value)) continue;
     if (!ERROR_BOILERPLATE.has(value) && !seen.has(`symbol:${value}`)) {
       seen.add(`symbol:${value}`);
       out.push({ kind: 'symbol', value });
