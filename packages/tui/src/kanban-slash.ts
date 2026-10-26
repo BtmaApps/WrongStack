@@ -198,15 +198,19 @@ async function applyBoundaryCommand(
   if (!summary) return `No kanban board matches "${command.boardQuery}".`;
   const board = await getBoard(deps.projectRoot, summary.id);
   if (!board) return `Board not found: ${summary.id}`;
-  const task = command.taskQuery
-    ? board.tasks.find(
-        (candidate) =>
-          candidate.id === command.taskQuery ||
-          candidate.id.startsWith(command.taskQuery!) ||
-          candidate.title.toLowerCase() === command.taskQuery!.toLowerCase(),
-      )
+  // Exact id, then exact title, then an id prefix only when it names exactly
+  // one task: an ambiguous prefix must never write another task's boundary.
+  const query = command.taskQuery;
+  const prefixMatches = query ? board.tasks.filter((t) => t.id.startsWith(query)) : [];
+  const task = query
+    ? (board.tasks.find((t) => t.id === query) ??
+      board.tasks.find((t) => t.title.toLowerCase() === query.toLowerCase()) ??
+      (prefixMatches.length === 1 ? prefixMatches[0] : undefined))
     : undefined;
-  if (command.taskQuery && !task) return `Task not found: ${command.taskQuery}`;
+  if (query && !task && prefixMatches.length > 1) {
+    return `Task id prefix "${query}" matches ${prefixMatches.length} tasks — use a longer id.`;
+  }
+  if (query && !task) return `Task not found: ${query}`;
   const current = task ? task.boundary : board.boundary;
 
   if (command.action === 'show') {
