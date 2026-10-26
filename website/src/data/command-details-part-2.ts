@@ -3,13 +3,14 @@ import type { CommandDetailMap } from './command-detail-types';
 export const commandDetailsPart2: CommandDetailMap = {
   '/agents': {
     purpose:
-      'Monitor agents, timeline events, and per-agent transcripts — the agent observability dashboard.',
+      'Inspect spawned subagents, control how much of their output reaches the chat, and read per-agent transcripts.',
     behavior:
-      '`/agents` shows a list of all agents (leader + subagents) with status, current task, and last activity. `/agents show <id>` opens a detailed view. `/agents chat compact` shows a compacted transcript. `/agents timeline` shows an event chronology. The TUI panel provides live updates.',
+      '`/agents` prints a status summary of the spawned subagents. `/agents list` lists each known subagent with its status and current task, and `/agents show <id>` prints that agent\'s transcript. `/agents chat off|full|status` sets how much subagent output appears in the main chat, and `/agents stream on|off|status` shows or hides agent conversations inline. In the TUI, bare `/agents`, `/agents list` or `/agents monitor` opens the agents monitor overlay.',
     before: 'No preparation needed. Run it when you want to see what your fleet is doing.',
-    during: 'The agent list prints with status indicators. Live agents show heartbeat timestamps.',
+    during:
+      'Each subagent line shows a status icon, the agent name, an id prefix, the status and the current task. `/agents show <id>` prints the transcript entries recorded for that agent.',
     after:
-      'Terminate idle agents to free resources. Review transcripts for completed agents to extract results.',
+      'Use `/fleet terminate <id>` to stop an idle subagent and free its budget. Review transcripts for completed agents to extract results.',
   },
 
   '/agent-improve': {
