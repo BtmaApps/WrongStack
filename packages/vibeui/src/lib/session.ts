@@ -337,31 +337,35 @@ export function reduceFrame(state: SessionState, frame: ProtocolEnvelope): Sessi
     const response = bounded(contentText(chat.content));
     const lastIndex = conversationTail(state.messages);
     const last = state.messages[lastIndex];
+    const finalized = state.messages.map((entry) =>
+      entry.streaming ? { ...entry, streaming: false } : entry,
+    );
     return {
       ...state,
       messages:
         last?.role === 'assistant' && last.streaming
           ? [
-              ...state.messages.slice(0, lastIndex),
+              ...finalized.slice(0, lastIndex),
               {
                 ...last,
                 text: response || last.text,
                 streaming: false,
                 final: isFinalTurnStopReason(chat.stopReason),
               },
-              ...state.messages.slice(lastIndex + 1),
+              ...finalized.slice(lastIndex + 1),
             ]
           : response
             ? ([
-                ...state.messages,
+                ...finalized,
                 {
                   id,
                   role: 'assistant',
                   text: response,
+                  streaming: false,
                   final: isFinalTurnStopReason(chat.stopReason),
                 },
               ].slice(-500) as ChatEntry[])
-            : state.messages,
+            : finalized,
     };
   }
   if (chat?.kind === 'run-result' || (chat?.kind === 'error' && endsRun(p.phase))) {
@@ -387,7 +391,14 @@ export function reduceFrame(state: SessionState, frame: ProtocolEnvelope): Sessi
     );
     if (chat.kind === 'error')
       messages.push({ id, role: 'system', text: chat.message, streaming: false });
-    if (chat.kind === 'run-result' && chat.finalText && prevTail?.role !== 'assistant')
+    if (
+      chat.kind === 'run-result' &&
+      chat.finalText &&
+      (prevTail?.role !== 'assistant' ||
+        (!prevTail.streaming &&
+          prevTail.final === false &&
+          prevTail.text !== bounded(chat.finalText)))
+    )
       messages.push({
         id,
         role: 'assistant',

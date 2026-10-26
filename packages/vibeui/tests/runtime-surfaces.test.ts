@@ -379,4 +379,43 @@ describe('subagent observability', () => {
     const result = assistantProjection(`${example}\n<nextsteps>\n1. Partial streaming step`);
     expect(result).toEqual({ text: example, steps: [] });
   });
+
+  it('finalizes streaming thinking entries on provider.response and appends run.result finalText after a tool-use assistant message (F662)', () => {
+    let state = reduceFrame(start(), {
+      type: 'provider.thinking_delta',
+      payload: { sessionId: 'one', text: 'Reasoning...' },
+    });
+    state = reduceFrame(state, {
+      type: 'provider.response',
+      payload: {
+        sessionId: 'one',
+        content: [{ type: 'text', text: 'Checking file...' }],
+        stopReason: 'tool_use',
+      },
+    });
+    expect(state.messages.find((m) => m.role === 'thinking')?.streaming).toBe(false);
+    expect(state.messages.find((m) => m.role === 'assistant')).toMatchObject({
+      text: 'Checking file...',
+      streaming: false,
+      final: false,
+    });
+
+    state = reduceFrame(state, {
+      type: 'run.result',
+      payload: {
+        sessionId: 'one',
+        status: 'done',
+        iterations: 2,
+        finalText: 'The file has 42 lines.',
+      },
+    });
+    const assistants = state.messages.filter((m) => m.role === 'assistant');
+    expect(assistants).toHaveLength(2);
+    expect(assistants[1]).toMatchObject({
+      text: 'The file has 42 lines.',
+      streaming: false,
+      final: true,
+      autoEligible: true,
+    });
+  });
 });
