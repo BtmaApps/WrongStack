@@ -17,7 +17,14 @@ import type { DependencyObservation, EcosystemId, Evidence, Finding, Snapshot } 
 import { createFindingForStatus } from './finding-factory.js';
 
 /** Ecosystems whose registry lookup carries no license data at all. */
-const LICENSE_BLIND_ECOSYSTEMS: ReadonlySet<string> = new Set(['golang', 'nuget', 'pub']);
+const LICENSE_BLIND_ECOSYSTEMS: ReadonlySet<string> = new Set([
+  'go',
+  'golang',
+  'dotnet',
+  'nuget',
+  'dart',
+  'pub',
+]);
 
 export interface EnrichOptions {
   readonly online?: boolean | undefined;

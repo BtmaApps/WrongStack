@@ -390,6 +390,18 @@ const ECOSYSTEM_FETCHERS: Readonly<Record<string, EcosystemFetcher>> = {
   },
 };
 
+const ECOSYSTEM_ALIASES: Readonly<Record<string, string>> = {
+  rust: 'cargo',
+  go: 'golang',
+  dotnet: 'nuget',
+  php: 'composer',
+  dart: 'pub',
+};
+
+function resolveEcosystemFetcher(ecosystem: string): EcosystemFetcher | undefined {
+  return ECOSYSTEM_FETCHERS[ecosystem] ?? ECOSYSTEM_FETCHERS[ECOSYSTEM_ALIASES[ecosystem] ?? ''];
+}
+
 // ── Public API ─────────────────────────────────────────────────────────────
 
 export class RegistryNotFoundError extends Error {
@@ -453,7 +465,7 @@ export async function lookupRegistry(
   options: RegistryLookupOptions = {},
 ): Promise<RegistryEntry | undefined> {
   options.signal?.throwIfAborted();
-  const fetcher = ECOSYSTEM_FETCHERS[ecosystem];
+  const fetcher = resolveEcosystemFetcher(ecosystem);
   if (!fetcher) {
     throw new Error(`Unsupported ecosystem for registry lookup: ${ecosystem}`);
   }
@@ -573,7 +585,7 @@ export async function lookupRegistryBatch(
  * Get the list of supported ecosystem IDs for registry lookups.
  */
 export function supportedRegistryEcosystems(): string[] {
-  return Object.keys(ECOSYSTEM_FETCHERS);
+  return [...Object.keys(ECOSYSTEM_FETCHERS), ...Object.keys(ECOSYSTEM_ALIASES)];
 }
 
 /**
@@ -587,7 +599,7 @@ export function clearRegistryCache(): void {
 
 /** Invalidate one ecosystem batch without evicting unrelated registry data. */
 export function invalidateRegistryCache(ecosystem: string, names?: readonly string[]): number {
-  const fetcher = ECOSYSTEM_FETCHERS[ecosystem];
+  const fetcher = resolveEcosystemFetcher(ecosystem);
   if (!fetcher) return 0;
   const keys = names
     ? names.map((name) => getCacheKey(fetcher.host, fetcher.path(name)))

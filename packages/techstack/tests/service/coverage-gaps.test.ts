@@ -2,6 +2,11 @@
  * Coverage for techstack finding-factory.ts and enrich-phase.ts
  */
 import { describe, expect, it } from 'vitest';
+import {
+  invalidateRegistryCache,
+  lookupRegistry,
+  supportedRegistryEcosystems,
+} from '../../src/registry/client.js';
 import { runEnrichPhase } from '../../src/service/enrich-phase.js';
 import {
   computeDependencyFingerprint,
@@ -139,5 +144,47 @@ describe('runEnrichPhase', () => {
     const result = await runEnrichPhase(snap, { online: true });
     expect(result.dependencies).toBeDefined();
     expect(result.dependencies.length).toBe(1);
+  });
+
+  it('supports EcosystemId values in lookupRegistry and suppresses license-blind false positives for go, dotnet, and dart (F658)', async () => {
+    const makeCutoffSignal = (): AbortSignal => {
+      let checks = 0;
+      return {
+        aborted: false,
+        reason: undefined,
+        onabort: null,
+        throwIfAborted() {
+          checks += 1;
+          if (checks >= 2) throw new Error('offline-slot-cutoff');
+        },
+        addEventListener() {},
+        removeEventListener() {},
+        dispatchEvent() {
+          return false;
+        },
+      } as unknown as AbortSignal;
+    };
+
+    for (const eco of ['rust', 'go', 'dotnet', 'php', 'dart'] as const) {
+      expect(supportedRegistryEcosystems()).toContain(eco);
+      expect(invalidateRegistryCache(eco)).toBe(0);
+      await expect(
+        lookupRegistry(eco, 'example-pkg', { signal: makeCutoffSignal() }),
+      ).rejects.toThrow('offline-slot-cutoff');
+    }
+
+    for (const eco of ['go', 'dotnet', 'dart'] as const) {
+      const snap = makeSnapshot([
+        makeDep('example', {
+          ecosystem: eco,
+          purl: `pkg:${eco}/example`,
+        }),
+      ]);
+      const enriched = await runEnrichPhase(snap, {
+        online: true,
+        signal: makeCutoffSignal(),
+      });
+      expect(enriched.findings.some((f) => f.category === 'license')).toBe(false);
+    }
   });
 });
