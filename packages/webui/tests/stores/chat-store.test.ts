@@ -1178,4 +1178,17 @@ describe('F5 resilience — chat transcript persistence', () => {
     }
     expect(useChatStore.getState().toolMessageIdsByUseId.has('tool-old')).toBe(false);
   });
+
+  it('truncateAfter preserves surviving tool executions keyed by toolUseId while dropping truncated ones (F660)', () => {
+    const store = useChatStore.getState();
+    store.addMessage(makeMsg({ role: 'tool', content: 'running 1', toolUseId: 'tu_1' }));
+    store.addExecution({ id: 'tu_1', name: 'bash', input: {}, ok: true, startedAt: 1 });
+    const cutId = store.addMessage(makeMsg({ role: 'assistant', content: 'done 1' }));
+    store.addMessage(makeMsg({ role: 'tool', content: 'running 2', toolUseId: 'tu_2' }));
+    store.addExecution({ id: 'tu_2', name: 'grep', input: {}, ok: true, startedAt: 2 });
+
+    useChatStore.getState().truncateAfter(cutId);
+    expect(useChatStore.getState().executions.has('tu_1')).toBe(true);
+    expect(useChatStore.getState().executions.has('tu_2')).toBe(false);
+  });
 });

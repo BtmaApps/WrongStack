@@ -286,17 +286,20 @@ export function chatLane(sessionId: string): ChatLaneActions {
         const idx = lane.messages.findIndex((m) => m.id === id);
         if (idx === -1) return;
         const messages = lane.messages.slice(0, idx + 1);
+        const toolMessageIdsByUseId = indexToolMessages(messages);
         // Prune toolMessageIdsByUseId and executions in lockstep with the
         // messages slice, so neither Map grows unbounded across turn-undo cycles.
         const ids = new Set(messages.map((m) => m.id));
         const prunedExecutions = new Map(
-          [...lane.executions].filter(([, exec]) => ids.has(exec.id)),
+          [...lane.executions].filter(
+            ([execId, exec]) => toolMessageIdsByUseId.has(execId) || ids.has(exec.id),
+          ),
         );
         return {
           messages,
           currentAssistantMessageId: null,
           currentToolId: null,
-          toolMessageIdsByUseId: indexToolMessages(messages),
+          toolMessageIdsByUseId,
           executions: prunedExecutions,
         };
       }),
