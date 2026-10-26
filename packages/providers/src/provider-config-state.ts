@@ -51,7 +51,20 @@ export class ProviderConfigSnapshots {
     const baseline = this.baselines.get(next);
     if (!baseline) return structuredClone(next);
     const merged = structuredClone(current);
-    const equal = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+    const canonicalize = (value: unknown): unknown => {
+      if (Array.isArray(value)) return value.map(canonicalize);
+      if (value && typeof value === 'object') {
+        const sorted: Record<string, unknown> = {};
+        for (const key of Object.keys(value as Record<string, unknown>).sort()) {
+          const v = (value as Record<string, unknown>)[key];
+          if (v !== undefined) sorted[key] = canonicalize(v);
+        }
+        return sorted;
+      }
+      return value;
+    };
+    const equal = (a: unknown, b: unknown) =>
+      JSON.stringify(canonicalize(a)) === JSON.stringify(canonicalize(b));
     for (const id of new Set([...Object.keys(baseline), ...Object.keys(next)])) {
       if (equal(baseline[id], next[id])) continue;
       if (!equal(current[id], baseline[id]) && !equal(current[id], next[id])) {
@@ -259,23 +272,28 @@ export function removeProviderFallbackReferences(
 }
 
 import type { ProviderConfig } from '@wrongstack/contracts/types';
+import { upstreamHost } from './proxy-upstream.js';
 import { isSetupProvider as isSetupProviderId } from './setup-provider.js';
 
 function resolveActiveApiKey(cfg: ProviderConfig): string | undefined {
-  if (cfg.apiKeys?.length)
-    return (cfg.apiKeys.find((key) => key.label === cfg.activeKey) ?? cfg.apiKeys[0])?.apiKey;
-  return cfg.apiKey || undefined;
+  if (cfg.apiKeys?.length) {
+    const raw = (cfg.apiKeys.find((key) => key.label === cfg.activeKey) ?? cfg.apiKeys[0])?.apiKey;
+    return raw?.trim() ? raw : undefined;
+  }
+  return cfg.apiKey?.trim() ? cfg.apiKey : undefined;
 }
 
 function isLoopbackBaseUrl(baseUrl: string | undefined): boolean {
-  if (!baseUrl) return false;
-  try {
-    let host = new URL(baseUrl).hostname.toLowerCase();
-    host = host.replace(/^\[|\]$/g, '');
-    return host === 'localhost' || host === '::1' || host === '0.0.0.0' || /^127\./.test(host);
-  } catch {
-    return false;
-  }
+  const rawHost = upstreamHost(baseUrl);
+  if (!rawHost) return false;
+  const host = rawHost.replace(/^\[|\]$/g, '').replace(/\.$/, '');
+  return (
+    host === 'localhost' ||
+    host.endsWith('.localhost') ||
+    host === '::1' ||
+    host === '0.0.0.0' ||
+    /^127\./.test(host)
+  );
 }
 
 function providerCanRunWithoutSavedKey(cfg: ProviderConfig): boolean {

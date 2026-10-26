@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   authProfileAliasError,
+  clearStaleProviderDefaults,
   isReservedProviderId,
+  ProviderConfigSnapshots,
   removeProviderFallbackReferences,
 } from '../src/provider-config-state.js';
 
@@ -44,5 +46,61 @@ describe('authProfileAliasError — reserved system provider ids', () => {
     for (const id of ['acp-proxy', 'my-wrongforge', 'openai']) {
       expect(authProfileAliasError(id)).toBeUndefined();
     }
+  });
+});
+
+describe('clearStaleProviderDefaults & ProviderConfigSnapshots (F41)', () => {
+  it('clears defaults when saved apiKey or apiKeys[] entry is blank or baseUrl is a proxied remote host', () => {
+    const blankKeysConfig: Record<string, unknown> = {
+      provider: 'openai',
+      model: 'gpt-5',
+      providers: {
+        openai: {
+          activeKey: 'default',
+          apiKeys: [{ label: 'default', apiKey: '   ', createdAt: '' }],
+        },
+      },
+    };
+    clearStaleProviderDefaults(blankKeysConfig);
+    expect(blankKeysConfig['provider']).toBeUndefined();
+
+    const proxiedRemoteConfig: Record<string, unknown> = {
+      provider: 'remote-via-proxy',
+      model: 'gpt-5',
+      providers: {
+        'remote-via-proxy': {
+          baseUrl: 'http://localhost:3444/proxy/api.openai.com/v1',
+          envVars: [],
+        },
+      },
+    };
+    clearStaleProviderDefaults(proxiedRemoteConfig);
+    expect(proxiedRemoteConfig['provider']).toBeUndefined();
+
+    const rfcLocalhostConfig: Record<string, unknown> = {
+      provider: 'ollama',
+      model: 'llama3',
+      providers: {
+        ollama: {
+          baseUrl: 'http://ollama.localhost:11434/v1',
+          envVars: [],
+        },
+      },
+    };
+    clearStaleProviderDefaults(rfcLocalhostConfig);
+    expect(rfcLocalhostConfig['provider']).toBe('ollama');
+  });
+
+  it('merges snapshots without false conflicts when object keys are in a different order', () => {
+    const snapshots = new ProviderConfigSnapshots();
+    const editable = snapshots.track({
+      openai: { apiKey: 'sk-1', baseUrl: 'https://api.openai.com/v1' },
+    });
+    editable.openai = { apiKey: 'sk-2', baseUrl: 'https://api.openai.com/v1' };
+    const merged = snapshots.merge(
+      { openai: { baseUrl: 'https://api.openai.com/v1', apiKey: 'sk-1' } },
+      editable,
+    );
+    expect(merged.openai?.apiKey).toBe('sk-2');
   });
 });

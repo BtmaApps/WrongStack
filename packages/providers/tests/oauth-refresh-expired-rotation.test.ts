@@ -107,4 +107,44 @@ describe('OAuth refresh successor links survive access-token expiry', () => {
       expect.anything(),
     );
   });
+
+  it('adopts a sibling token that is inside the skew window but still unexpired when the token endpoint blips', async () => {
+    const owner = new OAuthRefreshCoordinator({
+      label: 'skew-adoption',
+      initialRefreshKey: 'r1',
+      initialExpiresAt: Date.now() - 10_000,
+      refreshSkewMs: 60_000,
+      hooks: {
+        refreshFn: async () => ({
+          accessToken: 'valid-a2',
+          refreshKey: 'r2',
+          expiresAt: Date.now() + 30_000,
+        }),
+        projectTokens: (tokens: Tokens) => tokens,
+        applyTokens: () => {},
+        formatPayload: (tokens: Tokens) => tokens,
+      },
+    });
+    await owner.runRefresh();
+
+    let siblingAccess = 'expired-a1';
+    const sibling = new OAuthRefreshCoordinator({
+      label: 'skew-adoption',
+      initialRefreshKey: 'r1',
+      initialExpiresAt: Date.now() - 10_000,
+      refreshSkewMs: 60_000,
+      hooks: {
+        refreshFn: async () => {
+          throw new Error('503 transient failure');
+        },
+        projectTokens: (tokens: Tokens) => tokens,
+        applyTokens: (derived) => {
+          siblingAccess = derived.accessToken;
+        },
+        formatPayload: (tokens: Tokens) => tokens,
+      },
+    });
+    await expect(sibling.ensureFreshToken(new AbortController().signal)).resolves.toBeUndefined();
+    expect(siblingAccess).toBe('valid-a2');
+  });
 });

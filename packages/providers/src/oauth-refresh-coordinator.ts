@@ -284,9 +284,18 @@ export class OAuthRefreshCoordinator<TTokens, TPayload> {
     if (adopted !== undefined) {
       const derived = this.hooks.projectTokens(adopted);
       this.refreshKey = refreshKey;
-      if (Date.now() < derived.expiresAt - this.refreshSkewMs) {
+      const fresh = Date.now() < derived.expiresAt - this.refreshSkewMs;
+      if (
+        fresh ||
+        (Number.isFinite(derived.expiresAt) &&
+          (this.expiresAt === undefined ||
+            !Number.isFinite(this.expiresAt) ||
+            derived.expiresAt > this.expiresAt))
+      ) {
         this.expiresAt = derived.expiresAt;
         this.hooks.applyTokens(derived, adopted);
+      }
+      if (fresh) {
         return adopted;
       }
     }
