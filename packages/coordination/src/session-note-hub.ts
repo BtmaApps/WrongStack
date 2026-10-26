@@ -83,8 +83,15 @@ export class SessionNoteHub {
     if (!sessionId || !body) return { delivered: 0 };
 
     const to = input.to.trim().toLowerCase();
+    const toBase = mailboxIdentityBase(to).toLowerCase();
     const from = input.from.trim() || 'unknown';
-    const broadcast = to === '@session' || to === '*' || to === 'all';
+    const sessionLower = sessionId.toLowerCase();
+    const broadcast =
+      to === '@session' ||
+      to === '*' ||
+      to === 'all' ||
+      (to.startsWith('@session:') &&
+        to.slice('@session:'.length).trim().replace(/\\/g, '/') === sessionLower);
     const note: SessionNote = {
       from,
       kind: input.kind,
@@ -95,6 +102,7 @@ export class SessionNoteHub {
     let delivered = 0;
     let bus = input.events;
     const fromKey = from.toLowerCase();
+    const fromBase = mailboxIdentityBase(from).toLowerCase();
     const fromLeader = isMailboxLeader(from);
     for (const inbox of this.inboxes) {
       const inboxSid = resolveInboxSessionId(inbox)?.trim().replace(/\\/g, '/');
@@ -103,8 +111,9 @@ export class SessionNoteHub {
       // same live session lookup as delivery, including the sender's bus.
       bus ??= inbox.events;
       const keys = identityKeys(inbox);
-      if (keys.has(fromKey)) continue;
-      if (broadcast ? inbox.ignorePeerBroadcasts && !fromLeader : !keys.has(to)) continue;
+      if (keys.has(fromKey) || (fromBase.length > 0 && keys.has(fromBase))) continue;
+      const matchesRecipient = keys.has(to) || (toBase.length > 0 && keys.has(toBase));
+      if (broadcast ? inbox.ignorePeerBroadcasts && !fromLeader : !matchesRecipient) continue;
       try {
         inbox.deliver(note);
         delivered += 1;

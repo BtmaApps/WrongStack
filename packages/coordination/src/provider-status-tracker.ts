@@ -117,6 +117,8 @@ export class ProviderModelStatusTrackerImpl implements ProviderStatusTrackerPort
   ): void {
     ({ providerId, model } = statusIdentity(providerId, model));
     this.providerQuotaBlocks.delete(providerId);
+    // Reap any already-expired block/degraded window before recording this call.
+    this.isAvailable(providerId, model);
     const key = pairKey(providerId, model);
     const s = this.getOrCreate(key, providerId, model);
 
@@ -393,6 +395,7 @@ export class ProviderModelStatusTrackerImpl implements ProviderStatusTrackerPort
     const key = pairKey(providerId, model);
     const s = this.map.get(key);
     if (!s) return false;
+    this.isAvailable(providerId, model);
     // If the last error was a rate_limit and we're still in a non-healthy state
     return s.lastErrorKind === 'rate_limit' && s.state !== 'healthy';
   }

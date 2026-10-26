@@ -281,7 +281,19 @@ export class DelegationTracker implements DelegationLookupSource {
   markDelivered(delegationId: string): boolean {
     const entry = this.entries.get(delegationId);
     if (!entry) return false;
-    if (entry.state === 'settled') this.transition(entry, 'delivered');
+    if (entry.state === 'delivered') return true;
+    if (entry.state !== 'settled') return false;
+    if (entry.deliveryId) this.hub.markConsumed(entry.deliveryId);
+    if (!this.transition(entry, 'delivered')) return false;
+    try {
+      this.events?.emit('delegation.delivered', {
+        sessionId: entry.sessionId,
+        delegationId: entry.delegationId,
+        via: 'loop',
+      });
+    } catch {
+      /* observability only */
+    }
     return true;
   }
 

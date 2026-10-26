@@ -952,4 +952,87 @@ describe('ProviderModelStatusTracker', () => {
     strictEqual(tracker.isAvailable('test', 'model-a'), true);
     strictEqual(tracker.getStatus('test', 'model-a')?.state, 'healthy');
   });
+
+  it('reaps expired cooldowns in isRateLimited and recordSuccess, normalizes session-note identities, and enforces markDelivered settlement (F680)', async () => {
+    const t = new ProviderModelStatusTracker({
+      config: {
+        rateLimitCooldownMs: 5,
+        blockAfterRateLimitHits: 5,
+        recoverAfterSuccesses: 2,
+      },
+    });
+    t.recordFailure('openai', 'gpt-4o', 'rate_limit', 429, 'rate limit', { retryAfterMs: 1 });
+    await new Promise((resolve) => setTimeout(resolve, 15));
+    strictEqual(t.isRateLimited('openai', 'gpt-4o'), false);
+
+    const t2 = new ProviderModelStatusTracker({
+      config: {
+        rateLimitCooldownMs: 5,
+        blockAfterRateLimitHits: 5,
+        recoverAfterSuccesses: 2,
+      },
+    });
+    t2.recordFailure('openai', 'gpt-4o', 'rate_limit', 429, 'rate limit', { retryAfterMs: 1 });
+    await new Promise((resolve) => setTimeout(resolve, 15));
+    t2.recordSuccess('openai', 'gpt-4o');
+    strictEqual(t2.isRateLimited('openai', 'gpt-4o'), false);
+    strictEqual(t2.getStatus('openai', 'gpt-4o')?.state, 'healthy');
+
+    const { SessionNoteHub } = await import('../src/session-note-hub.js');
+    const hub = new SessionNoteHub();
+    const receivedByWorker: string[] = [];
+    const receivedBySender: string[] = [];
+    hub.register({
+      sessionId: 'sess-1',
+      agentId: 'sender',
+      deliver: (n) => receivedBySender.push(n.body),
+    });
+    hub.register({
+      sessionId: 'sess-1',
+      agentId: 'worker-a',
+      deliver: (n) => receivedByWorker.push(n.body),
+    });
+    hub.post({
+      sessionId: 'sess-1',
+      from: 'sender@sess-1',
+      to: '@session:sess-1',
+      kind: 'directive',
+      body: 'Broadcast payload',
+    });
+    strictEqual(receivedByWorker.length, 1);
+    strictEqual(receivedBySender.length, 0);
+
+    hub.post({
+      sessionId: 'sess-1',
+      from: 'leader',
+      to: 'worker-a@sess-1',
+      kind: 'directive',
+      body: 'Direct payload',
+    });
+    strictEqual(receivedByWorker.length, 2);
+
+    const { DelegationTracker } = await import('../src/delegation/delegation-tracker.js');
+    const { LeaderDeliveryHub } = await import('../src/delegation/leader-delivery-hub.js');
+    const deliveryHub = new LeaderDeliveryHub();
+    const delegationTracker = new DelegationTracker({ hub: deliveryHub });
+    let settleDone!: (res: { ok: boolean; summary: string; taskId: string }) => void;
+    const settlePromise = new Promise<{ ok: boolean; summary: string; taskId: string }>((r) => {
+      settleDone = r;
+    });
+    const reg = delegationTracker.begin({
+      sessionId: 'sess-1',
+      target: 'builder',
+      task: 'Run task',
+      delegationId: 'del-f680',
+    });
+    strictEqual(delegationTracker.markDelivered(reg.delegationId), false);
+    delegationTracker.track(reg.delegationId, settlePromise);
+    settleDone({ ok: true, summary: 'Done', taskId: 'task-1' });
+    await settlePromise;
+    await new Promise((r) => setImmediate(r));
+    strictEqual(deliveryHub.pending('sess-1'), 1);
+    strictEqual(delegationTracker.markDelivered(reg.delegationId), true);
+    strictEqual(deliveryHub.pending('sess-1'), 0);
+    delegationTracker.dispose();
+  });
 });
