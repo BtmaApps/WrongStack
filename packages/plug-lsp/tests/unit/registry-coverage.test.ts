@@ -189,6 +189,25 @@ describe('registry completion coverage', () => {
     state.reconnectTimers.set('fake', timer);
     await value.stop('fake');
     expect(state.reconnectTimers.has('fake')).toBe(false);
+
+    const startTimer = setTimeout(() => {}, 10_000);
+    state.reconnectTimers.set('fake', startTimer);
+    (state as unknown as { reconnectAttempts: Map<string, number> }).reconnectAttempts.set(
+      'fake',
+      2,
+    );
+    tracker.reopenForServer.mockClear();
+    await value.start('fake');
+    expect(state.reconnectTimers.has('fake')).toBe(false);
+    expect(
+      (state as unknown as { reconnectAttempts: Map<string, number> }).reconnectAttempts.has(
+        'fake',
+      ),
+    ).toBe(false);
+    expect(tracker.reopenForServer).toHaveBeenCalledOnce();
+    await value.start('fake');
+    expect(tracker.reopenForServer).toHaveBeenCalledOnce();
+
     await value.restart('fake');
 
     state.reconnectTimers.set(

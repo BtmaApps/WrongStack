@@ -118,8 +118,13 @@ export class LSPRegistry {
 
   async start(name: string): Promise<void> {
     const server = this.getOrThrow(name);
+    this.cancelReconnect(name);
+    this.reconnectAttempts.delete(name);
+    const wasReady = server.state === 'ready';
     await server.start();
-    await this.tracker.reopenForServer(server);
+    if (!wasReady) {
+      await this.tracker.reopenForServer(server);
+    }
   }
 
   async stop(name: string): Promise<void> {

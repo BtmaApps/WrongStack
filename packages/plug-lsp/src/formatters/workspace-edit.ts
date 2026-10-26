@@ -17,7 +17,13 @@ export function summarizeWorkspaceEdit(edit: WorkspaceEdit, cwd: string): string
 export function editsByPath(edit: WorkspaceEdit): Map<string, TextEdit[]> {
   const out = new Map<string, TextEdit[]>();
   for (const [uri, edits] of Object.entries(edit.changes ?? {})) {
-    out.set(uriToPathOrUri(uri), [...edits]);
+    const target = uriToPathOrUri(uri);
+    const existing = out.get(target);
+    if (existing) {
+      existing.push(...edits);
+    } else {
+      out.set(target, [...edits]);
+    }
   }
   const seenInDocChanges = new Set<string>();
   for (const change of edit.documentChanges ?? []) {

@@ -189,6 +189,17 @@ describe('formatters', () => {
     const accumulated =
       multiEditsSameDoc.get(`${cwd}\\a.ts`) ?? multiEditsSameDoc.get(`${cwd}/a.ts`);
     expect(accumulated).toHaveLength(2);
+
+    const encodedUri = uri.replace(/a\.ts$/, '%61.ts');
+    const multiEditsChanges = editsByPath({
+      changes: {
+        [uri]: [{ range: range(0, 0), newText: 'first' }],
+        [encodedUri]: [{ range: range(1, 0), newText: 'second' }],
+      },
+    });
+    const accumulatedChanges =
+      multiEditsChanges.get(`${cwd}\\a.ts`) ?? multiEditsChanges.get(`${cwd}/a.ts`);
+    expect(accumulatedChanges).toHaveLength(2);
   });
 });
 
