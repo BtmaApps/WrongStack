@@ -179,6 +179,46 @@ export async function copyTaskToBoard(
   return updated ? { sourceBoard, targetBoard: updated.board, task: updated.result } : null;
 }
 
+function assertTaskRemovable(
+  board: KanbanBoard,
+  taskToRemove: KanbanTask,
+  eventContext: KanbanEventContext,
+): void {
+  assertManagementWrite(board, [taskToRemove], eventContext);
+  const requirementId = taskToRemove.origin?.specRequirementId;
+  const graphId = taskToRemove.origin?.graphId;
+  const declaredByScope = Boolean(
+    graphId &&
+      board.requirementScopes?.some(
+        (scope) => scope.graphId === graphId && scope.requirementIds.includes(requirementId ?? ''),
+      ),
+  );
+  const declaredByLegacyFlatList = Boolean(
+    requirementId && board.requiredRequirementIds?.includes(requirementId),
+  );
+  if (
+    requirementId &&
+    (declaredByScope || declaredByLegacyFlatList) &&
+    !board.tasks.some(
+      (task) =>
+        task.id !== taskToRemove.id &&
+        task.origin?.specRequirementId === requirementId &&
+        (!declaredByScope || task.origin?.graphId === graphId),
+    )
+  ) {
+    throw new KanbanLifecycleError(
+      `Cannot remove the last task covering required requirement ${requirementId}.`,
+      [
+        {
+          code: 'requirement-coverage-incomplete',
+          field: 'origin.specRequirementId',
+          message: `Cannot remove the last task covering required requirement ${requirementId}.`,
+        },
+      ],
+    );
+  }
+}
+
 export async function transferTaskToBoard(
   projectRoot: string,
   sourceBoardId: string,
@@ -191,7 +231,10 @@ export async function transferTaskToBoard(
   const sourceTask = findTask(sourceBoard, taskId);
   if (!sourceTask) return null;
 
-  if (sourceBoard.id === (await readBoard(projectRoot, targetBoardId))?.id) {
+  const targetBoard = await readBoard(projectRoot, targetBoardId);
+  if (!targetBoard) return null;
+
+  if (sourceBoard.id === targetBoard.id) {
     const moved = await moveTask(
       projectRoot,
       sourceBoard.id,
@@ -203,6 +246,8 @@ export async function transferTaskToBoard(
     const task = moved ? findTask(moved, sourceTask.id) : undefined;
     return moved && task ? { sourceBoard: moved, targetBoard: moved, task } : null;
   }
+
+  assertTaskRemovable(sourceBoard, sourceTask, options.eventContext);
 
   const copied = await copyTaskToBoard(projectRoot, sourceBoard.id, sourceTask.id, targetBoardId, {
     ...options,
@@ -299,40 +344,7 @@ export async function removeTask(
   const updated = await mutateBoard(projectRoot, boardId, (board) => {
     const taskToRemove = findTask(board, taskId);
     if (!taskToRemove) return false;
-    assertManagementWrite(board, [taskToRemove], eventContext);
-    const requirementId = taskToRemove.origin?.specRequirementId;
-    const graphId = taskToRemove.origin?.graphId;
-    const declaredByScope = Boolean(
-      graphId &&
-        board.requirementScopes?.some(
-          (scope) =>
-            scope.graphId === graphId && scope.requirementIds.includes(requirementId ?? ''),
-        ),
-    );
-    const declaredByLegacyFlatList = Boolean(
-      requirementId && board.requiredRequirementIds?.includes(requirementId),
-    );
-    if (
-      requirementId &&
-      (declaredByScope || declaredByLegacyFlatList) &&
-      !board.tasks.some(
-        (task) =>
-          task.id !== taskToRemove.id &&
-          task.origin?.specRequirementId === requirementId &&
-          (!declaredByScope || task.origin?.graphId === graphId),
-      )
-    ) {
-      throw new KanbanLifecycleError(
-        `Cannot remove the last task covering required requirement ${requirementId}.`,
-        [
-          {
-            code: 'requirement-coverage-incomplete',
-            field: 'origin.specRequirementId',
-            message: `Cannot remove the last task covering required requirement ${requirementId}.`,
-          },
-        ],
-      );
-    }
+    assertTaskRemovable(board, taskToRemove, eventContext);
     const index = board.tasks.findIndex((task) => task.id === taskToRemove.id);
     if (index === -1) return false;
     event = createKanbanEvent(board.id, taskToRemove, 'task.removed', eventContext);

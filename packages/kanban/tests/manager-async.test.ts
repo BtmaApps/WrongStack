@@ -21,6 +21,7 @@ import {
   getBoardWithLivePresence,
   getKanbanOrchestrationSnapshot,
   getKanbanQueueHealth,
+  getTaskChain,
   listKanbanEvents,
   listReadyTasks,
   listTaskActivity,
@@ -1345,5 +1346,24 @@ describe('setTaskChain edges', () => {
     const cTask = stored!.tasks.find((t) => t.id === c!.task.id)!;
     expect(cTask.chain?.chainId).toBe('old');
     expect(cTask.chain?.previousTaskId).toBeUndefined();
+  });
+
+  it('clears chain metadata from tasks removed when updating an existing chainId in place', async () => {
+    const b = await makeBoard();
+    const t1 = await addTask(tmpDir, b.id, { title: 'T1' });
+    const t2 = await addTask(tmpDir, b.id, { title: 'T2' });
+    const t3 = await addTask(tmpDir, b.id, { title: 'T3' });
+    await setTaskChain(tmpDir, b.id, {
+      taskIds: [t1!.task.id, t2!.task.id, t3!.task.id],
+      chainId: 'chain-1',
+    });
+    await setTaskChain(tmpDir, b.id, {
+      taskIds: [t1!.task.id, t3!.task.id],
+      chainId: 'chain-1',
+    });
+    const chain = await getTaskChain(tmpDir, b.id, 'chain-1');
+    expect(chain?.tasks.map((t) => t.id)).toEqual([t1!.task.id, t3!.task.id]);
+    const t2Stored = chain?.board.tasks.find((t) => t.id === t2!.task.id);
+    expect(t2Stored?.chain).toBeUndefined();
   });
 });

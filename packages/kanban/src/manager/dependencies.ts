@@ -371,11 +371,17 @@ export async function setTaskChain(
           (previousChainIds.includes(task.chain.chainId) || task.chain.chainId === chainId)),
     );
     assertManagementWrite(board, affected, eventContext);
+    const now = nowIso();
+    for (const existing of board.tasks) {
+      if (existing.chain?.chainId === chainId && !tasks.includes(existing)) {
+        delete existing.chain;
+        existing.updatedAt = now;
+      }
+    }
     setChainMetadata(board, tasks, chainId, input.enforceDependencies !== false);
     for (const previousChainId of previousChainIds) {
       if (previousChainId !== chainId) normalizeChainMetadata(board, previousChainId);
     }
-    const now = nowIso();
     for (const task of tasks) task.updatedAt = now;
     board.updatedAt = now;
     const head = tasks[0];

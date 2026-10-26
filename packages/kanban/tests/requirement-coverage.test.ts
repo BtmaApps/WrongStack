@@ -5,9 +5,12 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { TaskGraph } from '../src/types/task-graph.js';
 import {
   buildTaskGraphFromKanbanBoard,
+  createBoard,
   createBoardFromTaskGraph,
+  getBoard,
   removeTask,
   syncBoardFromTaskGraph,
+  transferTaskToBoard,
 } from './helpers/session-manager.js';
 
 describe('Kanban task graph requirement coverage', () => {
@@ -121,5 +124,17 @@ describe('Kanban task graph requirement coverage', () => {
     await expect(removeTask(projectRoot, imported.board.id, firstTask.id)).rejects.toThrow(
       'Cannot remove the last task covering required requirement REQ-1',
     );
+  });
+
+  it('rejects transferring the last task covering a required requirement before copying it to the target board', async () => {
+    const imported = await createBoardFromTaskGraph(projectRoot, graph());
+    const target = await createBoard(projectRoot, { title: 'Target board' });
+
+    await expect(
+      transferTaskToBoard(projectRoot, imported.board.id, imported.board.tasks[0]!.id, target.id),
+    ).rejects.toThrow('Cannot remove the last task covering required requirement REQ-1');
+
+    const storedTarget = await getBoard(projectRoot, target.id);
+    expect(storedTarget?.tasks).toHaveLength(0);
   });
 });
