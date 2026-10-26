@@ -40,6 +40,7 @@ export abstract class WorktreeManagerCore {
   protected readonly runGit: (args: string[], cwd: string) => Promise<RunResult>;
   /** Keyed by ownerId. */
   protected readonly handles = new Map<string, WorktreeHandle>();
+  protected readonly inFlightAllocations = new Map<string, Promise<WorktreeHandle>>();
   protected readonly usedSlugs = new Set<string>();
 
   constructor(opts: WorktreeManagerOptions) {
@@ -200,7 +201,10 @@ export abstract class WorktreeManagerCore {
         reason: 'could not read working tree status — commit or stash first',
       };
     }
-    if (status.stdout.trim().length > 0) {
+    const hasTrackedDirt = status.stdout
+      .split('\n')
+      .some((line) => line.trim().length > 0 && !line.startsWith('??'));
+    if (hasTrackedDirt) {
       return {
         ok: false,
         reverted: 0,

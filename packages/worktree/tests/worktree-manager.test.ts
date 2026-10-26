@@ -585,6 +585,62 @@ describe('WorktreeManager (stubbed git)', () => {
       reason: 'nothing to revert',
     });
   });
+
+  it('revertCommits() is not blocked by untracked files (??) in the working tree (F626)', async () => {
+    const { calls, run } = stubRunner((args) =>
+      args[0] === 'status'
+        ? { code: 0, stdout: '?? .wrongstack/\n?? verify-artifact.log\n', stderr: '' }
+        : { code: 0, stdout: '', stderr: '' },
+    );
+    const wm = new WorktreeManager({ projectRoot: PROJ, run });
+    const res = await wm.revertCommits('main', ['sha-old', 'sha-new']);
+    expect(res).toEqual({ ok: true, reverted: 2 });
+    const reverts = calls.filter((c) => c.args.includes('revert')).map((c) => c.args.at(-1));
+    expect(reverts).toEqual(['sha-new', 'sha-old']);
+  });
+
+  it('concurrent allocate() while git worktree add is in flight waits for completion before returning active handle (F627)', async () => {
+    let releaseAdd!: () => void;
+    const addGate = new Promise<void>((resolve) => {
+      releaseAdd = resolve;
+    });
+    let addStarted!: () => void;
+    const addStartedPromise = new Promise<void>((resolve) => {
+      addStarted = resolve;
+    });
+    let addCount = 0;
+
+    const wm = new WorktreeManager({
+      projectRoot: PROJ,
+      run: async (args) => {
+        if (args[0] === 'rev-parse') return { code: 0, stdout: 'main\n', stderr: '' };
+        if (args[0] === 'worktree' && args[1] === 'add') {
+          addCount++;
+          addStarted();
+          await addGate;
+        }
+        return { code: 0, stdout: '', stderr: '' };
+      },
+    });
+
+    const first = wm.allocate('same-owner', { slugHint: 'inflight' });
+    await addStartedPromise;
+
+    let secondStatus: string | undefined;
+    const second = wm.allocate('same-owner', { slugHint: 'inflight' }).then((h) => {
+      secondStatus = h.status;
+      return h;
+    });
+
+    await Promise.resolve();
+    expect(secondStatus).toBeUndefined();
+
+    releaseAdd();
+    const [h1, h2] = await Promise.all([first, second]);
+    expect(h1.id).toBe(h2.id);
+    expect(secondStatus).toBe('active');
+    expect(addCount).toBe(1);
+  });
 });
 
 describe.skipIf(!gitAvailable)('WorktreeManager (real repo)', () => {

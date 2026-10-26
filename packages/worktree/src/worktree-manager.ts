@@ -34,6 +34,9 @@ export type {
 export class WorktreeManager extends WorktreeManagerCore implements WorktreeManagerPort {
   /** Create a fresh worktree + branch forked from the current base branch. */
   async allocate(ownerId: string, opts: AllocateOpts = {}): Promise<WorktreeHandle> {
+    const inFlight = this.inFlightAllocations.get(ownerId);
+    if (inFlight) return inFlight;
+
     const existing = this.handles.get(ownerId);
     // 'committing' is a live, owned state too: an in-flight or completed-but-
     // unmerged commit means the owner still owns this worktree, and
@@ -48,6 +51,24 @@ export class WorktreeManager extends WorktreeManagerCore implements WorktreeMana
       return existing;
     }
 
+    const baseBranch = opts.baseBranch ?? (await this.detectBaseBranch());
+    // A concurrent allocate() for the same owner can be in flight: its
+    // base-branch detection above is an await, so both calls can pass the
+    // reuse check before either registers its handle. Re-check now — minting
+    // a second checkout and branch would orphan the first one (its dir and
+    // branch on disk, absent from `handles`, invisible to release()).
+    const claimedFlight = this.inFlightAllocations.get(ownerId);
+    if (claimedFlight) return claimedFlight;
+    const claimed = this.handles.get(ownerId);
+    if (
+      claimed &&
+      (claimed.status === 'allocating' ||
+        claimed.status === 'active' ||
+        claimed.status === 'committing')
+    ) {
+      return claimed;
+    }
+
     const slug = this.makeSlug(opts.slugHint ?? ownerId);
     const branch = `wstack/ap/${slug}`;
     const dir = join(this.worktreesRoot(), slug);
@@ -58,22 +79,6 @@ export class WorktreeManager extends WorktreeManagerCore implements WorktreeMana
     const absRoot = resolve(this.projectRoot);
     if (!absDir.startsWith(absRoot + sep)) {
       throw new Error(`Worktree dir "${absDir}" resolves outside project root`);
-    }
-
-    const baseBranch = opts.baseBranch ?? (await this.detectBaseBranch());
-    // A concurrent allocate() for the same owner can be in flight: its
-    // base-branch detection above is an await, so both calls can pass the
-    // reuse check before either registers its handle. Re-check now — minting
-    // a second checkout and branch would orphan the first one (its dir and
-    // branch on disk, absent from `handles`, invisible to release()).
-    const claimed = this.handles.get(ownerId);
-    if (
-      claimed &&
-      (claimed.status === 'allocating' ||
-        claimed.status === 'active' ||
-        claimed.status === 'committing')
-    ) {
-      return claimed;
     }
 
     const handle: WorktreeHandle = {
@@ -93,31 +98,42 @@ export class WorktreeManager extends WorktreeManagerCore implements WorktreeMana
     };
     this.handles.set(ownerId, handle);
 
-    try {
-      await mkdir(this.worktreesRoot(), { recursive: true });
-      // git worktree add -b <branch> <path> <base> — path before commit-ish.
-      const res = await this.runGit(
-        ['worktree', 'add', '-b', branch, dir, baseBranch],
-        this.projectRoot,
-      );
-      if (res.code !== 0) {
-        return this.fail(handle, res.stderr || 'git worktree add failed', 'allocate');
+    const finishAllocation = (async (): Promise<WorktreeHandle> => {
+      try {
+        await mkdir(this.worktreesRoot(), { recursive: true });
+        // git worktree add -b <branch> <path> <base> — path before commit-ish.
+        const res = await this.runGit(
+          ['worktree', 'add', '-b', branch, dir, baseBranch],
+          this.projectRoot,
+        );
+        if (res.code !== 0) {
+          return this.fail(handle, res.stderr || 'git worktree add failed', 'allocate');
+        }
+      } catch (err) {
+        return this.fail(handle, toErrorMessage(err), 'allocate');
       }
-    } catch (err) {
-      return this.fail(handle, toErrorMessage(err), 'allocate');
-    }
 
-    this.setStatus(handle, 'active');
-    this.emit('worktree.allocated', {
-      handleId: handle.id,
-      ownerId: handle.ownerId,
-      ownerLabel: handle.ownerLabel,
-      slug: handle.slug,
-      dir: handle.dir,
-      branch: handle.branch,
-      baseBranch: handle.baseBranch,
-    });
-    return handle;
+      this.setStatus(handle, 'active');
+      this.emit('worktree.allocated', {
+        handleId: handle.id,
+        ownerId: handle.ownerId,
+        ownerLabel: handle.ownerLabel,
+        slug: handle.slug,
+        dir: handle.dir,
+        branch: handle.branch,
+        baseBranch: handle.baseBranch,
+      });
+      return handle;
+    })();
+
+    this.inFlightAllocations.set(ownerId, finishAllocation);
+    try {
+      return await finishAllocation;
+    } finally {
+      if (this.inFlightAllocations.get(ownerId) === finishAllocation) {
+        this.inFlightAllocations.delete(ownerId);
+      }
+    }
   }
 
   /** Reattach a persisted phase checkout after the process that created it exits. */
