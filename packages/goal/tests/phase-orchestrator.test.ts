@@ -1,10 +1,10 @@
 import { EventBus } from '@wrongstack/contracts/kernel/events';
 import type { TaskNode } from '@wrongstack/contracts/types/task-graph';
+import type { WorktreeHandle, WorktreeManager } from '@wrongstack/worktree';
 import { describe, expect, it, vi } from 'vitest';
 import { PhaseGraphBuilder } from '../src/phase-graph-builder.js';
 import { PhaseOrchestrator } from '../src/phase-orchestrator.js';
 import type { PhaseExecutionContext, PhaseGraph } from '../src/types.js';
-import type { WorktreeHandle, WorktreeManager } from '@wrongstack/worktree';
 
 /**
  * Records every call and hands out one active handle per owner. `conflictOn`
@@ -855,6 +855,42 @@ describe('PhaseOrchestrator — interactive board mutations', () => {
     const a1 = taskByTitle(graph, 'A1');
     expect(orch.moveTask('nope', alpha.id)).toBe(false);
     expect(orch.moveTask(a1.id, alpha.id)).toBe(false);
+  });
+
+  it('moveTask unblocks dependent tasks whose sole blocker was moved and preserves dependent children', async () => {
+    const graph = await buildTwoPhaseGraph();
+    const alpha = phaseByName(graph, 'Alpha');
+    const beta = phaseByName(graph, 'Beta');
+    const a1 = taskByTitle(graph, 'A1');
+    const a2 = taskByTitle(graph, 'A2');
+
+    // A2 depends on A1 and was auto-blocked while waiting on A1; A2 also has its own child list
+    alpha.taskGraph.edges.push({
+      id: 'edge-a1-a2',
+      from: a1.id,
+      to: a2.id,
+      type: 'depends_on',
+    });
+    a2.status = 'blocked';
+    a2.children = ['child-x'];
+
+    const executed: string[] = [];
+    const orch = new PhaseOrchestrator({
+      graph,
+      ctx: {
+        executeTask: async (task) => {
+          executed.push(task.title);
+        },
+      },
+      autonomous: false,
+    });
+
+    expect(orch.moveTask(a1.id, beta.id)).toBe(true);
+    expect(a2.status).toBe('pending');
+    expect(a2.children).toEqual(['child-x']);
+
+    await orch.start();
+    expect(executed).toContain('A2');
   });
 
   it('setTaskAssignee writes the assignee onto the node', async () => {

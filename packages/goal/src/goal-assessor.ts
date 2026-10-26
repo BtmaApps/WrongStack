@@ -108,28 +108,56 @@ export class GoalAssessor {
 
 /**
  * Extract the first JSON object `{ ... }` from text, aware of strings and
- * escape characters. Tries fenced code blocks first, then balanced-brace
- * extraction on the raw text.
+ * escape characters. Searches every fenced code block in order, then the whole
+ * text, and returns the first balanced block that PARSES as a JSON object —
+ * an earlier fence may hold a shell snippet, so the first brace is not
+ * necessarily the assessment (same contract as `extractJSONArray` in
+ * goal-planner.ts). An empty object `{}` wins only over nothing at all.
+ * When nothing parses, the first balanced block is returned so the caller can
+ * report a parse failure rather than "no object".
  */
 function extractJSONObject(text: string): string | null {
-  // 1) Fenced code block
-  const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  const candidates: string[] = [];
-  if (fence?.[1]) candidates.push(fence[1]);
+  const candidates = [...text.matchAll(/```(?:json)?\s*([\s\S]*?)```/gi)]
+    .map((m) => m[1] ?? '')
+    .filter(Boolean);
   candidates.push(text);
 
+  // Bound on brace starts tried per candidate, so prose full of braces stays linear-ish.
+  const MAX_OBJECT_STARTS = 256;
+
+  let firstBalanced: string | null = null;
+  let firstEmpty: string | null = null;
   for (const candidate of candidates) {
-    const balanced = firstBalancedObject(candidate);
-    if (balanced) return balanced;
+    let from = 0;
+    for (let tries = 0; tries < MAX_OBJECT_STARTS; tries++) {
+      const start = candidate.indexOf('{', from);
+      if (start === -1) break;
+      const balanced = balancedObjectAt(candidate, start);
+      if (balanced) {
+        firstBalanced ??= balanced;
+        const kind = parsedObjectKind(balanced);
+        if (kind === 'object') return balanced;
+        if (kind === 'empty') firstEmpty ??= balanced;
+      }
+      from = start + 1;
+    }
   }
-  return null;
+  return firstEmpty ?? firstBalanced;
 }
 
-/** Return the first balanced `{ ... }` block, aware of strings and escapes. */
-function firstBalancedObject(text: string): string | null {
-  const start = text.indexOf('{');
-  if (start === -1) return null;
+/** `'object'` when `json` parses to a non-empty plain object, `'empty'` for `{}`, `'none'` otherwise. */
+function parsedObjectKind(json: string): 'object' | 'empty' | 'none' {
+  try {
+    const data: unknown = JSON.parse(json);
+    if (typeof data !== 'object' || data === null || Array.isArray(data)) return 'none';
+    return Object.keys(data as Record<string, unknown>).length > 0 ? 'object' : 'empty';
+  } catch {
+    return 'none';
+  }
+}
 
+/** Return the balanced `{ ... }` block opening at `start`, aware of strings and escapes. */
+function balancedObjectAt(text: string, start: number): string | null {
   let depth = 0;
   let inString = false;
   let escaped = false;

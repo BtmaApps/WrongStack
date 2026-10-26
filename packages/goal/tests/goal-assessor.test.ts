@@ -158,6 +158,54 @@ describe('JSON extraction via parse()', () => {
     const result = a.parse('');
     expect(result.parseFailed).toBe(true);
   });
+
+  it('skips an earlier fence holding shell braces and parses the later assessment fence', () => {
+    const a = makeAssessor('');
+    const raw = [
+      'Sure — first, the cleanup command:',
+      '```bash',
+      'if [ -d "{project_dir}" ]; then mv "{project_dir}" "{backup_dir}"; fi',
+      '```',
+      '',
+      'Here is my assessment:',
+      '```json',
+      '{"realistic": false, "durationClaimed": "2 days", "explanation": "Too ambitious", "recommendedDuration": "2 weeks", "concerns": ["scope"]}',
+      '```',
+    ].join('\n');
+    const result = a.parse(raw);
+    expect(result.parseFailed).toBe(false);
+    expect(result.realistic).toBe(false);
+    expect(result.durationClaimed).toBe('2 days');
+    expect(result.explanation).toBe('Too ambitious');
+    expect(result.recommendedDuration).toBe('2 weeks');
+  });
+
+  it('skips brace-bearing prose before an unfenced JSON object', () => {
+    const a = makeAssessor('');
+    const result = a.parse(
+      'Use cp {src_dir} {dst_dir} to snapshot.\nAssessment:\n{"realistic": false, "explanation": "No."}',
+    );
+    expect(result.parseFailed).toBe(false);
+    expect(result.realistic).toBe(false);
+    expect(result.explanation).toBe('No.');
+  });
+
+  it('prefers a non-empty object over a bare empty object', () => {
+    const a = makeAssessor('');
+    const result = a.parse('{ } then {"realistic": true, "explanation": "ok"}');
+    expect(result.parseFailed).toBe(false);
+    expect(result.explanation).toBe('ok');
+  });
+
+  it('accepts a lone empty object as a last-resort parse', () => {
+    const a = makeAssessor('');
+    const result = a.parse('prefix {} suffix');
+    expect(result.parseFailed).toBe(false);
+    // parse() maps a missing `realistic` field to false (see the non-boolean
+    // test above); the pin here is the extraction, not the verdict value.
+    expect(result.realistic).toBe(false);
+    expect(result.explanation).toBe('');
+  });
 });
 
 describe('GoalAssessor.assess', () => {

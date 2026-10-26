@@ -1,7 +1,7 @@
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 
 const execFile = vi.hoisted(() => vi.fn());
 vi.mock('node:child_process', () => ({ execFile }));
@@ -95,7 +95,35 @@ describe('verifyGoalProject', () => {
     });
   });
 
+  /** Point PATH at stub executables so toolchain resolution is hermetic. */
+  async function stubToolchains(...names: string[]): Promise<void> {
+    const bin = path.join(dir, '.bin');
+    await fs.mkdir(bin, { recursive: true });
+    for (const name of names) {
+      await fs.writeFile(path.join(bin, name), '');
+      await fs.writeFile(path.join(bin, `${name}.exe`), '');
+    }
+    const saved = process.env['PATH'];
+    process.env['PATH'] = bin;
+    onTestFinished(() => {
+      process.env['PATH'] = saved;
+    });
+  }
+
+  // Through the win32 cmd.exe shim a missing toolchain never raised ENOENT: it
+  // exited 1 "is not recognized" and the Goal counted a failed verification.
+  it('reports a missing toolchain as skipped without spawning it', async () => {
+    await stubToolchains();
+    await fs.writeFile(path.join(dir, 'pubspec.yaml'), 'name: demo');
+    await expect(verifyGoalProject({ cwd: dir })).resolves.toMatchObject({
+      ok: true,
+      skipped: true,
+    });
+    if (process.platform === 'win32') expect(execFile).not.toHaveBeenCalled();
+  });
+
   it('verifies Rust (Cargo.toml) and Go (go.mod) projects when package.json is absent', async () => {
+    await stubToolchains('cargo', 'go', 'ruff');
     await fs.writeFile(path.join(dir, 'Cargo.toml'), '[package]\nname = "demo"');
     execFile.mockImplementation((_command, _args, _options, callback) => {
       callback(null, '', '');

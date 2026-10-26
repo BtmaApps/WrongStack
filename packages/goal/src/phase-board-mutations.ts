@@ -45,31 +45,55 @@ export function movePhaseTask(
   const node = from.taskGraph.nodes.get(taskId);
   if (!node) return false;
 
-  const dependents = from.taskGraph.edges.filter((e) => e.from === taskId).map((e) => e.to);
-  for (const depId of dependents) {
-    const depNode = from.taskGraph.nodes.get(depId);
-    if (depNode) {
-      depNode.parentId = undefined;
-      depNode.children = undefined;
-    }
-    from.taskGraph.edges = from.taskGraph.edges.filter(
-      (e) => !(e.from === taskId && e.to === depId),
-    );
-    if (!from.taskGraph.rootNodes.includes(depId)) {
-      from.taskGraph.rootNodes.push(depId);
-    }
-  }
+  const dependents = from.taskGraph.edges
+    .filter((e) => e.from === taskId && e.type === 'depends_on')
+    .map((e) => e.to);
 
   from.taskGraph.nodes.delete(taskId);
   from.taskGraph.rootNodes = from.taskGraph.rootNodes.filter((id) => id !== taskId);
   from.taskGraph.edges = from.taskGraph.edges.filter((e) => e.from !== taskId && e.to !== taskId);
+
+  for (const n of from.taskGraph.nodes.values()) {
+    if (n.parentId === taskId) {
+      n.parentId = undefined;
+      if (!from.taskGraph.rootNodes.includes(n.id)) {
+        from.taskGraph.rootNodes.push(n.id);
+      }
+    }
+    if (n.children?.includes(taskId)) {
+      n.children = n.children.filter((c) => c !== taskId);
+    }
+  }
+
+  for (const depId of dependents) {
+    const depNode = from.taskGraph.nodes.get(depId);
+    if (!depNode) continue;
+    if (!depNode.parentId && !from.taskGraph.rootNodes.includes(depId)) {
+      from.taskGraph.rootNodes.push(depId);
+    }
+    if (depNode.status === 'blocked') {
+      const remainingBlockers = from.taskGraph.edges
+        .filter((e) => e.to === depId && e.type === 'depends_on')
+        .map((e) => e.from);
+      const allUnblocked = remainingBlockers.every((id) => {
+        const blocker = from.taskGraph.nodes.get(id);
+        return blocker?.status === 'completed' || blocker?.status === 'failed';
+      });
+      if (allUnblocked) {
+        depNode.status = 'pending';
+        depNode.updatedAt = Date.now();
+      }
+    }
+  }
   from.taskGraph.updatedAt = Date.now();
 
   node.parentId = undefined;
   node.children = undefined;
   node.updatedAt = Date.now();
   to.taskGraph.nodes.set(taskId, node);
-  to.taskGraph.rootNodes.push(taskId);
+  if (!to.taskGraph.rootNodes.includes(taskId)) {
+    to.taskGraph.rootNodes.push(taskId);
+  }
   to.taskGraph.updatedAt = Date.now();
 
   ctx.trackerCache.delete(from.id);

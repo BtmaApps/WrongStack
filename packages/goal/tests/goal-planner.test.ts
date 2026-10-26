@@ -197,3 +197,21 @@ describe('extractGoalJSONArray', () => {
     expect(extractGoalJSONArray('just prose')).toBeNull();
   });
 });
+
+describe('buildRepairPrompt', () => {
+  const LONE_SURROGATE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
+
+  it('never splits a surrogate pair when capping the repair source', () => {
+    const planner = new GoalPlanner({ runOnce: async () => '', goal: 'g' });
+    // The repair source is the FIRST MODEL ANSWER — model output that can
+    // contain astral characters. Place the emoji's HIGH surrogate exactly on
+    // the last kept unit of the 24_000-char cap: a raw slice(0, 24_000)
+    // keeps the high and cuts its low pair, sending ill-formed UTF-16 into
+    // the repair model request (whose rejection fails the whole plan run).
+    const previous = `${'x'.repeat(23_999)}😀y`;
+    const prompt = planner.buildRepairPrompt(previous);
+    expect(LONE_SURROGATE.test(prompt), 'repair prompt carries an ill-formed lone surrogate').toBe(
+      false,
+    );
+  });
+});

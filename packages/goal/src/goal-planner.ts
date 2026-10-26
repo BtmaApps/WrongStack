@@ -131,10 +131,19 @@ export class GoalPlanner {
 
   /** Follow-up prompt that converts an off-format answer into the plan schema. */
   buildRepairPrompt(previous: string): string {
-    const source =
-      previous.length > MAX_REPAIR_SOURCE_CHARS
-        ? `${previous.slice(0, MAX_REPAIR_SOURCE_CHARS)}\n[…truncated]`
-        : previous;
+    // The repair source is the first model answer, re-sent to the model:
+    // never split a surrogate pair at the cap. An astral char straddling
+    // MAX_REPAIR_SOURCE_CHARS would send ill-formed UTF-16 (a lone
+    // surrogate) to the provider and fail the whole repair. Dropping the
+    // orphaned half keeps the text well-formed (surrogate-safe truncation
+    // convention).
+    let source = previous;
+    if (previous.length > MAX_REPAIR_SOURCE_CHARS) {
+      let end = MAX_REPAIR_SOURCE_CHARS;
+      const lastKept = previous.charCodeAt(end - 1);
+      if (lastKept >= 0xd800 && lastKept <= 0xdbff) end -= 1;
+      source = `${previous.slice(0, end)}\n[…truncated]`;
+    }
     return renderInstructionTemplate(readBundledInstructionText('goal/phase-plan-repair.md'), {
       goal: this.opts.goal,
       previous: source,

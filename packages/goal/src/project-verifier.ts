@@ -122,6 +122,26 @@ async function runStep(
   });
 }
 
+/**
+ * Whether a bare command resolves on PATH (with PATHEXT). On win32 the cmd.exe
+ * shim always exists, so a missing toolchain never surfaces as ENOENT — it
+ * exits 1 with "is not recognized", indistinguishable from a failed check.
+ */
+async function win32CommandExists(command: string): Promise<boolean> {
+  const exts = (process.env['PATHEXT'] ?? '.COM;.EXE;.BAT;.CMD').split(';').filter(Boolean);
+  for (const rawDir of (process.env['PATH'] ?? '').split(path.delimiter)) {
+    // cmd.exe accepts a quoted entry (`"C:\Program Files\Go\bin"`); joined
+    // verbatim it names no file and an installed tool would read as missing.
+    const dir = rawDir.trim().replace(/^"|"$/g, '');
+    if (!dir) continue;
+    for (const ext of ['', ...exts]) {
+      if (ext === '' && !path.extname(command)) continue;
+      if (await exists(path.join(dir, command + ext))) return true;
+    }
+  }
+  return false;
+}
+
 async function runBinary(
   command: string,
   args: readonly string[],
@@ -129,6 +149,9 @@ async function runBinary(
   timeoutMs: number,
   label: string,
 ): Promise<{ ok: boolean; output: string; missingBinary?: boolean }> {
+  if (process.platform === 'win32' && !(await win32CommandExists(command))) {
+    return { ok: true, output: `verify skipped: ${command} not found`, missingBinary: true };
+  }
   const invocation =
     process.platform === 'win32'
       ? buildWin32CmdShimInvocation(command, [...args])
