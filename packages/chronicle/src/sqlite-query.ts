@@ -41,7 +41,12 @@ import {
   relationKeys,
   updateSummary,
 } from './query.js';
-import { compareEventToKey, findInsertionIndex, orderKey } from './query-matching.js';
+import {
+  compareEventToKey,
+  findInsertionIndex,
+  isChronicleEvent,
+  orderKey,
+} from './query-matching.js';
 import type { ChronicleEvent } from './types.js';
 
 /** Hard ceiling mirroring `ChronicleQueryEngine.query`. */
@@ -163,6 +168,7 @@ export class ChronicleSqliteQueryEngine {
     let total = 0;
     let remaining = 0;
     let scannedEvents = 0;
+    let invalidLines = 0;
     let offset = 0;
 
     // Every matching event feeds the summary and `total`, which are defined
@@ -178,14 +184,18 @@ export class ChronicleSqliteQueryEngine {
       offset += rows.length;
 
       for (const row of rows) {
-        scannedEvents++;
         let event: ChronicleEvent;
         try {
           event = JSON.parse(decodeChroniclePayload(row.payload)) as ChronicleEvent;
+          if (!isChronicleEvent(event)) {
+            invalidLines++;
+            continue;
+          }
         } catch {
-          this.diagnostics.invalidLines++;
+          invalidLines++;
           continue;
         }
+        scannedEvents++;
         if (!matches(event, query)) continue;
         total++;
         updateSummary(summary, event);
@@ -200,13 +210,14 @@ export class ChronicleSqliteQueryEngine {
       if (rows.length < this.batchSize) break;
     }
 
+    this.diagnostics.invalidLines = invalidLines;
     const last = page.at(-1);
     const result: ChronicleQueryResult = {
       events: page,
       total,
       scannedEvents,
       sourceFiles: this.diagnostics.sourceFiles,
-      invalidLines: this.diagnostics.invalidLines,
+      invalidLines,
       summary: finalizeSummary(summary),
     };
     if (remaining > page.length && last) {
@@ -348,6 +359,7 @@ export class ChronicleSqliteQueryEngine {
 
   /** Every event satisfying `query`, pulled in batches so a wide scan stays bounded. */
   private *eachMatch(query: ChronicleQuery): Generator<ChronicleEvent> {
+    this.diagnostics.invalidLines = 0;
     const pushed = pushDown(query);
     const sql =
       `SELECT payload FROM events WHERE ${pushed.clause}` +
@@ -363,6 +375,10 @@ export class ChronicleSqliteQueryEngine {
         let event: ChronicleEvent;
         try {
           event = JSON.parse(decodeChroniclePayload(row.payload)) as ChronicleEvent;
+          if (!isChronicleEvent(event)) {
+            this.diagnostics.invalidLines++;
+            continue;
+          }
         } catch {
           this.diagnostics.invalidLines++;
           continue;

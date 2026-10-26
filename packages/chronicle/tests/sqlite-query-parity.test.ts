@@ -338,4 +338,24 @@ describe('SQLite query parity with the JSONL engine', () => {
 
     expect(comparable(batched)).toEqual(comparable(oneShot));
   });
+
+  it('skips non-ChronicleEvent JSON rows as invalidLines without throwing or accumulating across calls', async () => {
+    db.prepare(
+      `INSERT INTO events (day, sequence, event_id, occurred_at, event_type, outcome, payload, hash, previous_hash)
+       VALUES ('2026-03-04', 998, 'bad-shape', '2026-03-04T10:00:00.000Z', 'tool.executed', 'success', '{}', 'h1', 'h0')`,
+    ).run();
+    db.prepare(
+      `INSERT INTO events (day, sequence, event_id, occurred_at, event_type, outcome, payload, hash, previous_hash)
+       VALUES ('2026-03-04', 999, 'bad-json', '2026-03-04T10:00:01.000Z', 'tool.executed', 'success', 'not-json', 'h2', 'h1')`,
+    ).run();
+
+    const engine = new ChronicleSqliteQueryEngine(db);
+    const first = await engine.query({});
+    const second = await engine.query({});
+
+    expect(first.events).toHaveLength(9);
+    expect(first.scannedEvents).toBe(9);
+    expect(first.invalidLines).toBe(2);
+    expect(second.invalidLines).toBe(2);
+  });
 });

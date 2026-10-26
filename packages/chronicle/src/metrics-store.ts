@@ -62,21 +62,30 @@ export class ChronicleMetricsStore {
     this.dbPath = path.join(this.directory, 'metrics.db');
     const Database = loadDatabaseSync();
     this.db = new Database(this.dbPath);
-    // Derived data that is dropped wholesale on a schema bump and pruned by
-    // day: it has to be able to give pages back, or the file only ever grows
-    // to its all-time high-water mark. Must precede the WAL switch and the
-    // first CREATE TABLE, per ensureIncrementalVacuum.
-    ensureIncrementalVacuum(this.db);
-    this.db.exec('PRAGMA journal_mode = WAL');
-    // Every other SQLite store in the repo pairs WAL with NORMAL durability and
-    // a busy timeout. Without the timeout a concurrent writer fails instantly
-    // with SQLITE_BUSY instead of waiting out the other transaction; metrics
-    // are derived data, so FULL fsync per commit buys nothing here.
-    this.db.exec('PRAGMA synchronous = NORMAL');
-    this.db.exec('PRAGMA busy_timeout = 5000');
-    ensureMetricsSchema(this.db);
-    this.rowRetentionDays = rowRetentionDays;
-    this.ingester = new ChronicleMetricsIngester(this.db, this.directory, this.dbPath);
+    try {
+      // Derived data that is dropped wholesale on a schema bump and pruned by
+      // day: it has to be able to give pages back, or the file only ever grows
+      // to its all-time high-water mark. Must precede the WAL switch and the
+      // first CREATE TABLE, per ensureIncrementalVacuum.
+      ensureIncrementalVacuum(this.db);
+      this.db.exec('PRAGMA journal_mode = WAL');
+      // Every other SQLite store in the repo pairs WAL with NORMAL durability and
+      // a busy timeout. Without the timeout a concurrent writer fails instantly
+      // with SQLITE_BUSY instead of waiting out the other transaction; metrics
+      // are derived data, so FULL fsync per commit buys nothing here.
+      this.db.exec('PRAGMA synchronous = NORMAL');
+      this.db.exec('PRAGMA busy_timeout = 5000');
+      ensureMetricsSchema(this.db);
+      this.rowRetentionDays = rowRetentionDays;
+      this.ingester = new ChronicleMetricsIngester(this.db, this.directory, this.dbPath);
+    } catch (error) {
+      try {
+        this.db.close?.();
+      } catch {
+        // Preserve the primary initialization error.
+      }
+      throw error;
+    }
   }
 
   /**
