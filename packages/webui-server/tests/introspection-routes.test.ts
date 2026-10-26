@@ -55,6 +55,32 @@ function harness(maxToolsCount?: number) {
 }
 
 describe('canonical introspection handler family', () => {
+  it.each(['disable', 'enable'] as const)(
+    'correlates tool %s success and refusal without altering legacy replies',
+    async (action) => {
+      const { context, sent, tools } = harness();
+      await handleIntrospectionRoute(context, {} as WebSocket, {
+        type: `tool.${action}`,
+        payload: { name: 'read', requestId: 'native-tool-1' },
+      });
+      expect(sent.at(-1)?.payload).toEqual({ name: 'read', ok: true, requestId: 'native-tool-1' });
+      tools[action].mockReturnValueOnce(false);
+      await handleIntrospectionRoute(context, {} as WebSocket, {
+        type: `tool.${action}`,
+        payload: { name: 'missing', requestId: 'native-tool-2' },
+      });
+      expect(sent.at(-1)?.payload).toEqual({
+        name: 'missing',
+        ok: false,
+        requestId: 'native-tool-2',
+      });
+      await handleIntrospectionRoute(context, {} as WebSocket, {
+        type: `tool.${action}`,
+        payload: { name: 'read' },
+      });
+      expect(sent.at(-1)?.payload).toEqual({ name: 'read', ok: true });
+    },
+  );
   it('matches the shared diagnostics golden fixture', async () => {
     const { context, sent } = harness();
     expect(await handleIntrospectionRoute(context, {} as WebSocket, fixture.request)).toBe(true);

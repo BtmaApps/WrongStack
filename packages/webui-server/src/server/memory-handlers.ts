@@ -1,4 +1,5 @@
 import { requiresSage } from './memory-candidate-handlers.js';
+import { sageMemorySummary } from './memory-summary.js';
 
 export {
   handleSageBackfillRecoverable,
@@ -185,7 +186,13 @@ export async function handleSageListPage(
       ]);
       send(ws, {
         type: 'memory.sage.listPage',
-        payload: withRequestId(payload, stats ? { ...page, stats } : { ...page }),
+        payload: withRequestId(payload, {
+          ...page,
+          ...(payload['summaryOnly'] === true
+            ? { memories: page.memories.map(sageMemorySummary) }
+            : {}),
+          ...(stats ? { stats } : {}),
+        }),
       });
       return;
     }
@@ -209,7 +216,10 @@ export async function handleSageListPage(
     send(ws, {
       type: 'memory.sage.listPage',
       payload: withRequestId(payload, {
-        memories: filtered.slice(0, limit),
+        memories:
+          payload['summaryOnly'] === true
+            ? filtered.slice(0, limit).map(sageMemorySummary)
+            : filtered.slice(0, limit),
         nextCursor: null,
         total: filtered.length,
         statusCounts,
@@ -387,7 +397,25 @@ export async function handleSageGraph(
       ? Math.max(1, Math.min(250, Math.floor(payload['limit'])))
       : 100;
   try {
-    const edges = await Sage.graphFor(query, maxDepth, limit);
+    const roots = Array.isArray(payload['roots'])
+      ? [
+          ...new Set(
+            payload['roots'].filter(
+              (root): root is string =>
+                typeof root === 'string' && root.startsWith('mem:') && root.length > 4,
+            ),
+          ),
+        ].slice(0, 40)
+      : [];
+    const unique = new Map<string, Awaited<ReturnType<typeof Sage.graphFor>>[number]>();
+    for (const root of roots.length ? roots : [query]) {
+      if (unique.size >= limit) break;
+      for (const edge of await Sage.graphFor(root, maxDepth, limit - unique.size)) {
+        unique.set(`${edge.from}:${edge.to}:${edge.relation}`, edge);
+        if (unique.size >= limit) break;
+      }
+    }
+    const edges = [...unique.values()];
     const memoryIds = new Set<string>();
     for (const edge of edges) {
       for (const node of [edge.from, edge.to]) {
@@ -399,7 +427,11 @@ export async function handleSageGraph(
     );
     send(ws, {
       type: 'memory.sage.graph',
-      payload: withRequestId(msg, { query, edges, memories }),
+      payload: withRequestId(msg, {
+        query,
+        edges,
+        memories: payload['summaryOnly'] === true ? memories.map(sageMemorySummary) : memories,
+      }),
     });
   } catch (err) {
     send(ws, {
@@ -441,6 +473,7 @@ export async function handleSageUpdate(
   // Extract patch fields (everything except id)
   const patch: Record<string, unknown> = { ...payload };
   delete patch['id'];
+  delete patch['requestId'];
 
   if (Object.keys(patch).length === 0) {
     send(ws, {
@@ -495,6 +528,9 @@ export async function handleSageRemember(
       validity: payload['validity'],
       kind: payload['kind'] as string | undefined,
       scope: payload['scope'] as string | undefined,
+      persistence: payload['persistence'],
+      sources: payload['sources'],
+      expiresAt: payload['expiresAt'],
       tags: payload['tags'] as string[] | undefined,
       anchors: payload['anchors'] as
         | Array<{ type: string; path?: string; symbol?: string; command?: string }>
@@ -520,7 +556,7 @@ export async function handleSageRemember(
 /**
  * Delete a Sage entry (soft-delete with cascade cleanup).
  * Request:  { type: 'memory.sage.delete', payload: { id, reason?, force?, neverInject? } }
- * Response: { type: 'memory.sage.delete', payload: { success, message } }
+ * Response: { type: 'memory.sage.delete', payload: { success, message, requestId? } }
  *
  * `force` defaults to `false`. The caller must explicitly pass `force: true`
  * to authorize deletion. The permanent-memory guard in `deleteSage` is
@@ -543,7 +579,7 @@ export async function handleSageDelete(
   if (!Sage) {
     send(ws, {
       type: 'memory.sage.delete',
-      payload: { success: false, message: requiresSage('memory.sage.delete') },
+      payload: withRequestId(msg, { success: false, message: requiresSage('memory.sage.delete') }),
     });
     return;
   }
@@ -560,7 +596,7 @@ export async function handleSageDelete(
   if (!id) {
     send(ws, {
       type: 'memory.sage.delete',
-      payload: { success: false, message: 'id is required' },
+      payload: withRequestId(msg, { success: false, message: 'id is required' }),
     });
     return;
   }
@@ -571,12 +607,12 @@ export async function handleSageDelete(
     });
     send(ws, {
       type: 'memory.sage.delete',
-      payload: { success: true, message: `Deleted memory "${id}".` },
+      payload: withRequestId(msg, { success: true, message: `Deleted memory "${id}".` }),
     });
   } catch (err) {
     send(ws, {
       type: 'memory.sage.delete',
-      payload: { success: false, message: errMessage(err) },
+      payload: withRequestId(msg, { success: false, message: errMessage(err) }),
     });
   }
 }
@@ -661,14 +697,17 @@ export async function handleSageForFile(
   if (!Sage?.findMemoriesForFile) {
     send(ws, {
       type: 'memory.sage.forFile',
-      payload: { error: requiresSage('memory.sage.forFile') },
+      payload: withRequestId(msg, { error: requiresSage('memory.sage.forFile') }),
     });
     return;
   }
   const payload = (msg as { payload: Record<string, unknown> }).payload ?? {};
   const filePath = payload['filePath'] as string | undefined;
   if (!filePath) {
-    send(ws, { type: 'memory.sage.forFile', payload: { error: 'filePath is required' } });
+    send(ws, {
+      type: 'memory.sage.forFile',
+      payload: withRequestId(msg, { error: 'filePath is required' }),
+    });
     return;
   }
   // The wire request uses the UI-facing `showSuperseded` / `showDeleted`
@@ -697,8 +736,11 @@ export async function handleSageForFile(
     // error branch below uses (`payload.error`). Sending the bucket object
     // as the payload itself made every client read `payload.response` as
     // `undefined` and render "no memories" for files that had matches.
-    send(ws, { type: 'memory.sage.forFile', payload: { response } });
+    send(ws, { type: 'memory.sage.forFile', payload: withRequestId(msg, { response }) });
   } catch (err) {
-    send(ws, { type: 'memory.sage.forFile', payload: { error: errMessage(err) } });
+    send(ws, {
+      type: 'memory.sage.forFile',
+      payload: withRequestId(msg, { error: errMessage(err) }),
+    });
   }
 }

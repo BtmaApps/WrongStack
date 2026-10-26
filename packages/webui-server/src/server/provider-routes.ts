@@ -5,6 +5,7 @@ import { parseNativeCloudSettings } from '@wrongstack/core/cloud-provider';
 import { modelsDevModelSchema } from '@wrongstack/core/models';
 import { getAllProviderQuota, withQuotaPace } from '@wrongstack/core/quota';
 import type { WebSocket } from 'ws';
+import { correlatedReply } from './correlated-reply.js';
 import type { WSClientMessage } from './types.js';
 import { runWithOperationRequest, send, sendResult } from './ws-utils.js';
 
@@ -272,6 +273,8 @@ export async function handleProviderRoute(
   msg: WSClientMessage,
   routes: ProviderRouteHandlers,
 ): Promise<boolean> {
+  if (msg.type === 'providers.saved' || msg.type === 'provider.models')
+    ws = correlatedReply(ws, msg.payload, [msg.type, 'key.operation_result']).socket;
   const payload = asPayloadRecord(msg);
   const requestId = typeof payload?.['requestId'] === 'string' ? payload['requestId'] : undefined;
   return runWithOperationRequest(requestId, () => dispatchProviderRoute(ws, msg, routes));

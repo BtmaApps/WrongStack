@@ -19,6 +19,7 @@
 // "one callback per owned message type", not "smallest possible surface".
 
 import type { WebSocket } from 'ws';
+import { correlatedReply } from './correlated-reply.js';
 import type { WSClientMessage } from './types.js';
 
 export interface McpRouteHandlers {
@@ -73,6 +74,15 @@ export async function handleMcpRoute(
   msg: WSClientMessage,
   handlers: McpRouteHandlers,
 ): Promise<boolean> {
+  // Task observers retain the actual socket as their subscription identity and
+  // already correlate their replies. A per-request proxy would leak listeners.
+  if (!msg.type.startsWith('mcp.tasks.'))
+    ws = correlatedReply(ws, msg.payload, [
+      msg.type,
+      'mcp.operation_result',
+      'mcp.auth.pending',
+      'mcp.auth.status',
+    ]).socket;
   switch (msg.type) {
     case 'mcp.tasks.subscribe':
       await handlers.tasksSubscribe(ws, msg);

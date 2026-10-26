@@ -77,8 +77,10 @@ export async function handleFilesTree(
   // Use the optional `path` from the message payload as the tree root.
   // When absent, empty, or ".", fall back to projectRoot (backward compatible).
   const sessionId = messageSessionId(msg as { payload?: unknown });
-  const payload = (msg as { payload?: { path?: string | undefined } }).payload;
+  const payload = (msg as { payload?: { path?: string | undefined; includeIgnored?: boolean } })
+    .payload;
   const rawPath = payload?.path?.trim();
+  const includeIgnored = payload?.includeIgnored === true;
 
   // Guard: the requested tree root must be both lexically AND via
   // realpath() inside the project root. A symlinked subdirectory that
@@ -166,7 +168,8 @@ export async function handleFilesTree(
         // when it is a symlink to a directory (readdir reports
         // isDirectory() === false for symlinks, which would otherwise let a
         // `node_modules/` rule miss a symlinked node_modules).
-        if (isGitignored(childPath, await isEntryDirectory(dir, e))) return null;
+        const ignored = isGitignored(childPath, await isEntryDirectory(dir, e));
+        if (ignored && !includeIgnored) return null;
         if (e.isDirectory()) {
           if (SKIP_DIRS.has(e.name)) return null;
           // Reject symlinked directories whose real path escapes the
@@ -185,6 +188,7 @@ export async function handleFilesTree(
             name: e.name,
             path: childPath,
             type: 'directory',
+            ...(ignored ? { ignored: true } : {}),
             children: await buildTree(realChild, childRel, depth + 1),
           };
         }
@@ -200,6 +204,7 @@ export async function handleFilesTree(
           path: childPath,
           type: 'file',
           size: fileStat.size,
+          ...(ignored ? { ignored: true } : {}),
         };
       }),
     );

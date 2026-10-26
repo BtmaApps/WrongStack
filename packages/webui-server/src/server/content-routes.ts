@@ -5,6 +5,7 @@ import {
   handleBrowserLiveUnwatch,
   handleBrowserLiveWatch,
 } from './browser-live.js';
+import { correlatedReply } from './correlated-reply.js';
 import {
   type DesignContext,
   handleDesignList,
@@ -72,6 +73,26 @@ export async function handleContentRoute(
   ws: WebSocket,
   message: WSClientMessage,
 ): Promise<boolean> {
+  if (message.type.startsWith('files.'))
+    ws = correlatedReply(ws, message.payload, [
+      message.type,
+      'files.written',
+      'files.created',
+      'files.deleted',
+      'files.renamed',
+      'files.moved',
+      'files.skeleton_result',
+    ]).socket;
+  if (message.type.startsWith('skills.'))
+    ws = correlatedReply(ws, message.payload, [
+      message.type,
+      'skills.installed',
+      'skills.uninstalled',
+      'skills.updated',
+      'skills.created',
+      'skills.edited',
+      'skills.exported',
+    ]).socket;
   /**
    * Design context for the asking tab, carrying its session id so every
    * response can be stamped and routed back to that tab's lane only. Without

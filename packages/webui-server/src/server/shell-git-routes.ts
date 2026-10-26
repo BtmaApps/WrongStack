@@ -1,4 +1,5 @@
 import type { WebSocket } from 'ws';
+import { correlatedReply } from './correlated-reply.js';
 import type { WSClientMessage } from './types.js';
 
 export interface ShellGitRouteHandlers {
@@ -20,6 +21,8 @@ export async function handleShellGitRoute(
   msg: WSClientMessage,
   handlers: ShellGitRouteHandlers,
 ): Promise<boolean> {
+  if (msg.type.startsWith('git.'))
+    ws = correlatedReply(ws, msg.payload, [msg.type, 'git.action_result']).socket;
   switch (msg.type) {
     case 'git.info':
       await handlers.gitInfo(ws);

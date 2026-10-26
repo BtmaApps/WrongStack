@@ -1,5 +1,6 @@
 import type { Context } from '@wrongstack/core/agent';
 import type { WebSocket } from 'ws';
+import { correlatedReply } from './correlated-reply.js';
 import { handleKanbanBoardRoute } from './kanban-board-routes.js';
 import { handleKanbanContractRoute } from './kanban-contract-routes.js';
 import { handleKanbanDecompositionRoute } from './kanban-decomposition-routes.js';
@@ -50,6 +51,7 @@ export async function handleKanbanRoute(
   if (!msg.type.startsWith('kanban.')) return false;
   const payload = msg.payload as Record<string, unknown> | undefined;
   const type = msg.type;
+  ws = correlatedReply(ws, payload, [type]).socket;
   // Attribute this message to the tab that sent it. Everything downstream
   // (`activityContext`, `touchTaskPresence`) reads it through
   // `actingSessionId`, so one stamp here covers every route below.

@@ -13,8 +13,15 @@
 import type * as http from 'node:http';
 import { sanitizeApiError } from '@wrongstack/core/security';
 import type { CodeMapGraph } from '@wrongstack/tools';
-import { fileGraphService, packageGraphService, symbolGraphService } from '@wrongstack/tools';
 import {
+  fileGraphService,
+  getIndexState,
+  packageGraphService,
+  runStartupIndex,
+  symbolGraphService,
+} from '@wrongstack/tools';
+import {
+  clearCodemapGraphCache,
   codemapCacheKey,
   getCachedCodemapBody,
   indexDbVersion,
@@ -26,6 +33,48 @@ interface CodemapHandlerDeps {
   projectRoot: string;
   /** Optional index directory override (tests, custom wiring). */
   indexDir?: string | undefined;
+}
+const indexJobs = new Map<
+  string,
+  {
+    status: 'indexing' | 'ready' | 'error';
+    startedAt: number;
+    finishedAt?: number;
+    result?: unknown;
+    error?: string;
+  }
+>();
+/** Explicit project indexing is independent of conversations and provider availability. */
+export function handleCodemapIndex(
+  res: http.ServerResponse,
+  deps: CodemapHandlerDeps,
+  start: boolean,
+): void {
+  if (start && indexJobs.get(deps.projectRoot)?.status !== 'indexing') {
+    const job: NonNullable<ReturnType<typeof indexJobs.get>> = {
+      status: 'indexing',
+      startedAt: Date.now(),
+    };
+    indexJobs.set(deps.projectRoot, job);
+    void runStartupIndex({
+      projectRoot: deps.projectRoot,
+      indexDir: deps.indexDir,
+      timeoutMs: 120000,
+    })
+      .then((result) => {
+        job.status = 'ready';
+        job.finishedAt = Date.now();
+        job.result = result;
+        clearCodemapGraphCache();
+      })
+      .catch((error: unknown) => {
+        job.status = 'error';
+        job.finishedAt = Date.now();
+        job.error = sanitizeApiError(error);
+      });
+  }
+  res.writeHead(start ? 202 : 200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify({ ...indexJobs.get(deps.projectRoot), progress: getIndexState() }));
 }
 
 function sendJsonBody(

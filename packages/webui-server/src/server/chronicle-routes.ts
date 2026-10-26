@@ -20,8 +20,7 @@ const accessCache = new Map<string, ChronicleProjectAccess>();
 const ACCESS_CACHE_MAX_PROJECTS = 8;
 
 function queryRequestId(message: WSClientMessage): string | undefined {
-  if (message.type !== 'chronicle.query' || !message.payload || typeof message.payload !== 'object')
-    return undefined;
+  if (!message.payload || typeof message.payload !== 'object') return undefined;
   const id = (message.payload as { requestId?: unknown }).requestId;
   return typeof id === 'string' && id.length > 0 && id.length <= 200 ? id : undefined;
 }
@@ -52,6 +51,21 @@ export async function handleChronicleRoute(
   message: WSClientMessage,
 ): Promise<boolean> {
   if (!message.type.startsWith('chronicle.')) return false;
+  const requestId = queryRequestId(message);
+  if (requestId) {
+    const send = ctx.send;
+    ctx = {
+      ...ctx,
+      send: (client, reply) =>
+        send(client, {
+          ...reply,
+          payload: {
+            ...(reply.payload && typeof reply.payload === 'object' ? reply.payload : {}),
+            requestId,
+          },
+        }),
+    };
+  }
   if (message.type === 'chronicle.status') {
     try {
       const access = ctx.getChronicleAccess?.() ?? defaultChronicleAccess(ctx.getProjectRoot());

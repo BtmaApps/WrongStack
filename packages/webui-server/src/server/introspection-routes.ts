@@ -273,7 +273,7 @@ export async function handleIntrospectionRoute(
       if (ok) persistDisabledTool(ctx, name, disabled);
       ctx.send(ws, {
         type: disabled ? 'tool.disabled' : 'tool.enabled',
-        payload: { name, ok },
+        payload: withRequestId(message.payload, { name, ok }),
       });
       return true;
     }

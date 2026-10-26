@@ -72,6 +72,72 @@ function makeSage(extra: Record<string, unknown> = {}) {
 }
 
 describe('memory-handlers', () => {
+  it('bounds preview roots and deduplicates persisted graph edges without a vector lookup', async () => {
+    const edge = { from: 'mem:a', to: 'mem:b', relation: 'related_to', weight: 1 };
+    const sage = makeSage({
+      graphFor: vi.fn(async () => [edge]),
+      getSage: vi.fn(async (id: string) => ({ id, text: 'preview' })),
+    });
+    mockGetSageSurface.mockReturnValue(sage);
+    const ws = mockWs();
+    await handleSageGraph(
+      ws,
+      msg({
+        query: 'mem:a',
+        roots: ['mem:a', 'mem:b', 'mem:a', 7, 'file:ignored'],
+        summaryOnly: true,
+      }),
+      {} as any,
+    );
+    expect(sage.graphFor.mock.calls.map((call: unknown[]) => call[0])).toEqual(['mem:a', 'mem:b']);
+    expect(JSON.parse(ws.send.mock.calls[0][0]).payload.edges).toHaveLength(1);
+    const many = makeSage();
+    mockGetSageSurface.mockReturnValue(many);
+    await handleSageGraph(
+      mockWs(),
+      msg({ query: 'mem:a', roots: Array.from({ length: 55 }, (_, i) => 'mem:' + i) }),
+      {} as any,
+    );
+    expect(many.graphFor).toHaveBeenCalledTimes(40);
+  });
+  it('returns bounded SAGE previews without record bodies when summaries are requested', async () => {
+    const ws = mockWs();
+    const sage = makeSage();
+    mockGetSageSurface.mockReturnValue(sage);
+    await handleSageListPage(ws, msg({ summaryOnly: true, requestId: 'summary-proof' }), {} as any);
+    const payload = JSON.parse(ws.send.mock.calls[0][0]).payload;
+    expect(payload.requestId).toBe('summary-proof');
+    expect(payload.memories[0].text).toBeUndefined();
+    expect(payload.memories[0].preview).toBe('hello world');
+    expect(payload.total).toBe(2);
+    expect(payload.stats.total).toBe(2);
+  });
+  it('returns stored graph edges with summary-only neighbors, retaining the full-record legacy response', async () => {
+    const sage = makeSage({
+      graphFor: vi.fn(async () => [
+        { from: 'mem:one', to: 'mem:two', relation: 'supports', weight: 0.8 },
+      ]),
+      getSage: vi.fn(async (id: string) => ({
+        id,
+        text: 'A'.repeat(400),
+        kind: 'fact',
+        status: 'active',
+        tags: [],
+        sources: [{ content: 'full evidence' }],
+      })),
+    });
+    mockGetSageSurface.mockReturnValue(sage);
+    const ws = mockWs();
+    await handleSageGraph(ws, msg({ query: 'mem:one', summaryOnly: true }), {} as any);
+    const summary = JSON.parse(ws.send.mock.calls[0][0]).payload;
+    expect(summary.edges[0].relation).toBe('supports');
+    expect(summary.memories[0].text).toBeUndefined();
+    expect(summary.memories[0].sources).toBeUndefined();
+    expect(summary.memories[0].preview.length).toBeLessThanOrEqual(120);
+    const legacy = mockWs();
+    await handleSageGraph(legacy, msg({ query: 'mem:one' }), {} as any);
+    expect(JSON.parse(legacy.send.mock.calls[0][0]).payload.memories[0].text).toHaveLength(400);
+  });
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -463,6 +529,34 @@ describe('memory-handlers', () => {
   });
 
   describe('handleSageDelete', () => {
+    it.each(['success', 'protected', 'missing', 'unavailable'])(
+      'correlates %s deletion replies without changing authorization',
+      async (scenario) => {
+        const ws = mockWs();
+        const sage = makeSage({
+          deleteSage: vi.fn(async () => {
+            if (scenario === 'protected') throw new Error('Explicit authorization required');
+          }),
+        });
+        mockGetSageSurface.mockReturnValue(scenario === 'unavailable' ? null : sage);
+        await handleSageDelete(
+          ws,
+          msg({
+            requestId: 'desktop-delete-1',
+            ...(scenario === 'missing' ? {} : { id: 'mem-1' }),
+          }),
+          {} as any,
+        );
+        const sent = JSON.parse(ws.send.mock.calls[0][0]);
+        expect(sent.payload.requestId).toBe('desktop-delete-1');
+        expect(sent.payload.success).toBe(scenario === 'success');
+        if (scenario === 'success' || scenario === 'protected')
+          expect(sage.deleteSage).toHaveBeenCalledWith('mem-1', undefined, {
+            force: false,
+            neverInject: false,
+          });
+      },
+    );
     it('sends error when id missing', async () => {
       const ws = mockWs();
       mockGetSageSurface.mockReturnValue(makeSage());

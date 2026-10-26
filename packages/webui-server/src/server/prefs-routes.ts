@@ -16,6 +16,7 @@
 // closure dependency is added.
 
 import type { WebSocket } from 'ws';
+import { correlatedReply } from './correlated-reply.js';
 import {
   handlePrefsGet,
   handlePrefsUpdate,
@@ -25,7 +26,7 @@ import {
 } from './prefs-handlers.js';
 import type { WSClientMessage } from './types.js';
 import { handleUserInstructions } from './user-instructions-handlers.js';
-import { messageSessionId, send } from './ws-utils.js';
+import { errMessage, messageSessionId, send } from './ws-utils.js';
 
 export interface PrefsRouteHandlers {
   /** Respond to the WS client with one session's pref snapshot. */
@@ -107,11 +108,31 @@ export async function handlePrefsRoute(
     case 'prefs.get': {
       // A tab asks for ITS prefs; the session-scoped half of the answer is
       // meaningless without knowing which tab asked.
-      await handlers.getPrefs(ws, messageSessionId(msg));
+      await handlers.getPrefs(
+        correlatedReply(ws, msg.payload, ['prefs.updated']).socket,
+        messageSessionId(msg),
+      );
       return true;
     }
     case 'prefs.update': {
-      await handlers.updatePrefs(ws, (msg.payload ?? {}) as Record<string, unknown>);
+      const { requestId: _requestId, ...payload } = (msg.payload ?? {}) as Record<string, unknown>;
+      const reply = correlatedReply(ws, msg.payload, ['key.operation_result']);
+      try {
+        await handlers.updatePrefs(reply.socket, payload);
+        if (reply.requestId && !reply.replied)
+          send(reply.socket, {
+            type: 'key.operation_result',
+            payload: { success: true, message: 'WrongStack settings saved.' },
+          });
+      } catch (error) {
+        send(reply.socket, {
+          type: 'key.operation_result',
+          payload: {
+            success: false,
+            message: errMessage(error),
+          },
+        });
+      }
       return true;
     }
     case 'system_prompt.get': {

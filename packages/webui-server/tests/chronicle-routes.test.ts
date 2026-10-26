@@ -77,6 +77,31 @@ function harness() {
 }
 
 describe('canonical Chronicle handler family', () => {
+  it('correlates independent dashboard reads and failures without changing gateway arguments', async () => {
+    const { context, call, sent } = harness();
+    for (const type of [
+      'chronicle.status',
+      'chronicle.metrics',
+      'chronicle.facets',
+      'chronicle.graph',
+    ] as const) {
+      await handleChronicleRoute(context, {} as WebSocket, {
+        type,
+        payload: { requestId: type, fields: ['eventType'], view: 'providers' },
+      });
+      expect(sent.at(-1)?.payload).toHaveProperty('requestId', type);
+    }
+    expect(call).toHaveBeenCalledWith('metrics', { view: 'providers', providers: {} });
+    call.mockRejectedValueOnce(new Error('Collector disconnected'));
+    await handleChronicleRoute(context, {} as WebSocket, {
+      type: 'chronicle.status',
+      payload: { requestId: 'status-retry' },
+    });
+    expect(sent.at(-1)).toMatchObject({
+      type: 'chronicle.error',
+      payload: { requestId: 'status-retry', message: 'Collector disconnected' },
+    });
+  });
   it('correlates query errors and ignores invalid request IDs', async () => {
     const { context, call, sent } = harness();
     call.mockRejectedValue(new Error('Journal unavailable'));

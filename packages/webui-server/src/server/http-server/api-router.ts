@@ -7,6 +7,7 @@ import { getIndexState } from '@wrongstack/tools';
 import type { VectorMemoryStore } from '@wrongstack/vector-memory';
 import {
   handleCodemapFiles,
+  handleCodemapIndex,
   handleCodemapPackages,
   handleCodemapSymbols,
 } from '../codemap-handlers.js';
@@ -310,6 +311,23 @@ export async function handleApiRoutes(
     return true;
   }
 
+  if (
+    (url.pathname === '/api/codemap/index' && req.method === 'POST') ||
+    (url.pathname === '/api/codemap/status' && req.method === 'GET')
+  ) {
+    if (requireAccessToken && !accessTokenOk) return unauthorized(res);
+    if (!deps.projectRoot) {
+      res.writeHead(503, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Project root not configured' }));
+      return true;
+    }
+    handleCodemapIndex(
+      res,
+      { projectRoot: deps.projectRoot, ...(deps.indexDir ? { indexDir: deps.indexDir } : {}) },
+      req.method === 'POST',
+    );
+    return true;
+  }
   if (url.pathname === '/api/codemap/packages' && req.method === 'GET') {
     if (requireAccessToken && !accessTokenOk) return unauthorized(res);
     if (!deps.projectRoot) {

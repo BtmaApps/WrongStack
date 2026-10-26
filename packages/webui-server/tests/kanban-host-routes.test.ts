@@ -14,6 +14,25 @@ function handlers(): KanbanHostRouteHandlers {
 }
 
 describe('handleKanbanHostRoute', () => {
+  it('correlates task inspector metadata without stamping unrelated broadcasts', async () => {
+    const send = vi.fn();
+    const socket = { send } as unknown as WebSocket;
+    const routeHandlers = handlers();
+    routeHandlers.meta = (reply) => {
+      reply.send(
+        JSON.stringify({ type: 'kanban.meta', payload: { success: true, data: { tools: [] } } }),
+      );
+      reply.send(JSON.stringify({ type: 'kanban.list', payload: { data: [] } }));
+    };
+    await handleKanbanHostRoute(
+      socket,
+      { type: 'kanban.meta', payload: { requestId: 'inspector-metadata' } },
+      routeHandlers,
+    );
+    const replies = send.mock.calls.map((c) => JSON.parse(String(c[0])));
+    expect(replies[0].payload.requestId).toBe('inspector-metadata');
+    expect(replies[1].payload.requestId).toBeUndefined();
+  });
   it.each([
     ['kanban.meta', 'meta'],
     ['kanban.supervisor.status', 'supervisorStatus'],

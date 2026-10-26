@@ -1,4 +1,5 @@
 import type { WebSocket } from 'ws';
+import { correlatedReply } from './correlated-reply.js';
 import type { WSClientMessage } from './types.js';
 
 export interface KanbanHostRouteHandlers {
@@ -13,6 +14,7 @@ export async function handleKanbanHostRoute(
   msg: WSClientMessage,
   handlers: KanbanHostRouteHandlers,
 ): Promise<boolean> {
+  ws = correlatedReply(ws, msg.payload, [msg.type]).socket;
   switch (msg.type) {
     case 'kanban.meta':
       await handlers.meta(ws, msg);
