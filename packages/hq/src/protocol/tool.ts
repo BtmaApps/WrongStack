@@ -86,6 +86,8 @@ export interface HqApprovalResolvedPayload {
     | 'abort';
   source: 'brain_timeout' | 'abort' | 'user';
   rationale?: string;
+  /** Epoch ms when a persistent (`always*`) grant answered from HQ lapses, when bounded. */
+  grantedUntil?: number;
 }
 
 export interface HqUserInputRequestedPayload {

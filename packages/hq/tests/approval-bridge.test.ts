@@ -6,10 +6,11 @@ import {
   createApprovalRegistry,
   startApprovalTelemetryBridge,
 } from '../src/approval-bridge.js';
-import type {
-  HqApprovalRequestedPayload,
-  HqApprovalResolvedPayload,
-  HqRedactionPolicy,
+import {
+  type HqApprovalRequestedPayload,
+  type HqApprovalResolvedPayload,
+  type HqRedactionPolicy,
+  parseHqEventPayload,
 } from '../src/protocol.js';
 import type { HqPublisher } from '../src/publisher.js';
 
@@ -397,6 +398,44 @@ describe('startApprovalTelemetryBridge', () => {
     const payload = resolved[0]![0].payload as HqApprovalResolvedPayload;
     expect(payload.toolUseId).toBe('repl:1');
     expect(payload.decision).toBe('yes');
+    stop();
+  });
+
+  it('forwards grantedUntil onto approval.resolved when an always approval is answered from HQ (F624)', () => {
+    const events = new EventBus();
+    const registry = make(events);
+    const spy = vi.fn();
+    const stop = startApprovalTelemetryBridge({
+      registry,
+      publisher: fakePublisher(spy),
+      sessionId: 'sess-1',
+    });
+
+    const before = Date.now();
+    registry.register({
+      toolUseId: 'repl:always',
+      toolName: 'bash',
+      sessionId: 'sess-1',
+      deadlineAt: before + 60_000,
+      input: { command: 'git status' },
+      suggestedPattern: 'bash:git status',
+      destructive: false,
+      resolve: vi.fn(),
+    });
+
+    expect(registry.resolve('repl:always', 'always', 'sess-1', 120_000)).toBe(true);
+
+    const resolved = spy.mock.calls.filter((c) => c[0].type === 'approval.resolved');
+    expect(resolved).toHaveLength(1);
+    const payload = resolved[0]![0].payload as HqApprovalResolvedPayload;
+    expect(payload.toolUseId).toBe('repl:always');
+    expect(payload.decision).toBe('always');
+    expect(typeof payload.grantedUntil).toBe('number');
+    expect(payload.grantedUntil).toBeGreaterThanOrEqual(before + 120_000);
+    expect(parseHqEventPayload('approval.resolved', payload)).toEqual({
+      ok: true,
+      payload,
+    });
     stop();
   });
 });

@@ -173,6 +173,7 @@ const HQ_BRAIN_EVENT_KINDS = new Set<string>([
   'human_answered',
   'decision_denied',
   'intervention',
+  'council_resolved',
 ]);
 
 function isHqBrainEventPayload(x: unknown): x is HqBrainEventPayload {
@@ -257,7 +258,9 @@ function isHqApprovalResolvedPayload(x: unknown): x is HqApprovalResolvedPayload
     typeof v.decision === 'string' &&
     HQ_APPROVAL_DECISIONS.has(v.decision) &&
     typeof v.source === 'string' &&
-    HQ_APPROVAL_SOURCES.has(v.source)
+    HQ_APPROVAL_SOURCES.has(v.source) &&
+    (v.grantedUntil === undefined ||
+      (typeof v.grantedUntil === 'number' && Number.isFinite(v.grantedUntil)))
   );
 }
 

@@ -33,8 +33,7 @@ import { isPersistentApproval } from '@wrongstack/core/security';
 
 import type { EventBus } from '@wrongstack/contracts/kernel/events';
 import type { UserInputRequest, UserInputResponse } from '@wrongstack/contracts/types/user-input';
-import { markConfirmObserver } from '@wrongstack/core/agent';
-import { markUserInputObserver } from '@wrongstack/core/agent';
+import { markConfirmObserver, markUserInputObserver } from '@wrongstack/core/agent';
 import { type BridgeContextOptions, createBridgeContext } from './bridge-context.js';
 import type { HqApprovalRequestedPayload, HqApprovalResolvedPayload } from './protocol.js';
 import { summarizeHqToolArgs } from './redaction.js';
@@ -596,6 +595,7 @@ export function startApprovalTelemetryBridge(opts: ApprovalTelemetryBridgeOption
       decision: change.decision,
       source: change.source,
       ...(change.rationale !== undefined ? { rationale: change.rationale } : {}),
+      ...(change.grantedUntil !== undefined ? { grantedUntil: change.grantedUntil } : {}),
     };
     ctx.safePublish({
       type: 'approval.resolved',

@@ -1,7 +1,7 @@
 import { EventBus } from '@wrongstack/contracts/kernel/events';
 import { describe, expect, it, vi } from 'vitest';
 import { startBrainTelemetryBridge } from '../src/brain-bridge.js';
-import type { HqBrainEventPayload } from '../src/protocol.js';
+import { type HqBrainEventPayload, parseHqEventPayload } from '../src/protocol.js';
 import type { HqPublisher } from '../src/publisher.js';
 
 function fakePublisher(spy: ReturnType<typeof vi.fn>): HqPublisher {
@@ -246,5 +246,9 @@ describe('startBrainTelemetryBridge — tier and council visibility', () => {
     expect(payload.judgeIsVoter).toBe(true);
     expect(payload.totalTokens).toBe(150);
     expect(payload.warnings).toHaveLength(1);
+    expect(parseHqEventPayload('brain.event', payload)).toEqual({
+      ok: true,
+      payload,
+    });
   });
 });
