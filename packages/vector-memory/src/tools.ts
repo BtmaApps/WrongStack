@@ -146,8 +146,12 @@ function vectorMemorySearchTool(store: VectorMemoryStore): Tool<SearchInput, Sea
       additionalProperties: false,
     },
     execute: async (input) => {
+      const normalizedLimit =
+        typeof input.limit === 'number' && Number.isFinite(input.limit)
+          ? Math.max(1, Math.min(100, Math.floor(input.limit)))
+          : undefined;
       const hits = await store.search(input.query, {
-        limit: input.limit !== undefined ? input.limit : undefined,
+        limit: normalizedLimit,
         threshold: input.threshold !== undefined ? input.threshold : undefined,
         scope: input.scope,
         kind: input.kind,

@@ -99,11 +99,11 @@ export async function syncSageEntries(
             existing.summary === expectedSummary &&
             jsonValuesEqual(existing.tags, expectedTags) &&
             jsonValuesEqual(existing.metadata, expectedMetadata);
-          if (sameState) return false;
-          if (existing) {
+          if (sameState && existing.vector !== undefined) return false;
+          if (existing && !sameState) {
             host.forgetUnlocked(existing.id);
           }
-          await host.rememberUnlocked({
+          const saved = await host.rememberUnlocked({
             text: memory.text,
             summary: expectedSummary,
             metadata: expectedMetadata,
@@ -111,7 +111,7 @@ export async function syncSageEntries(
             scope: 'project',
             kind: 'note',
           });
-          return true;
+          return !sameState || saved.vector !== undefined;
         },
         { timeoutMs: DEFAULT_LOCK_TIMEOUT_MS },
       );

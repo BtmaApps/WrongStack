@@ -155,10 +155,15 @@ export async function fuseWithVectorMemory(
   // inject foreign Sage objects the caller never asked for).
   // Deduplicate by sageId so each SAGE memory has exactly one vector rank
   // (its highest-scoring hit), preventing duplicate RRF score accumulation.
+  const threshold =
+    typeof options.threshold === 'number' && Number.isFinite(options.threshold)
+      ? options.threshold
+      : undefined;
   const vectorRanked: Array<{ memory: Sage; vectorScore: number }> = [];
   const vectorIndexBySageId = new Map<string, number>();
   for (let i = 0; i < vectorHits.length; i++) {
     const hit = vectorHits[i]!;
+    if (threshold !== undefined && hit.score < threshold) continue;
     const rawSageId = (hit.entry.metadata as Record<string, unknown> | undefined)?.['sageId'];
     if (typeof rawSageId !== 'string') continue;
     const sageId = rawSageId.trim();

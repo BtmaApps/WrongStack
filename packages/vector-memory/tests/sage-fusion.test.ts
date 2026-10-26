@@ -17,6 +17,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import {
   asVectorRecallProvider,
+  createVectorMemoryTools,
   fuseWithVectorMemory,
   VectorMemoryStore,
   type VectorSearchHit,
@@ -337,6 +338,67 @@ describe('asVectorRecallProvider', () => {
     const hits = await provider.search('noisy', { limit: 5, threshold: 0.99 });
     for (const hit of hits) {
       expect(hit.score).toBeGreaterThanOrEqual(0.99);
+    }
+  });
+
+  it('recovers missing vectors on syncFromSage, filters precomputed vectorHits by threshold, and clamps search tool limit to 100 (F685)', async () => {
+    let failEmbed = true;
+    const projectRoot = path.join(
+      os.tmpdir(),
+      `wrongstack-vm-f685-${testRunId}-${Math.random().toString(36).slice(2, 8)}`,
+    );
+    const flakyStore = new VectorMemoryStore({
+      projectRoot,
+      provider: {
+        id: 'flaky',
+        dimensions: 4,
+        embed: async (texts: string[]) => {
+          if (failEmbed) throw new Error('offline');
+          return texts.map(() => new Float32Array([0.5, 0.5, 0.5, 0.5]));
+        },
+      },
+    });
+    try {
+      const sageSource = {
+        listActiveMemories: async () => [
+          {
+            id: 'sage-1',
+            text: 'Vector sync recovery invariant',
+            summary: 'Invariant',
+            tags: ['sync'],
+          },
+        ],
+      };
+      await flakyStore.syncFromSage(sageSource);
+      expect(flakyStore.embeddingCoverage().missing).toBe(1);
+
+      failEmbed = false;
+      const recovered = await flakyStore.syncFromSage(sageSource);
+      expect(recovered.indexed).toBe(1);
+      expect(flakyStore.embeddingCoverage().missing).toBe(0);
+      expect(flakyStore.embeddingCoverage().covered).toBe(1);
+
+      const entry = flakyStore.findBySageId('sage-1')!;
+      const fusedLow = await fuseWithVectorMemory('query', [fakeSage('sage-1', entry.text)], {
+        threshold: 0.9,
+        vectorHits: [{ entry, score: 0.2, providerId: 'flaky' }],
+      });
+      expect(fusedLow[0]?.source).toBe('lexical');
+      expect(fusedLow[0]?.vectorScore).toBeNull();
+
+      for (let i = 0; i < 105; i++) {
+        await store.remember({ text: `Bulk entry ${i}` });
+      }
+      const searchTool = createVectorMemoryTools(store).find(
+        (t) => t.name === 'vector_memory_search',
+      )!;
+      const res = (await searchTool.execute(
+        { query: 'Bulk entry', limit: 500 },
+        {} as never,
+      )) as { hits: unknown[] };
+      expect(res.hits.length).toBe(100);
+    } finally {
+      flakyStore.close();
     }
   });
 });
