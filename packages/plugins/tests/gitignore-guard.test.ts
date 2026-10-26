@@ -478,6 +478,20 @@ describe('gitignore_guard_append tool', () => {
       /does not match any configured artifact pattern/,
     );
   });
+
+  it('skips appending when a candidate .gitignore already semantically covers the artifact path (F642)', async () => {
+    virtualFs.set(rootGitignore, '/dist/\n');
+    existsSet.add(rootGitignore);
+    const api = makeApi();
+    await plugin.setup(api as never);
+    const tool = getTool(api, 'gitignore_guard_append');
+
+    const out = await tool.execute({ path: 'dist/bundle.js' });
+    expect(out.ok).toBe(true);
+    expect(out.alreadyCovered).toBe(true);
+    expect(out.appended).toEqual([]);
+    expect(mockWriteFile).not.toHaveBeenCalled();
+  });
 });
 
 describe('gitignore_guard_status tool', () => {

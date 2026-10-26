@@ -569,6 +569,16 @@ const plugin: Plugin = {
         }
 
         const candidates = gitignoreCandidates(relDirOf(resolved.rel), resolved.root);
+        if (!explicit) {
+          for (const candidate of candidates) {
+            const lines = await readGitignoreLines(candidate);
+            const relToIgnore = toForwardSlashes(relative(dirname(candidate), resolved.abs));
+            if (isCoveredByLines(lines, relToIgnore)) {
+              state.coveredSkipCount += 1;
+              return { ok: true, alreadyCovered: true, gitignore: candidate, appended: [] };
+            }
+          }
+        }
         const nearest = await firstExistingGitignore(candidates);
         const target = nearest ?? join(resolved.root, '.gitignore');
         const { appended } = await appendPatterns(target, [pattern], cfg.maxAppendPerCall);
