@@ -563,4 +563,30 @@ describe('MCPRegistry lazy-connect', () => {
     expect(reg.list().find((s) => s.name === 'svc')?.state).toBe('connected');
     await reg.stopAll();
   });
+
+  it('re-registers lazy tools after deactivateServer or permission update and fences sleep() generation (F26)', async () => {
+    const reg = new MCPRegistry({ toolRegistry: toolReg, events, log: silentLog, cacheDir: tmp });
+    await reg.start(lazyCfg('svc', { permission: 'confirm' }));
+    expect(toolReg.list().find((t) => t.name === 'mcp__svc__echo')?.permission).toBe('confirm');
+
+    expect(reg.deactivateServer('svc')).toBe(1);
+    expect(toolReg.list().some((t) => t.name === 'mcp__svc__echo')).toBe(false);
+
+    await reg.sleep('svc');
+    await reg.ensureConnected('svc');
+    expect(toolReg.list().some((t) => t.name === 'mcp__svc__echo')).toBe(true);
+
+    await reg.restart('svc', lazyCfg('svc', { permission: 'auto' }));
+    expect(toolReg.list().find((t) => t.name === 'mcp__svc__echo')?.permission).toBe('auto');
+
+    const slot = (
+      reg as never as { servers: Map<string, { state: string; startupGeneration?: number }> }
+    ).servers.get('svc')!;
+    const beforeGen = slot.startupGeneration ?? 0;
+    slot.state = 'connecting';
+    await reg.sleep('svc');
+    expect(slot.state).toBe('dormant');
+    expect((slot.startupGeneration ?? 0) > beforeGen).toBe(true);
+    await reg.stopAll();
+  });
 });

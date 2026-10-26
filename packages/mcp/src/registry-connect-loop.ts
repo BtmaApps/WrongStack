@@ -66,14 +66,19 @@ export function applySlotTools(
   slot.discoveredTools = tools;
   const allowed = slot.cfg.allowedTools;
   const filtered = tools.filter((t) => !allowed || allowed.includes(t.name));
-  const signature = JSON.stringify(
-    filtered.map((t) => [
+  const permission = slot.cfg.permission ?? 'confirm';
+  const sandboxTrust = slot.cfg.sandboxTrust === true;
+  const signature = JSON.stringify({
+    permission,
+    sandboxTrust,
+    tools: filtered.map((t) => [
       t.name,
       t.description ?? null,
       t.inputSchema ?? null,
       t.outputSchema ?? null,
+      t.annotations ?? null,
     ]),
-  );
+  });
   // Lazy wrappers resolve the live client on every call, so an unchanged tool
   // set needs no rebinding on wake. A CHANGED set must be re-registered — the
   // old early-return kept the manifest's stale schemas registered forever once
@@ -82,7 +87,7 @@ export function applySlotTools(
     slot.lazy &&
     slot.toolSignature === signature &&
     slot.lazyTools.length === filtered.length &&
-    (slot.registeredLazy || ctx.lazyMode);
+    (ctx.lazyMode || (slot.registeredLazy && slot.toolNames.length === filtered.length));
   if (lazyWrappersCurrent) return;
   const clientArg = slot.lazy ? () => ctx.ensureConnected(slot.cfg.name) : expectDefined(client);
   const wrapped = filtered.map((t) =>

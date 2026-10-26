@@ -208,6 +208,7 @@ export function deactivateServer(host: RegistryServerLifecycleHost, name: string
     }
   }
   slot.toolNames = [];
+  slot.registeredLazy = false;
   // The connection stays up: emitting `mcp.server.disconnected` here flipped
   // the WebUI row to an error state with a warning toast after every call.
   host.log.info(`MCP server "${name}" deactivated (${count} tools removed)`);
@@ -277,6 +278,8 @@ export async function sleep(host: RegistryServerLifecycleHost, name: string): Pr
   if (slot.operations.inFlightCalls > 0) {
     throw new Error(`MCP server "${name}" has requests in flight — try again when they finish`);
   }
+  slot.startupGeneration = (slot.startupGeneration ?? 0) + 1;
+  slot.connecting = undefined;
   await sleepIdleSlot(host.idleContext(), slot);
 }
 
