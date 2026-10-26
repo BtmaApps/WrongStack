@@ -22,6 +22,7 @@ function context(options: {
   activeId?: string;
   participants?: string[];
   messageCounts?: Record<string, number>;
+  startedAt?: Record<string, string>;
 }) {
   const ids = options.ids ?? [];
   const store = {
@@ -29,7 +30,7 @@ function context(options: {
       ids.map((id) => ({
         id,
         title: id,
-        startedAt: '2026-01-01T00:00:00.000Z',
+        startedAt: options.startedAt?.[id] ?? '2026-01-01T00:00:00.000Z',
         model: 'test',
         provider: 'test',
         tokenTotal: 0,
@@ -130,13 +131,83 @@ describe('ownerless empty session cleanup', () => {
   it('runs on the configured interval without overlapping and can be disposed', async () => {
     vi.useFakeTimers();
     const fixture = context({ ids: [] });
+    // Hold the first sweep open across the first interval tick: the startup
+    // sweep and the tick coincide for a 1s interval, and the in-flight guard
+    // must collapse them into ONE sweep instead of running a second.
+    let releaseFirstSweep: (() => void) | undefined;
+    fixture.store.list.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          releaseFirstSweep = () => resolve([]);
+        }),
+    );
     const scheduled = scheduleOwnerlessEmptySessionCleanup(fixture.ctx, 1_000);
 
     await vi.advanceTimersByTimeAsync(1_000);
     expect(fixture.store.list).toHaveBeenCalledTimes(1);
 
+    releaseFirstSweep?.();
+    await vi.advanceTimersByTimeAsync(0);
+
     scheduled.dispose();
     await vi.advanceTimersByTimeAsync(2_000);
     expect(fixture.store.list).toHaveBeenCalledTimes(1);
+  });
+
+  it('sweeps once shortly after startup, before the first interval tick', async () => {
+    vi.useFakeTimers();
+    // Leftovers of previous short host runs: ownerless and strictly empty.
+    const fixture = context({ ids: ['active', 'stale'] });
+    // Default 60-minute interval — a host run that lives shorter than that
+    // (open the UI, look, close) must still perform one sweep shortly after
+    // boot, or the sessions its predecessors abandoned are never cleaned.
+    const scheduled = scheduleOwnerlessEmptySessionCleanup(fixture.ctx);
+
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(fixture.store.delete).toHaveBeenCalledWith('stale');
+    expect(fixture.store.delete).not.toHaveBeenCalledWith('active');
+
+    scheduled.dispose();
+    await vi.advanceTimersByTimeAsync(2_000);
+    expect(fixture.store.delete).toHaveBeenCalledTimes(1);
+  });
+
+  it('skips candidates younger than minIdleMs or with an unparseable date, sweeping only idle empties', async () => {
+    const now = Date.now();
+    const fixture = context({
+      ids: ['fresh', 'idle', 'bad-date'],
+      startedAt: {
+        fresh: new Date(now - 60_000).toISOString(),
+        idle: new Date(now - 15 * 60_000).toISOString(),
+        'bad-date': 'not-a-date',
+      },
+    });
+
+    // A just-created session may not be declared anywhere yet (another
+    // surface's brand-new tab, a boot session mid-startup); an unparseable
+    // date must fail closed. Only provably idle empties are swept.
+    await expect(
+      cleanupOwnerlessEmptySessions({ ...fixture.ctx, minIdleMs: 10 * 60_000 }),
+    ).resolves.toEqual({ deleted: 1, errors: 0 });
+
+    expect(fixture.store.delete).toHaveBeenCalledTimes(1);
+    expect(fixture.store.delete).toHaveBeenCalledWith('idle');
+    expect(fixture.store.delete).not.toHaveBeenCalledWith('fresh');
+    expect(fixture.store.delete).not.toHaveBeenCalledWith('bad-date');
+  });
+
+  it('protects sessions other live hosts hold, via extra protected ids', async () => {
+    const fixture = context({ ids: ['held-by-webui', 'free'] });
+
+    await expect(
+      cleanupOwnerlessEmptySessions({
+        ...fixture.ctx,
+        getExtraProtectedSessionIds: async () => ['held-by-webui'],
+      }),
+    ).resolves.toEqual({ deleted: 1, errors: 0 });
+
+    expect(fixture.store.delete).toHaveBeenCalledTimes(1);
+    expect(fixture.store.delete).not.toHaveBeenCalledWith('held-by-webui');
+    expect(fixture.store.delete).toHaveBeenCalledWith('free');
   });
 });

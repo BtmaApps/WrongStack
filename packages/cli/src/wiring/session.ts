@@ -39,6 +39,7 @@ import {
   sessionKanbanDegradation,
   settleSessionKanbanBackgroundWork,
 } from '@wrongstack/tools/session-kanban';
+import { scheduleInteractiveEmptySessionSweep } from './empty-session-sweep.js';
 import { announceRecoverableSession, pickResumeCandidate } from './resume-candidate.js';
 export interface SessionResult {
   session: SessionWriter;
@@ -283,6 +284,19 @@ export async function setupSession(params: {
   }
 
   const sessionRef: { current?: SessionWriter | undefined } = { current: session };
+  // Sweep sessions earlier runs started and never used — previous launches of
+  // this host, and abandoned WebUI tabs — so they no longer wait out the
+  // 30-day prune. Cross-host protection: every session a live surface holds
+  // in the SessionRegistry, plus a minimum idle age for just-created sessions
+  // nothing here can see (a background WebUI tab is invisible to the catalog).
+  // Fire-and-forget like the prune above; the scheduler's timers are unref'd.
+  scheduleInteractiveEmptySessionSweep({
+    sessionStore,
+    globalRoot: wpaths.globalRoot,
+    projectSlug: path.basename(wpaths.projectDir),
+    getActiveSessionId: () => sessionRef.current?.id,
+    logger: loggerParam,
+  });
   const sessionId = expectDefined(session?.id, 'active session id');
   const sessionDir = sessionScopedPath(wpaths.projectSessions, sessionId, '');
 

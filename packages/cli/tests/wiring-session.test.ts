@@ -9,6 +9,30 @@ import { removeProjectFixtureDirectory } from '../../core/tests/helpers/project-
 import { type SessionResult, setupSession } from '../src/wiring/session.js';
 
 /**
+ * The interactive empty-session sweep is scheduled by the boot path itself.
+ * The module is replaced here so the assertions are about the WIRING (the
+ * sweep is scheduled, with the session, store and project this boot
+ * established) rather than about the sweep's own behaviour, which
+ * `wiring-empty-session-sweep.test.ts` covers.
+ */
+type SweepInput = {
+  sessionStore: SessionStore;
+  globalRoot: string;
+  projectSlug: string | undefined;
+  getActiveSessionId: () => string | undefined;
+};
+
+const { scheduleEmptySessionSweepMock } = vi.hoisted(() => ({
+  scheduleEmptySessionSweepMock: vi.fn((_input: SweepInput) => ({
+    dispose: vi.fn(async () => undefined),
+    runNow: vi.fn(async () => ({ deleted: 0, errors: 0 })),
+  })),
+}));
+vi.mock('../src/wiring/empty-session-sweep.js', () => ({
+  scheduleInteractiveEmptySessionSweep: scheduleEmptySessionSweepMock,
+}));
+
+/**
  * `setupSession` reaches @wrongstack/tools/session-kanban -> @wrongstack/kanban,
  * which spawns a detached daemon rooted at this temp dir. The daemon outlived
  * the test and kept running against a deleted directory (the `maxRetries` on
@@ -597,5 +621,32 @@ describe('setupSession', () => {
     expect(renderer.writeInfo).toHaveBeenCalledWith(
       expect.stringMatching(/Plan: 3 items \(2 open, 1 done\)/),
     );
+  });
+
+  it('schedules the interactive empty-session sweep for the session it just booted', async () => {
+    scheduleEmptySessionSweepMock.mockClear();
+    const sessionStore = makeSessionStore();
+    const wpaths = makeWpaths();
+    const result = await boot({
+      config: { model: 'm', provider: 'p' },
+      wpaths,
+      projectRoot: tmp,
+      cwd: tmp,
+      sessionStore,
+      systemPrompt: [],
+      provider: fakeProvider,
+      tokenCounter: fakeTokenCounter,
+      renderer: makeRenderer(),
+      flags: {},
+    });
+    expect(scheduleEmptySessionSweepMock).toHaveBeenCalledTimes(1);
+    const sweep = scheduleEmptySessionSweepMock.mock.calls[0]?.[0];
+    expect(sweep?.sessionStore).toBe(sessionStore);
+    expect(sweep?.globalRoot).toBe(wpaths.globalRoot);
+    // The catalog keys live sessions by the project's directory name.
+    expect(sweep?.projectSlug).toBe(path.basename(wpaths.projectDir));
+    // Resolved live at sweep time, so the session this boot established is
+    // protected even though it did not exist when the sweep was scheduled.
+    expect(sweep?.getActiveSessionId()).toBe(result.session.id);
   });
 });

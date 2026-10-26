@@ -4,6 +4,12 @@ import { deleteWebUISession, type SessionDeletionContext } from './session-delet
 
 export const DEFAULT_EMPTY_SESSION_CLEANUP_INTERVAL_MS = 60 * 60 * 1_000;
 export const EMPTY_SESSION_CLEANUP_INTERVAL_ENV = 'WRONGSTACK_EMPTY_SESSION_CLEANUP_INTERVAL_MS';
+/**
+ * Delay before the once-per-host startup sweep. Short enough that a host run
+ * never outlives it without sweeping, long enough that a page reconnecting
+ * after a host restart has re-declared its (protected) tab sessions first.
+ */
+const STARTUP_SWEEP_DELAY_MS = 30_000;
 const MAX_SESSION_SCAN = 1_000;
 
 type StrictEmptySessionStore = SessionStore & {
@@ -13,6 +19,19 @@ type StrictEmptySessionStore = SessionStore & {
 interface EmptySessionCleanupContext extends SessionDeletionContext {
   hasParticipants: (sessionId: string) => boolean;
   logger: Pick<Logger, 'info' | 'error'>;
+  /**
+   * Sessions other live hosts hold — e.g. the registry-backed current session
+   * of every running surface, which is what a host WITHOUT client
+   * declarations (plain TUI/CLI) can still discover. Resolved once per sweep
+   * and merged into the protected set at BOTH checkpoints.
+   */
+  getExtraProtectedSessionIds?: () => Promise<string[]> | string[];
+  /**
+   * Skip candidates whose summary is younger than this. A session created
+   * seconds ago in another surface may not be declared or registry-held
+   * anywhere yet; an unparseable date fails closed (skip).
+   */
+  minIdleMs?: number;
 }
 
 /**
@@ -57,6 +76,11 @@ export async function cleanupOwnerlessEmptySessions(
   const store = ctx.getSessionStore() as StrictEmptySessionStore;
   let deleted = 0;
   let errors = 0;
+  // Resolved once per sweep and merged into the protected set at BOTH
+  // checkpoints below — discovery and the pre-delete re-check.
+  const extraProtected = new Set((await ctx.getExtraProtectedSessionIds?.()) ?? []);
+  const isProtected = (sessionId: string): boolean =>
+    protectedSessionIds(ctx).has(sessionId) || extraProtected.has(sessionId);
 
   let sessions;
   try {
@@ -78,7 +102,15 @@ export async function cleanupOwnerlessEmptySessions(
 
   for (const candidate of sessions) {
     const sessionId = candidate.id;
-    if (protectedSessionIds(ctx).has(sessionId) || ctx.hasParticipants(sessionId)) continue;
+    if (isProtected(sessionId) || ctx.hasParticipants(sessionId)) continue;
+
+    // A session younger than the idle floor may have been created moments
+    // ago in a surface that has not declared or registered it anywhere this
+    // host can see; an unparseable date proves nothing and must fail closed.
+    if (ctx.minIdleMs !== undefined) {
+      const startedAtMs = Date.parse(candidate.startedAt);
+      if (!Number.isFinite(startedAtMs) || Date.now() - startedAtMs < ctx.minIdleMs) continue;
+    }
 
     try {
       // Stores without a strict persisted-journal check are not eligible for
@@ -90,7 +122,7 @@ export async function cleanupOwnerlessEmptySessions(
       // project switch can replace the live store while this async scan runs.
       if (
         store !== ctx.getSessionStore() ||
-        protectedSessionIds(ctx).has(sessionId) ||
+        isProtected(sessionId) ||
         ctx.hasParticipants(sessionId)
       ) {
         continue;
@@ -142,10 +174,23 @@ export function scheduleOwnerlessEmptySessionCleanup(
     });
     return running;
   };
+  // Sweep once shortly after startup, not only on the interval. Every host
+  // launch opens a session, and the common "open the UI, look, close" run
+  // dies long before the first interval tick — without this sweep the empty
+  // sessions each short run left behind (its own boot session, tabs the user
+  // closed without typing) were never cleaned until some later run happened
+  // to stay alive a full interval. A user-configured interval shorter than
+  // the startup delay wins, so an aggressive cadence is never made lazier.
+  const startupTimer = setTimeout(
+    () => void runNow(),
+    Math.min(STARTUP_SWEEP_DELAY_MS, intervalMs),
+  );
+  startupTimer.unref?.();
   const timer = setInterval(() => void runNow(), intervalMs);
   timer.unref?.();
   return {
     dispose: async () => {
+      clearTimeout(startupTimer);
       clearInterval(timer);
       await running;
     },
