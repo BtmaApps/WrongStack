@@ -197,11 +197,12 @@ export class MailboxHealthWatchdog {
     if (this.downSince !== null && this.alerting) {
       // Was down — emit recovery.
       const downtimeMs = Date.now() - this.downSince;
+      const failuresBeforeRecovery = this.consecutiveFailures;
       this.downSince = null;
       this.consecutiveFailures = 0;
       this.alerting = false;
       this.emit({ kind: 'recovery-posted', downtimeMs });
-      void this.postRecovery(downtimeMs).catch(() => {
+      void this.postRecovery(downtimeMs, failuresBeforeRecovery).catch(() => {
         /* post is best-effort */
       });
     } else {
@@ -234,13 +235,13 @@ export class MailboxHealthWatchdog {
     );
   }
 
-  private async postRecovery(downtimeMs: number): Promise<void> {
+  private async postRecovery(downtimeMs: number, consecutiveFailures: number): Promise<void> {
     await this.mailbox.send(
       buildRecoveryAlert({
         from: this.from,
         url: this.url,
         downtimeMs,
-        consecutiveFailures: this.consecutiveFailures,
+        consecutiveFailures,
       }),
     );
   }

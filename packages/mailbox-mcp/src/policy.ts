@@ -54,6 +54,19 @@ export interface MailboxMcpToolPolicy {
   actions?: readonly MailboxMcpAction[];
 }
 
+/**
+ * Whether this server runs in the explicit full-access tier.
+ *
+ * `--admin` is the operator's opt-in to project-wide mailbox maintenance
+ * (clear, purge, credential administration). It is the ONLY tier whose reads
+ * are not bound to the configured `--actor`: every other tier reads through
+ * the shared actor-scoped projection, so an external agent can never read
+ * another actor's mail.
+ */
+export function hasFullMailboxAccess(opts: MailboxMcpPolicyOptions = {}): boolean {
+  return opts.admin === true;
+}
+
 export function selectMailboxMcpTools(opts: MailboxMcpPolicyOptions = {}): MailboxMcpToolPolicy[] {
   const tools: MailboxMcpToolPolicy[] = [
     { name: 'mailbox_read', actions: MAILBOX_READ_ACTIONS },

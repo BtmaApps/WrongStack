@@ -311,11 +311,21 @@ function attachMailboxCheckerInner(
    * contract. The deps are wired here so an in-process session swap is
    * honored without recreating the checker.
    */
+  // Cross-path delivered-id ledger shared by the inline and awareness
+  // wrappers. The wrappers previously kept independent dedup sets, so the
+  // same mail surfaced twice per iteration — once as a [MAILBOX BTW]
+  // awareness preview and again inside the inline [MAILBOX] block. The
+  // ledger makes "surfaced to the model" a once-per-message fact across
+  // both paths (backgroundEligible types still re-deliver inline after a
+  // preview: the preview is awareness-only, the inline block is the
+  // canonical delivery with its action guidance).
+  const sharedDeliveredIds = new Set<string>();
   const sessionAffinityWrapperDeps = {
     getSessionId: identitySessionId,
     getAgentId: ensureRegistered,
     getMailbox,
     affinityCtx: sessionAffinityCtx,
+    sharedDeliveredIds,
   };
   const sessionScopedCheckMailbox = applySessionAffinityFilter(
     checkMailbox,
@@ -331,6 +341,14 @@ function attachMailboxCheckerInner(
     // automatically excluded.
     include: (m) => !MAILBOX_TYPE_PROPERTIES[m.type]?.outOfBand,
     ack: false,
+    // The awareness wrapper owns accepted-message dedup, mirroring the
+    // inline checker. With inner tracking left enabled, an affinity-dropped
+    // message was consumed by the inner `injectedIds` set on its first
+    // poll and could never preview after an in-process session swap —
+    // the same bug class `trackInjected: false` fixed for the inline
+    // checker (see the session-affinity redelivery suite, whose
+    // "production awareness construction" comment already assumed this).
+    trackInjected: false as const,
   });
   const sessionScopedCheckMailboxAwareness = applySessionAffinityFilter(
     checkMailboxAwareness,
@@ -437,6 +455,16 @@ export function applySessionAffinityFilter(
     getAgentId: () => string;
     getMailbox: () => Mailbox;
     affinityCtx: MailboxSessionAffinityContext;
+    /**
+     * Cross-path delivered-id ledger shared with the sibling wrapper
+     * (inline ↔ awareness). Optional so composition tests can exercise the
+     * wrapper in isolation; the production composition always passes it.
+     * Semantics: awareness never previews an id the ledger already holds,
+     * and the inline path absorbs (acks without re-injecting)
+     * awareness-only types — `backgroundEligible: false` — that a preview
+     * already surfaced.
+     */
+    sharedDeliveredIds?: Set<string>;
   },
 ): () => Promise<MailboxMessage[]> {
   // Accepted-message dedup, owned by the wrapper because both production
@@ -464,22 +492,46 @@ export function applySessionAffinityFilter(
     // that lets TypeScript see that.
     const agentId = ack ? deps.getAgentId() : null;
     const messages = await checker();
+    const shared = deps.sharedDeliveredIds;
     const filtered: MailboxMessage[] = [];
+    // Awareness-only types already surfaced by the sibling path are
+    // absorbed here: acked so the mailbox state stays clean, but NOT
+    // returned — the model saw the body once and must not see it again.
+    const absorbed: MailboxMessage[] = [];
     for (const m of messages) {
       if (deliveredIds.has(m.id)) continue;
-      if (await acceptMailboxMessageForSession(m, currentSessionId, deps.affinityCtx)) {
-        deliveredIds.add(m.id);
+      if (!(await acceptMailboxMessageForSession(m, currentSessionId, deps.affinityCtx))) {
+        continue;
+      }
+      const alreadySurfaced = shared?.has(m.id) ?? false;
+      if (ack) {
+        // Inline delivery. A backgroundEligible type (ask/assign/steer/
+        // review/result) is delivered even after a preview: the preview
+        // was awareness-only, this block is the canonical delivery with
+        // its action guidance and acknowledgement footer.
+        if (alreadySurfaced && !MAILBOX_TYPE_PROPERTIES[m.type]?.backgroundEligible) {
+          absorbed.push(m);
+        } else {
+          filtered.push(m);
+        }
+      } else {
+        // Awareness preview. Skip anything the inline path already
+        // delivered or absorbed — surfacing it again is pure noise.
+        if (alreadySurfaced) continue;
         filtered.push(m);
       }
+      deliveredIds.add(m.id);
+      shared?.add(m.id);
     }
     // Batch-ack only when requested (inline delivery). Awareness must
     // NOT ack — otherwise actionable messages are consumed before the
-    // inline checker can deliver them.
-    if (ack && filtered.length > 0 && agentId) {
+    // inline checker can deliver them. Absorbed messages are acked too:
+    // "read" means the model saw this content once (via the preview).
+    if (ack && filtered.length + absorbed.length > 0 && agentId) {
       void deps
         .getMailbox()
         .ackMany({
-          acks: filtered.map((m) => ({
+          acks: [...filtered, ...absorbed].map((m) => ({
             messageId: m.id,
             readerId: agentId,
             read: true,
@@ -492,6 +544,11 @@ export function applySessionAffinityFilter(
       const recent = new Set([...deliveredIds].slice(-500));
       deliveredIds.clear();
       for (const id of recent) deliveredIds.add(id);
+    }
+    if (shared && shared.size > 1000) {
+      const recent = [...shared].slice(-500);
+      shared.clear();
+      for (const id of recent) shared.add(id);
     }
     return filtered;
   };

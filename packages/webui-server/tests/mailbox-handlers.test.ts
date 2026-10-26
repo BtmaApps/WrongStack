@@ -18,11 +18,27 @@ function mockWs(): WebSocket & { send: ReturnType<typeof vi.fn> } {
 }
 
 function lastPayload(ws: { send: ReturnType<typeof vi.fn> }): {
-  messages: Array<{ subject: string }>;
+  messages: Array<{
+    subject: string;
+    readByMe?: boolean;
+    completedByMe?: boolean;
+    actionRequiredForMe?: boolean;
+  }>;
 } {
   const raw = ws.send.mock.calls.at(-1)?.[0];
   if (raw === undefined) throw new Error('expected a websocket message');
-  return (JSON.parse(String(raw)) as { payload: { messages: Array<{ subject: string }> } }).payload;
+  return (
+    JSON.parse(String(raw)) as {
+      payload: {
+        messages: Array<{
+          subject: string;
+          readByMe?: boolean;
+          completedByMe?: boolean;
+          actionRequiredForMe?: boolean;
+        }>;
+      };
+    }
+  ).payload;
 }
 
 describe('mailbox handlers', () => {
@@ -177,6 +193,121 @@ describe('mailbox handlers', () => {
     );
 
     expect(lastPayload(ws).messages.map((m) => m.subject)).toEqual(['unread']);
+  });
+
+  it('projects per-actor completion from the receipt state, not the global completion flag', async () => {
+    // A fan-out message keeps its aggregate completion fields EMPTY on disk
+    // (the aggregate would claim the message is done for every recipient), so
+    // deriving `completedByMe` from `message.completedBy` reported "not
+    // completed by me" for the very agent that completed it — and "action
+    // required" for a task that was already done. The per-actor receipt
+    // projection is the only correct source for these fields.
+    const sent = await mailbox.send({
+      from: 'sender',
+      to: '*',
+      type: 'review',
+      subject: 'fanout-review',
+      body: 'do the thing',
+    });
+    await mailbox.ack({ messageId: sent.id, readerId: 'agent-a', completed: true });
+
+    // Premise of the regression: the stored fan-out message carries NO
+    // aggregate completion, so the previous
+    // `message.completedBy === agentId` derivation could not see this actor's
+    // completion at all — it always reported false for the completer.
+    const stored = await mailbox.query({ includeReceiptState: true });
+    expect(stored.find((m) => m.id === sent.id)?.completedBy).toBeUndefined();
+
+    const ws = mockWs();
+    await handleMailboxMessages(ws, { projectRoot, globalRoot }, { agentId: 'agent-a', limit: 10 });
+
+    const mine = lastPayload(ws).messages.find((m) => m.subject === 'fanout-review');
+    expect(mine?.completedByMe).toBe(true);
+    expect(mine?.actionRequiredForMe).toBe(false);
+
+    // The other recipient did NOT complete it: their view is per-actor too.
+    const otherWs = mockWs();
+    await handleMailboxMessages(
+      otherWs,
+      { projectRoot, globalRoot },
+      { agentId: 'agent-b', limit: 10 },
+    );
+    const theirs = lastPayload(otherWs).messages.find((m) => m.subject === 'fanout-review');
+    expect(theirs?.completedByMe).toBe(false);
+    expect(theirs?.actionRequiredForMe).toBe(true);
+  });
+
+  it('does not ship aggregate receipt state to an actor-scoped read', async () => {
+    // The per-actor projection is computed for every actor-scoped read, but
+    // the payload re-read the message-GLOBAL receipt fields from the raw
+    // message: the whole `readBy` map (every other reader's identity and read
+    // time), the global `completedBy`, the global `completedAt` and the
+    // global `outcome`. A client scoped to agent-a therefore received
+    // agent-b's read receipt — the same aggregate state the HTTP bridge
+    // withholds from actors without the `mail.admin.receipts` capability.
+    const sent = await mailbox.send({
+      from: 'sender',
+      to: '*',
+      type: 'note',
+      subject: 'fanout-note',
+      body: 'shared',
+    });
+    await mailbox.ack({ messageId: sent.id, readerId: 'agent-b', read: true });
+
+    // Premise of the regression: the STORED aggregate receipt map holds
+    // agent-b's read receipt, so re-reading `message.readBy` into the payload
+    // would have disclosed it to agent-a.
+    const stored = await mailbox.query({ includeReceiptState: true });
+    const storedMessage = stored.find((m) => m.id === sent.id);
+    expect(Object.keys(storedMessage?.readBy ?? {})).toContain('agent-b');
+
+    const ws = mockWs();
+    await handleMailboxMessages(ws, { projectRoot, globalRoot }, { agentId: 'agent-a', limit: 10 });
+
+    const payload = JSON.parse(String(ws.send.mock.calls.at(-1)?.[0])) as {
+      payload: {
+        messages: Array<{
+          subject: string;
+          readBy: Record<string, string>;
+          readByCount: number;
+          completed: boolean;
+          completedBy?: string;
+          readByMe?: boolean;
+          completedByMe?: boolean;
+        }>;
+      };
+    };
+    const mine = payload.payload.messages.find((m) => m.subject === 'fanout-note');
+    expect(mine).toBeDefined();
+    // agent-b's read receipt must not appear in agent-a's scoped payload.
+    expect(Object.keys(mine?.readBy ?? {})).not.toContain('agent-b');
+    expect(mine?.readByCount).toBe(0);
+    expect(mine?.readByMe).toBe(false);
+    // Nor may the payload name another actor as the completer.
+    expect(mine?.completedBy).not.toBe('agent-b');
+    expect(mine?.completedByMe).toBe(false);
+
+    // The actor's OWN receipt still reaches its own scoped read.
+    const ownWs = mockWs();
+    await handleMailboxMessages(
+      ownWs,
+      { projectRoot, globalRoot },
+      { agentId: 'agent-b', limit: 10 },
+    );
+    const ownPayload = JSON.parse(String(ownWs.send.mock.calls.at(-1)?.[0])) as {
+      payload: {
+        messages: Array<{
+          subject: string;
+          readBy: Record<string, string>;
+          readByCount: number;
+          readByMe?: boolean;
+        }>;
+      };
+    };
+    const own = ownPayload.payload.messages.find((m) => m.subject === 'fanout-note');
+    expect(Object.keys(own?.readBy ?? {})).toEqual(['agent-b']);
+    expect(own?.readByCount).toBe(1);
+    expect(own?.readByMe).toBe(true);
   });
 
   it('validates route payloads before reaching mailbox storage', async () => {

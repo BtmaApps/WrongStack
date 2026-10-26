@@ -2,7 +2,12 @@ import { randomUUID } from 'node:crypto';
 import * as path from 'node:path';
 import type { EventBus } from '@wrongstack/contracts/kernel';
 import type { Config } from '@wrongstack/contracts/types';
-import { RemoteMailbox, resolveProjectDir } from '@wrongstack/coordination';
+import {
+  mailboxIdentityBase,
+  RemoteMailbox,
+  resolveProjectDir,
+  unreadCountForActor,
+} from '@wrongstack/coordination';
 import { wstackGlobalRoot } from '@wrongstack/core/utils';
 import {
   createHqPublisherFromEnv,
@@ -91,7 +96,18 @@ export function createRunTuiClientRegistration(
             attemptMailbox.getAgentStatuses(),
             attemptMailbox.getClientStatuses(),
             attemptMailbox.status(),
-            actorId === undefined ? Promise.resolve(0) : attemptMailbox.unreadCount(actorId),
+            // The unread count is the actor-scoped projection the HTTP bridge
+            // and the MCP server use, not a locally re-derived count: the raw
+            // store count ignored the actor's base alias and the session
+            // address, so this TUI could report a different "unread" than the
+            // very inbox it renders.
+            actorId === undefined
+              ? Promise.resolve(0)
+              : unreadCountForActor(attemptMailbox, {
+                  actorId,
+                  recipientAliases: new Set([mailboxIdentityBase(actorId)]),
+                  sessionId: opts.getSessionId?.(),
+                }),
           ]);
           if (opts.isCleaned() || generation !== registrationGeneration) return;
           const clientCounts = { tui: 0, webui: 0, repl: 0 };

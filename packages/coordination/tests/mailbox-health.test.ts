@@ -305,6 +305,8 @@ describe('MailboxHealthWatchdog probing', () => {
     await vi.advanceTimersByTimeAsync(1000); // success -> recovery
     expect(wd.isBridgeDown()).toBe(false);
     expect(send).toHaveBeenCalledTimes(2); // postRecovery
+    const recoveryPayload = (send.mock.calls[1] as unknown as [{ body: string }])[0];
+    expect(recoveryPayload.body).toContain('Consecutive failures before recovery: 3.');
     await wd.stop();
   });
 

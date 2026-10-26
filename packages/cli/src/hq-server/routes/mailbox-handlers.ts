@@ -1,6 +1,13 @@
 import type * as http from 'node:http';
 import * as path from 'node:path';
-import { type MailboxHttpAccessDecision, resolveProjectDir } from '@wrongstack/coordination';
+import {
+  checkMailboxSendType,
+  isMailboxSendableType,
+  MAILBOX_MAX_BODY_LENGTH,
+  MAILBOX_MAX_SUBJECT_LENGTH,
+  type MailboxHttpAccessDecision,
+  resolveProjectDir,
+} from '@wrongstack/coordination';
 import { authenticateBrowserRequest, hqAuthRequired, isCookieAuth, isTokenAuth } from '../auth.js';
 import { resolveHqProjectRoot } from '../project-root.js';
 import type { HqRouterMailboxGateway, HqRouterMutableAuth, HqSessionEntry } from '../types.js';
@@ -198,30 +205,7 @@ export async function handleApiMailboxSend(
   const priority = mbody.priority === 'high' ? 'high' : mbody.priority === 'low' ? 'low' : 'normal';
   const audience = mbody.audience === 'leaders' ? 'leaders' : 'all';
   const mailboxType =
-    mbody.type === 'queue'
-      ? 'note'
-      : [
-            'note',
-            'ask',
-            'assign',
-            'steer',
-            'btw',
-            'broadcast',
-            'status',
-            'result',
-            'review',
-          ].includes(mbody.type)
-        ? (mbody.type as
-            | 'note'
-            | 'ask'
-            | 'assign'
-            | 'steer'
-            | 'btw'
-            | 'broadcast'
-            | 'status'
-            | 'result'
-            | 'review')
-        : undefined;
+    mbody.type === 'queue' ? 'note' : isMailboxSendableType(mbody.type) ? mbody.type : undefined;
   if (mailboxType === undefined) {
     res.writeHead(400, { 'Content-Type': 'application/json' });
     res.end(
@@ -240,12 +224,35 @@ export async function handleApiMailboxSend(
     res.end(JSON.stringify({ error: `${mailboxType} requires a specific recipient` }));
     return;
   }
+  const bodyLength = typeof mbody.body === 'string' ? mbody.body.length : 0;
+  if (subject.length > MAILBOX_MAX_SUBJECT_LENGTH || bodyLength > MAILBOX_MAX_BODY_LENGTH) {
+    res.writeHead(400, { 'Content-Type': 'application/json' });
+    res.end(
+      JSON.stringify({
+        error: `mailbox message exceeds size limits (subject <= ${MAILBOX_MAX_SUBJECT_LENGTH}, body <= ${MAILBOX_MAX_BODY_LENGTH})`,
+      }),
+    );
+    return;
+  }
 
   try {
     const projectDir = resolveProjectDir(projectRoot, mbGlobalRoot);
     const mailbox = getMailboxGateway(projectDir).mailbox;
     const from = `hq@${hqSessionTag}`;
-    const deliveryTo = mailboxType === 'broadcast' ? 'all' : to;
+    // `all` normalizes to `*` like every other send boundary; a broadcast
+    // targets the project wildcard, not a literal 'all' recipient nobody
+    // answers to.
+    const deliveryTo = mailboxType === 'broadcast' || to.trim().toLowerCase() === 'all' ? '*' : to;
+    // The SHARED send rule (agent tools, HTTP bridge, storage boundary all
+    // apply it): assign/steer must name a specific recipient — including
+    // `@session:` targets, which the previous local guard let through to a
+    // TypeError deep in the storage layer (HTTP 500 instead of 400).
+    const sendCheck = checkMailboxSendType(mailboxType, deliveryTo);
+    if (!sendCheck.ok) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: sendCheck.error }));
+      return;
+    }
     // Session scoping. The bare `leader` alias is answered by EVERY leader in
     // the project (unread state is per reader, so a second terminal on the
     // same project consumes the same message). The caller already named one

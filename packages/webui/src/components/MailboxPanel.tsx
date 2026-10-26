@@ -19,6 +19,7 @@ import {
   Users,
   Zap,
 } from 'lucide-react';
+import { isMailboxMessageUnread } from '@wrongstack/contracts/types/mailbox';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Pagination } from '@/components/ui/pagination';
 import { usePagination } from '@/hooks/usePagination';
@@ -244,7 +245,7 @@ export function MailboxPanel({ className }: { className?: string }) {
     mailboxMessageBelongsToSession(message, sessionId),
   );
   const scopedAgents = sessionId ? agents.filter((agent) => agent.sessionId === sessionId) : agents;
-  const unreadCount = scopedMessages.filter((m) => !m.completed).length;
+  const unreadCount = scopedMessages.filter(isMailboxMessageUnread).length;
   const onlineCount = scopedAgents.filter((a) => a.online).length;
   const messagePage = usePagination(scopedMessages, 8);
   const onlineAgents = scopedAgents.filter((agent) => agent.online);

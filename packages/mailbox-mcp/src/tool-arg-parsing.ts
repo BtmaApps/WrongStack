@@ -1,5 +1,6 @@
 import {
   MAILBOX_MAX_QUERY_LIMIT,
+  MAILBOX_SENDABLE_MESSAGE_TYPES,
   type MailboxMessageType,
   type MailboxQuery,
   type RemoteMailbox,
@@ -113,17 +114,17 @@ export const HEARTBEAT_STATUSES = [
   'waiting_user',
   'error',
 ] as const;
-export const MESSAGE_TYPES = [
-  'note',
-  'ask',
-  'assign',
-  'steer',
-  'btw',
-  'broadcast',
-  'status',
-  'result',
-  'review',
-] as const satisfies readonly Exclude<MailboxMessageType, 'control'>[];
+/**
+ * The message types the MCP tools accept.
+ *
+ * Derived from the canonical mailbox vocabulary in `@wrongstack/coordination`
+ * instead of a hand-maintained copy of the union: the copy silently drifted
+ * whenever a type was added, so the MCP surface rejected types every other
+ * surface accepted (and vice versa). `control` is runtime-reserved and is
+ * excluded from the sendable set.
+ */
+export const MESSAGE_TYPES: readonly Exclude<MailboxMessageType, 'control'>[] =
+  MAILBOX_SENDABLE_MESSAGE_TYPES;
 export const WATCH_EVENT_TYPES = [
   'message.sent',
   'message.acked',

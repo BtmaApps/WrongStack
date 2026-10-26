@@ -1,16 +1,15 @@
 import type { HqMailboxEventAction } from '@wrongstack/contracts/types/hq-mailbox-publisher';
+import type { MailboxMessageType } from '@wrongstack/contracts/types/mailbox';
 
-export type HqMailboxMessageType =
-  | 'note'
-  | 'ask'
-  | 'assign'
-  | 'steer'
-  | 'btw'
-  | 'broadcast'
-  | 'status'
-  | 'result'
-  | 'review'
-  | 'control';
+/**
+ * The HQ dashboard's view of a mailbox message type.
+ *
+ * Derived from the canonical `MailboxMessageType` union in `@wrongstack/contracts`
+ * instead of restating it: a hand-maintained copy here silently diverged the
+ * moment the union grew, and the HQ summary then refused to describe messages
+ * the mailbox could actually hold.
+ */
+export type HqMailboxMessageType = MailboxMessageType;
 
 export type HqMailboxPriority = 'low' | 'normal' | 'high';
 export type HqMailboxAudience = 'all' | 'leaders';

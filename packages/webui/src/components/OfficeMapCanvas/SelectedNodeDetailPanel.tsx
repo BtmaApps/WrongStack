@@ -1,3 +1,4 @@
+import { isMailboxMessageUnread } from '@wrongstack/contracts/types/mailbox';
 import type { Node } from '@xyflow/react';
 import { Bot, Cpu, Mail, Maximize2, Monitor, Terminal } from 'lucide-react';
 import type { ReactNode } from 'react';
@@ -181,7 +182,7 @@ export function SelectedNodeDetailPanel({
                   .sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp))
                   .slice(0, 6)
                   .map((m) => {
-                    const unread = !m.completed && (m.readByCount ?? 0) === 0;
+                    const unread = isMailboxMessageUnread(m);
                     return (
                       <div key={m.id} className="flex items-start gap-1.5 text-[10px]">
                         <span

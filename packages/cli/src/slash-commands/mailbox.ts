@@ -27,14 +27,20 @@
 import type { SlashCommand } from '@wrongstack/contracts/types';
 import {
   getSharedProjectMailbox,
+  MAILBOX_MAX_BODY_LENGTH,
+  MAILBOX_SENDABLE_MESSAGE_TYPES,
+  type MailboxActorReadScope,
   type MailboxAgentStatus,
   type MailboxAudience,
   type MailboxMessage,
   type MailboxMessageType,
   mailboxSessionTag,
+  normalizeRecipient,
+  queryMessagesForActor,
   type RemoteMailbox,
   resolveMailboxIdentity,
   resolveProjectDir,
+  validateSendType,
 } from '@wrongstack/coordination';
 import { color, wstackGlobalRoot } from '@wrongstack/core/utils';
 import type { SlashCommandContext } from './command-context.js';
@@ -50,12 +56,36 @@ function buildMailbox(opts: SlashCommandContext): RemoteMailbox | null {
 }
 
 /** The identity this session's conversation runs as (`leader@<sessionTag>`). */
-function leaderId(opts: SlashCommandContext): { id: string; base: string } {
+interface MailboxIdentity {
+  /** Unique, session-bound id (`leader@<sessionTag>`). */
+  id: string;
+  /** Bare base alias (`leader`). */
+  base: string;
+  /**
+   * The session this identity belongs to. `undefined` only in the no-context
+   * fallback (no session is fabricated — `@session` recipients then fail
+   * validation instead of expanding to a dead scope).
+   */
+  sessionId: string | undefined;
+  /** Role, when the host reports one. */
+  role?: string | undefined;
+}
+
+/** Resolve the mailbox identity this command acts under. */
+function leaderId(opts: SlashCommandContext): MailboxIdentity {
   if (opts.context) {
     const identity = resolveMailboxIdentity(opts.context);
-    return { id: identity.callerId, base: identity.baseId };
+    return {
+      id: identity.callerId,
+      base: identity.baseId,
+      sessionId: identity.sessionId,
+      role: identity.role,
+    };
   }
-  return { id: `leader@${mailboxSessionTag('default')}`, base: 'leader' };
+  // No session context: the unique id still works for direct addressing,
+  // but a session id is NOT fabricated — `@session` recipients would
+  // otherwise expand to a dead `@session:default` scope.
+  return { id: `leader@${mailboxSessionTag('default')}`, base: 'leader', sessionId: undefined };
 }
 
 function fmtAge(iso: string): string {
@@ -151,6 +181,18 @@ function messageWidths(messages: MailboxMessage[], selfId: string): { from: numb
 }
 
 /**
+ * The message types this command accepts in a `type=` flag.
+ *
+ * Derived from the canonical mailbox vocabulary in `@wrongstack/coordination`
+ * instead of a hand-maintained copy: the copy silently drifted whenever the
+ * `MailboxMessageType` union grew, so a new type was accepted by the mailbox
+ * but silently downgraded to the default here.
+ */
+const VALID_TYPES: ReadonlySet<MailboxMessageType> = new Set<MailboxMessageType>(
+  MAILBOX_SENDABLE_MESSAGE_TYPES,
+);
+
+/**
  * Pull an optional inline `type=<value>` flag off the front of a token list
  * and return the resolved type plus the remaining tokens as the message body.
  *
@@ -160,27 +202,16 @@ function messageWidths(messages: MailboxMessage[], selfId: string): { from: numb
  * wrong label than to drop the message entirely. The consumed flag is also
  * stripped from the body, so recipients never see literal `type=garbage`.
  *
- * Note: this list is intentionally NOT exhaustive over MailboxMessageType.
- * New message types added to the union are accepted by the underlying
- * mailbox but pass through this parser as the default — slash command
- * support for them must be opted into here. This is fail-safe (rather than
- * fail-open): the message still arrives, just with the wrong category label.
+ * The accepted set is every sendable type in the mailbox vocabulary
+ * ({@link VALID_TYPES}); `control` is reserved for the runtime. A type that
+ * is not in the vocabulary at all still falls back to `defaultType`: the
+ * message arrives, just with the default category label. This is fail-safe
+ * (rather than fail-open).
  */
 function parseTypeFlag(
   tokens: string[],
   defaultType: MailboxMessageType,
 ): { type: MailboxMessageType; audience?: MailboxAudience; body: string } {
-  const VALID: ReadonlySet<MailboxMessageType> = new Set<MailboxMessageType>([
-    'note',
-    'ask',
-    'assign',
-    'steer',
-    'btw',
-    'broadcast',
-    'status',
-    'result',
-    'review',
-  ]);
   let type: MailboxMessageType = defaultType;
   let audience: MailboxAudience | undefined;
   const rest = tokens.slice();
@@ -188,7 +219,7 @@ function parseTypeFlag(
     const flag = rest.shift()!;
     if (flag.startsWith('type=')) {
       const candidate = flag.slice('type='.length) as MailboxMessageType;
-      if (VALID.has(candidate)) type = candidate;
+      if (VALID_TYPES.has(candidate)) type = candidate;
     } else {
       const candidate = flag.slice('audience='.length);
       if (candidate === 'leaders' || candidate === 'all') audience = candidate;
@@ -272,12 +303,32 @@ export function buildMailboxCommand(opts: SlashCommandContext): SlashCommand {
       }
 
       if (sub === 'send') {
-        const to = parts[1];
+        const rawTo = parts[1];
         const { type, audience, body } = parseTypeFlag(parts.slice(2), 'note');
-        if (!to || !body) {
+        if (!rawTo || !body) {
           return {
             message:
               'Usage: /mailbox send <agentId> [type=<type>] <message>\nValid types: note, ask, assign, steer, btw, broadcast, status, result, review.',
+          };
+        }
+        // Same recipient normalization and send policy the agent tools and
+        // the HTTP bridge enforce: `all` → `*`, bare `@session` → this
+        // session's scope, and a steer/assign must name a specific
+        // recipient. Previously this path skipped both, so
+        // `/mailbox send * type=steer ...` was accepted where the tools
+        // reject it.
+        let to: string;
+        try {
+          to = normalizeRecipient(rawTo, self.sessionId);
+          validateSendType(type, to);
+        } catch (err) {
+          return { message: color.yellow(err instanceof Error ? err.message : String(err)) };
+        }
+        if (body.length > MAILBOX_MAX_BODY_LENGTH) {
+          return {
+            message: color.yellow(
+              `Message body exceeds the ${MAILBOX_MAX_BODY_LENGTH}-character limit; shorten it or point recipients at a file.`,
+            ),
           };
         }
         const msg = await mb.send({
@@ -295,16 +346,32 @@ export function buildMailboxCommand(opts: SlashCommandContext): SlashCommand {
       }
 
       if (sub === 'broadcast') {
-        // Default to 'broadcast' but allow overrides — an operator may need
-        // to broadcast a `steer` ("stop what you're doing") or a `review`
-        // request across the fleet, and forcing the literal `broadcast` type
-        // would lose that signal in the recipient's mailbox render.
+        // Default to 'broadcast'; `assign`/`steer` are rejected for the `*`
+        // target (the storage boundary enforces it — mailbox contract
+        // decision D4), so fleet-wide directives must use `type=broadcast`
+        // with actionable body content. A `type=review` override is fine:
+        // `review` is sendable to `*`.
         const { type, audience, body } = parseTypeFlag(parts.slice(1), 'broadcast');
         if (!body) {
           return {
             message:
               'Usage: /mailbox broadcast [type=<type>] <message>\nValid types: note, ask, assign, steer, btw, broadcast, status, result, review.',
           };
+        }
+        if (body.length > MAILBOX_MAX_BODY_LENGTH) {
+          return {
+            message: color.yellow(
+              `Message body exceeds the ${MAILBOX_MAX_BODY_LENGTH}-character limit; shorten it or point recipients at a file.`,
+            ),
+          };
+        }
+        // The storage boundary rejects assign/steer to `*` — enforce it here
+        // so the operator gets the clean validation message instead of a raw
+        // IPC rejection.
+        try {
+          validateSendType(type, '*');
+        } catch (err) {
+          return { message: color.yellow(err instanceof Error ? err.message : String(err)) };
         }
         const msg = await mb.send({
           from: self.id,
@@ -382,17 +449,26 @@ export function buildMailboxCommand(opts: SlashCommandContext): SlashCommand {
       }
 
       if (sub === '' || sub === 'inbox') {
-        // Unread for the unique id AND the bare base alias ('*' matches both).
-        const batches = await Promise.all([
-          mb.query({ to: self.id, unreadBy: self.id, limit: 50 }).catch(() => []),
-          mb.query({ to: self.base, unreadBy: self.id, limit: 50 }).catch(() => []),
-        ]);
-        const seen = new Set<string>();
-        const unread = batches.flat().filter((m) => {
-          if (seen.has(m.id) || m.from === self.id) return false;
-          seen.add(m.id);
-          return true;
-        });
+        // Scoped exactly like the agent loop's inbox. The shared actor query
+        // applies the audience filter (`isMailboxMessageVisibleTo`) and the
+        // session-affinity filter, so the operator sees what THIS session's
+        // agent would see — and never mail scoped to another session. The
+        // previous hand-rolled two-batch query applied neither, so a
+        // `leaders`-audience or cross-session message reached the terminal.
+        const actor: MailboxActorReadScope = {
+          actorId: self.id,
+          role: self.role,
+          recipientAliases: new Set([self.base]),
+          sessionId: self.sessionId,
+        };
+        const candidates = await queryMessagesForActor(mb, actor, {
+          unreadBy: self.id,
+          readerRole: self.role,
+          currentSessionId: self.sessionId,
+          limit: 50,
+        }).catch(() => []);
+        // Your own messages are not inbox items.
+        const unread = candidates.filter((m) => m.from !== self.id);
         if (unread.length === 0) {
           return {
             message: color.dim(
@@ -401,11 +477,13 @@ export function buildMailboxCommand(opts: SlashCommandContext): SlashCommand {
           };
         }
         // Mark read so the agent loop doesn't re-inject what the user saw.
-        await Promise.all(
-          unread.map((m) =>
-            mb.ack({ messageId: m.id, readerId: self.id, read: true }).catch(() => null),
-          ),
-        );
+        // ONE batched ack — the previous loop spent one round trip per
+        // message and held the store's write lock once per ack.
+        await mb
+          .ackMany({
+            acks: unread.map((m) => ({ messageId: m.id, readerId: self.id, read: true })),
+          })
+          .catch(() => null);
         const w = messageWidths(unread, self.id);
         const lines = [
           color.bold(`${unread.length} unread message(s) for ${self.id}`),

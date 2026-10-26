@@ -10,6 +10,7 @@ import {
   closeOpenedCredentialStores,
   openCredentialStore,
 } from '../../core/tests/helpers/sqlite-credential-store.js';
+import { MAILBOX_MAX_QUERY_LIMIT } from '../src/mailbox-constants.js';
 import { MailboxEventEmitter } from '../src/mailbox-events.js';
 import {
   authorizeMailboxBearerToken,
@@ -2378,7 +2379,9 @@ describe('mailbox HTTP authorization helpers', () => {
         unreadBy: 'worker@sess-1',
         readerRole: 'worker',
         includeReceiptState: true,
-        limit: Number.MAX_SAFE_INTEGER,
+        // One-row overshoot over the shared cap: the caller folds the probe
+        // row into a capped result instead of materializing the mailbox.
+        limit: MAILBOX_MAX_QUERY_LIMIT + 1,
       });
       expect(query.incompleteOnly).toBeUndefined();
     }

@@ -5,6 +5,9 @@
  * the same slice of traffic. Building the feed itself is pure
  * (`buildLiveFeedFromHq`) and unit-tested without a DOM.
  */
+// Browser-safe source: the canonical mailbox vocabulary lives in contracts
+// (the node-side coordination barrel reaches node builtins).
+import { MAILBOX_MESSAGE_TYPES } from '@wrongstack/contracts/types/mailbox';
 import type {
   HqEventEnvelope,
   HqMailboxMessageType,
@@ -13,8 +16,8 @@ import type {
 } from '@wrongstack/hq';
 import type * as React from 'react';
 import { useEffect, useMemo, useReducer } from 'react';
-import { EmptyState } from '../../components/hq/primitives.js';
 import { FilterChip } from '../../components/hq/filter-chip.js';
+import { EmptyState } from '../../components/hq/primitives.js';
 import { Button } from '../../components/ui/button.js';
 import { Card } from '../../components/ui/card.js';
 import { Checkbox } from '../../components/ui/checkbox.js';
@@ -29,18 +32,9 @@ import { MessageRow } from './message-row.js';
 /** Hard ceiling on rendered rows; the counter above the list reports the rest. */
 const FEED_LIMIT = 500;
 
-const MESSAGE_TYPES: readonly HqMailboxMessageType[] = [
-  'ask',
-  'assign',
-  'steer',
-  'review',
-  'result',
-  'status',
-  'broadcast',
-  'note',
-  'btw',
-  'control',
-];
+// Derived from the canonical mailbox vocabulary — a hand-maintained copy
+// drifts the moment the union grows (several other surfaces already did).
+const MESSAGE_TYPES: readonly HqMailboxMessageType[] = MAILBOX_MESSAGE_TYPES;
 
 const PRIORITIES: readonly HqMailboxPriority[] = ['high', 'normal', 'low'];
 

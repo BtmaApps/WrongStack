@@ -560,4 +560,61 @@ describe('makeMailInboxTool', () => {
     // Should not throw — catch(() => null) inside the tool
     expect(result.ok).toBe(true);
   });
+
+  it('enforces sessionAffinity on leader mail and sorts merged targets newest-first before slicing (F611)', async () => {
+    await _sendTool.execute(
+      { to: 'leader', subject: 'session-a-leader-report', body: 'scoped to session A' },
+      mockContext({
+        agentId: 'worker-a',
+        meta: { agentId: 'worker-a', sessionId: 'session-A', source: 'cli' },
+        session: { id: 'session-A' },
+      }),
+    );
+
+    const foreignLeaderResult = await inboxTool.execute(
+      { markRead: true, completed: true, outcome: 'foreign' },
+      mockContext({
+        agentId: 'leader',
+        meta: { agentId: 'leader', sessionId: 'session-B', source: 'cli' },
+        session: { id: 'session-B' },
+      }),
+    );
+    expect(foreignLeaderResult.count).toBe(0);
+
+    const rawAfterForeignRead = await mailbox.query({ to: 'leader' });
+    expect(Object.keys(rawAfterForeignRead[0]?.readBy ?? {})).toHaveLength(0);
+
+    const owningLeaderResult = await inboxTool.execute(
+      { markRead: true },
+      mockContext({
+        agentId: 'leader',
+        meta: { agentId: 'leader', sessionId: 'session-A', source: 'cli' },
+        session: { id: 'session-A' },
+      }),
+    );
+    expect(owningLeaderResult.count).toBe(1);
+    expect(owningLeaderResult.messages[0]?.subject).toBe('session-a-leader-report');
+
+    // Also verify newest-first sorting across baseId and @session before slicing to limit
+    await mailbox.send({
+      from: 'peer',
+      to: BASE_ID,
+      type: 'note',
+      subject: 'older-base',
+      body: '1',
+    });
+    await new Promise((r) => setTimeout(r, 10));
+    await mailbox.send({
+      from: 'peer',
+      to: '@session',
+      senderSessionId: SESSION_ID,
+      type: 'broadcast',
+      subject: 'newer-session',
+      body: '2',
+    });
+
+    const limited = await inboxTool.execute({ limit: 1, markRead: false }, mockContext());
+    expect(limited.count).toBe(1);
+    expect(limited.messages[0]?.subject).toBe('newer-session');
+  });
 });

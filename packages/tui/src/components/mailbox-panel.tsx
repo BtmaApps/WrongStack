@@ -143,7 +143,7 @@ export function MailboxPanel({
               <Text dimColor>{fmtBody(m.body, 40)}</Text>
               <Text dimColor>{fmtTime(m.timestamp)}</Text>
               {m.audience === 'leaders' ? <Text color="cyan">🔒 leaders</Text> : null}
-              {m.readByCount > 0 ? (
+              {m.readByMe ? (
                 <Text dimColor>👁 {m.readByCount}</Text>
               ) : (
                 <Text color="yellow" bold>

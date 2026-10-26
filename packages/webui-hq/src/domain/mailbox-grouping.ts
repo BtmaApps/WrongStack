@@ -17,6 +17,7 @@
  *     mailbox.event envelopes exist, we derive counters from the unique
  *     mailIds we've seen so the UI still shows live numbers.
  */
+import { isMailboxMessageUnread } from '@wrongstack/contracts/types/mailbox';
 import type {
   HqEventEnvelope,
   HqMailboxEventPayload,
@@ -127,10 +128,8 @@ function deriveCountersFromMessages(messages: readonly FlatMessage[]): {
   for (const m of messages) {
     const msg = m.message;
     if (msg.priority === 'high') highPriorityCount += 1;
-    if (!msg.completed) {
-      incompleteCount += 1;
-      if ((msg.readCount ?? 0) === 0) unreadCount += 1;
-    }
+    if (!msg.completed) incompleteCount += 1;
+    if (isMailboxMessageUnread(msg)) unreadCount += 1;
   }
   return { highPriorityCount, unreadCount, incompleteCount };
 }

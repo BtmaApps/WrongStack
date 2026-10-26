@@ -2,7 +2,7 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { getSharedProjectMailbox, type RemoteMailbox } from '@wrongstack/coordination';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SlashCommandContext } from '../src/slash-commands/index.js';
 import { buildMailboxCommand } from '../src/slash-commands/mailbox.js';
 import { loadManifest, touchProjectInManifest } from '../src/slash-commands/project-utils.js';
@@ -199,6 +199,55 @@ describe('/mailbox slash command', () => {
     // Second call: everything was acked under the unique id.
     const res2 = await cmd.run('', opts.context);
     expect(stripAnsi(res2?.message ?? '')).toContain('Inbox empty');
+  });
+
+  it('inbox hides mail scoped to another session', async () => {
+    // The operator's inbox must be scoped like the agent loop's: a message
+    // carrying a session-affinity token for a DIFFERENT session belongs to
+    // that other session and must not surface here. Before the scoping fix the
+    // inbox ran a hand-rolled two-batch query with no affinity filter, so
+    // cross-session mail leaked into the terminal.
+    await mailbox.send({
+      from: 'worker#42',
+      to: 'leader#999',
+      type: 'note',
+      subject: 'other-session',
+      body: 'belongs to another tab',
+      sessionAffinity: { sessionId: 'another-session' },
+    });
+
+    const cmd = buildMailboxCommand(opts);
+    const res = await cmd.run('', opts.context);
+    expect(stripAnsi(res?.message ?? '')).toContain('Inbox empty');
+  });
+
+  it('inbox acknowledges the whole batch in one call', async () => {
+    await mailbox.send({
+      from: 'worker#42',
+      to: 'leader#999',
+      type: 'note',
+      subject: 'a',
+      body: 'a',
+    });
+    await mailbox.send({
+      from: 'worker#42',
+      to: 'leader#999',
+      type: 'note',
+      subject: 'b',
+      body: 'b',
+    });
+
+    const ackMany = vi.spyOn(mailbox, 'ackMany');
+    const ack = vi.spyOn(mailbox, 'ack');
+    const cmd = buildMailboxCommand(opts);
+    const res = await cmd.run('', opts.context);
+    expect(stripAnsi(res?.message ?? '')).toContain('2 unread message(s)');
+
+    // One batched write instead of one round trip (and one write lock) per
+    // message.
+    expect(ackMany).toHaveBeenCalledTimes(1);
+    expect(ackMany.mock.calls[0]?.[0].acks).toHaveLength(2);
+    expect(ack).not.toHaveBeenCalled();
   });
 
   it('agents lists registered agents and marks self', async () => {

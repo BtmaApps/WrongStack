@@ -1,3 +1,4 @@
+import { MAILBOX_MAX_QUERY_LIMIT } from './mailbox-constants.js';
 import {
   filterMailboxMessagesByTimestamp,
   type MailboxCheckInput,
@@ -5,7 +6,6 @@ import {
 import type {
   ActorMailboxMessage,
   Mailbox,
-  MailboxActorContext,
   MailboxCapability,
   MailboxMessage,
   MailboxMessageProjection,
@@ -48,7 +48,27 @@ export function stripAggregateReceiptState(
   } as ActorMailboxMessage;
 }
 
-export function eligibleRecipientsForActor(actor: MailboxActorContext): string[] {
+/**
+ * The trusted identity fields a mailbox read is bound to.
+ *
+ * The HTTP bridge resolves a full `MailboxActorContext` from the caller's
+ * credential; out-of-package callers (the Mailbox MCP server) bind their own
+ * configured identity and carry exactly these fields. Narrowing the read to
+ * this scope keeps every surface on ONE visibility rule instead of each
+ * surface inventing its own.
+ */
+export interface MailboxActorReadScope {
+  /** Trusted actor id the read is bound to. */
+  actorId: string;
+  /** Trusted role of the actor (e.g. `leader`). */
+  role?: string | undefined;
+  /** Base aliases this actor may consume mail for (e.g. `leader`). */
+  recipientAliases: ReadonlySet<string>;
+  /** Session id, when the actor belongs to a specific session. */
+  sessionId?: string | undefined;
+}
+
+export function eligibleRecipientsForActor(actor: MailboxActorReadScope): string[] {
   return [
     ...new Set([
       actor.actorId,
@@ -60,7 +80,7 @@ export function eligibleRecipientsForActor(actor: MailboxActorContext): string[]
 
 export async function queryMessagesForActor(
   mailbox: Mailbox,
-  actor: MailboxActorContext,
+  actor: MailboxActorReadScope,
   query: Parameters<Mailbox['query']>[0],
 ): Promise<MailboxMessage[]> {
   const eligibleRecipients = new Set(eligibleRecipientsForActor(actor));
@@ -83,7 +103,7 @@ export async function queryMessagesForActor(
 
 export async function visibleMessageIdsForActor(
   mailbox: Mailbox,
-  actor: MailboxActorContext,
+  actor: MailboxActorReadScope,
   messageIds: readonly string[],
 ): Promise<Set<string>> {
   if (messageIds.length === 0) return new Set();
@@ -100,15 +120,64 @@ export async function visibleMessageIdsForActor(
 
 export async function unreadCountForActor(
   mailbox: Mailbox,
-  actor: MailboxActorContext,
+  actor: MailboxActorReadScope,
 ): Promise<number> {
-  const messages = await queryMessagesForActor(mailbox, actor, {
+  // The count must be EXACT — callers render it as a badge
+  // (POST /mailbox/unread-count, the TUI status poll, the ACP turn
+  // reminder), so a capped number is a silently wrong number.
+  //
+  // Bounded first: the store applies the actor's unread predicate in SQL
+  // (`unreadBy` + visibility), so the capped query returns only the actor's
+  // UNREAD mail and stays cheap on the common path.
+  const query = {
     unreadBy: actor.actorId,
     readerRole: actor.role,
     includeReceiptState: true,
+  };
+  const probeLimit = MAILBOX_MAX_QUERY_LIMIT + 1;
+  const bounded = await queryMessagesForActor(mailbox, actor, { ...query, limit: probeLimit });
+  if (bounded.length < probeLimit) {
+    return countUnreadForActor(bounded, actor.actorId);
+  }
+  // Saturated: the bounded page was truncated, so re-read without a cap.
+  // Pagination is NOT an option here — the store's `since` cursor is
+  // forward-only AND exclusive (`timestamp > ?`) while rows come back
+  // newest-first (`ORDER BY timestamp DESC`), so a second page would be a
+  // strict subset of the first and the count would still saturate at the
+  // page size. A backward cursor the store does not expose yet is what
+  // would make a paged count possible.
+  const all = await queryMessagesForActor(mailbox, actor, {
+    ...query,
     limit: Number.MAX_SAFE_INTEGER,
   });
-  return messages.filter((message) => !isMessageCompletedForActor(message, actor.actorId)).length;
+  return countUnreadForActor(all, actor.actorId);
+}
+
+function countUnreadForActor(messages: readonly MailboxMessage[], actorId: string): number {
+  return messages.filter((message) => !isMessageCompletedForActor(message, actorId)).length;
+}
+
+/**
+ * The per-actor "unread" test: THIS actor has neither read nor completed the
+ * message. Complements the aggregate `isMailboxMessageUnread` (contracts):
+ * a fan-out message read by another agent is still unread for this actor.
+ * Legacy global completion (`completed: true` without recipientState)
+ * counts as completed for every actor.
+ *
+ * Precondition — the message MUST have been fetched with
+ * `unreadBy: actorId` AND `includeReceiptState: true`:
+ * - the store strips `recipientState` unless `includeReceiptState` is set
+ *   (sqlite-mailbox-query.ts), and without it the completion test falls back
+ *   to the aggregate `completed` flag, which the store computes for the
+ *   QUERY's `unreadBy` actor — not for `actorId`;
+ * - a message this actor already completed is then reported as unread.
+ *
+ * `message.readBy` is always present, so the "read by this actor" half of the
+ * test stays sound without the receipt projection.
+ */
+export function isMessageUnreadForActor(message: MailboxMessage, actorId: string): boolean {
+  if (actorId in message.readBy) return false;
+  return !isMessageCompletedForActor(message, actorId);
 }
 
 function isMessageCompletedForActor(message: MailboxMessage, actorId: string): boolean {
@@ -124,7 +193,7 @@ function isMessageCompletedForActor(message: MailboxMessage, actorId: string): b
 export async function isMessageVisibleToActor(
   mailbox: Mailbox,
   messageId: string,
-  actor: MailboxActorContext,
+  actor: MailboxActorReadScope,
 ): Promise<boolean> {
   return (await visibleMessageIdsForActor(mailbox, actor, [messageId])).has(messageId);
 }

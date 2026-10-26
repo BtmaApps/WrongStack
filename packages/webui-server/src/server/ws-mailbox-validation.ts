@@ -1,5 +1,23 @@
+import {
+  checkMailboxSendType,
+  MAILBOX_MAX_BODY_LENGTH,
+  MAILBOX_MAX_SUBJECT_LENGTH,
+  MAILBOX_SENDABLE_MESSAGE_TYPES,
+  type MailboxMessageType,
+  normalizeRecipient,
+} from '@wrongstack/coordination';
 import type { PayloadValidationResult } from './ws-validation-common.js';
 import { isRecord } from './ws-validation-common.js';
+
+/**
+ * The message types a human send may carry.
+ *
+ * `control` is reserved for the runtime, so it is excluded from the union
+ * and from the accepted runtime set — both derived from the canonical
+ * `MailboxMessageType` union in `@wrongstack/coordination` so this surface
+ * cannot drift from the mailbox's own vocabulary.
+ */
+export type MailboxSendableMessageType = Exclude<MailboxMessageType, 'control'>;
 
 interface MailboxMessagesPayload {
   limit?: number;
@@ -100,23 +118,13 @@ export function validateMailboxActionPayload(
   };
 }
 
-const MAILBOX_SEND_TYPES = new Set([
-  'note',
-  'ask',
-  'assign',
-  'steer',
-  'btw',
-  'broadcast',
-  'status',
-  'result',
-  'review',
-]);
+const MAILBOX_SEND_TYPES: ReadonlySet<string> = new Set(MAILBOX_SENDABLE_MESSAGE_TYPES);
 
 export interface MailboxSendPayload {
   requestId: string;
   from?: string | undefined;
   to: string;
-  type: 'note' | 'ask' | 'assign' | 'steer' | 'btw' | 'broadcast' | 'status' | 'result' | 'review';
+  type: MailboxSendableMessageType;
   audience: 'all' | 'leaders';
   subject: string;
   body: string;
@@ -188,11 +196,40 @@ export function validateMailboxSendPayload(
   }
 
   const type = rawType as MailboxSendPayload['type'];
-  const to = type === 'broadcast' ? '*' : rawTo.trim();
-  if ((type === 'assign' || type === 'steer') && (to === '*' || to.toLowerCase() === 'all')) {
+  // The recipient is normalized by the SHARED normalizer (the agent tools
+  // and the HQ route apply the same rule): `all` → `*`, bare `@session` →
+  // the sender's session scope. Normalizing BEFORE the shared send-type
+  // check matters — `assign`/`steer` addressed to an unnormalized
+  // `@session` would pass the guard here and only fail later in the
+  // mailbox itself.
+  const senderSessionId =
+    typeof rawSessionId === 'string' && rawSessionId.length > 0 ? rawSessionId : undefined;
+  // `broadcast` targets the project wildcard regardless of the typed
+  // recipient (the composer prefills a placeholder); every other recipient
+  // goes through the shared normalizer (`all` → `*`, bare `@session` → the
+  // sender's session scope).
+  const to = type === 'broadcast' ? '*' : normalizeRecipient(rawTo.trim(), senderSessionId);
+  // The (type, recipient) rule is the SHARED one the agent tools and the HTTP
+  // bridge apply (`checkMailboxSendType`). This validator used to re-derive
+  // it locally, so the WebSocket surface could accept a pair the mailbox
+  // rejects (or reject one it accepts) with a different message.
+  const sendTypeCheck = checkMailboxSendType(type, to);
+  if (!sendTypeCheck.ok) {
     return {
       ok: false,
-      message: `mailbox.send payload.type ${type} requires a specific recipient`,
+      message: `mailbox.send payload.type is invalid: ${sendTypeCheck.error}`,
+    };
+  }
+  if (rawSubject.trim().length > MAILBOX_MAX_SUBJECT_LENGTH) {
+    return {
+      ok: false,
+      message: `mailbox.send payload.subject must be at most ${MAILBOX_MAX_SUBJECT_LENGTH} characters`,
+    };
+  }
+  if (rawBody.trim().length > MAILBOX_MAX_BODY_LENGTH) {
+    return {
+      ok: false,
+      message: `mailbox.send payload.body must be at most ${MAILBOX_MAX_BODY_LENGTH} characters`,
     };
   }
 

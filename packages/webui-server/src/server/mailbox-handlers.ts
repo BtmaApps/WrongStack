@@ -8,13 +8,19 @@
 
 import type { EventBus } from '@wrongstack/contracts/kernel';
 import {
+  isMailboxMessageUnread,
+  type MailboxMessageProjection,
+} from '@wrongstack/contracts/types/mailbox';
+import {
   actionToAckInput,
   getSharedProjectMailbox,
-  isMailboxMessageVisibleTo,
-  MAILBOX_TYPE_PROPERTIES,
+  isMessageUnreadForActor,
+  type MailboxActorReadScope,
   mailboxIdentityBase,
+  queryMessagesForActor,
   type RemoteMailbox,
   resolveProjectDir,
+  stripAggregateReceiptState,
 } from '@wrongstack/coordination';
 import type { WebSocket } from 'ws';
 import type { MailboxActionPayload, MailboxSendPayload } from './ws-payload-validation.js';
@@ -194,7 +200,6 @@ export async function handleMailboxMessages(
     // reaches the store — the unread branch below multiplies it, and
     // SqliteMailbox.query binds it as a raw SQL LIMIT.
     const limit = clampLimit(payload?.limit, 30, 200);
-    const unreadForAgent = payload?.unreadOnly === true && payload.agentId !== undefined;
     const readerRole =
       payload?.agentId !== undefined
         ? (await mb.getAgentStatuses()).find(
@@ -203,41 +208,138 @@ export async function handleMailboxMessages(
               mailboxIdentityBase(agent.agentId) === mailboxIdentityBase(payload.agentId as string),
           )?.role
         : undefined;
-    const messages = await mb.query({
-      limit:
-        payload?.unreadOnly === true && payload.agentId === undefined
-          ? Math.max(limit * 5, 100)
-          : limit,
-      to: payload?.agentId,
-      unreadBy: unreadForAgent ? payload.agentId : undefined,
-      readerRole,
-      incompleteOnly: payload?.incompleteOnly ?? false,
-    });
-    const audienceVisible =
+    // The actor-scoped read goes through the SHARED projection
+    // (`queryMessagesForActor`) the HTTP bridge and the Mailbox MCP server
+    // use. This handler used to re-derive the rule locally — it built
+    // `to`/`unreadBy` from the payload and applied the audience filter by
+    // hand — so the WebUI could drift from the canonical visibility rule
+    // (and from the per-actor receipt state it reports).
+    const actorScope: MailboxActorReadScope | undefined =
       payload?.agentId !== undefined
-        ? messages.filter((message) =>
-            isMailboxMessageVisibleTo(message, payload.agentId as string, readerRole),
-          )
-        : messages;
+        ? {
+            actorId: payload.agentId,
+            role: readerRole,
+            // The agent's own base alias (`worker` for `worker@session`) is
+            // mail addressed to that agent as well.
+            recipientAliases: new Set([mailboxIdentityBase(payload.agentId)]),
+          }
+        : undefined;
+    // The actor-scoped unread read over-fetches like the aggregate path:
+    // the store-side `unreadBy` filter does not exclude completed or
+    // legacy-completed messages, so they can occupy the LIMIT window and
+    // the post-filter (isMessageUnreadForActor) would under-report.
+    const queryLimit = payload?.unreadOnly === true ? Math.max(limit * 5, 100) : limit;
+    const messages = actorScope
+      ? await queryMessagesForActor(mb, actorScope, {
+          limit: queryLimit,
+          // `unreadBy` is bound to the actor the read is scoped to.
+          unreadBy: payload?.unreadOnly === true ? actorScope.actorId : undefined,
+          readerRole,
+          incompleteOnly: payload?.incompleteOnly ?? false,
+          // The per-actor receipt projection (`recipientState`) is what the
+          // actor-scoped fields below are derived from. Without it the server
+          // would have to fall back to the message-GLOBAL completion flag, which
+          // is exactly the leak this projection exists to close.
+          includeReceiptState: true,
+        })
+      : await mb.query({
+          limit: queryLimit,
+          to: undefined,
+          unreadBy: undefined,
+          readerRole: undefined,
+          incompleteOnly: payload?.incompleteOnly ?? false,
+          includeReceiptState: false,
+        });
+    // The canonical unread rule applies per PATH: the aggregate no-agent
+    // view uses the global rule (read by nobody), while the actor-scoped
+    // view is PER-ACTOR — a fan-out message read by another agent is still
+    // unread for this one (and must stay listed: its per-actor inbox will
+    // still inject it). The store-side `unreadBy` pre-filter does not
+    // exclude messages completed by another actor, so the per-actor
+    // completion check runs here.
     const visibleMessages =
-      payload?.unreadOnly === true && payload.agentId === undefined
-        ? audienceVisible.filter((m) => Object.keys(m.readBy).length === 0).slice(0, limit)
-        : audienceVisible;
+      payload?.unreadOnly === true
+        ? (actorScope
+            ? messages.filter((m) => isMessageUnreadForActor(m, actorScope.actorId))
+            : messages.filter(isMailboxMessageUnread)
+          ).slice(0, limit)
+        : messages;
+    // The actor this read is scoped to. Captured once so the narrowing
+    // survives into the payload mapping below: `payload?.agentId` is a
+    // property access on an optional payload, which TypeScript does not
+    // narrow inside a callback.
+    const scopedAgentId = payload?.agentId;
     send(ws, {
       type: 'mailbox.messages',
       payload: {
         ...(payload?.unreadOnly === true ? { unreadOnly: true } : {}),
         messages: visibleMessages.map((m) => {
-          const readByMe =
-            payload?.agentId !== undefined ? (payload.agentId as string) in m.readBy : false;
-          const completedByMe =
-            payload?.agentId !== undefined ? m.completedBy === payload.agentId : false;
-          const actionRequiredForMe =
-            payload?.agentId !== undefined
-              ? MAILBOX_TYPE_PROPERTIES[m.type]?.requiresAction === true &&
-                !completedByMe &&
-                m.deletedAt === undefined
-              : false;
+          // Actor-scoped receipt state, projected from the per-actor
+          // `recipientState` map. The previous implementation derived
+          // `completedByMe` from the message-GLOBAL `completedBy`, so a legacy
+          // fan-out completion was reported as "completed by me" for the one
+          // agent that acked it and NOT for the others — the global completion
+          // state leaked through a per-actor field.
+          const actorView =
+            scopedAgentId !== undefined ? stripAggregateReceiptState(m, scopedAgentId) : undefined;
+          const readByMe = actorView?.readByMe ?? false;
+          const completedByMe = actorView?.completedByMe ?? false;
+          const actionRequiredForMe = actorView?.actionRequiredForMe ?? false;
+          // The receipt fields below are the ACTOR's receipts on an
+          // actor-scoped read. Re-reading them from the raw message shipped
+          // the message-GLOBAL receipt state next to the per-actor fields:
+          // the whole `readBy` map (every other reader's identity and read
+          // time), the global `completedBy` (whichever agent acked the
+          // message), the global `completedAt` and the global `outcome`.
+          // That is exactly the aggregate state the HTTP bridge withholds
+          // from actors without the `mail.admin.receipts` capability
+          // (`stripAggregateReceiptState`), so an actor-scoped payload must
+          // not carry it either.
+          const actorState =
+            scopedAgentId !== undefined
+              ? (m as Partial<MailboxMessageProjection>).recipientState?.[scopedAgentId]
+              : undefined;
+          const legacyOwnReadAt =
+            scopedAgentId !== undefined && scopedAgentId in m.readBy
+              ? m.readBy[scopedAgentId]
+              : undefined;
+          const ownReadAt = actorState?.readAt !== undefined ? actorState.readAt : legacyOwnReadAt;
+          const actorReadBy: Record<string, string> =
+            scopedAgentId !== undefined && ownReadAt !== undefined
+              ? { [scopedAgentId]: ownReadAt }
+              : {};
+          const actorCompletedBy = completedByMe ? scopedAgentId : undefined;
+          const scopedReadBy = actorView === undefined ? m.readBy : actorReadBy;
+          const scopedReadByCount =
+            actorView === undefined
+              ? Object.keys(m.readBy).length
+              : Object.keys(actorReadBy).length;
+          // Legacy fan-out completions (a v1 ack on `*`/alias/`@session:`)
+          // are recorded once, GLOBALLY, flagged with
+          // `legacy_global_completion` and without a per-actor
+          // `completedAt` — reporting them per-actor would show a resolved
+          // message as open to every actor that did not do the acking. When
+          // the projection flags that shape, `completed` stays true but the
+          // aggregate `completedBy`/`completedAt`/`outcome` attributions
+          // stay withheld: an actor-scoped payload carries no other actor's
+          // receipt detail (the canonical ActorMailboxMessage shape), and
+          // the `legacyGlobalCompletion` marker tells the client why.
+          const legacyGlobalCompletion = actorView?.legacyGlobalCompletion === true;
+          const scopedCompleted =
+            actorView === undefined || legacyGlobalCompletion ? m.completed : completedByMe;
+          const scopedCompletedBy =
+            actorView === undefined && !legacyGlobalCompletion
+              ? m.completedBy
+              : legacyGlobalCompletion
+                ? undefined
+                : actorCompletedBy;
+          const scopedCompletedAt =
+            actorView === undefined
+              ? m.completedAt
+              : legacyGlobalCompletion
+                ? undefined
+                : actorState?.completedAt;
+          const scopedOutcome = actorView === undefined ? m.outcome : actorView.myOutcome;
           return {
             id: m.id,
             from: m.from,
@@ -247,19 +349,17 @@ export async function handleMailboxMessages(
             subject: m.subject,
             body: m.body,
             priority: m.priority,
-            readBy: m.readBy,
-            readByCount: Object.keys(m.readBy).length,
-            completed: m.completed,
-            completedBy: m.completedBy,
-            completedAt: m.completedAt,
-            outcome: m.outcome,
+            readBy: scopedReadBy,
+            readByCount: scopedReadByCount,
+            completed: scopedCompleted,
+            completedBy: scopedCompletedBy,
+            completedAt: scopedCompletedAt,
+            outcome: scopedOutcome,
             timestamp: m.timestamp,
             replyTo: m.replyTo,
             senderSessionId: m.senderSessionId,
             taskContext: m.taskContext,
-            ...(payload?.agentId !== undefined
-              ? { readByMe, completedByMe, actionRequiredForMe }
-              : {}),
+            ...(actorView !== undefined ? { readByMe, completedByMe, actionRequiredForMe } : {}),
           };
         }),
       },

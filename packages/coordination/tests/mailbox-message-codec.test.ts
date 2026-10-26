@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   applyAckToMessage,
   isAckRecord,
+  normalizeMailboxMessageType,
   parseMailboxLine,
   parseMailboxLines,
   parseMailboxMessage,
@@ -9,7 +10,7 @@ import {
   serializeAckRecord,
   serializeMailboxMessage,
 } from '../src/mailbox-message-codec.js';
-import type { AckRecord } from '../src/mailbox-types.js';
+import { MAILBOX_MESSAGE_TYPES, type AckRecord } from '../src/mailbox-types.js';
 
 const validMessage = {
   id: 'm1',
@@ -363,5 +364,33 @@ describe('parseMailboxLines', () => {
       a: '2026-07-12T01:00:00.000Z',
       b: '2026-07-12T02:00:00.000Z',
     });
+  });
+});
+
+describe('mailbox message codec — type vocabulary', () => {
+  it('accepts exactly the canonical mailbox message types', () => {
+    // The codec used to keep its own hand-written list of message types. It
+    // was not exhaustiveness-checked, so a type added to the union compiled
+    // here while every message carrying it was rejected at parse time. The
+    // accepted set must therefore EQUAL the canonical vocabulary.
+    const accepted = MAILBOX_MESSAGE_TYPES.map((type) => normalizeMailboxMessageType(type));
+    expect(accepted).toEqual([...MAILBOX_MESSAGE_TYPES]);
+
+    // Every canonical type also survives a full message parse — the path a
+    // legacy JSONL line takes on import.
+    for (const type of MAILBOX_MESSAGE_TYPES) {
+      expect(parseMailboxMessage({ ...validMessage, type }).type).toBe(type);
+    }
+  });
+
+  it('rejects a type outside the canonical vocabulary', () => {
+    expect(() => normalizeMailboxMessageType('not-a-mail-type')).toThrow(
+      /mailbox message field "type" is invalid/,
+    );
+  });
+
+  it('still maps the legacy type aliases', () => {
+    expect(normalizeMailboxMessageType('info')).toBe('note');
+    expect(normalizeMailboxMessageType('task')).toBe('assign');
   });
 });

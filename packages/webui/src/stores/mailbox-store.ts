@@ -1,3 +1,4 @@
+import { isMailboxMessageUnread } from '@wrongstack/contracts/types/mailbox';
 import { create } from 'zustand';
 
 // ============================================
@@ -183,5 +184,5 @@ export const useMailboxStore = create<MailboxState>()((set) => ({
  *  Driven by `incompleteOnly: true` query — the server filters to active
  *  messages, so anything with readByCount === 0 is genuinely unread. */
 export function selectUnreadCount(s: MailboxState): number {
-  return s.messages.filter((m) => !m.completed && (m.readByCount ?? 0) === 0).length;
+  return s.messages.filter((m) => isMailboxMessageUnread(m)).length;
 }

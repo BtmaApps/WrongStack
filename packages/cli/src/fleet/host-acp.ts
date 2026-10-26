@@ -15,7 +15,12 @@ import type {
   TaskSpec,
 } from '@wrongstack/contracts/types';
 import { ToolValidationError } from '@wrongstack/contracts/types';
-import { getSharedProjectMailbox, resolveProjectDir } from '@wrongstack/coordination';
+import {
+  getSharedProjectMailbox,
+  mailboxIdentityBase,
+  resolveProjectDir,
+  unreadCountForActor,
+} from '@wrongstack/coordination';
 import { wstackGlobalRoot } from '@wrongstack/core/utils';
 import { registerAcpSteerInbox } from './acp-live-steer.js';
 import { startAcpTurnReminders } from './acp-turn-reminders.js';
@@ -122,10 +127,21 @@ export function buildAcpSubagentRunner(
         mailboxEnabled && mailboxProjectRoot
           ? startAcpTurnReminders({
               steer,
+              // The actor-scoped projection every other mailbox surface uses.
+              // The raw store count ignored the actor's base alias, so this
+              // subagent could be told "no mail" while mail addressed to its
+              // alias was already waiting in the mailbox.
               unreadCount: () =>
-                getSharedProjectMailbox(
-                  resolveProjectDir(mailboxProjectRoot, wstackGlobalRoot()),
-                ).unreadCount(ctx.subagentId, ctx.sessionId),
+                unreadCountForActor(
+                  getSharedProjectMailbox(
+                    resolveProjectDir(mailboxProjectRoot, wstackGlobalRoot()),
+                  ),
+                  {
+                    actorId: ctx.subagentId,
+                    recipientAliases: new Set([mailboxIdentityBase(ctx.subagentId)]),
+                    sessionId: ctx.sessionId,
+                  },
+                ),
             })
           : undefined;
       return () => {

@@ -16,6 +16,56 @@ export type MailboxMessageType =
   | 'review'
   | 'control';
 
+/**
+ * The canonical RUNTIME image of the {@link MailboxMessageType} union.
+ *
+ * The union above is type-only, so every surface that validates a type
+ * string at runtime (the WebUI WS validator, the CLI slash command, the HQ
+ * HTTP route, the MCP tool parser, the mailbox codec) needs a runtime list.
+ * Each of them used to hand-maintain its own copy of the union, and a copy
+ * silently drifts the moment a type is added — one surface then rejects a
+ * type every other surface accepts.
+ *
+ * This list lives next to the union it mirrors so EVERY package can derive
+ * from it, including the browser-only surfaces that cannot import the
+ * node-side coordination package.
+ *
+ * Order matches the union declaration so runtime lists read the same way as
+ * the type.
+ */
+export const MAILBOX_MESSAGE_TYPES = [
+  'note',
+  'ask',
+  'assign',
+  'steer',
+  'btw',
+  'broadcast',
+  'status',
+  'result',
+  'review',
+  'control',
+] as const satisfies readonly MailboxMessageType[];
+
+/**
+ * Compile-time exhaustiveness guard.
+ *
+ * `MAILBOX_MESSAGE_TYPES` must list every member of the `MailboxMessageType`
+ * union. Adding a member to the union without adding it to the runtime list
+ * is a COMPILE error here, not a silent runtime gap where one surface
+ * rejects a type every other surface accepts.
+ *
+ * The declared type is `true` only while the list is exhaustive; when it is
+ * not, the type becomes the missing member and the assignment below fails to
+ * compile.
+ */
+type MailboxMessageTypeMissingFromList = Exclude<
+  MailboxMessageType,
+  (typeof MAILBOX_MESSAGE_TYPES)[number]
+>;
+export const MAILBOX_MESSAGE_TYPES_ARE_EXHAUSTIVE: MailboxMessageTypeMissingFromList extends never
+  ? true
+  : MailboxMessageTypeMissingFromList = true;
+
 export type MailboxAudience = 'all' | 'leaders';
 
 export interface ReadReceipts {
@@ -349,3 +399,39 @@ export interface MailboxMessageProjection extends MailboxMessage {
 
 /** Recipient prefix addressing every agent of one session (`@session:<id>`). */
 export const SESSION_RECIPIENT_PREFIX = '@session:';
+
+/**
+ * The canonical "unread" test for a mailbox message: not completed and not
+ * read by ANY recipient yet. Every surface that derives an unread badge,
+ * counter, or filter applies this predicate so the meaning of "unread"
+ * cannot drift between surfaces (it previously existed as several divergent
+ * copies).
+ *
+ * This answers the AGGREGATE question ("has anybody read this?"). "Has THIS
+ * actor read it?" is the per-actor receipt question — use the
+ * recipientState / ActorMailboxMessage projection for that.
+ *
+ * Accepts either the full message (`readBy` receipt map) or a client-side
+ * projection that carries the aggregate count field (`readByCount` on the
+ * WebUI store shape, `readCount` on the HQ snapshot shape).
+ */
+export interface MailboxUnreadProbe {
+  completed: boolean;
+  readBy?: { readonly [readerId: string]: unknown } | null;
+  readByCount?: number | undefined;
+  readCount?: number | undefined;
+}
+
+export function isMailboxMessageUnread(message: MailboxUnreadProbe): boolean {
+  if (message.completed) return false;
+  // The explicit count wins when the shape carries one: it is the aggregate
+  // the surface already renders, while the `readBy` map may be a partial
+  // projection of the receipts. The map is the fallback for the shapes that
+  // carry no count at all.
+  if (message.readByCount !== undefined) return message.readByCount === 0;
+  if (message.readCount !== undefined) return message.readCount === 0;
+  if (message.readBy !== undefined && message.readBy !== null) {
+    return Object.keys(message.readBy).length === 0;
+  }
+  return true;
+}

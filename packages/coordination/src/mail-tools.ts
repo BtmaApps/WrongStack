@@ -43,7 +43,11 @@ import type {
   MailboxCapability,
   MailboxMessageType,
 } from './mailbox-types.js';
-import { isMailboxMessageVisibleTo, normalizeRecipient } from './mailbox-types.js';
+import {
+  acceptMailboxMessageForSession,
+  isMailboxMessageVisibleTo,
+  normalizeRecipient,
+} from './mailbox-types.js';
 import { getSharedProjectMailbox } from './remote-mailbox.js';
 
 export interface MailToolsOptions {
@@ -342,14 +346,20 @@ export function makeMailInboxTool(opts: MailToolsOptions = {}) {
         mb.query({ to, unreadBy: identity.callerId, readerRole: identity.role, limit }),
       );
       const seen = new Set<string>();
-      const messages = batches
-        .flat()
-        .filter((m) => {
-          if (seen.has(m.id) || m.from === identity.callerId) return false;
-          if (!isMailboxMessageVisibleTo(m, identity.callerId, identity.role)) return false;
-          seen.add(m.id);
-          return true;
-        })
+      const candidates = batches.flat().filter((m) => {
+        if (seen.has(m.id) || m.from === identity.callerId) return false;
+        if (!isMailboxMessageVisibleTo(m, identity.callerId, identity.role)) return false;
+        seen.add(m.id);
+        return true;
+      });
+      const accepted: typeof candidates = [];
+      for (const m of candidates) {
+        if (await acceptMailboxMessageForSession(m, identity.sessionId)) {
+          accepted.push(m);
+        }
+      }
+      const messages = accepted
+        .sort((a, b) => b.timestamp.localeCompare(a.timestamp))
         .slice(0, limit);
 
       if (markRead || completed) {

@@ -8,20 +8,24 @@ import type {
   MailboxTaskContext,
   ReadReceipts,
 } from './mailbox-types.js';
-import { normalizeRecipient, validateSendType } from './mailbox-types.js';
+import {
+  MAILBOX_MESSAGE_TYPES,
+  normalizeRecipient,
+  validateSendType,
+} from './mailbox-types.js';
 
-const MESSAGE_TYPES = new Set<MailboxMessageType>([
-  'note',
-  'ask',
-  'assign',
-  'steer',
-  'btw',
-  'broadcast',
-  'status',
-  'result',
-  'review',
-  'control',
-]);
+/**
+ * The message types this codec accepts when PARSING a persisted message.
+ *
+ * Derived from the canonical mailbox vocabulary (`MAILBOX_MESSAGE_TYPES`)
+ * instead of a hand-maintained copy: the copy was one directory away from the
+ * canonical list and was NOT exhaustiveness-checked, so adding a type to the
+ * `MailboxMessageType` union compiled here while every parsed message
+ * carrying it was rejected with `TypeError('mailbox message field "type" is
+ * invalid')` — a sendable-everywhere type that no client could filter by
+ * (`query({ type })`) and that no legacy JSONL line could carry.
+ */
+const MESSAGE_TYPES = new Set<MailboxMessageType>(MAILBOX_MESSAGE_TYPES);
 
 const PRIORITIES = new Set<MailboxMessage['priority']>(['low', 'normal', 'high']);
 const AUDIENCES = new Set<MailboxAudience>(['all', 'leaders']);

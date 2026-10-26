@@ -150,6 +150,26 @@ export const MAILBOX_MAX_QUERY_LIMIT = 500;
  */
 export const MAILBOX_MAX_ACK_BATCH = 500;
 
+/**
+ * Ceiling on human/agent `subject` length at every untrusted send boundary
+ * (WebUI WS validator, CLI `/mailbox send`, HQ send route).
+ *
+ * The CLI already renders subjects from the first 60 body characters, so 200
+ * leaves room for deliberate subjects while keeping one mailbox row a
+ * single terminal line in practice.
+ */
+export const MAILBOX_MAX_SUBJECT_LENGTH = 200;
+
+/**
+ * Ceiling on human/agent `body` length at every untrusted send boundary.
+ *
+ * Tool OUTPUTS truncate at 2000 chars and the IPC frame ceiling is
+ * 16 Mi-chars, so 32k is a deliberate policy bound — large enough for any
+ * legitimate operator message, small enough that a runaway client cannot
+ * park megabytes in every recipient's inbox.
+ */
+export const MAILBOX_MAX_BODY_LENGTH = 32_000;
+
 // ── HTTP bridge rate limiting ──────────────────────────────────────────────
 //
 // Lives in `mailbox-http-rate-limit.ts` as `MAILBOX_HTTP_RATE_LIMIT_PER_MINUTE`

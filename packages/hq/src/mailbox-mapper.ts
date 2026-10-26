@@ -3,7 +3,10 @@ import type {
   MailboxAgentStatus,
   MailboxMessage,
 } from '@wrongstack/contracts/types/mailbox';
-import { SESSION_RECIPIENT_PREFIX } from '@wrongstack/contracts/types/mailbox';
+import {
+  isMailboxMessageUnread,
+  SESSION_RECIPIENT_PREFIX,
+} from '@wrongstack/contracts/types/mailbox';
 import type {
   HqMailboxAgentSummary,
   HqMailboxEventPayload,
@@ -159,7 +162,7 @@ export function createMailboxSnapshotPayload(
     agents: agentSummaries,
     totals: {
       messages: messages.length,
-      unread: messages.filter((message) => !message.completed && readCount(message) === 0).length,
+      unread: messages.filter(isMailboxMessageUnread).length,
       incomplete: messages.filter((message) => !message.completed).length,
       highPriority: messages.filter((message) => message.priority === 'high').length,
       onlineAgents: agents.filter((agent) => agent.online).length,

@@ -44,10 +44,12 @@ export type {
   ReadReceipts,
 } from './mailbox-message-types.js';
 export {
+  checkMailboxSendType,
   isActionRequiredForActor,
   isMailboxLeader,
   isMailboxMessageVisibleTo,
   isMailboxReceiptRecordV2,
+  isMailboxSendableType,
   isMailboxSenderInFamily,
   mailboxIdentityBase,
   normalizeRecipient,
@@ -55,10 +57,15 @@ export {
   sessionRecipient,
   validateSendType,
 } from './mailbox-predicates.js';
+export type { MailboxSendTypeCheck } from './mailbox-predicates.js';
 export type { MailboxSessionAffinityContext } from './mailbox-session-sync.js';
 export {
   acceptMailboxMessageForSession,
   acceptMailboxMessageForSessionSync,
 } from './mailbox-session-sync.js';
 export type { MailboxMessageType } from './mailbox-type-properties.js';
-export { MAILBOX_TYPE_PROPERTIES } from './mailbox-type-properties.js';
+export {
+  MAILBOX_MESSAGE_TYPES,
+  MAILBOX_SENDABLE_MESSAGE_TYPES,
+  MAILBOX_TYPE_PROPERTIES,
+} from './mailbox-type-properties.js';

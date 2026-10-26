@@ -4,7 +4,26 @@ import type {
   MailboxMessage,
   MailboxReceiptRecordV2,
 } from './mailbox-message-types.js';
-import { MAILBOX_TYPE_PROPERTIES, type MailboxMessageType } from './mailbox-type-properties.js';
+import {
+  MAILBOX_SENDABLE_MESSAGE_TYPES,
+  MAILBOX_TYPE_PROPERTIES,
+  type MailboxMessageType,
+} from './mailbox-type-properties.js';
+
+/** Every message type a human or an agent may send (`control` excluded). */
+const SENDABLE_TYPE_SET: ReadonlySet<string> = new Set(MAILBOX_SENDABLE_MESSAGE_TYPES);
+
+/**
+ * Is this string a message type that may be SENT?
+ *
+ * `control` is a member of the `MailboxMessageType` union but is reserved
+ * for the runtime, so it is rejected here even though the union contains it.
+ */
+export function isMailboxSendableType(
+  value: string,
+): value is Exclude<MailboxMessageType, 'control'> {
+  return SENDABLE_TYPE_SET.has(value);
+}
 
 export function mailboxIdentityBase(agentId: string): string {
   if (typeof agentId !== 'string') return '';
@@ -30,21 +49,54 @@ export function isMailboxMessageVisibleTo(
   return message.audience !== 'leaders' || isMailboxLeader(agentId, role);
 }
 
-export function validateSendType(type: MailboxMessageType, to: string): void {
+/**
+ * The outcome of the shared send-type check.
+ *
+ * `ok: false` carries the SAME message on every surface, so the CLI/agent
+ * tools, the HTTP bridge and the WebSocket validator cannot drift into three
+ * different answers for the same (type, recipient) pair.
+ */
+export type MailboxSendTypeCheck = { ok: true } | { ok: false; error: string };
+
+/**
+ * The canonical send-type rule.
+ *
+ * One implementation, used by every send boundary:
+ * - `control` is reserved for the runtime and may never be sent.
+ * - `assign` and `steer` need a SPECIFIC recipient: a broadcast (`*`) or a
+ *   session address (`@session:<id>`) is ambiguous.
+ *
+ * @returns `{ ok: true }` when the (type, recipient) pair may be sent.
+ */
+export function checkMailboxSendType(
+  type: MailboxMessageType,
+  to: string,
+): MailboxSendTypeCheck {
   if (type === 'control') {
-    throw new TypeError('Type "control" is reserved for runtime use and cannot be set by agents');
+    return {
+      ok: false,
+      error: 'Type "control" is reserved for runtime use and cannot be set by agents',
+    };
   }
   const isMultiRecipient = to === '*' || to.startsWith('@session:');
-  if (type === 'assign' && isMultiRecipient) {
-    throw new TypeError(
-      `Type "assign" requires a specific recipient — multi-recipient target "${to}" is ambiguous`,
-    );
+  if ((type === 'assign' || type === 'steer') && isMultiRecipient) {
+    return {
+      ok: false,
+      error: `Type "${type}" requires a specific recipient — multi-recipient target "${to}" is ambiguous`,
+    };
   }
-  if (type === 'steer' && isMultiRecipient) {
-    throw new TypeError(
-      `Type "steer" requires a specific recipient — multi-recipient target "${to}" is ambiguous`,
-    );
-  }
+  return { ok: true };
+}
+
+/**
+ * Throw the shared send-type rule as a `TypeError`.
+ *
+ * The throwing form kept for the in-process callers; the rule itself lives
+ * in {@link checkMailboxSendType} so every surface answers identically.
+ */
+export function validateSendType(type: MailboxMessageType, to: string): void {
+  const result = checkMailboxSendType(type, to);
+  if (!result.ok) throw new TypeError(result.error);
 }
 
 export { SESSION_RECIPIENT_PREFIX };

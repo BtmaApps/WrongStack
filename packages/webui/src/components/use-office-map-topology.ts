@@ -1,3 +1,4 @@
+import { isMailboxMessageUnread } from '@wrongstack/contracts/types/mailbox';
 import type { Edge, Node } from '@xyflow/react';
 import type { TFunction } from 'i18next';
 
@@ -70,9 +71,7 @@ export function useOfficeMapTopology({
     );
 
     // ── Mailbox Node ──────────────────────────────────────────────
-    const unreadCount = mailboxMessages.filter(
-      (m) => !m.completed && (m.readByCount ?? 0) === 0,
-    ).length;
+    const unreadCount = mailboxMessages.filter((m) => isMailboxMessageUnread(m)).length;
 
     // Most recent message (by timestamp) — surfaced on the node + detail panel.
     const lastMsg = mailboxMessages.length

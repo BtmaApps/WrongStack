@@ -1,6 +1,29 @@
-import type { MailboxMessageType } from '@wrongstack/contracts/types/mailbox';
+import {
+  MAILBOX_MESSAGE_TYPES,
+  MAILBOX_MESSAGE_TYPES_ARE_EXHAUSTIVE,
+  type MailboxMessageType,
+} from '@wrongstack/contracts/types/mailbox';
 
 export type { MailboxMessageType };
+
+// The canonical RUNTIME image of the `MailboxMessageType` union lives in
+// `@wrongstack/contracts/types/mailbox`, next to the union it mirrors, so
+// that EVERY surface can derive from it — including the browser-only ones
+// that cannot import the node-side coordination package. Re-exported here
+// because `@wrongstack/coordination` is the package the node-side surfaces
+// already import from.
+export { MAILBOX_MESSAGE_TYPES, MAILBOX_MESSAGE_TYPES_ARE_EXHAUSTIVE };
+
+/**
+ * The subset of {@link MAILBOX_MESSAGE_TYPES} a human or an agent may SEND.
+ *
+ * `control` is reserved for the runtime (the agent loop interprets it), so
+ * every human-facing send surface accepts exactly this set.
+ */
+export const MAILBOX_SENDABLE_MESSAGE_TYPES: readonly Exclude<MailboxMessageType, 'control'>[] =
+  MAILBOX_MESSAGE_TYPES.filter(
+    (type): type is Exclude<MailboxMessageType, 'control'> => type !== 'control',
+  );
 
 /**
  * Semantic category a mail type belongs to - determines its handling

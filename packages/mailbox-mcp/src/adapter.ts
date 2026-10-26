@@ -2,9 +2,12 @@ import {
   MAILBOX_MAX_ACK_BATCH,
   MAILBOX_MAX_QUERY_LIMIT,
   type MailboxAckInput,
+  type MailboxActorReadScope,
   type MailboxEventEmitter,
   type MailboxMessageType,
+  type MailboxQuery,
   normalizeRecipient,
+  queryMessagesForActor,
   type RemoteMailbox,
 } from '@wrongstack/coordination';
 import {
@@ -14,6 +17,7 @@ import {
   type MCPServerToolHost,
 } from '@wrongstack/mcp';
 import {
+  hasFullMailboxAccess,
   type MailboxMcpAction,
   type MailboxMcpPolicyOptions,
   type MailboxMcpToolName,
@@ -230,56 +234,92 @@ async function watchForMailboxEvent(
   });
 }
 
+/**
+ * The trusted read scope of this MCP server.
+ *
+ * Every read that can return message bodies is bound to the configured
+ * actor: the eligible recipients are the actor's own id, the base alias it
+ * reads for, and its session address. A caller cannot widen that set --
+ * the shared projection rejects a `to` the actor does not own.
+ */
+function actorReadScope(identity: ResolvedMailboxIdentity): MailboxActorReadScope {
+  const recipientAliases = new Set<string>([identity.actor]);
+  // A leader actor also reads the base `leader` alias, the recipient the
+  // inbox path has always read for it.
+  if (identity.actor === 'leader' || identity.actorRole?.trim().toLowerCase() === 'leader') {
+    recipientAliases.add('leader');
+  }
+  return {
+    actorId: identity.actor,
+    ...(identity.actorRole ? { role: identity.actorRole } : {}),
+    recipientAliases,
+    sessionId: identity.sessionId,
+  };
+}
+
+/**
+ * Bind a caller-supplied receipt filter to this server's actor.
+ *
+ * `unreadBy` decides whose receipt state decides visibility -- and, in the
+ * store, whether `leaders`-audience mail is visible at all. A caller must
+ * not be able to answer those questions for another actor, so the value is
+ * replaced with the configured actor. Same rule the HTTP bridge applies to a
+ * credentialed query.
+ */
+function selfScopedQuery(query: MailboxQuery, identity: ResolvedMailboxIdentity): MailboxQuery {
+  if (query.unreadBy === undefined && query.incompleteOnly !== true) return query;
+  return {
+    ...query,
+    unreadBy: identity.actor,
+    ...(identity.actorRole ? { readerRole: identity.actorRole } : {}),
+  };
+}
+
 async function executeRead(
   mailbox: RemoteMailbox,
   action: string,
   args: Record<string, unknown>,
-  actor: string,
-  sessionId: string,
-  actorRole?: string | undefined,
+  identity: ResolvedMailboxIdentity,
+  scope: MailboxActorReadScope,
+  fullAccess: boolean,
 ): Promise<unknown> {
   switch (action) {
     case 'query': {
       const parsedQuery = queryFromArgs(args);
+      const readerScoped = {
+        ...(identity.actorRole ? { readerRole: identity.actorRole } : {}),
+        ...parsedQuery,
+      };
+      // The full-access tier keeps the project-wide read it always had.
+      if (fullAccess) return { messages: await mailbox.query(readerScoped) };
+      // Every other tier reads through the shared actor-scoped projection, so
+      // a caller can only ever reach the mail addressed to this actor.
       return {
-        messages: await mailbox.query({
-          ...(actorRole ? { readerRole: actorRole } : {}),
-          ...parsedQuery,
-        }),
+        messages: await queryMessagesForActor(
+          mailbox,
+          scope,
+          selfScopedQuery(readerScoped, identity),
+        ),
       };
     }
     case 'unread':
-      return { unread: await mailbox.unreadCount(actor, sessionId) };
+      return { unread: await mailbox.unreadCount(identity.actor, identity.sessionId) };
     case 'inbox': {
       const parsedQuery = queryFromArgs(args);
       const limit = parsedQuery.limit ?? 20;
-      const isLeader = actor === 'leader' || actorRole?.trim().toLowerCase() === 'leader';
-      const targets = isLeader
-        ? Array.from(new Set([actor, 'leader', `@session:${sessionId}`]))
-        : [actor, `@session:${sessionId}`];
-      const batches = await Promise.all(
-        targets.map((to) =>
-          mailbox.query({
-            ...parsedQuery,
-            to,
-            unreadBy: actor,
-            ...(actorRole ? { readerRole: actorRole } : {}),
-            currentSessionId: sessionId,
-            limit,
-          }),
-        ),
-      );
-      const seen = new Set<string>();
-      const messages = batches
-        .flat()
-        .filter((message) => {
-          if (seen.has(message.id)) return false;
-          seen.add(message.id);
-          return true;
-        })
-        .sort((left, right) => right.timestamp.localeCompare(left.timestamp))
-        .slice(0, limit);
-      return { messages };
+      // The inbox has always been the actor's own mail: the caller's `to`
+      // never widened it and does not now.
+      const inboxQuery: MailboxQuery = { ...parsedQuery };
+      delete inboxQuery.to;
+      return {
+        messages: await queryMessagesForActor(mailbox, scope, {
+          ...inboxQuery,
+          unreadBy: identity.actor,
+          ...(identity.actorRole ? { readerRole: identity.actorRole } : {}),
+          currentSessionId: identity.sessionId,
+          limit,
+        }),
+      };
     }
     case 'agents':
       return { agents: await mailbox.getAgentStatuses() };
@@ -528,6 +568,10 @@ export function createMailboxMcpToolHost(
   };
   const policy = selectMailboxMcpTools(opts);
   const allowed = new Map(policy.map((entry) => [entry.name, entry.actions]));
+  // The full-access tier is the only one whose reads are not bound to the
+  // configured actor; every other tier reads through the actor scope.
+  const fullAccess = hasFullMailboxAccess(opts);
+  const scope = actorReadScope(identity);
 
   return {
     listTools(): MCPServerTool[] {
@@ -561,14 +605,7 @@ export function createMailboxMcpToolHost(
         }
         const content =
           name === 'mailbox_read'
-            ? await executeRead(
-                mailbox,
-                action,
-                args,
-                actor,
-                identity.sessionId,
-                identity.actorRole,
-              )
+            ? await executeRead(mailbox, action, args, identity, scope, fullAccess)
             : name === 'mailbox_manage'
               ? await executeManage(mailbox, action, args, identity)
               : await executeAdmin(mailbox, action, args, actor);

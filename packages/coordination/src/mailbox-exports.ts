@@ -22,7 +22,9 @@ export {
 // in-package ones rather than inventing their own.
 export {
   MAILBOX_MAX_ACK_BATCH,
+  MAILBOX_MAX_BODY_LENGTH,
   MAILBOX_MAX_QUERY_LIMIT,
+  MAILBOX_MAX_SUBJECT_LENGTH,
 } from './mailbox-constants.js';
 
 export type {
@@ -63,6 +65,17 @@ export {
   createMailboxHooks,
   type MailboxHooksOptions,
 } from './mailbox-hooks.js';
+
+// The actor-scoped read projection. Exported so the Mailbox MCP server binds
+// its reads to the configured actor with the SAME rule the HTTP bridge
+// applies, instead of shipping a second visibility implementation.
+export {
+  isMessageUnreadForActor,
+  type MailboxActorReadScope,
+  queryMessagesForActor,
+  stripAggregateReceiptState,
+  unreadCountForActor,
+} from './mailbox-http-actor-query.js';
 
 export {
   authorizeMailboxBearerToken,
@@ -106,8 +119,8 @@ export {
   makeMailboxTool,
   resolveMailboxIdentity,
 } from './mailbox-tool.js';
-
 export type {
+  ActorMailboxMessage,
   AgentHeartbeatInput,
   AgentRegistrationInput,
   ClientHeartbeatInput,
@@ -125,21 +138,27 @@ export type {
   MailboxQuery,
   MailboxRecipientState,
   MailboxSendInput,
+  MailboxSendTypeCheck,
   MailboxTaskContext,
   PurgeOptions,
   PurgeResult,
   ReadReceipts,
   RegisteredAgent,
 } from './mailbox-types.js';
-
 export {
+  checkMailboxSendType,
+  isActionRequiredForActor,
   isMailboxLeader,
   isMailboxMessageVisibleTo,
+  isMailboxSendableType,
+  MAILBOX_MESSAGE_TYPES,
+  MAILBOX_SENDABLE_MESSAGE_TYPES,
   MAILBOX_TYPE_PROPERTIES,
   mailboxIdentityBase,
   normalizeRecipient,
   SESSION_RECIPIENT_PREFIX,
   sessionRecipient,
+  validateSendType,
 } from './mailbox-types.js';
 
 export { RemoteMailboxCredentialStore } from './remote-mailbox-credential-store.js';
