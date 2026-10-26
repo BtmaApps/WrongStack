@@ -4,7 +4,7 @@
 
 ## What to avoid
 
-<!-- learned-stamp: category=warning; capturedAt=2026-10-24T14:38:10.368Z; skill=tech-stack; applied=3; wins=3 -->
+<!-- learned-stamp: category=warning; capturedAt=2026-10-24T14:38:10.368Z; skill=tech-stack; applied=5; wins=5 -->
 - **In the Bun workspace, use `bun install --frozen-lockfile --dry-run` (exit 0 = agreement) as the read-only manifest/lockfile check that mirrors what CI runs (`bun install --frozen-lockfile --ignore-scripts` in all `.github/workflows/*.yml`); do not re-run the installer against `pnpm-lock.yaml`, which is a stale pre-migration leftover. When a workspace package is extracted (e.g. `@wrongstack/agent-catalog` from `@wrongstack/core`), the expected `bun.lock` diff is importer-only — a new importer block, one dependency line per consumer, one link-map entry — with zero external snapshot movement; any external snapshot hunk means an unplanned dependency change. After the export-subpath move, grep for the removed specifier (`@wrongstack/core/agent-catalog`) to catch orphan scripts and generated ratchet inputs that still reference it.**
   - *Why:* Known failure mode — skipping this has caused real defects in this codebase. The cost of getting it wrong outweighs the cost of the check.
   - *How:* `bun install --frozen-lockfile --dry-run`
@@ -16,7 +16,7 @@
   - *How:* `bun.lock`
   - *How:* `@wrongstack/core/agent-catalog`
 
-<!-- learned-stamp: category=warning; capturedAt=2026-10-17T15:33:38.301Z; skill=tech-stack; applied=13; wins=13; skipped=3; skippedWins=3 -->
+<!-- learned-stamp: category=warning; capturedAt=2026-10-17T15:33:38.301Z; skill=tech-stack; applied=14; wins=14; skipped=4; skippedWins=4 -->
 - **Never treat a second lockfile as authoritative just because it shares the workspace config: verify which one CI installs with (`grep 'frozen-lockfile' .github/workflows`) before reporting lockfile drift. In a Bun-migrated pnpm repo, `pnpm-lock.yaml` can be a stale pre-migration leftover while `pnpm-workspace.yaml` stays live config read at runtime by `scripts/audit-dependencies.mjs` — report the staleness as pre-existing, not as caused by the current change.**
   - *Why:* Known failure mode — skipping this has caused real defects in this codebase. The cost of getting it wrong outweighs the cost of the check.
   - *How:* `grep 'frozen-lockfile' .github/workflows`
@@ -26,7 +26,7 @@
 
 ## What to do
 
-<!-- learned-stamp: category=convention; capturedAt=2026-10-24T16:19:04.318Z; skill=tech-stack; skipped=2; skippedWins=2 -->
+<!-- learned-stamp: category=convention; capturedAt=2026-10-24T16:19:04.318Z; skill=tech-stack; skipped=4; skippedWins=4 -->
 - **After a package extraction, token-diff `git diff --unified=0 bun.lock` (added vs removed `name@version` tokens) instead of trusting diff size: expected churn is the new importer block plus one `workspace:*` line per consumer; bulk same-package version swaps reveal re-resolution anomalies, while tokens missing from only one side are usually dedupe-key renames — confirm with a `grep '"<pkg>@'` before reporting a package as removed.**
   - *Why:* Established convention for this codebase — skipping it risks regressions, merge friction, or out-of-sync state with peers.
   - *How:* `git diff --unified=0 bun.lock`
@@ -34,7 +34,7 @@
   - *How:* `workspace:*`
   - *How:* `grep '"<pkg>@'`
 
-<!-- learned-stamp: category=convention; capturedAt=2026-10-24T16:19:04.318Z; skill=tech-stack; applied=2; wins=2 -->
+<!-- learned-stamp: category=convention; capturedAt=2026-10-24T16:19:04.318Z; skill=tech-stack; applied=4; wins=4 -->
 - **Always gate any manifest change with `bun install --frozen-lockfile --dry-run` and treat "overrides in package.json changed since bun.lock was saved" as proof the lock was saved from a stale manifest base — diff the `overrides:` block in `bun.lock` against `package.json` to date the stale base before regenerating.**
   - *Why:* Established convention for this codebase — skipping it risks regressions, merge friction, or out-of-sync state with peers.
   - *How:* `bun install --frozen-lockfile --dry-run`
@@ -42,7 +42,7 @@
   - *How:* `bun.lock`
   - *How:* `package.json`
 
-<!-- learned-stamp: category=convention; capturedAt=2026-10-24T16:19:04.318Z; skill=tech-stack; skipped=2; skippedWins=2 -->
+<!-- learned-stamp: category=convention; capturedAt=2026-10-24T16:19:04.318Z; skill=tech-stack; applied=1; wins=1; skipped=3; skippedWins=3 -->
 - **Before blaming `minimumReleaseAge` for lockfile downgrades, verify publish times with `npm view <pkg> time --json`: the cooldown only explains versions <24h old; downgrades of older versions (e.g. `framer-motion@14.6.0`, `vscode-jsonrpc@10.0.0` published >48h earlier) mean the resolver saw stale registry metadata or an out-of-date base lock.**
   - *Why:* Established convention for this codebase — skipping it risks regressions, merge friction, or out-of-sync state with peers.
   - *How:* `minimumReleaseAge`
@@ -50,7 +50,7 @@
   - *How:* `framer-motion@14.6.0`
   - *How:* `vscode-jsonrpc@10.0.0`
 
-<!-- learned-stamp: category=convention; capturedAt=2026-10-25T08:36:16.754Z; skill=tech-stack -->
+<!-- learned-stamp: category=convention; capturedAt=2026-10-25T08:36:16.754Z; skill=tech-stack; applied=2; wins=2 -->
 - **Expect bun.lock importer blocks to mirror each workspace member's own `version`, so a coordinated own-version bump legitimately produces importer-only version-line churn in `bun.lock` — "leave bun.lock untouched" is the wrong invariant. The correct gate is: diff must contain only importer-block `"version"` lines with zero external package-snapshot or `overrides:` movement, proven by `bun install --frozen-lockfile --dry-run` exit 0 plus `grep '"version": "<old>"' **/package.json` returning zero matches.**
   - *Why:* Established convention for this codebase — skipping it risks regressions, merge friction, or out-of-sync state with peers.
   - *How:* `version`
@@ -60,9 +60,25 @@
   - *How:* `bun install --frozen-lockfile --dry-run`
   - *How:* `grep '"version": "<old>"' **/package.json`
 
+<!-- learned-stamp: category=convention; capturedAt=2026-10-25T20:15:33.851Z; skill=tech-stack -->
+- **In this Bun workspace with the isolated linker, a workspace member's dependencies install under `<member>/node_modules/…`, not the root `node_modules/` — check the member's own tree (e.g. `apps/desktop-v2/node_modules/@tauri-apps/api`) when verifying newly added member packages, or you will false-report MISSING.**
+  - *Why:* Established convention for this codebase — skipping it risks regressions, merge friction, or out-of-sync state with peers.
+  - *How:* `<member>/node_modules/…`
+  - *How:* `node_modules/`
+  - *How:* `apps/desktop-v2/node_modules/@tauri-apps/api`
+  - *How:* `@tauri-apps/api`
+
 ## Patterns to follow
 
-<!-- learned-stamp: category=pattern; capturedAt=2026-10-17T15:33:38.301Z; skill=node-modern; applied=3; wins=3; skipped=13; skippedWins=13 -->
+<!-- learned-stamp: category=pattern; capturedAt=2026-10-25T20:15:33.851Z -->
+- **On this host the `bash` tool routes through Windows PowerShell — POSIX shell syntax like `for p in …; do … done` fails with a parser error; use PowerShell syntax (`foreach ($p in …) { … }`) or the `pwsh` tool for host commands.**
+  - *Why:* This project's chosen approach — alternatives were considered and either conflict with existing architecture or were rejected for known reasons.
+  - *How:* `bash`
+  - *How:* `for p in …; do … done`
+  - *How:* `foreach ($p in …) { … }`
+  - *How:* `pwsh`
+
+<!-- learned-stamp: category=pattern; capturedAt=2026-10-17T15:33:38.301Z; skill=node-modern; applied=3; wins=3; skipped=15; skippedWins=15 -->
 - **Prefer `import { Tabs } from 'radix-ui'` evidence before flagging the `radix-ui` umbrella as dead weight: grep the package for `from 'radix-ui'` and count actual primitives used, then compare the umbrella's `@radix-ui/*` dependency count (`packages/vibeui/node_modules/radix-ui/package.json` lists 57) against siblings, which import individual `@radix-ui/react-*` packages.**
   - *Why:* This project's chosen approach — alternatives were considered and either conflict with existing architecture or were rejected for known reasons.
   - *How:* `import { Tabs } from 'radix-ui'`
@@ -73,13 +89,13 @@
   - *How:* `@radix-ui/react-*`
   - *How:* `@radix-ui/react-`
 
-<!-- learned-stamp: category=pattern; capturedAt=2026-10-07T09:18:08.894Z; skill=tech-stack; applied=6; wins=6; skipped=17; skippedWins=17 -->
+<!-- learned-stamp: category=pattern; capturedAt=2026-10-07T09:18:08.894Z; skill=tech-stack; applied=7; wins=7; skipped=18; skippedWins=18 -->
 - **Use `bun install --frozen-lockfile --dry-run` together with `grep '"version": "<old>"' **/package.json` requiring zero matches as an independent completeness check for coordinated own-version bumps — it catches both a member omitted from the bump and any lockfile/manifest disagreement.**
   - *Why:* This project's chosen approach — alternatives were considered and either conflict with existing architecture or were rejected for known reasons.
   - *How:* `bun install --frozen-lockfile --dry-run`
   - *How:* `grep '"version": "<old>"' **/package.json`
 
-<!-- learned-stamp: category=pattern; capturedAt=2026-10-08T16:40:26.483Z; skill=tech-stack; applied=5; wins=5; skipped=15; skippedWins=15 -->
+<!-- learned-stamp: category=pattern; capturedAt=2026-10-08T16:40:26.483Z; skill=tech-stack; applied=7; wins=7; skipped=15; skippedWins=15 -->
 - **When a Radix primitive removal looks like it orphans a shared `@radix-ui/*` internal (e.g. `@radix-ui/number`, `@radix-ui/react-use-previous`), check the other primitives before calling it dead — `grep '"@radix-ui/<dep>@'` in `bun.lock` proves whether a surviving sibling still pulls it in. A transitive entry can look orphaned purely because one consumer was pruned while a second consumer in a different workspace member remains.**
   - *Why:* This project's chosen approach — alternatives were considered and either conflict with existing architecture or were rejected for known reasons.
   - *How:* `@radix-ui/*`
@@ -88,4 +104,4 @@
   - *How:* `bun.lock`
 
 ---
-*Last capture: 2026-10-25T08:36:16.754Z · 9 entries*
+*Last capture: 2026-10-25T20:15:33.851Z · 11 entries*
