@@ -304,5 +304,22 @@ describe('HqAlertEngine', () => {
       expect(ids).toContain('fleet-cost-threshold');
       expect(ids).toContain('fleet-throughput-budget');
     });
+
+    it('preserves default thresholds on undefined config fields, clamps seedSnoozes, and handles recentAlerts(0) (F31)', () => {
+      const engine = new HqAlertEngine({ onAlert: () => undefined, maxSnoozeMs: 60_000 });
+      const fired = engine.evaluate(
+        snapshot({ totalCostUsd: 75 }),
+        { costThresholdUsd: undefined } as unknown as { costThresholdUsd?: number },
+        1_000_000,
+      );
+      expect(fired).toHaveLength(1);
+      engine.seedSnoozes(
+        { 'unknown-rule': 9_999_999_999, 'fleet-cost-threshold': 9_999_999_999 },
+        1_000_000,
+      );
+      expect(engine.snoozesSnapshot(1_000_000)).toEqual({ 'fleet-cost-threshold': 1_060_000 });
+      expect(engine.recentAlerts(0)).toEqual([]);
+      expect(engine.recentAlerts(-1)).toEqual([]);
+    });
   });
 });

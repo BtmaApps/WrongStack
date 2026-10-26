@@ -108,7 +108,16 @@ const DEFAULT_CONFIG: ResolvedAlertConfig = {
 const DEFAULT_MAX_SNOOZE_MS = 24 * 60 * 60_000;
 
 function resolveConfig(config?: HqAlertRuleConfig): ResolvedAlertConfig {
-  return { ...DEFAULT_CONFIG, ...(config ?? {}) };
+  return {
+    costThresholdUsd: config?.costThresholdUsd ?? DEFAULT_CONFIG.costThresholdUsd,
+    staleMachineSeconds: config?.staleMachineSeconds ?? DEFAULT_CONFIG.staleMachineSeconds,
+    maxAgents: config?.maxAgents ?? DEFAULT_CONFIG.maxAgents,
+    tokenExpiryWarningHours:
+      config?.tokenExpiryWarningHours ?? DEFAULT_CONFIG.tokenExpiryWarningHours,
+    throughputBudgetUsd: config?.throughputBudgetUsd ?? DEFAULT_CONFIG.throughputBudgetUsd,
+    throughputLookbackMinutes:
+      config?.throughputLookbackMinutes ?? DEFAULT_CONFIG.throughputLookbackMinutes,
+  };
 }
 
 const RULES: readonly HqAlertRule[] = [
@@ -357,10 +366,12 @@ export class HqAlertEngine {
    * "now" on boot may be later than the persisted deadline.
    */
   seedSnoozes(snoozes: Readonly<Record<string, number>>, now: number = Date.now()): void {
+    const cap = now + this.maxSnoozeMs;
     for (const [ruleId, untilMs] of Object.entries(snoozes)) {
+      if (!RULES.some((r) => r.id === ruleId)) continue;
       if (!Number.isFinite(untilMs)) continue;
       if (untilMs <= now) continue;
-      this.snoozes.set(ruleId, untilMs);
+      this.snoozes.set(ruleId, Math.min(untilMs, cap));
     }
   }
 
@@ -443,7 +454,8 @@ export class HqAlertEngine {
 
   /** Historical alerts (newest-last), capped at maxHistory. */
   recentAlerts(limit = 100): HqAlert[] {
-    return this.history.slice(-limit);
+    if (!Number.isFinite(limit) || limit <= 0) return [];
+    return this.history.slice(-Math.floor(limit));
   }
 
   /** Seed the history from a durable store on boot (no alert callbacks fired). */

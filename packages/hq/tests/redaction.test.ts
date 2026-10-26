@@ -399,4 +399,23 @@ describe('HQ redaction covers built-in tool input fields', () => {
       toolName: 'bash',
     });
   });
+
+  it('preserves shared non-circular DAG references and handles Windows drive-letter casing (F31)', () => {
+    const sharedMeta = { env: 'prod', region: 'eu' };
+    const dag = redactHqValue({
+      first: { meta: sharedMeta },
+      second: { meta: sharedMeta },
+    });
+    expect(dag.redacted).toBe(false);
+    expect(dag.value.second).toEqual({ meta: { env: 'prod', region: 'eu' } });
+
+    const paths = redactHqValue(
+      { filePath: 'd:\\Codebox\\PROJECTS\\WrongStack\\packages\\hq\\src\\index.ts' },
+      {
+        projectRoot: 'D:\\Codebox\\PROJECTS\\WrongStack',
+        policy: { rawContent: true, toolArgs: 'full', paths: 'project-relative' },
+      },
+    );
+    expect(paths.value.filePath).toBe('packages/hq/src/index.ts');
+  });
 });

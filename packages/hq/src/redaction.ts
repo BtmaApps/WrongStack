@@ -205,6 +205,12 @@ function isAlreadyProjectRelative(normalized: string): boolean {
   return !normalized.split('/').includes('..');
 }
 
+function normalizeDrivePrefix(normalized: string): string {
+  return /^[A-Za-z]:/.test(normalized)
+    ? `${normalized[0]!.toLowerCase()}${normalized.slice(1)}`
+    : normalized;
+}
+
 function redactPath(
   value: string,
   projectRoot: string | undefined,
@@ -218,8 +224,10 @@ function redactPath(
   if (!projectRoot) return normalizedValue.split('/').at(-1) ?? REDACTED_PATH_REPLACEMENT;
 
   const normalizedRoot = normalizePathForCompare(projectRoot);
-  if (normalizedValue === normalizedRoot) return '.';
-  if (normalizedValue.startsWith(`${normalizedRoot}/`)) {
+  const comparableValue = normalizeDrivePrefix(normalizedValue);
+  const comparableRoot = normalizeDrivePrefix(normalizedRoot);
+  if (comparableValue === comparableRoot) return '.';
+  if (comparableValue.startsWith(`${comparableRoot}/`)) {
     return normalizedValue.slice(normalizedRoot.length + 1) || '.';
   }
   return normalizedValue.split('/').at(-1) ?? REDACTED_PATH_REPLACEMENT;
@@ -292,27 +300,30 @@ function visitValue(
 
   if (options.seen.has(value)) return { value: '[REDACTED:hq_circular]', redacted: true };
   options.seen.add(value);
+  try {
+    if (Array.isArray(value)) {
+      let redacted = false;
+      const out = value.map((item) => {
+        const next = visitValue(item, options, key);
+        redacted ||= next.redacted;
+        return next.value;
+      });
+      return { value: out, redacted };
+    }
 
-  if (Array.isArray(value)) {
+    if (!isPlainObject(value)) return { value: String(value), redacted: true };
+
     let redacted = false;
-    const out = value.map((item) => {
-      const next = visitValue(item, options, key);
+    const out: Record<string, unknown> = {};
+    for (const [childKey, childValue] of Object.entries(value)) {
+      const next = visitValue(childValue, options, childKey);
       redacted ||= next.redacted;
-      return next.value;
-    });
+      out[childKey] = next.value;
+    }
     return { value: out, redacted };
+  } finally {
+    options.seen.delete(value);
   }
-
-  if (!isPlainObject(value)) return { value: String(value), redacted: true };
-
-  let redacted = false;
-  const out: Record<string, unknown> = {};
-  for (const [childKey, childValue] of Object.entries(value)) {
-    const next = visitValue(childValue, options, childKey);
-    redacted ||= next.redacted;
-    out[childKey] = next.value;
-  }
-  return { value: out, redacted };
 }
 
 function redactHqValueInternal<T>(
