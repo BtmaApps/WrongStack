@@ -1366,4 +1366,51 @@ describe('setTaskChain edges', () => {
     const t2Stored = chain?.board.tasks.find((t) => t.id === t2!.task.id);
     expect(t2Stored?.chain).toBeUndefined();
   });
+
+  it('reverts decomposition proposal back to proposed if applyProposal throws on approve (F672)', async () => {
+    const { proposeTaskDecomposition, resolveDecompositionProposal } = await import(
+      '../src/manager/decomposition.js'
+    );
+    const ctx = { actor: 'test', sessionId: 'sess-f672' };
+    const b = await makeBoard();
+    const parent = await addTask(tmpDir, b.id, { title: 'Parent' }, ctx);
+    const prop = await proposeTaskDecomposition(
+      tmpDir,
+      b.id,
+      parent!.task.id,
+      {
+        mode: 'approval',
+        subtasks: [{ title: 'Sub 1' }, { title: 'Sub 2' }],
+      },
+      ctx,
+    );
+
+    await expect(
+      resolveDecompositionProposal(
+        tmpDir,
+        b.id,
+        parent!.task.id,
+        prop!.proposal.id,
+        {
+          action: 'approve',
+          editedSubtasks: [{ title: 'Sub 1' }, { title: '   ' }],
+        },
+        ctx,
+      ),
+    ).rejects.toThrow(/Kanban split task title/);
+
+    const retry = await resolveDecompositionProposal(
+      tmpDir,
+      b.id,
+      parent!.task.id,
+      prop!.proposal.id,
+      {
+        action: 'approve',
+        editedSubtasks: [{ title: 'Sub 1' }, { title: 'Sub 2 fixed' }],
+      },
+      ctx,
+    );
+    expect(retry?.proposal.status).toBe('applied');
+    expect(retry?.proposal.appliedChildTaskIds).toHaveLength(2);
+  });
 });

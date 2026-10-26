@@ -235,12 +235,14 @@ export async function resolveDecompositionProposal(
   eventContext: KanbanEventContext,
 ): Promise<{ board: KanbanBoard; task: KanbanTask; proposal: KanbanDecompositionProposal } | null> {
   // Phase 1: validate + (reject | mark approved) inside the lock.
+  let previousSubtasks: KanbanDecompositionSubtask[] | undefined;
   const marked = await mutateBoard(projectRoot, boardId, (board) => {
     const task = findTask(board, taskId);
     if (!task?.decomposition || task.decomposition.id !== proposalId) return null;
     assertManagementWrite(board, [task], eventContext);
     if (task.decomposition.status !== 'proposed') return null;
     const now = nowIso();
+    previousSubtasks = task.decomposition.proposedSubtasks.map((subtask) => ({ ...subtask }));
     if (input.editedSubtasks?.length) {
       if (input.editedSubtasks.length < 2) {
         throw new Error('An edited decomposition still requires at least two subtasks.');
@@ -272,9 +274,38 @@ export async function resolveDecompositionProposal(
   }
 
   // Phase 2: apply the approved split (its own mutations; splitTask emits task.split).
+  // If applying the split throws or returns null, revert the proposal back to 'proposed'
+  // so it does not remain wedged in 'approved' without children.
+  const revertProposalToProposed = async () => {
+    await mutateBoard(projectRoot, boardId, (board) => {
+      const task = findTask(board, taskId);
+      if (!task?.decomposition || task.decomposition.id !== proposalId) return null;
+      if (task.decomposition.status !== 'approved') return null;
+      task.decomposition.status = 'proposed';
+      if (previousSubtasks) {
+        task.decomposition.proposedSubtasks = previousSubtasks;
+      }
+      delete task.decomposition.resolvedAt;
+      delete task.decomposition.resolvedBy;
+      delete task.decomposition.resolutionReason;
+      task.updatedAt = nowIso();
+      board.updatedAt = task.updatedAt;
+      return task;
+    });
+  };
+
   const subtasks = marked.result.proposal.proposedSubtasks;
-  const applied = await applyProposal(projectRoot, boardId, taskId, subtasks, eventContext);
-  if (!applied) return null;
+  let applied: { board: KanbanBoard; parent: KanbanTask; children: KanbanTask[] } | null;
+  try {
+    applied = await applyProposal(projectRoot, boardId, taskId, subtasks, eventContext);
+  } catch (err) {
+    await revertProposalToProposed();
+    throw err;
+  }
+  if (!applied) {
+    await revertProposalToProposed();
+    return null;
+  }
   await wireProposalDependencies(
     projectRoot,
     boardId,
