@@ -189,8 +189,25 @@ async function handleFleetAction(
   if (action === 'usage') return formatFleetUsage(input.multiAgentHost);
   if (action === 'kill') {
     if (!target) return 'Usage: /fleet kill <subagent-id>';
-    return (await input.multiAgentHost.kill(target))
-      ? `Sent stop signal to ${target}.`
+    // `stop()` is a silent no-op for an unknown id, so resolve first: status
+    // views print 8-char ids, and a truncated id must not report a stop.
+    const ids = input.multiAgentHost.status().live.map((agent) => agent.subagentId);
+    const prefixed = ids.filter((id) => id.startsWith(target));
+    const resolved = ids.includes(target)
+      ? target
+      : prefixed.length === 1
+        ? prefixed[0]
+        : undefined;
+    if (!resolved && prefixed.length > 1) {
+      return `"${target}" matches ${prefixed.length} subagents — use a longer id.`;
+    }
+    if (!resolved) {
+      return ids.length === 0
+        ? 'No coordinator is running yet — nothing to kill.'
+        : `No subagent matched "${target}". Run /fleet status to list ids.`;
+    }
+    return (await input.multiAgentHost.kill(resolved))
+      ? `Sent stop signal to ${resolved}.`
       : 'No coordinator is running yet — nothing to kill.';
   }
   if (action === 'manifest') {
@@ -516,10 +533,14 @@ async function retryInterruptedTasks(
       'Run `/fleet retry <taskId>` or `/fleet retry all` to re-assign.',
     ].join('\n');
   }
-  const targets =
-    taskId === 'all'
-      ? interrupted
-      : interrupted.filter((task) => task.taskId === taskId || task.taskId.startsWith(taskId));
+  // One task per id: exact match first, then a prefix only when unambiguous.
+  // Only `all` retries several — an ambiguous prefix must not re-spawn each match.
+  const exact = interrupted.filter((task) => task.taskId === taskId);
+  const prefixed = interrupted.filter((task) => task.taskId.startsWith(taskId));
+  if (taskId !== 'all' && exact.length === 0 && prefixed.length > 1) {
+    return `"${taskId}" matches ${prefixed.length} interrupted tasks — use a longer id or \`all\`.`;
+  }
+  const targets = taskId === 'all' ? interrupted : exact.length > 0 ? exact : prefixed;
   if (targets.length === 0) return `No interrupted task matched "${taskId}".`;
   const results: string[] = [];
   const originSessionId = input.getSessionId();

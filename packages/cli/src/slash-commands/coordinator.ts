@@ -96,7 +96,16 @@ export function buildCoordinatorCommand(opts: SlashCommandContext): SlashCommand
           return { message: 'Coordinator task claiming is not wired in this surface.' };
         }
         const tasks = await getTasks()?.();
-        const matched = tasks?.find((task) => task.id === target || task.id.startsWith(target));
+        // Exact id first; a prefix only when it names exactly one task.
+        const prefixed = tasks?.filter((task) => task.id.startsWith(target)) ?? [];
+        const matched =
+          tasks?.find((task) => task.id === target) ??
+          (prefixed.length === 1 ? prefixed[0] : undefined);
+        if (!matched && prefixed.length > 1) {
+          return {
+            message: `"${target}" matches ${prefixed.length} coordinator tasks — use a longer id.`,
+          };
+        }
         if (!matched) {
           return { message: `No pending coordinator task matched "${target}".` };
         }
