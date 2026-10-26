@@ -75,4 +75,28 @@ describe('managed worktree holds', () => {
     await new WorktreeManager({ projectRoot: root }).cleanupAllManaged();
     expect(await exists(other.dir)).toBe(false);
   });
+
+  it('cleanupStale ignores held checkouts and removeOne cleans handle branch while refusing non-managed branches (F674)', async () => {
+    const events: string[] = [];
+    const manager = new WorktreeManager({
+      projectRoot: root,
+      events: { emit: (name: string) => events.push(name) } as never,
+    });
+    const held = await manager.allocate('goal:held', { slugHint: 'goal-held' });
+    const release = await holdManagedWorktree(path.dirname(held.dir), held.dir, 'goal:held');
+    events.length = 0;
+
+    // When only a held worktree exists, cleanupStale must be a true no-op
+    expect(await manager.cleanupStale()).toEqual({ removed: 0, detected: 0 });
+    expect(events).toEqual([]);
+    await release();
+
+    // removeOne without branch argument deletes the handle's wstack/ap/* branch and frees its slug
+    const unheld = await manager.allocate('goal:unheld', { slugHint: 'goal-unheld' });
+    expect(await manager.removeOne(unheld.dir)).toEqual({ removed: true });
+    expect(
+      execFileSync('git', ['branch', '--list', unheld.branch], { cwd: root }).toString().trim(),
+    ).toBe('');
+    expect(manager.get('goal:unheld')).toBeUndefined();
+  });
 });

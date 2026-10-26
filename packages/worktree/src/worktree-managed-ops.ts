@@ -233,15 +233,18 @@ export async function removeOne(
   if (!removed) {
     return { removed };
   }
-  // Defense-in-depth: never let a branch that could be parsed as a git flag
-  // through (a leading `-`). `branch -D --` terminates option parsing.
-  if (branch && !branch.startsWith('-')) {
-    await ctx.runGit(['branch', '-D', '--', branch], ctx.projectRoot).catch(() => undefined);
+  const matchingHandles = [...ctx.handles.entries()].filter(([, h]) => resolve(h.dir) === abs);
+  const targetBranch = branch ?? matchingHandles[0]?.[1].branch;
+  // Defense-in-depth: only delete managed `wstack/ap/*` branches (matching
+  // `removeBranch`), never arbitrary user branches or flags.
+  if (targetBranch?.startsWith('wstack/ap/')) {
+    await ctx.runGit(['branch', '-D', '--', targetBranch], ctx.projectRoot).catch(() => undefined);
   }
   await ctx.runGit(['worktree', 'prune'], ctx.projectRoot).catch(() => undefined);
-  // Drop any in-memory handle pointing at this dir.
-  for (const [ownerId, h] of [...ctx.handles]) {
-    if (resolve(h.dir) === abs) ctx.handles.delete(ownerId);
+  // Drop any in-memory handle pointing at this dir and free its slug.
+  for (const [ownerId, h] of matchingHandles) {
+    ctx.handles.delete(ownerId);
+    ctx.usedSlugs.delete(h.slug);
   }
   return { removed };
 }
@@ -267,13 +270,42 @@ export async function cleanupStale(
 ): Promise<{ removed: number; detected: number }> {
   const root = resolve(ctx.worktreesRoot);
   let detected = 0;
+  const heldBranches = new Set<string>();
   try {
     const listed = await ctx.runGit(['worktree', 'list', '--porcelain'], ctx.projectRoot);
+    let curDir: string | null = null;
+    let curBranch: string | undefined;
+    const records: Array<{ dir: string; branch?: string | undefined }> = [];
+    const flush = (): void => {
+      if (curDir) {
+        const dir = resolve(curDir);
+        if (dir !== root && (dir === root || dir.startsWith(root + sep))) {
+          records.push({ dir, branch: curBranch });
+        }
+      }
+      curDir = null;
+      curBranch = undefined;
+    };
     for (const line of listed.stdout.split('\n')) {
       const m = line.match(/^worktree\s+(.+?)\s*$/);
-      if (!m?.[1]) continue;
-      const dir = resolve(m[1]);
-      if (dir !== root && (dir === root || dir.startsWith(root + sep))) {
+      if (m?.[1]) {
+        flush();
+        curDir = m[1];
+      } else if (line.startsWith('branch ')) {
+        curBranch = line
+          .slice('branch '.length)
+          .trim()
+          .replace(/^refs\/heads\//, '');
+      } else if (line.trim() === '') {
+        flush();
+      }
+    }
+    flush();
+
+    for (const rec of records) {
+      if (await isManagedWorktreeHeld(root, rec.dir)) {
+        if (rec.branch) heldBranches.add(rec.branch);
+      } else {
         detected++;
       }
     }
@@ -295,7 +327,7 @@ export async function cleanupStale(
       detected += branches.stdout
         .split('\n')
         .map((s) => s.trim())
-        .filter(Boolean).length;
+        .filter((b) => Boolean(b) && !heldBranches.has(b)).length;
     } catch {
       // best-effort
     }
