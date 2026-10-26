@@ -38,6 +38,10 @@ export const chatHandlerMap: Partial<Record<string, (msg: WSServerMessage) => vo
   'iteration.started': handleIterationStarted,
   'provider.text_delta': handleTextDelta,
   'provider.thinking_delta': handleThinkingDelta,
+  // Token metering only. installHandlers (useWebSocket.ts) feeds every handled
+  // type to observeStreamActivity before calling the handler; registering the
+  // type here is what lets the stream meter see it. Nothing else to render.
+  'provider.output_progress': () => {},
   'tool.started': handleToolStarted,
   'tool.progress': handleToolProgress,
   'tool.executed': handleToolExecuted,
