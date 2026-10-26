@@ -27,8 +27,10 @@ export function parseSuggestionsFromOutput(
     return null;
   }
   const { texts, autoTexts } = parseNextSteps(finalText);
-  if (autoTexts.length > 0) {
-    setAutoSuggestions(autoTexts);
-  }
+  // Auto items belong to THIS turn's block. Always replace the store (even
+  // with []) so an auto="true" prompt from an earlier turn cannot outlive the
+  // block it came from — the YOLO+auto loop prefers the auto store over the
+  // fresh suggestions and would otherwise re-run the stale action.
+  setAutoSuggestions(autoTexts);
   return texts.length > 0 ? texts : null;
 }
