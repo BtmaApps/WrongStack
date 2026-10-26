@@ -279,7 +279,10 @@ export async function bindProjectEndpoint(
   options: BindProjectEndpointOptions,
 ): Promise<BindProjectEndpointOutcome> {
   const { server, endpoint, service } = options;
-  const maxAttempts = options.maxAttempts ?? DEFAULT_MAX_ATTEMPTS;
+  const maxAttempts =
+    typeof options.maxAttempts === 'number' && Number.isFinite(options.maxAttempts)
+      ? Math.max(0, Math.trunc(options.maxAttempts))
+      : DEFAULT_MAX_ATTEMPTS;
   const isWindows = _projectEndpointOps.platform === 'win32';
 
   try {
@@ -464,8 +467,14 @@ export async function retryWhileUnauthorized<T>(
   isUnauthorized: (error: unknown) => boolean,
   options: { readonly attempts?: number; readonly delayMs?: number } = {},
 ): Promise<T> {
-  const retries = options.attempts ?? 13;
-  const delayMs = options.delayMs ?? 150;
+  const retries =
+    typeof options.attempts === 'number' && Number.isFinite(options.attempts)
+      ? Math.max(0, Math.trunc(options.attempts))
+      : 13;
+  const delayMs =
+    typeof options.delayMs === 'number' && Number.isFinite(options.delayMs)
+      ? Math.max(0, Math.trunc(options.delayMs))
+      : 150;
   for (let retry = 0; ; retry++) {
     try {
       return await attempt();

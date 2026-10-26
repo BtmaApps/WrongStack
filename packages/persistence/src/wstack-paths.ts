@@ -325,11 +325,11 @@ export function resolveWstackPaths(opts: WstackPathOptions): WstackPaths {
   // pass one expect paths under it) > WRONGSTACK_HOME env > real home dir.
   const explicitGlobalRoot =
     typeof opts.globalRoot === 'string' && opts.globalRoot.trim().length > 0
-      ? opts.globalRoot.trim()
+      ? path.resolve(opts.globalRoot.trim())
       : undefined;
   const explicitUserHome =
     typeof opts.userHome === 'string' && opts.userHome.trim().length > 0
-      ? opts.userHome.trim()
+      ? path.resolve(opts.userHome.trim())
       : undefined;
   const globalRoot =
     explicitGlobalRoot ??
@@ -339,16 +339,17 @@ export function resolveWstackPaths(opts: WstackPathOptions): WstackPaths {
   // Claude skills live in their real home, but tests pass `userHome` to keep
   // both `.wrongstack` and `.claude` under a temp dir.
   const homeDir = explicitUserHome ?? os.homedir();
+  const projectRoot = path.resolve(opts.projectRoot);
   const profileName = safeProfileName(opts.profileName ?? bootstrapProfileName(globalRoot));
   const profileDir = path.join(globalRoot, 'profiles', profileName);
-  const hash = projectHash(opts.projectRoot);
-  const slug = projectSlug(opts.projectRoot);
+  const hash = projectHash(projectRoot);
+  const slug = projectSlug(projectRoot);
   const projectDir = path.join(globalRoot, 'projects', slug);
   return {
     globalRoot,
     profileName,
     profileDir,
-    projectRoot: opts.projectRoot,
+    projectRoot,
     homeDir,
     configDir: profileDir,
     globalConfig: path.join(globalRoot, 'config.json'),
@@ -390,20 +391,20 @@ export function resolveWstackPaths(opts: WstackPathOptions): WstackPaths {
     historyFile: path.join(profileDir, 'history'),
     logFile: path.join(globalRoot, 'logs', 'wrongstack.log'),
     projectDir,
-    projectCodebaseIndex: codebaseIndexDir(projectDir, opts.projectRoot),
+    projectCodebaseIndex: codebaseIndexDir(projectDir, projectRoot),
     projectMemory: path.join(projectDir, 'memory.md'),
     projectSessions: path.join(projectDir, 'sessions'),
     projectTrust: path.join(projectDir, 'trust.json'),
     projectMeta: path.join(projectDir, 'meta.json'),
     projectLocalConfig: path.join(projectDir, 'config.local.json'),
-    inProjectConfig: path.join(opts.projectRoot, '.wrongstack', 'config.json'),
-    inProjectAgentsFile: path.join(opts.projectRoot, '.wrongstack', 'AGENTS.md'),
-    inProjectSkills: path.join(opts.projectRoot, '.wrongstack', 'skills'),
-    inProjectClaudeSkills: path.join(opts.projectRoot, '.claude', 'skills'),
-    inProjectPrompts: path.join(opts.projectRoot, '.wrongstack', 'prompts'),
-    inProjectInstructions: path.join(opts.projectRoot, '.wrongstack', 'instructions'),
-    inProjectDesignKits: path.join(opts.projectRoot, '.wrongstack', 'design-kits'),
-    inProjectWorktrees: path.join(opts.projectRoot, '.wrongstack', 'worktrees'),
+    inProjectConfig: path.join(projectRoot, '.wrongstack', 'config.json'),
+    inProjectAgentsFile: path.join(projectRoot, '.wrongstack', 'AGENTS.md'),
+    inProjectSkills: path.join(projectRoot, '.wrongstack', 'skills'),
+    inProjectClaudeSkills: path.join(projectRoot, '.claude', 'skills'),
+    inProjectPrompts: path.join(projectRoot, '.wrongstack', 'prompts'),
+    inProjectInstructions: path.join(projectRoot, '.wrongstack', 'instructions'),
+    inProjectDesignKits: path.join(projectRoot, '.wrongstack', 'design-kits'),
+    inProjectWorktrees: path.join(projectRoot, '.wrongstack', 'worktrees'),
     projectHash: hash,
     projectSlug: slug,
     projectGoal: path.join(projectDir, 'goal.json'),

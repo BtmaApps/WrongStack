@@ -324,8 +324,14 @@ export function createPersistencePrimitives(
   ): Promise<T> {
     const dir = path.dirname(targetPath);
     const lockPath = path.join(dir, `.${path.basename(targetPath)}.lock`);
-    const timeoutMs = opts.timeoutMs ?? 15_000;
-    const staleMs = opts.staleMs ?? 30_000;
+    const timeoutMs =
+      typeof opts.timeoutMs === 'number' && Number.isFinite(opts.timeoutMs)
+        ? Math.max(0, opts.timeoutMs)
+        : 15_000;
+    const staleMs =
+      typeof opts.staleMs === 'number' && Number.isFinite(opts.staleMs) && opts.staleMs > 0
+        ? opts.staleMs
+        : 30_000;
     const started = Date.now();
     let handle: fs.FileHandle | undefined;
     let attempt = 0;

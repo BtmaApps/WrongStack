@@ -20,11 +20,14 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { withFileLock } from '../src/atomic-write.js';
 import {
   _projectEndpointOps,
   bindProjectEndpoint,
   isProjectEndpointLive,
+  retryWhileUnauthorized,
 } from '../src/project-endpoint.js';
+import { resolveWstackPaths } from '../src/wstack-paths.js';
 
 const isWindows = process.platform === 'win32';
 const describeUnix = isWindows ? describe.skip : describe;
@@ -320,5 +323,40 @@ describe('isProjectEndpointLive', () => {
   it('resolves to false without throwing when endpoint is malformed or invalid', async () => {
     expect(await isProjectEndpointLive('')).toBe(false);
     expect(await isProjectEndpointLive('invalid:99999')).toBe(false);
+  });
+
+  it('normalizes non-finite retry/lock bounds and resolves relative WstackPaths roots (F684)', async () => {
+    let calls = 0;
+    await expect(
+      retryWhileUnauthorized(
+        async () => {
+          calls++;
+          throw new Error('unauthorized');
+        },
+        (err) => err instanceof Error && err.message === 'unauthorized',
+        { attempts: Number.NaN, delayMs: 0 },
+      ),
+    ).rejects.toThrow(/unauthorized/);
+    expect(calls).toBe(14);
+
+    const relPaths = resolveWstackPaths({ projectRoot: '.', globalRoot: './.tmp-global' });
+    expect(path.isAbsolute(relPaths.projectRoot)).toBe(true);
+    expect(path.isAbsolute(relPaths.inProjectConfig)).toBe(true);
+    expect(path.isAbsolute(relPaths.globalRoot)).toBe(true);
+
+    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'f684-lock-'));
+    try {
+      const targetFile = path.join(tmpDir, 'data.json');
+      const lockFile = path.join(tmpDir, '.data.json.lock');
+      await fs.writeFile(lockFile, `${process.pid}:held-token`, 'utf8');
+      await expect(
+        withFileLock(targetFile, async () => 'acquired', {
+          timeoutMs: 20,
+          staleMs: -1,
+        }),
+      ).rejects.toThrow(/Timed out waiting for file lock/);
+    } finally {
+      await fs.rm(tmpDir, { recursive: true, force: true });
+    }
   });
 });
