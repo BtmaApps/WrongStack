@@ -78,6 +78,15 @@ describe('Codebase Index MCP CLI — flag values', () => {
     expect(parsed.indexDir).toBeUndefined();
     expect(parsed.httpPort).toBe(8080);
     expect(parsed.httpToken).toBe('env-token');
+    expect(parsed.tokenMissing).toBe(false);
     expect(warn).toHaveBeenCalledTimes(4);
+  });
+
+  it('does not swallow a following known flag when --token has no value (F652)', () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const parsed = parseArgs(['--http', '--token', '--writable'], {});
+    expect(parsed.httpToken).toBeUndefined();
+    expect(parsed.tokenMissing).toBe(true);
+    expect(parsed.writable).toBe(true);
   });
 });
