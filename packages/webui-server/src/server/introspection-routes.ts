@@ -5,7 +5,7 @@ import type { WebSocket } from 'ws';
 import { resolveProviderModelMetadata } from './model-catalog.js';
 import type { WSClientMessage, WSServerMessage } from './types.js';
 import { computeUsageCost, getCostRates } from './usage-cost.js';
-import { messageSessionId, withRequestId } from './ws-utils.js';
+import { errMessage, messageSessionId, withRequestId } from './ws-utils.js';
 
 export interface IntrospectionRouteContext {
   /** The runtime's agent — the fallback when the host has no registry. */
@@ -27,6 +27,10 @@ export interface IntrospectionRouteContext {
   getAgent?: ((sessionId?: string) => Agent | undefined) | undefined;
   modelsRegistry?: ModelsRegistry | undefined;
   configStore?: ConfigStore | undefined;
+  /** Durable active-profile writer; ConfigStore.update only changes memory. */
+  updateGlobalConfig?:
+    | ((mutate: (config: Record<string, unknown>) => void, errorLabel: string) => Promise<void>)
+    | undefined;
   getConfig: () => Config;
   getProjectRoot: () => string;
   getSessionId: () => string;
@@ -66,16 +70,37 @@ function toolEntries(ctx: IntrospectionRouteContext): ToolEntryLike[] {
   return (registry.list?.() ?? []).map((tool) => ({ tool, owner: 'core' }));
 }
 
-function persistDisabledTool(
+async function persistDisabledTool(
   ctx: IntrospectionRouteContext,
   name: string,
   disabled: boolean,
-): void {
+): Promise<void> {
+  let persistedNames: string[] | undefined;
+  if (ctx.updateGlobalConfig) {
+    await ctx.updateGlobalConfig((config) => {
+      const raw = config['tools'];
+      const tools =
+        raw && typeof raw === 'object' && !Array.isArray(raw)
+          ? (raw as Record<string, unknown>)
+          : {};
+      const names = new Set(
+        Array.isArray(tools['disabledTools'])
+          ? tools['disabledTools'].filter((value): value is string => typeof value === 'string')
+          : [],
+      );
+      if (disabled) names.add(name);
+      else names.delete(name);
+      persistedNames = [...names];
+      config['tools'] = { ...tools, disabledTools: persistedNames };
+    }, 'Tool availability');
+  }
   if (!ctx.configStore) return;
   const currentTools = ctx.configStore.get().tools ?? {};
-  const disabledTools = new Set(currentTools.disabledTools ?? []);
-  if (disabled) disabledTools.add(name);
-  else disabledTools.delete(name);
+  const disabledTools = new Set(persistedNames ?? currentTools.disabledTools ?? []);
+  if (!persistedNames) {
+    if (disabled) disabledTools.add(name);
+    else disabledTools.delete(name);
+  }
   ctx.configStore.update({ tools: { ...currentTools, disabledTools: [...disabledTools] } });
 }
 
@@ -269,8 +294,21 @@ export async function handleIntrospectionRoute(
         return true;
       }
       const disabled = message.type === 'tool.disable';
+      const wasDisabled = ctx.agent.tools.isDisabled?.(name) ?? !disabled;
       const ok = disabled ? ctx.agent.tools.disable(name) : ctx.agent.tools.enable(name);
-      if (ok) persistDisabledTool(ctx, name, disabled);
+      if (ok) {
+        try {
+          await persistDisabledTool(ctx, name, disabled);
+        } catch (error) {
+          if (wasDisabled) ctx.agent.tools.disable(name);
+          else ctx.agent.tools.enable(name);
+          ctx.send(ws, {
+            type: disabled ? 'tool.disabled' : 'tool.enabled',
+            payload: withRequestId(message.payload, { name, ok: false, error: errMessage(error) }),
+          });
+          return true;
+        }
+      }
       ctx.send(ws, {
         type: disabled ? 'tool.disabled' : 'tool.enabled',
         payload: withRequestId(message.payload, { name, ok }),

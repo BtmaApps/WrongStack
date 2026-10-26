@@ -55,7 +55,7 @@ import {
 import type { ProcessRouteHandlers } from './process-routes.js';
 import { routeProviderCfgThroughProxy } from './proxy-runtime.js';
 import { createRouteFamilyDispatcher } from './route-family-dispatcher.js';
-import type { AllRoutes, WebuiDeps, WebuiMutableState } from './routes.js';
+import type { AllRoutes, WebuiCallbacks, WebuiDeps, WebuiMutableState } from './routes.js';
 import { collectDisplayedSessionIds } from './session-handlers.js';
 import type { ConnectedClient, WSClientMessage } from './types.js';
 import { createWorklistRouteHandlers } from './worklist-routes.js';
@@ -106,6 +106,7 @@ interface MessageDispatcherOptions {
   runLock: RunLockControl;
   /** Pending permission confirmations — tool.confirm_result resolves one. */
   pendingConfirms: Map<string, PendingConfirm>;
+  updateGlobalConfig?: WebuiCallbacks['updateGlobalConfig'] | undefined;
   /**
    * Caller-supplied register hook. The dispatcher calls this **once** during
    * construction to hand its disposer to the caller. The caller is
@@ -558,6 +559,7 @@ export function createMessageDispatcher(
       getAgent: (sessionId?: string) => deps.getAgent?.(sessionId),
       modelsRegistry: deps.modelsRegistry,
       configStore: deps.configStore,
+      updateGlobalConfig: opts.updateGlobalConfig,
       getConfig: state.getConfig,
       getProjectRoot: state.getProjectRoot,
       getSessionId: () => state.getSession().id,

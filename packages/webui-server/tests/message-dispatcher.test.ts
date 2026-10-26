@@ -122,10 +122,19 @@ describe('createMessageDispatcher', () => {
       options: mocked.mock.calls.at(-1)?.[0] as {
         onUnknown: (ws: unknown, msg: unknown) => void;
         getKanbanContext: () => { dispatchTask?: unknown };
+        introspection: { updateGlobalConfig?: unknown };
       },
       routed: mocked.mock.results.at(-1)?.value as ReturnType<typeof vi.fn>,
     };
   };
+
+  it('forwards the durable profile writer to tool mutations without writing on construction', async () => {
+    const writer = vi.fn(async () => {});
+    createMessageDispatcher({ ...makeMinimalOpts(), updateGlobalConfig: writer });
+    const { options } = await lastRouteFamily();
+    expect(options.introspection.updateGlobalConfig).toBe(writer);
+    expect(writer).not.toHaveBeenCalled();
+  });
 
   it('exposes an isolated card dispatcher to standalone Kanban routes', async () => {
     createMessageDispatcher(makeMinimalOpts());

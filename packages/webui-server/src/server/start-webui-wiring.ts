@@ -189,6 +189,7 @@ export function wireStandaloneWebuiRuntime(input: StandaloneWebuiWiringInput): v
     codebaseIndexing,
     runLock: runLockControl,
     pendingConfirms,
+    updateGlobalConfig: cb.updateGlobalConfig,
     onDispose: (dispose) => {
       kanbanSupervisorDispose = dispose;
     },
