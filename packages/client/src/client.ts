@@ -479,10 +479,12 @@ export class WrongStackClient {
       if (info.sessionId === this.current?.sessionId) this.current = info;
     } else if (frame.type === 'run.result') {
       const result = frame.payload as ServerPayload<'run.result'>;
-      const pending = result.requestId ? this.runs.get(result.requestId) : undefined;
-      if (pending) {
-        this.runs.delete(pending.run.id);
-        pending.run.finish(result);
+      const run = result.requestId
+        ? this.runs.get(result.requestId)?.run
+        : this.pendingRun(sessionId);
+      if (run) {
+        this.runs.delete(run.id);
+        run.finish(result);
       }
     } else if (frame.type === 'error') {
       this.failRunOn(sessionId, frame.payload as ServerPayload<'error'>);
@@ -492,6 +494,13 @@ export class WrongStackClient {
       this.pendingRun(sessionId)?.push(frame as RunEvent);
       if (frame.type === 'tool.confirm_needed')
         this.autoConfirm(frame.payload as ConfirmRequest, sessionId);
+      else if (frame.type === 'tool.confirm_resolved') {
+        const resolved = frame.payload as ServerPayload<'tool.confirm_resolved'>;
+        if (resolved?.id) {
+          if (this.answeredConfirms.size >= 1_000) this.answeredConfirms.clear();
+          this.answeredConfirms.add(resolved.id);
+        }
+      }
     }
 
     for (const waiter of this.waiters) {
@@ -580,7 +589,9 @@ export class WrongStackClient {
     void Promise.resolve()
       .then(() => handler({ ...request, sessionId }))
       .then((decision) => {
-        if (decision && !this.unusable()) this.confirm(request.id, decision, sessionId);
+        if (decision && !this.answeredConfirms.has(request.id) && !this.unusable()) {
+          this.confirm(request.id, decision, sessionId);
+        }
       })
       .catch(() => {
         // A throwing handler leaves the request open; the server's deadline applies.

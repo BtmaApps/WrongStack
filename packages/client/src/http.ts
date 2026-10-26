@@ -40,11 +40,18 @@ export interface WrongStackHttpClient {
 
 export function createHttpClient(options: HttpClientOptions): WrongStackHttpClient {
   const doFetch = options.fetch ?? fetch;
-  const base = options.url.replace(/^ws(s?):/, 'http$1:');
+  const base = options.url.replace(/^ws(s?):/i, (_, s: string) => `http${s.toLowerCase()}:`);
+  let urlToken: string | undefined;
+  try {
+    urlToken = new URL(base).searchParams.get('token') || undefined;
+  } catch {
+    urlToken = undefined;
+  }
+  const effectiveToken = options.token || urlToken;
 
   async function call<T>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
     const headers: Record<string, string> = {};
-    if (options.token) headers['X-WS-Token'] = options.token;
+    if (effectiveToken) headers['X-WS-Token'] = effectiveToken;
     if (init.body !== undefined) headers['Content-Type'] = 'application/json';
     let response: Response;
     try {

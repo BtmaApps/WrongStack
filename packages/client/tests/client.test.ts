@@ -955,4 +955,63 @@ describe('createHttpClient', () => {
     // Attempt 1 waits 60ms, Attempt 2 waits 120ms (total >= 165ms; without *2 it would be ~120ms)
     expect(elapsed).toBeGreaterThanOrEqual(165);
   });
+
+  it('settles pending runs when run.result omits requestId, suppresses duplicate autoConfirm after manual/server resolution, and normalizes uppercase WS:// + url token in createHttpClient', async () => {
+    let resolveGate!: () => void;
+    const gate = new Promise<void>((r) => {
+      resolveGate = r;
+    });
+    const { server: s, client } = await connected(
+      {},
+      {
+        onConfirm: async () => {
+          await gate;
+          return 'yes';
+        },
+      },
+    );
+
+    const run = client.send('without-request-id');
+    await s.frame('user_message');
+    s.broadcast({
+      type: 'tool.confirm_needed',
+      payload: {
+        id: 'cfm_race',
+        toolName: 'bash',
+        input: {},
+        suggestedPattern: 'bash',
+        sessionId: 'sess_1',
+      },
+    });
+    run.confirm('cfm_race', 'no');
+    resolveGate();
+    await new Promise((r) => setTimeout(r, 20));
+    const confirmFrames = s.received.filter((f) => f.type === 'tool.confirm_result');
+    expect(confirmFrames).toHaveLength(1);
+    expect(confirmFrames[0]?.payload).toMatchObject({ id: 'cfm_race', decision: 'no' });
+
+    s.broadcast({
+      type: 'run.result',
+      payload: {
+        sessionId: 'sess_1',
+        status: 'done',
+        iterations: 1,
+        finalText: 'fallback-settled',
+      },
+    });
+    await expect(run.text()).resolves.toBe('fallback-settled');
+
+    const seen: Array<{ url: string; token: string | undefined }> = [];
+    const httpClient = createHttpClient({
+      url: `${s.url.replace(/^http:/, 'WS:')}?token=query-secret`,
+      fetch: (async (input: RequestInfo | URL, init?: RequestInit) => {
+        const headers = (init?.headers ?? {}) as Record<string, string>;
+        seen.push({ url: String(input), token: headers['X-WS-Token'] });
+        return new Response('[]', { status: 200 });
+      }) as typeof fetch,
+    });
+    await expect(httpClient.listLiveSessions()).resolves.toEqual([]);
+    expect(seen[0]?.url).toMatch(/^http:\/\//);
+    expect(seen[0]?.token).toBe('query-secret');
+  });
 });
