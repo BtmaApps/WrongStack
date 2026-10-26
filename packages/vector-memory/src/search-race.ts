@@ -160,9 +160,11 @@ export async function runSearchRace(
     { sageId: string; vectorScore: number; preview: string }
   >();
   for (const hit of vectorHits) {
-    const sageId = (hit.entry.metadata as Record<string, unknown> | undefined)?.['sageId'];
-    if (typeof sageId !== 'string' || sageId.trim().length === 0) continue;
-    const vectorScore = Number.isNaN(hit.score) ? 0 : Math.max(0, Math.min(1, hit.score));
+    const rawSageId = (hit.entry.metadata as Record<string, unknown> | undefined)?.['sageId'];
+    if (typeof rawSageId !== 'string') continue;
+    const sageId = rawSageId.trim();
+    if (sageId.length === 0) continue;
+    const vectorScore = !Number.isFinite(hit.score) ? 0 : Math.max(0, Math.min(1, hit.score));
     const duplicate = uniqueVectorHits.get(sageId);
     if (duplicate) {
       if (vectorScore > duplicate.vectorScore) {

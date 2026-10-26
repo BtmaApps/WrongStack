@@ -806,5 +806,66 @@ describe('vector-memory 100% coverage suite', () => {
           }),
       ).toThrow(/Vector memory directory must stay inside the project root/);
     });
+
+    it('preserves existing mirrored entry when syncFromSage encounters blank text or non-lossless metadata, and normalizes Infinity/whitespace sageId in fusion & race', async () => {
+      const store = makeStore(tmpDir);
+      const initial = await store.syncFromSage({
+        listActiveMemories: async () => [{ id: 'sage_f39', text: 'Valid initial memory text' }],
+      });
+      expect(initial.indexed).toBe(1);
+      expect(store.findBySageId('sage_f39')?.text).toBe('Valid initial memory text');
+
+      const badSync = await store.syncFromSage({
+        listActiveMemories: async () => [
+          { id: 'sage_f39', text: '   ' },
+          { id: 'sage_f39', text: 'Updated', metadata: { bad: Number.NaN } },
+        ],
+      });
+      expect(badSync.failed).toBe(2);
+      expect(store.findBySageId('sage_f39')?.text).toBe('Valid initial memory text');
+
+      const { fuseWithVectorMemory, runSearchRace } = await import('../src/index.js');
+      const lex = [
+        {
+          id: 'sage_f39',
+          text: 'Valid initial memory text',
+          kind: 'fact',
+          scope: 'project',
+          status: 'active',
+          importance: 0.5,
+          confidence: 0.8,
+          tags: [],
+          createdAt: '2026-10-25T00:00:00.000Z',
+          updatedAt: '2026-10-25T00:00:00.000Z',
+        },
+      ] as any;
+      const vectorHit = {
+        entry: {
+          id: 'v_f39',
+          text: 'Valid initial memory text',
+          metadata: { sageId: '  sage_f39  ' },
+          tags: [],
+          scope: 'project' as const,
+          kind: 'note' as const,
+          contentHash: 'h_f39',
+          createdAt: '2026-10-25T00:00:00.000Z',
+          updatedAt: '2026-10-25T00:00:00.000Z',
+        },
+        score: Number.POSITIVE_INFINITY,
+        providerId: 'fake',
+      };
+      const fused = await fuseWithVectorMemory('query', lex, { vectorHits: [vectorHit] });
+      expect(fused[0]?.source).toBe('both');
+      expect(fused[0]?.vectorScore).toBe(0);
+
+      const race = await runSearchRace(
+        'query',
+        lex,
+        { search: async () => [vectorHit] } as unknown as VectorMemoryStore,
+        { limit: 2 },
+      );
+      expect(race.overlap).toHaveLength(1);
+      expect(race.overlap[0]?.vectorScore).toBe(0);
+    });
   });
 });

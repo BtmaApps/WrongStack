@@ -88,8 +88,6 @@ export async function runConsolidationPass(
       continue;
     }
     report.calls++;
-    // Seen unless retired below: not sent again until the skip window passes.
-    for (const memory of batch.members) report.seenIds.push(memory.id);
     let raw: string;
     try {
       raw = await llm(CONSOLIDATION_SYSTEM_PROMPT, buildConsolidationPrompt(batch));
@@ -100,6 +98,8 @@ export async function runConsolidationPass(
     const lesson = parseConsolidationResponse(raw, batch);
     if (!lesson) {
       report.noLesson++;
+      // Seen unless retired below: not sent again until the skip window passes.
+      for (const memory of batch.members) report.seenIds.push(memory.id);
       continue;
     }
     const members = batch.members.filter((memory) => lesson.sourceIds.includes(memory.id));
@@ -143,6 +143,7 @@ export async function runConsolidationPass(
       report.staleOwner = true;
       break;
     }
+    for (const memory of batch.members) report.seenIds.push(memory.id);
     report.proposed++;
   }
   return report;

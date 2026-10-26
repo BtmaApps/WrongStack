@@ -159,8 +159,10 @@ export async function fuseWithVectorMemory(
   const vectorIndexBySageId = new Map<string, number>();
   for (let i = 0; i < vectorHits.length; i++) {
     const hit = vectorHits[i]!;
-    const sageId = (hit.entry.metadata as Record<string, unknown> | undefined)?.['sageId'];
-    if (typeof sageId !== 'string') continue;
+    const rawSageId = (hit.entry.metadata as Record<string, unknown> | undefined)?.['sageId'];
+    if (typeof rawSageId !== 'string') continue;
+    const sageId = rawSageId.trim();
+    if (!sageId) continue;
     const memory = sageById.get(sageId);
     if (!memory) continue;
     const vectorScore = normalizeScore(hit.score);
@@ -244,7 +246,7 @@ function clamp01(value: number): number {
 }
 
 function normalizeScore(value: number): number {
-  if (Number.isNaN(value)) return 0;
+  if (!Number.isFinite(value)) return 0;
   return Math.max(0, Math.min(1, value));
 }
 

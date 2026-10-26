@@ -116,6 +116,7 @@ export function scheduleConsolidation(deps: ConsolidationScheduleDeps): () => vo
       );
       const { seenIds, ...report } = await runConsolidationPass(deps.surface, llm, {
         maxCalls: deps.maxCalls,
+        now,
         projectRoot: deps.projectRoot,
         skipIds: new Set(Object.keys(seen)),
       });

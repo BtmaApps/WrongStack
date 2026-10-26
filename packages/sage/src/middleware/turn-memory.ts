@@ -7,7 +7,7 @@ import {
   type Request,
   type TextBlock,
 } from '@wrongstack/contracts/types';
-import { formatMemoryEvidenceBlock } from '@wrongstack/core/utils';
+import { formatMemoryEvidenceBlock, LIVE_CONTEXT_MARKER } from '@wrongstack/core/utils';
 import { formatMemoryHintsDetailed } from '../retrieval/format.js';
 import { memoryQueryRelevance, memorySemanticRelevance } from '../retrieval/relevance.js';
 import type { SystemOneRecallFilter } from '../retrieval/system-one-recall.js';
@@ -313,16 +313,24 @@ function lastMessageTextByRole(messages: Message[], role: Message['role']): stri
   for (let i = messages.length - 1; i >= 0; i--) {
     const message = messages[i];
     if (!message || message.role !== role) continue;
+    let blocks = Array.isArray(message.content) ? message.content : undefined;
+    if (role === 'user' && blocks) {
+      const liveStart = blocks.findIndex(
+        (block) => block.type === 'text' && block.text === LIVE_CONTEXT_MARKER,
+      );
+      if (liveStart >= 0) blocks = blocks.slice(0, liveStart);
+    }
     const text =
       typeof message.content === 'string'
         ? message.content.trim()
-        : Array.isArray(message.content)
-          ? message.content
+        : blocks
+          ? blocks
               .filter((block) => block.type === 'text')
               .map((block) => block.text)
               .join(' ')
               .trim()
           : '';
+    if (role === 'assistant') return text;
     if (text) return text;
   }
   return '';

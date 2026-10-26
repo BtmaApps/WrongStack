@@ -1,5 +1,6 @@
 import { withFileLock } from '@wrongstack/core/utils';
 import {
+  cloneJsonMetadata,
   DEFAULT_LOCK_TIMEOUT_MS,
   errMsg,
   jsonValuesEqual,
@@ -47,13 +48,33 @@ export async function syncSageEntries(
       if (typeof memory.id !== 'string' || memory.id.trim().length === 0) {
         throw new Error('SAGE memory id must be a non-empty string');
       }
+      if (typeof memory.text !== 'string' || memory.text.trim().length === 0) {
+        throw new Error('SAGE memory text must be a non-empty string');
+      }
+      if (memory.summary !== undefined && typeof memory.summary !== 'string') {
+        throw new Error('SAGE memory summary must be a string');
+      }
+      if (
+        memory.tags !== undefined &&
+        (!Array.isArray(memory.tags) || !memory.tags.every((tag) => typeof tag === 'string'))
+      ) {
+        throw new Error('SAGE memory tags must be an array of strings');
+      }
+      if (
+        memory.metadata !== undefined &&
+        (typeof memory.metadata !== 'object' ||
+          memory.metadata === null ||
+          Array.isArray(memory.metadata))
+      ) {
+        throw new Error('SAGE memory metadata must be an object');
+      }
       const hash = vectorContentHash(memory.text);
-      const expectedMetadata = {
+      const expectedMetadata = cloneJsonMetadata({
         ...(memory.metadata ?? {}),
         source: 'sage',
         sageId: memory.id,
-      };
-      const expectedTags = memory.tags ?? [];
+      });
+      const expectedTags = memory.tags ? [...memory.tags] : [];
       const expectedSummary = memory.summary ?? undefined;
       // The dedup-check → INSERT pair is a read-modify-write, so it runs
       // under the same host-OS file lock as `remember()` (see the class

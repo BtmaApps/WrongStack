@@ -42,6 +42,20 @@ export type SystemOneRecallFilter = (query: string, memories: Sage[]) => Promise
 const MAX_QUERY_CHARS = 4_000;
 const MAX_MEMORY_CHARS = 800;
 
+// The capped text goes into the judge provider request: never split a
+// surrogate pair at the cut. Memory text is conversation-derived, so an
+// astral char straddling the cap would send ill-formed UTF-16 — providers
+// reject it, and the fail-open catch then keeps every candidate, silently
+// disabling the filter for that query. Dropping the orphaned half keeps
+// the text well-formed (surrogate-safe truncation convention).
+const capForJudge = (text: string, max: number): string => {
+  if (text.length <= max) return text;
+  let end = max;
+  const lastKept = text.charCodeAt(end - 1);
+  if (lastKept >= 0xd800 && lastKept <= 0xdbff) end -= 1;
+  return text.slice(0, end);
+};
+
 export function createSystemOneRecallFilter(
   opts: SystemOneRecallFilterOptions,
 ): SystemOneRecallFilter {
@@ -88,8 +102,8 @@ export function createSystemOneRecallFilter(
             {
               activityFeature: judge.feature,
               state: {
-                userMessage: query.slice(0, MAX_QUERY_CHARS),
-                memories: unjudged.map((m) => m.text.slice(0, MAX_MEMORY_CHARS)),
+                userMessage: capForJudge(query, MAX_QUERY_CHARS),
+                memories: unjudged.map((m) => capForJudge(m.text, MAX_MEMORY_CHARS)),
               },
               questions,
               model: judge.model,

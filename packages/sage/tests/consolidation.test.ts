@@ -284,8 +284,37 @@ describe('consolidation end to end on a real store', () => {
     const report = await runConsolidationPass(outdatedOwner, llm);
 
     expect(report).toMatchObject({ staleOwner: true, proposed: 0, calls: 1 });
+    expect(report.seenIds).toEqual([]);
     expect(rejectCandidate).toHaveBeenCalledTimes(1);
     expect(await store.listCandidates(false)).toEqual([]);
+  });
+
+  it('does not record seenIds when the LLM call or createCandidate fails', async () => {
+    await seedLogs();
+    const failedLlm = await runConsolidationPass(store, async () => {
+      throw new Error('rate limit');
+    });
+    expect(failedLlm).toMatchObject({ errors: 1, calls: 1, seenIds: [] });
+
+    const failingCandidateOwner = {
+      listSage: store.listSage.bind(store),
+      listCandidates: store.listCandidates.bind(store),
+      createCandidate: async () => {
+        throw new Error('sqlite busy');
+      },
+    };
+    const failedCreate = await runConsolidationPass(failingCandidateOwner, async (_s, prompt) => {
+      const ids = [...prompt.matchAll(/"id": "([^"]+)"/g)].map((m) => m[1]);
+      return JSON.stringify({
+        lesson: {
+          text: 'packages/tui/src/hooks/use-brain-panel.ts focus handling was audited clean; its duplicate interval is idempotent and is not a defect to re-raise.',
+          kind: 'anti_pattern',
+          anchors: [{ type: 'file', path: 'packages/tui/src/hooks/use-brain-panel.ts' }],
+          sourceIds: ids,
+        },
+      });
+    });
+    expect(failedCreate).toMatchObject({ errors: 1, calls: 1, seenIds: [] });
   });
 
   it('skips a batch whose shared path is gone instead of paying for a stale lesson', async () => {

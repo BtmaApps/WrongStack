@@ -1,4 +1,6 @@
+import { LIVE_CONTEXT_MARKER } from '@wrongstack/core/utils';
 import { describe, expect, it } from 'vitest';
+import { InjectionTracker } from '../src/middleware/injection-tracker.js';
 import { createSageTurnMiddleware } from '../src/middleware/turn-memory.js';
 import type { Sage } from '../src/types.js';
 
@@ -338,5 +340,83 @@ describe('createSageTurnMiddleware', () => {
     const result = await middleware.handler(request as never, async (next) => next);
     // Should NOT be re-injected — normalized forms match
     expect(result.system).toHaveLength(1);
+  });
+
+  it('does not credit older pre-injection assistant messages on tool-only steps or leak LIVE_CONTEXT_MARKER blocks into the user query', async () => {
+    const memLifecycle = makeMemory({
+      id: 'mem_lifecycle',
+      text: 'Always run lifecycle tests with bun vitest before committing.',
+      anchors: [{ type: 'file', path: 'src/lifecycle.ts' }],
+    });
+    const credited: string[][] = [];
+    const queries: string[] = [];
+    const tracker = new InjectionTracker();
+    const middleware = createSageTurnMiddleware({
+      tracker,
+      memory: {
+        searchSage: async (query) => {
+          queries.push(query);
+          return query.includes('lifecycle') ? [memLifecycle] : [];
+        },
+        recordInjection: async () => {},
+        recordUse: async (ids) => {
+          credited.push(ids);
+        },
+      },
+    });
+
+    await middleware.handler(
+      {
+        model: 'test',
+        system: [],
+        messages: [
+          { role: 'user' as const, content: 'Initial question' },
+          {
+            role: 'assistant' as const,
+            content: 'I will run lifecycle tests with bun vitest before committing.',
+          },
+          { role: 'user' as const, content: 'How do I run lifecycle tests?' },
+        ],
+      } as never,
+      async (next) => next,
+    );
+    expect(credited).toEqual([]);
+
+    queries.length = 0;
+    await middleware.handler(
+      {
+        model: 'test',
+        system: [],
+        messages: [
+          { role: 'user' as const, content: 'Initial question' },
+          {
+            role: 'assistant' as const,
+            content: 'I will run lifecycle tests with bun vitest before committing.',
+          },
+          { role: 'user' as const, content: 'How do I run lifecycle tests?' },
+          {
+            role: 'assistant' as const,
+            content: [
+              { type: 'tool_use' as const, id: 'call_1', name: 'read', input: { path: 'a.ts' } },
+            ],
+          },
+          {
+            role: 'user' as const,
+            content: [
+              { type: 'tool_result' as const, tool_use_id: 'call_1', content: 'file body' },
+              { type: 'text' as const, text: LIVE_CONTEXT_MARKER },
+              {
+                type: 'text' as const,
+                text: '[memory_evidence source="sage.tool-memory"]\n--- SAGE ---\n- [fact] <memory id="m_tool">Quarantine retry budgets drain in the waiting room.</memory>\n[/memory_evidence]',
+              },
+            ],
+          },
+        ],
+      } as never,
+      async (next) => next,
+    );
+
+    expect(credited).toEqual([]);
+    expect(queries).toEqual(['How do I run lifecycle tests?']);
   });
 });
