@@ -101,6 +101,37 @@ describe('createProjectMetadataReasserter', () => {
     await guard.reassert();
     expect(write).toHaveBeenCalledTimes(2);
   });
+
+  it('re-checks and rewrites when a foreign overwrite and new refusal arrive during an in-flight write (F675)', async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'metadata-reassert-f675-'));
+    const metadataPath = path.join(dir, 'server.json');
+    const THEIRS = { pid: 9999, endpoint: '/tmp/ws/daemon-old.sock', authToken: 'theirs' };
+    try {
+      await fs.writeFile(metadataPath, JSON.stringify(THEIRS));
+      let writes = 0;
+      let concurrentReassert: Promise<void> | undefined;
+      const guard = createProjectMetadataReasserter({
+        metadataPath,
+        endpoint: OWN.endpoint,
+        pid: OWN.pid,
+        write: async () => {
+          writes++;
+          await fs.writeFile(metadataPath, JSON.stringify(OWN));
+          if (writes === 1) {
+            await fs.writeFile(metadataPath, JSON.stringify(THEIRS));
+            concurrentReassert = guard.reassert();
+          }
+        },
+      });
+      guard.enable();
+      await guard.reassert();
+      if (concurrentReassert) await concurrentReassert;
+      expect(writes).toBe(2);
+      expect(JSON.parse(await fs.readFile(metadataPath, 'utf8'))).toEqual(OWN);
+    } finally {
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
 });
 
 describe('retryWhileUnauthorized', () => {

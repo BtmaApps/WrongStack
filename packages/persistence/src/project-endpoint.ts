@@ -406,6 +406,7 @@ export function createProjectMetadataReasserter(options: {
 }): ProjectMetadataReasserter {
   let enabled = false;
   let inFlight: Promise<void> | null = null;
+  let rerun = false;
   const namesThisDaemon = async (): Promise<boolean> => {
     try {
       const current = JSON.parse(await fsPromises.readFile(options.metadataPath, 'utf8')) as {
@@ -423,12 +424,20 @@ export function createProjectMetadataReasserter(options: {
     },
     disable: () => {
       enabled = false;
+      rerun = false;
     },
     reassert: () => {
       if (!enabled) return Promise.resolve();
-      inFlight ??= (async () => {
+      if (inFlight) {
+        rerun = true;
+        return inFlight;
+      }
+      inFlight = (async () => {
         try {
-          if (!(await namesThisDaemon()) && enabled) await options.write();
+          do {
+            rerun = false;
+            if (!(await namesThisDaemon()) && enabled) await options.write();
+          } while (rerun && enabled);
         } catch {
           // Best effort: the next refused request tries again.
         } finally {
