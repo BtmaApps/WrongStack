@@ -126,6 +126,7 @@ export interface MemoryCandidate {
   text: string;
   kind: SageKind;
   scope: SageScope;
+  ownerSessionId?: string | undefined;
   confidence: number;
   importance: number;
   tags: string[];

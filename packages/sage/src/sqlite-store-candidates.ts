@@ -54,6 +54,7 @@ interface SqliteAcceptCandidateContext extends SqliteRejectCandidateContext {
     text: string;
     kind: MemoryCandidate['kind'];
     scope: MemoryCandidate['scope'];
+    ownerSessionId?: string | undefined;
     confidence: number;
     importance: number;
     tags: MemoryCandidate['tags'];
@@ -111,6 +112,7 @@ export function createSqliteCandidate(
   const text = normalizeText(input.text);
   if (!text) throw new Error('SAGE candidate text must not be empty.');
   const scope = input.scope ?? 'project';
+  const ownerSessionId = scope === 'session' ? input.ownerSessionId?.trim() : undefined;
   const key = normalizeTextKey(text);
   return ctx.runMutation(() => {
     const rows = ctx
@@ -125,6 +127,7 @@ export function createSqliteCandidate(
         const existing = sqliteRowToCandidate(row);
         if (
           existing.scope === scope &&
+          existing.ownerSessionId === ownerSessionId &&
           existing.targetMemoryId === input.targetMemoryId &&
           existing.targetRevision === input.targetRevision &&
           validityKey(existing.validity) === validityKey(input.validity)
@@ -144,6 +147,7 @@ export function createSqliteCandidate(
       text,
       kind: input.kind ?? 'fact',
       scope,
+      ...(ownerSessionId ? { ownerSessionId } : {}),
       confidence: clamp01(input.confidence ?? 0.6),
       importance: clamp01(input.importance ?? 0.6),
       tags: normalizeTags(input.tags),
@@ -280,6 +284,7 @@ export function acceptSqliteCandidate(
           text: candidate.text,
           kind: candidate.kind,
           scope: candidate.scope,
+          ...(candidate.ownerSessionId ? { ownerSessionId: candidate.ownerSessionId } : {}),
           confidence: candidate.confidence,
           importance: candidate.importance,
           tags: candidate.tags,

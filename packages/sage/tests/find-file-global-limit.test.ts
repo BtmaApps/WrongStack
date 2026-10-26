@@ -44,3 +44,34 @@ describe('findMemoriesForFile result limit', () => {
     expect(result.primaryMatches).toHaveLength(1);
   });
 });
+
+describe('findMemoriesForFile match strength', () => {
+  it('prefers an exact file anchor over an earlier enclosing directory anchor', async () => {
+    const memory = await store.rememberSage({
+      text: 'Ownership rules for the target module and its folder',
+      kind: 'file_note',
+      anchors: [
+        { type: 'directory', path: 'src' },
+        { type: 'file', path: 'src/target.ts' },
+      ],
+    });
+    const result = await store.findMemoriesForFile('src/target.ts');
+    const match = result.primaryMatches.find((m) => m.memory.id === memory.id);
+    expect(match?.matchedVia).toBe('anchor_file');
+    expect(match?.matchStrength).toBe(0.9);
+  });
+
+  it('control: anchor order file-then-directory already resolves to the file', async () => {
+    const memory = await store.rememberSage({
+      text: 'Ownership rules for the target module and its folder too',
+      kind: 'file_note',
+      anchors: [
+        { type: 'file', path: 'src/target.ts' },
+        { type: 'directory', path: 'src' },
+      ],
+    });
+    const result = await store.findMemoriesForFile('src/target.ts');
+    const match = result.primaryMatches.find((m) => m.memory.id === memory.id);
+    expect(match?.matchedVia).toBe('anchor_file');
+  });
+});

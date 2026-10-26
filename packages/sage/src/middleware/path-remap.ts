@@ -28,17 +28,19 @@ export interface SagePathRemapOptions {
   maxPerHour?: number | undefined;
 }
 
-const recent = new Map<string, number>();
+const recent: number[] = [];
 const HOUR_MS = 60 * 60_000;
 
-function allow(key: string, max: number): boolean {
+/**
+ * Hourly rate cap on remap passes. Repeats of the same rename are NOT
+ * rejected: a file moved a→b, back b→a, then a→b again must be followed
+ * each time, and re-running an already-applied remap is a no-op anyway.
+ */
+function allow(_key: string, max: number): boolean {
   const now = Date.now();
-  for (const [k, t] of recent) {
-    if (now - t > HOUR_MS) recent.delete(k);
-  }
-  if (recent.size >= max) return false;
-  if (recent.has(key)) return false;
-  recent.set(key, now);
+  while (recent.length > 0 && now - recent[0]! > HOUR_MS) recent.shift();
+  if (recent.length >= max) return false;
+  recent.push(now);
   return true;
 }
 

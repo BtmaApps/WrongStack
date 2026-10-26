@@ -69,6 +69,30 @@ describe('path-remap', () => {
     expect(parseRenameCommand('ls -la')).toBeUndefined();
   });
 
+  it('resolves a move into a directory (trailing separator) to the file inside it', () => {
+    expect(parseRenameCommand('git mv src/a.ts lib/')).toEqual({ from: 'src/a.ts', to: 'lib/a.ts' });
+    expect(parseRenameCommand('mv src/a.ts lib/')).toEqual({ from: 'src/a.ts', to: 'lib/a.ts' });
+    expect(parseRenameCommand(`Move-Item 'src\\a.ts' 'lib\\'`)).toEqual({
+      from: 'src\\a.ts',
+      to: 'lib\\a.ts',
+    });
+    expect(parseRenameCommand('mv src/old/ lib/')).toEqual({ from: 'src/old/', to: 'lib/old' });
+    const { anchors } = remapAnchors([{ type: 'file', path: 'src/a.ts' }], 'src/a.ts', 'lib/a.ts');
+    expect(anchors[0]?.path).toBe('lib/a.ts');
+  });
+
+  it('honours the GNU target-directory flag (`mv -t DIR SRC`)', () => {
+    expect(parseRenameCommand('mv -t lib src/a.ts')).toEqual({ from: 'src/a.ts', to: 'lib/a.ts' });
+    expect(parseRenameCommand('mv --target-directory=lib src/a.ts')).toEqual({
+      from: 'src/a.ts',
+      to: 'lib/a.ts',
+    });
+    expect(parseRenameCommand('mv -f -t lib/ src/a.ts')).toEqual({
+      from: 'src/a.ts',
+      to: 'lib/a.ts',
+    });
+  });
+
   const tempFiles: string[] = [];
   afterEach(() => {
     for (const f of tempFiles) {

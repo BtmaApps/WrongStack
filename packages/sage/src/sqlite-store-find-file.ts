@@ -76,6 +76,10 @@ function matchMemory(
   lineStart?: number,
   lineEnd?: number,
 ): { via: MemoryMatchVia; strength: number } | null {
+  // An enclosing directory anchor is only a fallback: returning it on first
+  // sight made the result depend on anchor order, so a memory listing its
+  // folder before the exact file was demoted from 0.9 to 0.5.
+  let directoryMatch: { via: MemoryMatchVia; strength: number } | null = null;
   for (const anchor of memory.anchors) {
     if (!anchor.path) continue;
     const normalized = anchorPath(projectRoot, anchor.path, anchorCache);
@@ -101,9 +105,10 @@ function matchMemory(
       (anchor.type === 'directory' || anchor.type === 'package') &&
       (normalized === '.' || target.startsWith(`${normalized}/`))
     ) {
-      return { via: 'anchor_directory', strength: 0.5 };
+      directoryMatch ??= { via: 'anchor_directory', strength: 0.5 };
     }
   }
+  if (directoryMatch) return directoryMatch;
   if (basename && basename !== '.' && memory.text.toLowerCase().includes(basename.toLowerCase())) {
     return { via: 'mention', strength: 0.3 };
   }

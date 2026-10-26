@@ -98,6 +98,18 @@ export function memoryNeedsSymbolRemap(
 /** Parse common rename command shapes: `mv a b`, `git mv a b`, `Move-Item a b`. */
 export function parseRenameCommand(command: string): { from: string; to: string } | undefined {
   if (typeof command !== 'string') return undefined;
+  const parsed = parseRenameOperands(command);
+  if (!parsed) return undefined;
+  // `mv a.ts lib/` moves INTO the directory: the real target is `lib/a.ts`.
+  // Without this the anchor was rewritten to the directory path itself.
+  if (/[\\/]$/.test(parsed.to)) {
+    const base = parsed.from.replace(/[\\/]+$/, '').split(/[\\/]/).pop();
+    if (base) return { from: parsed.from, to: `${parsed.to}${base}` };
+  }
+  return parsed;
+}
+
+function parseRenameOperands(command: string): { from: string; to: string } | undefined {
   const c = command.replace(/\s+/g, ' ').trim();
   const token = '(?:"([^"]+)"|\'([^\']+)\'|([^\\s]+))';
   // git mv [-flags] <from> <to>
@@ -108,6 +120,18 @@ export function parseRenameCommand(command: string): { from: string; to: string 
     const from = m[1] ?? m[2] ?? m[3];
     const to = m[4] ?? m[5] ?? m[6];
     if (from && to) return { from, to };
+  }
+  // GNU `mv -t DIR SRC` / `mv --target-directory[=| ]DIR SRC`: the directory
+  // comes FIRST. The generic form below skips `-t` as an argument-less flag
+  // and read DIR as the source, remapping every anchor under DIR onto SRC.
+  m = new RegExp(
+    `(?:^|\\s)mv\\s+(?:-[^\\s]+\\s+)*?(?:-t\\s+|--target-directory(?:=|\\s+))${token}\\s+(?:-[^\\s]+\\s+)*${token}\\s*$`,
+    'i',
+  ).exec(c);
+  if (m) {
+    const dir = m[1] ?? m[2] ?? m[3];
+    const from = m[4] ?? m[5] ?? m[6];
+    if (dir && from) return { from, to: /[\\/]$/.test(dir) ? dir : `${dir}/` };
   }
   // mv [-flags] <from> <to>  (avoid multi-source forms)
   m = new RegExp(`(?:^|\\s)mv\\s+(?:-[^\\s]+\\s+)*${token}\\s+${token}\\s*$`, 'i').exec(c);

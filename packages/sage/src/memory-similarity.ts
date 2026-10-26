@@ -135,6 +135,10 @@ const NEGATION_CUES = new Set([
   'wouldn',
 ]);
 
+function foldNegationPhrases(text: string): string {
+  return text.replace(/\bno\s+longer\b/gi, 'no_longer');
+}
+
 /**
  * Deterministic v1 contradiction heuristic: both texts tokenize to ≥5 tokens,
  * their unique-token overlap is ≥0.72 (the near-dup structural threshold), and
@@ -146,8 +150,10 @@ const NEGATION_CUES = new Set([
  * collapse into one memory) and the hygiene contradiction pass.
  */
 export function isPossiblyContradictory(a: { text: string }, b: { text: string }): boolean {
-  const tokensA = tokenize(a.text);
-  const tokensB = tokenize(b.text);
+  // `tokenize` drops terms under 3 chars, so "no longer" would reach the cue
+  // check as plain "longer" and the `no_longer` cue could never match.
+  const tokensA = tokenize(foldNegationPhrases(a.text));
+  const tokensB = tokenize(foldNegationPhrases(b.text));
   if (tokensA.length < 5 || tokensB.length < 5) return false;
   const setA = new Set(tokensA);
   const setB = new Set(tokensB);

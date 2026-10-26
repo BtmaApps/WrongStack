@@ -2,8 +2,8 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { createSageTools } from '../src/tools/memory-tools.js';
 import { getSageService, SqliteMemoryPort } from '../src/memory-port.js';
+import { createSageTools } from '../src/tools/memory-tools.js';
 import type { Sage } from '../src/types.js';
 
 /**
@@ -233,5 +233,65 @@ describe('session isolation across the memory tool surface', () => {
     )) as Sage;
 
     expect(written.ownerSessionId).toBe('S9');
+  });
+
+  it('enforces session ownership on memory_candidates propose, accept, and resolve', async () => {
+    await expect(
+      tool('memory_candidates').execute(
+        {
+          action: 'propose',
+          text: s2.text,
+          memory_id: s2.id,
+          reason: 'cross-session review',
+          suggested_action: 'delete',
+        } as never,
+        ctxFor('S1'),
+        runOpts,
+      ),
+    ).rejects.toThrow(/owned by another session/);
+
+    const ownProposal = (await tool('memory_candidates').execute(
+      {
+        action: 'propose',
+        text: s2.text,
+        memory_id: s2.id,
+        reason: 'owner review',
+        suggested_action: 'delete',
+      } as never,
+      ctxFor('S2'),
+      runOpts,
+    )) as { id: string };
+
+    await expect(
+      tool('memory_candidates').execute(
+        {
+          action: 'resolve',
+          candidate_id: ownProposal.id,
+          decision: 'delete',
+        } as never,
+        ctxFor('S1'),
+        runOpts,
+      ),
+    ).rejects.toThrow(/owned by another session/);
+
+    const sessionCandidate = (await tool('memory_candidates').execute(
+      {
+        action: 'propose',
+        text: 'Session S1 proposed fact',
+        scope: 'session',
+        kind: 'fact',
+      } as never,
+      ctxFor('S1'),
+      runOpts,
+    )) as { id: string; ownerSessionId?: string };
+    expect(sessionCandidate.ownerSessionId).toBe('S1');
+
+    await expect(
+      tool('memory_candidates').execute(
+        { action: 'accept', candidate_id: sessionCandidate.id } as never,
+        ctxFor('S2'),
+        runOpts,
+      ),
+    ).rejects.toThrow(/owned by another session/);
   });
 });

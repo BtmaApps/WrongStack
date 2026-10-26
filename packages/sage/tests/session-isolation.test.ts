@@ -1,6 +1,6 @@
-import * as path from 'node:path';
-import * as os from 'node:os';
 import { rm } from 'node:fs/promises';
+import * as os from 'node:os';
+import * as path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { SqliteSageStore } from '../src/sqlite-store.js';
 
@@ -312,5 +312,27 @@ describe('Cross-session isolation (P0-1c regression tests)', () => {
     const allIds = all.hits.map((hit) => hit.id);
     expect(allIds).toContain(uA.id);
     expect(allIds).toContain(uB.id);
+  });
+
+  it('preserves ownerSessionId across candidate creation, deduplication, and acceptance', async () => {
+    const cA = await store.createCandidate({
+      text: 'Session candidate isolation note',
+      scope: 'session',
+      ownerSessionId: SESSION_A,
+      kind: 'fact',
+    });
+    const cB = await store.createCandidate({
+      text: 'Session candidate isolation note',
+      scope: 'session',
+      ownerSessionId: SESSION_B,
+      kind: 'fact',
+    });
+    expect(cA.ownerSessionId).toBe(SESSION_A);
+    expect(cB.ownerSessionId).toBe(SESSION_B);
+    expect(cA.id).not.toBe(cB.id);
+
+    const acceptedA = await store.acceptCandidate(cA.id);
+    expect(acceptedA?.scope).toBe('session');
+    expect(acceptedA?.ownerSessionId).toBe(SESSION_A);
   });
 });

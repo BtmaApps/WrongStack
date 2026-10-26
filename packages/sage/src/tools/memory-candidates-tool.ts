@@ -8,6 +8,7 @@ import type {
   SageKind,
   SageScope,
 } from '../types.js';
+import { assertSessionMayMutate, callerSessionId } from './memory-tool-session.js';
 import {
   enumSchema,
   KIND_VALUES,
@@ -96,6 +97,18 @@ export function memoryCandidatesTool(memory: SageServiceLike): Tool<
       // An unknown / non-pending candidate THROWS: `undefined` and
       // `{ rejected: false }` were recorded as successful calls.
       if (input.action === 'accept') {
+        const candidate = (await memory.listCandidates(true)).find(
+          (entry) => entry.id === input.candidate_id,
+        );
+        if (
+          candidate?.scope === 'session' &&
+          candidate.ownerSessionId &&
+          candidate.ownerSessionId !== callerSessionId(ctx)
+        ) {
+          throw new Error(
+            `SAGE candidate "${input.candidate_id}" is a session-scoped candidate owned by another session and cannot be modified from here.`,
+          );
+        }
         const accepted = await memory.acceptCandidate(input.candidate_id!);
         if (!accepted) throw notPending(input.candidate_id!);
         return accepted;
@@ -109,6 +122,12 @@ export function memoryCandidatesTool(memory: SageServiceLike): Tool<
         return { rejected: true };
       }
       if (input.action === 'resolve') {
+        const candidate = (await memory.listCandidates(true)).find(
+          (entry) => entry.id === input.candidate_id,
+        );
+        if (candidate?.targetMemoryId) {
+          await assertSessionMayMutate(memory, candidate.targetMemoryId, ctx);
+        }
         const resolution = await memory.resolveCandidate(
           input.candidate_id!,
           input.decision!,
@@ -120,13 +139,18 @@ export function memoryCandidatesTool(memory: SageServiceLike): Tool<
         return resolution;
       }
       if (input.action === 'propose') {
+        if (input.memory_id) {
+          await assertSessionMayMutate(memory, input.memory_id, ctx);
+        }
         // Proposal metadata lives in typed fields (targetMemoryId /
         // reviewReason / suggestedAction) — E1: the legacy `review:` /
         // `suggested:` / `source:` tag prefixes are no longer written.
+        const scope = input.scope ?? 'project';
         return memory.createCandidate({
           text: input.text!,
           ...(input.kind ? { kind: input.kind } : {}),
           ...(input.scope ? { scope: input.scope } : {}),
+          ...(scope === 'session' ? { ownerSessionId: callerSessionId(ctx) } : {}),
           ...(input.tags ? { tags: input.tags } : {}),
           ...(input.importance !== undefined ? { importance: input.importance } : {}),
           ...(input.confidence !== undefined ? { confidence: input.confidence } : {}),

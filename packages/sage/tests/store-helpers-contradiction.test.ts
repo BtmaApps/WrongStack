@@ -80,6 +80,22 @@ describe('isPossiblyContradictory (shared heuristic)', () => {
     ).toBe(false);
   });
 
+  it('recognizes the documented "no longer" negation cue as written in prose', () => {
+    expect(
+      isPossiblyContradictory(
+        { text: 'the build cache is shared between parallel workers' },
+        { text: 'the build cache is no longer shared between parallel workers' },
+      ),
+    ).toBe(true);
+    // Control: "longer" alone is not a negation.
+    expect(
+      isPossiblyContradictory(
+        { text: 'the build cache is shared between parallel workers' },
+        { text: 'the build cache is longer shared between parallel workers' },
+      ),
+    ).toBe(false);
+  });
+
   it('requires at least 5 tokens on both sides', () => {
     expect(isPossiblyContradictory({ text: 'not a fact' }, { text: 'a fact' })).toBe(false);
     expect(
