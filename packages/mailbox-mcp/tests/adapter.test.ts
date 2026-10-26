@@ -675,4 +675,19 @@ describe('createMailboxMcpServer', () => {
       }),
     );
   });
+
+  it('rejects non-finite or non-number values in optionalNonNegativeInteger and sendTtlMs (F653)', async () => {
+    const { optionalNonNegativeInteger, sendTtlMs } = await import('../src/tool-arg-parsing.js');
+    expect(() => optionalNonNegativeInteger({ sinceSeq: Number.NaN }, 'sinceSeq')).toThrow(
+      'sinceSeq must be a non-negative integer',
+    );
+    expect(() => optionalNonNegativeInteger({ sinceSeq: '10' }, 'sinceSeq')).toThrow(
+      'sinceSeq must be a non-negative integer',
+    );
+    expect(() => sendTtlMs({ ttlMs: Number.NaN })).toThrow('ttlMs must be at least 1');
+    expect(() => sendTtlMs({ ttlMs: Number.POSITIVE_INFINITY })).toThrow(
+      'ttlMs must be at least 1',
+    );
+    expect(() => sendTtlMs({ ttlMs: '60000' })).toThrow('ttlMs must be at least 1');
+  });
 });

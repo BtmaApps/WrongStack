@@ -44,9 +44,9 @@ export function optionalNonNegativeInteger(
   args: Record<string, unknown>,
   key: string,
 ): number | undefined {
-  const value = optionalNumber(args, key);
+  const value = args[key];
   if (value === undefined) return undefined;
-  if (!Number.isSafeInteger(value) || value < 0) {
+  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0) {
     throw new Error(`${key} must be a non-negative integer`);
   }
   return value;
@@ -138,8 +138,11 @@ export const WATCH_EVENT_TYPES = [
  * success.
  */
 export function sendTtlMs(args: Record<string, unknown>): number | undefined {
-  const value = optionalNumber(args, 'ttlMs');
-  if (value !== undefined && value < 1) throw new Error('ttlMs must be at least 1');
+  const value = args['ttlMs'];
+  if (value === undefined) return undefined;
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 1) {
+    throw new Error('ttlMs must be at least 1');
+  }
   return value;
 }
 

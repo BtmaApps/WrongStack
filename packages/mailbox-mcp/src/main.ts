@@ -90,13 +90,29 @@ export function parseArgs(
       JSON.stringify({ level: 'warn', event, message, timestamp: new Date().toISOString() }),
     );
   };
+  const KNOWN_FLAGS = new Set([
+    '--project-root',
+    '--actor',
+    '--session-id',
+    '--name',
+    '--role',
+    '--stdio',
+    '--http',
+    '--port',
+    '--host',
+    '--token',
+    '--writable',
+    '--admin',
+    '-h',
+    '--help',
+  ]);
   for (let index = 0; index < argv.length; index++) {
     const arg = argv[index];
     // A secret may begin with "-" (base64url); refusing it dropped the token
     // and echoed it to stderr as an unknown option.
     const value = (allowDash = false): string | undefined => {
       const next = argv[index + 1];
-      if (next === undefined || (!allowDash && next.startsWith('-'))) {
+      if (next === undefined || KNOWN_FLAGS.has(next) || (!allowDash && next.startsWith('-'))) {
         warn('mcp_cli_flag_missing_value', `${arg} expects a value; ignoring it.`);
         return undefined;
       }
@@ -157,8 +173,12 @@ export function parseArgs(
       }
       case '--token': {
         const next = value(true);
-        if (next !== undefined) parsed.httpToken = next;
-        else parsed.tokenMissing = true;
+        if (next !== undefined) {
+          parsed.httpToken = next;
+          parsed.tokenMissing = false;
+        } else if (parsed.httpToken === undefined) {
+          parsed.tokenMissing = true;
+        }
         break;
       }
       case '--writable':
@@ -181,7 +201,10 @@ export function parseArgs(
   // the command line where other local processes can read it.
   if (parsed.httpToken === undefined) {
     const fromEnv = env[HTTP_TOKEN_ENV]?.trim();
-    if (fromEnv) parsed.httpToken = fromEnv;
+    if (fromEnv) {
+      parsed.httpToken = fromEnv;
+      parsed.tokenMissing = false;
+    }
   } else if (parsed.httpToken.length > 0) {
     console.warn(
       `[mcp] --token puts the auth token in this process's command line, which other ` +

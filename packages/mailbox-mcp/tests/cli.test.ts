@@ -76,6 +76,22 @@ describe('Mailbox MCP CLI arguments', () => {
     warn.mockRestore();
   });
 
+  it('does not swallow a following known flag when --token has no value and clears tokenMissing on env fallback (F652)', () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const parsed = parseArgs(['--http', '--token', '--admin'], {});
+    expect(parsed.httpToken).toBeUndefined();
+    expect(parsed.tokenMissing).toBe(true);
+    expect(parsed.admin).toBe(true);
+    expect(parsed.writable).toBe(true);
+
+    const withEnv = parseArgs(['--http', '--token', '--admin'], {
+      WRONGSTACK_MCP_TOKEN: 'env-token',
+    });
+    expect(withEnv.httpToken).toBe('env-token');
+    expect(withEnv.tokenMissing).toBe(false);
+    expect(withEnv.admin).toBe(true);
+  });
+
   it('accepts only integer HTTP ports in range', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     expect(parseArgs(['--port', '70000'], {}).httpPort).toBe(0);
