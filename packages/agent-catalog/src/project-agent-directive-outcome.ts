@@ -23,6 +23,7 @@
 
 import * as path from 'node:path';
 import {
+  clearProjectAgentConsolidated,
   consolidatedDocumentPath,
   loadProjectAgentConsolidated,
   readRawLearnedEntries,
@@ -312,9 +313,11 @@ function scrubRetiredFromInjectedDocuments(
     const consolidated = loadProjectAgentConsolidated(role, projectRoot);
     if (!consolidated) return;
     const scrubbed = scrubRetiredLines(consolidated, texts);
-    // Leave an emptied role document alone rather than writing a husk; the next
-    // optimization pass rebuilds it from the buffer.
-    if (scrubbed === consolidated.trim() || !hasDirectiveContent(scrubbed)) return;
+    if (scrubbed === consolidated.trim()) return;
+    if (!hasDirectiveContent(scrubbed)) {
+      clearProjectAgentConsolidated(role, projectRoot);
+      return;
+    }
     writeTextAtomically(consolidatedDocumentPath(role, projectRoot), scrubbed);
   } catch {
     // Same: best effort.

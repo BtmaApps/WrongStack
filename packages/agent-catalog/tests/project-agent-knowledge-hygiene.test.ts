@@ -175,6 +175,22 @@ describe('refreshStaleProjectAgentLearning', () => {
       false,
     );
   });
+
+  it('clears and archives consolidated.md when every directive in it cites a stale path (F659)', () => {
+    saveProjectAgentConsolidated(
+      'reviewer',
+      '## Rules\n\n- Never edit `packages/core/src/gone.ts` by hand.\n',
+      projectRoot,
+    );
+
+    const result = refreshStaleProjectAgentLearning('reviewer', projectRoot);
+
+    expect(result.documentLines).toBe(1);
+    expect(loadProjectAgentConsolidated('reviewer', projectRoot)).toBe('');
+    expect(buildProjectContextualizedPrompt('BASE', 'reviewer', projectRoot)).not.toContain(
+      'gone.ts',
+    );
+  });
 });
 
 describe('role document budget', () => {

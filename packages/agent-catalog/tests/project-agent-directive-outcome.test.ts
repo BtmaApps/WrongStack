@@ -355,6 +355,24 @@ describe('retirement', () => {
     );
   });
 
+  it('clears the consolidated role document when its only directive is retired (F659)', () => {
+    capture('verifier', VITEST_DIRECTIVE);
+    saveProjectAgentConsolidated(
+      'verifier',
+      ['# Consolidated', '', `- ${VITEST_DIRECTIVE}`].join('\n'),
+      projectRoot,
+    );
+
+    for (let i = 0; i < 8; i++) {
+      recordDirectiveOutcomes('verifier', '`pnpm vitest run` failed again', false, projectRoot);
+    }
+
+    expect(loadProjectAgentConsolidated('verifier', projectRoot)).toBe('');
+    expect(buildProjectContextualizedPrompt('BASE', 'verifier', projectRoot)).not.toContain(
+      'vitest run',
+    );
+  });
+
   it('warns the distiller about retired rules, unless the role re-learned them', () => {
     capture('verifier', `[skill: testing] ${VITEST_DIRECTIVE}`);
     for (let i = 0; i < 8; i++) {
