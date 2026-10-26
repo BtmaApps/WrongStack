@@ -91,4 +91,120 @@ describe('retryTask status and active subagent guard', () => {
     expect(deleteTask(host, 'failed-1')).toBe(true);
     expect(nodes.has('failed-1')).toBe(false);
   });
+
+  it('releases worktree when executeSddTask fails during spawn or integrateTaskWorktree throws (F673)', async () => {
+    const { TaskTracker } = await import('@wrongstack/core/tasking');
+    const { executeSddTask } = await import('../src/sdd-task-execution.js');
+    const { allocateTaskWorktrees, integrateTaskWorktree, resolveTaskWorktrees } = await import(
+      '../src/sdd-worktree-integration.js'
+    );
+
+    const released: string[] = [];
+    const emitted: string[] = [];
+    const tracker = new TaskTracker({
+      store: { saveGraph: async () => {}, loadGraph: async () => null } as never,
+    });
+    const graph = await tracker.createGraph('spec-f673', 'Graph F673');
+    const task = tracker.addNode({
+      title: 'Task F673',
+      description: 'Desc',
+      type: 'implementation',
+      priority: 'medium',
+      status: 'pending',
+    });
+    const state = {
+      taskCwds: new Map<string, string>(),
+      taskBranches: new Map<string, string>(),
+      taskWorktrees: new Map(),
+      mergedCommits: [] as Array<{ taskId: string; sha: string; title: string }>,
+    };
+    const wt = {
+      allocate: async (id: string) => ({
+        id,
+        dir: `/tmp/${id}`,
+        branch: `sdd/${id}`,
+        baseBranch: 'main',
+        status: 'active' as const,
+        createdAt: Date.now(),
+      }),
+      commitAll: async () => {
+        throw new Error('git index.lock contention');
+      },
+      release: async (h: { id: string }) => {
+        released.push(h.id);
+      },
+    };
+    const opts = { tracker, graph, projectRoot: '/tmp', worktrees: wt as never } as never;
+
+    await expect(
+      executeSddTask({
+        task,
+        opts,
+        coordinator: { spawn: async () => ({ subagentId: '' }) } as never,
+        usedNicknames: new Set(),
+        idleTimeoutMs: 1000,
+        timeoutMs: undefined,
+        runId: 'run-f673',
+        nextSubagentId: () => 'sub-1',
+        emit: () => {},
+        taskCwds: state.taskCwds,
+        taskBranches: state.taskBranches,
+        taskSubagents: new Map(),
+        cancelledTasks: new Set(),
+        allocateWorktrees: (tasks) => allocateTaskWorktrees(opts, state, tasks),
+        resolveWorktrees: (tasks) => resolveTaskWorktrees(opts, state, tasks),
+        integrateWorktree: () => Promise.resolve({ ok: true }),
+        applyTaskFailure: async () => {},
+      }),
+    ).rejects.toThrow();
+    expect(released).toContain(`sdd-${task.id}`);
+    expect(state.taskWorktrees.has(task.id)).toBe(false);
+
+    released.length = 0;
+    await executeSddTask({
+      task,
+      opts,
+      coordinator: {
+        spawn: async () => ({ subagentId: 'sub-2' }),
+        assign: async () => {},
+        awaitTasks: async () => [
+          {
+            subagentId: 'sub-2',
+            taskId: 'corr-2',
+            status: 'success',
+            iterations: 1,
+            toolCalls: 1,
+            durationMs: 10,
+          },
+        ],
+      } as never,
+      usedNicknames: new Set(),
+      idleTimeoutMs: 1000,
+      timeoutMs: undefined,
+      runId: 'run-f673',
+      nextSubagentId: () => 'sub-2',
+      emit: (ev) => {
+        emitted.push(ev);
+      },
+      taskCwds: state.taskCwds,
+      taskBranches: state.taskBranches,
+      taskSubagents: new Map(),
+      cancelledTasks: new Set(),
+      allocateWorktrees: (tasks) => allocateTaskWorktrees(opts, state, tasks),
+      resolveWorktrees: (tasks) => resolveTaskWorktrees(opts, state, tasks),
+      integrateWorktree: (taskNode, result) =>
+        integrateTaskWorktree({
+          opts,
+          state,
+          task: taskNode,
+          result,
+          runId: 'run-f673',
+          emit: () => {},
+          abortRun: () => {},
+        }),
+      applyTaskFailure: async () => {},
+    });
+    expect(released).toContain(`sdd-${task.id}`);
+    expect(state.taskWorktrees.has(task.id)).toBe(false);
+  });
 });

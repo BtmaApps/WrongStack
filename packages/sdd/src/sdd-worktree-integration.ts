@@ -161,7 +161,10 @@ export async function integrateTaskWorktree(params: {
       ...(res.conflict ? {} : { reason: res.stderr?.trim() || 'worktree merge failed' }),
     };
   } catch {
-    forgetTaskWorktree(state, task.id);
+    await Promise.resolve()
+      .then(() => wt.release(handle, { keep: false }))
+      .catch(() => {});
+    forgetTaskWorktree(state, task.id, { keepBranchLabel: true });
     return { ok: false, conflictFiles: [] };
   }
 }

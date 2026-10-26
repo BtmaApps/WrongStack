@@ -41,13 +41,6 @@ export async function executeSddTask(params: {
   opts.tracker.updateNodeStatus(taskId, 'in_progress');
   await params.allocateWorktrees([task]);
 
-  if (!params.coordinator)
-    throw new SddError({
-      message: 'SDD parallel runner requires a coordinator',
-      code: ERROR_CODES.SDD_INVALID_STATE,
-    });
-  const coordinator = params.coordinator;
-
   const subagentId = params.nextSubagentId();
   const correlationId = randomUUID();
   const meta = (task.metadata ?? {}) as Record<string, unknown>;
@@ -58,45 +51,59 @@ export async function executeSddTask(params: {
     ? (meta.fallbackModels as string[])
     : opts.fallbackModels;
 
-  const spawnResult = await coordinator.spawn({
-    id: subagentId,
-    name: agentName,
-    role: 'executor',
-    idleTimeoutMs: params.idleTimeoutMs,
-    ...(params.timeoutMs ? { timeoutMs: params.timeoutMs } : {}),
-    cwd: params.taskCwds.get(taskId),
-    disabledTools: ['delegate'],
-    ...(model ? { model } : {}),
-    ...(provider ? { provider } : {}),
-    ...(fallbackModels?.length ? { fallbackModels } : {}),
-  });
-  if (!spawnResult.subagentId) {
-    throw new SddError({
-      message: 'One or more subagent spawns failed',
-      code: ERROR_CODES.SDD_INVALID_STATE,
+  let coordinator: DefaultMultiAgentCoordinator;
+  try {
+    if (!params.coordinator)
+      throw new SddError({
+        message: 'SDD parallel runner requires a coordinator',
+        code: ERROR_CODES.SDD_INVALID_STATE,
+      });
+    coordinator = params.coordinator;
+
+    const spawnResult = await coordinator.spawn({
+      id: subagentId,
+      name: agentName,
+      role: 'executor',
+      idleTimeoutMs: params.idleTimeoutMs,
+      ...(params.timeoutMs ? { timeoutMs: params.timeoutMs } : {}),
+      cwd: params.taskCwds.get(taskId),
+      disabledTools: ['delegate'],
+      ...(model ? { model } : {}),
+      ...(provider ? { provider } : {}),
+      ...(fallbackModels?.length ? { fallbackModels } : {}),
     });
+    if (!spawnResult.subagentId) {
+      throw new SddError({
+        message: 'One or more subagent spawns failed',
+        code: ERROR_CODES.SDD_INVALID_STATE,
+      });
+    }
+
+    params.taskSubagents.set(taskId, subagentId);
+    params.emit('sdd.task.started', {
+      runId: params.runId,
+      taskId,
+      subagentId,
+      agentName,
+      worktreeBranch: params.taskBranches.get(taskId),
+    });
+
+    await coordinator.assign({
+      id: correlationId,
+      description: buildTaskDirective(opts.graph.title, task),
+      subagentId,
+      ...(params.timeoutMs ? { timeoutMs: params.timeoutMs } : {}),
+      context: {
+        telemetryTaskId: taskId,
+        telemetryRunId: params.runId,
+        telemetryBoardId: opts.graph.id,
+      },
+    });
+  } catch (err) {
+    params.taskSubagents.delete(taskId);
+    await params.resolveWorktrees([task]);
+    throw err;
   }
-
-  params.taskSubagents.set(taskId, subagentId);
-  params.emit('sdd.task.started', {
-    runId: params.runId,
-    taskId,
-    subagentId,
-    agentName,
-    worktreeBranch: params.taskBranches.get(taskId),
-  });
-
-  await coordinator.assign({
-    id: correlationId,
-    description: buildTaskDirective(opts.graph.title, task),
-    subagentId,
-    ...(params.timeoutMs ? { timeoutMs: params.timeoutMs } : {}),
-    context: {
-      telemetryTaskId: taskId,
-      telemetryRunId: params.runId,
-      telemetryBoardId: opts.graph.id,
-    },
-  });
 
   let result: TaskResult;
   try {
