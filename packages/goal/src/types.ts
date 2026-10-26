@@ -6,8 +6,8 @@
  * in the current phase complete. Parallel phases are optionally supported.
  */
 
-import type { TaskGraph, TaskNode } from '@wrongstack/contracts/types/task-graph';
 import type { BrainArbiter } from '@wrongstack/contracts/types/brain';
+import type { TaskGraph, TaskNode } from '@wrongstack/contracts/types/task-graph';
 
 // ─── Phase Status ───────────────────────────────────────────────────────────
 
@@ -373,5 +373,7 @@ export interface PhaseTemplate {
     priority: import('@wrongstack/contracts/types/task-graph').TaskPriority;
     estimateHours: number;
     tags?: string[] | undefined;
+    /** Intra-phase dependencies referenced by taskTemplate index or title. */
+    dependsOn?: Array<number | string> | undefined;
   }>;
 }

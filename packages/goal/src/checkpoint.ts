@@ -113,22 +113,50 @@ export class CheckpointManager {
     if (!graph) return null;
 
     // Restore the phase status from the checkpoint.
+    const now = Date.now();
     const phase = graph.phases.get(checkpoint.phaseId);
     if (phase) {
       phase.status = checkpoint.phaseStatus;
-      phase.updatedAt = Date.now();
+      phase.updatedAt = now;
+      if (checkpoint.phaseStatus !== 'completed' && checkpoint.phaseStatus !== 'failed') {
+        phase.completedAt = undefined;
+      }
 
       // Restore task statuses.
       for (const ts of checkpoint.taskStatuses) {
         const task = phase.taskGraph.nodes.get(ts.taskId);
         if (task) {
           task.status = ts.status as import('@wrongstack/contracts/types/task-graph').TaskStatus;
-          task.updatedAt = Date.now();
+          task.updatedAt = now;
+          if (task.status !== 'completed' && task.status !== 'failed') {
+            task.completedAt = undefined;
+          }
         }
       }
     }
 
-    graph.updatedAt = Date.now();
+    const allPhases = Array.from(graph.phases.values());
+    graph.completedPhaseIds = allPhases.filter((p) => p.status === 'completed').map((p) => p.id);
+    graph.failedPhaseIds = allPhases.filter((p) => p.status === 'failed').map((p) => p.id);
+    graph.activePhaseIds = allPhases.filter((p) => p.status === 'running').map((p) => p.id);
+    if (
+      allPhases.length === 0 ||
+      !allPhases.every((p) => p.status === 'completed' || p.status === 'skipped')
+    ) {
+      graph.completedAt = undefined;
+    }
+    if (graph.failedPhaseIds.length === 0 && graph.runState === 'failed') {
+      graph.runState =
+        checkpoint.phaseStatus === 'running'
+          ? 'running'
+          : checkpoint.phaseStatus === 'paused'
+            ? 'paused'
+            : undefined;
+      graph.runError = undefined;
+    }
+
+    graph.updatedAt = now;
+    await this.store.save(graph);
     return graph;
   }
 

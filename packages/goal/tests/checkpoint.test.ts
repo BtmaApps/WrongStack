@@ -215,4 +215,125 @@ describe('CheckpointManager', () => {
     const restored = await manager.restoreCheckpoint('non-existent-id');
     expect(restored).toBeNull();
   });
+
+  it('reconciles failedPhaseIds/activePhaseIds/completedAt and persists on restoreCheckpoint and preserves intra-phase task dependencies (F676)', async () => {
+    const { createGoalRunnerFromTaskGraph } = await import('../src/goal-runner.js');
+    const { prepareGoalGraphForResume } = await import('../src/goal-run-lifecycle.js');
+    const builder = new PhaseGraphBuilder({
+      title: 'Restore Reconciliation',
+      phases: [
+        {
+          name: 'Phase A',
+          description: 'A',
+          priority: 'high',
+          estimateHours: 2,
+          parallelizable: false,
+          taskTemplates: [
+            {
+              title: 'Task 1',
+              description: 'T1',
+              type: 'implementation',
+              priority: 'high',
+              estimateHours: 1,
+            },
+            {
+              title: 'Task 2',
+              description: 'T2',
+              type: 'implementation',
+              priority: 'high',
+              estimateHours: 1,
+              dependsOn: [0],
+            },
+          ],
+        },
+      ],
+    });
+
+    const graph = await builder.build();
+    const phaseId = graph.rootPhaseIds[0]!;
+    const phase = graph.phases.get(phaseId)!;
+    const tasks = Array.from(phase.taskGraph.nodes.values());
+    expect(phase.taskGraph.edges).toEqual([
+      expect.objectContaining({ from: tasks[0]!.id, to: tasks[1]!.id, type: 'depends_on' }),
+    ]);
+
+    phase.status = 'running';
+    tasks[0]!.status = 'completed';
+    graph.activePhaseIds = [phaseId];
+    const cp = await manager.saveCheckpoint(graph, 'Before failure');
+
+    phase.status = 'failed';
+    phase.completedAt = Date.now();
+    tasks[1]!.status = 'failed';
+    graph.activePhaseIds = [];
+    graph.failedPhaseIds = [phaseId];
+    graph.runState = 'failed';
+    graph.runError = 'Task 2 failed';
+    graph.completedAt = Date.now();
+    await store.save(graph);
+
+    const restored = await manager.restoreCheckpoint(cp.id);
+    expect(restored?.failedPhaseIds).toEqual([]);
+    expect(restored?.activePhaseIds).toEqual([phaseId]);
+    expect(restored?.completedAt).toBeUndefined();
+    expect(restored?.runState).toBe('running');
+    expect(restored?.runError).toBeUndefined();
+    expect((await store.load(graph.id))?.phases.get(phaseId)?.status).toBe('running');
+    await expect(prepareGoalGraphForResume(restored!)).resolves.toBeUndefined();
+
+    const now = Date.now();
+    const runner = await createGoalRunnerFromTaskGraph(
+      {
+        id: 'tg-f676',
+        specId: 'spec-f676',
+        title: 'TaskGraph Runner',
+        nodes: new Map([
+          [
+            't1',
+            {
+              id: 't1',
+              title: 'First',
+              description: 'First',
+              type: 'feature',
+              status: 'pending',
+              priority: 'high',
+              estimateHours: 1,
+              tags: [],
+              createdAt: now,
+              updatedAt: now,
+            },
+          ],
+          [
+            't2',
+            {
+              id: 't2',
+              title: 'Second',
+              description: 'Second',
+              type: 'feature',
+              status: 'pending',
+              priority: 'high',
+              estimateHours: 1,
+              tags: [],
+              createdAt: now,
+              updatedAt: now,
+            },
+          ],
+        ]),
+        edges: [{ id: 'e1', from: 't1', to: 't2', type: 'blocks' }],
+        rootNodes: ['t1'],
+        createdAt: now,
+        updatedAt: now,
+      },
+      {
+        tasksPerPhase: 5,
+        maxConcurrentTasks: 2,
+        autonomous: true,
+        executeTask: async () => {},
+      },
+    );
+    const runnerGraph = await runner.start();
+    const runnerPhase = Array.from(runnerGraph.phases.values())[0]!;
+    expect(runnerPhase.taskGraph.edges).toHaveLength(1);
+    expect(runnerPhase.taskGraph.edges[0]?.type).toBe('depends_on');
+  });
 });

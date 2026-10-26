@@ -66,8 +66,9 @@ export class PhaseGraphBuilder {
 
       // Add task templates when present.
       if (tmpl.taskTemplates && tmpl.taskTemplates.length > 0) {
+        const createdTasks: import('@wrongstack/contracts/types/task-graph').TaskNode[] = [];
         for (const tt of tmpl.taskTemplates) {
-          tracker.addNode({
+          const node = tracker.addNode({
             title: tt.title,
             description: tt.description,
             type: tt.type,
@@ -76,6 +77,20 @@ export class PhaseGraphBuilder {
             estimateHours: tt.estimateHours,
             tags: tt.tags ?? [],
           });
+          createdTasks.push(node);
+        }
+        for (let tIdx = 0; tIdx < tmpl.taskTemplates.length; tIdx++) {
+          const tt = tmpl.taskTemplates[tIdx];
+          const child = createdTasks[tIdx];
+          if (!tt?.dependsOn?.length || !child) continue;
+          for (const ref of tt.dependsOn) {
+            const parent =
+              typeof ref === 'number'
+                ? createdTasks[ref]
+                : createdTasks.find((candidate) => candidate.title === ref);
+            if (!parent || parent.id === child.id) continue;
+            tracker.addDependency(parent.id, child.id);
+          }
         }
       }
 
@@ -255,14 +270,20 @@ export class PhaseGraphBuilder {
         priority: hasCritical ? 'critical' : 'high',
         estimateHours: totalHours,
         parallelizable: false,
-        taskTemplates: group.map((t) => ({
-          title: t.title,
-          description: t.description,
-          type: t.type,
-          priority: t.priority,
-          estimateHours: t.estimateHours ?? 2,
-          tags: t.tags ?? [],
-        })),
+        taskTemplates: group.map((t) => {
+          const parentIndices = [...new Set(prerequisites.get(t.id) ?? [])]
+            .map((parentId) => group.findIndex((candidate) => candidate.id === parentId))
+            .filter((depIdx) => depIdx >= 0);
+          return {
+            title: t.title,
+            description: t.description,
+            type: t.type,
+            priority: t.priority,
+            estimateHours: t.estimateHours ?? 2,
+            tags: t.tags ?? [],
+            ...(parentIndices.length > 0 ? { dependsOn: parentIndices } : {}),
+          };
+        }),
       };
     });
 
