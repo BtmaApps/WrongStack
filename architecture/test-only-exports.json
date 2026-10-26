@@ -1,6 +1,32 @@
 {
   "schemaVersion": 1,
   "files": {
+    "apps/desktop-v2/src/appearance.ts": [
+      "hslHex",
+      "paletteColors"
+    ],
+    "apps/desktop-v2/src/availability-model.ts": [
+      "scheduleMinute"
+    ],
+    "apps/desktop-v2/src/composer-attachments.ts": [
+      "attachmentBytes"
+    ],
+    "apps/desktop-v2/src/engine-state.ts": [
+      "reduceEngine"
+    ],
+    "apps/desktop-v2/src/feature-actions.ts": [
+      "actionPayload",
+      "featureActions"
+    ],
+    "apps/desktop-v2/src/feature-catalog.ts": [
+      "desktopFeatures"
+    ],
+    "apps/desktop-v2/src/graph-model.ts": [
+      "memoryGraph"
+    ],
+    "apps/desktop-v2/src/input-form-model.ts": [
+      "answerFor"
+    ],
     "packages/acp/src/agent/server-agent-turn.ts": [
       "disposeACPServerAgentTurn",
       "serverAgentTurnCoverage"
@@ -1688,9 +1714,6 @@
       "getIterations",
       "getLastEventAt"
     ],
-    "packages/webui/src/components/AutomationView.tsx": [
-      "AutomationWorkspace"
-    ],
     "packages/webui/src/components/ChatInput/code-detect.ts": [
       "unfenceCode"
     ],
@@ -1976,6 +1999,9 @@
     ],
     "packages/webui/src/stores/session-tab-store.ts": [
       "restoreOpenTabsOnBoot"
+    ],
+    "packages/webui/src/stores/ui-store-types.ts": [
+      "SETTINGS_TABS"
     ],
     "packages/webui/src/stores/viz-graph-helpers.ts": [
       "inferKind"
