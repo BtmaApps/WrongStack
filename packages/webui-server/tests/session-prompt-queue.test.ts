@@ -435,6 +435,83 @@ describe('createSessionPromptQueue', () => {
 });
 
 describe('handlePromptQueueMessage', () => {
+  it('retains the original refinement text through queue persistence and restart', async () => {
+    const sessionsDir = await mkdtemp(path.join(tmpdir(), 'queue-journal-original-'));
+    dirs.push(sessionsDir);
+    const deps = {
+      sessionsDir,
+      isBusy: () => true,
+      startTurn: async () => false,
+      broadcast: () => {},
+    };
+    const queue = createSessionPromptQueue(deps);
+    await queue.add('journal-session', {
+      text: 'Approved final prompt',
+      journalRaw: 'Original user prompt',
+    });
+    const restored = createSessionPromptQueue(deps);
+    expect((await restored.list('journal-session'))[0]).toMatchObject({
+      text: 'Approved final prompt',
+      journalRaw: 'Original user prompt',
+    });
+  });
+  it('acknowledges correlated mutations and reads without changing legacy replies', async () => {
+    const h = queueHarness({ busy: true });
+    const replies: Outbound[] = [];
+    const call = (type: string, payload: Record<string, unknown>) =>
+      handlePromptQueueMessage(h.queue, {
+        sessionId: 's1',
+        type,
+        payload,
+        reply: (message) => replies.push(message),
+      });
+    await call('queue.add', { text: 'Native pending prompt', requestId: 'add-1' });
+    expect(replies.at(-1)).toMatchObject({
+      type: 'queue.state',
+      payload: {
+        sessionId: 's1',
+        requestId: 'add-1',
+        items: [{ text: 'Native pending prompt' }],
+      },
+    });
+    const item = (await h.queue.list('s1'))[0]!;
+    await call('queue.remove', { id: item.id, requestId: 'remove-1' });
+    expect(replies.at(-1)).toMatchObject({
+      type: 'queue.state',
+      payload: {
+        requestId: 'remove-1',
+        items: [],
+      },
+    });
+    await call('queue.get', { requestId: 'read-1' });
+    expect(replies.at(-1)).toMatchObject({ payload: { requestId: 'read-1', items: [] } });
+    await call('queue.clear', { requestId: 'clear-1' });
+    expect(replies.at(-1)).toMatchObject({ payload: { requestId: 'clear-1', items: [] } });
+    await call('queue.get', {});
+    expect(replies.at(-1)).toEqual({
+      type: 'queue.state',
+      payload: { sessionId: 's1', items: [] },
+    });
+  });
+  it('correlates refusals so a rejected prompt stays in its originating composer', async () => {
+    const h = queueHarness({ busy: true });
+    const replies: Outbound[] = [];
+    await handlePromptQueueMessage(h.queue, {
+      sessionId: 's1',
+      type: 'queue.add',
+      payload: { text: '', requestId: 'refused-1' },
+      reply: (message) => replies.push(message),
+    });
+    expect(replies.at(-1)).toMatchObject({
+      type: 'error',
+      payload: {
+        sessionId: 's1',
+        requestId: 'refused-1',
+        phase: 'queue.add',
+      },
+    });
+    expect(await h.queue.list('s1')).toEqual([]);
+  });
   it('refuses a bad image while the user is still there to see why', async () => {
     const h = queueHarness({ busy: true });
     const replies: Outbound[] = [];
@@ -512,6 +589,32 @@ function hostHarness() {
 }
 
 describe('conversation operations with the prompt queue', () => {
+  it('acknowledges a direct human submission after claiming the turn without changing it to a queued runtime input', async () => {
+    const h = hostHarness();
+    const pending = h.ops.userMessage(h.ws, {
+      type: 'user_message',
+      payload: {
+        id: 'human-message',
+        requestId: 'human-request',
+        content: 'Direct human instruction',
+      },
+    } as never);
+    await flush();
+    try {
+      expect(h.sent).toContainEqual({
+        type: 'key.operation_result',
+        payload: {
+          success: true,
+          phase: 'user_message',
+          requestId: 'human-request',
+          message: 'Message accepted by the engine.',
+        },
+      });
+    } finally {
+      await h.finishRun(0);
+      await pending;
+    }
+  });
   it('runs queued prompts one after another as each turn ends, with no page involved', async () => {
     const h = hostHarness();
     void h.ops.userMessage(h.ws, { type: 'user_message', payload: { content: 'first' } } as never);

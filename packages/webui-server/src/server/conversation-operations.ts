@@ -1,6 +1,7 @@
 import type { ContentBlock, UserInputResponse } from '@wrongstack/contracts/types';
 import type { Agent } from '@wrongstack/core/agent';
 import { startFreshTopicContext, TopicShiftAdvisor } from '@wrongstack/core/execution';
+import { PROMPT_JOURNAL_RAW_MARKER } from '@wrongstack/core/prompts';
 import { typeSafeJudgeFromContainer } from '@wrongstack/core/typesafe';
 import {
   buildUserContentBlocks,
@@ -16,6 +17,7 @@ import {
 } from '@wrongstack/runtime/vision';
 import type { WebSocket } from 'ws';
 import type { ConversationRouteHandlers } from './conversation-routes.js';
+import { correlatedReply } from './correlated-reply.js';
 import { pdfPromptBlocks } from './incoming-documents.js';
 import type { ConfirmDecision, PendingConfirm } from './pending-confirms.js';
 import {
@@ -24,6 +26,7 @@ import {
   promptQueueDirFor,
   type SessionPromptQueue,
 } from './session-prompt-queue.js';
+import { STANDALONE_JOURNAL_ORIGIN } from './standalone-prompt-journal.js';
 import type { WSClientMessage } from './types.js';
 import { errMessage } from './ws-utils.js';
 
@@ -36,6 +39,7 @@ type OutboundMessage = { type: string; payload: unknown };
 export type ConversationTurnOrigin = 'user' | 'runtime' | 'queue';
 
 interface TurnPayload {
+  journalRaw?: string;
   id?: unknown;
   content?: unknown;
   freshContext?: unknown;
@@ -239,6 +243,7 @@ export function createConversationOperations(
     // Set once `agent.run` was entered: a refused or failed setup is not a
     // finished run and must not trigger post-run checks.
     let ran = false;
+    let journalMeta: Record<string, unknown> | undefined;
     // Set when the turn was refused for a reason that already answered the
     // client, so the generic "already processing" reply below stays quiet.
     let refusedWithReason = false;
@@ -349,6 +354,13 @@ export function createConversationOperations(
         maxIterations = undefined;
       }
       ran = true;
+      journalMeta = agent.ctx.meta;
+      if (journalMeta) {
+        journalMeta[STANDALONE_JOURNAL_ORIGIN] = origin;
+        if (typeof payload.journalRaw === 'string')
+          journalMeta[PROMPT_JOURNAL_RAW_MARKER] = payload.journalRaw;
+        else delete journalMeta[PROMPT_JOURNAL_RAW_MARKER];
+      }
       const runResult = await agent.run(input, {
         signal: prepared.signal,
         inputOrigin: origin === 'user' ? 'user' : 'runtime',
@@ -406,6 +418,10 @@ export function createConversationOperations(
         });
       }
     } finally {
+      if (journalMeta) {
+        delete journalMeta[STANDALONE_JOURNAL_ORIGIN];
+        delete journalMeta[PROMPT_JOURNAL_RAW_MARKER];
+      }
       // Undefined only when the lock was never claimed (busy session) —
       // releasing then would hand another tab's controller back.
       if (controller) {
@@ -449,11 +465,16 @@ export function createConversationOperations(
           // one with images or files (or pasted into the TUI) as its blocks.
           payload: prompt.blocks.every((block) => block.type === 'text')
             ? {
+                ...(prompt.journalRaw !== undefined ? { journalRaw: prompt.journalRaw } : {}),
                 content:
                   prompt.blocks.map((b) => (b.type === 'text' ? b.text : '')).join('\n') ||
                   prompt.text,
               }
-            : { content: prompt.text, blocks: prompt.blocks },
+            : {
+                content: prompt.text,
+                blocks: prompt.blocks,
+                ...(prompt.journalRaw !== undefined ? { journalRaw: prompt.journalRaw } : {}),
+              },
           origin: 'queue',
           onSettled: (started) => {
             release?.();
@@ -545,6 +566,12 @@ export function createConversationOperations(
       });
     },
     userMessage: async (ws, msg) => {
+      const requestId =
+        typeof (msg.payload as Record<string, unknown> | undefined)?.['requestId'] === 'string'
+          ? String((msg.payload as Record<string, unknown>)['requestId'])
+          : undefined;
+      if (requestId)
+        ws = correlatedReply(ws, msg.payload, ['error', 'key.operation_result']).socket;
       if (!ensureCurrentSession(ws, msg, 'user_message')) return;
       const payload = (msg.payload ?? {}) as TurnPayload & { sessionId?: unknown };
       const requested =
@@ -564,7 +591,19 @@ export function createConversationOperations(
         originSessionId,
         payload,
         origin: 'user',
-        ...(release ? { onSettled: () => release?.() } : {}),
+        onSettled: (started) => {
+          release?.();
+          if (started && requestId)
+            ctx.send(ws, {
+              type: 'key.operation_result',
+              payload: {
+                success: true,
+                phase: 'user_message',
+                requestId,
+                message: 'Message accepted by the engine.',
+              },
+            });
+        },
       });
     },
     abort: (ws, msg) => {

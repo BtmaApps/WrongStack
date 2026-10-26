@@ -21,6 +21,7 @@ import {
 } from '@wrongstack/core/agent';
 import { createModelRuntimeMiddleware } from '@wrongstack/core/execution';
 import { resolveProviderModelMetadata } from './model-catalog.js';
+import { createStandalonePromptJournalRecorder } from './standalone-prompt-journal.js';
 
 interface StandalonePipelineDeps {
   getConfig: () => Config;
@@ -34,6 +35,7 @@ interface StandalonePipelineDeps {
 export function createStandaloneAgentPipelines(deps: StandalonePipelineDeps): AgentPipelines {
   const pipelines = createDefaultPipelines();
   installPipelineErrorBoundaries(pipelines, deps);
+  pipelines.userInput.use(createStandalonePromptJournalRecorder());
   pipelines.request.use(createStandaloneModelRuntimeMiddleware(deps));
   return pipelines;
 }

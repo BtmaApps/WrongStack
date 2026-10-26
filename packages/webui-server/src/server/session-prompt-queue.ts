@@ -79,7 +79,7 @@ export type AddPromptResult = { ok: true; item: QueuedPrompt } | { ok: false; re
 export interface SessionPromptQueue {
   add(
     sessionId: string,
-    prompt: { text: string; images?: IncomingImagePayload[] },
+    prompt: { text: string; images?: IncomingImagePayload[]; journalRaw?: string },
   ): Promise<AddPromptResult>;
   remove(sessionId: string, id: string): Promise<boolean>;
   clear(sessionId: string): Promise<number>;
@@ -435,6 +435,9 @@ export function createSessionPromptQueue(deps: SessionPromptQueueDeps): SessionP
         text,
         addedAt: Date.now(),
         blocks: await queuedPromptBlocks(text, images),
+        ...(typeof prompt.journalRaw === 'string' && prompt.journalRaw !== text
+          ? { journalRaw: prompt.journalRaw }
+          : {}),
       };
       // Another add can fill the last slot while attachments are being prepared.
       if (items.length >= QUEUE_MAX_ITEMS) {
@@ -485,7 +488,7 @@ type QueueReply = (message: OutboundMessage) => void;
 /**
  * Serve one `queue.*` client message for `sessionId`. Changes reach every page
  * showing the session through the queue's own `queue.state` broadcast; the
- * asking page gets a direct answer only for `queue.get` and for a refusal.
+ * asking page gets a direct answer for `queue.get`, a refusal, or a correlated mutation.
  */
 export async function handlePromptQueueMessage(
   queue: SessionPromptQueue,
@@ -495,13 +498,21 @@ export async function handlePromptQueueMessage(
   const payload = (
     request.payload && typeof request.payload === 'object' ? request.payload : {}
   ) as Record<string, unknown>;
+  const requestId =
+    typeof payload['requestId'] === 'string' && payload['requestId'].trim()
+      ? payload['requestId']
+      : undefined;
+  const stamp = requestId ? { requestId } : {};
   const refuse = (message: string): void =>
-    reply({ type: 'error', payload: { sessionId, phase: request.type, message } });
+    reply({ type: 'error', payload: { sessionId, ...stamp, phase: request.type, message } });
+  const acknowledge = async (): Promise<void> => {
+    const items = await queue.list(sessionId);
+    reply({ type: 'queue.state', payload: { sessionId, ...stamp, items: items.map(promptView) } });
+  };
 
   switch (request.type) {
     case 'queue.get': {
-      const items = await queue.list(sessionId);
-      reply({ type: 'queue.state', payload: { sessionId, items: items.map(promptView) } });
+      await acknowledge();
       // A page opening the session is the resume point: whatever a previous
       // host left queued runs now if nothing else is.
       void queue.drain(sessionId);
@@ -526,20 +537,34 @@ export async function handlePromptQueueMessage(
       }
       let result: AddPromptResult;
       try {
-        result = await queue.add(sessionId, { text, ...(images ? { images } : {}) });
+        result = await queue.add(sessionId, {
+          text,
+          ...(images ? { images } : {}),
+          ...(typeof payload['journalRaw'] === 'string'
+            ? { journalRaw: payload['journalRaw'] }
+            : {}),
+        });
       } catch (err) {
         refuse(toErrorMessage(err));
         return;
       }
       if (!result.ok) refuse(result.reason);
+      else if (requestId) await acknowledge();
       return;
     }
     case 'queue.remove': {
-      if (typeof payload['id'] === 'string') await queue.remove(sessionId, payload['id']);
+      if (typeof payload['id'] === 'string') {
+        const removed = await queue.remove(sessionId, payload['id']);
+        if (requestId) {
+          if (removed) await acknowledge();
+          else refuse('This prompt already started or was removed. Refresh the queue.');
+        }
+      } else if (requestId) refuse('Choose a queued prompt to remove.');
       return;
     }
     case 'queue.clear':
       await queue.clear(sessionId);
+      if (requestId) await acknowledge();
       return;
   }
 }

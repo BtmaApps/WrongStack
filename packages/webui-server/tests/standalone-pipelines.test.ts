@@ -7,8 +7,18 @@
  * reasoning profile comes from the model each request goes to, and a setting
  * changed at runtime applies to the next one.
  */
+
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { EventBus } from '@wrongstack/contracts/kernel';
 import type { Config, ModelsRegistry, Provider, Request } from '@wrongstack/contracts/types';
+import type { UserInputPayload } from '@wrongstack/core/agent';
+import {
+  getPromptJournalEntries,
+  PROMPT_JOURNAL_RAW_MARKER,
+  recordPromptJournalEntry,
+} from '@wrongstack/core/prompts';
 import { describe, expect, it } from 'vitest';
 // The binding is core-internal; tests resolve core from source, so this is
 // the same module the middleware reads.
@@ -66,6 +76,86 @@ function setup(modelRuntime: Config['modelRuntime']) {
 }
 
 describe('standalone model-runtime middleware', () => {
+  it('records standalone user submissions in the canonical project journal', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'standalone-journal-'));
+    try {
+      await recordPromptJournalEntry({
+        projectRoot: root,
+        sessionId: 'control',
+        category: 'raw_user',
+        content: 'Valid journal writer control',
+      });
+      expect((await getPromptJournalEntries(root, { sessionId: 'control' })).length).toBe(1);
+      const { pipelines } = setup(undefined);
+      const payload = {
+        text: 'A real standalone user submission',
+        ctx: {
+          projectRoot: root,
+          session: { id: 'standalone-user' },
+          model: 'fixture',
+          provider: { id: 'local' },
+          meta: {},
+        },
+      } as unknown as UserInputPayload;
+      expect(await pipelines.userInput.run(payload)).toBe(payload);
+      await expect
+        .poll(
+          async () =>
+            (
+              await getPromptJournalEntries(root, {
+                sessionId: 'standalone-user',
+                category: 'raw_user',
+              })
+            ).map((entry) => entry.content),
+          { timeout: 1500 },
+        )
+        .toEqual(['A real standalone user submission']);
+      const refined = {
+        ...payload,
+        text: 'Approved refined instructions',
+        ctx: {
+          ...payload.ctx,
+          session: { id: 'refined-session' },
+          meta: {
+            [PROMPT_JOURNAL_RAW_MARKER]: 'Original instructions',
+            standalonePromptJournalOrigin: 'queue',
+          },
+        },
+      } as unknown as UserInputPayload;
+      await pipelines.userInput.run(refined);
+      await expect
+        .poll(
+          async () =>
+            (
+              await getPromptJournalEntries(root, {
+                sessionId: 'refined-session',
+                category: 'refined_user',
+              })
+            ).map((entry) => entry.rawContent),
+          { timeout: 1500 },
+        )
+        .toEqual(['Original instructions']);
+      expect(refined.ctx.meta[PROMPT_JOURNAL_RAW_MARKER]).toBeUndefined();
+      const internal = {
+        ...payload,
+        text: 'Internal auto-wake input',
+        ctx: {
+          ...payload.ctx,
+          session: { id: 'internal-session' },
+          meta: { standalonePromptJournalOrigin: 'runtime' },
+        },
+      } as unknown as UserInputPayload;
+      await pipelines.userInput.run(internal);
+      expect(
+        await getPromptJournalEntries(root, {
+          sessionId: 'internal-session',
+          category: 'raw_user',
+        }),
+      ).toEqual([]);
+    } finally {
+      await rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+    }
+  });
   it("applies the reasoning effort by the profile of the request's own model", async () => {
     const { send } = setup({ reasoning: { mode: 'on', effort: 'high' } });
 

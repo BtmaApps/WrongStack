@@ -1,4 +1,5 @@
 import type { WebSocket } from 'ws';
+import { correlatedReply } from './correlated-reply.js';
 import type { WSClientMessage } from './types.js';
 
 export interface SessionRouteHandlers {
@@ -32,6 +33,23 @@ export async function handleSessionRoute(
   msg: WSClientMessage,
   handlers: SessionRouteHandlers,
 ): Promise<boolean> {
+  if (
+    [
+      'context.debug',
+      'context.compact',
+      'context.repair',
+      'context.clear',
+      'context.editor.open',
+    ].includes(msg.type)
+  )
+    ws = correlatedReply(ws, msg.payload, [
+      'key.operation_result',
+      'context.debug',
+      'context.compacted',
+      'context.repaired',
+      'context.editor.snapshot',
+      'error',
+    ]).socket;
   switch (msg.type) {
     case 'session.new':
       await handlers.newSession(ws, msg);
