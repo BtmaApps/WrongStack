@@ -690,4 +690,53 @@ describe('createMailboxMcpServer', () => {
     );
     expect(() => sendTtlMs({ ttlMs: '60000' })).toThrow('ttlMs must be at least 1');
   });
+
+  it('parses --flag=value CLI options, expands session-tagged actor read scope, and rejects non-boolean optionalBoolean values (F681)', async () => {
+    const { parseArgs } = await import('../src/main.js');
+    const { optionalBoolean } = await import('../src/tool-arg-parsing.js');
+
+    const parsed = parseArgs([
+      '--http',
+      '--project-root=/tmp/proj',
+      '--actor=worker-1@sess-1',
+      '--session-id=sess-1',
+      '--port=4321',
+      '--token=-secret=token',
+    ]);
+    expect(parsed.actor).toBe('worker-1@sess-1');
+    expect(parsed.sessionId).toBe('sess-1');
+    expect(parsed.httpPort).toBe(4321);
+    expect(parsed.httpToken).toBe('-secret=token');
+
+    const query = vi.fn().mockImplementation(async (q: { to?: string }) =>
+      q.to === 'worker-1'
+        ? [
+            {
+              id: 'msg-base',
+              from: 'leader',
+              to: 'worker-1',
+              type: 'task',
+              priority: 'normal',
+              subject: 'Subtask',
+              body: 'Body',
+              timestamp: '2026-10-20T10:00:00.000Z',
+              readBy: [],
+            },
+          ]
+        : [],
+    );
+    const host = createMailboxMcpToolHost(backend({ query }), new MailboxEventEmitter(), {
+      actor: 'worker-1@sess-1',
+      sessionId: 'sess-1',
+    });
+    const readRes = await host.callTool('mailbox_read', { action: 'inbox' });
+    expect(readRes.isError).toBe(false);
+    expect(
+      (readRes.content as { messages: Array<{ id: string }> }).messages.map((m) => m.id),
+    ).toEqual(['msg-base']);
+
+    expect(() => optionalBoolean({ incompleteOnly: 'true' }, 'incompleteOnly')).toThrow(
+      'incompleteOnly must be a boolean',
+    );
+  });
 });

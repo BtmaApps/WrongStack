@@ -148,7 +148,11 @@ export function sendTtlMs(args: Record<string, unknown>): number | undefined {
 
 export function optionalBoolean(args: Record<string, unknown>, key: string): boolean | undefined {
   const value = args[key];
-  return typeof value === 'boolean' ? value : undefined;
+  if (value === undefined) return undefined;
+  if (typeof value !== 'boolean') {
+    throw new Error(`${key} must be a boolean`);
+  }
+  return value;
 }
 
 export function credentialOptions(

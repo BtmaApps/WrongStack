@@ -54,7 +54,12 @@ export function createAttachedSageMcp(
     proposals: true,
     origin: opts.origin,
   });
-  const idleMs = opts.idleReleaseMs ?? DEFAULT_IDLE_RELEASE_MS;
+  const idleMs =
+    typeof opts.idleReleaseMs === 'number' &&
+    Number.isFinite(opts.idleReleaseMs) &&
+    opts.idleReleaseMs >= 0
+      ? opts.idleReleaseMs
+      : DEFAULT_IDLE_RELEASE_MS;
   let timer: ReturnType<typeof setTimeout> | undefined;
   let inFlight = 0;
   let disposed = false;
@@ -71,6 +76,9 @@ export function createAttachedSageMcp(
   const host: MCPServerToolHost = {
     listTools: () => inner.listTools(),
     async callTool(name, args, callOptions) {
+      if (disposed) {
+        return { content: 'SAGE MCP host is disposed', isError: true };
+      }
       if (timer) clearTimeout(timer);
       inFlight++;
       try {

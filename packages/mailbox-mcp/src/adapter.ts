@@ -1,4 +1,5 @@
 import {
+  isMailboxLeader,
   MAILBOX_MAX_ACK_BATCH,
   MAILBOX_MAX_QUERY_LIMIT,
   type MailboxAckInput,
@@ -6,6 +7,7 @@ import {
   type MailboxEventEmitter,
   type MailboxMessageType,
   type MailboxQuery,
+  mailboxIdentityBase,
   normalizeRecipient,
   queryMessagesForActor,
   type RemoteMailbox,
@@ -244,9 +246,11 @@ async function watchForMailboxEvent(
  */
 function actorReadScope(identity: ResolvedMailboxIdentity): MailboxActorReadScope {
   const recipientAliases = new Set<string>([identity.actor]);
+  const baseActor = mailboxIdentityBase(identity.actor);
+  if (baseActor) recipientAliases.add(baseActor);
   // A leader actor also reads the base `leader` alias, the recipient the
   // inbox path has always read for it.
-  if (identity.actor === 'leader' || identity.actorRole?.trim().toLowerCase() === 'leader') {
+  if (isMailboxLeader(identity.actor) || identity.actorRole?.trim().toLowerCase() === 'leader') {
     recipientAliases.add('leader');
   }
   return {

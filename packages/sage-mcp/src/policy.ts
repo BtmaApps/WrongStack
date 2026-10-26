@@ -73,9 +73,11 @@ export function proposalOnlyCandidatesTool(tool: Tool, origin?: string | undefin
       return inner.validate ? inner.validate(input) : [];
     },
     execute(input, ctx, opts) {
-      if (input['action'] !== 'propose' || !origin) return inner.execute(input, ctx, opts);
+      const normalizedOrigin = typeof origin === 'string' ? origin.trim() : '';
+      if (input['action'] !== 'propose' || !normalizedOrigin)
+        return inner.execute(input, ctx, opts);
       const reason = typeof input['reason'] === 'string' ? input['reason'].trim() : '';
-      const stamp = `Proposed by ${origin} over MCP`;
+      const stamp = `Proposed by ${normalizedOrigin} over MCP`;
       return inner.execute({ ...input, reason: reason ? `${stamp}: ${reason}` : stamp }, ctx, opts);
     },
   };

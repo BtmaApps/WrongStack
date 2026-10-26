@@ -204,6 +204,21 @@ export function createRequirementIntakeMcpToolHost(
     args: Record<string, unknown>,
     signal?: AbortSignal,
   ): Promise<MCPServerCallResult> {
+    const allowedSubmitKeys = new Set([
+      'request',
+      'title',
+      'requestType',
+      'priority',
+      'idempotencyKey',
+    ]);
+    for (const key of Object.keys(args)) {
+      if (!allowedSubmitKeys.has(key) && args[key] !== undefined) {
+        return {
+          content: `requirement_intake_submit: unknown argument "${key}"`,
+          isError: true,
+        };
+      }
+    }
     const request = args['request'];
     if (typeof request !== 'string' || request.trim().length === 0) {
       return {
@@ -258,6 +273,14 @@ export function createRequirementIntakeMcpToolHost(
     args: Record<string, unknown>,
     signal?: AbortSignal,
   ): Promise<MCPServerCallResult> {
+    for (const key of Object.keys(args)) {
+      if (key !== 'statuses' && args[key] !== undefined) {
+        return {
+          content: `requirement_intake_list: unknown argument "${key}"`,
+          isError: true,
+        };
+      }
+    }
     const projectId = await resolveProjectId(false);
     throwIfAborted(signal);
     const ctx = intakeContext(projectId, actor);

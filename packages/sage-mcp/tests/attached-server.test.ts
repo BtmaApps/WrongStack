@@ -171,5 +171,22 @@ describe('attached SAGE MCP (external coding agents)', () => {
     await inFlightCall;
     await vi.advanceTimersByTimeAsync(1_500);
     expect(port.releaseConnection).not.toHaveBeenCalled();
+
+    // F683: post-dispose callTool is rejected, undefined optional keys are stripped, blank origin is ignored, and CLI --flag=value works
+    const postDispose = await second.host.callTool('memory_search', { query: 'after' });
+    expect(postDispose).toEqual({ content: 'SAGE MCP host is disposed', isError: true });
+
+    const { parseArgs } = await import('../src/cli.js');
+    const eqParsed = parseArgs([
+      '--project-root=/tmp/proj',
+      '--storage-dir=/tmp/proj/.sage',
+      '--port=8765',
+      '--token=-sage-secret-999',
+    ]);
+    expect(eqParsed.httpPort).toBe(8765);
+    expect(eqParsed.httpToken).toBe('-sage-secret-999');
+    const bareToken = parseArgs(['--project-root', '/tmp/proj', '--token', '--writable']);
+    expect(bareToken.tokenMissing).toBe(true);
+    expect(bareToken.writable).toBe(true);
   });
 });

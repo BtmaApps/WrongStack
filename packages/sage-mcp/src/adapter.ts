@@ -140,7 +140,9 @@ export function createSageMcpToolHost(
         // For `remember`, force no_auto_audience=true. SAGE's auto-audience
         // detection reads `ctx.meta['agentRole']`/`ctx.meta['mode']`; MCP
         // callers do not supply a role/mode so we cannot infer one.
-        let callArgs: Record<string, unknown> = { ...args };
+        let callArgs: Record<string, unknown> = Object.fromEntries(
+          Object.entries(args).filter(([, v]) => v !== undefined),
+        );
         if (name === 'remember') {
           callArgs['no_auto_audience'] = true;
         }

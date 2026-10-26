@@ -107,12 +107,28 @@ export function parseArgs(
     '--help',
   ]);
   for (let index = 0; index < argv.length; index++) {
-    const arg = argv[index];
+    const rawArg = argv[index] ?? '';
+    const eqIndex = rawArg.startsWith('--') ? rawArg.indexOf('=') : -1;
+    const arg = eqIndex > 0 ? rawArg.slice(0, eqIndex) : rawArg;
+    const inlineValue = eqIndex > 0 ? rawArg.slice(eqIndex + 1) : undefined;
     // A secret may begin with "-" (base64url); refusing it dropped the token
     // and echoed it to stderr as an unknown option.
     const value = (allowDash = false): string | undefined => {
+      if (inlineValue !== undefined) {
+        const trimmedInline = inlineValue.trim();
+        if (trimmedInline.length === 0) {
+          warn('mcp_cli_flag_missing_value', `${arg} expects a non-blank value; ignoring it.`);
+          return undefined;
+        }
+        return trimmedInline;
+      }
       const next = argv[index + 1];
-      if (next === undefined || KNOWN_FLAGS.has(next) || (!allowDash && next.startsWith('-'))) {
+      const nextFlag = next?.startsWith('--') ? (next.split('=', 1)[0] ?? next) : next;
+      if (
+        next === undefined ||
+        (nextFlag !== undefined && KNOWN_FLAGS.has(nextFlag)) ||
+        (!allowDash && next.startsWith('-'))
+      ) {
         warn('mcp_cli_flag_missing_value', `${arg} expects a value; ignoring it.`);
         return undefined;
       }

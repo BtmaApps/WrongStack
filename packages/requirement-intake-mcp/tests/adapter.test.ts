@@ -553,4 +553,42 @@ describe('createRequirementIntakeMcpServer', () => {
       await fs.rm(dir, { recursive: true, force: true });
     }
   });
+
+  it('rejects unknown arguments in submit/list and parses --flag=value CLI options cleanly (F682)', async () => {
+    const { parseArgs } = await import('../src/main.js');
+    const host = createRequirementIntakeMcpToolHost('C:/project', {
+      writable: true,
+      dependencies: { resolveProjectId: async () => 'proj_alpha' },
+    });
+    const unknownSubmit = await host.callTool('requirement_intake_submit', {
+      request: REQUEST_TEXT,
+      idempotency_key: 'typo-key',
+    });
+    expect(unknownSubmit).toEqual({
+      content: 'requirement_intake_submit: unknown argument "idempotency_key"',
+      isError: true,
+    });
+
+    const unknownList = await host.callTool('requirement_intake_list', {
+      status: 'submitted',
+    });
+    expect(unknownList).toEqual({
+      content: 'requirement_intake_list: unknown argument "status"',
+      isError: true,
+    });
+
+    const eqParsed = parseArgs([
+      '--project-root=/tmp/proj',
+      '--port=4200',
+      '--actor=bot-i',
+      '--token=-intake-secret-999',
+    ]);
+    expect(eqParsed.actor).toBe('bot-i');
+    expect(eqParsed.httpPort).toBe(4200);
+    expect(eqParsed.httpToken).toBe('-intake-secret-999');
+
+    const bareToken = parseArgs(['--project-root', '/tmp/proj', '--token', '--writable']);
+    expect(bareToken.tokenMissing).toBe(true);
+    expect(bareToken.writable).toBe(true);
+  });
 });

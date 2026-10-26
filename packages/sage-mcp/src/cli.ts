@@ -105,13 +105,41 @@ export function parseArgs(
       JSON.stringify({ level: 'warn', event, message, timestamp: new Date().toISOString() }),
     );
   };
+  const KNOWN_FLAGS = new Set([
+    '--project-root',
+    '--storage-dir',
+    '--stdio',
+    '--http',
+    '--port',
+    '--host',
+    '--token',
+    '--writable',
+    '-h',
+    '--help',
+  ]);
   for (let i = 0; i < argv.length; i++) {
-    const arg = argv[i];
+    const rawArg = argv[i] ?? '';
+    const eqIndex = rawArg.startsWith('--') ? rawArg.indexOf('=') : -1;
+    const arg = eqIndex > 0 ? rawArg.slice(0, eqIndex) : rawArg;
+    const inlineValue = eqIndex > 0 ? rawArg.slice(eqIndex + 1) : undefined;
     // A secret may begin with "-" (base64url); refusing it dropped the token
     // and echoed it to stderr as an unknown option.
     const value = (allowDash = false): string | undefined => {
+      if (inlineValue !== undefined) {
+        const trimmedInline = inlineValue.trim();
+        if (!trimmedInline) {
+          warn('mcp_cli_flag_empty_value', `${arg} expects a non-empty value; ignoring it.`);
+          return undefined;
+        }
+        return trimmedInline;
+      }
       const next = argv[i + 1];
-      if (next === undefined || (!allowDash && next.startsWith('-'))) {
+      const nextFlag = next?.startsWith('--') ? (next.split('=', 1)[0] ?? next) : next;
+      if (
+        next === undefined ||
+        (nextFlag !== undefined && KNOWN_FLAGS.has(nextFlag)) ||
+        (!allowDash && next.startsWith('-'))
+      ) {
         warn('mcp_cli_flag_missing_value', `${arg} expects a value; ignoring it.`);
         return undefined;
       }
@@ -155,8 +183,12 @@ export function parseArgs(
       }
       case '--token': {
         const next = value(true);
-        if (next !== undefined) out.httpToken = next;
-        else out.tokenMissing = true;
+        if (next !== undefined) {
+          out.httpToken = next;
+          out.tokenMissing = false;
+        } else if (out.httpToken === undefined) {
+          out.tokenMissing = true;
+        }
         break;
       }
       case '--writable':

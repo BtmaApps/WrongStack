@@ -579,4 +579,43 @@ describe('createKanbanMcpServer', () => {
       expect.anything(),
     );
   });
+
+  it('validates kanban_watch arguments and parses --flag=value CLI options without leaking secrets (F682)', async () => {
+    const { parseArgs } = await import('../src/main.js');
+    const host = createKanbanMcpToolHost('C:/project', {
+      dependencies: {
+        executeKanban: vi.fn(),
+        getConnection: vi.fn().mockResolvedValue({
+          subscribe: () => () => {},
+          onDisconnect: () => () => {},
+        }),
+      },
+    });
+    const unknownKey = await host.callTool('kanban_watch', { unknownField: 'typo' });
+    expect(unknownKey).toEqual({
+      content: 'kanban_watch: unknown argument "unknownField"',
+      isError: true,
+    });
+    const badBoardId = await host.callTool('kanban_watch', {
+      boardId: 123 as unknown as string,
+    });
+    expect(badBoardId).toEqual({
+      content: 'kanban_watch: "boardId" must be a string',
+      isError: true,
+    });
+
+    const eqParsed = parseArgs([
+      '--project-root=/tmp/proj',
+      '--port=4100',
+      '--actor=bot-k',
+      '--token=-kanban-secret-999',
+    ]);
+    expect(eqParsed.actor).toBe('bot-k');
+    expect(eqParsed.httpPort).toBe(4100);
+    expect(eqParsed.httpToken).toBe('-kanban-secret-999');
+
+    const bareToken = parseArgs(['--project-root', '/tmp/proj', '--token', '--writable']);
+    expect(bareToken.tokenMissing).toBe(true);
+    expect(bareToken.writable).toBe(true);
+  });
 });

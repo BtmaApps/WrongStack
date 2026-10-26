@@ -166,6 +166,20 @@ async function watchForKanbanMutation(
   getConnection: (projectRoot: string) => Promise<KanbanEventConnection | null>,
   signal: AbortSignal,
 ): Promise<unknown> {
+  for (const key of Object.keys(args)) {
+    if (key !== 'boardId' && key !== 'timeoutMs' && args[key] !== undefined) {
+      throw new Error(`kanban_watch: unknown argument "${key}"`);
+    }
+  }
+  if (args['boardId'] !== undefined && typeof args['boardId'] !== 'string') {
+    throw new Error('kanban_watch: "boardId" must be a string');
+  }
+  if (
+    args['timeoutMs'] !== undefined &&
+    (typeof args['timeoutMs'] !== 'number' || !Number.isFinite(args['timeoutMs']))
+  ) {
+    throw new Error('kanban_watch: "timeoutMs" must be a finite number');
+  }
   const rawBoardId = typeof args['boardId'] === 'string' ? args['boardId'].trim() : '';
   const boardId = rawBoardId.length > 0 ? rawBoardId : undefined;
   const timeoutMs = normalizeTimeout(args['timeoutMs']);
