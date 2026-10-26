@@ -118,6 +118,28 @@ export function rebuildCatalogIndex(
   let indexed = 0;
   let damaged = 0;
   transactionFn(() => {
+    const priorStorage = new Map<
+      string,
+      {
+        uncompressed_size: number;
+        compressed_size: number;
+        content_sha256: string | null;
+        archived_at: string | null;
+      }
+    >();
+    for (const row of db
+      .prepare(
+        'SELECT session_id, uncompressed_size, compressed_size, content_sha256, archived_at FROM sessions',
+      )
+      .all() as Array<{
+      session_id: string;
+      uncompressed_size: number;
+      compressed_size: number;
+      content_sha256: string | null;
+      archived_at: string | null;
+    }>) {
+      priorStorage.set(row.session_id, row);
+    }
     db.prepare('DELETE FROM sessions').run();
     for (const id of ids) {
       try {
@@ -139,8 +161,21 @@ export function rebuildCatalogIndex(
         if (!summary || summary.id !== id) throw new Error('summary identity mismatch');
         const stat = transcript && (hotExists || coldExists) ? fs.statSync(transcript) : undefined;
         const now = new Date().toISOString();
+        const prior = priorStorage.get(id);
+        const uncompressedSize =
+          storageState === 'hot'
+            ? (stat?.size ?? 0)
+            : (summary.uncompressedBytes ??
+              (prior && prior.uncompressed_size > 0 ? prior.uncompressed_size : 0));
+        const compressedSize =
+          storageState === 'cold'
+            ? (stat?.size ?? summary.compressedBytes ?? prior?.compressed_size ?? 0)
+            : 0;
+        const contentSha256 = storageState === 'cold' ? (prior?.content_sha256 ?? null) : null;
+        const archivedAt =
+          storageState === 'cold' ? (summary.archivedAt ?? prior?.archived_at ?? now) : null;
         db.prepare(
-          'INSERT INTO sessions(session_id,transcript_relative_path,summary_relative_path,summary_json,transcript_size,transcript_mtime_ms,summary_revision,indexed_at,damaged,storage_state,codec,uncompressed_size,compressed_size,archived_at) VALUES (?,?,?,?,?,?,?,?,0,?,?,?,?,?)',
+          'INSERT INTO sessions(session_id,transcript_relative_path,summary_relative_path,summary_json,transcript_size,transcript_mtime_ms,summary_revision,indexed_at,damaged,storage_state,codec,uncompressed_size,compressed_size,content_sha256,archived_at) VALUES (?,?,?,?,?,?,?,?,0,?,?,?,?,?,?)',
         ).run(
           id,
           relative,
@@ -152,9 +187,10 @@ export function rebuildCatalogIndex(
           now,
           storageState,
           storageState === 'cold' ? 'gzip' : null,
-          storageState === 'hot' ? (stat?.size ?? 0) : 0,
-          storageState === 'cold' ? (stat?.size ?? 0) : 0,
-          storageState === 'cold' ? now : null,
+          uncompressedSize,
+          compressedSize,
+          contentSha256,
+          archivedAt,
         );
         indexed++;
       } catch {

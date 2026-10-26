@@ -30,8 +30,18 @@ export function resolveContainedPath(sessionsDir: string, relative: string): str
 
 export function toCatalogRecord(row: CatalogRow): CatalogSessionRecord {
   const storageState = row.storage_state === 'cold' ? 'cold' : 'hot';
+  const parsed = parseJson<SessionSummary>(row.summary_json);
+  const {
+    codec: _summaryCodec,
+    archivedAt: _summaryArchivedAt,
+    compressedBytes: _summaryCompressedBytes,
+    ...baseSummary
+  } = parsed;
   return {
-    ...parseJson<SessionSummary>(row.summary_json),
+    ...baseSummary,
+    ...(storageState === 'cold' && parsed.compressedBytes !== undefined
+      ? { compressedBytes: parsed.compressedBytes }
+      : {}),
     transcriptRelativePath: row.transcript_relative_path,
     summaryRelativePath: row.summary_relative_path,
     transcriptSize: row.transcript_size,

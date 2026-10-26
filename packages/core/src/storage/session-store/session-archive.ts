@@ -288,7 +288,7 @@ export async function executeEnsureHot(
       await host.invalidateShardManifestBySessionId(id).catch(() => undefined);
       if (host.catalogClient) {
         await host.catalogClient.call('upsert_summary', {
-          summary,
+          summary: hotSummary,
           transcriptRelativePath: result.relativePath,
           summaryRelativePath: `${id}.summary.json`,
           storageState: 'hot',
@@ -296,6 +296,8 @@ export async function executeEnsureHot(
           compressedSize: 0,
           archivedAt: null,
         });
+      } else {
+        await host.appendToIndex(hotSummary);
       }
     }
     host.clearLoadCache(id);

@@ -304,7 +304,88 @@ describe('session transcript archive', () => {
     const row = catalog.getSummary(id);
     expect(row?.storageState).toBe('cold');
     expect(row?.transcriptRelativePath).toBe(`${id}.jsonl.gz`);
+    expect(row?.uncompressedSize).toBeGreaterThan(0);
     catalog.close();
     await fs.rm(root, { recursive: true, force: true });
+  });
+
+  it('preserves cold session uncompressedSize, contentSha256, and archivedAt across rebuildCatalog and clears cold fields on rehydrate', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'wstack-catalog-cold-meta-'));
+    const id = '2020-01-01/catalog-cold-meta';
+    const sessionsDir = path.join(root, 'sessions');
+    const catalog = new SessionCatalogStore(root);
+    try {
+      const nested = path.join(sessionsDir, '2020-01-01');
+      await fs.mkdir(nested, { recursive: true });
+      const jsonl = path.join(nested, 'catalog-cold-meta.jsonl');
+      await fs.writeFile(jsonl, `${JSON.stringify(startEvent(id, '2020-01-01T00:00:00.000Z'))}\n`);
+      await fs.writeFile(
+        path.join(nested, 'catalog-cold-meta.summary.json'),
+        JSON.stringify({
+          id,
+          title: 'cold meta',
+          startedAt: '2020-01-01T00:00:00.000Z',
+          model: 'm',
+          provider: 'p',
+          tokenTotal: 0,
+        }),
+      );
+      const local = new DefaultSessionStore({ dir: sessionsDir, storage: { autoArchive: false } });
+      const archived = await local.archive(id);
+      const archivedAt = '2020-01-02T03:04:05.000Z';
+      const contentSha256 = 'b'.repeat(64);
+      const coldManifest = JSON.parse(
+        await fs.readFile(path.join(nested, 'catalog-cold-meta.summary.json'), 'utf8'),
+      );
+      coldManifest.archivedAt = archivedAt;
+      await fs.writeFile(
+        path.join(nested, 'catalog-cold-meta.summary.json'),
+        JSON.stringify(coldManifest),
+      );
+      catalog.upsertSummary(coldManifest, `${id}.jsonl.gz`, `${id}.summary.json`, {
+        storageState: 'cold',
+        codec: 'gzip',
+        uncompressedSize: archived.uncompressedBytes,
+        compressedSize: archived.compressedBytes,
+        contentSha256,
+        archivedAt,
+      });
+
+      catalog.rebuildCatalog();
+      const rebuiltRow = catalog.getSummary(id);
+      expect(rebuiltRow?.storageState).toBe('cold');
+      expect(rebuiltRow?.uncompressedSize).toBe(archived.uncompressedBytes);
+      expect(rebuiltRow?.compressedSize).toBe(archived.compressedBytes);
+      expect(rebuiltRow?.contentSha256).toBe(contentSha256);
+      expect(rebuiltRow?.archivedAt).toBe(archivedAt);
+
+      await local.rehydrate(id);
+      const indexContent = await fs.readFile(path.join(sessionsDir, '_index.jsonl'), 'utf8');
+      const indexRows = indexContent
+        .trim()
+        .split('\n')
+        .map((line) => JSON.parse(line));
+      const latestIndexRow = indexRows.at(-1);
+      expect(latestIndexRow?.storageState).toBe('hot');
+      expect(latestIndexRow?.codec).toBeUndefined();
+      expect(latestIndexRow?.archivedAt).toBeUndefined();
+
+      const hotManifest = JSON.parse(
+        await fs.readFile(path.join(nested, 'catalog-cold-meta.summary.json'), 'utf8'),
+      );
+      const hotRecord = catalog.upsertSummary(hotManifest, `${id}.jsonl`, `${id}.summary.json`, {
+        storageState: 'hot',
+        uncompressedSize: archived.uncompressedBytes,
+        compressedSize: 0,
+        archivedAt: null,
+      });
+      expect(hotRecord.storageState).toBe('hot');
+      expect(hotRecord.codec).toBeUndefined();
+      expect(hotRecord.archivedAt).toBeUndefined();
+      await local.dispose?.();
+    } finally {
+      catalog.close();
+      await fs.rm(root, { recursive: true, force: true });
+    }
   });
 });
