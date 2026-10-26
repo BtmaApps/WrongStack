@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-26T22:27:39.143Z
+**Generated:** 2026-10-26T23:46:10.682Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -8,15 +8,15 @@
 | Measure | Value |
 |---|---:|
 | Workspace packages | 45 |
-| Production source files | 5241 |
-| Production source lines | 1152475 |
-| Test files | 4593 |
+| Production source files | 5246 |
+| Production source lines | 1153839 |
+| Test files | 4597 |
 | Workspace dependency edges | 221 |
-| Relative module edges | 15670 |
+| Relative module edges | 15683 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 4 |
-| Tests without TypeScript test-project coverage | 29 |
+| Tests without TypeScript test-project coverage | 32 |
 | Tests in multiple TypeScript projects | 0 |
 
 ## Verification result
@@ -32,13 +32,13 @@
 | @wrongstack/bench | 29 | 56 | @wrongstack/core |
 | @wrongstack/builtin-plugins | 33 | 27 | @wrongstack/contracts, @wrongstack/core, @wrongstack/kanban, @wrongstack/primitives |
 | @wrongstack/chronicle | 52 | 43 | @wrongstack/contracts, @wrongstack/core, @wrongstack/persistence, @wrongstack/primitives |
-| @wrongstack/cli | 674 | 671 | @wrongstack/acp, @wrongstack/agent-catalog, @wrongstack/bench, @wrongstack/builtin-plugins, @wrongstack/chronicle, @wrongstack/codebase-index-mcp, @wrongstack/contracts, @wrongstack/coordination, @wrongstack/core, @wrongstack/goal, @wrongstack/hq, @wrongstack/kanban, @wrongstack/kanban-mcp, @wrongstack/mailbox-mcp, @wrongstack/mcp, @wrongstack/persistence, @wrongstack/plug-lsp, @wrongstack/plugins, @wrongstack/primitives, @wrongstack/providers, @wrongstack/requirement-intake, @wrongstack/requirement-intake-mcp, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sage-mcp, @wrongstack/sdd, @wrongstack/security-scanner, @wrongstack/techstack, @wrongstack/telegram, @wrongstack/tools, @wrongstack/tui, @wrongstack/vector-memory, @wrongstack/vibeui, @wrongstack/webui, @wrongstack/webui-hq, @wrongstack/webui-protocol, @wrongstack/webui-server, @wrongstack/worktree, @wrongstack/wrongtrace |
+| @wrongstack/cli | 674 | 672 | @wrongstack/acp, @wrongstack/agent-catalog, @wrongstack/bench, @wrongstack/builtin-plugins, @wrongstack/chronicle, @wrongstack/codebase-index-mcp, @wrongstack/contracts, @wrongstack/coordination, @wrongstack/core, @wrongstack/goal, @wrongstack/hq, @wrongstack/kanban, @wrongstack/kanban-mcp, @wrongstack/mailbox-mcp, @wrongstack/mcp, @wrongstack/persistence, @wrongstack/plug-lsp, @wrongstack/plugins, @wrongstack/primitives, @wrongstack/providers, @wrongstack/requirement-intake, @wrongstack/requirement-intake-mcp, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sage-mcp, @wrongstack/sdd, @wrongstack/security-scanner, @wrongstack/techstack, @wrongstack/telegram, @wrongstack/tools, @wrongstack/tui, @wrongstack/vector-memory, @wrongstack/vibeui, @wrongstack/webui, @wrongstack/webui-hq, @wrongstack/webui-protocol, @wrongstack/webui-server, @wrongstack/worktree, @wrongstack/wrongtrace |
 | @wrongstack/client | 7 | 3 | @wrongstack/webui-protocol |
 | @wrongstack/codebase-index-mcp | 6 | 5 | @wrongstack/contracts, @wrongstack/core, @wrongstack/mcp, @wrongstack/tools |
 | @wrongstack/contracts | 126 | 4 | @wrongstack/kanban, @wrongstack/primitives |
 | @wrongstack/coordination | 190 | 183 | @wrongstack/agent-catalog, @wrongstack/contracts, @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/core | 633 | 678 | @wrongstack/agent-catalog, @wrongstack/contracts, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
-| @wrongstack/desktop-v2 | 92 | 29 | @wrongstack/contracts, @wrongstack/core, @wrongstack/webui-protocol, @wrongstack/webui-server |
+| @wrongstack/desktop-v2 | 97 | 32 | @wrongstack/contracts, @wrongstack/core, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/goal | 22 | 22 | @wrongstack/contracts, @wrongstack/core, @wrongstack/worktree |
 | @wrongstack/governance | 45 | 37 | @wrongstack/persistence |
 | @wrongstack/hq | 62 | 42 | @wrongstack/contracts, @wrongstack/core, @wrongstack/persistence, @wrongstack/primitives |
@@ -100,7 +100,7 @@ None.
 | 815 | `packages/vibeui/src/lib/session.ts` |
 | 806 | `apps/desktop-v2/src/ProjectMemory.tsx` |
 | 800 | `packages/vibeui/src/components/resource-hub.tsx` |
-| 784 | `apps/desktop-v2/src/SessionComposer.tsx` |
+| 795 | `apps/desktop-v2/src/SessionComposer.tsx` |
 | 753 | `packages/cli/src/fleet/host-skill-companion.ts` |
 | 750 | `packages/vibeui/src/lib/use-session.ts` |
 | 747 | `packages/webui-server/src/server/memory-handlers.ts` |
@@ -117,11 +117,11 @@ None.
 | 707 | `packages/acp/src/client/acp-session.ts` |
 | 705 | `packages/chronicle/src/project-server-client.ts` |
 | 703 | `packages/core/src/execution/auto-compaction-middleware.ts` |
+| 701 | `packages/coordination/src/provider-status-tracker.ts` |
 | 700 | `packages/chronicle/src/project-server.ts` |
 | 699 | `packages/coordination/src/subagent-budget.ts` |
 | 699 | `packages/governance/src/runtime-compatibility.ts` |
 | 699 | `packages/sage/src/types.ts` |
-| 698 | `packages/coordination/src/provider-status-tracker.ts` |
 | 697 | `packages/core/src/core/agent-response.ts` |
 | 697 | `packages/webui/src/components/KanbanView.tsx` |
 | 696 | `packages/cli/src/boot/tui-session-resume.ts` |
@@ -131,15 +131,15 @@ None.
 | 695 | `packages/core/src/registry/tool-registry.ts` |
 | 695 | `packages/core/src/storage/config-loader.ts` |
 | 694 | `packages/cli/src/slash-commands/fix-classifier.ts` |
+| 694 | `packages/requirement-intake/src/service.ts` |
 | 693 | `packages/core/src/core/agent-loop.ts` |
 | 693 | `packages/core/src/execution/eternal-autonomy.ts` |
 | 693 | `packages/tui/src/hooks/use-provider-event-bridge.ts` |
 | 693 | `packages/vector-memory/src/store.ts` |
 | 693 | `packages/webui/src/components/MailboxPanel.tsx` |
+| 692 | `packages/governance/src/event-store.ts` |
 | 692 | `packages/tools/src/codebase-index/project-server.ts` |
-| 691 | `packages/governance/src/event-store.ts` |
 | 691 | `packages/plugins/src/template-engine/index.ts` |
-| 691 | `packages/tui/src/hooks/use-director-fleet-bridge.ts` |
 
 ## Exports only tests reference
 
@@ -149,7 +149,7 @@ None.
 
 ## TypeScript test coverage debt
 
-- 29 test files are not included in a package TypeScript test project.
+- 32 test files are not included in a package TypeScript test project.
 - 0 test files are included in more than one package TypeScript project.
 
 > This report is generated. Change architecture registry inputs or source code, then regenerate it; do not hand-edit measurements.

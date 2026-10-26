@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-26T22:27:39.143Z",
+  "generatedAt": "2026-10-26T23:46:10.682Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,15 +12,15 @@
   },
   "summary": {
     "packages": 45,
-    "sourceFiles": 5241,
-    "testFiles": 4593,
-    "sourceLines": 1152475,
+    "sourceFiles": 5246,
+    "testFiles": 4597,
+    "sourceLines": 1153839,
     "workspaceEdges": 221,
-    "moduleEdges": 15670,
+    "moduleEdges": 15683,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 4,
-    "testsWithoutTypecheck": 29,
+    "testsWithoutTypecheck": 32,
     "testsWithMultipleTypechecks": 0,
     "testOnlyExports": 944
   },
@@ -211,7 +211,7 @@
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
       "sourceFiles": 674,
-      "testFiles": 671,
+      "testFiles": 672,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/agent-catalog",
@@ -262,7 +262,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 671
+          "testFiles": 672
         }
       ]
     },
@@ -387,8 +387,8 @@
     {
       "name": "@wrongstack/desktop-v2",
       "dir": "apps/desktop-v2",
-      "sourceFiles": 92,
-      "testFiles": 29,
+      "sourceFiles": 97,
+      "testFiles": 32,
       "workspaceDependencies": [
         "@wrongstack/contracts",
         "@wrongstack/core",
@@ -1400,6 +1400,12 @@
         ]
       },
       {
+        "file": "apps/desktop-v2/tests/next-steps.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "apps/desktop-v2/tests/portable.test.ts",
         "projects": [
           "root-node"
@@ -1419,6 +1425,12 @@
       },
       {
         "file": "apps/desktop-v2/tests/sage-relation-model.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "apps/desktop-v2/tests/session-activity.test.ts",
         "projects": [
           "root-node"
         ]
@@ -1449,6 +1461,12 @@
       },
       {
         "file": "apps/desktop-v2/tests/task-definition-model.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "apps/desktop-v2/tests/tool-approval.test.ts",
         "projects": [
           "root-node"
         ]
@@ -4317,6 +4335,12 @@
       },
       {
         "file": "packages/cli/tests/hq-welcome.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/id-prefix-resolution.test.ts",
         "projects": [
           "root-node"
         ]
@@ -28981,6 +29005,13 @@
         "typecheckProjects": []
       },
       {
+        "file": "apps/desktop-v2/tests/next-steps.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
         "file": "apps/desktop-v2/tests/portable.test.ts",
         "runtimeProjects": [
           "root-node"
@@ -29003,6 +29034,13 @@
       },
       {
         "file": "apps/desktop-v2/tests/sage-relation-model.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
+        "file": "apps/desktop-v2/tests/session-activity.test.ts",
         "runtimeProjects": [
           "root-node"
         ],
@@ -29038,6 +29076,13 @@
       },
       {
         "file": "apps/desktop-v2/tests/task-definition-model.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
+        "file": "apps/desktop-v2/tests/tool-approval.test.ts",
         "runtimeProjects": [
           "root-node"
         ],
@@ -29218,6 +29263,11 @@
       "syntax": "import"
     },
     {
+      "from": "apps/desktop-v2/src/ChronicleInsights.tsx",
+      "specifier": "./chronicle-insights.css",
+      "syntax": "import"
+    },
+    {
       "from": "apps/desktop-v2/src/CodeAtlas.tsx",
       "specifier": "./atlas-views.css",
       "syntax": "import"
@@ -29293,6 +29343,11 @@
       "syntax": "import"
     },
     {
+      "from": "apps/desktop-v2/src/NextStepsPanel.tsx",
+      "specifier": "./next-steps.css",
+      "syntax": "import"
+    },
+    {
       "from": "apps/desktop-v2/src/ProjectKanban.tsx",
       "specifier": "./kanban.css",
       "syntax": "import"
@@ -29308,6 +29363,11 @@
       "syntax": "import"
     },
     {
+      "from": "apps/desktop-v2/src/SessionActivity.tsx",
+      "specifier": "./session-activity.css",
+      "syntax": "import"
+    },
+    {
       "from": "apps/desktop-v2/src/SessionComposer.tsx",
       "specifier": "./composer.css",
       "syntax": "import"
@@ -29315,6 +29375,11 @@
     {
       "from": "apps/desktop-v2/src/SessionComposer.tsx",
       "specifier": "./composer-resources.css",
+      "syntax": "import"
+    },
+    {
+      "from": "apps/desktop-v2/src/ToolApprovalCard.tsx",
+      "specifier": "./tool-approval.css",
       "syntax": "import"
     },
     {
@@ -29360,6 +29425,11 @@
       "file": "packages/coordination/src/multi-agent-coordinator.ts",
       "lines": 725,
       "relativeImports": 13
+    },
+    {
+      "file": "packages/coordination/src/provider-status-tracker.ts",
+      "lines": 701,
+      "relativeImports": 4
     },
     {
       "file": "packages/coordination/src/sqlite-mailbox.ts",
@@ -29458,8 +29528,8 @@
     },
     {
       "file": "apps/desktop-v2/src/SessionComposer.tsx",
-      "lines": 784,
-      "relativeImports": 14
+      "lines": 795,
+      "relativeImports": 15
     },
     {
       "file": "apps/desktop-v2/src/SkillLibrary.tsx",
@@ -29520,8 +29590,8 @@
     },
     {
       "file": "apps/desktop-v2/src/SessionComposer.tsx",
-      "lines": 784,
-      "relativeImports": 14
+      "lines": 795,
+      "relativeImports": 15
     },
     {
       "file": "packages/cli/src/fleet/host-skill-companion.ts",
@@ -29604,6 +29674,11 @@
       "relativeImports": 18
     },
     {
+      "file": "packages/coordination/src/provider-status-tracker.ts",
+      "lines": 701,
+      "relativeImports": 4
+    },
+    {
       "file": "packages/chronicle/src/project-server.ts",
       "lines": 700,
       "relativeImports": 17
@@ -29622,11 +29697,6 @@
       "file": "packages/sage/src/types.ts",
       "lines": 699,
       "relativeImports": 10
-    },
-    {
-      "file": "packages/coordination/src/provider-status-tracker.ts",
-      "lines": 698,
-      "relativeImports": 4
     },
     {
       "file": "packages/core/src/core/agent-response.ts",
@@ -29674,6 +29744,11 @@
       "relativeImports": 0
     },
     {
+      "file": "packages/requirement-intake/src/service.ts",
+      "lines": 694,
+      "relativeImports": 17
+    },
+    {
       "file": "packages/core/src/core/agent-loop.ts",
       "lines": 693,
       "relativeImports": 31
@@ -29699,24 +29774,19 @@
       "relativeImports": 2
     },
     {
+      "file": "packages/governance/src/event-store.ts",
+      "lines": 692,
+      "relativeImports": 8
+    },
+    {
       "file": "packages/tools/src/codebase-index/project-server.ts",
       "lines": 692,
       "relativeImports": 13
     },
     {
-      "file": "packages/governance/src/event-store.ts",
-      "lines": 691,
-      "relativeImports": 8
-    },
-    {
       "file": "packages/plugins/src/template-engine/index.ts",
       "lines": 691,
       "relativeImports": 1
-    },
-    {
-      "file": "packages/tui/src/hooks/use-director-fleet-bridge.ts",
-      "lines": 691,
-      "relativeImports": 5
     }
   ],
   "testOnlyExports": [
