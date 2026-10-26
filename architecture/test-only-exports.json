@@ -1,34 +1,6 @@
 {
   "schemaVersion": 1,
   "files": {
-    "apps/desktop/src/main/runtime-manager.ts": [
-      "resolveIdleTimeoutMs"
-    ],
-    "apps/desktop/src/main/state/constants.ts": [
-      "LOG_NOTIFY_DEBOUNCE_MS",
-      "PENDING_WEBUI_FLUSH_DELAY_MS",
-      "WINDOW_STATE_SAVE_DEBOUNCE_MS"
-    ],
-    "apps/desktop/src/main/validation/index.ts": [
-      "validateOrThrow"
-    ],
-    "apps/desktop/src/main/validation/schemas.ts": [
-      "abortRuntimeSchema",
-      "activateRuntimeSchema",
-      "closeRuntimeSchema",
-      "getConversationSchema",
-      "navigateWebuiSchema",
-      "openProjectSchema",
-      "openProjectSessionSchema",
-      "openRuntimeInBrowserSchema",
-      "registerProjectSchema",
-      "revealRuntimeRootSchema",
-      "sendMessageSchema",
-      "setShellSidebarCollapsedSchema",
-      "unregisterProjectSchema",
-      "webuiPrefsChangedSchema",
-      "webuiReadyChangedSchema"
-    ],
     "packages/acp/src/agent/server-agent-turn.ts": [
       "disposeACPServerAgentTurn",
       "serverAgentTurnCoverage"
@@ -171,11 +143,6 @@
       "propagateSafeMode",
       "SAFE_MODE_ENV"
     ],
-    "packages/cli/src/boot/short-circuit-desktop.ts": [
-      "desktopExecutableCandidates",
-      "selectDesktopLauncherExecutable",
-      "stripDesktopLauncherArgs"
-    ],
     "packages/cli/src/boot/short-circuit-hq.ts": [
       "isReusedContainerPid"
     ],
@@ -188,9 +155,6 @@
     "packages/cli/src/boot/tui-session-stub-enrich.ts": [
       "containedJsonlPath",
       "enrichStubSummaries"
-    ],
-    "packages/cli/src/boot/webui-session-child.ts": [
-      "WEBUI_SESSION_CHILD_PROTOCOL_VERSION"
     ],
     "packages/cli/src/chimera-reviewer-policy.ts": [
       "MAX_MUTATING_ATTEMPTS",
@@ -496,6 +460,15 @@
     ],
     "packages/coordination/src/session-subagent-models.ts": [
       "__resetAllSessionSubagentModelPlans"
+    ],
+    "packages/coordination/src/sqlite-mailbox-owner.ts": [
+      "inspectMailboxOwner",
+      "MAILBOX_OWNER_META_KEY",
+      "MAILBOX_OWNER_STALE_MS",
+      "MailboxOwnershipConflictError"
+    ],
+    "packages/coordination/src/sqlite-mailbox-schema.ts": [
+      "SQLITE_MAILBOX_SCHEMA_VERSION"
     ],
     "packages/coordination/src/subagent-nicknames.ts": [
       "getAllNicknameKeys"
@@ -1705,6 +1678,9 @@
     "packages/webui-server/src/server/terminal-ws-handler.ts": [
       "resolveTerminalShell"
     ],
+    "packages/webui/src/components/activity-bar/index.tsx": [
+      "PANEL_ORDER"
+    ],
     "packages/webui/src/components/AgentOfficeView/model.ts": [
       "shortModelName"
     ],
@@ -1888,9 +1864,6 @@
       "handleTechStackSnapshotUpdated",
       "handleTechStackWorkspaceCompleted"
     ],
-    "packages/webui/src/i18n/index.ts": [
-      "installDesktopHostLocaleBridge"
-    ],
     "packages/webui/src/lib/agent-status.ts": [
       "AGENT_STATUS_LABEL",
       "classifyCtxPct",
@@ -1905,9 +1878,6 @@
       "sampleN",
       "shuffleAllCards",
       "SLASH_REFS"
-    ],
-    "packages/webui/src/lib/desktop-shell.ts": [
-      "detectDesktopShell"
     ],
     "packages/webui/src/lib/fallback-ref.ts": [
       "refInactiveReason",
@@ -2008,8 +1978,7 @@
       "restoreOpenTabsOnBoot"
     ],
     "packages/webui/src/stores/viz-graph-helpers.ts": [
-      "inferKind",
-      "shallowEqual"
+      "inferKind"
     ],
     "packages/wrongtrace/src/adapters/ipc.ts": [
       "_connectSocket"

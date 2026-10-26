@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-26T20:12:55.540Z",
+  "generatedAt": "2026-10-26T21:11:57.771Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -11,22 +11,20 @@
     ]
   },
   "summary": {
-    "packages": 45,
-    "sourceFiles": 5231,
-    "testFiles": 4586,
-    "sourceLines": 1149112,
-    "workspaceEdges": 221,
-    "moduleEdges": 15618,
+    "packages": 44,
+    "sourceFiles": 5149,
+    "testFiles": 4562,
+    "sourceLines": 1127991,
+    "workspaceEdges": 217,
+    "moduleEdges": 15376,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
-    "typeModuleCycles": 4,
-    "testsWithoutTypecheck": 27,
+    "typeModuleCycles": 3,
+    "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 0,
-    "testOnlyExports": 942
+    "testOnlyExports": 934
   },
-  "errors": [
-    "1 unexcepted module cycle(s)"
-  ],
+  "errors": [],
   "packageCycles": [],
   "coreAreas": {
     "actual": [
@@ -385,25 +383,6 @@
       ]
     },
     {
-      "name": "@wrongstack/desktop-v2",
-      "dir": "apps/desktop-v2",
-      "sourceFiles": 83,
-      "testFiles": 27,
-      "workspaceDependencies": [
-        "@wrongstack/contracts",
-        "@wrongstack/core",
-        "@wrongstack/webui-protocol",
-        "@wrongstack/webui-server"
-      ],
-      "tsconfigs": [
-        {
-          "path": "apps/desktop-v2/tsconfig.json",
-          "error": null,
-          "testFiles": 0
-        }
-      ]
-    },
-    {
       "name": "@wrongstack/goal",
       "dir": "packages/goal",
       "sourceFiles": 22,
@@ -678,7 +657,7 @@
       "name": "@wrongstack/providers",
       "dir": "packages/providers",
       "sourceFiles": 138,
-      "testFiles": 121,
+      "testFiles": 122,
       "workspaceDependencies": [
         "@wrongstack/contracts",
         "@wrongstack/core"
@@ -692,7 +671,7 @@
         {
           "path": "packages/providers/tsconfig.test.json",
           "error": null,
-          "testFiles": 121
+          "testFiles": 122
         }
       ]
     },
@@ -777,7 +756,7 @@
       "name": "@wrongstack/sage",
       "dir": "packages/sage",
       "sourceFiles": 162,
-      "testFiles": 164,
+      "testFiles": 165,
       "workspaceDependencies": [
         "@wrongstack/contracts",
         "@wrongstack/coordination",
@@ -795,7 +774,7 @@
         {
           "path": "packages/sage/tsconfig.test.json",
           "error": null,
-          "testFiles": 164
+          "testFiles": 165
         }
       ]
     },
@@ -1114,8 +1093,8 @@
     {
       "name": "@wrongstack/webui-server",
       "dir": "packages/webui-server",
-      "sourceFiles": 307,
-      "testFiles": 317,
+      "sourceFiles": 308,
+      "testFiles": 318,
       "workspaceDependencies": [
         "@wrongstack/builtin-plugins",
         "@wrongstack/chronicle",
@@ -1148,7 +1127,7 @@
         {
           "path": "packages/webui-server/tsconfig.test.json",
           "error": null,
-          "testFiles": 317
+          "testFiles": 318
         }
       ]
     },
@@ -1226,13 +1205,6 @@
       {
         "kind": "type-module-cycle",
         "members": [
-          "apps/desktop-v2/src/EngineDataView.tsx",
-          "apps/desktop-v2/src/EngineWorkspace.tsx"
-        ]
-      },
-      {
-        "kind": "type-module-cycle",
-        "members": [
           "packages/cli/src/fleet/host.ts",
           "packages/cli/src/fleet/routing.ts"
         ]
@@ -1267,180 +1239,10 @@
       "ARCH-CYCLE-TYPE-09",
       "ARCH-CYCLE-TYPE-12"
     ],
-    "unexcepted": [
-      {
-        "kind": "type-module-cycle",
-        "members": [
-          "apps/desktop-v2/src/EngineDataView.tsx",
-          "apps/desktop-v2/src/EngineWorkspace.tsx"
-        ]
-      }
-    ]
+    "unexcepted": []
   },
   "testOwnership": {
     "runtimeAssignments": [
-      {
-        "file": "apps/desktop-v2/tests/appearance.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "apps/desktop-v2/tests/atlas-analysis.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "apps/desktop-v2/tests/atlas-views.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "apps/desktop-v2/tests/availability-model.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "apps/desktop-v2/tests/brand-parity.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "apps/desktop-v2/tests/chronicle-model.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "apps/desktop-v2/tests/code-assist-state.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "apps/desktop-v2/tests/composer-model.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "apps/desktop-v2/tests/engine-operations.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "apps/desktop-v2/tests/engine-packaging.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "apps/desktop-v2/tests/engine-state.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "apps/desktop-v2/tests/feature-parity.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "apps/desktop-v2/tests/file-model.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "apps/desktop-v2/tests/graph-model.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "apps/desktop-v2/tests/input-form-model.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "apps/desktop-v2/tests/local-provider.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "apps/desktop-v2/tests/markdown-content.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "apps/desktop-v2/tests/model.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "apps/desktop-v2/tests/portable.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "apps/desktop-v2/tests/provider-settings-model.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "apps/desktop-v2/tests/sage-model.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "apps/desktop-v2/tests/sage-relation-model.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "apps/desktop-v2/tests/session-layout.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "apps/desktop-v2/tests/settings-fields.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "apps/desktop-v2/tests/settings-save-model.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "apps/desktop-v2/tests/skill-model.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "apps/desktop-v2/tests/task-definition-model.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
       {
         "file": "apps/wrongstack/tests/shim-delegates.test.ts",
         "projects": [
@@ -15584,6 +15386,12 @@
         ]
       },
       {
+        "file": "packages/providers/tests/preset-endpoint-repair.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/providers/tests/presets-anthropic-openai-google.test.ts",
         "projects": [
           "root-node"
@@ -16503,6 +16311,12 @@
       },
       {
         "file": "packages/sage/tests/middleware/middleware-100-coverage.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/sage/tests/middleware/path-remap-repeat-rename.test.ts",
         "projects": [
           "root-node"
         ]
@@ -25250,6 +25064,12 @@
         ]
       },
       {
+        "file": "packages/webui-server/tests/session-route-correlation.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/webui-server/tests/session-routes.test.ts",
         "projects": [
           "root-node"
@@ -28797,197 +28617,7 @@
       }
     ],
     "invalidRuntime": [],
-    "withoutTypecheck": [
-      {
-        "file": "apps/desktop-v2/tests/appearance.test.ts",
-        "runtimeProjects": [
-          "root-node"
-        ],
-        "typecheckProjects": []
-      },
-      {
-        "file": "apps/desktop-v2/tests/atlas-analysis.test.ts",
-        "runtimeProjects": [
-          "root-node"
-        ],
-        "typecheckProjects": []
-      },
-      {
-        "file": "apps/desktop-v2/tests/atlas-views.test.ts",
-        "runtimeProjects": [
-          "root-node"
-        ],
-        "typecheckProjects": []
-      },
-      {
-        "file": "apps/desktop-v2/tests/availability-model.test.ts",
-        "runtimeProjects": [
-          "root-node"
-        ],
-        "typecheckProjects": []
-      },
-      {
-        "file": "apps/desktop-v2/tests/brand-parity.test.ts",
-        "runtimeProjects": [
-          "root-node"
-        ],
-        "typecheckProjects": []
-      },
-      {
-        "file": "apps/desktop-v2/tests/chronicle-model.test.ts",
-        "runtimeProjects": [
-          "root-node"
-        ],
-        "typecheckProjects": []
-      },
-      {
-        "file": "apps/desktop-v2/tests/code-assist-state.test.ts",
-        "runtimeProjects": [
-          "root-node"
-        ],
-        "typecheckProjects": []
-      },
-      {
-        "file": "apps/desktop-v2/tests/composer-model.test.ts",
-        "runtimeProjects": [
-          "root-node"
-        ],
-        "typecheckProjects": []
-      },
-      {
-        "file": "apps/desktop-v2/tests/engine-operations.test.ts",
-        "runtimeProjects": [
-          "root-node"
-        ],
-        "typecheckProjects": []
-      },
-      {
-        "file": "apps/desktop-v2/tests/engine-packaging.test.ts",
-        "runtimeProjects": [
-          "root-node"
-        ],
-        "typecheckProjects": []
-      },
-      {
-        "file": "apps/desktop-v2/tests/engine-state.test.ts",
-        "runtimeProjects": [
-          "root-node"
-        ],
-        "typecheckProjects": []
-      },
-      {
-        "file": "apps/desktop-v2/tests/feature-parity.test.ts",
-        "runtimeProjects": [
-          "root-node"
-        ],
-        "typecheckProjects": []
-      },
-      {
-        "file": "apps/desktop-v2/tests/file-model.test.ts",
-        "runtimeProjects": [
-          "root-node"
-        ],
-        "typecheckProjects": []
-      },
-      {
-        "file": "apps/desktop-v2/tests/graph-model.test.ts",
-        "runtimeProjects": [
-          "root-node"
-        ],
-        "typecheckProjects": []
-      },
-      {
-        "file": "apps/desktop-v2/tests/input-form-model.test.ts",
-        "runtimeProjects": [
-          "root-node"
-        ],
-        "typecheckProjects": []
-      },
-      {
-        "file": "apps/desktop-v2/tests/local-provider.test.ts",
-        "runtimeProjects": [
-          "root-node"
-        ],
-        "typecheckProjects": []
-      },
-      {
-        "file": "apps/desktop-v2/tests/markdown-content.test.ts",
-        "runtimeProjects": [
-          "root-node"
-        ],
-        "typecheckProjects": []
-      },
-      {
-        "file": "apps/desktop-v2/tests/model.test.ts",
-        "runtimeProjects": [
-          "root-node"
-        ],
-        "typecheckProjects": []
-      },
-      {
-        "file": "apps/desktop-v2/tests/portable.test.ts",
-        "runtimeProjects": [
-          "root-node"
-        ],
-        "typecheckProjects": []
-      },
-      {
-        "file": "apps/desktop-v2/tests/provider-settings-model.test.ts",
-        "runtimeProjects": [
-          "root-node"
-        ],
-        "typecheckProjects": []
-      },
-      {
-        "file": "apps/desktop-v2/tests/sage-model.test.ts",
-        "runtimeProjects": [
-          "root-node"
-        ],
-        "typecheckProjects": []
-      },
-      {
-        "file": "apps/desktop-v2/tests/sage-relation-model.test.ts",
-        "runtimeProjects": [
-          "root-node"
-        ],
-        "typecheckProjects": []
-      },
-      {
-        "file": "apps/desktop-v2/tests/session-layout.test.ts",
-        "runtimeProjects": [
-          "root-node"
-        ],
-        "typecheckProjects": []
-      },
-      {
-        "file": "apps/desktop-v2/tests/settings-fields.test.ts",
-        "runtimeProjects": [
-          "root-node"
-        ],
-        "typecheckProjects": []
-      },
-      {
-        "file": "apps/desktop-v2/tests/settings-save-model.test.ts",
-        "runtimeProjects": [
-          "root-node"
-        ],
-        "typecheckProjects": []
-      },
-      {
-        "file": "apps/desktop-v2/tests/skill-model.test.ts",
-        "runtimeProjects": [
-          "root-node"
-        ],
-        "typecheckProjects": []
-      },
-      {
-        "file": "apps/desktop-v2/tests/task-definition-model.test.ts",
-        "runtimeProjects": [
-          "root-node"
-        ],
-        "typecheckProjects": []
-      }
-    ],
+    "withoutTypecheck": [],
     "multipleTypechecks": []
   },
   "unresolvedRelativeImports": [
@@ -29160,101 +28790,6 @@
       "from": "packages/webui-hq/src/main.tsx",
       "specifier": "./syntax-highlight.css",
       "syntax": "import"
-    },
-    {
-      "from": "apps/desktop-v2/src/CodeAtlas.tsx",
-      "specifier": "./atlas-views.css",
-      "syntax": "import"
-    },
-    {
-      "from": "apps/desktop-v2/src/main.tsx",
-      "specifier": "./styles.css",
-      "syntax": "import"
-    },
-    {
-      "from": "apps/desktop-v2/src/main.tsx",
-      "specifier": "./chat.css",
-      "syntax": "import"
-    },
-    {
-      "from": "apps/desktop-v2/src/main.tsx",
-      "specifier": "./workspace.css",
-      "syntax": "import"
-    },
-    {
-      "from": "apps/desktop-v2/src/main.tsx",
-      "specifier": "./brand-tokens.css",
-      "syntax": "import"
-    },
-    {
-      "from": "apps/desktop-v2/src/main.tsx",
-      "specifier": "./appearance.css",
-      "syntax": "import"
-    },
-    {
-      "from": "apps/desktop-v2/src/main.tsx",
-      "specifier": "./workbench.css",
-      "syntax": "import"
-    },
-    {
-      "from": "apps/desktop-v2/src/main.tsx",
-      "specifier": "./project.css",
-      "syntax": "import"
-    },
-    {
-      "from": "apps/desktop-v2/src/main.tsx",
-      "specifier": "./files.css",
-      "syntax": "import"
-    },
-    {
-      "from": "apps/desktop-v2/src/main.tsx",
-      "specifier": "./knowledge.css",
-      "syntax": "import"
-    },
-    {
-      "from": "apps/desktop-v2/src/main.tsx",
-      "specifier": "./atlas.css",
-      "syntax": "import"
-    },
-    {
-      "from": "apps/desktop-v2/src/main.tsx",
-      "specifier": "./chronicle.css",
-      "syntax": "import"
-    },
-    {
-      "from": "apps/desktop-v2/src/main.tsx",
-      "specifier": "./git-history.css",
-      "syntax": "import"
-    },
-    {
-      "from": "apps/desktop-v2/src/main.tsx",
-      "specifier": "./skills.css",
-      "syntax": "import"
-    },
-    {
-      "from": "apps/desktop-v2/src/ProjectKanban.tsx",
-      "specifier": "./kanban.css",
-      "syntax": "import"
-    },
-    {
-      "from": "apps/desktop-v2/src/SageRelationGraph.tsx",
-      "specifier": "./sage-flow.css",
-      "syntax": "import"
-    },
-    {
-      "from": "apps/desktop-v2/src/SessionComposer.tsx",
-      "specifier": "./composer.css",
-      "syntax": "import"
-    },
-    {
-      "from": "apps/desktop-v2/src/WrongStackSettings.tsx",
-      "specifier": "./settings-management.css",
-      "syntax": "import"
-    },
-    {
-      "from": "apps/desktop-v2/src/WrongStackSettings.tsx",
-      "specifier": "./settings-policy.css",
-      "syntax": "import"
     }
   ],
   "selfImports": [],
@@ -29277,7 +28812,7 @@
     },
     {
       "file": "packages/client/src/client.ts",
-      "lines": 708,
+      "lines": 731,
       "relativeImports": 4
     },
     {
@@ -29332,7 +28867,7 @@
     },
     {
       "file": "packages/vibeui/src/lib/session.ts",
-      "lines": 804,
+      "lines": 815,
       "relativeImports": 5
     },
     {
@@ -29359,44 +28894,9 @@
       "file": "packages/webui-server/src/server/memory-handlers.ts",
       "lines": 747,
       "relativeImports": 5
-    },
-    {
-      "file": "apps/desktop-v2/src/CodeAtlas.tsx",
-      "lines": 915,
-      "relativeImports": 11
-    },
-    {
-      "file": "apps/desktop-v2/src/FileWorkspace.tsx",
-      "lines": 1370,
-      "relativeImports": 7
-    },
-    {
-      "file": "apps/desktop-v2/src/KanbanTaskInspector.tsx",
-      "lines": 743,
-      "relativeImports": 6
-    },
-    {
-      "file": "apps/desktop-v2/src/ProjectKnowledge.tsx",
-      "lines": 913,
-      "relativeImports": 8
-    },
-    {
-      "file": "apps/desktop-v2/src/ProjectMemory.tsx",
-      "lines": 806,
-      "relativeImports": 8
-    },
-    {
-      "file": "apps/desktop-v2/src/SkillLibrary.tsx",
-      "lines": 848,
-      "relativeImports": 6
     }
   ],
   "hotspots": [
-    {
-      "file": "apps/desktop-v2/src/FileWorkspace.tsx",
-      "lines": 1370,
-      "relativeImports": 7
-    },
     {
       "file": "packages/vibeui/src/components/workspace.tsx",
       "lines": 1206,
@@ -29408,33 +28908,13 @@
       "relativeImports": 0
     },
     {
-      "file": "apps/desktop-v2/src/CodeAtlas.tsx",
-      "lines": 915,
-      "relativeImports": 11
-    },
-    {
-      "file": "apps/desktop-v2/src/ProjectKnowledge.tsx",
-      "lines": 913,
-      "relativeImports": 8
-    },
-    {
       "file": "packages/tools/src/codebase-index/infra-parser.ts",
       "lines": 889,
       "relativeImports": 2
     },
     {
-      "file": "apps/desktop-v2/src/SkillLibrary.tsx",
-      "lines": 848,
-      "relativeImports": 6
-    },
-    {
-      "file": "apps/desktop-v2/src/ProjectMemory.tsx",
-      "lines": 806,
-      "relativeImports": 8
-    },
-    {
       "file": "packages/vibeui/src/lib/session.ts",
-      "lines": 804,
+      "lines": 815,
       "relativeImports": 5
     },
     {
@@ -29458,11 +28938,6 @@
       "relativeImports": 5
     },
     {
-      "file": "apps/desktop-v2/src/KanbanTaskInspector.tsx",
-      "lines": 743,
-      "relativeImports": 6
-    },
-    {
       "file": "packages/coordination/src/sqlite-mailbox.ts",
       "lines": 737,
       "relativeImports": 14
@@ -29471,6 +28946,11 @@
       "file": "packages/vibeui/src/components/provider-manager.tsx",
       "lines": 733,
       "relativeImports": 6
+    },
+    {
+      "file": "packages/client/src/client.ts",
+      "lines": 731,
+      "relativeImports": 4
     },
     {
       "file": "packages/coordination/src/multi-agent-coordinator.ts",
@@ -29501,11 +28981,6 @@
       "file": "packages/vibeui/src/components/memory-browser.tsx",
       "lines": 709,
       "relativeImports": 12
-    },
-    {
-      "file": "packages/client/src/client.ts",
-      "lines": 708,
-      "relativeImports": 4
     },
     {
       "file": "packages/acp/src/client/acp-session.ts",
@@ -29603,6 +29078,11 @@
       "relativeImports": 13
     },
     {
+      "file": "packages/tui/src/hooks/use-provider-event-bridge.ts",
+      "lines": 693,
+      "relativeImports": 11
+    },
+    {
       "file": "packages/vector-memory/src/store.ts",
       "lines": 693,
       "relativeImports": 8
@@ -29641,41 +29121,34 @@
       "file": "packages/webui/src/components/SettingsPanel/index.tsx",
       "lines": 691,
       "relativeImports": 25
+    },
+    {
+      "file": "packages/cli/src/slash-commands/kanban-task-subcommands.ts",
+      "lines": 690,
+      "relativeImports": 5
+    },
+    {
+      "file": "packages/coordination/src/autonomous-coordinator.ts",
+      "lines": 690,
+      "relativeImports": 16
+    },
+    {
+      "file": "packages/plugins/src/notify-hub/index.ts",
+      "lines": 690,
+      "relativeImports": 3
+    },
+    {
+      "file": "packages/tui/src/reducers/settings-value-cycle.ts",
+      "lines": 690,
+      "relativeImports": 6
+    },
+    {
+      "file": "packages/coordination/src/mailbox-project-server-client.ts",
+      "lines": 689,
+      "relativeImports": 3
     }
   ],
   "testOnlyExports": [
-    {
-      "file": "apps/desktop-v2/src/appearance.ts",
-      "name": "hslHex"
-    },
-    {
-      "file": "apps/desktop-v2/src/appearance.ts",
-      "name": "paletteColors"
-    },
-    {
-      "file": "apps/desktop-v2/src/availability-model.ts",
-      "name": "scheduleMinute"
-    },
-    {
-      "file": "apps/desktop-v2/src/feature-actions.ts",
-      "name": "actionPayload"
-    },
-    {
-      "file": "apps/desktop-v2/src/feature-actions.ts",
-      "name": "featureActions"
-    },
-    {
-      "file": "apps/desktop-v2/src/feature-catalog.ts",
-      "name": "desktopFeatures"
-    },
-    {
-      "file": "apps/desktop-v2/src/graph-model.ts",
-      "name": "memoryGraph"
-    },
-    {
-      "file": "apps/desktop-v2/src/input-form-model.ts",
-      "name": "answerFor"
-    },
     {
       "file": "packages/acp/src/agent/server-agent-turn.ts",
       "name": "disposeACPServerAgentTurn"
@@ -32785,6 +32258,10 @@
       "name": "getLastEventAt"
     },
     {
+      "file": "packages/webui/src/components/AutomationView.tsx",
+      "name": "AutomationWorkspace"
+    },
+    {
       "file": "packages/webui/src/components/ChatInput/code-detect.ts",
       "name": "unfenceCode"
     },
@@ -33391,10 +32868,6 @@
     {
       "file": "packages/webui/src/stores/session-tab-store.ts",
       "name": "restoreOpenTabsOnBoot"
-    },
-    {
-      "file": "packages/webui/src/stores/ui-store-types.ts",
-      "name": "SETTINGS_TABS"
     },
     {
       "file": "packages/webui/src/stores/viz-graph-helpers.ts",

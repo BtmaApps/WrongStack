@@ -14,6 +14,10 @@
       "lines": 753,
       "relativeImports": 3
     },
+    "packages/client/src/client.ts": {
+      "lines": 731,
+      "relativeImports": 4
+    },
     "packages/coordination/src/agent-monitor.ts": {
       "lines": 715,
       "relativeImports": 1
@@ -21,6 +25,10 @@
     "packages/coordination/src/multi-agent-coordinator.ts": {
       "lines": 725,
       "relativeImports": 13
+    },
+    "packages/coordination/src/sqlite-mailbox.ts": {
+      "lines": 737,
+      "relativeImports": 14
     },
     "packages/core/src/execution/auto-compaction-middleware.ts": {
       "lines": 703,
@@ -51,7 +59,7 @@
       "relativeImports": 34
     },
     "packages/vibeui/src/lib/session.ts": {
-      "lines": 800,
+      "lines": 815,
       "relativeImports": 5
     },
     "packages/vibeui/src/lib/use-session.ts": {
@@ -66,13 +74,13 @@
       "lines": 720,
       "relativeImports": 9
     },
-    "packages/webui-server/src/server/memory-handlers.ts": {
-      "lines": 705,
-      "relativeImports": 4
+    "packages/webui-server/src/server/completion-handlers.ts": {
+      "lines": 723,
+      "relativeImports": 1
     },
-    "apps/desktop/src/main/main.ts": {
-      "lines": 734,
-      "relativeImports": 20
+    "packages/webui-server/src/server/memory-handlers.ts": {
+      "lines": 747,
+      "relativeImports": 5
     }
   }
 }

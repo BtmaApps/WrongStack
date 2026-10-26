@@ -4,8 +4,8 @@
   "rootImportFiles": 0,
   "bySpecifier": {
     "@wrongstack/core/agent": {
-      "files": 481,
-      "typeOnly": 365,
+      "files": 484,
+      "typeOnly": 367,
       "runtimeOrMixed": 145
     },
     "@wrongstack/core/agent-catalog": {
@@ -99,9 +99,9 @@
       "runtimeOrMixed": 11
     },
     "@wrongstack/core/prompts": {
-      "files": 7,
+      "files": 10,
       "typeOnly": 0,
-      "runtimeOrMixed": 7
+      "runtimeOrMixed": 10
     },
     "@wrongstack/core/quota": {
       "files": 59,
@@ -109,9 +109,9 @@
       "runtimeOrMixed": 58
     },
     "@wrongstack/core/registry": {
-      "files": 183,
+      "files": 184,
       "typeOnly": 76,
-      "runtimeOrMixed": 110
+      "runtimeOrMixed": 111
     },
     "@wrongstack/core/replay": {
       "files": 3,
@@ -129,9 +129,9 @@
       "runtimeOrMixed": 14
     },
     "@wrongstack/core/security": {
-      "files": 267,
-      "typeOnly": 31,
-      "runtimeOrMixed": 239
+      "files": 259,
+      "typeOnly": 25,
+      "runtimeOrMixed": 237
     },
     "@wrongstack/core/session-catalog": {
       "files": 18,
@@ -154,9 +154,9 @@
       "runtimeOrMixed": 30
     },
     "@wrongstack/core/storage": {
-      "files": 184,
-      "typeOnly": 56,
-      "runtimeOrMixed": 160
+      "files": 183,
+      "typeOnly": 54,
+      "runtimeOrMixed": 161
     },
     "@wrongstack/core/tasking": {
       "files": 43,
@@ -169,9 +169,9 @@
       "runtimeOrMixed": 23
     },
     "@wrongstack/core/utils": {
-      "files": 931,
+      "files": 925,
       "typeOnly": 69,
-      "runtimeOrMixed": 900
+      "runtimeOrMixed": 894
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -1426,6 +1426,12 @@
     },
     {
       "specifier": "@wrongstack/core/agent",
+      "file": "packages/coordination/tests/mailbox-shared-delivery.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
       "file": "packages/coordination/tests/mutation-test-integration.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -1506,7 +1512,7 @@
       "specifier": "@wrongstack/core/agent",
       "file": "packages/hq/src/approval-bridge.ts",
       "typeOnly": 0,
-      "runtimeOrMixed": 2
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/agent",
@@ -2992,6 +2998,12 @@
     },
     {
       "specifier": "@wrongstack/core/agent",
+      "file": "packages/webui-server/src/server/standalone-prompt-journal.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
       "file": "packages/webui-server/src/server/start-webui-remediation.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -3101,6 +3113,12 @@
     {
       "specifier": "@wrongstack/core/agent",
       "file": "packages/webui-server/tests/setup-events.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/webui-server/tests/standalone-pipelines.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -5128,13 +5146,31 @@
     },
     {
       "specifier": "@wrongstack/core/prompts",
+      "file": "packages/webui-server/src/server/conversation-operations.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/prompts",
       "file": "packages/webui-server/src/server/prompts-handlers.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/prompts",
+      "file": "packages/webui-server/src/server/standalone-prompt-journal.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/prompts",
       "file": "packages/webui-server/tests/prompts-handlers.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/prompts",
+      "file": "packages/webui-server/tests/standalone-pipelines.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -6568,6 +6604,12 @@
     },
     {
       "specifier": "@wrongstack/core/registry",
+      "file": "packages/webui-server/tests/introspection-tool-persistence.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/registry",
       "file": "packages/webui-server/tests/saved-provider.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -6703,60 +6745,6 @@
       "file": "packages/webui-server/src/server/http-server/api-router.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/security",
-      "file": "apps/desktop/src/main/desktop-config-io.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/security",
-      "file": "apps/desktop/src/main/desktop-privileged-actions.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/security",
-      "file": "apps/desktop/src/main/runtime-manager.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/security",
-      "file": "apps/desktop/src/main/webui/controller.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/security",
-      "file": "apps/desktop/tests/desktop-config-io.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/security",
-      "file": "apps/desktop/tests/desktop-privileged-actions.test.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/security",
-      "file": "apps/desktop/tests/open-external-errors.test.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/security",
-      "file": "apps/desktop/tests/webui-controller-lifecycle.test.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/security",
-      "file": "apps/desktop/tests/webui-view-lifecycle-budget.test.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
     },
     {
       "specifier": "@wrongstack/core/security",
@@ -8230,6 +8218,12 @@
     },
     {
       "specifier": "@wrongstack/core/security",
+      "file": "packages/webui-server/tests/introspection-tool-persistence.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
       "file": "packages/webui-server/tests/pref-config-write-read-error.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -8842,12 +8836,6 @@
     },
     {
       "specifier": "@wrongstack/core/storage",
-      "file": "apps/desktop/src/main/main.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/storage",
       "file": "packages/builtin-plugins/src/cloud-config-sync-plugin.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -9101,6 +9089,12 @@
     {
       "specifier": "@wrongstack/core/storage",
       "file": "packages/cli/src/webui-server/route-contexts.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/storage",
+      "file": "packages/cli/src/wiring/empty-session-sweep.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -9778,12 +9772,6 @@
     },
     {
       "specifier": "@wrongstack/core/storage",
-      "file": "packages/webui-server/src/server/instance-registry.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/storage",
       "file": "packages/webui-server/src/server/pre-context-services.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -9910,13 +9898,13 @@
     },
     {
       "specifier": "@wrongstack/core/storage",
-      "file": "packages/webui-server/tests/project-session-identity.test.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "file": "packages/webui-server/tests/introspection-tool-persistence.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/storage",
-      "file": "packages/webui-server/tests/session-child-discovery.test.ts",
+      "file": "packages/webui-server/tests/project-session-identity.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -10390,42 +10378,6 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
-      "file": "apps/desktop/src/main/desktop-config-io.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/utils",
-      "file": "apps/desktop/src/main/main.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/utils",
-      "file": "apps/desktop/src/main/runtime-manager-paths.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/utils",
-      "file": "apps/desktop/src/main/runtime-manager.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/utils",
-      "file": "apps/desktop/src/main/runtime-project-manifest.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/utils",
-      "file": "apps/desktop/tests/desktop-config-io.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/utils",
       "file": "packages/acp/src/agent/client-transport.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 2
@@ -10894,12 +10846,6 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
-      "file": "packages/cli/src/boot/short-circuit-desktop.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/src/boot/short-circuit-hq.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -10990,12 +10936,6 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
-      "file": "packages/cli/src/boot/webui-session-child.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/src/cli-bundled-prompts.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -11003,12 +10943,6 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/src/cli-bundled-skills.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/utils",
-      "file": "packages/cli/src/cli-context.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -13288,6 +13222,12 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
+      "file": "packages/coordination/src/sqlite-mailbox-owner.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
       "file": "packages/coordination/src/sqlite-mailbox-schema.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -14087,6 +14027,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/sage/tests/sage-heading-contract.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/sage/tests/turn-memory.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -15965,6 +15911,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/webui-server/tests/worklist-session-context.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/worktree/src/worktree-hold.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
