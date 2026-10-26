@@ -2,7 +2,7 @@
 
 WrongStack ships only through GitHub Releases. Pushing a `vX.Y.Z` tag makes
 `.github/workflows/release.yml` build the GitHub Release (standalone binaries,
-installers, checksums and Desktop packages); that is the whole release.
+installers and checksums); that is the whole release.
 
 ## npm is retired
 
@@ -43,8 +43,6 @@ back, while every shipped binary still has to pass the cross-platform smoke.
 | `binaries` | `bun scripts/build-binaries.mjs` cross-compiles all targets on one Ubuntu runner, then `bun scripts/smoke-binary.mjs` runs the Linux x64 build |
 | `binaries-smoke` | runs the same smoke on real Windows x64, Windows arm64 and macOS (arm64) runners |
 | `github-release` | verifies manifest coverage and digests, then uploads `wstack-*`, `SHA256SUMS`, `install.sh`, `install.ps1` |
-| `desktop` | packages and smokes Windows, Linux, macOS arm64, and macOS x64 through the reusable Desktop workflow |
-| `publish-desktop` | merges and verifies package-owned checksum manifests, then attaches Desktop assets to the GitHub Release |
 | `gate` | runs the full `release:check` as an independent signal; nothing waits on it |
 
 Asset upload jobs resolve the release ID through `gh release view`, which
@@ -151,7 +149,7 @@ machine and the full suite is much larger than this three-file selection.
 | `bun run test:guard` | Three focused plugin tests only |
 | `prepublishOnly` (root) | Always fails: npm publishing is retired |
 | `bun run test` | Root Vitest suite, then the WebUI package test script |
-| Tag push (`v*.*.*`) | Verify the tag/SHA; build and smoke standalone plus Desktop assets; create the GitHub Release |
+| Tag push (`v*.*.*`) | Verify the tag/SHA; build and smoke standalone assets; create the GitHub Release |
 | Manual `CI` dispatch (`ci.yml`) | Run the repository CI jobs on the selected ref; pushes and pull requests do not start them |
 | Manual `Dependency Audit` dispatch (`audit.yml`) | Run the configured dependency audit; there is no scheduled or push trigger |
 | Manual `Deploy Website` dispatch (`pages.yml`) | Validate/build the website and deploy the selected ref to Pages |

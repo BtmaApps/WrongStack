@@ -11,7 +11,7 @@ const repoRoot = resolve(__dirname, '..');
  * manifest plus every workspace package under packages/* and apps/*.
  * Internal deps use `workspace:*`, so only the `version` field needs updating.
  * Every workspace package is `"private": true` (npm publishing is retired), so
- * private manifests are bumped like any other — the binaries and Desktop read
+ * private manifests are bumped like any other — the binaries read
  * their version from these manifests.
  */
 function collectManifests() {

@@ -10,7 +10,7 @@ export type LaunchMenuMode = LaunchMenuChoice['mode'];
 //   WebUI / VibeUI:   packages/webui-server/src/server/port-utils.ts
 //   HQ:               packages/cli/src/hq-server.ts (DEFAULT_PORT)
 /** Surfaces that bind a TCP listener and therefore need a port/host prompt. */
-export type NetworkLaunchMode = Exclude<LaunchMenuMode, 'tui-repl' | 'desktop'>;
+export type NetworkLaunchMode = Exclude<LaunchMenuMode, 'tui-repl'>;
 
 export const DEFAULT_PORTS: Record<NetworkLaunchMode, number> = {
   webui: 3456,
@@ -53,13 +53,6 @@ export const MODE_OPTIONS: ReadonlyArray<{
     label: 'HQ',
     hint: `project-independent dashboard (port ${HQ_DEFAULT_PORT})`,
     icon: '📊',
-  },
-  {
-    key: 5,
-    mode: 'desktop',
-    label: 'Desktop',
-    hint: 'Electron app (alias: --desktop)',
-    icon: '🖥',
   },
 ];
 

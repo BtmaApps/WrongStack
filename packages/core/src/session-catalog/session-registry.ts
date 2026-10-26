@@ -46,7 +46,6 @@ export type {
   AgentTodoItem,
   SessionLiveStatus,
   SessionRegistryEntry,
-  SessionWebUIEndpointHint,
 } from './session-registry-types.js';
 
 // ── Constants ─────────────────────────────────────────────────────────────

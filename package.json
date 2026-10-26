@@ -19,8 +19,6 @@
     "build:bun": "bun scripts/build.mjs",
     "build:binaries": "bun scripts/build-binaries.mjs",
     "build:binary": "bun scripts/build-binaries.mjs --current",
-    "desktop": "bun run --filter @wrongstack/desktop dev",
-    "desktop:start": "bun run --filter @wrongstack/desktop start",
     "test": "bun run --filter @wrongstack/core... build && bun --bun run vitest run && bun run --filter @wrongstack/webui test",
     "test:watch": "bun --bun run vitest",
     "test:package": "bun scripts/test-package.mjs",

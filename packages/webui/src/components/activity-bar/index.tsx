@@ -45,7 +45,7 @@ const DESKTOP_CORE_PANEL_IDS_SET: ReadonlySet<string> = new Set(DESKTOP_CORE_PAN
 
 export const PANEL_ORDER: readonly Activity[] = PANELS.map((p) => p.id);
 
-export function ActivityBar({ desktopShell = false }: { desktopShell?: boolean | undefined }) {
+export function ActivityBar() {
   const activeActivity = useUIStore((s) => s.activeActivity);
   const sidebarOpen = useUIStore((s) => s.sidebarOpen);
   const currentView = useUIStore((s) => s.currentView);
@@ -105,7 +105,7 @@ export function ActivityBar({ desktopShell = false }: { desktopShell?: boolean |
   // Always calculate capacity — when icons don't fit the viewport they
   // overflow into the "…" menu instead of scrolling. The launcher takes a
   // slot; the icon budget (`ACTIVITY_BAR_MAX_ICONS`) is the hard ceiling.
-  const desktopCapacity = useDesktopActivityCapacity(desktopShell);
+  const desktopCapacity = useDesktopActivityCapacity();
   const contentCapacity = Math.min(
     calmBar ? desktopCapacity - 1 : desktopCapacity,
     ACTIVITY_BAR_MAX_ICONS,
@@ -156,8 +156,7 @@ export function ActivityBar({ desktopShell = false }: { desktopShell?: boolean |
   return (
     <div
       className={cn(
-        'ws-activity-rail flex h-full min-h-0 shrink-0 flex-col border-r border-border/70 backdrop-blur-xl',
-        desktopShell ? 'w-10' : 'w-12',
+        'ws-activity-rail flex h-full w-12 min-h-0 shrink-0 flex-col border-r border-border/70 backdrop-blur-xl',
       )}
     >
       {/* ── Branding — edge-to-edge logo (pinned top) ── */}
@@ -174,8 +173,7 @@ export function ActivityBar({ desktopShell = false }: { desktopShell?: boolean |
               : t('activity:brand.returnToChatDefault')
           }
           className={cn(
-            'relative flex items-center justify-center overflow-hidden bg-foreground transition-shadow hover:shadow-[0_3px_12px_-2px_hsl(var(--primary)/0.5)]',
-            desktopShell ? 'w-full h-8' : 'w-full h-11',
+            'relative flex h-11 w-full items-center justify-center overflow-hidden bg-foreground transition-shadow hover:shadow-[0_3px_12px_-2px_hsl(var(--primary)/0.5)]',
           )}
         >
           <img
@@ -198,7 +196,6 @@ export function ActivityBar({ desktopShell = false }: { desktopShell?: boolean |
         {visiblePanels.map((def) => (
           <ActivityIcon
             key={def.id}
-            compact={desktopShell}
             icon={def.icon}
             label={`${navLabel(def.id, def.label)} (${shortcutLabelForActivity(def.id)})`}
             active={sidebarOpen && activeActivity === def.id}
@@ -214,7 +211,6 @@ export function ActivityBar({ desktopShell = false }: { desktopShell?: boolean |
         {visibleViews.map((def) => (
           <ActivityIcon
             key={def.id}
-            compact={desktopShell}
             icon={def.icon}
             label={navLabel(def.id, def.label)}
             active={currentView === def.id}
@@ -222,9 +218,7 @@ export function ActivityBar({ desktopShell = false }: { desktopShell?: boolean |
           />
         ))}
 
-        {calmBar && (
-          <ToolsLauncher compact={desktopShell} onCustomize={() => setCustomizeOpen(true)} />
-        )}
+        {calmBar && <ToolsLauncher onCustomize={() => setCustomizeOpen(true)} />}
       </div>
 
       {/* ── Connection indicator — compact dot between icon column and utilities ── */}
@@ -266,8 +260,7 @@ export function ActivityBar({ desktopShell = false }: { desktopShell?: boolean |
           aria-label={t('activity:reorder.edit', { max: ACTIVITY_BAR_MAX_ICONS })}
           title={t('activity:reorder.edit', { max: ACTIVITY_BAR_MAX_ICONS })}
           className={cn(
-            'ws-nav-button relative flex shrink-0 items-center justify-center rounded-md transition-colors',
-            desktopShell ? 'h-9 w-9' : 'h-11 w-11',
+            'ws-nav-button relative flex h-11 w-11 shrink-0 items-center justify-center rounded-md transition-colors',
             'text-muted-foreground hover:border-border/70 hover:text-foreground hover:bg-muted/60',
           )}
         >
@@ -276,7 +269,6 @@ export function ActivityBar({ desktopShell = false }: { desktopShell?: boolean |
           </span>
         </button>
         <UtilitiesMenu
-          compact={desktopShell}
           monitorOpen={inspectorOpen}
           hiddenPanels={hiddenPanels}
           hiddenViews={hiddenViews}

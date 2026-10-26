@@ -37,7 +37,6 @@ export async function runCliExecution(params: {
   projectRoot: string;
   flags: X['core']['flags'];
   positional: X['core']['positional'];
-  webuiSessionChild: X['core']['webuiSessionChild'];
   updateInfo: X['core']['updateInfo'];
   attachments: X['session']['attachments'];
   brainMailbox: X['session']['mailbox'];
@@ -142,7 +141,6 @@ export async function runCliExecution(params: {
     projectRoot,
     flags,
     positional,
-    webuiSessionChild,
     updateInfo,
     attachments,
     brainMailbox,
@@ -248,7 +246,6 @@ export async function runCliExecution(params: {
         projectRoot,
         flags,
         positional,
-        webuiSessionChild,
         updateInfo,
       },
       session: {

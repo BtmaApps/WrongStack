@@ -65,7 +65,6 @@ describe('session.start resume transition', () => {
         dispatchEvent: vi.fn(),
       })),
     });
-    delete (window as unknown as { wrongstackDesktopHost?: unknown }).wrongstackDesktopHost;
     // Each test resumes `sess_resumed` as if for the first time; a lane left
     // over from the previous test turns the next resume into a re-announce.
     useChatLanes.setState({ lanes: {}, activeSessionId: '__unbound__' });
@@ -140,31 +139,6 @@ describe('session.start resume transition', () => {
       model: 'gpt-5.6-sol',
     });
     expect(JSON.stringify(useConfigStore.getState())).not.toContain('must-not-persist');
-  });
-
-  it('returns desktop shell sessions to the chat home on a plain session.start', () => {
-    history.pushState(null, '', '/?shell=desktop');
-    useUIStore.setState({
-      currentView: 'skill',
-      activeActivity: 'skills',
-      sidebarOpen: true,
-      dockSection: 'work',
-      terminalOpen: true,
-      searchOpen: true,
-      paletteOpen: true,
-    });
-
-    fireSessionStart({ ...BASE_PAYLOAD, reset: true });
-
-    expect(useUIStore.getState()).toMatchObject({
-      currentView: 'chat',
-      activeActivity: 'chat',
-      sidebarOpen: false,
-      dockSection: null,
-      terminalOpen: false,
-      searchOpen: false,
-      paletteOpen: false,
-    });
   });
 
   it('hydrates replayed messages into the chat store', () => {

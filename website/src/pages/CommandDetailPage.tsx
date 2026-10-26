@@ -34,7 +34,6 @@ function fallbackExamples(name: string): string[] {
   if (name === '/stats') return ['/stats'];
   if (name === '/diag') return ['/diag'];
   if (name === '/compact') return ['/compact'];
-  if (name === '/desktop') return ['/desktop'];
   if (name === '/webui') return ['/webui'];
   if (name === '/todos') return ['/todos'];
   if (name === '/tasks') return ['/tasks', '/tasks promote <id>'];

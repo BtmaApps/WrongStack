@@ -411,7 +411,7 @@ export function HomePage() {
                 Change the surface. Keep the system.
               </h2>
               <p className="mt-6 max-w-md text-base leading-7 text-zinc-400">
-                The CLI, TUI, WebUI, VibeUI, Desktop and HQ do not reimplement the agent. They
+                The CLI, TUI, WebUI, VibeUI and HQ do not reimplement the agent. They
                 compose and observe the same contracts.
               </p>
               <Link

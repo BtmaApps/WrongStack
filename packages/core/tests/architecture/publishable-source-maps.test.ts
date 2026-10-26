@@ -2,13 +2,11 @@
 // packages/ carry an exclusion (a leading-bang entry) in their
 // `files` block that omits the generated dist source map. The JS is
 // shipped but the matching .map is not, so a consumer cannot read
-// the original TypeScript sources. apps/desktop and apps/wrongstack
-// did not carry the same exclusion and so shipped maps, including a
-// 246 KB Electron-main map that makes the main/preload IPC boundary
-// trivially readable.
+// the original TypeScript sources. apps/wrongstack did not carry the
+// same exclusion and so shipped maps.
 //
 // npm publishing is retired (every workspace package is `"private": true`),
-// but the standalone binary and Desktop deploy still packs each workspace
+// but the standalone binary deploy still packs each workspace
 // package with `bun pm pack`, which honours the same `files` block. So this
 // test enumerates every workspace member manifest directly under packages/
 // and apps/ and asserts the exclusion is present.

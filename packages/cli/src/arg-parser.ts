@@ -56,14 +56,12 @@ export const BOOLEAN_FLAGS = new Set([
   'output-json',
   'metrics',
   'webui',
-  'webui-session-child',
   // Retired surface: SimpleUI was replaced by VibeUI. Kept boolean so
   // `--simpleui foo` never swallows `foo`; see normalizeSurfaceAliases.
   'simpleui',
   'vibeui',
   // Retired with SimpleUI; accepted and reported as ignored.
   'full-auto',
-  'desktop',
   'open',
   // `wstack remote --keep`: leave the remote host running after disconnecting.
   'keep',
@@ -232,7 +230,6 @@ export function parseArgs(argv: string[]): ParsedArgs {
  * Keep the user-facing launch shapes equivalent:
  *   wstack --webui      == wstack webui
  *   wstack --vibeui     == wstack vibeui
- *   wstack --desktop    == wstack desktop
  *   wstack --hq         == wstack hq / wstack hq serve
  *
  * HQ token management remains a real subcommand (`wstack hq token ...`), so
@@ -257,7 +254,6 @@ function normalizeSurfaceAliases(
   // flag so dispatch can select the independent frontend build, while also
   // setting `webui` so every existing non-interactive surface guard applies.
   if (flags['vibeui']) flags['webui'] = true;
-  if (flags['webui-session-child']) flags['webui'] = true;
 
   const first = positional[0];
   if (first === 'vibeui') {
@@ -266,7 +262,7 @@ function normalizeSurfaceAliases(
     positional.splice(0, 1);
     return;
   }
-  if (first === 'webui' || first === 'desktop') {
+  if (first === 'webui') {
     flags[first] = true;
     positional.splice(0, 1);
     return;

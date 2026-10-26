@@ -61,7 +61,9 @@ export async function promptModeArrow(deps: RunLaunchMenuDeps): Promise<ArrowPic
       const auto = countdown
         ? color.dim(` · auto-launches ${MODE_OPTIONS[index]!.label} in ${remaining}s`)
         : '';
-      lines.push(`  ${color.dim('↑↓ move · Enter launch · 1-5 jump · q quit')}${auto}`);
+      lines.push(
+        `  ${color.dim(`↑↓ move · Enter launch · 1-${MODE_OPTIONS.length} jump · q quit`)}${auto}`,
+      );
       return lines;
     };
 

@@ -95,7 +95,7 @@ export function ArchitecturePage() {
             index="02"
             eyebrow="Kernel"
             title="Small primitives, wide consequences."
-            description="The kernel does not know whether a TUI, browser, Electron window or headless command is using it."
+            description="The kernel does not know whether a TUI, browser or headless command is using it."
           />
           <div className="mt-12 grid gap-px overflow-hidden rounded-2xl border border-line bg-line md:grid-cols-2">
             {primitives.map(([name, body, Icon], index) => (

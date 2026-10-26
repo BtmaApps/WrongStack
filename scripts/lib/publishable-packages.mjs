@@ -2,8 +2,7 @@
  * Workspace member discovery.
  *
  * WrongStack no longer publishes to npm: every workspace package is
- * `"private": true` and releases ship only as GitHub Release binaries and
- * Desktop installers. The npm publish inventory and dependency layering that
+ * `"private": true` and releases ship only as GitHub Release binaries. The npm publish inventory and dependency layering that
  * used to live here went away with the npm publish script; what remains is the workspace member list that the build (`scripts/build.mjs`),
  * the binary deploy (`scripts/lib/deploy-bun-workspace.mjs`) and the
  * package-contract gate (`scripts/check-package-contracts.mjs`) share.

@@ -396,7 +396,7 @@ describe('createAgentServices', () => {
   // The CLI hands `contextTool` to `registerCanonicalHostTools`; this server
   // cannot, because `createPreContextServices` builds the tool registry before
   // `createAgentServices` builds the compactor. That ordering silently left the
-  // desktop app and the standalone server without `context_manager` — the model
+  // standalone server without `context_manager` — the model
   // could self-manage its context under `wstack` but nowhere else.
   it('registers context_manager once the compactor exists', async () => {
     const input = makeInput();

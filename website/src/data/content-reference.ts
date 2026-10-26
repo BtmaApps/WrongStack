@@ -218,7 +218,7 @@ export const settingGroups: SettingGroup[] = [
 export const architectureLayers = [
   {
     label: 'Surfaces',
-    packages: ['apps/wrongstack', 'desktop', 'cli', 'tui', 'webui', 'webui-hq'],
+    packages: ['apps/wrongstack', 'cli', 'tui', 'webui', 'webui-hq'],
     description: 'Human interaction, rendering and process boot.',
     tone: 'red',
   },
@@ -397,7 +397,7 @@ export const creatorFeaturedProjects = [
     language: 'TypeScript',
     href: 'https://github.com/WrongStack/WrongStack',
     description:
-      'A governed coding agent that reads repositories, runs tools and coordinates specialist fleets across terminal, browser and desktop surfaces.',
+      'A governed coding agent that reads repositories, runs tools and coordinates specialist fleets across terminal and browser surfaces.',
   },
   {
     name: 'AGEZT',

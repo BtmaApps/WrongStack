@@ -208,16 +208,6 @@ export const commandDetailsPart3: CommandDetailMap = {
       'Apply recommended fixes with `/tuneup fix`. Review deep diagnostics for systemic issues.',
   },
 
-  '/desktop': {
-    purpose:
-      'Explain how to access the local WrongStack Desktop application — the Electron-based GUI surface.',
-    behavior:
-      'The command is informational only: it prints where the Desktop app fits (local graphical shell for sessions, project state, and agent coordination) and the recommended way to launch it — from your desktop launcher or the platform-specific package you installed. It deliberately does not probe ports or launch the app, because a slash command cannot reliably know the install layout.',
-    before: 'Ensure the Desktop app is installed from its platform package.',
-    during: 'A short guidance block prints; nothing is executed or checked.',
-    after: 'Launch the Desktop app from your launcher and connect it to your project.',
-  },
-
   '/webui': {
     purpose: 'Explain how to access the browser-based WrongStack interface — the WebUI surface.',
     behavior:

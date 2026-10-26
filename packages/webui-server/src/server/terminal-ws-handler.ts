@@ -299,7 +299,7 @@ export class TerminalWebSocketHandler {
       // Give an interactive shell a chance to exit cleanly if taskkill races
       // with ConPTY setup. Avoid node-pty.kill() here: on Windows it forks
       // conpty_console_list_agent, which can emit noisy AttachConsole failures
-      // when the WebUI server is hosted by Electron.
+      // when the WebUI server has no attached console.
       try {
         pty.write('\x03');
         pty.write('exit\r');

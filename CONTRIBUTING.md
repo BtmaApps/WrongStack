@@ -181,7 +181,7 @@ counts as an improvement. Full design in [`docs/performance-ratchet.md`](docs/pe
 
 ```
 packages/    — 20 publishable packages (core, cli, tools, providers, etc.)
-apps/        — wrongstack (binary shim), desktop (Electron)
+apps/        — wrongstack (binary shim)
 website/     — Marketing/docs site
 e2e/         — Playwright E2E tests
 docs/        — Architecture docs, ADRs, plans, slash-command reference
@@ -256,8 +256,8 @@ All jobs must pass before merge.
 
 ## Release Process
 
-WrongStack ships only through GitHub Releases: standalone `wstack` binaries and
-Desktop packages, built by `.github/workflows/release.yml` when a `vX.Y.Z` tag
+WrongStack ships only through GitHub Releases: standalone `wstack` binaries,
+built by `.github/workflows/release.yml` when a `vX.Y.Z` tag
 is pushed. **npm publishing is retired for good** — every workspace package is
 `"private": true`, and the versions already on npm stay frozen as they are.
 

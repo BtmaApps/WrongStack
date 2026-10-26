@@ -93,7 +93,7 @@ export function MemoryPage() {
               ],
               [
                 'Switch deliberately',
-                'TUI, WebUI and Desktop finalize and close the old writer before replacing ctx.session.',
+                'TUI and WebUI finalize and close the old writer before replacing ctx.session.',
               ],
               [
                 'Recover',

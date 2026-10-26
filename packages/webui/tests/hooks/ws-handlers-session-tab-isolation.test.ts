@@ -44,7 +44,6 @@ vi.mock('@/lib/view-navigation', () => ({
   isRoutePinnedView: () => false,
   resetUiNavigationToHome: vi.fn(),
 }));
-vi.mock('@/lib/desktop-shell', () => ({ isDesktopShell: () => false }));
 
 const { useChatStore, useConfigStore, useFleetStore, useSessionStore, useSessionTabStore } =
   await import('../../src/stores');

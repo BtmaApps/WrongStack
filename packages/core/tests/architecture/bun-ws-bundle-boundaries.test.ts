@@ -24,7 +24,7 @@ describe('published WebSocket bundle boundaries', () => {
     expect(result.outputFiles.length).toBeGreaterThan(0);
   });
 
-  it.each(['packages/cli', 'packages/providers', 'packages/webui-server', 'apps/desktop'])(
+  it.each(['packages/cli', 'packages/providers', 'packages/webui-server'])(
     'does not expose private ws imports from %s',
     (name) => {
       const files = javascriptFiles(join(root, name, 'dist'));

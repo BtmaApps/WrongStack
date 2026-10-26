@@ -22,7 +22,6 @@ repository's stable project identity.
 | Terminal TUI | `wstack --tui` |
 | Project browser UI | `wstack --webui` |
 | Focused browser coding workspace | `wstack --vibeui` |
-| Desktop shell | `wstack --desktop` |
 | HQ command center | `wstack --hq` |
 
 SimpleUI was retired and replaced by VibeUI; `wstack simpleui` / `--simpleui` now open VibeUI.

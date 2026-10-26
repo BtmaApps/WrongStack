@@ -175,7 +175,7 @@ export default defineConfig({
       //
       // Raised once more after finishing the dispatch layer (ws-handlers.ts,
       // session-handlers provider/delegate/context, chat-handlers tool
-      // lifecycle) and useDesktopBridge.
+      // lifecycle).
       // Measured: 49.84% statements, 41.7% branches, 41.1% functions,
       // 51.27% lines.
       //

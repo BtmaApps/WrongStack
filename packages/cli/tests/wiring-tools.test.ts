@@ -77,7 +77,7 @@ describe('setupCliPromptAndTools', () => {
 
   // The CLI is the surface that owns a Compactor at registration time, so it is
   // the one that can pass `contextTool` into the canonical registration. Assert
-  // it does — this is the option the standalone/desktop server had to register
+  // it does — this is the option the standalone server had to register
   // separately because its compactor is built after the registry.
   it('registers the context_manager tool', async () => {
     const { toolRegistry } = await surface(fakeConfig());

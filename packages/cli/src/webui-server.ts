@@ -212,7 +212,7 @@ export async function runWebUI(opts: CliWebUIOptions): Promise<void> {
   const currentSessionId = (): string => foregroundSession.id;
 
   const registryBaseDir = globalRoot;
-  const webuiInstanceRegistered = await registerEmbeddedWebuiInstance({
+  registerEmbeddedWebuiInstance({
     opts,
     surface,
     host,
@@ -220,7 +220,6 @@ export async function runWebUI(opts: CliWebUIOptions): Promise<void> {
     publicUrl,
     registryBaseDir,
     wsToken,
-    currentSessionId,
   });
 
   const eventUnsubscribers: Array<() => void> = [];
@@ -416,7 +415,6 @@ export async function runWebUI(opts: CliWebUIOptions): Promise<void> {
     wsPort,
     accessUrl,
     wsToken,
-    webuiInstanceRegistered,
     wss,
     httpServer,
     requireToken,

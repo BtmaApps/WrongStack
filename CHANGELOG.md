@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **SimpleUI retired and replaced by VibeUI.** The `@wrongstack/simpleui` package is gone; VibeUI (`wstack vibeui` / `--vibeui`, default port 3476) is the focused browser surface. `wstack simpleui` and `--simpleui` still parse but open VibeUI and print a notice that SimpleUI has been retired. The interactive launch menu is now TUI / REPL, WebUI, VibeUI, HQ and Desktop, with VibeUI as option 3.
 - **`--full-auto` retired.** The SimpleUI-only shortcut for YOLO + autonomy in one run is accepted but ignored with a warning; use `--yolo` instead.
+- **Electron Desktop app removed.** `apps/desktop`, its packaging/smoke scripts, the `desktop.yml` workflow and the Desktop release assets are gone. `wstack desktop`, `--desktop`, the `/desktop` slash command and launch-menu option 5 were removed; the menu now offers TUI/REPL, WebUI, VibeUI and HQ. The WebUI `?shell=desktop` compact mode and desktop host bridge were removed with it, along with the Electron-only dependency chain (`electron-builder`, `electron-winstaller` build approval and related overrides).
+- **Unused WebUI session-child groundwork removed.** The never-wired `--webui-session-child` launch mode, its parent-shell instance-registry fields and the session attach discovery helper are gone.
+- **`pnpm-lock.yaml` removed.** The repository is Bun-only; `bun.lock` is the sole lockfile.
 
 ## [1.2.0] — 2026-10-24
 

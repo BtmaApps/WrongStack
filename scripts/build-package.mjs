@@ -608,31 +608,6 @@ const profiles = {
     assetNames: 'assets/[name]-[hash]',
     postBuild: writeWebUiServerShim,
   },
-  '@wrongstack/desktop': {
-    declarations: false,
-    target: 'es2024',
-    builds: [
-      {
-        entries: {
-          main: 'src/main/main.ts',
-          'agent-bridge': 'src/main/agent-bridge.ts',
-        },
-        outdir: 'dist/main',
-        format: 'esm',
-        external: ['electron'],
-      },
-      {
-        entries: {
-          preload: 'src/main/preload.ts',
-          'webui-preload': 'src/main/webui-preload.ts',
-        },
-        outdir: 'dist/preload',
-        format: 'cjs',
-        extension: '.cjs',
-        external: ['electron'],
-      },
-    ],
-  },
 };
 
 function copyToolsWasm() {
@@ -760,12 +735,9 @@ async function bundle(config, defaults) {
   // The patched ws/native entry must ship inside the bundle: registry consumers
   // install ordinary ws, whose public exports do not include that private entry.
   const bundledDependencies = new Set(
-    [
-      '@wrongstack/cli',
-      '@wrongstack/providers',
-      '@wrongstack/webui-server',
-      '@wrongstack/desktop',
-    ].includes(packageJson.name)
+    ['@wrongstack/cli', '@wrongstack/providers', '@wrongstack/webui-server'].includes(
+      packageJson.name,
+    )
       ? ['ws']
       : [],
   );
@@ -849,12 +821,9 @@ function assertEsmNodeBuiltinsStayImportable({ format, outdir }) {
       if (!entry.name.endsWith('.js')) continue;
       const source = readFileSync(absolute, 'utf8');
       if (
-        [
-          '@wrongstack/cli',
-          '@wrongstack/providers',
-          '@wrongstack/webui-server',
-          '@wrongstack/desktop',
-        ].includes(packageJson.name) &&
+        ['@wrongstack/cli', '@wrongstack/providers', '@wrongstack/webui-server'].includes(
+          packageJson.name,
+        ) &&
         /(?:\bfrom\s*|\bimport\s*\(\s*)["']ws\/native["']/u.test(source)
       ) {
         throw new Error(`Published runtime must bundle the private ws/native entry: ${absolute}`);

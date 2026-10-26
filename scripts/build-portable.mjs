@@ -56,15 +56,6 @@ if (!existsSync(cliEntry)) {
   throw new Error(`Deployed CLI entry point is missing: ${cliEntry}`);
 }
 
-const electronPackageDir = join(appDir, 'node_modules', 'electron');
-const electronExecutable = join(electronPackageDir, 'dist', 'electron.exe');
-if (existsSync(electronPackageDir) && !existsSync(electronExecutable)) {
-  run(process.execPath, [join(electronPackageDir, 'install.js')]);
-}
-if (!existsSync(electronExecutable)) {
-  throw new Error(`Portable Desktop runtime is missing: ${electronExecutable}`);
-}
-
 const bootstrap = join(stagingDir, 'bootstrap.cjs');
 
 writeFileSync(
@@ -117,7 +108,6 @@ writeFileSync(
     'No separate Node.js or npm installation is required.',
     '',
     'Keep WrongStack.exe and the app directory together.',
-    'Run "WrongStack.exe desktop" to open the bundled Electron desktop shell.',
     'The executable is unsigned unless the release pipeline is configured with a code-signing certificate.',
     '',
   ].join('\r\n'),

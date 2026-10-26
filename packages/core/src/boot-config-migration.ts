@@ -117,19 +117,13 @@ export const PROFILE_STATE_PAIRS: ReadonlyArray<{
     profileDst: (w, n) => path.join(w.profilesDir, n, 'custom-context-modes.json'),
   },
   {
-    globalSrc: (w) => path.join(w.globalRoot, 'desktop.json'),
-    profileDst: (w, n) => path.join(w.profilesDir, n, 'desktop.json'),
-  },
-  {
     globalSrc: (w) => path.join(w.globalRoot, 'installed-skills.json'),
     profileDst: (w, n) => path.join(w.profilesDir, n, 'installed-skills.json'),
   },
-  ...['skills', 'prompts', 'instructions', 'design-kits', 'desktop', 'settings'].map(
-    (directory) => ({
-      globalSrc: (w: WstackPaths) => path.join(w.globalRoot, directory),
-      profileDst: (w: WstackPaths, n: string) => path.join(w.profilesDir, n, directory),
-    }),
-  ),
+  ...['skills', 'prompts', 'instructions', 'design-kits', 'settings'].map((directory) => ({
+    globalSrc: (w: WstackPaths) => path.join(w.globalRoot, directory),
+    profileDst: (w: WstackPaths, n: string) => path.join(w.profilesDir, n, directory),
+  })),
 ];
 
 /**

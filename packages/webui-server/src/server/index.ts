@@ -28,11 +28,6 @@ export {
 export type { BrainRouteHandlers } from './brain-routes.js';
 export { createBrainRouteHandlers, handleBrainRoute } from './brain-routes.js';
 export {
-  type CodeAssistRouteHandlers,
-  createCodeAssistRouteHandlers,
-  handleCodeAssistRoute,
-} from './code-assist-routes.js';
-export {
   type ChimeraReportDetail,
   type ChimeraReportSummary,
   type ChimeraRouteHandlers,
@@ -57,6 +52,11 @@ export {
   type ClientTransportRouteHandlers,
   handleClientTransportRoute,
 } from './client-transport-routes.js';
+export {
+  type CodeAssistRouteHandlers,
+  createCodeAssistRouteHandlers,
+  handleCodeAssistRoute,
+} from './code-assist-routes.js';
 export { setupWebUICodebaseIndexing } from './codebase-indexing.js';
 export {
   type CodeMapFileTarget,
@@ -252,17 +252,11 @@ export {
   defaultBaseDir,
   formatInstances,
   isPidAlive,
-  joinSessionRegistryWithWebUIInstances,
   listInstances,
   registerInstance,
   registryPath,
   unregisterInstance,
-  type WebUIInstanceAuthInfo,
   type WebUIInstanceRecord,
-  type WebUIInstanceRole,
-  type WebUISessionAttachCandidate,
-  type WebUISessionAttachDegradedReason,
-  type WebUISessionAttachEndpoint,
 } from './instance-registry.js';
 export {
   handleIntrospectionRoute,
@@ -520,12 +514,12 @@ export {
 } from './session-history.js';
 export type { SessionRouteHandlers } from './session-routes.js';
 export { handleSessionRoute } from './session-routes.js';
+export type { FileWatcherMetrics } from './setup-events.js';
 export {
   createDefaultFileWatcherMetrics,
   setupEvents,
   statusProjectHashFromWatchFilename,
 } from './setup-events.js';
-export type { FileWatcherMetrics } from './setup-events.js';
 export type { ShellGitRouteHandlers } from './shell-git-routes.js';
 export { handleShellGitRoute } from './shell-git-routes.js';
 export {

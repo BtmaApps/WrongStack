@@ -3,8 +3,8 @@
  *
  * Consolidates the first ~150 lines of the monolithic main() function:
  *   - Pre-boot side effects (NODE_ENV, shell default)
- *   - Short-circuits (--help, --version, --desktop, --hq)
- *   - Interactive launch menu (TUI/REPL · WebUI · VibeUI · HQ · Desktop)
+ *   - Short-circuits (--help, --version, --hq)
+ *   - Interactive launch menu (TUI/REPL · WebUI · VibeUI · HQ)
  *   - Boot() call + preflight
  *   - OAuth token persistence
  *   - Container wiring (EventBus, DI container)
@@ -17,7 +17,6 @@
 import type { EventBus } from '@wrongstack/contracts/kernel';
 import { TOKENS } from '@wrongstack/contracts/kernel';
 import type { ConfigStore } from '@wrongstack/contracts/types';
-import { writeErr } from '@wrongstack/core/utils';
 import { parseArgs } from './arg-parser.js';
 import { applyAsciiMode } from './boot/ascii-mode.js';
 import { wireContainer } from './boot/container-wiring.js';
@@ -27,15 +26,9 @@ import {
   runLaunchMenu,
   toPersistedMenuChoice,
 } from './boot/launch-menu.js';
-import { handleDesktopShortCircuit } from './boot/short-circuit-desktop.js';
 import { handleHelpVersionShortCircuit } from './boot/short-circuit-flags.js';
 import { handleHqShortCircuit } from './boot/short-circuit-hq.js';
 import { resolveLaunchAllowedTools } from './boot/tool-restriction-flags.js';
-import {
-  parseWebuiSessionChildOptions,
-  type WebuiSessionChildOptions,
-  writeWebuiSessionChildError,
-} from './boot/webui-session-child.js';
 import type { BootContext } from './boot.js';
 import { boot } from './boot.js';
 import { ReadlineInputReader } from './input-reader.js';
@@ -53,14 +46,13 @@ export interface CliContext extends BootContext {
   /** Late-bound handle the REPL prompt uses to mirror approvals to HQ. */
   approvalMirror: ReturnType<typeof wireContainer>['approvalMirror'];
   configStore: ConfigStore;
-  webuiSessionChild?: WebuiSessionChildOptions | undefined;
 }
 
 // ── Initializer ───────────────────────────────────────────────────────────
 
 /**
  * Run all pre-boot and boot-phase setup. Returns a `CliContext` on success,
- * or a numeric exit code when a short-circuit flag (--help, --desktop, --hq)
+ * or a numeric exit code when a short-circuit flag (--help, --hq)
  * fires. When the return is a number the caller must return it immediately.
  */
 export async function initializeCli(
@@ -77,14 +69,10 @@ export async function initializeCli(
   const earlyExit = await handleHelpVersionShortCircuit(argv);
   if (earlyExit !== null) return earlyExit;
 
-  // --desktop short-circuit.
-  const desktopExit = await handleDesktopShortCircuit(earlyFlags, argv);
-  if (desktopExit !== null) return desktopExit;
-
   // Interactive launch menu — asks the user to pick TUI/REPL · WebUI ·
-  // VibeUI · HQ · Desktop when no surface flag was given and stdin is a TTY.
+  // VibeUI · HQ when no surface flag was given and stdin is a TTY.
   // No-op when:
-  //   - any surface flag is present (--webui/--vibeui/--hq/--desktop)
+  //   - any surface flag is present (--webui/--vibeui/--hq)
   //   - --no-menu is set, or --no-interactive/--skip already opt out
   //   - stdin isn't a TTY (CI, pipes, redirects)
   //   - first positional is a known subcommand (auth, mcp, …)
@@ -96,34 +84,6 @@ export async function initializeCli(
   // we re-run the relevant short-circuit with the augmented argv so
   // existing flag parsing paths keep their single source of truth.
   const { flags: _earlyForMenu, positional: _positionalForMenu } = parseArgs(argv);
-  let webuiSessionChild: WebuiSessionChildOptions | undefined;
-  if (_earlyForMenu['webui-session-child'] === true) {
-    try {
-      webuiSessionChild = parseWebuiSessionChildOptions(_earlyForMenu) ?? undefined;
-    } catch (err) {
-      const readyFile =
-        typeof _earlyForMenu['ready-file'] === 'string' ? _earlyForMenu['ready-file'] : undefined;
-      if (readyFile) {
-        await writeWebuiSessionChildError(readyFile, {
-          runtimeId:
-            typeof _earlyForMenu['runtime-id'] === 'string'
-              ? _earlyForMenu['runtime-id']
-              : undefined,
-          parentShellId:
-            typeof _earlyForMenu['parent-shell-id'] === 'string'
-              ? _earlyForMenu['parent-shell-id']
-              : undefined,
-          phase: 'validate_args',
-          recoverable: false,
-          error: err,
-        }).catch(() => undefined);
-      }
-      writeErr(
-        `WebUI session child argument error: ${err instanceof Error ? err.message : String(err)}\n`,
-      );
-      return 2;
-    }
-  }
   const launchMenuReader = new ReadlineInputReader();
   let menuResult: Awaited<ReturnType<typeof runLaunchMenu>>;
   try {
@@ -172,10 +132,6 @@ export async function initializeCli(
       // that returned a numeric exit). In that case honour what
       // boot() decides with the augmented argv.
     }
-    if (menuResult.mode === 'desktop') {
-      const desktopAfterMenu = await handleDesktopShortCircuit(augmentedFlags, effectiveArgv);
-      if (desktopAfterMenu !== null) return desktopAfterMenu;
-    }
     // For webui/vibeui the boot() path already honours the
     // flags (--webui / --vibeui) and --port / --host via its
     // existing surface-detection in cli-context + boot.ts. Nothing
@@ -183,62 +139,6 @@ export async function initializeCli(
   }
 
   const effectiveFlags = parseArgs(effectiveArgv).flags;
-  try {
-    webuiSessionChild =
-      webuiSessionChild ?? parseWebuiSessionChildOptions(effectiveFlags) ?? undefined;
-  } catch (err) {
-    const readyFile =
-      typeof effectiveFlags['ready-file'] === 'string' ? effectiveFlags['ready-file'] : undefined;
-    if (readyFile) {
-      await writeWebuiSessionChildError(readyFile, {
-        runtimeId:
-          typeof effectiveFlags['runtime-id'] === 'string'
-            ? effectiveFlags['runtime-id']
-            : undefined,
-        parentShellId:
-          typeof effectiveFlags['parent-shell-id'] === 'string'
-            ? effectiveFlags['parent-shell-id']
-            : undefined,
-        phase: 'validate_args',
-        recoverable: false,
-        error: err,
-      }).catch(() => undefined);
-    }
-    writeErr(
-      `WebUI session child argument error: ${err instanceof Error ? err.message : String(err)}\n`,
-    );
-    return 2;
-  }
-
-  if (webuiSessionChild) {
-    try {
-      process.chdir(webuiSessionChild.workingDir);
-      if (webuiSessionChild.resume && webuiSessionChild.sessionId) {
-        const currentResume = effectiveFlags['resume'];
-        if (typeof currentResume === 'string' && currentResume !== webuiSessionChild.sessionId) {
-          throw new Error(
-            `--resume ${currentResume} conflicts with --session-id ${webuiSessionChild.sessionId}`,
-          );
-        }
-        if (currentResume !== webuiSessionChild.sessionId) {
-          effectiveArgv = [...effectiveArgv, '--resume', webuiSessionChild.sessionId];
-        }
-      }
-    } catch (err) {
-      await writeWebuiSessionChildError(webuiSessionChild.readyFile, {
-        protocolVersion: webuiSessionChild.protocolVersion,
-        runtimeId: webuiSessionChild.runtimeId,
-        parentShellId: webuiSessionChild.parentShellId,
-        phase: 'validate_args',
-        recoverable: false,
-        error: err,
-      }).catch(() => undefined);
-      writeErr(
-        `WebUI session child argument error: ${err instanceof Error ? err.message : String(err)}\n`,
-      );
-      return 2;
-    }
-  }
 
   // --hq short-circuit (only reached when the menu did NOT select HQ;
   // when it did, the short-circuit above already returned).
@@ -254,7 +154,7 @@ export async function initializeCli(
   // we swallow errors so a corrupt config file can't break the
   // actual launch. Only surfaces that continue into boot() persist
   // here (webui/vibeui). tui-repl is owned by the inner
-  // pre-launch prompts; hq/desktop return from their short-circuits
+  // pre-launch prompts; hq returns from its short-circuit
   // before this point.
   if (menuResult !== null) {
     const persisted = toPersistedMenuChoice(menuResult);
@@ -306,6 +206,5 @@ export async function initializeCli(
     container,
     approvalMirror,
     configStore,
-    webuiSessionChild,
   } as CliContext;
 }

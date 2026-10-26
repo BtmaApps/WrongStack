@@ -33,12 +33,10 @@ import type { PanelDef, ViewDef } from './activity-bar-items.js';
  * vertical slots so the bar fits comfortably on short viewports.
  */
 export function UtilitiesMenu({
-  compact = false,
   monitorOpen,
   hiddenPanels,
   hiddenViews,
 }: {
-  compact?: boolean | undefined;
   monitorOpen: boolean;
   /** Panels and views that are not on the rail (unpinned or overflowed). */
   hiddenPanels: PanelDef[];
@@ -75,16 +73,9 @@ export function UtilitiesMenu({
               ? t('activity:menu.moreWithHidden', { count: hiddenItemCount })
               : t('activity:menu.moreOptions')
           }
-          title={
-            compact && hiddenItemCount > 0
-              ? t('activity:menu.moreCompactHidden', { count: hiddenItemCount })
-              : compact
-                ? t('activity:menu.moreCompact')
-                : t('activity:menu.moreFull')
-          }
+          title={t('activity:menu.moreFull')}
           className={cn(
-            'ws-nav-button relative flex items-center justify-center rounded-md transition-colors',
-            compact ? 'h-9 w-9' : 'h-11 w-11',
+            'ws-nav-button relative flex h-11 w-11 items-center justify-center rounded-md transition-colors',
             'text-muted-foreground hover:border-border/70 hover:text-foreground hover:bg-muted/60',
             'data-[state=open]:text-primary data-[state=open]:bg-primary/10 data-[state=open]:border-primary/30',
             (monitorOpen || hiddenActive) && 'text-primary',
@@ -217,14 +208,12 @@ export function UtilitiesMenu({
 }
 
 export function ActivityIcon({
-  compact = false,
   icon,
   label,
   active,
   badge,
   onClick,
 }: {
-  compact?: boolean | undefined;
   icon: ReactElement;
   label: string;
   active: boolean;
@@ -238,8 +227,7 @@ export function ActivityIcon({
       aria-label={label}
       title={label}
       className={cn(
-        'ws-nav-button relative flex shrink-0 items-center justify-center rounded-md transition-colors',
-        compact ? 'h-9 w-9' : 'h-11 w-11',
+        'ws-nav-button relative flex h-11 w-11 shrink-0 items-center justify-center rounded-md transition-colors',
         'text-muted-foreground hover:border-border/70 hover:text-foreground hover:bg-muted/60',
         active && 'ws-nav-button-active',
       )}

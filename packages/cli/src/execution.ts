@@ -52,7 +52,6 @@ export async function execute(deps: ExecuteDeps): Promise<number> {
       slashRegistry,
       tokenCounter,
       updateInfo: initialUpdateInfo,
-      webuiSessionChild,
     },
     session: { session, context, attachments, mcpRegistry, sessionStore, detachTodosCheckpoint },
     provider: { modelsRegistry, sddSubagentFactory },
@@ -140,8 +139,8 @@ export async function execute(deps: ExecuteDeps): Promise<number> {
       });
     }
     // Interactive sessions only: a one-shot run must not start a 100+ MB
-    // download, and a WebUI session child leaves it to its parent.
-    if (executionMode !== 'single-shot' && !webuiSessionChild) {
+    // download.
+    if (executionMode !== 'single-shot') {
       autoUpdate = (await import('./standalone-auto-update.js')).startStandaloneAutoUpdate({
         getConfig: () => configStore.get(),
         updateInfo: bootUpdateInfo,

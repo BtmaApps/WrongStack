@@ -200,8 +200,8 @@ export async function createAgentServices(input: AgentServicesInput): Promise<Ag
   // tool registry (start-webui.ts) long before `createAgentServices` builds the
   // compactor above, so the canonical call runs with no compactor to hand it.
   // The result was a surface gap — the model could self-manage its context
-  // under `wstack` but not in the desktop app or the standalone server, both of
-  // which boot through this path.
+  // under `wstack` but not in the standalone server, which boots through this
+  // path.
   //
   // `registerDefault` matches the canonical registration exactly (no-op if some
   // other owner already claimed the name), and `exposeToProvider` mirrors the

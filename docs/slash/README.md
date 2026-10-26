@@ -13,7 +13,6 @@ separately below.
 | Command | Aliases | Reference |
 |---|---|---|
 | `/help` | — | [help](help.md) |
-| `/desktop` | — | [app surfaces](app-surfaces.md) |
 | `/webui` | `/web` | [app surfaces](app-surfaces.md) |
 | `/init` | — | [init](init.md) |
 | `/clear` | — | [clear](clear.md) |

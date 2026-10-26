@@ -133,7 +133,7 @@ export function startWebuiCredentialWatcher({
       broadcastSaved(effectiveProviders);
 
       // Display language live-propagation: when another surface writes
-      // Config.uiLocale (desktop shell, standalone WebUI, or another
+      // Config.uiLocale (standalone WebUI, VibeUI, or another
       // embedded WebUI), push it through the same prefs path the frontend
       // already uses for instant i18n re-render.
       if (snapshot.uiLocale !== lastUiLocale) {

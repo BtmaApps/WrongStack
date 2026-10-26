@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 /**
- * Instances register once, at startup, and a shell and its session children
+ * Instances register once, at startup, and several of them can
  * start together. The first registry read waits one macrotask turn while the
  * other registration is in flight, so an unguarded read-modify-write reads the
  * same list twice and the later write drops an instance for good.

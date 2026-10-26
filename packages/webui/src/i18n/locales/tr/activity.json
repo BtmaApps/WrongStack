@@ -130,8 +130,6 @@
   "menu": {
     "moreWithHidden": "Daha fazla, {{count}} gizli öğe",
     "moreOptions": "Daha fazla seçenek",
-    "moreCompactHidden": "Daha fazla — {{count}} gizli panel/görünüm, palet, tema, izleyiciler",
-    "moreCompact": "Daha fazla — palet, tema, izleyiciler",
     "moreFull": "Daha fazla — palet, tema, kısayollar, izleyiciler",
     "commandPalette": "Komut Paleti",
     "keyboardShortcuts": "Klavye Kısayolları",
@@ -847,7 +845,6 @@
   },
   "terminal": {
     "resize": "Terminalleri yeniden boyutlandır",
-    "labelSingular": "Terminal",
     "labelPlural": "Terminaller",
     "projectShell": "Proje kabuğu",
     "maxTerminals": "En fazla {{count}} terminal",

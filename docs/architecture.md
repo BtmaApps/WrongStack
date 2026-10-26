@@ -10,7 +10,7 @@ third-party plugins use the authoring SDK described in [the plugin guide](plugin
 
 WrongStack is a local-first TypeScript/Node.js AI coding-agent platform. The
 published wstack command composes a shared runtime for terminal, browser,
-desktop, protocol, plugin, and dashboard surfaces. A project can have several
+protocol, plugin, and dashboard surfaces. A project can have several
 such clients at once; shared project state is owned by local services rather
 than by each client process.
 
@@ -63,7 +63,7 @@ site. All current workspace packages share the version in the root
 | External integration | @wrongstack/mcp, @wrongstack/acp, @wrongstack/plug-lsp, @wrongstack/plugin-sdk, @wrongstack/plugins, @wrongstack/builtin-plugins, @wrongstack/telegram, @wrongstack/wrongtrace | MCP, Agent Client Protocol, LSP, bundled extensions, and Telegram bridge |
 | MCP products | codebase-index-mcp, kanban-mcp, mailbox-mcp, requirement-intake-mcp, sage-mcp | Capability-limited MCP facades over local domains |
 | Browser contracts | @wrongstack/webui-protocol, @wrongstack/client | Shared wire types/schema and browser client transport |
-| User surfaces | cli, tui, webui, webui-server, vibeui, webui-hq, hq, desktop | Terminal, full browser UI, focused browser coding workspace, HQ dashboard and control plane, Electron shell |
+| User surfaces | cli, tui, webui, webui-server, vibeui, webui-hq, hq | Terminal, full browser UI, focused browser coding workspace, HQ dashboard and control plane |
 | Support | bench, security-scanner, wrongstack | Benchmarks, standalone scan surface, and the command shim |
 
 The package graph is a directed acyclic graph checked by
@@ -310,7 +310,7 @@ runtime dependency of the agent loop.
 The published wrongstack application is a small bin shim around
 @wrongstack/cli. The CLI parses arguments, resolves boot configuration, handles
 short-circuit subcommands/surfaces, wires services and registries, and then
-dispatches an REPL, Ink TUI, WebUI host, VibeUI host, desktop launch, or HQ
+dispatches an REPL, Ink TUI, WebUI host, VibeUI host, or HQ
 server as requested. Slash commands are a CLI interaction layer over the same
 domain services; they should not open project databases directly.
 
@@ -341,7 +341,7 @@ remains a client of the same mailbox and project services. SimpleUI
 (@wrongstack/simpleui) was retired and replaced by VibeUI; `wstack simpleui` and
 `--simpleui` now open VibeUI.
 
-### HQ and desktop
+### HQ
 
 The CLI HQ server (packages/cli/src/hq-server.ts) is the cross-machine operator
 surface. @wrongstack/webui-hq is its offline-capable Vite/React dashboard; it
@@ -350,9 +350,7 @@ authenticated HTTP routes. HQ aggregates health, fleet, mailbox, Kanban, cost,
 Brain, worktree, and alert views. It does not become the writer for a project's
 local SQLite stores.
 
-@wrongstack/desktop is an Electron application that packages the WebUI and
-WebUI-server dependencies for managing local runtimes. The website project is
-separate marketing/documentation output and is not part of the agent host.
+The website project is separate marketing/documentation output and is not part of the agent host.
 
 ---
 

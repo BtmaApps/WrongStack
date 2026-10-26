@@ -7,7 +7,7 @@ import { type ContentRouteContext, handleContentRoute } from '../src/server/cont
 
 it('acknowledges real file mutations and path refusals with the caller request identity', async () => {
   const base = resolve(tmpdir()),
-    dir = mkdtempSync(join(base, 'desktop-file-correlation-'));
+    dir = mkdtempSync(join(base, 'content-file-correlation-'));
   const frames: { type: string; payload: Record<string, unknown> }[] = [];
   const socket = {
     readyState: 1,

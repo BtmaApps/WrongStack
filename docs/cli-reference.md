@@ -19,7 +19,6 @@ session) see [`docs/slash/`](slash/). For every `wstack <subcommand>` see also
 | `--vibeui` | Launch the VibeUI focused coding workspace (default port 3476; `wstack vibeui` is equivalent). |
 | `--simpleui` | Retired. SimpleUI was replaced by VibeUI; `--simpleui` and `wstack simpleui` open VibeUI and print a notice. |
 | `--full-auto` | Retired with SimpleUI. Accepted but ignored with a warning; use `--yolo` instead. |
-| `--desktop` | Launch the Electron desktop shell hosting a token-gated local WebUI. |
 | `--hq` | Launch the cross-machine HQ Command Center. |
 | `--no-menu` | Skip the launch menu on a TTY and go straight to the REPL. |
 | `--yolo` | Auto-approve tool calls within the active permission policy (never overrides trust-denies). |
@@ -62,7 +61,6 @@ normal console diagnostics.
 | `wstack models` | Browse the provider/model catalog (paginated). |
 | `wstack tools` | List built-in tools. |
 | `wstack skills` | List and manage bundled skills. |
-| `wstack desktop` | Launch the Electron desktop shell. |
 | `wstack project id\|init\|rekey` | Manage the repository-stable `proj_<ULID>` identity. |
 | `wstack update` | Update the CLI in place — see below. |
 | `wstack version` | Print the installed version. |

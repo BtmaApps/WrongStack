@@ -18,7 +18,7 @@ import {
 const FIXTURES: Record<string, string> = {
   'packages/core/src/core/agent-loop.ts': "export { x } from '@wrongstack/core/kernel';",
   'packages/cli/src/cli-main.ts': "import { y } from '@wrongstack/core/kernel';",
-  'apps/desktop/src/main.ts': "import '@wrongstack/core/observability';",
+  'apps/wrongstack/src/main.ts': "import '@wrongstack/core/observability';",
   'scripts/snapshot-core-public-api.mjs':
     "import { loadPolicy } from './lib/architecture-health.mjs';",
   // Snapshot-neutral: a real source file that never references @wrongstack/core.
@@ -37,7 +37,7 @@ describe('Core API snapshot pre-commit synchronization', () => {
         [
           'packages/core/src/core/agent-loop.ts',
           'packages/cli/src/cli-main.ts',
-          'apps/desktop/src/main.ts',
+          'apps/wrongstack/src/main.ts',
           'scripts/snapshot-core-public-api.mjs',
           'packages/core/package.json',
           'architecture/core-api-policy.json',
@@ -46,7 +46,7 @@ describe('Core API snapshot pre-commit synchronization', () => {
         readSource,
       ),
     ).toEqual([
-      'apps/desktop/src/main.ts',
+      'apps/wrongstack/src/main.ts',
       'architecture/core-api-policy.json',
       'packages/cli/src/cli-main.ts',
       'packages/core/package.json',

@@ -148,8 +148,7 @@ describe('release workflow (WS-040)', () => {
   it('verifies downloaded standalone binaries before attaching them to a release', () => {
     const text = release();
     const releaseStart = text.indexOf('  github-release:');
-    const releaseEnd = text.indexOf('  publish-desktop:', releaseStart);
-    const githubReleaseJob = text.slice(releaseStart, releaseEnd !== -1 ? releaseEnd : undefined);
+    const githubReleaseJob = text.slice(releaseStart);
 
     const coverageCheck = githubReleaseJob.indexOf(
       'diff -u "$RUNNER_TEMP/release-binary-assets" "$RUNNER_TEMP/checksummed-binary-assets"',
@@ -198,11 +197,11 @@ describe('release workflow (WS-040)', () => {
     expect(callSite).toContain('attestations: write');
   });
 
-  it('resolves draft and published releases before uploading standalone and Desktop assets', () => {
+  it('resolves draft and published releases before uploading standalone assets', () => {
     const text = withoutComments(release());
     expect(text).not.toContain('/releases/tags/$RELEASE_TAG');
     const lookup = `--json apiUrl --jq '.apiUrl | split("/") | last'`;
-    expect(text.split(lookup)).toHaveLength(3);
+    expect(text.split(lookup)).toHaveLength(2);
   });
 
   it('keeps the operator runbook on the tag-first automated release path', () => {
@@ -210,7 +209,7 @@ describe('release workflow (WS-040)', () => {
 
     expect(runbook).toContain('git push origin v<version>');
     expect(runbook).toContain('all eight `wstack-*` targets');
-    expect(runbook).toContain('`DESKTOP-SHA256SUMS`');
+    expect(runbook).not.toContain('DESKTOP-SHA256SUMS');
     expect(runbook).not.toContain('no checked-in release workflow currently does this');
     expect(runbook).not.toContain('Test install: `npm install -g wrongstack');
   });

@@ -72,7 +72,7 @@ function Fixture() {
       <ActivityBar />
       <main id="main-content" className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <WorkbenchTopbar currentView={currentView} projectName="WrongStack" isLoading={false} iteration={null} onPalette={() => {}} onSettings={() => useUIStore.getState().setCurrentView('settings')} />
-        {params.has('nextsteps') ? <NextStepsWorkbench /> : params.has('provider-brands') ? <ProviderBrandWorkbench /> : params.has('interactions') ? <InteractionWorkbench /> : params.has('views') ? <div className="relative flex min-h-0 min-w-0 flex-1 flex-col"><ViewRouter sessionId={null} desktopShell={false} /></div> : <>
+        {params.has('nextsteps') ? <NextStepsWorkbench /> : params.has('provider-brands') ? <ProviderBrandWorkbench /> : params.has('interactions') ? <InteractionWorkbench /> : params.has('views') ? <div className="relative flex min-h-0 min-w-0 flex-1 flex-col"><ViewRouter sessionId={null} /></div> : <>
         <div className="ws-chat-surface mx-3 mt-3 flex-1 min-h-0 overflow-auto border border-border">
           <WelcomeScreen />
           <div className="mx-auto flex max-w-4xl flex-wrap gap-3 px-6 pb-6" data-testid="primitives">

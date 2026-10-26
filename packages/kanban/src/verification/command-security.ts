@@ -1,5 +1,3 @@
-import { isDesktopVitestCommand } from './desktop-vitest-command.js';
-
 /** Maximum retained stdout or stderr for a spawned verification process. */
 export const MAX_PROCESS_OUTPUT_BYTES = 4 * 1024 * 1024;
 
@@ -400,7 +398,6 @@ export function validateCommand(
   if (ENV_EXPANSION_RE.test(testTarget)) {
     return 'Command contains environment-variable expansion, which is not permitted in the verifier.';
   }
-  if (isDesktopVitestCommand(tokens)) return null;
   const constrainedPnpmExec = parseConstrainedPnpmExec(tokens);
   if (constrainedPnpmExec !== null) {
     return typeof constrainedPnpmExec === 'string' ? constrainedPnpmExec : null;

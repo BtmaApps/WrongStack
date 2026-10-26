@@ -6,7 +6,6 @@ import { fileURLToPath } from 'node:url';
 
 // Keep the CI allowlist independent of branch-controlled trustedDependencies.
 const reviewed = [
-  ['electron-winstaller', '../apps/desktop/package.json'],
   ['esbuild', '../package.json'],
   ['node-pty', '../packages/webui/package.json'],
 ];

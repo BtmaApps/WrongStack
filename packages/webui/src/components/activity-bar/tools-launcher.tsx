@@ -107,10 +107,8 @@ const TOOL_GROUPS: readonly ToolGroup[] = [
 ];
 
 export function ToolsLauncher({
-  compact = false,
   onCustomize,
 }: {
-  compact?: boolean | undefined;
   /** Enter the activity bar's reorder mode (choose which views stay on the bar). */
   onCustomize: () => void;
 }) {
@@ -128,8 +126,7 @@ export function ToolsLauncher({
           aria-label={label}
           title={label}
           className={cn(
-            'ws-nav-button relative flex shrink-0 items-center justify-center rounded-md transition-colors',
-            compact ? 'h-9 w-9' : 'h-11 w-11',
+            'ws-nav-button relative flex h-11 w-11 shrink-0 items-center justify-center rounded-md transition-colors',
             'text-muted-foreground hover:border-border/70 hover:text-foreground hover:bg-muted/60',
             'data-[state=open]:text-primary data-[state=open]:bg-primary/10',
             activeInLauncher && 'text-primary',

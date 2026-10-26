@@ -139,7 +139,7 @@ const md = [
   '',
   `${commands.length} registered keys, ${new Set(commands.map((c) => c.file + '#' + c.handler)).size} distinct handlers. Source: ${link(loaderFile)}.`,
   '',
-  'Launch aliases such as `desktop`, `webui` and `resume` are normalized before',
+  'Launch aliases such as `webui`, `vibeui` and `resume` are normalized before',
   'this registry. Bench experiment actions are nested actions of `bench`.',
   '',
   '| Key | Handler source | Guide |',

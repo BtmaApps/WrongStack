@@ -136,15 +136,6 @@ entries whose PID is no longer alive, so a crashed instance that never unregiste
 cleaned up on the next call. Writes are atomic. Instances launched via
 `wstack --webui` share this registry.
 
-### Internal multi-session groundwork
-
-WrongStack also has internal metadata for future process-per-session WebUI tabs. A
-future parent shell can launch one child WebUI runtime per live session and discover
-attachable children by joining the session registry with `webui-instances.json`.
-Child records use optional fields such as `role: "session-child"`, `sessionId`,
-`parentPid`, `parentShellId`, `runtimeId`, and `attachable`. This is internal
-groundwork only: the parent shell and browser tab UI are not implemented yet.
-
 ## CLI flags & env vars
 
 | Canonical invocation / flag | Effect |

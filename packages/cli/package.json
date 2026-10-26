@@ -90,9 +90,6 @@
     "@wrongstack/wrongtrace": "workspace:*",
     "ws": "^8.22.0"
   },
-  "optionalDependencies": {
-    "@wrongstack/desktop": "workspace:*"
-  },
   "devDependencies": {
     "@types/node": "^26.6.5",
     "@types/ws": "^8.18.1",

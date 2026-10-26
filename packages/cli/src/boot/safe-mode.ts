@@ -14,7 +14,7 @@
  * one troubleshooting launch would then silently disable plugins for good.
  *
  * `WRONGSTACK_SAFE_MODE=1` is equivalent and is exported to child processes
- * (WebUI session children, spawned tools) so they start the same way.
+ * (spawned tools, subagents) so they start the same way.
  */
 
 export const SAFE_MODE_ENV = 'WRONGSTACK_SAFE_MODE';

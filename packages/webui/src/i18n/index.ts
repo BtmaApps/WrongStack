@@ -138,57 +138,10 @@ useLocalPrefs.subscribe((state, prev) => {
   }
 });
 
-// Desktop-host bridge: when the WrongStack desktop shell pushes a locale
-// change over the wrongstackDesktopHost.onLocaleChanged IPC (because the user
-// picked a different language in the shell sidebar, or another surface wrote
-// Config.uiLocale), mirror it through the prefs store so the same subscriber
-// path that handles picker changes drives i18next + <html lang>. No-op in
-// browser WebUI (the bridge is absent).
-//
-// Extracted into a function so tests can install the bridge THEN call
-// `subscribeDesktopLocaleBridge()` — the module-load side-effect form would
-// race against the test's bridge installation (top-level imports are
-// evaluated once per worker, before the test's `beforeAll` runs).
-function subscribeDesktopLocaleBridge(): void {
-  const host = (
-    window as unknown as {
-      wrongstackDesktopHost?: {
-        onLocaleChanged?: (cb: (locale: string) => void) => () => void;
-      };
-    }
-  ).wrongstackDesktopHost;
-  host?.onLocaleChanged?.((locale: string) => {
-    if (!locale) return;
-    // Normalize first so a stray casing / region variant doesn't end up as
-    // a separate locale in the store (the picker only ships the canonical
-    // 7 codes; anything else falls back to the closest supported one).
-    const code = normalizeLocale(locale);
-    if (code === i18n.language) return;
-    const store = useLocalPrefs.getState();
-    if (store.uiLocale !== code) store.set({ uiLocale: code });
-    // Drive i18n directly too: the subscribe above short-circuits when
-    // `i18n.language` already matches, which is fine when the picker writes
-    // first, but here we want the swap to happen whether or not the store
-    // mutation was the cause of the change.
-    void i18n.changeLanguage(code).then(() => syncHtmlLang(code));
-  });
-}
-try {
-  subscribeDesktopLocaleBridge();
-} catch {
-  /* bridge not available (browser WebUI) */
-}
-
-export { useTranslation as useAppTranslation } from 'react-i18next';
-/**
- * Wire the desktop-host locale bridge if `window.wrongstackDesktopHost` is
- * present. Exposed for tests that install the bridge after module load; the
- * production app relies on the auto-call below (module-load side effect).
- */
-export const installDesktopHostLocaleBridge = subscribeDesktopLocaleBridge;
 // Re-export straight from the module (not the local default-import binding)
 // so the dts bundler can drop the chain without leaving a dangling import.
 export { default as i18n } from 'i18next';
+export { useTranslation as useAppTranslation } from 'react-i18next';
 export type { AppLocaleCode } from './languages';
 export {
   detectLocale,

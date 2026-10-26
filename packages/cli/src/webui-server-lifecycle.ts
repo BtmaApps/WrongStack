@@ -14,7 +14,6 @@ export function runWebuiServerLifecycle({
   wsPort,
   accessUrl,
   wsToken,
-  webuiInstanceRegistered,
   wss,
   httpServer,
   requireToken,
@@ -59,7 +58,6 @@ export function runWebuiServerLifecycle({
   wsPort: number;
   accessUrl: string;
   wsToken: string;
-  webuiInstanceRegistered: boolean;
   wss: import('ws').Server<typeof import('ws').default, typeof import('http').IncomingMessage>;
   httpServer: import('@wrongstack/webui-server').StaticServeHandle | null;
   requireToken: boolean;
@@ -125,7 +123,6 @@ export function runWebuiServerLifecycle({
           host,
           url: accessUrl,
           authToken: wsToken,
-          webuiInstanceRegistered,
         });
       } catch (err) {
         consoleLogger.error('setup_events_failed', { message: toErrorMessage(err) });

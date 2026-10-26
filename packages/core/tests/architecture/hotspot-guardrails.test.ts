@@ -35,7 +35,7 @@ const HOTSPOTS: readonly Hotspot[] = [
     file: 'packages/webui/src/App.tsx',
     maxLines: 1100,
     rationale:
-      'Desktop/bridge hooks extracted to useDesktopBridge.ts (1028 lines after extraction). Keep under 1100 by extracting new concerns into their own modules.',
+      'Workbench shell root. Keep under 1100 by extracting new concerns into their own modules.',
   },
   {
     file: 'packages/webui/src/components/SettingsPanel/index.tsx',

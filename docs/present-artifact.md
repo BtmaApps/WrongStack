@@ -1,7 +1,7 @@
 # Presenting project artifacts
 
 The agent can call `present_artifact({ path: "docs/report.md", title: "Results" })`
-after producing a report, source file, patch or raster image. WebUI and Desktop reveal text in their
+after producing a report, source file, patch or raster image. WebUI reveals text in its
 existing file view. Images and unified diffs
 open a read-only preview. CLI and TUI
 retain the project-relative path in the tool result.

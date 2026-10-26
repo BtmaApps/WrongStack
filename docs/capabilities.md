@@ -169,7 +169,7 @@ See [account setup and coverage](typesafe-account.md),
 
 One project-wide coordination plane connects **every agent, across every client,
 process, session, branch, and linked Git worktree** — CLI, TUI, WebUI, VibeUI,
-Desktop, and HQ alike. Agents send typed messages (`ask`, `assign`, `steer`,
+and HQ alike. Agents send typed messages (`ask`, `assign`, `steer`,
 `result`, `review`, `status`), hand off work, broadcast milestones, and see who is
 online with live presence — so parallel agents cooperate instead of colliding.
 HQ can even route mailbox traffic and steer connected clients through their own

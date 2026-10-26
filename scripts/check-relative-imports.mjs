@@ -34,7 +34,7 @@ const BAD_IMPORT = /from\s+['"]\.\.\/([a-zA-Z0-9_-]+)\//g;
  * Directories where this gate's premise does not apply (cross-area
  * siblings are common and intentional).
  */
-const ALLOWLIST_DIR_PREFIXES = ['apps/desktop/', 'apps/wrongstack/', 'scripts/'];
+const ALLOWLIST_DIR_PREFIXES = ['apps/wrongstack/', 'scripts/'];
 
 /**
  * Allow specific known-good `../<sibling>/` imports that happen to match

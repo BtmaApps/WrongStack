@@ -21,7 +21,7 @@ tools in an individual session or verified external-service availability.
 | `@wrongstack/contracts` | [packages/contracts/package.json](../packages/contracts/package.json) | private |
 | `@wrongstack/coordination` | [packages/coordination/package.json](../packages/coordination/package.json) | private |
 | `@wrongstack/core` | [packages/core/package.json](../packages/core/package.json) | private |
-| `@wrongstack/desktop` | [apps/desktop/package.json](../apps/desktop/package.json) | private |
+| `@wrongstack/desktop-v2` | [apps/desktop-v2/package.json](../apps/desktop-v2/package.json) | private |
 | `@wrongstack/goal` | [packages/goal/package.json](../packages/goal/package.json) | private |
 | `@wrongstack/governance` | [packages/governance/package.json](../packages/governance/package.json) | private |
 | `@wrongstack/hq` | [packages/hq/package.json](../packages/hq/package.json) | private |
@@ -66,7 +66,7 @@ tools in an individual session or verified external-service availability.
 
 42 registered keys, 41 distinct handlers. Source: [packages/cli/src/subcommands/index.ts](../packages/cli/src/subcommands/index.ts).
 
-Launch aliases such as `desktop`, `webui` and `resume` are normalized before
+Launch aliases such as `webui`, `vibeui` and `resume` are normalized before
 this registry. Bench experiment actions are nested actions of `bench`.
 
 | Key | Handler source | Guide |

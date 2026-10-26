@@ -45,7 +45,7 @@
  *
  * Homonym counting alone is not enough, because the worst misresolutions are
  * to names that really are unique. Every `it(...)` in the test suite resolves
- * to the one `const it: Catalog` in the desktop app's i18n file — the Italian
+ * to a single `const it: Catalog` in an i18n file — the Italian
  * locale — handing a translation table 5,500 incoming edges. Nothing declares
  * a competing `it`, so no homonym penalty applies.
  *

@@ -1,13 +1,11 @@
 import { lazy, Suspense, useEffect } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import { useDesktopBridge } from '@/hooks/useDesktopBridge';
 import { useF5Resilience } from '@/hooks/useF5Resilience';
 import { useGlobalKeyboardShortcuts } from '@/hooks/useGlobalKeyboardShortcuts';
 import { useSessionSubscription } from '@/hooks/useSessionSubscription';
 import { useViewport } from '@/hooks/useViewport';
 import { useWebSocketBootstrap } from '@/hooks/useWebSocket';
 import { useAppTranslation } from '@/i18n';
-import { isDesktopShell } from '@/lib/desktop-shell';
 import { cn } from '@/lib/utils';
 import { getWSClient } from '@/lib/ws-client';
 import {
@@ -19,6 +17,7 @@ import {
   useSessionStore,
   useUIStore,
 } from '@/stores';
+import { ArtifactPreview } from './components/ArtifactPreview';
 import { ActivityBar } from './components/activity-bar';
 import { navigateToView, openMainView } from './components/activity-bar/nav';
 import { CommandPalette } from './components/CommandPalette';
@@ -42,7 +41,6 @@ import { UserInputDialog } from './components/UserInputDialog';
 import { ViewRouter } from './components/ViewRouter';
 import { WorkbenchTopbar } from './components/WorkbenchTopbar';
 import { WorkspaceDockInspector } from './components/WorkspaceDock';
-import { ArtifactPreview } from './components/ArtifactPreview';
 import { useSystemPromptStore } from './stores/system-prompt-store';
 
 // Per-view lazy imports live in `./components/view-registry.ts`, which is the
@@ -70,7 +68,6 @@ const QueuePanel = lazy(() =>
 function AppInner() {
   const { t } = useAppTranslation();
   const { theme } = useTheme();
-  const desktopShell = isDesktopShell();
   // Subscribe with a shallow selector, NOT the bare store: AppInner is the
   // root of the whole tree, and a bare useUIStore() re-renders it on EVERY
   // ui-store mutation (scroll nonces, nickname edits, inspector tabs, …).
@@ -82,19 +79,13 @@ function AppInner() {
     setSidebarOpen,
     setInspectorTab,
     setPaletteOpen,
-    setShortcutsOpen,
-    setModelSwitcherOpen,
-    setPromptLibraryOpen,
     toggleInspector,
-    setFleetMonitorOpen,
-    setAgentsMonitorOpen,
     processMonitorOpen,
     setProcessMonitorOpen,
     queuePanelOpen,
     setQueuePanelOpen,
     cronJobsOpen,
     setCronJobsOpen,
-    setTerminalOpen,
   } = useUIStore(
     useShallow((s) => ({
       currentView: s.currentView,
@@ -104,19 +95,13 @@ function AppInner() {
       setSidebarOpen: s.setSidebarOpen,
       setInspectorTab: s.setInspectorTab,
       setPaletteOpen: s.setPaletteOpen,
-      setShortcutsOpen: s.setShortcutsOpen,
-      setModelSwitcherOpen: s.setModelSwitcherOpen,
-      setPromptLibraryOpen: s.setPromptLibraryOpen,
       toggleInspector: s.toggleInspector,
-      setFleetMonitorOpen: s.setFleetMonitorOpen,
-      setAgentsMonitorOpen: s.setAgentsMonitorOpen,
       processMonitorOpen: s.processMonitorOpen,
       setProcessMonitorOpen: s.setProcessMonitorOpen,
       queuePanelOpen: s.queuePanelOpen,
       setQueuePanelOpen: s.setQueuePanelOpen,
       cronJobsOpen: s.cronJobsOpen,
       setCronJobsOpen: s.setCronJobsOpen,
-      setTerminalOpen: s.setTerminalOpen,
     })),
   );
   const isLoading = useChatStore((s) => s.isLoading);
@@ -143,20 +128,6 @@ function AppInner() {
   const sessionId = activeSessionId ?? sessionRecordId;
   const nickname = useUIStore((s) => (sessionId ? s.sessionNicknames[sessionId] : undefined));
   const _fleetAgents = useFleetStore((s) => s.agents);
-
-  useDesktopBridge({
-    setPaletteOpen,
-    setSearchOpen,
-    setShortcutsOpen,
-    setModelSwitcherOpen,
-    setPromptLibraryOpen,
-    setFleetMonitorOpen,
-    setAgentsMonitorOpen,
-    setProcessMonitorOpen,
-    setQueuePanelOpen,
-    setCronJobsOpen,
-    setTerminalOpen,
-  });
 
   // Detect /debug, /analytics, /refresh-debug URL paths and switch views.
   useEffect(() => {
@@ -267,14 +238,7 @@ function AppInner() {
   });
 
   return (
-    <div
-      data-shell={desktopShell ? 'desktop' : 'browser'}
-      className={cn(
-        'ws-app-root flex min-h-0 min-w-0 overflow-hidden',
-        desktopShell && 'ws-desktop-shell',
-        theme,
-      )}
-    >
+    <div className={cn('ws-app-root flex min-h-0 min-w-0 overflow-hidden', theme)}>
       {/* ── Skip to content (a11y) — visible on focus only ── */}
       <a
         href="#main-content"
@@ -284,10 +248,10 @@ function AppInner() {
       </a>
 
       {/* ── Activity Bar — hidden during setup ── */}
-      {currentView !== 'setup' && <ActivityBar desktopShell={desktopShell} />}
+      {currentView !== 'setup' && <ActivityBar />}
 
       {/* ── Secondary Panel — collapsible, context-sensitive ── */}
-      {sidebarOpen && currentView !== 'setup' && <SidePanel desktopShell={desktopShell} />}
+      {sidebarOpen && currentView !== 'setup' && <SidePanel />}
 
       {/* ── Main area ── */}
       <main
@@ -324,7 +288,7 @@ function AppInner() {
             stays mounted behind whatever view is in front, sized to this box
             so its virtualized transcript keeps measuring. */}
         <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
-          <ViewRouter sessionId={sessionId ?? null} desktopShell={desktopShell} />
+          <ViewRouter sessionId={sessionId ?? null} />
           {/* The workspace dock inspector is anchored to THIS box, so it
               overlays the work surface only. Fixed to the viewport it also
               covered the top chrome — the session tab strip included — and

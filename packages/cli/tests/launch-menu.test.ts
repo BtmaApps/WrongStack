@@ -80,10 +80,6 @@ describe('shouldSkipMenu', () => {
     expect(shouldSkipMenu([], { hq: true }, [])).toBe(true);
   });
 
-  it('skips when --desktop is set', () => {
-    expect(shouldSkipMenu([], { desktop: true }, [])).toBe(true);
-  });
-
   it('skips when --no-interactive is set', () => {
     expect(shouldSkipMenu([], { 'no-interactive': true }, [])).toBe(true);
   });
@@ -191,15 +187,6 @@ describe('applyLaunchMenuToArgv', () => {
     ).toEqual(['--port=3502', '--hq']);
   });
 
-  it('appends --desktop without port or host', () => {
-    expect(
-      applyLaunchMenuToArgv(['--yolo'], {
-        mode: 'desktop',
-        cancelled: false,
-      }),
-    ).toEqual(['--yolo', '--desktop']);
-  });
-
   it('omits --port when result has no port', () => {
     expect(
       applyLaunchMenuToArgv([], {
@@ -240,12 +227,6 @@ describe('toPersistedMenuChoice', () => {
 
   it('returns undefined for tui-repl results (owned by inner prompts)', () => {
     expect(toPersistedMenuChoice({ mode: 'tui-repl', cancelled: false })).toBeUndefined();
-  });
-
-  it('persists a desktop choice without port or host', () => {
-    expect(toPersistedMenuChoice({ mode: 'desktop', cancelled: false })).toEqual({
-      mode: 'desktop',
-    });
   });
 
   it('persists a valid webui choice with port and host', () => {
@@ -385,25 +366,7 @@ describe('runLaunchMenu', () => {
     expect(result!.cancelled).toBe(false);
   });
 
-  it('selects desktop and skips port/host prompts', async () => {
-    const renderer = makeRenderer();
-    const reader = makeReader(['5']);
-    const result = await runLaunchMenu({
-      argv: [],
-      flags: {},
-      positional: [],
-      renderer,
-      reader,
-    });
-    expect(result).not.toBeNull();
-    expect(result!.mode).toBe('desktop');
-    expect(result!.port).toBeUndefined();
-    expect(result!.host).toBeUndefined();
-    expect(result!.cancelled).toBe(false);
-    expect((reader.readLine as ReturnType<typeof vi.fn>).mock.calls).toHaveLength(1);
-  });
-
-  it('selects desktop when the user types the mode name', async () => {
+  it('treats the retired desktop entry as an unknown choice', async () => {
     const renderer = makeRenderer();
     const reader = makeReader(['desktop']);
     const result = await runLaunchMenu({
@@ -414,8 +377,8 @@ describe('runLaunchMenu', () => {
       reader,
     });
     expect(result).not.toBeNull();
-    expect(result!.mode).toBe('desktop');
-    expect((reader.readLine as ReturnType<typeof vi.fn>).mock.calls).toHaveLength(1);
+    expect(result!.mode).toBe('tui-repl');
+    expect(result!.cancelled).toBe(false);
   });
 
   it('skips port/host prompts for tui-repl', async () => {

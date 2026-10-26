@@ -164,7 +164,7 @@ See the [release history](CHANGELOG.md) for earlier releases.
 - **Goals that end verified.** `/goal` loops until a locked contract passes,
   the **Brain** rules on risky calls, and Kanban cards reach Done only when
   their criteria pass.
-- **Six surfaces, one engine.** REPL, TUI, WebUI, VibeUI, Desktop and the
+- **Five surfaces, one engine.** REPL, TUI, WebUI, VibeUI and the
   cross-machine **HQ** share the same sessions and memory.
 - **Any model, including local ones.** API keys or subscription sign-in, a
   models.dev catalog, Ollama / vLLM / LM Studio presets, and per-role routing
@@ -189,7 +189,7 @@ scratch:
 | **Memory** | Usually none, or bolted-on files | **SAGE** — code-anchored SQLite/FTS5 memory, recalled every turn |
 | **Multi-agent** | Orchestrates external processes | **Native fleet + Director** with isolated budgets and one mailbox |
 | **Local-only** | Needs the upstream tool and network | **Runs on localhost** with Ollama / vLLM / LM Studio presets |
-| **Surfaces** | One terminal | **Six** — REPL, TUI, WebUI, VibeUI, Desktop, HQ |
+| **Surfaces** | One terminal | **Five** — REPL, TUI, WebUI, VibeUI, HQ |
 | **Safety** | Depends on the wrapped tool | **Per-call permission policy** and Chimera review of your diffs |
 
 ---
@@ -233,19 +233,14 @@ grammars, the WebUI/HQ/VibeUI frontends) once into
 `~/.wrongstack/runtime/<version>/`.
 
 Not available in the binary: the WebUI terminal panel (needs the native
-`node-pty` addon), the Electron desktop shell, and the browser tool unless
+`node-pty` addon) and the browser tool unless
 Playwright is installed separately. The HQ systemd installer (`wstack hq
 service install`) does not support the binary; run `wstack hq` under your own
 service manager instead.
 
 The TUI is lazy-loaded behind `--tui`, so plain-REPL users pay no React/Ink cost
-at startup. The browser UI, HQ, and Desktop shell are available through their
+at startup. The browser UI and HQ are available through their
 launch flags (see [Surfaces](#surfaces)).
-
-For standalone CLI users, Desktop is a separate Electron application distributed
-through GitHub Releases. `wstack --desktop` opens an installed application;
-portable/custom locations use `WRONGSTACK_DESKTOP_EXECUTABLE`.
-See [Desktop distribution](docs/desktop-distribution.md) for installation and release details.
 
 Then just run:
 
@@ -328,7 +323,6 @@ Full flag and subcommand reference: [`docs/cli-reference.md`](docs/cli-reference
 | **TUI** | `wstack --tui` | Rich full-screen terminal with panels |
 | **WebUI** | `wstack --webui` | Browser chat + tool/diff/session panels |
 | **VibeUI** | `wstack --vibeui` | Focused browser coding workspace beside the full WebUI (see below) |
-| **Desktop** | `wstack --desktop` | Electron shell over a token-gated local WebUI |
 | **HQ** | `wstack --hq` | Cross-machine command center for a whole team |
 
 Plain `wstack` on a TTY opens a launch menu; add `--no-menu` to go straight to the
@@ -419,7 +413,6 @@ configs migrate transparently on boot. Full details:
 CLI       → REPL, renderer, slash commands, subcommands
 TUI       → Ink frontend (lazy-loaded behind --tui)
 WebUI     → Browser UI + WS bridge (standalone or --webui)
-Desktop   → Electron shell hosting a token-gated local WebUI
 Runtime   → Default host assembly + WrongStackPack extension composition
 Kernel    → Container · Pipeline · EventBus · RunController (the 4 primitives)
 Provider  → Multiple wire families, factories built from ModelsRegistry, real SSE
@@ -441,7 +434,7 @@ Full walk-through: [`docs/architecture.md`](docs/architecture.md).
 ## Status
 
 - **v1.2.0** — current repository version; semver from 1.0.0 onward
-- Distribution: GitHub Releases only (standalone `wstack` binaries + Desktop); npm publishing is retired and the existing npm versions are frozen
+- Distribution: GitHub Releases only (standalone `wstack` binaries); npm publishing is retired and the existing npm versions are frozen
 - Full release verification: `bun run release:check` before pushing the `vX.Y.Z` release tag
 - Coverage thresholds (root Vitest): ≥76% lines / ≥75% functions / ≥66% branches / ≥75% statements
 - Packages and apps use TypeScript strict + `noUncheckedIndexedAccess`

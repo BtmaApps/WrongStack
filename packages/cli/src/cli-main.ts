@@ -30,7 +30,6 @@ export async function runInteractive(cliCtx: CliContext): Promise<number> {
     container,
     configStore,
     updateInfo,
-    webuiSessionChild,
   } = cliCtx;
   const {
     profileConfigPath,
@@ -122,7 +121,6 @@ export async function runInteractive(cliCtx: CliContext): Promise<number> {
     projectRoot,
     flags,
     positional,
-    webuiSessionChild,
     updateInfo,
     attachments,
     brainMailbox,

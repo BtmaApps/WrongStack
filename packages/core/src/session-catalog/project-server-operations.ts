@@ -110,7 +110,6 @@ export function validateOperationArgs(
     'lastHeartbeatAt',
     'agentCount',
     'agents',
-    'webuiEndpoint',
   ];
   if (record['credential'] !== undefined)
     exact(record['credential'], `${op}.credential`, credentialKeys);

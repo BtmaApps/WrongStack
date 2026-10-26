@@ -52,7 +52,7 @@ export interface WebUIOptions {
    * Path to the directory containing the built WebUI frontend assets
    * (the `dist` directory of `@wrongstack/webui`). When omitted, the
    * server tries to resolve the frontend package from its own module
-   * location; callers that embed the server (e.g. the desktop app) should
+   * location; callers that embed the server should
    * pass an explicit path for deterministic resolution.
    */
   distDir?: string | undefined;

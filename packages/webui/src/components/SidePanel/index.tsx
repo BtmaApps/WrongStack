@@ -11,7 +11,6 @@ import { useEffect } from 'react';
 import { useViewport } from '@/hooks/useViewport';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { useAppTranslation } from '@/i18n';
-import { cn } from '@/lib/utils';
 import {
   SIDEBAR_DEFAULT_WIDTH,
   SIDEBAR_MAX_WIDTH,
@@ -31,7 +30,7 @@ import { SessionPanel } from './SessionPanel';
 import { SkillsList } from './SkillsList';
 import { StoryWidget } from './StoryWidget';
 
-export function SidePanel({ desktopShell = false }: { desktopShell?: boolean | undefined }) {
+export function SidePanel() {
   const activeActivity = useUIStore((s) => s.activeActivity);
   const setSidebarOpen = useUIStore((s) => s.setSidebarOpen);
   const sidebarWidth = useUIStore((s) => s.sidebarWidth);
@@ -41,9 +40,7 @@ export function SidePanel({ desktopShell = false }: { desktopShell?: boolean | u
   const { t } = useAppTranslation();
   const { width } = useViewport();
   const isOverlay = width > 0 && width < 768;
-  const panelWidth = desktopShell
-    ? `min(${Math.min(sidebarWidth, 280)}px, calc(100vw - 2.5rem))`
-    : `min(${sidebarWidth}px, calc(100vw - 3rem))`;
+  const panelWidth = `min(${sidebarWidth}px, calc(100vw - 3rem))`;
 
   // Load the file tree when the Files panel is shown.
   useEffect(() => {
@@ -74,10 +71,7 @@ export function SidePanel({ desktopShell = false }: { desktopShell?: boolean | u
   return (
     <>
       <div
-        className={cn(
-          'fixed inset-y-0 right-0 z-30 bg-black/35 backdrop-blur-[2px] md:hidden',
-          desktopShell ? 'left-10' : 'left-12',
-        )}
+        className="fixed inset-y-0 left-12 right-0 z-30 bg-black/35 backdrop-blur-[2px] md:hidden"
         onClick={() => setSidebarOpen(false)}
         aria-hidden="true"
       />
@@ -89,10 +83,7 @@ export function SidePanel({ desktopShell = false }: { desktopShell?: boolean | u
           ? { role: 'dialog', 'aria-modal': true as const }
           : { role: 'complementary' })}
         aria-label={t('activity:sidebar.label')}
-        className={cn(
-          'ws-side-panel fixed inset-y-0 z-40 flex min-h-0 min-w-0 shrink-0 flex-col overflow-hidden border-r border-border/70 backdrop-blur-xl animate-slide-in md:relative md:inset-auto md:z-auto md:shadow-none',
-          desktopShell ? 'left-10' : 'left-12',
-        )}
+        className="ws-side-panel fixed inset-y-0 left-12 z-40 flex min-h-0 min-w-0 shrink-0 flex-col overflow-hidden border-r border-border/70 backdrop-blur-xl animate-slide-in md:relative md:inset-auto md:z-auto md:shadow-none"
       >
         {/* Resize handle. Was an `<hr>` carrying aria-valuemin/max/now with no
             role: those properties are only meaningful on a focusable separator,
@@ -125,13 +116,7 @@ export function SidePanel({ desktopShell = false }: { desktopShell?: boolean | u
         />
 
         {/* Panel header — names the active panel */}
-        <div
-          className={cn(
-            'flex items-center justify-between border-b shrink-0',
-            'bg-muted/25',
-            desktopShell ? 'px-2.5 py-2' : 'px-3 py-3',
-          )}
-        >
+        <div className="flex items-center justify-between border-b shrink-0 bg-muted/25 px-3 py-3">
           <div className="min-w-0">
             <div className="text-sm font-semibold text-foreground">
               {t(`activity:nav.${activeActivity}`)}

@@ -23,12 +23,7 @@ import { PanelSuspense } from './PanelSuspense';
  *
  * See docs/archive/local/audit/webui-full-review-2026-09-03.md B-17.
  */
-export function ViewRouter({
-  desktopShell,
-}: {
-  sessionId: string | null;
-  desktopShell: boolean;
-}): React.ReactElement {
+export function ViewRouter(_props: { sessionId: string | null }): React.ReactElement {
   const { t } = useAppTranslation();
   const { currentView, terminalOpen, setTerminalOpen } = useUIStore(
     useShallow((s) => ({
@@ -80,7 +75,6 @@ export function ViewRouter({
             }
           >
             <TerminalPanelLazy
-              desktopShell={desktopShell}
               hidden={!terminalOpen}
               onClose={() => setTerminalOpen(false)}
               onDispose={() => {

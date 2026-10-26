@@ -25,7 +25,7 @@ its wire types.
 | `cli`, `tui`, `webui-server` | Composition/terminal/browser-server hosts | Command registries and explicit injected dependencies |
 | `webui`, `vibeui`, `webui-hq` | Browser views over shared contracts and state | Shared protocol, clients and host messages |
 | `bench`, `security-scanner` | Standalone evaluation/scanning domains | [bench command](../subcommands/bench.md), package exports |
-| `apps/wrongstack`, `apps/desktop` | Distribution entry point and Electron shell | [release process](../release-process.md), [Desktop distribution](../desktop-distribution.md) |
+| `apps/wrongstack` | Distribution entry point | [release process](../release-process.md) |
 
 Third-party plugins depend on `@wrongstack/plugin-sdk`; optional model helpers
 and resource cleanup live in its `/runtime` subpath. A plugin capability

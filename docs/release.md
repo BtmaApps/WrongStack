@@ -3,7 +3,7 @@
 Step-by-step guide for cutting a WrongStack release.
 
 WrongStack ships **only through GitHub Releases**: standalone `wstack` binaries,
-installers, checksum manifests and Desktop packages, all built by
+installers and checksum manifests, all built by
 `.github/workflows/release.yml` when a `vX.Y.Z` tag is pushed.
 
 **npm publishing is retired for good.** Every workspace package is
@@ -26,7 +26,7 @@ git commit -am 'release: X.Y.Z'  # 4. commit the release candidate
 bun run release:check            # 5. full gate — do not touch the tree afterwards
 git push origin main             # 6. push main
 git tag -a vX.Y.Z -m 'X.Y.Z'     # 7. annotated tag on the release commit
-git push origin vX.Y.Z           #    → CI builds binaries + Desktop and creates the GitHub release
+git push origin vX.Y.Z           #    → CI builds binaries and creates the GitHub release
 ```
 
 ## 1. Version bump
@@ -93,7 +93,7 @@ git push origin v<version>
 The workflow verifies that the tag version matches `package.json` and that the
 tagged commit belongs to `main`. It then builds and smokes standalone binaries
 on Linux, Windows, and macOS, creates the GitHub Release, and attaches the
-verified binaries, installers, checksum manifest, and Desktop packages. That is
+verified binaries, installers, and checksum manifest. That is
 the whole release; nothing is published anywhere else.
 
 - [ ] The tag points at the exact reviewed release commit
@@ -101,10 +101,8 @@ the whole release; nothing is published anywhere else.
 - [ ] The GitHub Release contains all eight `wstack-*` targets, `SHA256SUMS`,
       `install.sh`, and `install.ps1`
 - [ ] `SHA256SUMS` verifies every uploaded standalone binary
-- [ ] The four Desktop matrix jobs passed package smoke; Desktop assets and
-      `DESKTOP-SHA256SUMS` were attached
 
-A failed binary or Desktop job is re-run for the same tag through the
+A failed binary job is re-run for the same tag through the
 workflow's manual `workflow_dispatch` input; never bump the version to recover.
 
 ## Post-release
@@ -152,10 +150,8 @@ git push origin v0.5.1
 ## Automation status
 
 - `.github/workflows/release.yml` handles tag/SHA verification, standalone
-  binaries, GitHub Release creation, and Desktop packages. It never publishes
+  binaries, and GitHub Release creation. It never publishes
   to npm and does not query the npm registry.
 - `.github/workflows/binaries.yml` is reusable and can prove the standalone
   build and cross-platform smoke without cutting a release.
-- `.github/workflows/desktop.yml` is reusable and packages/smokes each Desktop
-  target without publishing credentials.
 - `.github/workflows/pages.yml` builds and deploys `website/` independently.

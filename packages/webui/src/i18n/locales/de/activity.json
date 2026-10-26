@@ -130,8 +130,6 @@
   "menu": {
     "moreWithHidden": "Mehr, {{count}} ausgeblendete Elemente",
     "moreOptions": "Weitere Optionen",
-    "moreCompactHidden": "Mehr — {{count}} ausgeblendete Panels/Ansichten, Palette, Design, Monitore",
-    "moreCompact": "Mehr — Palette, Design, Monitore",
     "moreFull": "Mehr — Palette, Design, Tastenkürzel, Monitore",
     "commandPalette": "Befehls-Palette",
     "keyboardShortcuts": "Tastenkürzel",
@@ -847,7 +845,6 @@
   },
   "terminal": {
     "resize": "Terminals skalieren",
-    "labelSingular": "Terminal",
     "labelPlural": "Terminals",
     "projectShell": "Projekt-Shell",
     "maxTerminals": "Maximal {{count}} Terminals",

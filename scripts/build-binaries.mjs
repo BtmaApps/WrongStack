@@ -50,8 +50,7 @@ export const ALL_TARGETS = [
 /**
  * Optional or native dependencies that cannot be compiled in. Each is loaded
  * lazily behind a graceful fallback: the browser tool reports Playwright as
- * unavailable, the WebUI terminal panel reports node-pty as unavailable, and
- * the desktop shell is not part of the binary at all.
+ * unavailable and the WebUI terminal panel reports node-pty as unavailable.
  */
 const EXTERNALS = [
   'playwright-core',
@@ -59,7 +58,6 @@ const EXTERNALS = [
   '@playwright/test',
   'chromium-bidi',
   'node-pty',
-  'electron',
 ];
 
 /**

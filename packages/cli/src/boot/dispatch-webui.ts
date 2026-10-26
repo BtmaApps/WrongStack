@@ -15,7 +15,6 @@
  * single-PR extraction.
  */
 
-import * as path from 'node:path';
 import type { EventBus } from '@wrongstack/contracts/kernel';
 import type {
   Config,
@@ -37,12 +36,6 @@ import type { TerminalRenderer } from '../renderer.js';
 import type { AutonomyMode } from '../services/autonomy-mode.js';
 import { terminalLink, terminalText } from '../terminal-format.js';
 import type { CliWebUIOptions } from '../webui-server-options.js';
-import {
-  WEBUI_SESSION_CHILD_CAPABILITIES,
-  type WebuiSessionChildOptions,
-  writeWebuiSessionChildError,
-  writeWebuiSessionChildReady,
-} from './webui-session-child.js';
 
 export interface WebUIDispatchContext {
   agent: Agent;
@@ -169,8 +162,6 @@ export interface WebUIDispatchContext {
   onSessionRetired?: CliWebUIOptions['onSessionRetired'];
   /** The process's single background-delegation auto-wake controller. */
   leaderAutoWake?: CliWebUIOptions['leaderAutoWake'];
-  /** Internal one-session child launch metadata, when --webui-session-child is active. */
-  webuiSessionChild?: WebuiSessionChildOptions | undefined;
 }
 
 /**
@@ -221,16 +212,14 @@ export async function runWebUIDispatch(ctx: WebUIDispatchContext): Promise<numbe
     hqFleetControl,
     onSessionRetired,
     leaderAutoWake,
-    webuiSessionChild,
   } = ctx;
-  const isSessionChild = Boolean(webuiSessionChild);
-  const isVibeUi = !isSessionChild && flags['vibeui'] === true;
-  if (!isSessionChild && flags['simpleui-retired'] === true) {
+  const isVibeUi = flags['vibeui'] === true;
+  if (flags['simpleui-retired'] === true) {
     renderer.writeInfo(
       color.yellow('  SimpleUI has been retired and replaced by VibeUI — opening VibeUI instead.'),
     );
   }
-  if (!isSessionChild && flags['full-auto'] === true) {
+  if (flags['full-auto'] === true) {
     renderer.writeInfo(
       color.yellow('  --full-auto was retired with SimpleUI and is ignored. Use --yolo instead.'),
     );
@@ -294,7 +283,6 @@ export async function runWebUIDispatch(ctx: WebUIDispatchContext): Promise<numbe
   let frontendDistDir: string | undefined;
   try {
     webuiHost =
-      webuiSessionChild?.host ??
       flagValue(['webui-host', 'host']) ??
       process.env['WEBUI_HOST'] ??
       process.env['WS_HOST'] ??
@@ -303,48 +291,27 @@ export async function runWebUIDispatch(ctx: WebUIDispatchContext): Promise<numbe
     // --http-port/--ws-port and environment names as aliases, but resolve
     // exactly one port so `--port` also controls the page users open.
     const defaultPort = isVibeUi ? 3476 : 3456;
-    webuiPort =
-      webuiSessionChild?.port ??
-      parsePort(
-        flagValue(['webui-port', 'http-port', 'port', 'ws-port']) ??
-          process.env['WEBUI_PORT'] ??
-          process.env['PORT'] ??
-          process.env['WS_PORT'],
-        defaultPort,
-        '--port',
-      );
+    webuiPort = parsePort(
+      flagValue(['webui-port', 'http-port', 'port', 'ws-port']) ??
+        process.env['WEBUI_PORT'] ??
+        process.env['PORT'] ??
+        process.env['WS_PORT'],
+      defaultPort,
+      '--port',
+    );
     webuiAccessToken =
-      webuiSessionChild?.token ??
-      flagValue(['webui-token']) ??
-      process.env['WEBUI_TOKEN'] ??
-      process.env['WEBUI_AUTH_TOKEN'];
+      flagValue(['webui-token']) ?? process.env['WEBUI_TOKEN'] ?? process.env['WEBUI_AUTH_TOKEN'];
     webuiPublicUrl =
-      webuiSessionChild?.publicUrl ??
-      flagValue(['webui-public-url', 'public-url']) ??
-      process.env['WEBUI_PUBLIC_URL'];
+      flagValue(['webui-public-url', 'public-url']) ?? process.env['WEBUI_PUBLIC_URL'];
     webuiPublicWsUrl =
-      webuiSessionChild?.publicWsUrl ??
-      flagValue(['webui-public-ws-url', 'public-ws-url']) ??
-      process.env['WEBUI_PUBLIC_WS_URL'];
+      flagValue(['webui-public-ws-url', 'public-ws-url']) ?? process.env['WEBUI_PUBLIC_WS_URL'];
     webuiRequireToken =
-      webuiSessionChild?.requireToken ??
-      flagBoolean(['webui-require-token', 'require-token']) ??
-      envFlag('WEBUI_REQUIRE_TOKEN');
+      flagBoolean(['webui-require-token', 'require-token']) ?? envFlag('WEBUI_REQUIRE_TOKEN');
     if (isVibeUi) {
       const { resolveVibeUiDistDir } = await import('../vibeui-dist.js');
       frontendDistDir = resolveVibeUiDistDir();
     }
   } catch (err) {
-    if (webuiSessionChild) {
-      await writeWebuiSessionChildError(webuiSessionChild.readyFile, {
-        protocolVersion: webuiSessionChild.protocolVersion,
-        runtimeId: webuiSessionChild.runtimeId,
-        parentShellId: webuiSessionChild.parentShellId,
-        phase: 'validate_args',
-        recoverable: false,
-        error: err,
-      }).catch(() => undefined);
-    }
     renderer.setSilent(false);
     renderer.writeInfo(color.red(`  ${err instanceof Error ? err.message : String(err)}`));
     return 1;
@@ -366,11 +333,9 @@ export async function runWebUIDispatch(ctx: WebUIDispatchContext): Promise<numbe
     publicUrl: webuiPublicUrl,
     publicWsUrl: webuiPublicWsUrl,
     requireToken: webuiRequireToken,
-    strictPort: webuiSessionChild?.strictPort,
     projectRoot,
     appConfig: config,
-    open: webuiSessionChild ? false : !!flags.open,
-    webuiSessionChild,
+    open: !!flags.open,
     agentTranscripts,
     hqAllowExec: flagBoolean(['hq-allow-exec']) ?? false,
     modelsRegistry,
@@ -424,52 +389,7 @@ export async function runWebUIDispatch(ctx: WebUIDispatchContext): Promise<numbe
     // listening, using the RESOLVED port. Requested ports auto-advance past
     // busy ports inside runWebUI, so a banner printed up-front lies whenever
     // the default when it is taken (a second instance, leftover socket).
-    onListening: ({ httpPort, host, url, authToken }) => {
-      if (webuiSessionChild) {
-        void writeWebuiSessionChildReady(webuiSessionChild.readyFile, {
-          type: 'webui.session_child.ready',
-          protocolVersion: webuiSessionChild.protocolVersion,
-          runtime: {
-            role: 'session-child',
-            runtimeId: webuiSessionChild.runtimeId,
-            pid: process.pid,
-            parentPid: webuiSessionChild.parentPid,
-            parentShellId: webuiSessionChild.parentShellId,
-            startedAt: new Date().toISOString(),
-          },
-          project: {
-            projectRoot,
-            workingDir: webuiSessionChild.workingDir,
-            projectSlug: path.basename(projectRoot) || projectRoot,
-            projectName: path.basename(projectRoot) || projectRoot,
-          },
-          session: {
-            sessionId: session.id,
-            created: !webuiSessionChild.resume,
-            resumed: webuiSessionChild.resume,
-            provider: config.provider,
-            model: config.model,
-          },
-          endpoint: {
-            surface: 'webui',
-            host,
-            httpPort,
-            url,
-            ...(webuiPublicUrl ? { publicUrl: webuiPublicUrl } : {}),
-            ...(webuiPublicWsUrl ? { publicWsUrl: webuiPublicWsUrl } : {}),
-            requireToken: webuiRequireToken,
-            auth: authToken
-              ? { scheme: 'registry-token', tokenPresent: true, token: authToken }
-              : { scheme: 'none', tokenPresent: false },
-          },
-          registry: {
-            webuiInstanceRegistered: true,
-            sessionRegistered: true,
-          },
-          capabilities: [...WEBUI_SESSION_CHILD_CAPABILITIES],
-        }).catch(() => undefined);
-        return;
-      }
+    onListening: ({ url }) => {
       const surface = isVibeUi ? 'VibeUI' : 'WebUI';
       renderer.writeInfo(
         `  ✦ ${terminalText(surface, 'success', { bold: true })} ${terminalText('running →', 'muted')} ${terminalLink(url)}`,
@@ -540,16 +460,6 @@ export async function runWebUIDispatch(ctx: WebUIDispatchContext): Promise<numbe
         resolve(0);
       })
       .catch((err) => {
-        if (webuiSessionChild) {
-          void writeWebuiSessionChildError(webuiSessionChild.readyFile, {
-            protocolVersion: webuiSessionChild.protocolVersion,
-            runtimeId: webuiSessionChild.runtimeId,
-            parentShellId: webuiSessionChild.parentShellId,
-            phase: 'start_server',
-            recoverable: false,
-            error: err,
-          }).catch(() => undefined);
-        }
         renderer.setSilent(false);
         // Report through the renderer, not console: `runWebUI` installs a
         // quiet console for the interactive surface, and a `console.debug`

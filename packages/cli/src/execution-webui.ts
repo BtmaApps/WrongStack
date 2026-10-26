@@ -17,7 +17,6 @@ export async function runExecutionWebui(deps: ExecuteDeps): Promise<number> {
       flags,
       activateSessionIdentity,
       updateInfo: initialUpdateInfo,
-      webuiSessionChild,
     },
     session: {
       session,
@@ -106,7 +105,6 @@ export async function runExecutionWebui(deps: ExecuteDeps): Promise<number> {
       sddSubagentFactory,
       statusTracker,
       updateInfo: bootUpdateInfo,
-      webuiSessionChild,
       // Stopping a tab's run stops the work that tab started — its
       // subagents included. Aborting the leader's controller only unwinds
       // workers it is BLOCKED on; anything started with `spawn_subagent` +

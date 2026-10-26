@@ -51,7 +51,7 @@ Relevant active memory is retrieved on demand and appended to matching read/tree
 
 Automatic injection is relevance-gated independently from memory quality: importance, confidence, and persistence may rank an already-relevant record but cannot make an unrelated record eligible. Exact path/symbol/command anchors are preferred; lexical-only results require meaningful term evidence and are capped at two per tool result. Graph expansion starts only from a concrete path or exact-anchor seed, requires shared structural evidence, and contributes at most one result. Project-root (`.`) anchors are never universal file matches. Pending todo chatter is excluded from task signals. At 82% context pressure the injector allows at most one memory/600 characters, and at 95% it injects nothing.
 
-CLI, TUI, WebUI, VibeUI, and Desktop use the same SAGE backend and injection rules. Relative tool paths are resolved from the active working directory before file/directory anchors are matched.
+CLI, TUI, WebUI, and VibeUI use the same SAGE backend and injection rules. Relative tool paths are resolved from the active working directory before file/directory anchors are matched.
 
 Rich read-only and maintenance tools are also registered: `memory_for_file`, `memory_for_path`, `memory_search`, `memory_graph`, `memory_verify`, `memory_hygiene`, and `memory_candidates`.
 

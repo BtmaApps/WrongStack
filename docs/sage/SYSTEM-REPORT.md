@@ -6,7 +6,7 @@
 > **Supersedes for day-to-day reading:** sections of [`ARCHITECTURE.md`](../archive/sage/ARCHITECTURE.md) that still describe JSONL as the runtime store (JSONL is migration-only).<br>
 > **Package owner summary:** [`packages/sage/README.md`](../../packages/sage/README.md)
 
-This document is the end-to-end reference for SAGE: database layout, process model, IPC, retrieval, tools, MCP, middleware, host wiring, and every host surface (CLI, TUI, WebUI, VibeUI, Desktop, ACP).
+This document is the end-to-end reference for SAGE: database layout, process model, IPC, retrieval, tools, MCP, middleware, host wiring, and every host surface (CLI, TUI, WebUI, VibeUI, ACP).
 
 ---
 
@@ -25,7 +25,7 @@ This document is the end-to-end reference for SAGE: database layout, process mod
 11. [MCP (`@wrongstack/sage-mcp`)](#11-mcp-wrongstacksage-mcp)
 12. [CLI and TUI](#12-cli-and-tui)
 13. [WebUI and webui-server](#13-webui-and-webui-server)
-14. [VibeUI and Desktop](#14-vibeui-and-desktop)
+14. [VibeUI and ACP](#14-vibeui-and-acp)
 15. [Prompt / system-context channels](#15-prompt--system-context-channels)
 16. [Configuration](#16-configuration)
 17. [Security model](#17-security-model)
@@ -62,7 +62,7 @@ This document is the end-to-end reference for SAGE: database layout, process mod
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
-│  Surfaces: CLI · TUI · WebUI · VibeUI · Desktop · ACP · MCP          │
+│  Surfaces: CLI · TUI · WebUI · VibeUI · ACP · MCP                    │
 ├──────────────────────────────────────────────────────────────────────┤
 │  Wiring: setupSage() · tool registry · WS handlers · slash /memory   │
 ├──────────────────────────────────────────────────────────────────────┤
@@ -715,7 +715,7 @@ Session consolidator remains registered on the WebUI agent services path.
 
 ---
 
-## 14. VibeUI and Desktop
+## 14. VibeUI and ACP
 
 ### VibeUI
 
@@ -724,12 +724,12 @@ Session consolidator remains registered on the WebUI agent services path.
 - Full CRUD/review remain WebUI/TUI responsibilities
 - SimpleUI, which previously had a compact memory drawer, was retired and replaced by VibeUI
 
-### Desktop / ACP
+### ACP
 
 - Same `createProjectSageMemoryPort` composition path as other hosts
-- ACP and Desktop must not open competing SQLite writers
+- ACP must not open a competing SQLite writer
 
-Invariant: **CLI, TUI, WebUI, VibeUI, and Desktop share one SAGE backend and injection policy.** Relative tool paths resolve from the live working directory before anchor matching.
+Invariant: **CLI, TUI, WebUI, and VibeUI share one SAGE backend and injection policy.** Relative tool paths resolve from the live working directory before anchor matching.
 
 ---
 

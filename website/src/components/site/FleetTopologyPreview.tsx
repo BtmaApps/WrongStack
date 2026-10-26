@@ -297,8 +297,8 @@ export function FleetTopologyPreview() {
               tone="green"
               icon={Monitor}
               eyebrow="Client surface"
-              title="Desktop"
-              subtitle="Electron · connected"
+              title="WrongStack VibeUI"
+              subtitle="focused workspace · connected"
               metrics={[
                 ['agents', '0'],
                 ['uptime', '19m'],

@@ -37,7 +37,7 @@ describe('TUI startup diagnostics', () => {
     expect(shouldCaptureTuiStartup({}, [], true)).toBe(true);
     expect(shouldCaptureTuiStartup({ tui: true }, [], false)).toBe(false);
     expect(shouldCaptureTuiStartup({}, ['models'], true)).toBe(false);
-    for (const flag of ['no-tui', 'webui', 'hq', 'desktop', 'remote', 'no-interactive']) {
+    for (const flag of ['no-tui', 'webui', 'hq', 'remote', 'no-interactive']) {
       expect(shouldCaptureTuiStartup({ [flag]: true }, [], true)).toBe(false);
     }
     expect(shouldCaptureTuiStartup({ prompt: 'hello' }, [], true)).toBe(false);

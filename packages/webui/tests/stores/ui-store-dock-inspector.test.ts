@@ -671,26 +671,6 @@ describe('persist merge', () => {
     expect(() => merge(null, current())).not.toThrow();
   });
 
-  it('forces the desktop shell back to home on rehydrate', () => {
-    (window as unknown as { wrongstackDesktopHost?: unknown }).wrongstackDesktopHost = {};
-    try {
-      const out = merge({ currentView: 'settings', sidebarOpen: true }, current());
-      expect(out).toMatchObject({ currentView: 'chat', activeActivity: 'chat' });
-    } finally {
-      delete (window as unknown as { wrongstackDesktopHost?: unknown }).wrongstackDesktopHost;
-    }
-  });
-
-  it('detects the desktop shell from the query string too', () => {
-    history.pushState(null, '', '/?shell=desktop');
-    try {
-      const out = merge({ currentView: 'settings' }, current());
-      expect(out.currentView).toBe('chat');
-    } finally {
-      history.pushState(null, '', '/');
-    }
-  });
-
   it('leaves a browser session on the persisted view', () => {
     history.pushState(null, '', '/');
     const out = merge({ currentView: 'settings' }, current());

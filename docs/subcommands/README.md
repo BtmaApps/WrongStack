@@ -50,13 +50,12 @@ These forms are normalized or intercepted before named-subcommand dispatch:
 
 | Form | Equivalent behavior |
 |---|---|
-| `wstack desktop` | `wstack --desktop` |
 | `wstack webui` | `wstack --webui` |
 | `wstack hq` / `wstack hq serve` | `wstack --hq` |
 | `wstack resume <id>` | `wstack --resume <id>` |
 | `wstack quick` | Set `--quick` and `--tui`, then continue through normal TUI startup |
 
-`desktop`, `webui`, and `resume` are therefore user-facing command forms, but they are not keys in `subcommands`. `mailbox serve`, by contrast, is a nested action handled by the registered `mailbox` key.
+`webui` and `resume` are therefore user-facing command forms, but they are not keys in `subcommands`. `mailbox serve`, by contrast, is a nested action handled by the registered `mailbox` key.
 
 ## Subcommand handler interface
 

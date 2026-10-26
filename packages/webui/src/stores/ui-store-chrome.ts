@@ -1,17 +1,5 @@
 import type { SessionChromeState, UIState } from './ui-store-types.js';
 
-export function isDesktopShellStorageContext(): boolean {
-  if (typeof window === 'undefined') return false;
-  if ((window as unknown as { wrongstackDesktopHost?: unknown }).wrongstackDesktopHost) {
-    return true;
-  }
-  try {
-    return new URLSearchParams(window.location.search).get('shell') === 'desktop';
-  } catch {
-    return false;
-  }
-}
-
 export function homeNavigationStatePatch(
   options: { sidebarOpen?: boolean | undefined } = {},
 ): Partial<UIState> {

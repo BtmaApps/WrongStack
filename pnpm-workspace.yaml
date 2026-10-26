@@ -28,23 +28,16 @@ overrides:
   # parseCommaParts) and quadratic `{a},b}` expansion — fixed in 1.1.21 /
   # 2.1.7 / 5.0.12. Pinned PER MAJOR LINE, because each minimatch major
   # depends on its own brace-expansion major and a single global range would
-  # hand minimatch@3 an API it does not speak. Pulled in by electron-builder
-  # (desktop packaging) and ts-json-schema-generator (webui-protocol build).
+  # hand minimatch@3 an API it does not speak. Pulled in by
+  # ts-json-schema-generator (webui-protocol build).
   brace-expansion@<1.1.21: ^1.1.21
   brace-expansion@>=2.0.0 <2.1.7: ^2.1.7
   brace-expansion@>=4.0.0 <5.0.12: ^5.0.12
   # fast-uri <3.1.8: inconsistent host case normalization via percent-encoding.
-  # Transitive through ajv (webui-protocol, electron-builder).
+  # Transitive through ajv (webui-protocol).
   fast-uri@>=3.0.0 <3.1.8: ^3.1.8
-  # GHSA-ch52-4w7c-c8xp: max-stale handling can disclose cross-user cached
-  # responses. Pulled in through Electron's download stack; fixed in 4.3.0.
-  http-cache-semantics: ">=4.3.0"
   # GHSA-68fv-2mgg-jv7q: indexed source-map offsets can block the event loop.
   source-map-js@<1.2.2: 1.2.2
-  # GHSA-hp3w-g68c-fv3c: remove sprintf-js via the maintained proxy agent.
-  # @electron/get@3 calls bootstrap(), which global-agent@4 still exports.
-  # v4 replaces the roarr/sprintf-js logging dependency with its own logger.
-  "@electron/get@3.1.0>global-agent": 4.1.3
   wrongstack: link:apps/wrongstack
 peerDependencyRules:
   # TypeScript 7 was released before i18next/react-i18next widened their peer
@@ -59,20 +52,6 @@ auditConfig:
   ignoreGhsas:
     - GHSA-gv7w-rqvm-qjhr
 allowBuilds:
-  # electron-winstaller: arrives transitively with electron-builder (desktop
-  # packaging). Its `install` script (`script/select-7z-arch.js`) copies the
-  # 7-Zip executable and DLL for the HOST architecture out of the package's own
-  # bundled `vendor/` directory — `vendor/7z-x64.exe` -> `vendor/7z.exe`. It
-  # downloads nothing and executes nothing remote; both candidates ship inside
-  # the tarball. Reviewed 2026-09-09 against 5.4.0.
-  #
-  # Only the Squirrel.Windows target consumes those binaries and we build NSIS
-  # and portable, so this authorises a script whose OUTPUT we do not use. It is
-  # here because pnpm 12 does not warn about an unapproved lifecycle script —
-  # it fails `install` outright with ERR_PNPM_IGNORED_BUILDS, so the repo
-  # cannot be installed at all while electron-builder is a dependency and this
-  # entry is absent. Measured, not assumed: removing it breaks `pnpm install`.
-  electron-winstaller: true
   esbuild: true
   # node-pty is an optional WebUI terminal dependency (used by the
   # integrated shell panel). We allow its prebuild-install script so the
@@ -89,7 +68,6 @@ allowBuilds:
   # architecture test (`build-allowlist-freshness.test.ts`) prevents
   # this from coming back.
 onlyBuiltDependencies:
-  - electron-winstaller
   - esbuild
   - node-pty
 # Install cooldown: refuse versions published less than 24h ago. This is the

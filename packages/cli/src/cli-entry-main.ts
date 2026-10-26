@@ -3,7 +3,7 @@
  *
  * This module exists to keep the interactive graph out of the boot graph.
  * `initializeCli()` handles everything that can short-circuit — `--help`,
- * `--desktop`, `--hq`, and every `wstack <subcommand>` — and returns a plain
+ * `--hq`, and every `wstack <subcommand>` — and returns a plain
  * exit code in those cases. Only when it returns a live `CliContext` does the
  * session actually need the interactive machinery.
  *

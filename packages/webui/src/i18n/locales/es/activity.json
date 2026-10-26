@@ -130,8 +130,6 @@
   "menu": {
     "moreWithHidden": "Más, {{count}} elementos ocultos",
     "moreOptions": "Más opciones",
-    "moreCompactHidden": "Más — {{count}} paneles/vistas ocultos, paleta, tema, monitores",
-    "moreCompact": "Más — paleta, tema, monitores",
     "moreFull": "Más — paleta, tema, atajos, monitores",
     "commandPalette": "Paleta de comandos",
     "keyboardShortcuts": "Atajos de teclado",
@@ -847,7 +845,6 @@
   },
   "terminal": {
     "resize": "Cambiar tamaño de terminales",
-    "labelSingular": "Terminal",
     "labelPlural": "Terminales",
     "projectShell": "Shell del proyecto",
     "maxTerminals": "Máximo {{count}} terminales",

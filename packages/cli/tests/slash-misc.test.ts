@@ -13,7 +13,7 @@ import {
   renderSlashDeepHelp,
   renderSlashFocusedHelp,
 } from '../src/slash-commands/slash-deep-help.js';
-import { buildDesktopCommand, buildWebuiCommand } from '../src/slash-commands/surfaces.js';
+import { buildWebuiCommand } from '../src/slash-commands/surfaces.js';
 
 function fakeCtx(): Context {
   const state = {
@@ -443,13 +443,6 @@ function makeRegistry(): SlashCommandRegistry {
 }
 
 describe('surface access commands', () => {
-  it('explains the desktop app without launching a process', async () => {
-    const cmd = buildDesktopCommand();
-    const res = await cmd.run('', {} as never);
-    expect(res?.message ?? '').toContain('WrongStack Desktop');
-    expect(res?.message ?? '').toContain('only explains');
-  });
-
   it('supports /webui and /web alias with informational guidance', async () => {
     const reg = new SlashCommandRegistry();
     reg.register(buildWebuiCommand());

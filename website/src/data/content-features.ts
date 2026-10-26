@@ -212,7 +212,7 @@ export const featureStories: Feature[] = [
       'Director tasks, delegation, fleets, the global mailbox, collaborative debugging and ACP ensemble work share structured identities and events.',
     details: [
       'Task ownership and lineage stay authoritative',
-      'Mailbox aliases connect CLI, TUI, WebUI and Desktop',
+      'Mailbox aliases connect CLI, TUI, WebUI and VibeUI',
       'Collaborative debugging streams role-bound findings',
       'Pending tasks can be rebalanced without losing their identity',
     ],

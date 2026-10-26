@@ -81,8 +81,7 @@ function inLockfile(name: string): boolean {
  * The installed `package.json` for a dependency, wherever pnpm put it.
  *
  * A DIRECT dependency is hoisted to `node_modules/<name>`, but a transitive
- * one — `electron-winstaller`, which arrives under `electron-builder` — only
- * ever exists inside the content-addressed store at
+ * one only ever exists inside the content-addressed store at
  * `node_modules/.pnpm/<name>@<version>[_<peerhash>]/node_modules/<name>`.
  * Looking only at the top level reported every transitive entry as "not
  * installed", which is the opposite of the truth and would have pushed a

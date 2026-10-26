@@ -1,5 +1,4 @@
 import type { PersistOptions } from 'zustand/middleware';
-import { homeNavigationStatePatch, isDesktopShellStorageContext } from './ui-store-chrome.js';
 import type {
   Activity,
   ActivityBarOrder,
@@ -165,9 +164,7 @@ export const uiPersistOptions: PersistOptions<UIState, Partial<UIState>> = {
       SIDEBAR_MIN_WIDTH,
       Math.min(SIDEBAR_MAX_WIDTH, merged.sidebarWidth),
     );
-    return isDesktopShellStorageContext()
-      ? { ...merged, ...homeNavigationStatePatch({ sidebarOpen: false }) }
-      : merged;
+    return merged;
   },
   partialize: (s) => ({
     sidebarOpen: s.sidebarOpen,

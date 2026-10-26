@@ -700,7 +700,7 @@ describe('setupProviderRuntime — config watchers', () => {
   });
 
   it('adopts an external bootstrap profile edit and rebinds the layers', async () => {
-    // A desktop/external edit changes the selection in the root bootstrap only;
+    // An external edit changes the selection in the root bootstrap only;
     // ConfigStore is never touched, so only the bootstrap watcher can see it.
     utilsMod.readJsonObjectFile = vi.fn(
       async () => ({ version: 1, activeProfile: 'work' }) as Record<string, unknown>,

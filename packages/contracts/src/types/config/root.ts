@@ -66,7 +66,7 @@ export interface Config {
    */
   maxConcurrent?: number | undefined;
   /**
-   * Display language for the UI chrome (WebUI + desktop shell). A BCP-47-ish
+   * Display language for the UI chrome (WebUI + VibeUI). A BCP-47-ish
    * code from SUPPORTED_LOCALES (en/tr/de/fr/it/es/pt-BR). Persisted here so a
    * change in one surface propagates to all others via the shared machine
    * config; each surface may keep a local cache for instant reactivity. When

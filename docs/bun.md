@@ -24,7 +24,7 @@ a successful full matrix is still required before release.
 WebSocket hosts load the actual npm `ws` implementation through typed runtime
 helpers, instead of Bun's built-in compatibility shim. HTTP WebSocket proxy
 handshakes support both absolute HTTP URIs and origin-form paths.
-Desktop uses the same runtime selection. Published server bundles include the
+Published server bundles include the
 private `ws/native` entry, so ordinary registry installs do not need the patch.
 
 Under Bun, continuous memory profiling records JavaScriptCore heap statistics

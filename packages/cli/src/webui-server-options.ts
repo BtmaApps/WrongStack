@@ -14,7 +14,6 @@ import type { BrainAutoRisk } from '@wrongstack/core/execution';
 import type { TrustBoundary } from '@wrongstack/core/security';
 import type { MCPRegistry } from '@wrongstack/mcp';
 import type { VectorMemoryStore } from '@wrongstack/vector-memory';
-import type { WebuiSessionChildOptions } from './boot/webui-session-child.js';
 
 /**
  * CLI-shaped webui options. Distinct from the standalone
@@ -49,8 +48,6 @@ export interface CliWebUIOptions {
   accessToken?: string | undefined;
   /** Fail instead of auto-advancing when the requested HTTP/WS port is busy. */
   strictPort?: boolean | undefined;
-  /** Internal one-session child launch metadata for the multi-session parent shell. */
-  webuiSessionChild?: WebuiSessionChildOptions | undefined;
   /**
    * Live fleet concurrency + lifetime spawn budget for WebUI (issue #323).
    * Merged into `fleet.concurrency_update` broadcasts.
@@ -147,7 +144,6 @@ export interface CliWebUIOptions {
     host: string;
     url: string;
     authToken: string;
-    webuiInstanceRegistered: boolean;
   }) => void;
   modelsRegistry?: ModelsRegistry | undefined;
   providerAuthRegistry?: import('@wrongstack/core/registry').ProviderAuthRegistry | undefined;

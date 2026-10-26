@@ -36,7 +36,7 @@ describe('build lineage', () => {
     const root = await mkdtemp(path.join(tmpdir(), 'wrongstack-lineage-'));
     temporaryRoots.push(root);
     const packageDist = path.join(root, 'packages/core/dist');
-    const appDist = path.join(root, 'apps/desktop/dist');
+    const appDist = path.join(root, 'apps/demo/dist');
     const websiteDist = path.join(root, 'website/dist');
     await Promise.all([
       mkdir(packageDist, { recursive: true }),
@@ -45,12 +45,12 @@ describe('build lineage', () => {
     ]);
     await Promise.all([
       writeFile(path.join(packageDist, 'index.js'), 'core'),
-      writeFile(path.join(appDist, 'main.js'), 'desktop'),
+      writeFile(path.join(appDist, 'main.js'), 'demo'),
       writeFile(path.join(websiteDist, 'index.html'), 'website'),
     ]);
 
     await expect(collectScopedDistFiles(root)).resolves.toEqual([
-      'apps/desktop/dist/main.js',
+      'apps/demo/dist/main.js',
       'packages/core/dist/index.js',
     ]);
   });

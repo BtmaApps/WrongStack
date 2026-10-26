@@ -93,25 +93,15 @@ export const DESKTOP_PANEL_PRIORITY: readonly Activity[] = [
   'design',
 ];
 
-// Compact (desktop shell): h-9 icons, no project name text.
-// Full   (browser WebUI): h-11 icons, taller brand area with project name.
-export const COMPACT_RESERVED_PX = 132;
-
-export const COMPACT_SLOT_PX = 38;
-
+// h-11 icons, taller brand area with project name.
 export const FULL_RESERVED_PX = 165;
 
 export const FULL_SLOT_PX = 46;
 
-export function calculateDesktopActivityCapacity(
-  viewportHeight: number,
-  isDesktopShell: boolean,
-): number {
+export function calculateDesktopActivityCapacity(viewportHeight: number): number {
   const max = PANELS.length + VIEWS.length;
   const height = Number.isFinite(viewportHeight) ? viewportHeight : 720;
-  const reserved = isDesktopShell ? COMPACT_RESERVED_PX : FULL_RESERVED_PX;
-  const slot = isDesktopShell ? COMPACT_SLOT_PX : FULL_SLOT_PX;
-  const slots = Math.floor((height - reserved) / slot);
+  const slots = Math.floor((height - FULL_RESERVED_PX) / FULL_SLOT_PX);
   return Math.max(DESKTOP_CORE_PANEL_IDS.length, Math.min(max, slots));
 }
 
@@ -227,7 +217,7 @@ export function readViewportHeight(): number {
   return window.visualViewport?.height ?? window.innerHeight;
 }
 
-export function useDesktopActivityCapacity(isDesktopShell: boolean): number {
+export function useDesktopActivityCapacity(): number {
   const [height, setHeight] = useState(readViewportHeight);
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -240,5 +230,5 @@ export function useDesktopActivityCapacity(isDesktopShell: boolean): number {
       window.visualViewport?.removeEventListener('resize', update);
     };
   }, []);
-  return calculateDesktopActivityCapacity(height, isDesktopShell);
+  return calculateDesktopActivityCapacity(height);
 }

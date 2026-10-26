@@ -122,8 +122,7 @@ export function scanUnusedDependencies(
     configText.set(dir, list);
   }
 
-  // Root scripts orchestrate every package (`scripts/package-desktop.mjs` runs
-  // the desktop app's electron-builder), and root devDependencies are on every
+  // Root scripts orchestrate every package, and root devDependencies are on every
   // package's PATH — so root literals count for all, and all count for root.
   const rootLiterals = input.stringLiterals('');
   const everyLiteral = new Set<string>();

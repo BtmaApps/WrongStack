@@ -130,8 +130,6 @@
   "menu": {
     "moreWithHidden": "Altro, {{count}} elementi nascosti",
     "moreOptions": "Altre opzioni",
-    "moreCompactHidden": "Altro — {{count}} pannelli/viste nascosti, palette, tema, monitor",
-    "moreCompact": "Altro — palette, tema, monitor",
     "moreFull": "Altro — palette, tema, scorciatoie, monitor",
     "commandPalette": "Palette dei comandi",
     "keyboardShortcuts": "Scorciatoie da tastiera",
@@ -847,7 +845,6 @@
   },
   "terminal": {
     "resize": "Ridimensiona terminali",
-    "labelSingular": "Terminale",
     "labelPlural": "Terminali",
     "projectShell": "Shell del progetto",
     "maxTerminals": "Massimo {{count}} terminali",

@@ -140,8 +140,8 @@ describe('helpCmd', () => {
     expect(output).toContain('wstack import-claude-code');
     // Parsed for old launch scripts, but read nowhere: not advertised.
     expect(output).not.toContain('--confirm-destructive');
-    expect(output).toContain('wstack desktop');
-    expect(output).toContain('--desktop');
+    expect(output).not.toContain('wstack desktop');
+    expect(output).not.toContain('--desktop');
     expect(output).toContain('wstack webui');
     expect(output).toContain('wstack hq');
     expect(output).toContain('--hq');

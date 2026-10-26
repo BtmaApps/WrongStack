@@ -409,12 +409,10 @@ describe('defaultCheckProcessAlive', () => {
 describe('coverage runner script', () => {
   it('serializes package-local coverage entrypoints', () => {
     // Map of every coverage-gate participant to its workspace directory.
-    // desktop is an app under apps/, not a package under packages/.
     const gateLocation: Record<string, string> = {
       'plug-lsp': 'packages',
       webui: 'packages',
       'webui-protocol': 'packages',
-      desktop: 'apps',
     };
     for (const [packageName, parentDir] of Object.entries(gateLocation)) {
       const packageJson = JSON.parse(
@@ -453,11 +451,6 @@ describe('coverage runner script', () => {
       {
         label: 'webui-protocol package',
         args: ['--filter', '@wrongstack/webui-protocol', 'test:coverage'],
-        vitest: true,
-      },
-      {
-        label: 'Desktop package',
-        args: ['--filter', '@wrongstack/desktop', 'test:coverage'],
         vitest: true,
       },
       { label: 'Coverage runtime scripts', args: ['test:coverage:scripts'], vitest: true },
@@ -605,7 +598,7 @@ describe('coverage runner script', () => {
         ),
       }),
     );
-    for (const name of ['plug-lsp', 'webui', 'webui-protocol', 'desktop']) {
+    for (const name of ['plug-lsp', 'webui', 'webui-protocol']) {
       const dir = path.join(directory, 'packages', name);
       mkdirSync(dir, { recursive: true });
       writeFileSync(

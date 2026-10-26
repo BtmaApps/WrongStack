@@ -30,7 +30,6 @@ export type {
   AgentLiveStatus,
   SessionLiveStatus,
   SessionRegistryEntry,
-  SessionWebUIEndpointHint,
 } from '../session-catalog/session-registry.js';
 /**
  * @deprecated Test/migration adapter; production ownership uses SessionRegistry
@@ -303,6 +302,7 @@ export {
   type SessionStoreOptions,
 } from './session-store.js';
 export { orderSessionTree, type SessionTreeRow, sessionTreePrefix } from './session-tree.js';
+export { mapWithConcurrency } from './storage-concurrency.js';
 export {
   emptyTaskFile,
   loadTasks,
@@ -322,4 +322,3 @@ export {
   type ToolAuditLogOptions,
   type VerifyResult,
 } from './tool-audit-log.js';
-export { mapWithConcurrency } from './storage-concurrency.js';

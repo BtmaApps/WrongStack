@@ -40,7 +40,7 @@ const differentiators = [
   {
     icon: Mail,
     title: 'Communication is durable',
-    body: 'Global Mailbox connects named agents and independent CLI, TUI, WebUI and Desktop sessions with presence and acknowledgements.',
+    body: 'Global Mailbox connects named agents and independent CLI, TUI, WebUI and VibeUI sessions with presence and acknowledgements.',
     href: '/mailbox',
   },
   {
@@ -58,7 +58,7 @@ const differentiators = [
   {
     icon: ShieldCheck,
     title: 'Open all the way down',
-    body: 'CLI, TUI, WebUI, VibeUI, Desktop, HQ, fleet and provider layers live in one MIT-licensed monorepo with no paid feature gate.',
+    body: 'CLI, TUI, WebUI, VibeUI, HQ, fleet and provider layers live in one MIT-licensed monorepo with no paid feature gate.',
     href: '/architecture',
   },
 ] as const;

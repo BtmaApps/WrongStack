@@ -67,48 +67,6 @@ describe('registerWebuiInstance', () => {
     });
   });
 
-  it('passes optional multi-session child metadata to the registry record', async () => {
-    const { calls, deps } = captureRegisterCalls();
-    registerWebuiInstance(
-      {
-        pid: 1234,
-        surface: 'webui',
-        host: '127.0.0.1',
-        httpPort: 3456,
-        projectRoot: '/home/me/projects/acme',
-        startedAt: '2026-06-13T00:00:00.000Z',
-        registryBaseDir: '/cfg',
-        authToken: 'token-a',
-        role: 'session-child',
-        sessionId: 'sess-a',
-        parentPid: 99,
-        parentShellId: 'shell-a',
-        runtimeId: 'runtime-a',
-        attachable: true,
-        lastReadyAt: '2026-06-13T00:00:01.000Z',
-        protocolVersion: 1,
-        capabilities: ['multi-session-child'],
-      },
-      deps,
-    );
-
-    await Promise.resolve();
-    expect(calls).toHaveLength(1);
-    expect(calls[0]?.record).toMatchObject({
-      role: 'session-child',
-      sessionId: 'sess-a',
-      parentPid: 99,
-      parentShellId: 'shell-a',
-      runtimeId: 'runtime-a',
-      attachable: true,
-      authToken: 'token-a',
-      auth: { scheme: 'registry-token', tokenPresent: true },
-      lastReadyAt: '2026-06-13T00:00:01.000Z',
-      protocolVersion: 1,
-      capabilities: ['multi-session-child'],
-    });
-  });
-
   it('swallows registry write failures (best-effort)', async () => {
     expect(() =>
       registerWebuiInstance(

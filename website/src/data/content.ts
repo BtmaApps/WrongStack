@@ -166,7 +166,7 @@ export const moreNav = [
   {
     href: '/interfaces',
     label: 'Interfaces',
-    description: 'CLI, TUI, WebUI, VibeUI, Desktop and HQ',
+    description: 'CLI, TUI, WebUI, VibeUI and HQ',
     icon: PanelTop,
     group: 'learn',
   },
@@ -597,22 +597,6 @@ export const surfaces = [
       'SAGE memory graph',
     ],
     icon: CodeXml,
-  },
-  {
-    id: 'desktop',
-    name: 'Desktop',
-    tagline: 'The local cockpit',
-    description:
-      'An Electron shell for multiple local projects and concurrent sessions, with native navigation, runtime isolation and persistent workspace state.',
-    launch: 'wstack --desktop',
-    best: 'Many projects and concurrent sessions',
-    traits: [
-      'Multi-project launcher',
-      'Isolated runtime ports',
-      'Native menus',
-      'Workspace restoration',
-    ],
-    icon: AppWindow,
   },
   {
     id: 'hq',

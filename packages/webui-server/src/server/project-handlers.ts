@@ -111,7 +111,7 @@ export function createProjectHandlers(ctx: ProjectHandlersContext): ProjectRoute
             root: parsed.value.root,
             slug: '',
             message:
-              'Project registration is disabled in WebUI. Open/register projects from the launcher or desktop shell.',
+              'Project registration is disabled in WebUI. Open/register projects by launching `wstack --webui` in the project directory.',
           },
         });
         return;
@@ -169,7 +169,7 @@ export function createProjectHandlers(ctx: ProjectHandlersContext): ProjectRoute
             root: resolved,
             name,
             message:
-              'Project switching is disabled in WebUI. Open a project from the launcher or desktop shell instead.',
+              'Project switching is disabled in WebUI. Launch `wstack --webui` in the other project directory instead.',
           },
         });
         return;

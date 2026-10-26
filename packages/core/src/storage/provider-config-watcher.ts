@@ -61,7 +61,7 @@ export interface ProviderConfigSnapshot {
   apiKey?: string;
   baseUrl?: string;
   /** Display language (Config.uiLocale), surfaced so a cross-process change
-   *  (e.g. the desktop shell) propagates to running webui instances. */
+   *  (e.g. another WebUI process) propagates to running webui instances. */
   uiLocale?: string;
   /** Live routing fields — surfaced so a cross-process WebUI /setmodel or
    *  profile-reorder propagates to running workers without restart. */

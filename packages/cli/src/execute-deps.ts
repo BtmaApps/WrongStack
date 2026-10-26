@@ -44,7 +44,6 @@ import type { JournalEntry } from '@wrongstack/goal';
 import type { MCPRegistry } from '@wrongstack/mcp';
 import type { SddLifecycleResult, SddRunControl } from '@wrongstack/sdd';
 import type { VectorMemoryStore } from '@wrongstack/vector-memory';
-import type { WebuiSessionChildOptions } from './boot/webui-session-child.js';
 import type { ReadlineInputReader } from './input-reader.js';
 import type { LiveSettingsInput } from './live-settings-input.js';
 import type { TerminalRenderer } from './renderer.js';
@@ -155,8 +154,6 @@ interface CoreDeps {
    * is consumed; the TUI reuses the result without making a second request.
    */
   updateInfo?: UpdateInfo | undefined;
-  /** Internal one-session WebUI child launch metadata, when --webui-session-child is active. */
-  webuiSessionChild?: WebuiSessionChildOptions | undefined;
 }
 
 /** Session + state stores. */

@@ -32,7 +32,7 @@ wstack update --check-only
 ```
 
 Open a new terminal after migration so it picks up the binary's PATH. On Windows,
-other running WrongStack WebUI, Desktop or background processes can lock old
+other running WrongStack WebUI or background processes can lock old
 package files. Stop them and retry the printed uninstall commands if needed.
 
 Manual binary installation:

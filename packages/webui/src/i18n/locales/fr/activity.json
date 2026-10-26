@@ -130,8 +130,6 @@
   "menu": {
     "moreWithHidden": "Plus, {{count}} éléments masqués",
     "moreOptions": "Plus d'options",
-    "moreCompactHidden": "Plus — {{count}} panneaux/vues masqués, palette, thème, moniteurs",
-    "moreCompact": "Plus — palette, thème, moniteurs",
     "moreFull": "Plus — palette, thème, raccourcis, moniteurs",
     "commandPalette": "Palette de commandes",
     "keyboardShortcuts": "Raccourcis clavier",
@@ -847,7 +845,6 @@
   },
   "terminal": {
     "resize": "Redimensionner les terminaux",
-    "labelSingular": "Terminal",
     "labelPlural": "Terminaux",
     "projectShell": "Shell du projet",
     "maxTerminals": "Maximum {{count}} terminaux",

@@ -92,7 +92,7 @@ export const overviewRows = [
   },
   {
     capability: 'Operations surface',
-    wrongstack: 'CLI · TUI · WebUI · Desktop · HQ',
+    wrongstack: 'CLI · TUI · WebUI · VibeUI · HQ',
     claude: 'Terminal · IDE · Desktop · Web',
     codex: 'CLI · IDE · App · Cloud',
     opencode: 'TUI · Desktop · IDE · Web · Server',
@@ -135,7 +135,7 @@ export const productComparisons: ProductComparison[] = [
       {
         capability: 'Execution surfaces',
         wrongstack:
-          'Six first-class surfaces share one kernel: CLI, TUI, WebUI, VibeUI, Desktop and HQ.',
+          'Five first-class surfaces share one kernel: CLI, TUI, WebUI, VibeUI and HQ.',
         competitor:
           'Officially available in the terminal, VS Code and JetBrains IDEs, desktop app and browser.',
         difference:
@@ -169,7 +169,7 @@ export const productComparisons: ProductComparison[] = [
         competitor:
           'Agent teams support direct teammate messaging and a shared task list; the feature is documented as experimental and disabled by default.',
         difference:
-          'Claude team messaging is strong inside a team. WrongStack mailbox routing is project-wide and also connects separate CLI, TUI, WebUI and Desktop sessions.',
+          'Claude team messaging is strong inside a team. WrongStack mailbox routing is project-wide and also connects separate CLI, TUI, WebUI and VibeUI sessions.',
         competitorLevel: 'native',
       },
       {
@@ -266,7 +266,7 @@ export const productComparisons: ProductComparison[] = [
       {
         capability: 'Execution surfaces',
         wrongstack:
-          'CLI, TUI, WebUI, VibeUI, Electron Desktop and HQ run on the same TypeScript kernel.',
+          'CLI, TUI, WebUI, VibeUI and HQ run on the same TypeScript kernel.',
         competitor:
           'Codex runs in the ChatGPT desktop app, CLI and IDE extension, with local and OpenAI-managed cloud environments.',
         difference:
@@ -348,7 +348,7 @@ export const productComparisons: ProductComparison[] = [
         competitor:
           'Codex CLI is Apache-2.0; hosted app/web access is tied to eligible ChatGPT plans or API usage.',
         difference:
-          'Both have open-source local cores. WrongStack’s surrounding WebUI, Desktop, HQ, fleet and provider layer live in the same open monorepo.',
+          'Both have open-source local cores. WrongStack’s surrounding WebUI, VibeUI, HQ, fleet and provider layer live in the same open monorepo.',
         competitorLevel: 'native',
       },
     ],
@@ -396,7 +396,7 @@ export const productComparisons: ProductComparison[] = [
       {
         capability: 'Execution surfaces',
         wrongstack:
-          'CLI, optional Ink TUI, WebUI, Electron Desktop and HQ compose one lower-level runtime.',
+          'CLI, optional Ink TUI, WebUI, VibeUI and HQ compose one lower-level runtime.',
         competitor:
           'Terminal TUI, desktop app, IDE extension, web interface and headless OpenAPI server are documented surfaces.',
         difference:
@@ -529,7 +529,7 @@ export const productComparisons: ProductComparison[] = [
       {
         capability: 'Execution surfaces',
         wrongstack:
-          'Terminal CLI/TUI plus WebUI, Desktop and a project-independent HQ command center.',
+          'Terminal CLI/TUI plus WebUI, VibeUI and a project-independent HQ command center.',
         competitor:
           'Editor, CLI, web, mobile and cloud agents; integrations include Slack, Teams, Linear, Jira and GitHub.',
         difference:
@@ -638,7 +638,7 @@ export const productComparisons: ProductComparison[] = [
     strongestCase:
       'Choose Pi when minimalism is the feature: four default tools, direct terminal observability and a highly hackable SDK/extension surface without a prescribed workflow.',
     wrongStackCase:
-      'Choose WrongStack when you want the batteries installed and governed already: MCP, permissions, roster, mailbox, Kanban, Brain, memory graph, six surfaces and HQ.',
+      'Choose WrongStack when you want the batteries installed and governed already: MCP, permissions, roster, mailbox, Kanban, Brain, memory graph, five surfaces including HQ.',
     sources: [
       {
         label: 'Coding agent README',
@@ -655,7 +655,7 @@ export const productComparisons: ProductComparison[] = [
       {
         capability: 'Execution surfaces',
         wrongstack:
-          'CLI, Ink TUI, browser WebUI, Electron Desktop and a separate React HQ dashboard.',
+          'CLI, Ink TUI, browser WebUI, VibeUI and a separate React HQ dashboard.',
         competitor:
           'Terminal harness with interactive, print/JSON, RPC and SDK modes for embedding in other applications.',
         difference:

@@ -40,7 +40,6 @@ export const helpCmd: SubcommandHandler = async (_args, deps) => {
       ['wstack "<task>"', 'Run one task and exit (also: --prompt "<task>")'],
       ['wstack quick', 'Straight into the TUI with saved defaults'],
       ['wstack webui | vibeui', 'Browser UI / focused coding workspace'],
-      ['wstack desktop', 'WrongStack Desktop (requires @wrongstack/desktop)'],
       ['wstack hq', 'HQ command center across projects and machines'],
       ['wstack remote <user@host:/path>', 'Run on a remote machine over SSH; WebUI tunneled here'],
       ['wstack --eternal "<mission>"', 'Eternal-autonomy loop against a goal (Ctrl+C stops)'],
@@ -126,7 +125,6 @@ export const helpCmd: SubcommandHandler = async (_args, deps) => {
       ['--tui | --no-tui', 'Force or disable the TUI'],
       ['--mouse', 'Full mouse mode in the TUI'],
       ['--ascii', 'Plain-ASCII symbols, borders and spinners (no emoji or box drawing)'],
-      ['--desktop', 'Same as wstack desktop'],
       [
         '--webui [--host <h>] [--port <n>] [--open]',
         'Browser UI (+ --webui-token, --webui-public-url, ...)',

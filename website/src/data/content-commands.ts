@@ -18,7 +18,6 @@ export type CommandEntry = {
 
 const commandRows: Array<[string, string]> = [
   ['/help', 'List all commands or open detailed help for one command.'],
-  ['/desktop', 'Explain how to access the local WrongStack Desktop application.'],
   ['/webui', 'Explain how to start and access the browser-based WrongStack interface.'],
   [
     '/init',
@@ -270,7 +269,6 @@ const categories: Record<Exclude<CommandCategory, 'All'>, string[]> = {
   ],
   Ecosystem: [
     '/help',
-    '/desktop',
     '/webui',
     '/tool',
     '/tools',

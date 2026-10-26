@@ -12,7 +12,7 @@ export const familyProducts = [
     licenseHref: 'https://github.com/WrongStack/WrongStack/blob/main/LICENSE',
     description:
       'Plan the work, coordinate specialist agents and keep tools, permissions and execution under one governed workflow.',
-    capabilities: ['Multi-agent coordination', 'Tools, skills & MCP', 'Terminal, web & desktop'],
+    capabilities: ['Multi-agent coordination', 'Tools, skills & MCP', 'Terminal & web'],
   },
   {
     id: 'wrongforge',

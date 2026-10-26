@@ -13,7 +13,7 @@
  * are excluded from the tarball via a `files` negation.
  *
  * npm publishing is retired (every package is `"private": true`), but the
- * standalone binary and Desktop deploy still pack every workspace package with
+ * standalone binary deploy still packs every workspace package with
  * `bun pm pack`, so the `files` contract applies to all of them.
  */
 import * as fs from 'node:fs';

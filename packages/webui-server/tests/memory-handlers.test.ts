@@ -542,13 +542,13 @@ describe('memory-handlers', () => {
         await handleSageDelete(
           ws,
           msg({
-            requestId: 'desktop-delete-1',
+            requestId: 'memory-delete-1',
             ...(scenario === 'missing' ? {} : { id: 'mem-1' }),
           }),
           {} as any,
         );
         const sent = JSON.parse(ws.send.mock.calls[0][0]);
-        expect(sent.payload.requestId).toBe('desktop-delete-1');
+        expect(sent.payload.requestId).toBe('memory-delete-1');
         expect(sent.payload.success).toBe(scenario === 'success');
         if (scenario === 'success' || scenario === 'protected')
           expect(sage.deleteSage).toHaveBeenCalledWith('mem-1', undefined, {

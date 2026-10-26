@@ -77,7 +77,7 @@ import { buildExitCommand, buildLoadCommand, buildSaveCommand } from './session.
 import { buildSetModelCommand } from './setmodel.js';
 import { buildSubagentModelsCommand } from './subagent-models.js';
 import { buildSuggestCommand } from './suggest.js';
-import { buildDesktopCommand, buildWebuiCommand } from './surfaces.js';
+import { buildWebuiCommand } from './surfaces.js';
 import { buildThemeCommand } from './theme.js';
 import { buildTierCommand } from './tier.js';
 import { buildZaiPlanCommand } from './zai-plan.js';
@@ -114,7 +114,6 @@ export function buildBuiltinSlashCommands(opts: SlashCommandContext): SlashComma
   const quotaDeps = { providers: () => opts.configStore.get().providers };
   return [
     buildHelpCommand(opts),
-    buildDesktopCommand(),
     buildWebuiCommand(),
     buildInitCommand(opts),
     buildIntakeCommand(opts),

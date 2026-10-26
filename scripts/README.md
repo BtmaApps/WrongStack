@@ -57,22 +57,18 @@ All remaining scripts are **Wired** — see the tables below.
 
 | Script | Status | What it does | Used by |
 | --- | --- | --- | --- |
-| `build.mjs` | Wired | Builds every workspace package in dependency order (packages → apps → website) via each package's own `build` script. | `bun run build`, `apps/desktop` build, Dockerfiles |
+| `build.mjs` | Wired | Builds every workspace package in dependency order (packages → apps → website) via each package's own `build` script. | `bun run build`, Dockerfiles |
 | `build-package.mjs` | Wired | Per-package builder: bundles JS with esbuild and emits public `.d.ts` declarations with the repo's TypeScript compiler. | `build` script of most packages |
 | `build-binaries.mjs` | Wired | Compiles standalone `wstack-<os>-<arch>` executables with `bun build --compile` (+ `SHA256SUMS`); `--current`, `--target=…`, `--skip-build`. | `build:binaries`, `build:binary`, `binaries.yml` |
 | `binary/entry.mjs` | Wired | Entry point *inside* the compiled binary (asset-pack extraction, daemon/script dispatch). Never run directly. | `build-binaries.mjs` |
 | `build-portable.mjs` | Wired | Windows portable distribution: compiled launcher + app and production deps beside it. | `release:portable:win` |
-| `package-desktop.mjs` | Wired | Packages the Electron desktop app (wraps electron-builder, stages a Bun-deployed dependency closure, writes checksums). | `apps/desktop` `package`, `desktop.yml` |
-| `desktop-package-paths.mjs` | Wired | Shared constant: the repo-relative staging dir for desktop packaging. | `package-desktop.mjs`, `smoke-desktop.mjs` |
-| `smoke-desktop.mjs` | Wired | Exercises the packaged desktop dependency closure under Electron's Node (`--window` also checks startup) with a scratch profile. | `desktop.yml` |
 | `smoke-binary.mjs` | Wired | Smoke-tests a compiled binary in an isolated `WRONGSTACK_HOME`: assets extracted, daemon dispatch, frontend served, plugins bundled. | `binaries.yml` |
 | `smoke-bun-runtime.mjs` | Wired | Runtime smoke under Bun: SAGE SQLite write/search round-trip, heap watchdog, and a link-time import of `webui-server` (catches unsupported `node:module` exports). | `smoke:bun` |
 | `bun-typecheck.mjs` | Wired | Runs the pinned Bun-based TypeScript checker (no `tsc` fallback) in the current package. | `typecheck` of nearly every package, `ci.yml` |
 | `setup-bun-typecheck.mjs` | Manual | Pre-downloads/caches the Bun typechecker into `.bun/typecheck/`. | `setup:bun` |
-| `rebuild-reviewed-native.mjs` | Manual | Rebuilds only the reviewed native addons (`electron-winstaller`, `esbuild`, `node-pty`) independent of branch-controlled `trustedDependencies`. | `setup:native` |
+| `rebuild-reviewed-native.mjs` | Manual | Rebuilds only the reviewed native addons (`esbuild`, `node-pty`) independent of branch-controlled `trustedDependencies`. | `setup:native` |
 | `lib/build-output-cleanup.mjs` | Wired (lib) | Removes a package `dist/` without failing on Windows `EBUSY`/`ENOTEMPTY`/`EPERM`. | `build-package.mjs`, `build-portable.mjs` |
-| `lib/deploy-bun-workspace.mjs` | Wired (lib) | Materialises a production workspace closure from Bun tarballs with a hoisted install. | `build-portable.mjs`, `package-desktop.mjs` |
-| `lib/desktop-package-checksums.mjs` | Wired (lib) | Writes `SHA256SUMS.txt` for desktop release assets. | `package-desktop.mjs` |
+| `lib/deploy-bun-workspace.mjs` | Wired (lib) | Materialises a production workspace closure from Bun tarballs with a hoisted install. | `build-portable.mjs` |
 
 ## Release & versioning
 
@@ -188,7 +184,7 @@ types for the plain `.mjs` scripts next to them. They are not executable; keep e
 `check-zero-coverage`, `coverage-lock`, `coverage-matrix`,
 `sync-core-public-api-snapshot`, `test-coverage`, `vitest-core-aliases`, and `lib/`:
 `architecture-health`, `build-lineage`, `build-output-cleanup`, `deploy-bun-workspace`,
-`desktop-package-checksums`, `publishable-packages`, `read-bun-lock`, `test-inventory`, `test-skip-budget`.
+`publishable-packages`, `read-bun-lock`, `test-inventory`, `test-skip-budget`.
 
 ## Notes
 

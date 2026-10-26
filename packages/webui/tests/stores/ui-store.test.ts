@@ -63,7 +63,6 @@ beforeEach(() => {
   // a clean state rather than picking up the previous test's persisted values.
   localStorage.clear();
   history.pushState(null, '', '/');
-  delete (window as unknown as { wrongstackDesktopHost?: unknown }).wrongstackDesktopHost;
   resetStore();
 });
 
@@ -842,37 +841,6 @@ describe('F5 resilience — currentView + dockSection persistence', () => {
         8,
       ) as { activityBarOrder: unknown };
     expect(migratedUnknownOnly.activityBarOrder).toBeNull();
-  });
-
-  it('merge() drops stale navigation state inside the desktop shell', () => {
-    history.pushState(null, '', '/?shell=desktop');
-    const api = (
-      useUIStore as unknown as {
-        persist?: { getOptions?: () => { merge?: (p: unknown, c: unknown) => unknown } };
-      }
-    ).persist;
-    const result = api?.getOptions?.().merge?.(
-      {
-        // A valid non-chat state: the desktop-shell drop logic (not value
-        // coercion) is what must return it to chat home.
-        currentView: 'skill',
-        activeActivity: 'skills',
-        sidebarOpen: true,
-        dockSection: 'work',
-        terminalOpen: true,
-        searchOpen: true,
-        paletteOpen: true,
-      },
-      useUIStore.getState(),
-    ) as ReturnType<typeof useUIStore.getState>;
-
-    expect(result.currentView).toBe('chat');
-    expect(result.activeActivity).toBe('chat');
-    expect(result.sidebarOpen).toBe(false);
-    expect(result.dockSection).toBeNull();
-    expect(result.terminalOpen).toBe(false);
-    expect(result.searchOpen).toBe(false);
-    expect(result.paletteOpen).toBe(false);
   });
 });
 

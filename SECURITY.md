@@ -52,7 +52,7 @@ they are defense in depth, not a sandbox.
     `npx`, `pnpm`, … with the opened repository as that directory, so a cloned
     repo committing `git.exe` or `npx.cmd` supplied the binary that ran —
     verified 2026-09-15 on Node 24 and Bun 1.4 (WS-2026-09-15-NV1).
-  - Every process entry (CLI, desktop, standalone WebUI) sets
+  - Every process entry (CLI, standalone WebUI) sets
     `NoDefaultCurrentDirectoryInExePath=1`, which libuv reads from the spawning
     process, and `buildChildEnv` forces it into every child env, which is where
     `cmd.exe` reads it. Inside those children a program in the current
@@ -328,7 +328,7 @@ audits and explicitly accepted as non-blocking:
   - The old denylist checks remain as defense-in-depth but are no longer the primary control.
 
 - **Install-script allowlist maintenance**:
-  - `pnpm-workspace.yaml` currently allows lifecycle builds for `electron-winstaller`, `esbuild`, `node-pty`. That sentence is machine-checked against both allowlist blocks in `pnpm-workspace.yaml` — in BOTH directions, so it can neither omit an authorised package nor claim one that is not authorised. Any addition requires security review; the rationale is documented beside each entry. `esbuild` and `node-pty` fetch a prebuilt native binary matching the host Node ABI from their own publishers' releases. `electron-winstaller` arrives transitively with `electron-builder`; its install script only copies a host-architecture 7-Zip binary out of the package's own bundled `vendor/` directory and downloads nothing. Earlier revisions of this list named `@biomejs/biome`, `electron`, `onnxruntime-node`, `protobufjs` and `sharp`; those packages either no longer declare an install script or are no longer in the tree, and their authorisations were removed in the 2026-09 cleanup. Without the approvals that remain, pnpm fails `install` hard (`ERR_PNPM_IGNORED_BUILDS`), which silently disabled every CI gate until 2026-08-16.
+  - `pnpm-workspace.yaml` currently allows lifecycle builds for `esbuild`, `node-pty`. That sentence is machine-checked against both allowlist blocks in `pnpm-workspace.yaml` — in BOTH directions, so it can neither omit an authorised package nor claim one that is not authorised. Any addition requires security review; the rationale is documented beside each entry. `esbuild` and `node-pty` fetch a prebuilt native binary matching the host Node ABI from their own publishers' releases. Earlier revisions of this list named `@biomejs/biome`, `electron`, `electron-winstaller`, `onnxruntime-node`, `protobufjs` and `sharp`; those packages either no longer declare an install script or are no longer in the tree, and their authorisations were removed (`electron-winstaller` together with the Electron Desktop app on 2026-10-26). Without the approvals that remain, pnpm fails `install` hard (`ERR_PNPM_IGNORED_BUILDS`), which silently disabled every CI gate until 2026-08-16.
   - Removal matters as much as addition. `better-sqlite3` was listed here and in both `pnpm-workspace.yaml` blocks while being absent from the lockfile entirely (the codebase uses `node:sqlite`), so its install scripts were pre-authorised to run the moment it reappeared through any transitive path — spending the review gate in advance. `packages/core/tests/architecture/build-allowlist-freshness.test.ts` now fails when any allowlist entry names a package that is not in the lockfile, and when this list drifts from `onlyBuiltDependencies`.
 
 Added by the **August 2026** `security-check` audit:
@@ -349,7 +349,7 @@ Added by the **August 2026** `security-check` audit:
   - **Superseded 2026-10-13:** `release.yml` no longer publishes to npm or mints an npm OIDC token.
   - **Superseded 2026-10-21:** npm publishing is retired entirely. Every workspace package is
     `"private": true`, the publish scripts are deleted, and `release.yml` no longer touches the
-    npm registry at all; releases ship only as GitHub Release binaries and Desktop packages.
+    npm registry at all; releases ship only as GitHub Release binaries.
 
 - **Loopback is authenticated, not trusted — but the token is readable by same-user processes** (H3):
   - The WebUI/VibeUI HTTP API now requires a token on every bind (previously loopback required
@@ -452,16 +452,6 @@ and supported deployment posture are described
 in [HQ command center](#hq-command-center), above.
 
 ## See also
-
-The desktop packaging dependency `http-cache-semantics@4.2.0` has a pinned local
-patch for [GHSA-ch52-4w7c-c8xp](https://github.com/advisories/GHSA-ch52-4w7c-c8xp).
-As of 2026-10-03, the advisory lists no upstream fixed release. The patch refuses
-stale reuse of zero-lifetime responses, including shared-cache cookie responses
-and proxy-revalidation entries. Positive-lifetime public/private caching is
-preserved. The audit exception depends on this patch; the architecture regression
-checks every lockfile resolution and the installed desktop dependency chain.
-Remove the patch and exception together when an upstream fix is adopted. The
-patch may increase network fetches for zero-lifetime cached responses.
 
 - [CHANGELOG.md](CHANGELOG.md) — security-relevant changes by version
 - [README.md](README.md) — usage and configuration

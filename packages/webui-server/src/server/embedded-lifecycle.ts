@@ -3,7 +3,6 @@ import {
   registerInstance,
   unregisterInstance,
   type WebUIInstanceRecord,
-  type WebUIInstanceRole,
 } from './instance-registry.js';
 import { formatExternalAccessUrls } from './network-info.js';
 import { openBrowser } from './open-browser.js';
@@ -51,21 +50,6 @@ export interface RegisterWebuiInstanceParams {
    * authenticate `POST /api/fleet/ping` (H3). See `WebUIInstanceRecord`.
    */
   authToken?: string | undefined;
-  /** Runtime role. Missing means the legacy standalone WebUI/VibeUI role. */
-  role?: WebUIInstanceRole | undefined;
-  /** Live session owned by this endpoint when `role === 'session-child'`. */
-  sessionId?: string | undefined;
-  /** Parent shell process identity, when this endpoint was spawned by a parent. */
-  parentPid?: number | undefined;
-  parentShellId?: string | undefined;
-  /** Stable child runtime id, distinct from the session id. */
-  runtimeId?: string | undefined;
-  /** Whether a parent shell should treat this endpoint as attachable. */
-  attachable?: boolean | undefined;
-  /** Health/protocol hints for future parent shells. */
-  lastReadyAt?: string | undefined;
-  protocolVersion?: number | undefined;
-  capabilities?: string[] | undefined;
 }
 
 export interface RegisterWebuiInstanceDeps {
@@ -99,16 +83,6 @@ export async function registerWebuiInstance(
           publicUrl: p.publicUrl,
         }),
         ...(p.authToken ? { authToken: p.authToken } : {}),
-        ...(p.role ? { role: p.role } : {}),
-        ...(p.sessionId ? { sessionId: p.sessionId } : {}),
-        ...(p.parentPid !== undefined ? { parentPid: p.parentPid } : {}),
-        ...(p.parentShellId ? { parentShellId: p.parentShellId } : {}),
-        ...(p.runtimeId ? { runtimeId: p.runtimeId } : {}),
-        ...(p.attachable !== undefined ? { attachable: p.attachable } : {}),
-        ...(p.authToken ? { auth: { scheme: 'registry-token' as const, tokenPresent: true } } : {}),
-        ...(p.lastReadyAt ? { lastReadyAt: p.lastReadyAt } : {}),
-        ...(p.protocolVersion !== undefined ? { protocolVersion: p.protocolVersion } : {}),
-        ...(p.capabilities ? { capabilities: p.capabilities } : {}),
       },
       p.registryBaseDir,
     );

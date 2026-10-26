@@ -37,7 +37,6 @@ vi.mock('../../src/lib/view-navigation', () => ({
   isRoutePinnedView: () => false,
   resetUiNavigationToHome: vi.fn(),
 }));
-vi.mock('../../src/lib/desktop-shell', () => ({ isDesktopShell: () => false }));
 
 const { useFleetStore, useSessionTabStore } = await import('../../src/stores');
 const { readLane } = await import('../../src/stores/chat-lanes');

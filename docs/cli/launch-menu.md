@@ -1,6 +1,6 @@
 # Launch Menu
 
-The `wstack` CLI shows a five-option interactive launch menu when invoked
+The `wstack` CLI shows a four-option interactive launch menu when invoked
 on a TTY with no surface flag. This document explains the menu, its
 fallback rules, and how to opt out.
 
@@ -10,7 +10,7 @@ The menu (`packages/cli/src/boot/launch-menu.ts`) is shown when **all**
 of these hold:
 
 - `process.stdin.isTTY` is `true`
-- No surface flag is set (`--webui`, `--vibeui`, `--hq`, `--desktop`;
+- No surface flag is set (`--webui`, `--vibeui`, `--hq`;
   the retired `--simpleui` counts as `--vibeui`)
 - No positional subcommand is given (`auth`, `init`, `mcp`, `plugin`,
   `doctor`, …)
@@ -31,11 +31,10 @@ In every other case the menu is silently skipped and the historical
     2) WebUI       (browser-based project UI; port 3456)
     3) VibeUI      (focused coding workspace; port 3476)
     4) HQ          (project-independent HQ dashboard; port 3499)
-    5) Desktop     (Electron desktop shell; alias: --desktop)
-  [1-5, q to quit] (auto 1 in 8s)
+  [1-4, q to quit] (auto 1 in 8s)
 ```
 
-- A numeric answer (`1`–`5`) picks the surface.
+- A numeric answer (`1`–`4`) picks the surface.
 
 SimpleUI was retired and replaced by VibeUI; `wstack simpleui` / `--simpleui` now open VibeUI.
 The menu no longer lists SimpleUI; VibeUI moved to option 3.
@@ -45,8 +44,6 @@ The menu no longer lists SimpleUI; VibeUI moved to option 3.
   (TUI/REPL).
 - For modes 2/3/4 the menu then prompts for an optional port (Enter
   uses the surface's documented default) and host.
-- Mode 5 launches Desktop the same way as `wstack --desktop` and
-  does not ask for a port or host.
 
 ### Default ports
 
@@ -121,8 +118,8 @@ was built with.
 
 ## Why a menu at all?
 
-The CLI grew five parallel first-class surfaces (TUI/REPL, WebUI,
-VibeUI, HQ, Desktop) with separate launch flags. Users on a fresh install
+The CLI grew four parallel first-class surfaces (TUI/REPL, WebUI,
+VibeUI, HQ) with separate launch flags. Users on a fresh install
 often type plain `wstack` expecting *one* of them to start. The menu
 replaces the implicit `TUI/REPL if no flag is set` choice with an
 explicit one-liner, while preserving every existing escape hatch.
@@ -135,7 +132,7 @@ in the help text.
 
 - `packages/cli/src/boot/launch-menu.ts` — the menu module.
 - `packages/cli/src/cli-context.ts` — wires the menu between the
-  help/desktop/HQ short-circuits and `boot()`.
+  help/HQ short-circuits and `boot()`.
 - `packages/cli/src/arg-parser.ts` — adds `'no-menu'` to `BOOLEAN_FLAGS`.
 - `packages/contracts/src/types/config.ts` — adds `LaunchMenuChoice` and
   `LaunchConfig.menuChoice`.

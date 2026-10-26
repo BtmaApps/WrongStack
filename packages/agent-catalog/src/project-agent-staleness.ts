@@ -21,6 +21,7 @@
 import { existsSync, readdirSync } from 'node:fs';
 import * as path from 'node:path';
 import {
+  clearProjectAgentConsolidated,
   consolidatedDocumentPath,
   loadProjectAgentConsolidated,
   readRawLearnedEntries,
@@ -102,7 +103,7 @@ export interface StalePathChecker {
 /**
  * Directories a cited path may legitimately be relative to: the project root,
  * and every workspace package one level below a top-level directory
- * (`packages/core`, `apps/desktop`). Directives about a package routinely cite
+ * (`packages/core`, `apps/wrongstack`). Directives about a package routinely cite
  * `src/index.ts` meaning *that package's* entry, which is not a stale path just
  * because the repository root has no such file.
  */
@@ -254,12 +255,14 @@ export function refreshStaleProjectAgentLearning(
   const consolidated = loadProjectAgentConsolidated(normalizedRole, projectRoot);
   if (consolidated) {
     const scrubbed = scrubStaleLines(consolidated, checker);
-    // An emptied role document is left for the next pass to rebuild rather
-    // than written as a husk — the same rule retirement follows.
-    if (scrubbed.removed.length > 0 && hasDirectiveContent(scrubbed.text)) {
+    if (scrubbed.removed.length > 0) {
       result.documentLines += scrubbed.removed.length;
       archived.push('## consolidated.md', '', ...scrubbed.removed, '');
-      writeTextAtomically(consolidatedDocumentPath(normalizedRole, projectRoot), scrubbed.text);
+      if (hasDirectiveContent(scrubbed.text)) {
+        writeTextAtomically(consolidatedDocumentPath(normalizedRole, projectRoot), scrubbed.text);
+      } else {
+        clearProjectAgentConsolidated(normalizedRole, projectRoot);
+      }
     }
   }
 

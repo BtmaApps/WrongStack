@@ -8,7 +8,7 @@
  * `dist/index.js` but the build produces `dist/index.html` only.
  *
  * Nothing is published to npm any more (every package is `"private": true`),
- * but the standalone binary and Desktop deploy (`scripts/lib/deploy-bun-workspace.mjs`)
+ * but the standalone binary deploy (`scripts/lib/deploy-bun-workspace.mjs`)
  * packs these packages and resolves them through the same manifest fields, so
  * the contract still holds for every workspace member. The `website` app is
  * skipped: it is a Vite site, not a package anything imports.

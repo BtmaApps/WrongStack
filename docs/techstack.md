@@ -12,7 +12,6 @@ package and application. July registry comparisons are preserved in
 | Terminal | [`packages/tui/package.json`](../packages/tui/package.json) | React and Ink |
 | Browser apps | [`packages/webui/package.json`](../packages/webui/package.json), [`packages/webui-hq/package.json`](../packages/webui-hq/package.json) | React/Vite clients; `@wrongstack/webui-protocol` owns wire contracts |
 | Browser server | [`packages/webui-server/package.json`](../packages/webui-server/package.json) | Node HTTP/WebSocket host over the common runtime |
-| Desktop | [`apps/desktop/package.json`](../apps/desktop/package.json) | Electron shell and packaging |
 | Persistence | [`packages/persistence/package.json`](../packages/persistence/package.json) | SQLite/file primitives with domain-specific project owners |
 | Tests and checks | [`package.json`](../package.json) | Vitest, Playwright, TypeScript and Biome; separate coverage ratchets |
 | Standalone build | [`scripts/build-binaries.mjs`](../scripts/build-binaries.mjs) | Bun executables with explicit assets and daemon dispatch |

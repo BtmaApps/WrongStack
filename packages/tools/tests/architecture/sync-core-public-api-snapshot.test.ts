@@ -65,7 +65,7 @@ const SOURCES: Record<string, string> = {
   'packages/tools/src/fetch.ts': `import type { Foo } from '${corePackage}/types';\n`,
   'packages/tools/tests/fetch.test.ts': "import { tool } from '@wrongstack/tools';\n",
   'scripts/sync-core-public-api-snapshot.mjs': "import path from 'node:path';\n",
-  'apps/desktop/src/main.ts': `import { boot } from '${corePackage}/kernel';\n`,
+  'apps/wrongstack/src/main.ts': `import { boot } from '${corePackage}/kernel';\n`,
   'packages/cli/src/foo.jsx': "import React from 'react';\n",
   'packages/core/src/index.ts': "export * from './typesafe/index.js';\n",
   'packages/core/src/coordination/director.ts': 'export const director = 1;\n',
@@ -110,7 +110,7 @@ describe('sync-core-public-api-snapshot input classification', () => {
 
   it('treats a non-core source as an input only when it imports @wrongstack/core', () => {
     expect(isSnapshotInput('packages/tools/src/fetch.ts', readFixture)).toBe(true);
-    expect(isSnapshotInput('apps/desktop/src/main.ts', readFixture)).toBe(true);
+    expect(isSnapshotInput('apps/wrongstack/src/main.ts', readFixture)).toBe(true);
     expect(isSnapshotInput('packages/runtime/src/jev-checks.ts', readFixture)).toBe(true);
 
     expect(isSnapshotInput('packages/tools/tests/fetch.test.ts', readFixture)).toBe(false);

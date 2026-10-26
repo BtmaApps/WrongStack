@@ -8,8 +8,6 @@
 **/node_modules
 **/dist
 **/coverage
-**/.package-stage
-apps/desktop
 website
 docs
 architecture

@@ -47,19 +47,19 @@ interface TerminalTab {
   exitCode?: number | undefined;
 }
 
-function defaultTerminalHeight(compact = false): number {
+function defaultTerminalHeight(): number {
   if (typeof window === 'undefined') return 300;
-  return clampTerminalHeight(window.innerHeight * (compact ? 0.32 : 0.4));
+  return clampTerminalHeight(window.innerHeight * 0.4);
 }
 
-function readStoredTerminalHeight(compact = false): number {
-  if (typeof window === 'undefined') return defaultTerminalHeight(compact);
+function readStoredTerminalHeight(): number {
+  if (typeof window === 'undefined') return defaultTerminalHeight();
   try {
     const raw = window.localStorage.getItem(TERMINAL_HEIGHT_STORAGE_KEY);
     const parsed = raw ? Number.parseInt(raw, 10) : Number.NaN;
-    return Number.isFinite(parsed) ? clampTerminalHeight(parsed) : defaultTerminalHeight(compact);
+    return Number.isFinite(parsed) ? clampTerminalHeight(parsed) : defaultTerminalHeight();
   } catch {
-    return defaultTerminalHeight(compact);
+    return defaultTerminalHeight();
   }
 }
 
@@ -94,12 +94,10 @@ function createTerminalTab(index: number): TerminalTab {
  * shows them meanwhile. Closing the last one, or all, disposes the dock.
  */
 export function TerminalPanel({
-  desktopShell = false,
   hidden = false,
   onClose,
   onDispose,
 }: {
-  desktopShell?: boolean | undefined;
   hidden?: boolean | undefined;
   /** Hide the dock; its terminals keep running. */
   onClose: () => void;
@@ -109,7 +107,7 @@ export function TerminalPanel({
   const resizeCleanupRef = useRef<(() => void) | null>(null);
   const { t } = useAppTranslation();
   const terminalCounterRef = useRef(1);
-  const [height, setHeight] = useState(() => readStoredTerminalHeight(desktopShell));
+  const [height, setHeight] = useState(() => readStoredTerminalHeight());
   const [tabs, setTabs] = useState<TerminalTab[]>(() => [createTerminalTab(1)]);
   const [activeId, setActiveId] = useState(() => tabs[0]?.id ?? '');
   const terminalCreateNonce = useUIStore((s) => s.terminalCreateNonce);
@@ -243,10 +241,8 @@ export function TerminalPanel({
     <div
       data-terminal-dock
       style={{ height }}
-      data-shell={desktopShell ? 'desktop' : 'browser'}
       className={cn(
         'z-30 flex min-h-0 shrink-0 flex-col border-t border-border/70 bg-card ws-dialog',
-        desktopShell && 'ws-terminal-desktop',
         hidden && 'hidden',
       )}
       {...(hidden ? { 'aria-hidden': true } : {})}
@@ -258,19 +254,10 @@ export function TerminalPanel({
         onPointerDown={startResize}
         className="h-1.5 cursor-ns-resize bg-muted/70 transition-colors hover:bg-primary/35 border-0"
       />
-      <div
-        className={cn(
-          'flex min-w-0 items-center justify-between gap-3 border-b border-border/70 bg-card/85',
-          desktopShell ? 'px-2 py-1' : 'px-3 py-1.5',
-        )}
-      >
+      <div className="flex min-w-0 items-center justify-between gap-3 border-b border-border/70 bg-card/85 px-3 py-1.5">
         <div className="flex min-w-0 items-center gap-2 text-xs text-foreground">
           <TerminalSquare className="h-3.5 w-3.5 shrink-0 text-primary" />
-          <span className="font-medium">
-            {desktopShell
-              ? t('activity:terminal.labelSingular')
-              : t('activity:terminal.labelPlural')}
-          </span>
+          <span className="font-medium">{t('activity:terminal.labelPlural')}</span>
           <span className="min-w-0 truncate text-muted-foreground">
             {projectName || cwd || t('activity:terminal.projectShell')}
           </span>
@@ -317,18 +304,13 @@ export function TerminalPanel({
           </button>
         </div>
       </div>
-      <div
-        className={cn(
-          'flex min-w-0 items-center gap-1 overflow-x-auto border-b border-border/70 bg-[hsl(var(--surface-2)/0.45)]',
-          desktopShell ? 'px-1.5 py-0.5' : 'px-2 py-1',
-        )}
-      >
+      <div className="flex min-w-0 items-center gap-1 overflow-x-auto border-b border-border/70 bg-[hsl(var(--surface-2)/0.45)] px-2 py-1">
         {tabs.map((tab) => (
           <div
             key={tab.id}
             className={cn(
               'group inline-flex items-center rounded border text-xs transition-colors',
-              desktopShell ? 'h-6 min-w-[92px] max-w-[148px]' : 'h-7 min-w-[112px] max-w-[180px]',
+              'h-7 min-w-[112px] max-w-[180px]',
               activeId === tab.id
                 ? 'border-primary/35 bg-primary/10 text-primary'
                 : 'border-transparent bg-transparent text-muted-foreground hover:bg-accent hover:text-foreground',
@@ -369,7 +351,7 @@ export function TerminalPanel({
           </div>
         ))}
       </div>
-      {cwd && !desktopShell && (
+      {cwd && (
         <div className="min-w-0 truncate border-b border-border/60 bg-muted/30 px-3 py-1 text-[11px] font-mono text-muted-foreground">
           {cwd}
         </div>

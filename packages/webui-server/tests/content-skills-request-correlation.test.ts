@@ -7,7 +7,7 @@ import { type ContentRouteContext, handleContentRoute } from '../src/server/cont
 
 it('correlates real skill creation, duplicate refusal and unavailable lifecycle actions', async () => {
   const base = resolve(tmpdir()),
-    dir = mkdtempSync(join(base, 'desktop-skills-correlation-'));
+    dir = mkdtempSync(join(base, 'content-skills-correlation-'));
   const frames: { type: string; payload: Record<string, unknown> }[] = [];
   const socket = {
     readyState: 1,

@@ -22,46 +22,9 @@ beforeEach(() => {
   ui.setCurrentView('chat');
 });
 
-describe('ActivityBar desktop responsive overflow (compact / desktop shell)', () => {
-  it('keeps core project workflow icons visible on very short desktop shells', () => {
-    const split = splitDesktopActivityBarItems(calculateDesktopActivityCapacity(320, true));
-
-    // agents was removed from the panel icon group; core is now 4 panels
-    expect(split.visiblePanelIds).toEqual(['chat', 'files', 'changes', 'mailbox']);
-    expect(split.overflowPanelIds).toContain('skills');
-    expect(split.overflowViewIds).toContain('roster');
-  });
-
-  it('shows registered panels directly before hiding secondary views', () => {
-    const split = splitDesktopActivityBarItems(calculateDesktopActivityCapacity(520, true));
-
-    expect(split.overflowPanelIds).toEqual([]);
-    // At 520px compact: 10 slots → 6 panels + 4 views fit. Views follow the
-    // daily-work priority (Roster → Goal → Kanban → Memory), so primary surfaces
-    // keep their slots while secondary views overflow.
-    expect(split.visibleViewIds).toEqual(['roster', 'goal', 'kanban', 'memory']);
-    expect(split.overflowViewIds).toContain('codemap');
-    expect(split.overflowViewIds).toContain('history');
-  });
-
-  it('promotes hidden panels and views when the desktop shell is tall enough', () => {
-    const split = splitDesktopActivityBarItems(calculateDesktopActivityCapacity(860, true));
-
-    expect(split.overflowPanelIds).toEqual([]);
-    expect(split.visibleViewIds).toContain('memory');
-  });
-
-  it('caps capacity at the total number of activity bar items', () => {
-    const split = splitDesktopActivityBarItems(calculateDesktopActivityCapacity(5000, true));
-
-    expect(split.overflowPanelIds).toEqual([]);
-    expect(split.overflowViewIds).toEqual([]);
-  });
-});
-
 describe('ActivityBar responsive overflow (full / browser WebUI)', () => {
   it('keeps core panels visible on short browser viewports', () => {
-    const split = splitDesktopActivityBarItems(calculateDesktopActivityCapacity(400, false));
+    const split = splitDesktopActivityBarItems(calculateDesktopActivityCapacity(400));
 
     // agents and history removed from icon bar; full-mode slot constants
     // allow 5 panels at 400px (chat, files, changes, mailbox, skills)
@@ -71,7 +34,7 @@ describe('ActivityBar responsive overflow (full / browser WebUI)', () => {
   });
 
   it('shows all panels plus some views on a typical viewport', () => {
-    const split = splitDesktopActivityBarItems(calculateDesktopActivityCapacity(800, false));
+    const split = splitDesktopActivityBarItems(calculateDesktopActivityCapacity(800));
 
     // 6 panels (worktrees/officemap moved into Changes/Roster; agents and
     // history removed) + remaining slots go to views
@@ -97,21 +60,21 @@ describe('ActivityBar responsive overflow (full / browser WebUI)', () => {
   });
 
   it('shows all items on a tall viewport', () => {
-    const split = splitDesktopActivityBarItems(calculateDesktopActivityCapacity(1200, false));
+    const split = splitDesktopActivityBarItems(calculateDesktopActivityCapacity(1200));
 
     expect(split.overflowPanelIds).toEqual([]);
     expect(split.overflowViewIds).toEqual([]);
   });
 
   it('caps at total item count even on extremely tall viewports', () => {
-    const split = splitDesktopActivityBarItems(calculateDesktopActivityCapacity(5000, false));
+    const split = splitDesktopActivityBarItems(calculateDesktopActivityCapacity(5000));
 
     expect(split.overflowPanelIds).toEqual([]);
     expect(split.overflowViewIds).toEqual([]);
   });
 
   it('always keeps core panels visible even at very short heights', () => {
-    const split = splitDesktopActivityBarItems(calculateDesktopActivityCapacity(200, false));
+    const split = splitDesktopActivityBarItems(calculateDesktopActivityCapacity(200));
 
     expect(split.visiblePanelIds).toEqual(['chat', 'files', 'changes', 'mailbox']);
     expect(split.overflowPanelIds).toContain('skills');

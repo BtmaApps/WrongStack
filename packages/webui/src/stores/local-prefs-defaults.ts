@@ -282,8 +282,8 @@ export interface LocalPrefs {
 
   /**
    * Display-only UI language (BCP-47 code, e.g. `en`, `pt-BR`).
-   * Synced through prefs.update into shared Config.uiLocale so browser WebUI,
-   * desktop-hosted WebUI, and the desktop shell follow the same choice.
+   * Synced through prefs.update into shared Config.uiLocale so every WebUI
+   * tab follows the same choice.
    * Distinct from `enhanceLanguage` (a prompt-refinement pref).
    */
   uiLocale: string;

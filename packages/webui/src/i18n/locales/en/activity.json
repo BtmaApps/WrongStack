@@ -138,8 +138,6 @@
   "menu": {
     "moreWithHidden": "More, {{count}} hidden items",
     "moreOptions": "More options",
-    "moreCompactHidden": "More — {{count}} hidden panels/views, palette, theme, monitors",
-    "moreCompact": "More — palette, theme, monitors",
     "moreFull": "More — palette, theme, shortcuts, monitors",
     "commandPalette": "Command Palette",
     "keyboardShortcuts": "Keyboard Shortcuts",
@@ -855,7 +853,6 @@
   },
   "terminal": {
     "resize": "Resize terminals",
-    "labelSingular": "Terminal",
     "labelPlural": "Terminals",
     "projectShell": "Project shell",
     "maxTerminals": "Maximum {{count}} terminals",

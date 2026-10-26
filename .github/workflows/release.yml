@@ -1,7 +1,7 @@
 name: Release
 
 # Builds the GitHub release for a `vX.Y.Z` tag: standalone binaries,
-# installers, checksums and Desktop packages. GitHub Releases are the ONLY
+# installers and checksums. GitHub Releases are the ONLY
 # distribution channel.
 #
 # npm publishing is retired for good: every workspace package is
@@ -147,65 +147,6 @@ jobs:
       contents: read
       id-token: write
       attestations: write
-
-  desktop:
-    name: Desktop packages
-    needs: verify
-    uses: ./.github/workflows/desktop.yml
-    with:
-      ref: ${{ needs.verify.outputs.sha }}
-      artifact-name: desktop-${{ needs.verify.outputs.version }}
-    permissions:
-      contents: read
-
-  publish-desktop:
-    name: Attach Desktop to GitHub release
-    # Desktop cannot block the CLI release.
-    needs: [verify, desktop, github-release]
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    permissions:
-      contents: write
-    steps:
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        with:
-          bun-version: 1.4.3
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          pattern: desktop-${{ needs.verify.outputs.version }}-*
-          merge-multiple: true
-          path: desktop-assets
-      - name: Upload Desktop packages and checksums
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
-        run: |
-          set -euo pipefail
-          cd desktop-assets
-          cat DESKTOP-SHA256SUMS-* | sort -k2,2 > DESKTOP-SHA256SUMS
-          sha256sum --check DESKTOP-SHA256SUMS
-          # The REST tag lookup omits drafts; gh release view resolves both states.
-          release_id="$(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json apiUrl --jq '.apiUrl | split("/") | last')"
-          gh api "repos/$GITHUB_REPOSITORY/releases/$release_id/assets" --paginate \
-            --jq '.[] | [.name, .digest] | @tsv' > "$RUNNER_TEMP/release-asset-digests"
-          complete=true
-          while read -r hash name; do
-            name="${name#\*}"
-            if ! grep -Fqx "$(printf '%s\tsha256:%s' "$name" "$hash")" "$RUNNER_TEMP/release-asset-digests"; then
-              complete=false
-              break
-            fi
-          done < DESKTOP-SHA256SUMS
-          manifest_hash="$(sha256sum DESKTOP-SHA256SUMS | cut -d' ' -f1)"
-          if ! grep -Fqx "$(printf 'DESKTOP-SHA256SUMS\tsha256:%s' "$manifest_hash")" "$RUNNER_TEMP/release-asset-digests"; then
-            complete=false
-          fi
-          if [ "$complete" = true ]; then
-            echo "Desktop assets already match the checksums; upload skipped."
-          else
-            gh release upload "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --clobber \
-              wrongstack-desktop-* DESKTOP-SHA256SUMS
-          fi
 
   github-release:
     name: Create GitHub release

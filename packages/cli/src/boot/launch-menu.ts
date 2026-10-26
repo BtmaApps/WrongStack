@@ -1,6 +1,6 @@
 /**
  * Interactive launch menu — surfaced when `wstack` is invoked with no
- * mode flag (no `--webui`, `--vibeui`, `--hq`, or `--desktop`) and no
+ * mode flag (no `--webui`, `--vibeui`, or `--hq`) and no
  * positional subcommand, on an interactive TTY.
  *
  * The menu asks the user **once** which top-level surface to launch:
@@ -8,7 +8,6 @@
  *   2) WebUI       — browser-based project UI (port 3456 by default)
  *   3) VibeUI      — focused coding workspace (port 3476 by default)
  *   4) HQ          — project-independent HQ dashboard (port 3499)
- *   5) Desktop     — Electron desktop shell (`wstack --desktop`)
  *
  * It returns either:
  *   - `null`         — caller should fall through to the historical
@@ -21,19 +20,17 @@
  *                         surface flag + chosen port into argv.
  *                       * `hq` → caller dispatches to the HQ
  *                         short-circuit with the chosen port/host.
- *                       * `desktop` → caller injects `--desktop` and
- *                         dispatches to the desktop short-circuit.
  *
  * Why this lives in `boot/`: it sits next to the other entry-point
- * short-circuits (`short-circuit-{flags,desktop,hq}.ts`) and is
+ * short-circuits (`short-circuit-{flags,hq}.ts`) and is
  * consumed by `cli-context.ts` between those short-circuits and
  * `boot()`. It deliberately does NOT take any DI container, agent,
  * or session — those are owned by the post-boot phase.
  */
 import * as fs from 'node:fs/promises';
 import type { LaunchMenuChoice } from '@wrongstack/contracts/types';
-import { HQ_CLI_DEFAULT_HOST } from '@wrongstack/hq';
 import { atomicWrite, color, isStdinTTY, withFileLock } from '@wrongstack/core/utils';
+import { HQ_CLI_DEFAULT_HOST } from '@wrongstack/hq';
 import type { TerminalRenderer } from '../renderer.js';
 import { CLI_VERSION } from '../version.js';
 import { launchBannerLines } from './launch-banner.js';
@@ -55,7 +52,7 @@ const DEFAULT_HOST = '127.0.0.1';
 const HQ_DEFAULT_HOST = HQ_CLI_DEFAULT_HOST;
 
 function bindsPort(mode: LaunchMenuMode): mode is NetworkLaunchMode {
-  return mode !== 'tui-repl' && mode !== 'desktop';
+  return mode !== 'tui-repl';
 }
 
 function defaultHostFor(mode: NetworkLaunchMode): string {
@@ -70,7 +67,7 @@ const PORT_TIMEOUT_MS = 8_000;
  *
  * Menu is skipped when ANY of these are true:
  *   - `--no-menu` flag is set
- *   - `--webui`, `--vibeui`, `--hq`, or `--desktop` flag is set
+ *   - `--webui`, `--vibeui`, or `--hq` flag is set
  *     (the user already chose a surface)
  *   - stdin is not a TTY (CI, pipes, redirects)
  *   - `--no-interactive` or `--skip` (existing "skip all prompts"
@@ -86,10 +83,8 @@ export function shouldSkipMenu(
 ): boolean {
   if (flags['no-menu'] === true) return true;
   if (flags['webui'] === true) return true;
-  if (flags['webui-session-child'] === true) return true;
   if (flags['vibeui'] === true) return true;
   if (flags['hq'] === true) return true;
-  if (flags['desktop'] === true) return true;
   if (flags['no-interactive'] === true) return true;
   if (flags['skip'] === true) return true;
   if (typeof flags['prompt'] === 'string') return true;
@@ -164,7 +159,7 @@ export async function runLaunchMenu(deps: RunLaunchMenuDeps): Promise<LaunchMenu
     renderer.write(`\n  ${color.dim('─'.repeat(48))}\n`);
     const answer = (
       await reader.readLine(
-        `  ${color.amber('?')} Mode ${color.dim('[1-5, q to quit]')} ${color.dim(`(auto 1 in ${MENU_TIMEOUT_MS / 1000}s)`)} `,
+        `  ${color.amber('?')} Mode ${color.dim(`[1-${MODE_OPTIONS.length}, q to quit]`)} ${color.dim(`(auto 1 in ${MENU_TIMEOUT_MS / 1000}s)`)} `,
         { timeoutMs: MENU_TIMEOUT_MS, defaultAnswer: '1' },
       )
     )
@@ -183,7 +178,6 @@ export async function runLaunchMenu(deps: RunLaunchMenuDeps): Promise<LaunchMenu
   }
 
   // For modes that bind a port/host, ask once and persist the answer.
-  // Desktop launches the Electron shell and does not take a listen port.
   if (bindsPort(choice.mode)) {
     const port = await promptPort(deps, ports[choice.mode]);
     choice.port = port;
@@ -330,8 +324,6 @@ function describeMode(mode: LaunchMenuMode): string {
       return 'VibeUI';
     case 'hq':
       return 'HQ';
-    case 'desktop':
-      return 'Desktop';
     default: {
       // Exhaustiveness guard — `mode` is a finite union, so this is
       // unreachable. The runtime check keeps TS's `noUnusedParameters`
@@ -353,8 +345,6 @@ function describeMode(mode: LaunchMenuMode): string {
  *   - `hq`        → appends `--hq --port=<n> [--host=<h>]` (the
  *                   short-circuit in cli-context.ts will pick this up
  *                   and dispatch to startHqServer).
- *   - `desktop`   → appends `--desktop` (the desktop short-circuit
- *                   in cli-context.ts then launches Electron).
  *
  * The function is intentionally argv-only — no side effects, no I/O —
  * so unit tests can pin the transformation down without mocking
@@ -380,9 +370,6 @@ export function applyLaunchMenuToArgv(argv: string[], result: LaunchMenuResult):
       if (typeof result.port === 'number') out.push(`--port=${result.port}`);
       if (typeof result.host === 'string') out.push(`--host=${result.host}`);
       out.push('--hq');
-      return out;
-    case 'desktop':
-      out.push('--desktop');
       return out;
     default: {
       const exhaustive: never = result.mode;

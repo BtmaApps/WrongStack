@@ -160,7 +160,6 @@ export const slashCommands = [
   '/diag',
   '/delegate',
   '/director',
-  '/desktop',
   '/design',
   '/doctor',
   '/enhance',
@@ -277,7 +276,6 @@ export const packages = [
   '@wrongstack/bench',
   '@wrongstack/acp',
   '@wrongstack/wrongtrace',
-  '@wrongstack/desktop',
 ] as const;
 
 /** Managed first-party plugin catalog, shared with the dedicated plugin page. */

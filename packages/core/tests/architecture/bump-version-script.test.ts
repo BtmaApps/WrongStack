@@ -33,7 +33,7 @@ function makeFixture() {
   const root = mkdtempSync(join(tmpdir(), 'bump-version-regression-'));
   mkdirSync(join(root, 'scripts'), { recursive: true });
   mkdirSync(join(root, 'packages', 'alpha'), { recursive: true });
-  mkdirSync(join(root, 'apps', 'desktop'), { recursive: true });
+  mkdirSync(join(root, 'apps', 'demo'), { recursive: true });
 
   cpSync(productionScript, join(root, 'scripts', 'bump-version.mjs'));
   expect(readFileSync(productionScript, 'utf8')).toBe(
@@ -43,7 +43,7 @@ function makeFixture() {
   const manifestPaths = [
     join(root, 'package.json'),
     join(root, 'packages', 'alpha', 'package.json'),
-    join(root, 'apps', 'desktop', 'package.json'),
+    join(root, 'apps', 'demo', 'package.json'),
   ];
   for (const p of manifestPaths) {
     writeFileSync(p, `${JSON.stringify({ name: 'fixture', version: '0.0.1' }, null, 2)}\n`);
@@ -108,7 +108,7 @@ describe('bump-version script', () => {
 
   it('bumps private workspace manifests and keeps them private', () => {
     // npm publishing is retired: every workspace package is `"private": true`,
-    // and the binaries/Desktop still read their version from these manifests.
+    // and the binaries still read their version from these manifests.
     fixture = makeFixture();
     for (const p of fixture.manifestPaths.slice(1)) {
       writeFileSync(

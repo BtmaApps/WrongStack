@@ -25,9 +25,6 @@ const navigateToView = vi.fn();
 const showPanel = vi.fn();
 vi.mock('@/lib/view-navigation', () => ({ navigateToView, showPanel }));
 
-const isDesktopShell = vi.fn(() => false);
-vi.mock('@/lib/desktop-shell', () => ({ isDesktopShell }));
-
 const {
   useChatStore,
   useConfigStore,
@@ -79,7 +76,6 @@ beforeEach(() => {
     writable: true,
     value: (() => ({ matches: false })) as unknown as typeof window.matchMedia,
   });
-  isDesktopShell.mockReturnValue(false);
   history.pushState(null, '', '/');
   // Every test opens `sess_branch` as if for the first time; a lane left over
   // from the previous test would make the second `start()` look like a
@@ -177,23 +173,6 @@ describe('session.start — setup redirect', () => {
   it('does not navigate when setup is complete', () => {
     start({});
     expect(navigateToView).not.toHaveBeenCalled();
-  });
-
-  it('skips the desktop home reset while setup is pending', () => {
-    isDesktopShell.mockReturnValue(true);
-    useUIStore.setState({ currentView: 'settings' } as never);
-    start({ needsSetup: true });
-    // resetUiNavigationToHome would send the shell to chat, clearing the setup
-    // view out from under itself.
-    expect(useUIStore.getState().currentView).toBe('settings');
-    expect(navigateToView).toHaveBeenCalledWith('setup');
-  });
-
-  it('does reset the desktop shell to home once setup is complete', () => {
-    isDesktopShell.mockReturnValue(true);
-    useUIStore.setState({ currentView: 'settings' } as never);
-    start({});
-    expect(useUIStore.getState().currentView).toBe('chat');
   });
 });
 
@@ -345,13 +324,6 @@ describe('session.start — post-replay navigation', () => {
 
   it('leaves the view alone when it is already chat', () => {
     useUIStore.setState({ currentView: 'chat' } as never);
-    start({ replayMessages: replay });
-    expect(showPanel).not.toHaveBeenCalled();
-  });
-
-  it('resets to home instead of showPanel on the desktop shell', () => {
-    isDesktopShell.mockReturnValue(true);
-    useUIStore.setState({ currentView: 'settings' } as never);
     start({ replayMessages: replay });
     expect(showPanel).not.toHaveBeenCalled();
   });

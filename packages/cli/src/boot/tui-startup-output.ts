@@ -19,7 +19,6 @@ export function shouldCaptureTuiStartup(
     !flags['webui'] &&
     !flags['vibeui'] &&
     !flags['hq'] &&
-    !flags['desktop'] &&
     !flags['remote'] &&
     !flags['no-interactive'] &&
     typeof flags['prompt'] !== 'string' &&

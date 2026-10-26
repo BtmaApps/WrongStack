@@ -29,16 +29,6 @@ describe('dependency advisory guards', () => {
   });
 
   it('checks the installed downstream resolutions using metadata only', async () => {
-    const desktop = createRequire(path.join(root, 'apps/desktop/package.json'));
-    const builder = createRequire(desktop.resolve('electron-builder/package.json')).resolve(
-      'app-builder-lib/package.json',
-    );
-    const get = createRequire(builder).resolve('@electron/get/package.json');
-    const agent = createRequire(get).resolve('global-agent/package.json');
-    const metadata = JSON.parse(await readFile(agent, 'utf8'));
-    expect(metadata.version).toBe('4.1.3');
-    expect(metadata.dependencies).not.toHaveProperty('roarr');
-    expect(metadata.dependencies).not.toHaveProperty('sprintf-js');
     const tui = createRequire(path.join(root, 'packages/tui/package.json'));
     const jsdom = tui.resolve('jsdom/package.json');
     const cssTree = createRequire(jsdom).resolve('css-tree/package.json');

@@ -156,15 +156,7 @@ describe('parseArgs', () => {
     });
   });
 
-  it('treats --desktop as a boolean flag', () => {
-    expect(BOOLEAN_FLAGS.has('desktop')).toBe(true);
-    const r = parseArgs(['--desktop', 'next']);
-    expect(r.flags.desktop).toBe(true);
-    expect(r.positional).toEqual(['next']);
-  });
-
-  it('normalizes desktop, webui, vibeui, and hq launcher subcommands to flags', () => {
-    expect(parseArgs(['desktop'])).toEqual({ flags: { desktop: true }, positional: [] });
+  it('normalizes webui, vibeui, and hq launcher subcommands to flags', () => {
     expect(parseArgs(['webui', '--open'])).toEqual({
       flags: { webui: true, open: true },
       positional: [],
@@ -333,7 +325,6 @@ describe('parseArgs', () => {
     expect(BOOLEAN_FLAGS.has('yolo-destructive')).toBe(true);
     expect(BOOLEAN_FLAGS.has('force-all-yolo')).toBe(true);
     expect(BOOLEAN_FLAGS.has('version')).toBe(true);
-    expect(BOOLEAN_FLAGS.has('desktop')).toBe(true);
   });
 });
 

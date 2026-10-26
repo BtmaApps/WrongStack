@@ -143,7 +143,7 @@ export function FleetPage() {
               [
                 Mail,
                 'Global Mailbox',
-                'Typed notes, tasks, status, steer and results cross sessions, terminals, WebUI tabs and Desktop processes.',
+                'Typed notes, tasks, status, steer and results cross sessions, terminals, WebUI tabs and VibeUI clients.',
                 'durable / cross-process',
                 '/features/global-mailbox',
               ],

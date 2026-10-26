@@ -1,13 +1,11 @@
 import type { SessionMarker, SessionToolMeta } from '@wrongstack/contracts/types';
 import { isMobileViewport } from '@/hooks/useViewport';
 import { reconcileFileTabsAfterEnvChange } from '@/hooks/ws-handlers/files-mailbox-handlers';
-import { isDesktopShell } from '@/lib/desktop-shell';
 import { setFaviconStatus } from '@/lib/favicon';
 import { navigateToView, showPanel } from '@/lib/view-navigation';
 import { getWSClient } from '@/lib/ws-client';
 import type { SubagentView } from '@/stores';
 import {
-  resetUiNavigationToHome,
   useConfigStore,
   useFileStore,
   useFleetStore,
@@ -472,11 +470,7 @@ export function handleSessionStart(msg: WSServerMessage) {
   const nothingInFront = activeId === DEFAULT_LANE_ID || !hasLane(activeId);
   const tabStore = useSessionTabStore.getState();
   const preservePlainWebView =
-    isReset &&
-    !hasReplayMessages &&
-    !payload.needsSetup &&
-    !isDesktopShell() &&
-    !isRoutePinnedView()
+    isReset && !hasReplayMessages && !payload.needsSetup && !isRoutePinnedView()
       ? {
           currentView: useUIStore.getState().currentView,
           activeActivity: useUIStore.getState().activeActivity,
@@ -515,9 +509,6 @@ export function handleSessionStart(msg: WSServerMessage) {
   setFaviconStatus(isRunning ? 'running' : 'ready');
 
   if (isReset) {
-    if (!payload.needsSetup && isDesktopShell() && !isRoutePinnedView()) {
-      resetUiNavigationToHome({ sidebarOpen: false });
-    }
     useUIStore.getState().setSearchActiveMessageId(null);
     useFileStore.getState().setTreeLoading(true, sessionId);
     reconcileFileTabsAfterEnvChange(useSessionStore.getState().projectRoot, sessionId);
@@ -533,8 +524,7 @@ export function handleSessionStart(msg: WSServerMessage) {
   }
 
   if (hasReplayMessages && !payload.needsSetup && !isRoutePinnedView()) {
-    if (isDesktopShell()) resetUiNavigationToHome({ sidebarOpen: false });
-    else if (useUIStore.getState().currentView !== 'chat') showPanel('chat');
+    if (useUIStore.getState().currentView !== 'chat') showPanel('chat');
   }
   if (hasReplayMessages && isMobileViewport()) useUIStore.getState().setSidebarOpen(false);
 }

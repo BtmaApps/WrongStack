@@ -29,11 +29,6 @@ export const COVERAGE_RUNS = [
     vitest: true,
   },
   {
-    label: 'Desktop package',
-    args: ['--filter', '@wrongstack/desktop', 'test:coverage'],
-    vitest: true,
-  },
-  {
     label: 'Coverage runtime scripts',
     args: ['test:coverage:scripts'],
     vitest: true,
