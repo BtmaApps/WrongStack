@@ -335,4 +335,65 @@ describe('Cross-session isolation (P0-1c regression tests)', () => {
     expect(acceptedA?.scope).toBe('session');
     expect(acceptedA?.ownerSessionId).toBe(SESSION_A);
   });
+
+  it('reconcileAcceptedCandidates respects ownerSessionId and validityKey before relinking (F671)', async () => {
+    const { DatabaseSync } = await import('node:sqlite');
+    const { reconcileAcceptedCandidates } = await import('../src/sqlite-store-candidates.js');
+    const { initSchema } = await import('../src/sqlite-store-schema.js');
+    const { upsertSqliteCandidate, upsertSqliteMemory } = await import(
+      '../src/sqlite-store-upsert.js'
+    );
+    const { SAGE_SCHEMA_VERSION } = await import('../src/types.js');
+
+    const db = new DatabaseSync(':memory:');
+    try {
+      initSchema(db);
+      const stmt = (sql: string) => db.prepare(sql);
+      const oldTime = '2026-01-01T00:00:00.000Z';
+      const nowTime = '2026-01-01T00:10:00.000Z';
+
+      upsertSqliteMemory(stmt, {
+        id: 'mem_sess_a',
+        revision: 1,
+        text: 'Current debugging port is 9229.',
+        kind: 'fact',
+        scope: 'session',
+        ownerSessionId: SESSION_A,
+        status: 'active',
+        tags: [],
+        anchors: [],
+        sources: [{ type: 'session', sessionId: SESSION_A }],
+        importance: 0.7,
+        confidence: 0.8,
+        freshness: 1,
+        createdAt: oldTime,
+        updatedAt: oldTime,
+      });
+      upsertSqliteCandidate(stmt, {
+        schemaVersion: SAGE_SCHEMA_VERSION,
+        id: 'cand_sess_b',
+        status: 'accepted',
+        text: 'Current debugging port is 9229.',
+        kind: 'fact',
+        scope: 'session',
+        ownerSessionId: SESSION_B,
+        confidence: 0.8,
+        importance: 0.7,
+        tags: [],
+        anchors: [],
+        sources: [{ type: 'session', sessionId: SESSION_B }],
+        createdAt: oldTime,
+        updatedAt: oldTime,
+      });
+
+      const res = reconcileAcceptedCandidates({
+        stmt,
+        nowIso: () => nowTime,
+        audit: () => {},
+      });
+      expect(res).toEqual({ relinked: 0, released: 1, skipped: 0 });
+    } finally {
+      db.close();
+    }
+  });
 });

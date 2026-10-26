@@ -293,5 +293,34 @@ describe('session isolation across the memory tool surface', () => {
         runOpts,
       ),
     ).rejects.toThrow(/owned by another session/);
+
+    // F670: list, reject, and targetless resolve also enforce session isolation,
+    // and propose against a session memory inherits session scope automatically.
+    expect((ownProposal as { scope?: string; ownerSessionId?: string }).scope).toBe('session');
+    expect((ownProposal as { scope?: string; ownerSessionId?: string }).ownerSessionId).toBe('S2');
+
+    const s2List = (await tool('memory_candidates').execute(
+      { action: 'list' } as never,
+      ctxFor('S2'),
+      runOpts,
+    )) as Array<{ id: string }>;
+    expect(s2List.map((c) => c.id)).toContain(ownProposal.id);
+    expect(s2List.map((c) => c.id)).not.toContain(sessionCandidate.id);
+
+    await expect(
+      tool('memory_candidates').execute(
+        { action: 'reject', candidate_id: sessionCandidate.id, reason: 'tamper' } as never,
+        ctxFor('S2'),
+        runOpts,
+      ),
+    ).rejects.toThrow(/owned by another session/);
+
+    await expect(
+      tool('memory_candidates').execute(
+        { action: 'resolve', candidate_id: sessionCandidate.id, decision: 'keep' } as never,
+        ctxFor('S2'),
+        runOpts,
+      ),
+    ).rejects.toThrow(/owned by another session/);
   });
 });

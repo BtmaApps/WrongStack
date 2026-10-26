@@ -25,6 +25,29 @@ function notPending(candidateId: string): Error {
   );
 }
 
+async function assertSessionMayMutateCandidate(
+  memory: SageServiceLike,
+  candidate: MemoryCandidate | undefined,
+  ctx: unknown,
+): Promise<void> {
+  if (!candidate) return;
+  const caller = callerSessionId(ctx);
+  if (
+    candidate.scope === 'session' &&
+    (!candidate.ownerSessionId || candidate.ownerSessionId !== caller)
+  ) {
+    throw new Error(
+      `SAGE candidate "${candidate.id}" is a session-scoped candidate owned by another session and cannot be modified from here.`,
+    );
+  }
+  if (candidate.targetMemoryId) {
+    await assertSessionMayMutate(memory, candidate.targetMemoryId, ctx);
+  }
+  for (const memberId of candidate.supersedesMemoryIds ?? []) {
+    await assertSessionMayMutate(memory, memberId, ctx);
+  }
+}
+
 export function memoryCandidatesTool(memory: SageServiceLike): Tool<
   {
     action?: 'list' | 'accept' | 'reject' | 'propose' | 'resolve';
@@ -100,20 +123,16 @@ export function memoryCandidatesTool(memory: SageServiceLike): Tool<
         const candidate = (await memory.listCandidates(true)).find(
           (entry) => entry.id === input.candidate_id,
         );
-        if (
-          candidate?.scope === 'session' &&
-          candidate.ownerSessionId &&
-          candidate.ownerSessionId !== callerSessionId(ctx)
-        ) {
-          throw new Error(
-            `SAGE candidate "${input.candidate_id}" is a session-scoped candidate owned by another session and cannot be modified from here.`,
-          );
-        }
+        await assertSessionMayMutateCandidate(memory, candidate, ctx);
         const accepted = await memory.acceptCandidate(input.candidate_id!);
         if (!accepted) throw notPending(input.candidate_id!);
         return accepted;
       }
       if (input.action === 'reject') {
+        const candidate = (await memory.listCandidates(true)).find(
+          (entry) => entry.id === input.candidate_id,
+        );
+        await assertSessionMayMutateCandidate(memory, candidate, ctx);
         const rejected = await memory.rejectCandidate(
           input.candidate_id!,
           input.reason ?? 'Rejected by user or agent.',
@@ -125,9 +144,7 @@ export function memoryCandidatesTool(memory: SageServiceLike): Tool<
         const candidate = (await memory.listCandidates(true)).find(
           (entry) => entry.id === input.candidate_id,
         );
-        if (candidate?.targetMemoryId) {
-          await assertSessionMayMutate(memory, candidate.targetMemoryId, ctx);
-        }
+        await assertSessionMayMutateCandidate(memory, candidate, ctx);
         const resolution = await memory.resolveCandidate(
           input.candidate_id!,
           input.decision!,
@@ -139,18 +156,22 @@ export function memoryCandidatesTool(memory: SageServiceLike): Tool<
         return resolution;
       }
       if (input.action === 'propose') {
+        let targetMemory: Sage | null = null;
         if (input.memory_id) {
           await assertSessionMayMutate(memory, input.memory_id, ctx);
+          targetMemory = await memory.getSage(input.memory_id);
         }
         // Proposal metadata lives in typed fields (targetMemoryId /
         // reviewReason / suggestedAction) — E1: the legacy `review:` /
         // `suggested:` / `source:` tag prefixes are no longer written.
-        const scope = input.scope ?? 'project';
+        const scope = input.scope ?? (targetMemory?.scope === 'session' ? 'session' : 'project');
+        const ownerSessionId =
+          scope === 'session' ? (targetMemory?.ownerSessionId ?? callerSessionId(ctx)) : undefined;
         return memory.createCandidate({
           text: input.text!,
           ...(input.kind ? { kind: input.kind } : {}),
-          ...(input.scope ? { scope: input.scope } : {}),
-          ...(scope === 'session' ? { ownerSessionId: callerSessionId(ctx) } : {}),
+          ...(input.scope || scope === 'session' ? { scope } : {}),
+          ...(ownerSessionId ? { ownerSessionId } : {}),
           ...(input.tags ? { tags: input.tags } : {}),
           ...(input.importance !== undefined ? { importance: input.importance } : {}),
           ...(input.confidence !== undefined ? { confidence: input.confidence } : {}),
@@ -159,7 +180,29 @@ export function memoryCandidatesTool(memory: SageServiceLike): Tool<
           ...(input.suggested_action ? { suggestedAction: input.suggested_action } : {}),
         });
       }
-      return memory.listCandidates(input.include_resolved ?? false);
+      const caller = callerSessionId(ctx);
+      const candidates = await memory.listCandidates(input.include_resolved ?? false);
+      const visible: MemoryCandidate[] = [];
+      for (const candidate of candidates) {
+        if (
+          candidate.scope === 'session' &&
+          (!candidate.ownerSessionId || candidate.ownerSessionId !== caller)
+        ) {
+          continue;
+        }
+        if (candidate.targetMemoryId) {
+          const target = await memory.getSage(candidate.targetMemoryId);
+          if (
+            target?.scope === 'session' &&
+            target.ownerSessionId &&
+            target.ownerSessionId !== caller
+          ) {
+            continue;
+          }
+        }
+        visible.push(candidate);
+      }
+      return visible;
     },
   };
 }

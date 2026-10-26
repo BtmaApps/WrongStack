@@ -6,7 +6,11 @@ import {
   resolveTargetId,
 } from './shared/candidate-lifecycle.js';
 import { normalizeValidity, validityKey } from './shared/memory-validity.js';
-import { readSqliteSageRow, sqliteRowToCandidate } from './sqlite-store-codec.js';
+import {
+  readSqliteSageRow,
+  sqliteRowToCandidate,
+  sqliteRowToMemory,
+} from './sqlite-store-codec.js';
 import {
   clamp01,
   normalizeAnchors,
@@ -588,21 +592,36 @@ export function reconcileAcceptedCandidates(
     }
     // Match the full identity the accept flow would have created. Canonical
     // text alone is not sufficient: identical text can legitimately exist in
-    // another scope/kind/audience, and relinking to that row would attribute
-    // the candidate to a memory it could not have produced.
-    const memory = ctx
+    // another scope/kind/audience/session/validity, and relinking to that row
+    // would attribute the candidate to a memory it could not have produced.
+    const ownerSessionKey =
+      candidate.scope === 'session' ? candidate.ownerSessionId?.trim() || null : null;
+    const candidateValidityKey = validityKey(normalizeValidity(candidate.validity));
+    const memoryRows = ctx
       .stmt(
-        `SELECT id FROM memories
+        `SELECT id, data FROM memories
          WHERE canonical_text = ? AND status = 'active'
            AND scope = ? AND kind = ? AND audience IS ?
-         ORDER BY updated_at DESC LIMIT 1`,
+           AND owner_session_id IS ?
+         ORDER BY updated_at DESC`,
       )
-      .get(
+      .all(
         normalizeTextKey(candidate.text),
         candidate.scope,
         candidate.kind,
         candidate.audience ? JSON.stringify(candidate.audience) : null,
-      ) as { id: string } | undefined;
+        ownerSessionKey,
+      ) as Array<{ id: string; data: string }>;
+    let memory: { id: string } | undefined;
+    for (const memRow of memoryRows) {
+      try {
+        const decoded = sqliteRowToMemory(memRow);
+        if (validityKey(decoded.validity) === candidateValidityKey) {
+          memory = { id: decoded.id };
+          break;
+        }
+      } catch {}
+    }
     const stamp = ctx.nowIso();
     if (memory) {
       const annotated: MemoryCandidate = { ...candidate, memoryId: memory.id, updatedAt: stamp };
