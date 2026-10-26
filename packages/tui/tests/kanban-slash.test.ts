@@ -961,6 +961,17 @@ describe('/kanban audit — dispatch routing', () => {
     // Per-board warnings should surface (missing-* issues on bare tasks).
     expect(msg).toContain('missing-description');
   });
+
+  it('does not truncate queries longer than 8 characters to an 8-char ID prefix before title/tag checks (F663)', async () => {
+    mockListBoards.mockResolvedValue([
+      summary('sprint-2-alpha', 'Alpha Board', { updatedAt: NOW }),
+      summary('board-beta', 'Sprint-2-Beta', { updatedAt: NOW }),
+    ]);
+    const deps = makeDeps();
+    const cmd = createKanbanSlashCommand(deps);
+    await cmd.run('use Sprint-2-Beta');
+    expect(deps.onBoardFocus.current).toHaveBeenCalledWith('board-beta');
+  });
 });
 
 describe('KanbanPanel empty-state hint', () => {

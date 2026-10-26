@@ -385,7 +385,10 @@ async function resolveBoardByQuery(
   //    can copy-paste from the panel footer.
   const byId =
     summaries.find((b) => b.id === needle) ??
-    summaries.find((b) => b.id.slice(0, 8).toLowerCase() === lower.slice(0, 8));
+    summaries.find((b) => b.id.toLowerCase() === lower) ??
+    (lower.length === 8
+      ? summaries.find((b) => b.id.slice(0, 8).toLowerCase() === lower)
+      : undefined);
   if (byId) return byId;
 
   // 2. Exact title match (case-insensitive).
