@@ -81,9 +81,13 @@ function describeDirective(entry: StructuredLearnedEntry): string {
 
 /** Strip a whole-document code fence a model sometimes wraps output in. */
 export function unwrapWholeDocumentFence(text: string): string {
-  const wholeDocFence = /^```(?:markdown|md)?[^\n]*\n([\s\S]*?)\n?```\s*$/i;
-  const inner = wholeDocFence.exec(text.trim())?.[1];
-  return inner !== undefined ? inner.trim() : text.trim();
+  const trimmed = text.trim();
+  const wholeDocFence = /^```(?:markdown|md)?[ \t]*\r?\n([\s\S]*?)\r?\n?[ \t]*```\s*$/i;
+  const inner = wholeDocFence.exec(trimmed)?.[1];
+  if (inner === undefined || /^[ \t]*```/m.test(inner)) {
+    return trimmed;
+  }
+  return inner.trim();
 }
 
 async function complete(

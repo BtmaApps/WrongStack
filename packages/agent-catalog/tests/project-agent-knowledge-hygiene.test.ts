@@ -39,7 +39,10 @@ import {
   saveProjectAgentConsolidated,
   saveProjectSkillAugmentation,
   scrubStaleLines,
+  unwrapWholeDocumentFence,
+  validateProjectAgentConfig,
 } from '../src/index.js';
+import { boundConsolidatedDocument } from '../src/project-agent-consolidation.js';
 
 let projectRoot: string;
 
@@ -262,5 +265,37 @@ describe('raw buffer ceiling', () => {
     expect(Buffer.byteLength(learned, 'utf8')).toBeLessThanOrEqual(LEARNED_HARD_LIMIT);
     const archive = path.join(projectRoot, '.wrongstack', 'agents', 'executor', 'archive');
     expect(readdirSync(archive).some((name) => name.startsWith('evicted-'))).toBe(true);
+  });
+});
+
+describe('F45 regressions', () => {
+  it('strips #L<line> fragments and normalizes backslashes in stale path detection', () => {
+    const checker = createStalePathChecker(projectRoot);
+    expect(
+      checker.stalePaths(
+        'Check `packages/core/src/live.ts#L10-L20` and `packages\\core\\src\\gone.ts`.',
+      ),
+    ).toEqual(['packages/core/src/gone.ts']);
+  });
+
+  it('preserves multi-block markdown fences and non-markdown code blocks in unwrapWholeDocumentFence', () => {
+    const multiBlock =
+      '```markdown\n# Example A\n```\n\nMiddle explanation.\n\n```ts\nconst x = 1;\n```';
+    expect(unwrapWholeDocumentFence(multiBlock)).toBe(multiBlock);
+    const tsBlock = '```ts\nexport const x = 1;\n```';
+    expect(unwrapWholeDocumentFence(tsBlock)).toBe(tsBlock);
+    expect(unwrapWholeDocumentFence('```markdown\n# Heading\n```')).toBe('# Heading');
+  });
+
+  it('slices an oversized single-line consolidated document at a UTF-8 boundary instead of dropping content', () => {
+    const singleLongLine = `# Rules: ${'😀'.repeat(CONSOLIDATED_MAX_BYTES)}`;
+    const bounded = boundConsolidatedDocument(singleLongLine);
+    expect(bounded.startsWith('# Rules: 😀')).toBe(true);
+    expect(Buffer.byteLength(bounded, 'utf8')).toBeLessThanOrEqual(CONSOLIDATED_MAX_BYTES);
+    expect(bounded).not.toContain('\uFFFD');
+  });
+
+  it('rejects Windows drive-relative paths in validateProjectAgentConfig', () => {
+    expect(() => validateProjectAgentConfig({ cwd: 'C:subpath' })).toThrow(/must stay inside/);
   });
 });

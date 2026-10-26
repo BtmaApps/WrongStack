@@ -61,6 +61,16 @@ export const CONSOLIDATED_MAX_BYTES = 8_192;
  * renderer appends to, so its tail is newest), this document is written whole
  * by the distillation pass, which is told to lead with what matters most.
  */
+function sliceUtf8Bytes(text: string, maxBytes: number): string {
+  if (maxBytes <= 0) return '';
+  if (Buffer.byteLength(text, 'utf8') <= maxBytes) return text;
+  const buf = Buffer.from(text, 'utf8').subarray(0, maxBytes);
+  let end = buf.length;
+  while (end > 0 && (buf[end - 1] ?? 0) >= 0x80 && (buf[end - 1] ?? 0) <= 0xbf) end--;
+  if (end > 0 && (buf[end - 1] ?? 0) >= 0xc0) end--;
+  return buf.subarray(0, end).toString('utf8');
+}
+
 export function boundConsolidatedDocument(text: string): string {
   const trimmed = text.trim();
   if (Buffer.byteLength(trimmed, 'utf8') <= CONSOLIDATED_MAX_BYTES) return trimmed;
@@ -72,6 +82,9 @@ export function boundConsolidatedDocument(text: string): string {
     if (cost > budget) break;
     kept.push(line);
     budget -= cost;
+  }
+  if (kept.length === 0) {
+    return `${sliceUtf8Bytes(trimmed, budget).trimEnd()}${notice}`;
   }
   return `${kept.join('\n').trimEnd()}${notice}`;
 }

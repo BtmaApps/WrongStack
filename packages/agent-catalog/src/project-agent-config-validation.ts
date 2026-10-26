@@ -61,7 +61,7 @@ export function validateProjectAgentConfig(value: unknown): ProjectAgentConfig {
       throw new Error('Project agent config "cwd" must be a non-empty relative path.');
     }
     const cwd = value.cwd.replace(/\\/g, '/').trim();
-    if (path.posix.isAbsolute(cwd) || /^[a-z]:\//i.test(cwd) || cwd.split('/').includes('..')) {
+    if (path.posix.isAbsolute(cwd) || /^[a-z]:/i.test(cwd) || cwd.split('/').includes('..')) {
       throw new Error('Project agent config "cwd" must stay inside the assigned checkout.');
     }
     // Normalize before returning so the checked value is the value used at runtime.
