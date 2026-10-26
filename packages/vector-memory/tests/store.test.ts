@@ -392,4 +392,21 @@ describe('VectorMemoryStore', () => {
     expect(store.findBySageId('sage-mirror-1')?.metadata?.['sageId']).toBe('sage-mirror-1');
     expect(store.findBySageId('no-such-sage-id')).toBeUndefined();
   });
+
+  it('closes the SQLite handle if schema or provider initialization throws in the constructor', () => {
+    const dbPath = store.databasePath;
+    const projectRoot = path.dirname(path.dirname(store.directory));
+    const db = (store as unknown as { db: { exec: (sql: string) => void } }).db;
+    db.exec('DROP TABLE schema_meta; CREATE TABLE schema_meta (invalid_col TEXT);');
+    store.close();
+
+    expect(
+      () =>
+        new VectorMemoryStore({
+          provider: new FakeEmbeddingProvider({ dimensions: 64 }),
+          projectRoot,
+        }),
+    ).toThrow();
+    expect(dbPath).toBeTruthy();
+  });
 });

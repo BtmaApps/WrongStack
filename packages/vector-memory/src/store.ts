@@ -125,8 +125,17 @@ export class VectorMemoryStore {
     }
     const Database = loadRuntimeDatabaseSync();
     this.db = new Database(this.dbPath);
-    initVectorSchema(this.db);
-    this.recordActiveProvider();
+    try {
+      initVectorSchema(this.db);
+      this.recordActiveProvider();
+    } catch (error) {
+      try {
+        this.db.close?.();
+      } catch {
+        // Preserve the primary initialization error.
+      }
+      throw error;
+    }
   }
 
   /**
