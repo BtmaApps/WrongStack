@@ -226,7 +226,7 @@ const plugin: Plugin = {
         getAllowedOutboundChatIds: () => runtimeCfg.allowedOutboundChats,
         getAllowedUserIds: () => runtimeCfg.allowedUserIds,
         getAllowGroupApprovals: () => runtimeCfg.allowGroupApprovals,
-        maxMessageLength: runtimeCfg.maxMessageLength,
+        maxMessageLength: () => runtimeCfg.maxMessageLength,
         log,
       });
       for (const tool of [sendTool, readTool, approveTool]) {
@@ -256,10 +256,14 @@ const plugin: Plugin = {
       });
       cleanups.push(unregisterPrompt);
 
+      // Last config the handler applied; the diff base when `prev` is itself a
+      // rejected (unreadable) config, and the live source for /telegram-health.
+      let appliedTg: TelegramPluginConfig = cfg;
+
       // Register commands one at a time so a later collision can roll back the
       // commands already installed by this setup attempt.
       for (const command of [
-        tgHealthCommand(bot, cfg),
+        tgHealthCommand(bot, () => appliedTg),
         tgSendCommand(
           bot,
           {
@@ -400,9 +404,6 @@ const plugin: Plugin = {
       // plugin for those to take effect.  A future iteration will attempt
       // an atomic bot rebuild for restart keys (build → health-check →
       // swap → rollback on failure).
-      // Last config the handler applied; the diff base when `prev` is itself a
-      // rejected (unreadable) config.
-      let appliedTg: TelegramPluginConfig = cfg;
       let inboundClosedByInvalidConfig = false;
       const unlistenConfig = api.onConfigChange((next, prev) => {
         // Build full TelegramPluginConfig snapshots for the P2.2 classifier.

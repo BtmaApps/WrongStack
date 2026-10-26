@@ -55,11 +55,15 @@ export class TelegramInbox {
     limit?: number | undefined;
   }): TelegramIncomingMessage[] {
     let msgs = [...this.buffer].reverse();
-    if (opts?.chatId) {
-      const cid = String(opts.chatId);
-      msgs = msgs.filter((m) => String(m.chatId) === cid);
+    const cid =
+      opts?.chatId !== undefined && opts.chatId !== null && String(opts.chatId).trim() !== ''
+        ? String(opts.chatId).trim()
+        : undefined;
+    if (cid !== undefined) {
+      msgs = msgs.filter((m) => String(m.chatId).trim() === cid);
     }
-    const limit = opts?.limit ?? 20;
+    const rawLimit = opts?.limit ?? 20;
+    const limit = Number.isFinite(rawLimit) ? Math.max(1, Math.floor(rawLimit)) : 20;
     return msgs.slice(0, limit);
   }
 

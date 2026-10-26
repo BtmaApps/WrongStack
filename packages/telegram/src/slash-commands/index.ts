@@ -14,7 +14,10 @@ import {
 // /telegram-health
 // ---------------------------------------------------------------------------
 
-export function tgHealthCommand(bot: TelegramBot, cfg: TelegramPluginConfig): SlashCommand {
+export function tgHealthCommand(
+  bot: TelegramBot,
+  cfgOrGetter: TelegramPluginConfig | (() => TelegramPluginConfig),
+): SlashCommand {
   return {
     name: 'telegram-health',
     aliases: ['telegram', 'tgstat', 'tgs'],
@@ -25,6 +28,7 @@ Aliases: /telegram, /tgstat, /tgs
 Shows whether the bot is connected, its username, polling interval,
 allowlist health, and notification settings.`,
     async run(_args, _ctx) {
+      const cfg = typeof cfgOrGetter === 'function' ? cfgOrGetter() : cfgOrGetter;
       const health = await bot.health();
       const lines = [
         '═══ Telegram Plugin Status ═══',
@@ -82,13 +86,13 @@ Examples:
 
       // First token might be a numeric chat_id. Telegram group/supergroup IDs
       // are negative, so accept an optional leading minus sign.
-      const parts = args.trim().split(/\s+/);
-      const maybeId = parts[0];
-      if (/^-?\d+$/.test(expectDefined(maybeId)) && parts.length > 1) {
-        requestedChatId = expectDefined(maybeId);
-        text = parts.slice(1).join(' ');
+      const trimmed = args.trim();
+      const match = /^(-?\d+)\s+([\s\S]+)$/.exec(trimmed);
+      if (match) {
+        requestedChatId = expectDefined(match[1]);
+        text = expectDefined(match[2]);
       } else {
-        text = args.trim();
+        text = trimmed;
       }
 
       try {

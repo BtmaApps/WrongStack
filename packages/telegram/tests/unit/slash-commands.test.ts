@@ -343,6 +343,27 @@ describe('tgSendCommand', () => {
 
     expect(res?.message).toContain('msg_id=?');
   });
+
+  it('preserves multiline message formatting when chat_id is supplied and resolves live health config (F27)', async () => {
+    const bot = makeBot();
+    const sendSpy = vi.fn().mockResolvedValue({ ok: true, result: { message_id: 9 } });
+    bot.sendMessage = sendSpy;
+
+    const sendCmd = tgSendCommand(bot, {
+      getDefaultChatId: () => '999',
+      getAllowedOutboundChatIds: () => ['123456'],
+    });
+    await sendCmd.run('123456 line 1\n  line 2', null as never);
+    expect(sendSpy).toHaveBeenCalledWith('123456', 'line 1\n  line 2');
+
+    let liveCfg = makeConfig({ pollIntervalSec: 2, notifyOnSessionEnd: false });
+    bot.health = vi.fn().mockResolvedValue({ ok: true, username: 'live_bot' });
+    const healthCmd = tgHealthCommand(bot, () => liveCfg);
+    liveCfg = makeConfig({ pollIntervalSec: 15, notifyOnSessionEnd: true });
+    const healthRes = await healthCmd.run('', null as never);
+    expect(healthRes?.message).toContain('every 15s');
+    expect(healthRes?.message).toContain('sessionEnd=true');
+  });
 });
 
 // ---------------------------------------------------------------------------

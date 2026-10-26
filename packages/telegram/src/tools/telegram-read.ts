@@ -45,9 +45,13 @@ export function makeTelegramReadTool(opts: { bot: TelegramBot }): Tool<TelegramR
     mutating: false,
     timeoutMs: 5_000,
     async execute(input) {
+      const rawLimit = input.limit ?? 10;
+      const limit = Number.isFinite(rawLimit)
+        ? Math.min(Math.max(Math.floor(rawLimit), 1), 50)
+        : 10;
       const msgs = opts.bot.getMessages({
         chatId: input.chat_id,
-        limit: input.limit ?? 10,
+        limit,
       });
 
       let acked = 0;

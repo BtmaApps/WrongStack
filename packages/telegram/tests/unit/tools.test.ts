@@ -92,6 +92,24 @@ describe('telegram_read tool', () => {
     expect(result.messages).toHaveLength(1);
     expect(result.messages[0]!.text).toBe('a');
   });
+
+  it('normalizes padded or whitespace-only chat_id consistently with acknowledge and clamps limit (F27)', async () => {
+    const bot = makeBot();
+    pushMsg(bot, { messageId: 10, text: 'padded match', chatId: 111 });
+    pushMsg(bot, { messageId: 20, text: 'other chat', chatId: 222 });
+
+    const tool = makeTelegramReadTool({ bot });
+    const padded = await tool.execute({ chat_id: ' 111 ', ack_last: 10 });
+    expect(padded.messages).toHaveLength(1);
+    expect(padded.messages[0]!.text).toBe('padded match');
+    expect(padded.acked).toBe(1);
+    expect(bot.bufferCount).toBe(1);
+
+    const blankChat = await tool.execute({ chat_id: '   ', limit: -5, ack_last: 20 });
+    expect(blankChat.messages).toHaveLength(1);
+    expect(blankChat.messages[0]!.text).toBe('other chat');
+    expect(blankChat.acked).toBe(1);
+  });
 });
 
 // ---------------------------------------------------------------------------
