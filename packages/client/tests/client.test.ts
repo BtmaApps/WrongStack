@@ -1014,4 +1014,75 @@ describe('createHttpClient', () => {
     expect(seen[0]?.url).toMatch(/^http:\/\//);
     expect(seen[0]?.token).toBe('query-secret');
   });
+
+  it('handles a socket close arriving in the same synchronous turn as session.start on connect and reconnect (F654)', async () => {
+    let attempt = 0;
+    let releaseAttempt2!: () => void;
+    const attempt2Gate = new Promise<void>((r) => {
+      releaseAttempt2 = r;
+    });
+    let resolveOpened!: () => void;
+    const reconnected = new Promise<void>((r) => {
+      resolveOpened = r;
+    });
+
+    class SameTurnCloseSocket {
+      readyState = 0;
+      private readonly listeners = {
+        open: [] as Array<() => void>,
+        error: [] as Array<() => void>,
+        close: [] as Array<(event: { code: number; reason: string }) => void>,
+        message: [] as Array<(event: { data: unknown }) => void>,
+      };
+      constructor(public readonly url: string) {
+        attempt += 1;
+        const myAttempt = attempt;
+        queueMicrotask(async () => {
+          if (myAttempt === 2) await attempt2Gate;
+          this.readyState = 1;
+          for (const fn of this.listeners.open) fn();
+          for (const fn of this.listeners.message) {
+            fn({
+              data: JSON.stringify({
+                type: 'session.start',
+                payload: { sessionId: 'sess_1', provider: 'openai', model: 'gpt-5' },
+              }),
+            });
+          }
+          if (myAttempt <= 2) {
+            this.readyState = 3;
+            for (const fn of this.listeners.close) {
+              fn({ code: 1006, reason: `drop_${myAttempt}` });
+            }
+          }
+        });
+      }
+      send(): void {}
+      close(code = 1000, reason = ''): void {
+        this.readyState = 3;
+        for (const fn of this.listeners.close) fn({ code, reason });
+      }
+      addEventListener(
+        type: 'open' | 'error' | 'close' | 'message',
+        listener: (...args: never[]) => void,
+      ): void {
+        (this.listeners[type] as unknown[]).push(listener);
+      }
+    }
+
+    const client = await WrongStackClient.connect({
+      url: 'http://127.0.0.1:3456',
+      WebSocket: SameTurnCloseSocket,
+      reconnect: { attempts: 3, initialDelayMs: 0, maxDelayMs: 0 },
+    });
+    expect(client.state).toBe('reconnecting');
+    client.onStateChange((state) => {
+      if (state === 'open') resolveOpened();
+    });
+    releaseAttempt2();
+    await reconnected;
+    expect(client.state).toBe('open');
+    expect(attempt).toBe(3);
+    client.close();
+  });
 });

@@ -101,11 +101,13 @@ export class WrongStackClient {
       });
     }
     const client = new WrongStackClient(Ctor, options);
-    const { start, early } = await client.open();
+    const { start, early, closed } = await client.open();
     client.current = start;
     client.receive({ type: 'session.start', payload: start });
-    client.subscribe(start.sessionId);
+    if (!closed) client.subscribe(start.sessionId);
+    else client.subscribed = [start.sessionId];
     for (const frame of early) client.receive(frame);
+    if (closed) client.handleClose(closed);
     return client;
   }
 
@@ -301,12 +303,17 @@ export class WrongStackClient {
    * before it or in the same read. A changed epoch means the server
    * restarted: runs in flight died with it.
    */
-  private async open(): Promise<{ start: SessionInfo; early: Frame[] }> {
+  private async open(): Promise<{
+    start: SessionInfo;
+    early: Frame[];
+    closed: CloseInfo | undefined;
+  }> {
     const number = this.socketNumber + 1;
     // Frames read in the same chunk as `session.start` are routed before the
     // await below resumes and installs this socket; held here, in order, they
     // join `early` instead of failing the socket-number check and vanishing.
     let late: Frame[] | undefined = [];
+    let lateClose: CloseInfo | undefined;
     const opened = await openSocket(
       this.Ctor,
       {
@@ -320,14 +327,17 @@ export class WrongStackClient {
           else if (number === this.socketNumber) this.receive(frame);
         },
         close: (event) => {
-          if (number === this.socketNumber) this.handleClose(event);
+          if (late) lateClose = event;
+          else if (number === this.socketNumber) this.handleClose(event);
         },
       },
     );
     this.socket = opened.socket;
     this.socketNumber = number;
     const early = [...opened.early, ...late];
+    const closed = lateClose;
     late = undefined;
+    lateClose = undefined;
     const start = opened.start;
     const restarted =
       this.epoch !== undefined && start.eventEpoch !== undefined && start.eventEpoch !== this.epoch;
@@ -343,7 +353,7 @@ export class WrongStackClient {
         }),
       );
     }
-    return { start, early };
+    return { start, early, closed };
   }
 
   private adopt(info: SessionInfo): SessionInfo {
@@ -629,12 +639,25 @@ export class WrongStackClient {
       delay = Math.min(delay * 2, policy.maxDelayMs ?? 10_000);
       const socketBeforeAttempt = this.socketNumber;
       try {
-        const { start, early } = await this.open();
+        const { start, early, closed } = await this.open();
         if (this.closing) {
           this.socket.close(NORMAL_CLOSURE, 'client closed');
           return;
         }
         this.receive({ type: 'session.start', payload: start });
+        if (closed) {
+          for (const frame of early) this.receive(frame);
+          if (closed.code === NORMAL_CLOSURE) {
+            this.finish(undefined);
+            return;
+          }
+          throw new WrongStackError({
+            kind: 'connection',
+            code: String(closed.code ?? 'closed'),
+            ...(closed.reason ? { detail: closed.reason } : {}),
+            retryable: true,
+          });
+        }
         this.subscribe(this.current.sessionId, true);
         for (const frame of early) this.receive(frame);
         this.setState('open', undefined);
