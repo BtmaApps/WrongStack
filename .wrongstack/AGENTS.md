@@ -128,8 +128,8 @@ contract types.
 
 ## Domain knowledge
 
-- **Package manager is pnpm 11.5.3** — workspace protocol (`workspace:*`) is
-  used for inter-package dependencies. Lockfile is `pnpm-lock.yaml`.
+- **Package manager is Bun** (pinned in `.bun-version`) — workspace protocol
+  (`workspace:*`) is used for inter-package dependencies. Lockfile is `bun.lock`.
 - **Node.js >= 22.19.0** required. `engines` field is enforced.
 - **Versioning** is manual via `scripts/bump-version.mjs`. Current version is
   read from root `package.json` `version` field and synced to all packages.

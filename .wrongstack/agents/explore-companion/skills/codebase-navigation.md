@@ -10,10 +10,6 @@
 
 ## Mailbox `unreadCount` Collisions
 
-## Desktop Runtime Facade
-
-- Treat `apps/desktop/src/main/runtime-manager.ts` as a re-export facade for `runtime-manager-state.js`, `runtime-manager-paths.js`, `runtime-process.js`, `runtime-project-manifest.js`. Close consumers with `runtime-manager(\.js)?` (covering `from`/`import()`/`require`) plus `new\s+DesktopRuntimeManager\s*\(` for construction sites — grepping sibling module specifiers directly undercounts (consumers like `apps/desktop/src/main/webui/controller.ts` and `apps/desktop/src/main/runtime/operations.ts` import through the facade).
-
 ## WrongForge Error Prefix
 
 - When an error message is prefixed `WrongForge: `, the wrapper is `packages/cli/src/wrongforge-leader/wrongforge-leader-provider.ts` `providerError()` (plus `fleet/wrongforge-runner.ts` `subagentError('bridge_failed', ...)` for delegated tasks). The text *after* the prefix is produced by the external WrongForge service at `http://127.0.0.1:8787` (via `resolveWrongForgeEndpoint`/`wrongForgeConfigured` in `packages/cli/src/fleet/wrongforge-client.ts`), so a zero-hit repo grep for that body text is evidence of upstream ownership, not a missing string. Treat `context_overflow` from any provider as non-fallback-eligible (compaction-owned) per `packages/core` fallback kind-gating tests.
