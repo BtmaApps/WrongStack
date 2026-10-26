@@ -8,7 +8,7 @@ import {
   type Tool,
 } from '@wrongstack/contracts/types';
 import type { UserInputPayload } from '@wrongstack/core/agent';
-import { FallbackProfileManager } from '@wrongstack/core/agent';
+import { AGENT_COORDINATION, FallbackProfileManager } from '@wrongstack/core/agent';
 import { ProviderRegistry, ToolRegistry } from '@wrongstack/core/registry';
 import { DefaultSecretScrubber } from '@wrongstack/core/security';
 import { DefaultConfigStore } from '@wrongstack/core/storage';
@@ -595,5 +595,42 @@ describe('makeLightSubagentFactory', () => {
     );
     expect(r.agent.ctx.model).toBe('worker-m');
     expect(r.agent.ctx.provider.id).toBe('alt');
+  });
+});
+
+describe('makeLightSubagentFactory — worker disposal', () => {
+  // The runner releases a worker only through `result.dispose`. Without it the
+  // agent-lifetime hooks attached at construction (mailbox heartbeat and
+  // awareness timers, the refcounted HQ publisher) leaked per SDD worker.
+  it('returns a dispose that drains the agent-lifetime hooks', async () => {
+    const deps = makeDeps();
+    const live = new Set<ReturnType<typeof setInterval>>();
+    deps.container.bind(
+      AGENT_COORDINATION,
+      () =>
+        ({
+          attachMailboxChecker(a: { ctx: { registerAgentHook(fn: () => void): void } }) {
+            const timer = setInterval(() => {}, 60_000);
+            live.add(timer);
+            a.ctx.registerAgentHook(() => {
+              clearInterval(timer);
+              live.delete(timer);
+            });
+            return async () => [];
+          },
+          attachSessionNotes() {},
+          attachFleetPulse: () => async () => null,
+          drainLeaderDeliveries: async () => 0,
+        }) as never,
+    );
+    const factory = makeLightSubagentFactory(deps);
+    const workers = [
+      await factory({ id: 'w1', name: 'w1', role: 'executor' }),
+      await factory({ id: 'w2', name: 'w2', role: 'executor' }),
+    ];
+    expect(live.size).toBe(2);
+    for (const worker of workers) await worker.dispose?.();
+    await workers[0]?.dispose?.();
+    expect(live.size).toBe(0);
   });
 });

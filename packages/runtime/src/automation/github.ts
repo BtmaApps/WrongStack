@@ -42,7 +42,10 @@ export async function ingestGitHubEvent(
   if (!payload || typeof payload !== 'object' || Array.isArray(payload))
     throw new Error('Invalid GitHub event');
   const repository = payload['repository'] as { full_name?: unknown } | undefined;
-  if (repository?.full_name !== job.github.repository)
+  if (
+    typeof repository?.full_name !== 'string' ||
+    repository.full_name.toLowerCase() !== job.github.repository.toLowerCase()
+  )
     throw new Error('GitHub repository does not match this job');
   const action = typeof payload['action'] === 'string' ? payload['action'] : '';
   const event = action ? `${headers.event}.${action}` : headers.event;

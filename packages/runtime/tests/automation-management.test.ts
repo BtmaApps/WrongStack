@@ -445,4 +445,118 @@ describe('GitHub conditions and launch plans', () => {
       createHeadlessLaunchPlan({ ...spec, github: null as unknown as typeof spec.github }),
     ).toThrow('Invalid GitHub automation trigger');
   });
+  it('preserves nextRunAt across reordered cron keys, rejects cross-project updates, retains same-ms continuation on prune, and matches GitHub repository case-insensitively (F28)', async () => {
+    const { directory, store, spec } = await fixture();
+    const otherDir = path.join(directory, 'other-f28');
+    await mkdir(otherDir, { recursive: true });
+    const createdAt = Date.parse('2026-10-01T00:05:00Z');
+    const job = await store.add(
+      {
+        ...spec,
+        schedule: { type: 'cron', expression: '0 * * * *', timezone: 'UTC' },
+        github: {
+          repository: 'WrongStack/Repo',
+          events: ['issue_comment.created'],
+          secretEnv: 'TEST_KEY',
+        },
+      },
+      createdAt,
+    );
+    const updated = await store.update(
+      job.id,
+      {
+        ...spec,
+        prompt: 'Updated prompt',
+        schedule: { timezone: 'UTC', expression: '0 * * * *', type: 'cron' },
+        github: {
+          repository: 'WrongStack/Repo',
+          events: ['issue_comment.created'],
+          secretEnv: 'TEST_KEY',
+        },
+      },
+      1,
+      Date.parse('2026-10-01T02:30:00Z'),
+    );
+    expect(updated.nextRunAt).toBe(job.nextRunAt);
+    await expect(store.update(job.id, { ...spec, projectRoot: otherDir }, 2)).rejects.toThrow(
+      'Automation job not found',
+    );
+
+    const r1 = await store.enqueue(job.id, 'github', 'd-f28-1', 'WrongStack/Repo#1', '', 100);
+    const c1 = (await store.claim('w1', 101))!;
+    await store.finish(
+      c1.id,
+      c1.leaseId!,
+      {
+        status: 'completed',
+        result: {
+          version: 1,
+          agentStatus: 'done',
+          sessionId: 's1',
+          finalText: 'ok',
+          durationMs: 1,
+          usage: {
+            inputTokens: 1,
+            outputTokens: 1,
+            iterations: 1,
+            costUsd: null,
+            costSource: 'unknown',
+          },
+          changedFiles: ['a.ts'],
+          changedFilesTruncated: false,
+          validation: { status: 'passed', evidence: ['verification.json'] },
+        },
+      },
+      200,
+    );
+    const r2 = await store.enqueueCIRepair(r1.id, 'fix ci', 'b'.repeat(64));
+    const c2 = (await store.claim('w1', 200))!;
+    await store.finish(
+      c2.id,
+      c2.leaseId!,
+      {
+        status: 'completed',
+        result: {
+          version: 1,
+          agentStatus: 'done',
+          sessionId: 's2',
+          finalText: 'ok2',
+          durationMs: 1,
+          usage: {
+            inputTokens: 1,
+            outputTokens: 1,
+            iterations: 1,
+            costUsd: null,
+            costSource: 'unknown',
+          },
+          changedFiles: ['a.ts'],
+          changedFilesTruncated: false,
+          validation: { status: 'passed', evidence: ['verification.json'] },
+        },
+      },
+      200,
+    );
+    await store.prune(1000);
+    expect((await store.snapshot()).runs.map((r) => r.id)).toEqual([r1.id, r2.id]);
+
+    const body = Buffer.from(
+      JSON.stringify({
+        repository: { full_name: 'wrongstack/repo' },
+        action: 'created',
+        issue: { number: 12 },
+      }),
+    );
+    const run = await ingestGitHubEvent(
+      store,
+      job.id,
+      body,
+      {
+        event: 'issue_comment',
+        delivery: 'case-f28',
+        signature: `sha256=${createHmac('sha256', 'fixture-secret').update(body).digest('hex')}`,
+      },
+      { TEST_KEY: 'fixture-secret' },
+    );
+    expect(run?.subjectKey).toBe('WrongStack/Repo#12');
+  });
 });

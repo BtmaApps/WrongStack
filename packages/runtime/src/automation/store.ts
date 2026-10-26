@@ -138,13 +138,16 @@ export class AutomationStore {
     return this.change((state) => {
       const index = state.jobs.findIndex((job) => job.id === id);
       const previous = state.jobs[index];
-      if (!previous) throw new Error('Automation job not found');
+      if (!previous || previous.projectRoot !== projectRoot)
+        throw new Error('Automation job not found');
       if ((previous.revision ?? 1) !== expectedRevision) throw new AutomationRevisionConflict();
       if (state.jobs.some((job) => job.id !== id && job.name === spec.name))
         throw new Error('Automation name exists');
       const changedSchedule =
         previous.intervalMs !== spec.intervalMs ||
-        JSON.stringify(previous.schedule) !== JSON.stringify(spec.schedule);
+        previous.schedule?.type !== spec.schedule?.type ||
+        previous.schedule?.expression !== spec.schedule?.expression ||
+        previous.schedule?.timezone !== spec.schedule?.timezone;
       const reenabledWithStaleNextRun =
         !previous.enabled &&
         spec.enabled &&
@@ -391,7 +394,7 @@ export class AutomationStore {
         if (run.status !== 'completed' || run.trigger !== 'github') continue;
         const key = `${run.jobId}\0${run.subjectKey}`;
         const previous = retained.get(key);
-        if (!previous || (run.completedAt ?? 0) > (previous.completedAt ?? 0))
+        if (!previous || (run.completedAt ?? 0) >= (previous.completedAt ?? 0))
           retained.set(key, run);
       }
       const keep = new Set([...retained.values()].map((run) => run.id));

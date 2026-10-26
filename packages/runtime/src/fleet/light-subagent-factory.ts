@@ -330,7 +330,19 @@ export function makeLightSubagentFactory(deps: LightSubagentFactoryDeps): AgentF
       }),
     );
 
-    return { agent, events };
+    // The runner releases a worker only through `dispose`. Constructing the
+    // Agent attached agent-lifetime hooks (mailbox heartbeat + awareness
+    // timers, the refcounted HQ publisher, auto-compaction); without teardown
+    // every SDD worker leaked them for the life of the server.
+    const dispose = async (): Promise<void> => {
+      try {
+        await agent.teardown();
+      } catch {
+        // Cleanup must not mask the task result.
+      }
+    };
+
+    return { agent, events, dispose };
   };
 }
 
