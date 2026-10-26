@@ -151,6 +151,26 @@ describe('security scan target files', () => {
     expect([...seen].sort()).toEqual(['a.ts', 'b.py']);
   });
 
+  it('preserves directory prefixes on extension globs in targetFiles such as src/**/*.ts (F647)', async () => {
+    const dir = await project({
+      'src/allowed.ts': 'export const a = 1;',
+      'other/unrelated.ts': 'export const b = 2;',
+    });
+    const { provider, seen } = recordingProvider('[]');
+    await new BatchScanner().runBatchScan({
+      provider: provider as never,
+      model: 'm',
+      projectRoot: dir,
+      skill: { patterns: [], metadata: { targetFiles: ['src/**/*.ts'] } } as never,
+      techStack: { stack: 'nodejs' } as never,
+      depth: 'standard',
+      llmBatchSize: undefined,
+      fileConcurrency: undefined,
+      abortController: new AbortController(),
+    });
+    expect([...seen].map((f) => f.replace(/\\/g, '/')).sort()).toEqual(['src/allowed.ts']);
+  });
+
   it('gathers include-pattern matches alongside extension matches', async () => {
     const dir = await project({
       Gemfile: '',

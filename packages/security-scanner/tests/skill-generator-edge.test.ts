@@ -338,6 +338,20 @@ describe('SkillGenerator - edge coverage', () => {
         'private const string ApiSecret = "sk_live_abc123";',
         'private readonly string ApiSecret = Environment.GetEnvironmentVariable("API_SECRET");',
       ],
+      [
+        'python',
+        'python-sql-injection',
+        'app.py',
+        'cursor.execute(f"SELECT * FROM users WHERE name = \'{user}\'")',
+        'cursor.execute("SELECT * FROM users WHERE name = %s", (user,))',
+      ],
+      [
+        'python',
+        'python-sql-injection',
+        'app.py',
+        'cursor.execute("SELECT * FROM users WHERE name = \'%s\'" % user)',
+        'cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))',
+      ],
     ] as const)('%s %s', (stack, id, file, vulnerable, safe) => {
       expect(findingsFor(stack, file, vulnerable)).toContain(id);
       expect(findingsFor(stack, file, safe)).not.toContain(id);

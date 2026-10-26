@@ -82,8 +82,11 @@ export class BatchScanner {
     for (const target of targetFiles) {
       const normalized = target.replace(/\\/g, '/');
       const baseName = normalized.slice(normalized.lastIndexOf('/') + 1);
-      if (/^\*\.[a-z0-9]+$/i.test(baseName)) extensions.add(baseName.slice(1).toLowerCase());
-      else if (/[^*?]/.test(baseName)) includePatterns.add(normalized);
+      if (/^(?:\*\*\/)*\*\.[a-z0-9]+$/i.test(normalized)) {
+        extensions.add(baseName.slice(1).toLowerCase());
+      } else if (/[^*?]/.test(baseName)) {
+        includePatterns.add(normalized);
+      }
     }
     const restricted = extensions.size > 0 || includePatterns.size > 0;
     const maxDepth = options.depth === 'quick' ? 2 : options.depth === 'deep' ? 20 : 5;
