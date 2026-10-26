@@ -270,8 +270,12 @@ const ECOSYSTEM_FETCHERS: Readonly<Record<string, EcosystemFetcher>> = {
     path: (name: string) => `/api/v1/crates/${name}`,
     parser: (json: Record<string, unknown>): RegistryEntry => {
       const crate = json.crate as Record<string, unknown> | undefined;
+      // `max_stable_version` is null when every release is a prerelease; only
+      // fall back to `max_version` when it carries no prerelease tag.
+      const maxVersion = typeof crate?.max_version === 'string' ? crate.max_version : undefined;
       const latestStable =
-        (crate?.max_stable_version as string) ?? (crate?.max_version as string) ?? undefined;
+        (typeof crate?.max_stable_version === 'string' ? crate.max_stable_version : undefined) ??
+        (maxVersion && !/-/.test(maxVersion.replace(/\+.*$/, '')) ? maxVersion : undefined);
       // crates.io has no crate-level license: it lives on each entry of
       // `versions` (serde: "MIT OR Apache-2.0"). Reading `crate.license`
       // reported every crate as unlicensed.
