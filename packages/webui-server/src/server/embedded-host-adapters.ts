@@ -157,7 +157,13 @@ export async function applyEmbeddedModelSwitch(
         },
       });
     }
-    ctx.broadcast({ type: 'session.start', payload: await ctx.buildSessionStart() });
+    const switchedSessionId = agentContext.session?.id;
+    ctx.broadcast({
+      type: 'session.start',
+      payload: await ctx.buildSessionStart(
+        switchedSessionId ? { sessionId: switchedSessionId } : undefined,
+      ),
+    });
   });
 }
 

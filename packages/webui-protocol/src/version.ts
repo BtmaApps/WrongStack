@@ -19,6 +19,8 @@ export const SURFACE_PROTOCOL_CAPABILITIES = [
   'sdd.run.from_graph',
   /** Host-owned prompt queue per session: queue.add/remove/clear/get, queue.state/drained. */
   'session.prompt-queue',
+  /** Direct user submissions receive a correlated acknowledgement after claiming their turn. */
+  'session.user-ack',
   /** `composer.warm`: the user is typing; open the provider connection ahead of the send. */
   'session.provider-warm',
   /**

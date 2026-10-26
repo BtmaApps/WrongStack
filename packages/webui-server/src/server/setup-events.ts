@@ -591,6 +591,7 @@ export function setupEvents(deps: SetupEventsDeps): () => void {
     context,
     projection,
     sessionPayload,
+    sessionContext: deps.sessionContext,
   });
 
   disposers.push(

@@ -392,6 +392,43 @@ describe('createSessionPromptQueue', () => {
       payload: { item: { text: 'look', images: [{ data: PNG, mediaType: 'image/png' }] } },
     });
   });
+  it('retains a persisted PDF attachment and its filename in the drained conversation frame', async () => {
+    const dir = await tempDir();
+    const store = new QueueStore({ dir: path.join(dir, SESSION) });
+    const source = {
+      type: 'base64' as const,
+      media_type: 'application/pdf' as const,
+      data: 'JVBERi0xLjQK',
+    };
+    await store.write([
+      {
+        displayText: 'Read the brief',
+        blocks: [
+          {
+            type: 'document',
+            source,
+            name: 'brief.pdf',
+            text: 'Canonical extracted text',
+            pages: 1,
+          },
+        ],
+      },
+    ]);
+    const h = queueHarness({ dir, busy: true });
+    expect((await h.queue.list(SESSION))[0]?.blocks).toEqual([
+      expect.objectContaining({ name: 'brief.pdf' }),
+    ]);
+    h.setBusy(false);
+    await h.queue.drain(SESSION);
+    expect(h.broadcasts.find((m) => m.type === 'queue.drained')).toMatchObject({
+      payload: {
+        item: {
+          text: 'Read the brief',
+          images: [{ data: source.data, mediaType: 'application/pdf', name: 'brief.pdf' }],
+        },
+      },
+    });
+  });
 
   it('puts the queue directory next to the sessions directory', () => {
     expect(promptQueueDirFor(path.join('root', 'projects', 'p', 'sessions'))).toBe(

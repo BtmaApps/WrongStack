@@ -124,6 +124,9 @@ describe('embedded-host-adapters', () => {
       const agent = mockAgent();
       const onMaxContextResolved = vi.fn();
       const broadcast = vi.fn();
+      const buildSessionStart = vi.fn(async (overrides?: Record<string, unknown>) => ({
+        sessionId: overrides?.['sessionId'] ?? agent.ctx.session.id,
+      }));
       const otherTab: any = {
         provider: { id: 'openai', capabilities: { maxContext: 1000 } },
         model: 'gpt-4o',
@@ -136,7 +139,7 @@ describe('embedded-host-adapters', () => {
         {
           agent,
           modeStore: undefined,
-          buildSessionStart: vi.fn(async () => ({})),
+          buildSessionStart,
           loadSavedProviders: vi.fn(async () => ({})),
           modelsRegistry: {
             refresh: vi.fn(async () => undefined),
@@ -160,6 +163,11 @@ describe('embedded-host-adapters', () => {
         .map((call) => call[0])
         .find((message: any) => message.type === 'ctx.max_context');
       expect(maxContextFrame.payload).toMatchObject({ sessionId: 'sess-2', maxContext: 777 });
+      expect(buildSessionStart).toHaveBeenCalledWith({ sessionId: 'sess-2' });
+      const sessionStartFrame = broadcast.mock.calls
+        .map((call) => call[0])
+        .find((message: any) => message.type === 'session.start');
+      expect(sessionStartFrame.payload).toMatchObject({ sessionId: 'sess-2' });
     });
 
     it('handles modelsRegistry refresh failure gracefully', async () => {

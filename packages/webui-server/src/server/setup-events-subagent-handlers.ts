@@ -19,8 +19,9 @@ export function registerSetupEventsSubagentHandlers(options: {
   context: Context;
   projection?: SetupEventProjection | undefined;
   sessionPayload: <T extends Record<string, unknown>>(payload: T) => T;
+  sessionContext?: ((sessionId: string) => Context | undefined) | undefined;
 }): void {
-  const { on, broadcast, clients, context, projection, sessionPayload } = options;
+  const { on, broadcast, clients, context, projection, sessionPayload, sessionContext } = options;
   const scrub = <T>(value: T): T => (projection?.scrubObject?.(value) ?? value) as T;
   const projectRoot = context.projectRoot;
 
@@ -203,20 +204,34 @@ export function registerSetupEventsSubagentHandlers(options: {
   });
 
   // ── Leader (main session) events — forwarded as subagent.event with subagentId 'leader' ──
-  let leaderSpawned = false;
-  on('iteration.started', (e) => {
-    if (!leaderSpawned) {
-      leaderSpawned = true;
-      const provider = (context.provider as { id?: string } | undefined)?.id ?? 'unknown';
-      forwardSubagent('spawned', {
-        sessionId: e.sessionId,
-        subagentId: 'leader',
-        name: 'LEADER',
-        provider,
-        model: context.model,
-        description: `Main agent session (${context.session.id})`,
-      });
+  const spawnedLeaders = new Set<string>();
+  const resolveLeaderContext = (
+    sessionId?: string | undefined,
+    eventCtx?: Context | undefined,
+  ): Context => {
+    if (sessionId && sessionId !== context.session?.id) {
+      return sessionContext?.(sessionId) ?? eventCtx ?? context;
     }
+    return (sessionId ? sessionContext?.(sessionId) : undefined) ?? eventCtx ?? context;
+  };
+  const emitLeaderSpawned = (sessionId?: string | undefined) => {
+    const targetCtx = resolveLeaderContext(sessionId);
+    const effectiveSessionId = sessionId ?? targetCtx.session?.id ?? '';
+    if (spawnedLeaders.has(effectiveSessionId)) return;
+    spawnedLeaders.add(effectiveSessionId);
+    const provider = (targetCtx.provider as { id?: string } | undefined)?.id ?? 'unknown';
+    const descSessionId = targetCtx.session?.id ?? effectiveSessionId;
+    forwardSubagent('spawned', {
+      sessionId,
+      subagentId: 'leader',
+      name: 'LEADER',
+      provider,
+      model: targetCtx.model,
+      description: `Main agent session (${descSessionId})`,
+    });
+  };
+  on('iteration.started', (e) => {
+    emitLeaderSpawned(e.sessionId);
   });
 
   on('tool.executed', (e) => {
@@ -231,10 +246,17 @@ export function registerSetupEventsSubagentHandlers(options: {
 
   on('provider.response', (e) => {
     if (e.usage?.input != null) {
-      const maxCtx = context.provider.capabilities.maxContext;
+      const targetCtx = resolveLeaderContext(e.sessionId, e.ctx);
+      const maxCtx =
+        targetCtx.provider?.capabilities?.maxContext ??
+        context.provider?.capabilities?.maxContext ??
+        0;
       const rawLoad = maxCtx > 0 ? e.usage.input / maxCtx : 0;
       const load = Math.max(0, Math.min(1, rawLoad));
-      const costUsd = context.tokenCounter.estimateCost().total;
+      const costUsd =
+        targetCtx.tokenCounter?.estimateCost?.()?.total ??
+        context.tokenCounter?.estimateCost?.()?.total ??
+        0;
       forwardSubagent('ctx_pct', {
         sessionId: e.sessionId,
         subagentId: 'leader',
@@ -248,17 +270,6 @@ export function registerSetupEventsSubagentHandlers(options: {
   });
 
   on('iteration.completed', (e) => {
-    if (!leaderSpawned) {
-      leaderSpawned = true;
-      const provider = (context.provider as { id?: string } | undefined)?.id ?? 'unknown';
-      forwardSubagent('spawned', {
-        sessionId: e.sessionId,
-        subagentId: 'leader',
-        name: 'LEADER',
-        provider,
-        model: context.model,
-        description: `Main agent session (${context.session.id})`,
-      });
-    }
+    emitLeaderSpawned(e.sessionId);
   });
 }

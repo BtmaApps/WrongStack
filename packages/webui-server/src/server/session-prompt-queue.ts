@@ -140,8 +140,16 @@ function clonePrompt(item: QueuedPrompt): QueuedPrompt {
 /** The drained prompt as pages show it: its text and its images. */
 function drainedView(item: QueuedPrompt) {
   const images = item.blocks.flatMap((block) =>
-    block.type === 'image' && block.source.type === 'base64' && block.source.data
-      ? [{ data: block.source.data, mediaType: block.source.media_type }]
+    (block.type === 'image' || block.type === 'document') &&
+    block.source.type === 'base64' &&
+    block.source.data
+      ? [
+          {
+            data: block.source.data,
+            mediaType: block.source.media_type,
+            ...(block.type === 'document' && block.name ? { name: block.name } : {}),
+          },
+        ]
       : [],
   );
   return {

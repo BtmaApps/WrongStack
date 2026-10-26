@@ -448,4 +448,105 @@ describe('setupEvents worklist board pairing', () => {
       dispose();
     }
   });
+
+  it("scopes leader subagent spawned and ctx_pct events to each session's own context", () => {
+    const events = new EventBus();
+    const broadcast = vi.fn();
+    const rootCtx = {
+      session: { id: 'sess-a' },
+      provider: { id: 'openai', capabilities: { maxContext: 100_000 } },
+      model: 'gpt-4o',
+      tokenCounter: {
+        estimateCost: () => ({
+          input: 0.01,
+          output: 0.02,
+          cacheRead: 0,
+          cacheWrite: 0,
+          total: 0.03,
+        }),
+      },
+      todos: ROOT_BOARD,
+      sideEffects: [],
+      meta: {},
+    } as unknown as Context;
+    const tabBCtx = {
+      session: { id: 'sess-b' },
+      provider: { id: 'anthropic', capabilities: { maxContext: 200_000 } },
+      model: 'claude-3-7-sonnet',
+      tokenCounter: {
+        estimateCost: () => ({
+          input: 0.1,
+          output: 0.15,
+          cacheRead: 0,
+          cacheWrite: 0,
+          total: 0.25,
+        }),
+      },
+      todos: B_BOARD,
+      sideEffects: [],
+      meta: {},
+    } as unknown as Context;
+
+    const dispose = setupEvents({
+      events,
+      broadcast,
+      clients: new Map(),
+      config: {},
+      context: rootCtx,
+      pendingConfirms: new Map(),
+      sessionContext: (id) => (id === 'sess-b' ? tabBCtx : undefined),
+    });
+
+    try {
+      events.emit('iteration.started', { sessionId: 'sess-a', index: 0, maxIterations: 10 });
+      events.emit('iteration.started', { sessionId: 'sess-b', index: 0, maxIterations: 10 });
+      events.emit('provider.response', {
+        sessionId: 'sess-b',
+        content: 'done',
+        usage: { input: 50_000, output: 100 },
+        ctx: tabBCtx,
+        stopReason: 'end_turn',
+      } as never);
+
+      const subagentPayloads = broadcast.mock.calls
+        .map(([, msg]) => msg as { type: string; payload: Record<string, unknown> })
+        .filter((msg) => msg.type === 'subagent.event')
+        .map((msg) => msg.payload);
+
+      expect(subagentPayloads).toContainEqual(
+        expect.objectContaining({
+          kind: 'spawned',
+          sessionId: 'sess-a',
+          subagentId: 'leader',
+          provider: 'openai',
+          model: 'gpt-4o',
+          description: 'Main agent session (sess-a)',
+        }),
+      );
+      expect(subagentPayloads).toContainEqual(
+        expect.objectContaining({
+          kind: 'spawned',
+          sessionId: 'sess-b',
+          subagentId: 'leader',
+          provider: 'anthropic',
+          model: 'claude-3-7-sonnet',
+          description: 'Main agent session (sess-b)',
+        }),
+      );
+      expect(subagentPayloads).toContainEqual(
+        expect.objectContaining({
+          kind: 'ctx_pct',
+          sessionId: 'sess-b',
+          subagentId: 'leader',
+          load: 0.25,
+          rawLoad: 0.25,
+          tokens: 50_000,
+          maxContext: 200_000,
+          costUsd: 0.25,
+        }),
+      );
+    } finally {
+      dispose();
+    }
+  });
 });
