@@ -15,6 +15,7 @@
 import type { Activity, ActivityBarOrder, View } from '@/stores/ui-store-types';
 import { ACTIVITY_BAR_FIXED_PANEL_IDS, ACTIVITY_BAR_MAX_ICONS } from '@/stores/ui-store-types';
 import {
+  applyLockedAnchors,
   CALM_BAR_VIEW_COUNT,
   moveItemId,
   PANELS,
@@ -28,6 +29,7 @@ export type PinGroup = 'panels' | 'views';
 
 const PANEL_IDS: ReadonlySet<string> = new Set(PANELS.map((panel) => panel.id));
 const VIEW_IDS: ReadonlySet<string> = new Set(VIEWS.map((view) => view.id));
+const FIXED_PANEL_IDS_SET: ReadonlySet<string> = new Set(ACTIVITY_BAR_FIXED_PANEL_IDS);
 
 /** The editable state of the customize dialog. */
 export interface PinDraft {
@@ -71,13 +73,23 @@ export function createPinDraft(
   order: ActivityBarOrder | null,
   seed: { panels: string[]; views: string[] },
 ): PinDraft {
-  const panelOrder = resolveActivityOrder(PANELS, order?.panels).map((panel) => panel.id);
+  const panelOrder = applyLockedAnchors(PANELS, order?.panels, FIXED_PANEL_IDS_SET).map(
+    (panel) => panel.id,
+  );
   const viewOrder = resolveActivityOrder(VIEWS, order?.views).map((view) => view.id);
+  const pinnedPanels = Array.from(
+    new Set([...ACTIVITY_BAR_FIXED_PANEL_IDS, ...seed.panels.filter((id) => PANEL_IDS.has(id))]),
+  ).slice(0, ACTIVITY_BAR_MAX_ICONS);
+  const viewBudget = Math.max(0, ACTIVITY_BAR_MAX_ICONS - pinnedPanels.length);
+  const pinnedViews = Array.from(new Set(seed.views.filter((id) => VIEW_IDS.has(id)))).slice(
+    0,
+    viewBudget,
+  );
   return {
     panels: panelOrder,
     views: viewOrder,
-    pinnedPanels: seed.panels.filter((id) => PANEL_IDS.has(id)),
-    pinnedViews: seed.views.filter((id) => VIEW_IDS.has(id)),
+    pinnedPanels,
+    pinnedViews,
   };
 }
 
@@ -140,6 +152,7 @@ export function movePinned(
   const index = pinned.indexOf(id);
   const neighbor = pinned[index + direction];
   if (index < 0 || neighbor === undefined) return draft;
+  if (group === 'panels' && (isFixedPanelId(id) || isFixedPanelId(neighbor))) return draft;
   const next = moveItemId(order, id, neighbor);
   if (next === order) return draft;
   return group === 'panels' ? { ...draft, panels: next } : { ...draft, views: next };

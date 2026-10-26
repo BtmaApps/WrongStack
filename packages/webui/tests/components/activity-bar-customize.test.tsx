@@ -70,6 +70,17 @@ describe('activity-bar · pin model', () => {
     expect(order.panels.length).toBe(6);
     expect(order.views.length).toBeGreaterThan(order.pinned?.views.length ?? 0);
   });
+
+  it('locks fixed panels at top indices, dedupes seeds, and prevents moving movable panels above fixed panels', () => {
+    const draft = createPinDraft(
+      { panels: ['design', 'skills'], views: [] },
+      { panels: ['skills', 'skills'], views: ['roster', 'roster'] },
+    );
+    expect(draft.panels).toEqual(['chat', 'files', 'changes', 'mailbox', 'design', 'skills']);
+    expect(pinnedOrder(draft, 'panels')).toEqual(['chat', 'files', 'changes', 'mailbox', 'skills']);
+    expect(pinnedOrder(draft, 'views')).toEqual(['roster']);
+    expect(movePinned(draft, 'panels', 'skills', -1)).toBe(draft);
+  });
 });
 
 // Component behaviour ─────────────────────────────────────────────────

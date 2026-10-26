@@ -123,4 +123,20 @@ describe('swapTabSession', () => {
     expect(useSessionTabStore.getState().openTabIds).toEqual(['sess-b']);
     expect(activeSessionLaneId()).toBe('sess-b');
   });
+
+  it('deduplicates stored tabs and preserves an unlisted foreground session when switching to an open tab', () => {
+    localStorage.setItem(
+      'wrongstack.open_session_tabs',
+      JSON.stringify(['sess-a', 'sess-a', 'sess-b']),
+    );
+    expect(readStoredTabs()).toEqual(['sess-a', 'sess-b']);
+
+    useSessionTabStore.setState({ openTabIds: ['sess-a'], lastSeenCounts: {}, attention: {} });
+    setActiveLane('sess-b');
+    setActiveSessionLane('sess-b');
+
+    const res = useSessionTabStore.getState().openTab('sess-a');
+    expect(res).toEqual({ success: true, reason: 'switched' });
+    expect(useSessionTabStore.getState().openTabIds).toEqual(['sess-a', 'sess-b']);
+  });
 });

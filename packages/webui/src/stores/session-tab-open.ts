@@ -63,6 +63,10 @@ export function openTabInStore(
   // The recycle re-entry passes `recycleReentry`, so its hop stays silent.
   if (tabs.includes(sessionId)) {
     if (activeId && !recycleReentry) notifyBusyTabLeftBehind(activeId);
+    if (tabs.length !== get().openTabIds.length) {
+      set({ openTabIds: tabs });
+      writeStoredTabs(tabs);
+    }
     activate(sessionId);
     get().markSeen(sessionId);
     // An EMPTY slot is the one focus that may turn into a real wait. The

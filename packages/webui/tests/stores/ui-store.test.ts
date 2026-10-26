@@ -817,6 +817,33 @@ describe('F5 resilience — currentView + dockSection persistence', () => {
     expect(result.dockSection).toBeNull();
   });
 
+  it('merge() and migrate() sanitize corrupt activityBarOrder and drop unknown view names without stealing pin budget', () => {
+    const api = (
+      useUIStore as unknown as {
+        persist?: {
+          getOptions?: () => {
+            merge?: (p: unknown, c: unknown) => unknown;
+            migrate?: (p: unknown, v: number) => unknown;
+          };
+        };
+      }
+    ).persist;
+    const merged = api
+      ?.getOptions?.()
+      .merge?.({ activityBarOrder: 'not-an-object' }, useUIStore.getState()) as ReturnType<
+      typeof useUIStore.getState
+    >;
+    expect(merged.activityBarOrder).toBeNull();
+
+    const migratedUnknownOnly = api
+      ?.getOptions?.()
+      .migrate?.(
+        { activityBarOrder: { panels: ['invalid'], views: ['removed-legacy-view'] } },
+        8,
+      ) as { activityBarOrder: unknown };
+    expect(migratedUnknownOnly.activityBarOrder).toBeNull();
+  });
+
   it('merge() drops stale navigation state inside the desktop shell', () => {
     history.pushState(null, '', '/?shell=desktop');
     const api = (

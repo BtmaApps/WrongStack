@@ -12,9 +12,9 @@ export function readStoredTabs(): string[] {
     if (!saved) return [];
     const parsed = JSON.parse(saved);
     if (!Array.isArray(parsed)) return [];
-    return parsed
-      .filter((id): id is string => typeof id === 'string' && id.length > 0)
-      .slice(0, MAX_OPEN_TABS);
+    return Array.from(
+      new Set(parsed.filter((id): id is string => typeof id === 'string' && id.length > 0)),
+    ).slice(0, MAX_OPEN_TABS);
   } catch {
     return [];
   }
@@ -23,7 +23,10 @@ export function readStoredTabs(): string[] {
 export function writeStoredTabs(tabs: string[]) {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(TAB_STORAGE_KEY, JSON.stringify(tabs.slice(0, MAX_OPEN_TABS)));
+    const unique = Array.from(
+      new Set(tabs.filter((id): id is string => typeof id === 'string' && id.length > 0)),
+    ).slice(0, MAX_OPEN_TABS);
+    localStorage.setItem(TAB_STORAGE_KEY, JSON.stringify(unique));
   } catch {
     // ignore
   }
