@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { IntakeSuggestionError } from '../src/errors.js';
+import { applySuggestionProposal } from '../src/service-helpers.js';
 import { toProposals, validateLlmSuggestionOutput } from '../src/suggestions.js';
+import type { RequirementIntakeRecord } from '../src/types.js';
 
 const VALID_OUTPUT = {
   suggested_title: 'Add email-based password reset',
@@ -117,5 +119,21 @@ describe('toProposals', () => {
 
   it('returns an empty list for an empty suggestion', () => {
     expect(toProposals(validateLlmSuggestionOutput({}))).toEqual([]);
+  });
+
+  it('allows accepting outcome proposals up to MAX_ANSWER_LENGTH (> 5,000 chars)', () => {
+    const longOutcome = 'O'.repeat(6_000);
+    const proposals = toProposals(validateLlmSuggestionOutput({ suggested_outcome: longOutcome }));
+    expect(proposals).toHaveLength(1);
+    const record = {
+      llmSuggestions: proposals,
+      fieldSources: {},
+      questions: [],
+      targetUsers: [],
+      constraints: [],
+    } as unknown as RequirementIntakeRecord;
+    applySuggestionProposal(record, proposals[0]!);
+    expect(record.expectedOutcome).toBe(longOutcome);
+    expect(record.fieldSources.expected_outcome).toBe('llm');
   });
 });

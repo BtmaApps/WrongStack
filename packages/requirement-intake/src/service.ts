@@ -79,6 +79,7 @@ import {
   validateCreateInput,
   validateUpdateInput,
 } from './validation.js';
+import { deriveVibeState, hasVibeTag } from './vibe.js';
 export interface RequirementIntakeServiceOptions {
   store: RequirementIntakeStore;
   authorizer: IntakeAuthorizer;
@@ -274,8 +275,41 @@ export class RequirementIntakeService {
         if (validated.providedContext !== undefined)
           next.providedContext = [...validated.providedContext];
         if (validated.metadata !== undefined) next.metadata = validated.metadata;
-        if (validated.isVibeMode !== undefined) next.isVibeMode = validated.isVibeMode;
-        if (validated.vibeProtocol !== undefined) next.vibeProtocol = validated.vibeProtocol;
+        const wasVibeLocked = next.isVibeMode === true || next.vibeProtocol?.isVibeMode === true;
+        const textTriggersVibe =
+          hasVibeTag(validated.title) ||
+          hasVibeTag(validated.businessGoal) ||
+          hasVibeTag(validated.expectedOutcome) ||
+          hasVibeTag(validated.scopeNotes);
+        if (validated.vibeProtocol !== undefined) {
+          next.vibeProtocol = wasVibeLocked
+            ? { ...validated.vibeProtocol, isVibeMode: true }
+            : validated.vibeProtocol;
+        }
+        if (
+          wasVibeLocked ||
+          validated.isVibeMode === true ||
+          next.vibeProtocol?.isVibeMode === true ||
+          textTriggersVibe
+        ) {
+          next.isVibeMode = true;
+          next.vibeProtocol = deriveVibeState(
+            [
+              next.originalRequest,
+              validated.title,
+              validated.businessGoal,
+              validated.expectedOutcome,
+              validated.scopeNotes,
+            ]
+              .filter((part): part is string => typeof part === 'string')
+              .join(' '),
+            next.vibeProtocol
+              ? { ...next.vibeProtocol, isVibeMode: true }
+              : { isVibeMode: true, detectedAt: Date.now(), stage: 'synthesizer' },
+          );
+        } else if (validated.isVibeMode !== undefined) {
+          next.isVibeMode = validated.isVibeMode;
+        }
         markUserSources(next, changedKeys);
       })
       .then((updated) => {

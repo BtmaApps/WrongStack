@@ -5,6 +5,7 @@ import {
   INTAKE_PRIORITIES,
   type IntakePriority,
   type IntakeQuestionTemplate,
+  MAX_ANSWER_LENGTH,
   MAX_ARRAY_ITEMS,
   MAX_ATTACHMENTS,
   MAX_RELATED_RESOURCES,
@@ -157,12 +158,14 @@ export function buildNewIntakeRecord(
     addedAt: now,
   }));
 
-  const vibeState = deriveVibeState(
-    input.originalRequest,
-    input.vibeProtocol ??
-      (input.isVibeMode ? { isVibeMode: true, detectedAt: now, stage: 'synthesizer' } : undefined),
-    now,
-  );
+  const initialVibeSeed = input.vibeProtocol
+    ? input.isVibeMode
+      ? { ...input.vibeProtocol, isVibeMode: true }
+      : input.vibeProtocol
+    : input.isVibeMode
+      ? { isVibeMode: true, detectedAt: now, stage: 'synthesizer' as const }
+      : undefined;
+  const vibeState = deriveVibeState(input.originalRequest, initialVibeSeed, now);
 
   return {
     id: newIntakeId(),
@@ -289,7 +292,7 @@ export function applySuggestionProposal(
       break;
     }
     case 'outcome': {
-      const value = assertSuggestionString(proposal.value, 'outcome', MAX_STRING_FIELD_LENGTH);
+      const value = assertSuggestionString(proposal.value, 'outcome', MAX_ANSWER_LENGTH);
       record.expectedOutcome = value;
       record.fieldSources.expected_outcome = 'llm';
       break;

@@ -147,5 +147,43 @@ describe('VIBE Protocol — Requirement Intake', () => {
 
       await expect(harness.store.list('proj_alpha')).resolves.toEqual([]);
     });
+
+    it('prevents unlocking VIBE mode via updateIntake({ isVibeMode: false }) and initializes vibeProtocol when enabling VIBE mode on update', async () => {
+      const harness = makeHarness();
+      const locked = await harness.service.createIntake(
+        {
+          projectId: 'proj_alpha',
+          originalRequest: '[VIBE] Keep audited workflow locked',
+          requestedBy: 'user-alice',
+        },
+        ALICE,
+      );
+
+      const afterUnlockAttempt = await harness.service.updateIntake(
+        locked.record.id,
+        { isVibeMode: false },
+        ALICE,
+      );
+      expect(afterUnlockAttempt.isVibeMode).toBe(true);
+      expect(afterUnlockAttempt.vibeProtocol?.isVibeMode).toBe(true);
+
+      const plain = await harness.service.createIntake(
+        {
+          projectId: 'proj_alpha',
+          originalRequest: 'Normal request later promoted to VIBE',
+          requestedBy: 'user-alice',
+        },
+        ALICE,
+      );
+
+      const promoted = await harness.service.updateIntake(
+        plain.record.id,
+        { isVibeMode: true },
+        ALICE,
+      );
+      expect(promoted.isVibeMode).toBe(true);
+      expect(promoted.vibeProtocol?.isVibeMode).toBe(true);
+      expect(promoted.vibeProtocol?.stage).toBe('synthesizer');
+    });
   });
 });
