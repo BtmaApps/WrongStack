@@ -86,10 +86,24 @@ export const lintTool: Tool<LintInput, LintOutput> = {
     return final;
   },
   async *executeStream(input, ctx, opts): AsyncGenerator<ToolStreamEvent<LintOutput>> {
-    const cwd =
-      input.cwd || ctx.workingDir
-        ? await safeResolveReal(input.cwd ?? ctx.workingDir!, ctx)
-        : ctx.cwd;
+    if (input.cwd !== undefined && (typeof input.cwd !== 'string' || !input.cwd.trim())) {
+      throw new ToolValidationError({
+        message: 'lint: cwd must be a non-empty string when provided.',
+        field: 'cwd',
+      });
+    }
+    let cwd: string;
+    try {
+      cwd =
+        input.cwd || ctx.workingDir
+          ? await safeResolveReal(input.cwd ?? ctx.workingDir!, ctx)
+          : ctx.cwd;
+    } catch (err) {
+      throw new ToolValidationError({
+        message: `lint: ${(err as Error).message}`,
+        field: 'cwd',
+      });
+    }
     const signal = opts?.signal ?? ctx.signal ?? new AbortController().signal;
     signal.throwIfAborted();
     const VALID_LINTERS: ReadonlySet<string> = new Set(['biome', 'eslint', 'tslint', 'auto']);
@@ -158,9 +172,14 @@ export const lintTool: Tool<LintInput, LintOutput> = {
     yield { type: 'log', text: `Running ${detected}…`, data: { linter: detected } };
 
     const files = input.files
-      ? (Array.isArray(input.files) ? input.files : input.files.split(','))
-          .map((f) => f.trim().replace(/\\/g, '/'))
-          .filter(Boolean)
+      ? [
+          ...new Set(
+            (Array.isArray(input.files) ? input.files : input.files.split(','))
+              .filter((f): f is string => typeof f === 'string')
+              .map((f) => f.trim().replace(/\\/g, '/'))
+              .filter(Boolean),
+          ),
+        ]
       : [];
 
     // C1 (CMDI-005) — argument injection: model-controlled `files[]` is

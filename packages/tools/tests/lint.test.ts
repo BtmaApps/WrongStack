@@ -243,6 +243,28 @@ describe('detectLinter config detection', () => {
       ),
     ).rejects.toThrow(/outside project root/);
   });
+
+  it('rejects blank or escaping cwd with ToolValidationError and deduplicates files (F641)', async () => {
+    await expect(
+      lintTool.execute({ linter: 'biome', cwd: '   ' }, makeCtx(tmpDir), makeOpts()),
+    ).rejects.toThrow(/cwd must be a non-empty string/);
+    await expect(
+      lintTool.execute({ linter: 'biome', cwd: '../../outside' }, makeCtx(tmpDir), makeOpts()),
+    ).rejects.toThrow(/outside project root/);
+
+    spawnStreamMocks.result = {
+      stdout: 'Found 0 errors and 0 warnings',
+      stderr: '',
+      exitCode: 0,
+      truncated: false,
+    };
+    const res = await lintTool.execute(
+      { linter: 'biome', files: ['src/a.ts', ' src/a.ts ', 'src\\a.ts'] },
+      makeCtx(tmpDir),
+      makeOpts(),
+    );
+    expect(res.files_checked).toBe(1);
+  });
 });
 
 // Replays of real `biome lint` output (biome 2.5.13, default reporter, captured

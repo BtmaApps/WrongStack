@@ -361,4 +361,40 @@ describe('diffTool', () => {
     );
     expect(resultWithSignal).toHaveProperty('mode');
   });
+
+  it('gitDiff scopes diffs and resolves relative files against input.path without duplicate -- separator (F640)', async () => {
+    const repoDir = await fs.mkdtemp(path.join(os.tmpdir(), 'diff-f640-'));
+    try {
+      const { execFileSync } = await import('node:child_process');
+      execFileSync('git', ['init'], { cwd: repoDir });
+      execFileSync('git', ['config', 'user.email', 'test@example.com'], { cwd: repoDir });
+      execFileSync('git', ['config', 'user.name', 'Test'], { cwd: repoDir });
+
+      const subDir = path.join(repoDir, 'sub');
+      await fs.mkdir(subDir, { recursive: true });
+      await fs.writeFile(path.join(repoDir, 'root.txt'), 'root-1\n');
+      await fs.writeFile(path.join(subDir, 'local.txt'), 'local-1\n');
+      execFileSync('git', ['add', '.'], { cwd: repoDir });
+      execFileSync('git', ['commit', '-m', 'init'], { cwd: repoDir });
+
+      await fs.writeFile(path.join(repoDir, 'root.txt'), 'root-2\n');
+      await fs.writeFile(path.join(subDir, 'local.txt'), 'local-2\n');
+      execFileSync('git', ['add', '.'], { cwd: repoDir });
+
+      const ctx = { cwd: repoDir, projectRoot: repoDir, tools: [] } as any;
+      const scopedFile = await diffTool.execute(
+        { staged: true, path: 'sub', files: ['local.txt'] },
+        ctx,
+        makeOpts(),
+      );
+      expect(scopedFile.diff).toContain('local-2');
+      expect(scopedFile.diff).not.toContain('root-2');
+
+      const scopedDir = await diffTool.execute({ staged: true, path: 'sub' }, ctx, makeOpts());
+      expect(scopedDir.diff).toContain('local-2');
+      expect(scopedDir.diff).not.toContain('root-2');
+    } finally {
+      await fs.rm(repoDir, { recursive: true, force: true });
+    }
+  });
 });

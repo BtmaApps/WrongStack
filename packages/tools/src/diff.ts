@@ -256,8 +256,14 @@ async function gitDiff(
     ];
     if (files.length > 0) {
       effectiveFiles = files;
-      args.push('--', ...files);
+      const resolvedFiles = files.map(
+        (f) => path.relative(gitDir, path.resolve(basePath, f)).replace(/\\/g, '/') || '.',
+      );
+      args.push(...resolvedFiles);
     }
+  }
+  if (effectiveFiles.length === 0 && path.resolve(basePath) !== path.resolve(gitDir)) {
+    args.push(path.relative(gitDir, basePath).replace(/\\/g, '/') || '.');
   }
 
   const result = await runGit(args, gitDir, signal);
