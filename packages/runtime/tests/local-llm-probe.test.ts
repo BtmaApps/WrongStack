@@ -323,4 +323,24 @@ describe('probeLocalLlm', () => {
       detail: '> 3000ms',
     });
   });
+
+  it('falls back to entry.name when entry.id is empty or whitespace-only', async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
+      jsonResponse({
+        models: [
+          { id: '   ', name: 'llama3:8b' },
+          { id: '', name: 'mistral:7b' },
+        ],
+      }),
+    );
+    const result = await probeLocalLlm({
+      baseUrl: 'http://localhost:11434/v1',
+      apiKey: undefined,
+      noAuth: true,
+      scrubber,
+      fetchImpl,
+    });
+    expect(result.ok).toBe(true);
+    expect(result.modelIds).toEqual(['llama3:8b', 'mistral:7b']);
+  });
 });

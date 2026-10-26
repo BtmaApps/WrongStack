@@ -559,4 +559,20 @@ describe('verified automation to draft PR', () => {
     expect(JSON.parse(child.context).checks[0].details).toContain('Parser error 0');
     expect(JSON.parse(child.context).checksTruncated).toBe(true);
   });
+
+  it('handles continuation run inspect and prepare when the parent has no pull-request.json artifact', async () => {
+    const f = await fixture();
+    const child = await f.store.enqueueCIRepair(f.run.id, 'repair context', 'b'.repeat(64));
+    await f.service.tick();
+    await f.service.idle();
+
+    await expect(f.requests.inspect(child.id)).resolves.toEqual({
+      plan: null,
+      receipt: null,
+      ci: null,
+    });
+    await expect(f.requests.prepare(child.id, input)).rejects.toThrow(
+      'CI repair requires its published parent',
+    );
+  });
 });

@@ -172,7 +172,7 @@ export async function probeLocalLlm(opts: ProbeOptions): Promise<ProbeResult> {
       const raw =
         typeof entry === 'string'
           ? entry
-          : typeof e?.['id'] === 'string'
+          : typeof e?.['id'] === 'string' && e['id'].trim().length > 0
             ? e['id']
             : typeof e?.['name'] === 'string'
               ? e['name']

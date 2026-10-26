@@ -88,9 +88,14 @@ export class AutomationPullRequests {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
     }
     if (!state.plan && run.continuationRunId) {
-      const parent = JSON.parse(
-        await readAutomationArtifact(this.store, run.continuationRunId, 'pull-request.json'),
-      ) as AutomationPullRequestView;
+      let parent: AutomationPullRequestView = { plan: null, receipt: null, ci: null };
+      try {
+        parent = JSON.parse(
+          await readAutomationArtifact(this.store, run.continuationRunId, 'pull-request.json'),
+        ) as AutomationPullRequestView;
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+      }
       if (parent.plan && parent.receipt)
         state.suggestedTarget = {
           repository: parent.plan.repository,
