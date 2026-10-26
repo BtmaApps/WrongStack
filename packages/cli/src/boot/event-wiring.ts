@@ -130,6 +130,16 @@ export function wireEventWiring(deps: WireEventWiringDeps): EventWiring {
   evOn('session.ended', (e: { sessionId?: string | undefined }) => {
     if (isCurrentSession(e.sessionId)) streamActivity = null;
   });
+  evOn(
+    'provider.output_progress',
+    (p: { sessionId?: string | undefined; tokens: number; durationMs: number }) => {
+      if (!isCurrentSession(p.sessionId)) return;
+      streamActivity = reduceStreamActivity(streamActivity, {
+        type: 'provider.output_progress',
+        payload: p,
+      });
+    },
+  );
   evOn('provider.thinking_delta', (p: { sessionId?: string | undefined; text: string }) => {
     if (!isCurrentSession(p.sessionId)) return;
     streamActivity = reduceStreamActivity(streamActivity, {

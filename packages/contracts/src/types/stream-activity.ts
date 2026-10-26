@@ -6,6 +6,8 @@ export interface StreamActivity {
   firstDeltaAt: number | null;
   receivedChars: number;
   requestChars: number;
+  /** Output tokens the provider reported for the open request without streaming them. */
+  requestTokens: number;
   settledTokens: number;
   estimated: boolean;
   requestOpen: boolean;
@@ -27,6 +29,7 @@ export function startStreamActivity(now: number): StreamActivity {
     firstDeltaAt: null,
     receivedChars: 0,
     requestChars: 0,
+    requestTokens: 0,
     settledTokens: 0,
     estimated: false,
     requestOpen: false,
@@ -73,6 +76,35 @@ export function reduceStreamActivity(
       samples,
     };
   }
+  if (frame.type === 'provider.output_progress') {
+    const tokens = p.tokens;
+    if (typeof tokens !== 'number' || !Number.isFinite(tokens) || tokens <= 0) return previous;
+    const state = !previous || previous.endedAt !== null ? startStreamActivity(now) : previous;
+    const span =
+      typeof p.durationMs === 'number' && Number.isFinite(p.durationMs) && p.durationMs > 0
+        ? Math.min(p.durationMs, STREAM_ACTIVITY_WINDOW_MS)
+        : 0;
+    // Spread the reported output over the time it took, so the speed reads
+    // as generation rate rather than one spike when the step lands.
+    const buckets = new Map<number, number>();
+    for (const sample of state.samples) {
+      if (now - sample.at < STREAM_ACTIVITY_WINDOW_MS) buckets.set(sample.at, sample.chars);
+    }
+    const last = Math.floor(now / SAMPLE_MS) * SAMPLE_MS;
+    const first = Math.floor((now - span) / SAMPLE_MS) * SAMPLE_MS;
+    const count = (last - first) / SAMPLE_MS + 1;
+    for (let at = first; at <= last; at += SAMPLE_MS) {
+      buckets.set(at, (buckets.get(at) ?? 0) + (tokens * 4) / count);
+    }
+    return {
+      ...state,
+      lastDeltaAt: now,
+      firstDeltaAt: state.firstDeltaAt ?? now - span,
+      requestTokens: state.requestTokens + tokens,
+      requestOpen: true,
+      samples: [...buckets].sort((a, b) => a[0] - b[0]).map(([at, chars]) => ({ at, chars })),
+    };
+  }
   if (!previous || previous.endedAt !== null) return previous;
   if (frame.type === 'provider.response') {
     const output = record(p.usage).output;
@@ -102,8 +134,11 @@ export function reduceStreamActivity(
     if (!previous.requestOpen && previous.requestChars === 0) return previous;
     return {
       ...previous,
-      settledTokens: previous.settledTokens + (exact ? output : estimate(responseChars)),
+      settledTokens:
+        previous.settledTokens +
+        (exact ? output : estimate(responseChars) + previous.requestTokens),
       requestChars: 0,
+      requestTokens: 0,
       requestOpen: false,
       estimated: previous.estimated || !exact,
       phase: 'waiting',
@@ -143,7 +178,7 @@ export function streamActivityView(state: StreamActivity, now = Date.now()) {
     Math.max(1_000, at - (state.firstDeltaAt ?? at)),
   );
   const tokensPerSecond = recentChars / 4 / (windowMs / 1_000);
-  const tokens = state.settledTokens + estimate(state.requestChars);
+  const tokens = state.settledTokens + estimate(state.requestChars) + state.requestTokens;
   const estimated = state.estimated || state.requestChars > 0;
   const receiving =
     state.endedAt === null &&

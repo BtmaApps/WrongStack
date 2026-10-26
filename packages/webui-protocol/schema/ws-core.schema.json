@@ -56,6 +56,9 @@
           "$ref": "#/definitions/WSThinkingDelta"
         },
         {
+          "$ref": "#/definitions/WSOutputProgress"
+        },
+        {
           "$ref": "#/definitions/WSToolUseStart"
         },
         {
@@ -418,6 +421,38 @@
         },
         "type": {
           "const": "iteration.started",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "WSOutputProgress": {
+      "description": "Output a provider measured but did not stream as text (meter only).",
+      "properties": {
+        "payload": {
+          "properties": {
+            "durationMs": {
+              "type": "number"
+            },
+            "sessionId": {
+              "type": "string"
+            },
+            "tokens": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "durationMs",
+            "tokens"
+          ],
+          "type": "object"
+        },
+        "type": {
+          "const": "provider.output_progress",
           "type": "string"
         }
       },
@@ -1490,6 +1525,14 @@
                 "$ref": "#/definitions/WSUserMessageImage"
               },
               "type": "array"
+            },
+            "journalRaw": {
+              "description": "Original user text when a reviewed refinement is submitted.",
+              "type": "string"
+            },
+            "requestId": {
+              "description": "Optional correlated acceptance/refusal, for hosts advertising session.user-ack.",
+              "type": "string"
             },
             "sessionId": {
               "type": "string"

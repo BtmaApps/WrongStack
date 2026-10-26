@@ -1,19 +1,3 @@
-export {
-  reduceStreamActivity,
-  STREAM_ACTIVITY_WINDOW_MS,
-  type StreamActivity,
-  startStreamActivity,
-  streamActivityView,
-} from '@wrongstack/contracts/types/stream-activity';
-
-export type {
-  AutomationCIResult,
-  AutomationPullRequestPlan,
-  AutomationPullRequestReceipt,
-  AutomationPullRequestView,
-} from './automation-pull-request.js';
-export type { MCPTaskView } from './mcp-tasks.js';
-
 // Core types browser surfaces name, re-exported so they reach core only
 // through this package.
 export type {
@@ -35,6 +19,13 @@ export {
 // how the four separate replay renderers came about.
 export type { SessionToolMeta } from '@wrongstack/contracts/types/session-timeline';
 export { projectSessionTimeline } from '@wrongstack/contracts/types/session-timeline';
+export {
+  reduceStreamActivity,
+  STREAM_ACTIVITY_WINDOW_MS,
+  type StreamActivity,
+  startStreamActivity,
+  streamActivityView,
+} from '@wrongstack/contracts/types/stream-activity';
 export {
   detectSkillMention,
   extractSkillMentions,
@@ -63,6 +54,12 @@ export {
 export * from './automation.js';
 export * from './automation-commands.js';
 export * from './automation-portability.js';
+export type {
+  AutomationCIResult,
+  AutomationPullRequestPlan,
+  AutomationPullRequestReceipt,
+  AutomationPullRequestView,
+} from './automation-pull-request.js';
 export type {
   CodeAssistDelta,
   CodeAssistMutatingPreset,
@@ -98,6 +95,7 @@ export type {
   WSError,
   WSIterationCompleted,
   WSIterationStarted,
+  WSOutputProgress,
   WSPing,
   WSPong,
   WSProviderError,
@@ -139,6 +137,7 @@ export type {
   ApiSessionMessageRequest,
   ApiSessionMessageResponse,
 } from './http-api.js';
+export type { MCPTaskView } from './mcp-tasks.js';
 export {
   type ChatProjection,
   type FleetProjection,

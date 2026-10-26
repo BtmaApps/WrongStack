@@ -36,6 +36,7 @@ export const SERVER_CONVERSATION_MESSAGE_TYPES = [
   'provider.fallback_pending',
   'provider.model_rerouted',
   'provider.model_switched',
+  'provider.output_progress',
   'provider.response',
   'provider.retry',
   'provider.status_changed',

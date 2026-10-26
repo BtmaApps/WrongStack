@@ -19,6 +19,7 @@
  * routes to the WrongForge worker runner (fleet/routing.ts).
  */
 
+import type { EventBus } from '@wrongstack/contracts/kernel';
 import type {
   AgentContextUsage,
   Capabilities,
@@ -56,6 +57,7 @@ import {
   toProgress,
   WfAborted,
   type WfCall,
+  type WfEvent,
   WfHttpError,
   type WfTaskRecord,
   WRONGFORGE_AGENT_ID,
@@ -213,6 +215,46 @@ function taskError(record: WfTaskRecord, id: string): ProviderError | undefined 
       if (/quota|usage limit|extra usage/i.test(message))
         return make(message, 402, false, 'quota_exhausted');
       return make(message, 500, code === 'server_restarted', 'server');
+    }
+  }
+}
+
+/**
+ * A leader turn is one stream, but WrongForge runs many model steps inside it
+ * and most of them only call tools, so no text reaches the meter until the
+ * turn ends. Each `step.finished` carries that step's output tokens: report
+ * the part the streamed text has not already accounted for.
+ */
+class OutputProgress {
+  private stepStartedAt: number | undefined;
+  private output = 0;
+  private textChars = 0;
+  private reported = 0;
+
+  constructor(
+    private readonly events: EventBus | undefined,
+    private readonly sessionId: string | undefined,
+  ) {}
+
+  observe(ev: WfEvent): void {
+    const at = ev.ts ? Date.parse(ev.ts) : Number.NaN;
+    if (ev.type === 'step.started') this.stepStartedAt = Number.isFinite(at) ? at : undefined;
+    else if (ev.type === 'agent.text' && typeof ev.data['text'] === 'string')
+      this.textChars += ev.data['text'].length;
+    else if (ev.type === 'step.finished') {
+      const usage = ev.data['usage'] as { output_tokens?: unknown } | undefined;
+      if (typeof usage?.output_tokens === 'number') this.output += usage.output_tokens;
+      const tokens = this.output - Math.ceil(this.textChars / 4) - this.reported;
+      const durationMs =
+        this.stepStartedAt !== undefined && Number.isFinite(at) ? at - this.stepStartedAt : 0;
+      this.stepStartedAt = undefined;
+      if (tokens <= 0 || !this.events) return;
+      this.reported += tokens;
+      this.events.emit('provider.output_progress', {
+        sessionId: this.sessionId,
+        tokens,
+        durationMs: Math.max(0, durationMs),
+      });
     }
   }
 }
@@ -395,6 +437,7 @@ export class WrongForgeLeaderProvider implements Provider {
     });
 
     yield { type: 'message_start', model: model ?? req.model };
+    const output = new OutputProgress(host?.events, req.cache?.sessionId);
     const run = (async () => {
       const done = await runWrongForgeTask(
         call,
@@ -425,6 +468,7 @@ export class WrongForgeLeaderProvider implements Provider {
             // settles their cards (`runTool` with `announce`). Only WrongForge's
             // own tools need one here.
             const external = ev.data['external'] === true;
+            output.observe(ev);
             for (const p of toProgress(ev)) {
               if (p.type === 'message') blocks.text(p.text);
               else if (p.type === 'tool_call') {

@@ -226,6 +226,13 @@ export function useProviderEventBridge({
       pendingDeltaRef.current += text;
       scheduleFlush();
     });
+    const offOutputProgress = events.on('provider.output_progress', (e) => {
+      if (activeRunGenerationRef.current !== sessionGenerationRef.current) return;
+      dispatch({
+        type: 'streamActivityFrame',
+        frame: { type: 'provider.output_progress', payload: e },
+      });
+    });
     const offToolStart = events.on('tool.started', (e) => {
       dispatch({ type: 'streamActivityFrame', frame: { type: 'tool.started' } });
       dispatch({ type: 'toolStarted', id: e.id, name: e.name });
@@ -656,6 +663,7 @@ export function useProviderEventBridge({
       flush();
       offDelta();
       offThinking();
+      offOutputProgress();
       offToolStart();
       offIterStart();
       offIterEnd();

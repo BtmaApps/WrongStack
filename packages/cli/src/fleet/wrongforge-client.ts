@@ -78,6 +78,8 @@ export interface WfTaskRecord {
 
 export interface WfEvent {
   seq: number;
+  /** ISO time WrongForge emitted the event. */
+  ts?: string | undefined;
   type: string;
   data: Record<string, unknown>;
 }

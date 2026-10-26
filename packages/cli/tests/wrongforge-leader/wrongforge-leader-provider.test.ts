@@ -357,6 +357,45 @@ describe('WrongForge as the leader', () => {
     );
   });
 
+  it('reports tool-only steps to the output meter without counting streamed text twice', async () => {
+    const step = (n: number, start: string, end: string, output: number) => [
+      { type: 'step.started', ts: start, data: { step: n } },
+      {
+        type: 'step.finished',
+        ts: end,
+        data: { step: n, finish_reason: 'tool_use', usage: { output_tokens: output } },
+      },
+    ];
+    const wf = await fakeWrongForge({
+      events: [
+        ...step(1, '2026-10-26T10:00:00.000Z', '2026-10-26T10:00:02.000Z', 137),
+        { type: 'step.started', ts: '2026-10-26T10:00:03.000Z', data: { step: 2 } },
+        { type: 'agent.text', ts: '2026-10-26T10:00:04.000Z', data: { text: 'x'.repeat(40) } },
+        {
+          type: 'step.finished',
+          ts: '2026-10-26T10:00:04.500Z',
+          data: { step: 2, finish_reason: 'end_turn', usage: { output_tokens: 10 } },
+        },
+      ],
+      result: { text: 'x'.repeat(40), steps: 2, tool_calls: 1, usage: { output_tokens: 147 } },
+    });
+    closers.push(wf.close);
+    process.env['WRONGFORGE_URL'] = wf.url;
+    const { host } = fakeHost();
+    const progress: Array<{ sessionId?: string; tokens: number; durationMs: number }> = [];
+    host.events.on('provider.output_progress', (e) => progress.push(e));
+    bindAcpLeaderHost(host);
+    const provider = new WrongForgeLeaderProvider({
+      bootConfig: {} as Config,
+      buildProvider: () => undefined,
+    });
+
+    await drain(provider.stream(req('fix it'), { signal: new AbortController().signal }));
+
+    // Step 2's 10 tokens are the 40 streamed chars the meter already counts.
+    expect(progress).toEqual([{ sessionId: 'S1', tokens: 137, durationMs: 2000 }]);
+  });
+
   it("rewrites a required-skills marker to name the gateway's skill tool", async () => {
     const wf = await fakeWrongForge({
       events: [],

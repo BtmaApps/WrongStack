@@ -20,6 +20,36 @@ describe('received model output activity', () => {
     });
   });
 
+  it('counts output a provider reported without streaming it, then settles on exact usage', () => {
+    let state = reduceStreamActivity(null, { type: 'iteration.started' }, 0);
+    state = reduceStreamActivity(
+      state,
+      { type: 'provider.output_progress', payload: { tokens: 200, durationMs: 2000 } },
+      2000,
+    );
+    const live = streamActivityView(state!, 2000);
+    expect(live.tokens).toBe(200);
+    expect(live.estimated).toBe(false);
+    // 200 tokens over the 2 s the step took, not one spike when it landed.
+    expect(Math.round(live.tokensPerSecond)).toBe(100);
+    expect(live.speedLabel).toBe('≈100 tok/s');
+    state = reduceStreamActivity(
+      state,
+      { type: 'provider.response', payload: { usage: { output: 230 } } },
+      2500,
+    );
+    expect(streamActivityView(state!, 2500)).toMatchObject({ tokens: 230, estimated: false });
+  });
+
+  it('ignores an empty or invalid output report', () => {
+    const state = reduceStreamActivity(null, { type: 'iteration.started' }, 0);
+    for (const tokens of [0, -5, Number.NaN, '12']) {
+      expect(
+        reduceStreamActivity(state, { type: 'provider.output_progress', payload: { tokens } }, 10),
+      ).toBe(state);
+    }
+  });
+
   it('reconciles a run that ended while the socket was disconnected', () => {
     let state = reduceStreamActivity(
       null,

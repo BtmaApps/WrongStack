@@ -7,6 +7,7 @@ export type {
   WSCodeMapFileTarget,
   WSIterationCompleted,
   WSIterationStarted,
+  WSOutputProgress,
   WSProviderError,
   WSProviderRetry,
   WSRunResult,

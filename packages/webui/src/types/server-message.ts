@@ -55,6 +55,7 @@ import type {
   WSIterationCompleted,
   WSIterationLimitReached,
   WSIterationStarted,
+  WSOutputProgress,
   WSProviderActiveBlocked,
   WSProviderAuditHistory,
   WSProviderError,
@@ -211,6 +212,7 @@ export type WSServerMessage =
   | WSCodeAssistResult
   | WSTextDelta
   | WSThinkingDelta
+  | WSOutputProgress
   | WSToolUseStart
   | WSToolProgress
   | WSToolExecuted

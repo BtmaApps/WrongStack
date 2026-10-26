@@ -84,6 +84,16 @@ export interface ProviderEventMap {
   };
   'provider.text_delta': { sessionId?: string | undefined; ctx: AgentContext; text: string };
   'provider.thinking_delta': { sessionId?: string | undefined; ctx: AgentContext; text: string };
+  /**
+   * Model output a provider measured but never streamed as text: an external
+   * agent's tool-call steps (WrongForge leader). `tokens` were generated over
+   * the last `durationMs`. Feeds the live token/speed meter only.
+   */
+  'provider.output_progress': {
+    sessionId?: string | undefined;
+    tokens: number;
+    durationMs: number;
+  };
   'provider.tool_use_start': {
     sessionId?: string | undefined;
     ctx: AgentContext;

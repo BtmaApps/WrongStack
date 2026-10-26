@@ -193,6 +193,17 @@ export function setupEvents(deps: SetupEventsDeps): () => void {
     });
   });
 
+  on('provider.output_progress', (e) => {
+    broadcast(clients, {
+      type: 'provider.output_progress',
+      payload: sessionPayload({
+        sessionId: e.sessionId,
+        tokens: e.tokens,
+        durationMs: e.durationMs,
+      }),
+    });
+  });
+
   on('provider.stream_error', (e) => {
     broadcast(clients, {
       type: 'provider.stream_error',

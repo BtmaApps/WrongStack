@@ -73,6 +73,10 @@ export interface WSUserMessage {
     id: string;
     content: string;
     timestamp: number;
+    /** Optional correlated acceptance/refusal, for hosts advertising session.user-ack. */
+    requestId?: string | undefined;
+    /** Original user text when a reviewed refinement is submitted. */
+    journalRaw?: string | undefined;
     /** Atomically replace only the provider-bound conversation before this run. */
     freshContext?: boolean | undefined;
     /** Images attached in the composer (paste / drop / file picker). The
@@ -94,6 +98,14 @@ export interface WSThinkingDelta {
   type: 'provider.thinking_delta';
   payload: SessionScopedPayload & {
     text: string;
+  };
+}
+/** Output a provider measured but did not stream as text (meter only). */
+export interface WSOutputProgress {
+  type: 'provider.output_progress';
+  payload: SessionScopedPayload & {
+    tokens: number;
+    durationMs: number;
   };
 }
 export interface WSCodeMapFileTarget {
@@ -386,6 +398,7 @@ export type CoreServerMessage =
   | WSSessionEnd
   | WSTextDelta
   | WSThinkingDelta
+  | WSOutputProgress
   | WSToolUseStart
   | WSToolProgress
   | WSToolExecuted

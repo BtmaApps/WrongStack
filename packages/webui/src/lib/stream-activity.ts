@@ -16,6 +16,7 @@ export function observeStreamActivity(msg: WSServerMessage): void {
       'iteration.started',
       'provider.text_delta',
       'provider.thinking_delta',
+      'provider.output_progress',
       'provider.response',
       'tool.started',
       'tool.executed',
