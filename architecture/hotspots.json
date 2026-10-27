@@ -38,6 +38,10 @@
       "lines": 703,
       "relativeImports": 18
     },
+    "packages/mailbox-mcp/src/adapter.ts": {
+      "lines": 703,
+      "relativeImports": 3
+    },
     "packages/plugins/src/audit/index.ts": {
       "lines": 715,
       "relativeImports": 0
@@ -107,7 +111,7 @@
       "relativeImports": 8
     },
     "apps/desktop-v2/src/SessionComposer.tsx": {
-      "lines": 795,
+      "lines": 804,
       "relativeImports": 15
     },
     "apps/desktop-v2/src/SkillLibrary.tsx": {

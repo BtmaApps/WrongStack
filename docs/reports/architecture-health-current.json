@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-26T23:46:10.682Z",
+  "generatedAt": "2026-10-27T05:57:05.743Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,15 +12,15 @@
   },
   "summary": {
     "packages": 45,
-    "sourceFiles": 5246,
-    "testFiles": 4597,
-    "sourceLines": 1153839,
+    "sourceFiles": 5247,
+    "testFiles": 4600,
+    "sourceLines": 1154158,
     "workspaceEdges": 221,
-    "moduleEdges": 15683,
+    "moduleEdges": 15686,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 4,
-    "testsWithoutTypecheck": 32,
+    "testsWithoutTypecheck": 33,
     "testsWithMultipleTypechecks": 0,
     "testOnlyExports": 944
   },
@@ -387,8 +387,8 @@
     {
       "name": "@wrongstack/desktop-v2",
       "dir": "apps/desktop-v2",
-      "sourceFiles": 97,
-      "testFiles": 32,
+      "sourceFiles": 98,
+      "testFiles": 33,
       "workspaceDependencies": [
         "@wrongstack/contracts",
         "@wrongstack/core",
@@ -777,7 +777,7 @@
       "name": "@wrongstack/sage",
       "dir": "packages/sage",
       "sourceFiles": 162,
-      "testFiles": 165,
+      "testFiles": 166,
       "workspaceDependencies": [
         "@wrongstack/contracts",
         "@wrongstack/coordination",
@@ -795,7 +795,7 @@
         {
           "path": "packages/sage/tsconfig.test.json",
           "error": null,
-          "testFiles": 165
+          "testFiles": 166
         }
       ]
     },
@@ -923,7 +923,7 @@
       "name": "@wrongstack/tools",
       "dir": "packages/tools",
       "sourceFiles": 373,
-      "testFiles": 363,
+      "testFiles": 364,
       "workspaceDependencies": [
         "@wrongstack/agent-catalog",
         "@wrongstack/contracts",
@@ -942,7 +942,7 @@
         {
           "path": "packages/tools/tsconfig.test.json",
           "error": null,
-          "testFiles": 363
+          "testFiles": 364
         }
       ]
     },
@@ -1335,6 +1335,12 @@
       },
       {
         "file": "apps/desktop-v2/tests/composer-resources-model.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "apps/desktop-v2/tests/draft-storage.test.ts",
         "projects": [
           "root-node"
         ]
@@ -16988,6 +16994,12 @@
         ]
       },
       {
+        "file": "packages/sage/tests/sqlite-store-close-reopen.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/sage/tests/sqlite-store-codec.test.ts",
         "projects": [
           "root-node"
@@ -19491,6 +19503,12 @@
       },
       {
         "file": "packages/tools/tests/json-ordering-filter.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tools/tests/json-schema-additional-items.test.ts",
         "projects": [
           "root-node"
         ]
@@ -28935,6 +28953,13 @@
         "typecheckProjects": []
       },
       {
+        "file": "apps/desktop-v2/tests/draft-storage.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
         "file": "apps/desktop-v2/tests/engine-operations.test.ts",
         "runtimeProjects": [
           "root-node"
@@ -29442,6 +29467,11 @@
       "relativeImports": 18
     },
     {
+      "file": "packages/mailbox-mcp/src/adapter.ts",
+      "lines": 703,
+      "relativeImports": 3
+    },
+    {
       "file": "packages/plugins/src/audit/index.ts",
       "lines": 715,
       "relativeImports": 0
@@ -29528,7 +29558,7 @@
     },
     {
       "file": "apps/desktop-v2/src/SessionComposer.tsx",
-      "lines": 795,
+      "lines": 804,
       "relativeImports": 15
     },
     {
@@ -29584,14 +29614,14 @@
       "relativeImports": 8
     },
     {
+      "file": "apps/desktop-v2/src/SessionComposer.tsx",
+      "lines": 804,
+      "relativeImports": 15
+    },
+    {
       "file": "packages/vibeui/src/components/resource-hub.tsx",
       "lines": 800,
       "relativeImports": 12
-    },
-    {
-      "file": "apps/desktop-v2/src/SessionComposer.tsx",
-      "lines": 795,
-      "relativeImports": 15
     },
     {
       "file": "packages/cli/src/fleet/host-skill-companion.ts",
@@ -29672,6 +29702,11 @@
       "file": "packages/core/src/execution/auto-compaction-middleware.ts",
       "lines": 703,
       "relativeImports": 18
+    },
+    {
+      "file": "packages/mailbox-mcp/src/adapter.ts",
+      "lines": 703,
+      "relativeImports": 3
     },
     {
       "file": "packages/coordination/src/provider-status-tracker.ts",
@@ -29782,11 +29817,6 @@
       "file": "packages/tools/src/codebase-index/project-server.ts",
       "lines": 692,
       "relativeImports": 13
-    },
-    {
-      "file": "packages/plugins/src/template-engine/index.ts",
-      "lines": 691,
-      "relativeImports": 1
     }
   ],
   "testOnlyExports": [

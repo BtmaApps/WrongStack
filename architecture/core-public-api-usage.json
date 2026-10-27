@@ -159,9 +159,9 @@
       "runtimeOrMixed": 161
     },
     "@wrongstack/core/tasking": {
-      "files": 44,
+      "files": 45,
       "typeOnly": 20,
-      "runtimeOrMixed": 24
+      "runtimeOrMixed": 25
     },
     "@wrongstack/core/typesafe": {
       "files": 31,
@@ -10117,6 +10117,12 @@
       "file": "packages/sdd/tests/sdd-task-decomposer.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/tasking",
+      "file": "packages/sdd/tests/spec-versioning.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/tasking",
