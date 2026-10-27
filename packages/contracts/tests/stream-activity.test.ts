@@ -41,6 +41,33 @@ describe('received model output activity', () => {
     expect(streamActivityView(state!, 2500)).toMatchObject({ tokens: 230, estimated: false });
   });
 
+  it('keeps the generation rate of tool-call steps through long steps and quiet gaps', () => {
+    let state = reduceStreamActivity(null, { type: 'iteration.started' }, 0);
+    state = reduceStreamActivity(
+      state,
+      { type: 'provider.output_progress', payload: { tokens: 150, durationMs: 2000 } },
+      2000,
+    );
+    // The next step writes a long tool call for 36 s and reports nothing until
+    // it lands: the meter keeps the measured rate instead of dropping to 0.
+    expect(streamActivityView(state!, 20_000).speedLabel).toBe('≈75 tok/s');
+    state = reduceStreamActivity(
+      state,
+      { type: 'provider.output_progress', payload: { tokens: 3450, durationMs: 36_000 } },
+      38_000,
+    );
+    // 3600 tokens over 38 s of generation, not a spike when the step lands.
+    expect(streamActivityView(state!, 38_000).speedLabel).toBe('≈95 tok/s');
+    expect(streamActivityView(state!, 45_000).tokens).toBe(3600);
+    // Streamed text, while it flows, shows its own live rate.
+    state = reduceStreamActivity(
+      state,
+      { type: 'provider.text_delta', payload: { text: 'a'.repeat(400) } },
+      46_000,
+    );
+    expect(streamActivityView(state!, 46_000).speedLabel).toBe('≈25 tok/s');
+  });
+
   it('ignores an empty or invalid output report', () => {
     const state = reduceStreamActivity(null, { type: 'iteration.started' }, 0);
     for (const tokens of [0, -5, Number.NaN, '12']) {

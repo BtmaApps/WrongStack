@@ -9,6 +9,15 @@ export interface StreamActivity {
   /** Output tokens the provider reported for the open request without streaming them. */
   requestTokens: number;
   settledTokens: number;
+  /**
+   * Output a provider reported per finished step (never streamed) and the time
+   * those steps took. Their quotient is the speed shown while nothing streams:
+   * such output arrives in one report per step, so a rolling window of
+   * received chunks would read 0 for most of the turn and spike when a long
+   * step lands.
+   */
+  reportedTokens?: number | undefined;
+  reportedMs?: number | undefined;
   estimated: boolean;
   requestOpen: boolean;
   phase: 'waiting' | 'thinking' | 'writing' | 'tools';
@@ -80,29 +89,20 @@ export function reduceStreamActivity(
     const tokens = p.tokens;
     if (typeof tokens !== 'number' || !Number.isFinite(tokens) || tokens <= 0) return previous;
     const state = !previous || previous.endedAt !== null ? startStreamActivity(now) : previous;
-    const span =
+    const durationMs =
       typeof p.durationMs === 'number' && Number.isFinite(p.durationMs) && p.durationMs > 0
-        ? Math.min(p.durationMs, STREAM_ACTIVITY_WINDOW_MS)
+        ? p.durationMs
         : 0;
-    // Spread the reported output over the time it took, so the speed reads
-    // as generation rate rather than one spike when the step lands.
-    const buckets = new Map<number, number>();
-    for (const sample of state.samples) {
-      if (now - sample.at < STREAM_ACTIVITY_WINDOW_MS) buckets.set(sample.at, sample.chars);
-    }
-    const last = Math.floor(now / SAMPLE_MS) * SAMPLE_MS;
-    const first = Math.floor((now - span) / SAMPLE_MS) * SAMPLE_MS;
-    const count = (last - first) / SAMPLE_MS + 1;
-    for (let at = first; at <= last; at += SAMPLE_MS) {
-      buckets.set(at, (buckets.get(at) ?? 0) + (tokens * 4) / count);
-    }
+    // A step without a duration still counts, but cannot say how fast it was.
+    const timed = durationMs > 0;
     return {
       ...state,
       lastDeltaAt: now,
-      firstDeltaAt: state.firstDeltaAt ?? now - span,
+      firstDeltaAt: state.firstDeltaAt ?? now - durationMs,
       requestTokens: state.requestTokens + tokens,
+      reportedTokens: (state.reportedTokens ?? 0) + (timed ? tokens : 0),
+      reportedMs: (state.reportedMs ?? 0) + durationMs,
       requestOpen: true,
-      samples: [...buckets].sort((a, b) => a[0] - b[0]).map(([at, chars]) => ({ at, chars })),
     };
   }
   if (!previous || previous.endedAt !== null) return previous;
@@ -177,7 +177,12 @@ export function streamActivityView(state: StreamActivity, now = Date.now()) {
     STREAM_ACTIVITY_WINDOW_MS,
     Math.max(1_000, at - (state.firstDeltaAt ?? at)),
   );
-  const tokensPerSecond = recentChars / 4 / (windowMs / 1_000);
+  const streamedPerSecond = recentChars / 4 / (windowMs / 1_000);
+  // While text streams, its live rate; otherwise the generation rate of the
+  // output the provider reported per step (tool calls the model wrote).
+  const reportedMs = state.reportedMs ?? 0;
+  const reportedPerSecond = reportedMs > 0 ? (state.reportedTokens ?? 0) / (reportedMs / 1_000) : 0;
+  const tokensPerSecond = streamedPerSecond > 0 ? streamedPerSecond : reportedPerSecond;
   const tokens = state.settledTokens + estimate(state.requestChars) + state.requestTokens;
   const estimated = state.estimated || state.requestChars > 0;
   const receiving =
