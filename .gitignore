@@ -306,3 +306,4 @@ ideas.md
 .bun/
 .kozmos/
 .crush/
+*.exe
