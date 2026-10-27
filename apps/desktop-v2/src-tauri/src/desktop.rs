@@ -17,6 +17,7 @@ use tauri::{
 struct Desktop {
     client: Client,
     services: Client,
+    drafts: Arc<Mutex<crate::registry::Registry>>,
     project_aliases: Arc<Mutex<HashMap<String, String>>>,
     streams: Mutex<HashMap<String, Arc<StreamControl>>>,
 }
@@ -63,6 +64,8 @@ async fn host_request(
         "engine.events",
         "engine.identity",
         "settings.save",
+        "draft.save",
+        "draft.get",
     ]
     .contains(&method.as_str())
     {
@@ -70,8 +73,25 @@ async fn host_request(
     }
     let client = state.client.clone();
     let services = state.services.clone();
+    let drafts = Arc::clone(&state.drafts);
     let aliases = Arc::clone(&state.project_aliases);
     tauri::async_runtime::spawn_blocking(move || {
+        if method == "draft.get" || method == "draft.save" {
+            let registry = drafts.lock().map_err(err)?;
+            let id = crate::sessions::field(&params, "id")?;
+            if method == "draft.get" {
+                let references: Value = serde_json::from_str(&registry.draft_part(id, "references")?).map_err(err)?;
+                let attachments: Value = serde_json::from_str(&registry.draft_part(id, "attachments")?).map_err(err)?;
+                return Ok(json!({"text": registry.draft(id)?, "references":references, "attachments":attachments, "mode":registry.draft_mode(id)?}));
+            }
+            let text = params["text"].as_str().ok_or("Missing draft text")?;
+            match params["part"].as_str().unwrap_or("text") {
+                "text" => registry.save_draft(id, text)?,
+                "mode" => registry.save_draft_mode(id, text)?,
+                part => registry.save_draft_part(id, part, text)?,
+            }
+            return Ok(Value::Null);
+        }
         if method.starts_with("profile.") {
             return services.call(&method, params);
         }
@@ -336,6 +356,12 @@ pub fn run() {
             app.manage(Desktop {
                 client,
                 services,
+                drafts: Arc::new(Mutex::new(
+                    crate::registry::Registry::open(
+                        &crate::host::data_dir().map_err(std::io::Error::other)?,
+                    )
+                    .map_err(std::io::Error::other)?,
+                )),
                 project_aliases: Arc::new(Mutex::new(HashMap::new())),
                 streams: Mutex::new(HashMap::new()),
             });

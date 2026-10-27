@@ -1,6 +1,7 @@
 use crate::{err, now, Result};
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::path::{Path, PathBuf};
 use uuid::Uuid;
 
@@ -36,6 +37,8 @@ impl Registry {
     pub fn open(dir: &Path) -> Result<Self> {
         std::fs::create_dir_all(dir).map_err(err)?;
         let db = Connection::open(dir.join("workspace.sqlite")).map_err(err)?;
+        db.busy_timeout(std::time::Duration::from_secs(2))
+            .map_err(err)?;
         db.execute_batch("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;
           CREATE TABLE IF NOT EXISTS projects (id TEXT PRIMARY KEY, name TEXT NOT NULL, root TEXT NOT NULL UNIQUE, created_at INTEGER NOT NULL);
           CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, project_id TEXT NOT NULL REFERENCES projects(id), title TEXT NOT NULL, kind TEXT NOT NULL, workdir TEXT NOT NULL, status TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, exit_code INTEGER, error TEXT);
@@ -178,6 +181,100 @@ impl Registry {
             .optional()
             .map_err(err)
     }
+    pub fn draft(&self, id: &str) -> Result<String> {
+        self.ensure_agent(id)?;
+        Ok(self.setting(&format!("draft:{id}"))?.unwrap_or_default())
+    }
+    pub fn draft_mode(&self, id: &str) -> Result<String> {
+        self.ensure_agent(id)?;
+        let mode = self
+            .setting(&format!("draftmode:{id}"))?
+            .unwrap_or_else(|| "btw".into());
+        if !["btw", "queue", "steer"].contains(&mode.as_str()) {
+            return Err("Invalid saved delivery mode".into());
+        }
+        Ok(mode)
+    }
+    pub fn save_draft_mode(&self, id: &str, mode: &str) -> Result<()> {
+        self.ensure_agent(id)?;
+        if !["btw", "queue", "steer"].contains(&mode) {
+            return Err("Invalid delivery mode".into());
+        }
+        let key = format!("draftmode:{id}");
+        if mode == "btw" {
+            self.db
+                .execute("DELETE FROM settings WHERE key=?1", [key])
+                .map_err(err)?;
+        } else {
+            self.db.execute("INSERT INTO settings VALUES (?1,?2) ON CONFLICT(key) DO UPDATE SET value=excluded.value", params![key, mode]).map_err(err)?;
+        }
+        Ok(())
+    }
+    pub fn draft_part(&self, id: &str, part: &str) -> Result<String> {
+        self.ensure_agent(id)?;
+        let prefix = match part {
+            "references" => "draftrefs",
+            "attachments" => "draftmedia",
+            _ => return Err("Unknown draft part".into()),
+        };
+        Ok(self
+            .setting(&format!("{prefix}:{id}"))?
+            .unwrap_or_else(|| "[]".into()))
+    }
+    fn ensure_agent(&self, id: &str) -> Result<()> {
+        if Uuid::parse_str(id).is_err()
+            || !self
+                .db
+                .query_row(
+                    "SELECT EXISTS(SELECT 1 FROM sessions WHERE id=?1 AND kind='agent')",
+                    [id],
+                    |row| row.get::<_, bool>(0),
+                )
+                .map_err(err)?
+        {
+            return Err("Unknown agent session".into());
+        }
+        Ok(())
+    }
+    pub fn save_draft(&self, id: &str, text: &str) -> Result<()> {
+        self.ensure_agent(id)?;
+        if text.len() > 2 * 1024 * 1024 {
+            return Err("Draft exceeds the 2 MB storage limit".into());
+        }
+        let key = format!("draft:{id}");
+        if text.is_empty() {
+            self.db
+                .execute("DELETE FROM settings WHERE key=?1", [key])
+                .map_err(err)?;
+        } else {
+            self.db.execute("INSERT INTO settings VALUES (?1,?2) ON CONFLICT(key) DO UPDATE SET value=excluded.value", params![key, text]).map_err(err)?;
+        }
+        Ok(())
+    }
+    pub fn save_draft_part(&self, id: &str, part: &str, value: &str) -> Result<()> {
+        self.ensure_agent(id)?;
+        let (prefix, limit) = match part {
+            "references" => ("draftrefs", 2 * 1024 * 1024),
+            "attachments" => ("draftmedia", 18 * 1024 * 1024),
+            _ => return Err("Unknown draft part".into()),
+        };
+        if value.len() > limit {
+            return Err("Draft data exceeds the storage limit".into());
+        }
+        let parsed: Value = serde_json::from_str(value).map_err(err)?;
+        if !parsed.is_array() {
+            return Err("Draft data must be a list".into());
+        }
+        let key = format!("{prefix}:{id}");
+        if parsed.as_array().is_some_and(|items| items.is_empty()) {
+            self.db
+                .execute("DELETE FROM settings WHERE key=?1", [key])
+                .map_err(err)?;
+        } else {
+            self.db.execute("INSERT INTO settings VALUES (?1,?2) ON CONFLICT(key) DO UPDATE SET value=excluded.value", params![key, value]).map_err(err)?;
+        }
+        Ok(())
+    }
     pub fn set_setting(&self, key: &str, value: &str) -> Result<()> {
         if key != "layout"
             && key != "appearance"
@@ -219,6 +316,32 @@ mod tests {
             error: None,
         };
         db.insert(&s).unwrap();
+        let a = Session {
+            id: Uuid::new_v4().to_string(),
+            kind: "agent".into(),
+            ..s.clone()
+        };
+        let b = Session {
+            id: Uuid::new_v4().to_string(),
+            kind: "agent".into(),
+            ..s.clone()
+        };
+        db.insert(&a).unwrap();
+        db.insert(&b).unwrap();
+        db.save_draft(&a.id, "first project draft").unwrap();
+        db.save_draft(&b.id, "second project draft").unwrap();
+        db.save_draft_mode(&a.id, "queue").unwrap();
+        assert!(db.save_draft_mode(&a.id, "unsupported").is_err());
+        let refs = r#"[{"path":"src/app.ts"}]"#;
+        let media = r#"[{"id":"one","name":"image.png","mediaType":"image/png","data":"AA+/==","bytes":3}]"#;
+        db.save_draft_part(&a.id, "references", refs).unwrap();
+        db.save_draft_part(&a.id, "attachments", media).unwrap();
+        assert!(db.save_draft_part(&a.id, "attachments", "{}").is_err());
+        assert!(db.save_draft_part(&a.id, "unknown", "[]").is_err());
+        assert!(db.save_draft(&s.id, "terminal").is_err());
+        assert!(db
+            .save_draft(&Uuid::new_v4().to_string(), "unknown")
+            .is_err());
         db.set_setting("appearance", "{\"mode\":\"light\",\"accent\":\"ocean\"}")
             .unwrap();
         assert!(db.set_setting("unknown", "value").is_err());
@@ -228,9 +351,26 @@ mod tests {
             db.setting("appearance").unwrap().as_deref(),
             Some("{\"mode\":\"light\",\"accent\":\"ocean\"}")
         );
-        assert_eq!(db.sessions().unwrap()[0].id, s.id);
+        assert_eq!(db.draft(&a.id).unwrap(), "first project draft");
+        assert_eq!(db.draft(&b.id).unwrap(), "second project draft");
+        assert_eq!(db.draft_mode(&a.id).unwrap(), "queue");
+        assert_eq!(db.draft_mode(&b.id).unwrap(), "btw");
+        db.save_draft_mode(&a.id, "btw").unwrap();
+        assert_eq!(db.draft_mode(&a.id).unwrap(), "btw");
+        assert_eq!(db.draft_part(&a.id, "references").unwrap(), refs);
+        assert_eq!(db.draft_part(&a.id, "attachments").unwrap(), media);
+        assert_eq!(db.draft_part(&b.id, "attachments").unwrap(), "[]");
+        db.save_draft_part(&a.id, "attachments", "[]").unwrap();
+        assert_eq!(db.draft_part(&a.id, "attachments").unwrap(), "[]");
+        db.save_draft(&a.id, "").unwrap();
+        assert_eq!(db.draft(&a.id).unwrap(), "");
+        assert_eq!(db.draft(&b.id).unwrap(), "second project draft");
         db.recover().unwrap();
-        assert_eq!(db.sessions().unwrap()[0].status, "interrupted");
+        assert!(db
+            .sessions()
+            .unwrap()
+            .iter()
+            .all(|s| s.status == "interrupted"));
         drop(db);
         std::fs::remove_dir_all(dir).unwrap();
     }

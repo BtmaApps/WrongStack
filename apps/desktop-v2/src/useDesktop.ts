@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { ComposerAttachment } from './composer-attachments';
+import { type ComposerAttachment, validateAttachments } from './composer-attachments';
+import type { SubmitMode } from './composer-model';
 import type { ComposerFileReference } from './composer-resources-model';
+import { DraftWriter } from './draft-storage';
 import type { InputDraft } from './input-form-model';
 import { initialSnapshot, isLive, type Session, type Snapshot, visibleSessions } from './model';
 import { getSnapshot, layoutKey, native, request } from './platform';
@@ -39,22 +41,40 @@ export function useDesktop() {
   const [selected, setSelected] = useState<string | null>(null);
   const [openSessionIds, setOpenSessionIds] = useState<string[]>([]);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [draftModes, setDraftModes] = useState<Record<string, SubmitMode>>({});
+  const [draftErrors, setDraftErrors] = useState<Record<string, string>>({});
+  const [draftRetry, setDraftRetry] = useState(0);
+  const draftWriter = useMemo(
+    () => new DraftWriter((id, text) => request('draft.save', { id, text }).then(() => {})),
+    [],
+  );
+  const referenceWriter = useMemo(
+    () =>
+      new DraftWriter((id, text) =>
+        request('draft.save', { id, part: 'references', text }).then(() => {}),
+      ),
+    [],
+  );
+  const attachmentWriter = useMemo(
+    () =>
+      new DraftWriter((id, text) =>
+        request('draft.save', { id, part: 'attachments', text }).then(() => {}),
+      ),
+    [],
+  );
+  const modeWriter = useMemo(
+    () =>
+      new DraftWriter((id, text) =>
+        request('draft.save', { id, part: 'mode', text }).then(() => {}),
+      ),
+    [],
+  );
   const [composerAttachments, setComposerAttachments] = useState<
     Record<string, ComposerAttachment[]>
   >({});
-  const setAttachments = useCallback(
-    (id: string, items: ComposerAttachment[]) =>
-      setComposerAttachments((current) => ({ ...current, [id]: items })),
-    [],
-  );
   const [composerReferences, setComposerReferences] = useState<
     Record<string, ComposerFileReference[]>
   >({});
-  const setComposerRefs = useCallback(
-    (id: string, refs: ComposerFileReference[]) =>
-      setComposerReferences((current) => ({ ...current, [id]: refs })),
-    [],
-  );
   const [inputDrafts, setInputDrafts] = useState<Record<string, InputDraft>>({});
   const setInputDraft = useCallback(
     (id: string, draft: InputDraft | null) =>
@@ -99,7 +119,47 @@ export function useDesktop() {
     (e: unknown) => setError(String(e instanceof Error ? e.message : e)),
     [],
   );
+  const setAttachments = useCallback(
+    (id: string, items: ComposerAttachment[]) => {
+      setComposerAttachments((current) => ({ ...current, [id]: items }));
+      return native
+        ? attachmentWriter.write(id, JSON.stringify(items)).then(
+            () => true,
+            () => {
+              reportError(new Error('Could not save draft attachments for restart.'));
+              return false;
+            },
+          )
+        : Promise.resolve(true);
+    },
+    [attachmentWriter, reportError],
+  );
+  const setComposerRefs = useCallback(
+    (id: string, refs: ComposerFileReference[]) => {
+      setComposerReferences((current) => ({ ...current, [id]: refs }));
+      return native
+        ? referenceWriter.write(id, JSON.stringify(refs)).then(
+            () => true,
+            () => {
+              reportError(new Error('Could not save draft file references for restart.'));
+              return false;
+            },
+          )
+        : Promise.resolve(true);
+    },
+    [referenceWriter, reportError],
+  );
   const appearance = useAppearance(snapshot.appearance, reportError);
+  const setDraftMode = useCallback(
+    (id: string, mode: SubmitMode) => {
+      setDraftModes((current) => ({ ...current, [id]: mode }));
+      if (native)
+        void modeWriter
+          .write(id, mode)
+          .catch(() => reportError(new Error('Could not save delivery mode for restart.')));
+    },
+    [modeWriter, reportError],
+  );
   const refresh = useCallback(async () => {
     try {
       const next = await getSnapshot();
@@ -223,6 +283,56 @@ export function useDesktop() {
     [snapshot, project, search, filter],
   );
   const currentSession = snapshot.sessions.find((s) => s.id === selected);
+  const sessionKind = currentSession?.kind;
+  useEffect(() => {
+    if (!selected || sessionKind !== 'agent' || Object.hasOwn(drafts, selected)) return;
+    let active = true;
+    void request<{
+      text: string;
+      references: ComposerFileReference[];
+      attachments: ComposerAttachment[];
+      mode: SubmitMode;
+    }>('draft.get', { id: selected })
+      .then(({ text, references, attachments, mode }) => {
+        if (!active) return;
+        if (
+          !Array.isArray(references) ||
+          references.some((ref) => !ref || typeof ref.path !== 'string' || !ref.path)
+        )
+          throw Error('Saved file references are invalid.');
+        if (
+          !Array.isArray(attachments) ||
+          attachments.some(
+            (item) =>
+              !item ||
+              typeof item.id !== 'string' ||
+              typeof item.name !== 'string' ||
+              typeof item.data !== 'string' ||
+              typeof item.mediaType !== 'string' ||
+              typeof item.bytes !== 'number',
+          )
+        )
+          throw Error('Saved attachments are invalid.');
+        validateAttachments(attachments);
+        if (!['btw', 'queue', 'steer'].includes(mode))
+          throw Error('Saved delivery mode is invalid.');
+        setComposerReferences((current) => ({ ...current, [selected]: references }));
+        setComposerAttachments((current) => ({ ...current, [selected]: attachments }));
+        setDraftModes((current) => ({ ...current, [selected]: mode }));
+        setDrafts((current) => ({ ...current, [selected]: text }));
+        setDraftErrors((current) => ({ ...current, [selected]: '' }));
+      })
+      .catch((error: unknown) => {
+        if (active)
+          setDraftErrors((current) => ({
+            ...current,
+            [selected]: error instanceof Error ? error.message : String(error),
+          }));
+      });
+    return () => {
+      active = false;
+    };
+  }, [selected, sessionKind, draftRetry, drafts]);
   const jumpToSession = (s: Session) => {
     setOpenSessionIds((ids) => (ids.includes(s.id) ? ids : [...ids, s.id]));
     setSelected(s.id);
@@ -237,8 +347,23 @@ export function useDesktop() {
     const session = snapshot.sessions.find((s) => s.id === next);
     if (session) setProject(session.projectId);
   };
-  const setDraft = (id: string, text: string) =>
+  const getDraft = (id: string) => drafts[id] ?? '';
+  const setDraft = (id: string, text: string) => {
     setDrafts((current) => ({ ...current, [id]: text }));
+    return native
+      ? draftWriter.write(id, text).then(
+          () => true,
+          () => {
+            reportError(
+              new Error(
+                'Could not save this draft for restart. Keep the application open or copy your text.',
+              ),
+            );
+            return false;
+          },
+        )
+      : Promise.resolve(true);
+  };
   const showFleet = () => {
     setSelected(null);
     setProject(null);
@@ -271,6 +396,11 @@ export function useDesktop() {
     closeSessionTab,
     showFleet,
     drafts,
+    draftModes,
+    setDraftMode,
+    getDraft,
+    draftErrors,
+    retryDraft: () => setDraftRetry((value) => value + 1),
     composerReferences,
     composerAttachments,
     setAttachments,

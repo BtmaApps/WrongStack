@@ -20,7 +20,7 @@ export function SessionWorkbench({ vm }: { vm: DesktopController }) {
     showFleet,
     reportError,
     run,
-    drafts,
+    getDraft,
     setDraft,
   } = vm;
   if (!session) return null;
@@ -73,7 +73,22 @@ export function SessionWorkbench({ vm }: { vm: DesktopController }) {
       </nav>
       <section className="session-workspace focused-session">
         {session.error && <div className="session-error">{session.error}</div>}
-        {session.kind === 'agent' ? (
+        {session.kind === 'agent' && !Object.hasOwn(vm.drafts, session.id) ? (
+          <div className="runtime-state">
+            {vm.draftErrors[session.id] ? (
+              <>
+                <p role="alert">
+                  Could not restore this session draft: {vm.draftErrors[session.id]}
+                </p>
+                <button type="button" className="button secondary" onClick={vm.retryDraft}>
+                  Retry
+                </button>
+              </>
+            ) : (
+              <p>Restoring session draft…</p>
+            )}
+          </div>
+        ) : session.kind === 'agent' ? (
           <EngineWorkspace
             key={session.id}
             id={session.id}
@@ -83,7 +98,9 @@ export function SessionWorkbench({ vm }: { vm: DesktopController }) {
               vm.snapshot.projects.find((project) => project.id === session.projectId)?.root ??
               session.workdir
             }
-            draft={drafts[session.id] ?? ''}
+            draft={getDraft(session.id)}
+            mode={vm.draftModes[session.id] ?? 'btw'}
+            onModeChange={(mode) => vm.setDraftMode(session.id, mode)}
             onDraftChange={(text) => setDraft(session.id, text)}
             references={vm.composerReferences[session.id] ?? []}
             attachments={vm.composerAttachments[session.id] ?? []}

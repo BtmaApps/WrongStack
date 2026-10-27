@@ -538,7 +538,56 @@ try {
       await page.getByRole('textbox', { name: 'Message WrongStack' }).inputValue(),
       'Keep this native session draft.',
     );
+    await waitFor(
+      async () =>
+        (
+          await page.evaluate(
+            (id) =>
+              window.__TAURI_INTERNALS__.invoke('host_request', {
+                method: 'draft.get',
+                params: { id },
+              }),
+            agent.id,
+          )
+        ).text === 'Keep this native session draft.',
+      'Draft committed in native storage',
+    );
+    await page.reload();
+    await page.locator('.tree-session').filter({ hasText: 'WrongStack engine proof' }).click();
+    await page
+      .locator('[data-engine-session="' + identity.sessionId + '"]')
+      .waitFor({ timeout: 60000 });
+    assert.equal(
+      await page.getByRole('textbox', { name: 'Message WrongStack' }).inputValue(),
+      'Keep this native session draft.',
+      'Unsent text survives a desktop renderer reload',
+    );
+    await stopUi();
+    await launch();
+    await page.locator('.tree-session').filter({ hasText: 'WrongStack engine proof' }).click();
+    await page
+      .locator('[data-engine-session="' + identity.sessionId + '"]')
+      .waitFor({ timeout: 60000 });
+    assert.equal(
+      await page.getByRole('textbox', { name: 'Message WrongStack' }).inputValue(),
+      'Keep this native session draft.',
+      'Unsent text survives a desktop UI restart',
+    );
     await page.getByRole('textbox', { name: 'Message WrongStack' }).fill('');
+    await waitFor(
+      async () =>
+        (
+          await page.evaluate(
+            (id) =>
+              window.__TAURI_INTERNALS__.invoke('host_request', {
+                method: 'draft.get',
+                params: { id },
+              }),
+            agent.id,
+          )
+        ).text === '',
+      'Cleared draft removed from native storage',
+    );
     await exerciseNativeAppearance({ page, rpc, waitFor, artifactDir });
     assert.equal(
       page.context().pages().length,
@@ -651,7 +700,20 @@ try {
       waitFor,
       providerFixture,
     });
-    await exerciseNativeAttachments({ page, agent, rpc, artifactDir, waitFor, providerFixture });
+    await exerciseNativeAttachments({
+      page,
+      agent,
+      rpc,
+      artifactDir,
+      waitFor,
+      providerFixture,
+      identity,
+      restartUi: async () => {
+        await stopUi();
+        await launch();
+        return page;
+      },
+    });
     await exerciseNativeApprovals({ page, agent, rpc, artifactDir, waitFor, providerFixture });
     await exerciseNativeNextSteps({ page, artifactDir, waitFor, providerFixture });
     if (!composerOnly) {

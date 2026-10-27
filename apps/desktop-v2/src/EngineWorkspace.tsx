@@ -15,6 +15,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AttachmentPreview } from './ComposerAttachments';
 import { CopyButton } from './CopyButton';
 import type { ComposerAttachment } from './composer-attachments';
+import type { SubmitMode } from './composer-model';
 import { type ComposerFileReference, splitReferenceMessage } from './composer-resources-model';
 import { EngineDataView } from './EngineDataView';
 import { type EngineState, record } from './engine-state';
@@ -38,6 +39,8 @@ export function EngineWorkspace({
   id,
   onError,
   draft,
+  mode,
+  onModeChange,
   onDraftChange,
   references,
   attachments,
@@ -54,11 +57,13 @@ export function EngineWorkspace({
   id: string;
   onError: (error: unknown) => void;
   draft: string;
-  onDraftChange: (text: string) => void;
+  mode: SubmitMode;
+  onModeChange: (mode: SubmitMode) => void;
+  onDraftChange: (text: string) => Promise<boolean>;
   references: ComposerFileReference[];
   attachments: ComposerAttachment[];
-  onAttachmentsChange: (items: ComposerAttachment[]) => void;
-  onReferencesChange: (refs: ComposerFileReference[]) => void;
+  onAttachmentsChange: (items: ComposerAttachment[]) => Promise<boolean>;
+  onReferencesChange: (refs: ComposerFileReference[]) => Promise<boolean>;
   inputDrafts: Record<string, InputDraft>;
   onInputDraftChange: (key: string, draft: InputDraft | null) => void;
   onSettings: () => void;
@@ -346,6 +351,8 @@ export function EngineWorkspace({
               send={send}
               command={command}
               draft={draft}
+              mode={mode}
+              onModeChange={onModeChange}
               onDraftChange={onDraftChange}
               onSettings={onSettings}
               references={references}

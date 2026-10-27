@@ -46,6 +46,8 @@ export function SessionComposer({
   send,
   command,
   draft,
+  mode,
+  onModeChange,
   onDraftChange,
   onSettings,
   projectId,
@@ -60,18 +62,19 @@ export function SessionComposer({
   send: EngineSend;
   command: EngineCommand;
   draft: string;
-  onDraftChange: (text: string) => void;
+  mode: SubmitMode;
+  onModeChange: (mode: SubmitMode) => void;
+  onDraftChange: (text: string) => Promise<boolean>;
   onSettings: () => void;
   projectId: string;
   projectRoot: string;
   references: ComposerFileReference[];
   attachments: ComposerAttachment[];
-  onAttachmentsChange: (items: ComposerAttachment[]) => void;
-  onReferencesChange: (refs: ComposerFileReference[]) => void;
+  onAttachmentsChange: (items: ComposerAttachment[]) => Promise<boolean>;
+  onReferencesChange: (refs: ComposerFileReference[]) => Promise<boolean>;
   onNavigate: (target: 'files' | 'changes' | 'skills' | 'memory' | 'kanban' | 'atlas') => void;
 }) {
-  const [mode, setMode] = useState<SubmitMode>('btw'),
-    [sending, setSending] = useState(false),
+  const [sending, setSending] = useState(false),
     [notice, setNotice] = useState(''),
     [error, setError] = useState(''),
     [refine, setRefine] = useState<{
@@ -203,15 +206,21 @@ export function SessionComposer({
         wireAttachments(files),
       );
       if (!mounted.current) return;
-      if (currentDraft.current === original) onDraftChange('');
-      onReferencesChange(
-        refsNow.current.filter((ref) => !attached.some((sent) => sent.path === ref.path)),
-      );
-      onAttachmentsChange(
-        attachmentsNow.current.filter((item) => !files.some((sent) => sent.id === item.id)),
-      );
+      const cleared = await Promise.all([
+        currentDraft.current === original ? onDraftChange('') : Promise.resolve(true),
+        onReferencesChange(
+          refsNow.current.filter((ref) => !attached.some((sent) => sent.path === ref.path)),
+        ),
+        onAttachmentsChange(
+          attachmentsNow.current.filter((item) => !files.some((sent) => sent.id === item.id)),
+        ),
+      ]);
       setRefine(null);
       setNotice(response);
+      if (cleared.some((saved) => !saved))
+        setError(
+          'The message was accepted, but the saved draft could not be cleared. Check it before sending again.',
+        );
     } catch (e) {
       if (mounted.current) setError(e instanceof Error ? e.message : String(e));
       throw e;
@@ -249,7 +258,7 @@ export function SessionComposer({
     else if (action === 'queue') {
       if (queuePanel.current) queuePanel.current.open = true;
       else setNotice('There are no pending queued prompts.');
-    } else if (action === 'btw' || action === 'steer') setMode(action);
+    } else if (action === 'btw' || action === 'steer') onModeChange(action);
     else onNavigate(action);
     onDraftChange('');
     return true;
@@ -681,7 +690,7 @@ export function SessionComposer({
                 aria-label="Message delivery mode"
                 value={mode}
                 disabled={sending}
-                onChange={(e) => setMode(e.target.value as SubmitMode)}
+                onChange={(e) => onModeChange(e.target.value as SubmitMode)}
               >
                 <option value="btw">{state.running ? 'BTW' : 'Message'}</option>
                 <option value="queue" disabled={!queueSupported}>
@@ -725,7 +734,7 @@ export function SessionComposer({
           state={state}
           onClose={() => setRefine(null)}
           onApply={(text) => {
-            setMode(refine.mode);
+            onModeChange(refine.mode);
             onDraftChange(text);
             setRefine(null);
           }}

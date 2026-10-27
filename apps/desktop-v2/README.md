@@ -61,8 +61,9 @@ explicit engine executable. There is no fallback to `wstack --webui`.
   SQLite stores the preference; a local cache avoids a mismatched initial paint. System mode
   follows device changes, and open xterm terminals update their colors without restarting PTYs.
 - A dedicated session workbench replaces the fleet cards while working. Native session tabs
-  survive UI restart; closing a tab detaches without killing the session. Unsent drafts remain
-  isolated per session while the UI is open. Returning to the fleet keeps the open tabs available.
+  survive UI restart; closing a tab detaches without killing the session. Unsent text drafts are
+  stored per session in the native registry and restored after UI restart, together with attachment
+  data, project file references and delivery mode. Returning to the fleet keeps the open tabs available.
 - Dedicated desktop chat/composer, streamed messages, grouped session activity and readable approval
   cards with command arguments, edit previews and remembered policy scopes; completed-turn next
   steps can be selected and added to a draft. File review, skills reader,
@@ -89,7 +90,7 @@ explicit engine executable. There is no fallback to `wstack --webui`.
   file/count/transport limits, thumbnails, named PDF cards and per-session draft retention. Binary
   files survive refinement and real queue persistence; running Message/BTW with files visibly queues
   a new turn. Canonical engine refusal retains the draft. Conversation images open a local preview;
-  stop/edit restores the previous prompt and files. Draft media is not yet durable across app restart.
+  stop/edit restores the previous prompt and files. Draft media is stored locally across app restart.
 - Desktop-owned Markdown chat supports headings, tables, lists, inline/fenced code, message/code
   copy controls, and project-file links through the engine. HTTP(S) links open through a validated
   native OS boundary. Raw HTML is skipped; images are represented by explicit links rather than
@@ -230,7 +231,7 @@ the host request-pool change, earlier failures, and retained test-cleanup limita
 ## Remaining release work
 
 This is a working native vertical slice, not production parity. Remaining work includes inline
-media/attachments, richer language-aware editing, and persisted unsent drafts across UI restart; provider OAuth and full key-management controls; advanced Kanban workflows, SDD, goals,
+media/attachments, richer language-aware editing, and concurrent editing of the same draft across windows; provider OAuth and full key-management controls; advanced Kanban workflows, SDD, goals,
 and remaining domain workflows; complete automation worker/GitHub, SAGE injection traces and
 recovery/backfill administration, vector mutation and maintenance;
 fleet-wide approvals and usage aggregation; verification-loop state;

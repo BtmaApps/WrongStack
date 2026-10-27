@@ -9,6 +9,8 @@ export async function exerciseNativeAttachments({
   artifactDir,
   waitFor,
   providerFixture,
+  restartUi,
+  identity,
 }) {
   const input = () => page.getByRole('textbox', { name: 'Message WrongStack', exact: true });
   const tray = () => page.getByRole('region', { name: 'Draft attachments', exact: true });
@@ -77,6 +79,51 @@ export async function exerciseNativeAttachments({
     { name: 'brief.pdf', mimeType: 'application/pdf', buffer: pdf },
   ]);
   await tray().getByRole('button', { name: 'Remove attachment brief.pdf', exact: true }).waitFor();
+  await input().fill('Inspect @README');
+  await page
+    .getByRole('region', { name: 'Project file suggestions', exact: true })
+    .getByRole('option')
+    .filter({ hasText: 'README.md' })
+    .first()
+    .waitFor();
+  await input().press('Enter');
+  await input().fill('[native-composer-attachment-direct] Review this image and PDF.');
+  await page.getByRole('combobox', { name: 'Message delivery mode' }).selectOption('queue');
+  const savedDraft = () =>
+    page.evaluate(
+      (id) =>
+        window.__TAURI_INTERNALS__.invoke('host_request', { method: 'draft.get', params: { id } }),
+      agent.id,
+    );
+  await waitFor(
+    async () => {
+      const saved = await savedDraft();
+      return (
+        saved.attachments?.length === 2 &&
+        saved.references?.some((ref) => ref.path === 'README.md') &&
+        saved.mode === 'queue'
+      );
+    },
+    'Native attachment and reference persistence',
+    60000,
+  );
+  page = await restartUi();
+  await page.locator('.tree-session').filter({ hasText: 'WrongStack engine proof' }).click();
+  await page.locator(`[data-engine-session="${identity.sessionId}"]`).waitFor({ timeout: 60000 });
+  await tray().getByRole('button', { name: 'Remove attachment brief.pdf', exact: true }).waitFor();
+  await page
+    .getByRole('region', { name: 'Attached project files', exact: true })
+    .getByRole('button', { name: 'Remove file reference README.md', exact: true })
+    .waitFor();
+  assert.equal(
+    await input().inputValue(),
+    '[native-composer-attachment-direct] Review this image and PDF.',
+  );
+  assert.equal(
+    await page.getByRole('combobox', { name: 'Message delivery mode' }).inputValue(),
+    'queue',
+  );
+  await page.getByRole('combobox', { name: 'Message delivery mode' }).selectOption('btw');
   assert.equal(calls().length, initialCalls, 'Choosing files never submits');
   await page.locator('.session-tab-label').filter({ hasText: 'Native UI terminal' }).click();
   await page.locator('.session-tab-label').filter({ hasText: 'WrongStack engine proof' }).click();
@@ -103,7 +150,19 @@ export async function exerciseNativeAttachments({
     direct.composerPrompt.includes('Native attachment PDF text verified.'),
     'PDF uses the real engine extraction path',
   );
+  assert.ok(
+    direct.composerPrompt.includes('README.md'),
+    'Restored file reference reaches the engine',
+  );
   assert.equal(await tray().count(), 0);
+  await waitFor(
+    async () => {
+      const saved = await savedDraft();
+      return saved.attachments?.length === 0 && saved.references?.length === 0;
+    },
+    'Sent files removed from stored draft',
+    60000,
+  );
   const bubble = page
     .locator('.chat-message.user')
     .filter({ hasText: '[native-composer-attachment-direct]' });
@@ -225,6 +284,11 @@ export async function exerciseNativeAttachments({
   await page.getByRole('button', { name: 'Send Queue attachments', exact: true }).click();
   await page.locator('.composer-queue summary').filter({ hasText: '1 queued' }).waitFor();
   assert.equal(calls().length, heldCalls, 'Attachment-aware BTW does not interrupt or use mailbox');
+  await waitFor(
+    async () => (await savedDraft()).attachments?.length === 0,
+    'Queued attachment cleared from persisted draft',
+    60000,
+  );
   await page.reload();
   await page.locator('.composer-queue summary').filter({ hasText: '1 queued' }).waitFor();
   await page.locator('.composer-queue summary').click();

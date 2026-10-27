@@ -568,6 +568,32 @@ from already-built workspace packages, not from a successful full current-source
 The earlier empty metrics results were caused by the transport scope, not an old-engine defect.
 The full profile/settings native scope was not rerun after the transport change.
 
+## Conversation draft text recovery
+
+The session text draft is stored in the native SQLite registry and loaded on demand for its agent
+session. Saves are serialized per session; empty drafts delete their row and write failures are
+reported. Registry tests cover independent sessions, restart, clearing and rejection of unknown
+or terminal sessions. The desktop suite passed 137 tests, typecheck passed 104 files, and all 13
+native Rust tests passed. Native composer scope `623c9d698194-a566141c2989` passed, including
+renderer reload, actual UI process restart, saved-text readback and clearing. Its engine was built
+from existing package outputs, not a successful complete current-source dependency build. Draft
+delivery mode was not persisted, and concurrent editing of the same session across windows and
+abrupt termination during a pending save were not certified.
+
+The subsequent native composer run `7789abec58b7-a566141c2989` also passed after adding durable
+attachment and reference storage. It restored an image, a PDF whose encoded payload exceeded
+1 MB, and a project file reference after UI process restart; the actual engine received the image,
+extracted PDF text and reference, and their stored draft entries cleared after submission. Native
+checks used existing prebuilt engine package outputs, not a full current-source dependency build.
+Concurrent same-session window editing remains outside this proof.
+
+The later composer scope `1926a6bb7d2d-a566141c2989` passed with persisted delivery mode. A
+Queue selection, text, image, PDF and project reference were restored after UI restart, and the
+queued attachment was confirmed removed from the saved draft before a further reload. Cleanup
+failures after engine acceptance are reported as such rather than presenting the message as unsent.
+The engine again came from existing package outputs. Abrupt termination during an in-flight save
+and concurrent edits from separate windows remain unverified.
+
 Automatic approval review rejected deletion of the isolated control directories below with
 `blocked by policy`; they remain untouched:
 `wstack-metrics-control-nY1dGT`, `wstack-metrics-control-2SqpJp`,
