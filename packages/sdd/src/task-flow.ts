@@ -112,7 +112,11 @@ export class TaskFlow {
     this.stopped = false;
 
     const pendingTasks = this.getExecutableTasks();
-    const maxConcurrent = this.opts.maxConcurrent ?? 2;
+    const rawConcurrent = this.opts.maxConcurrent ?? 2;
+    const maxConcurrent =
+      typeof rawConcurrent === 'number' && Number.isFinite(rawConcurrent) && rawConcurrent >= 1
+        ? Math.floor(rawConcurrent)
+        : 2;
 
     while (pendingTasks.length > 0 && !this.stopped) {
       const batch = pendingTasks.splice(0, maxConcurrent);

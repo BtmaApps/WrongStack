@@ -171,6 +171,7 @@ export class SpecVersioning {
       for (const task of tasks) {
         task.title = mod.requirement.description;
         task.description = this.buildTaskDescription(mod.requirement);
+        task.type = this.mapReqType(mod.requirement.type);
         task.priority = mod.requirement.priority;
         const metadataTags = new Set<string>([
           mod.previousVersion.type,
@@ -189,6 +190,7 @@ export class SpecVersioning {
     }
 
     // Add tasks for new requirements
+    const addedReqTasks = new Map<string, TaskNode>();
     for (const req of specDiff.added) {
       const now = Date.now();
       const newTask: TaskNode = {
@@ -204,9 +206,33 @@ export class SpecVersioning {
         updatedAt: now,
       };
       graph.nodes.set(newTask.id, newTask);
-      graph.rootNodes.push(newTask.id);
+      reqToTasks.set(req.id, [newTask]);
+      addedReqTasks.set(req.id, newTask);
       changes.push(`Added task: ${newTask.title}`);
     }
+
+    for (const req of specDiff.added) {
+      const newTask = addedReqTasks.get(req.id);
+      if (!newTask) continue;
+      for (const blockerReqId of req.blockedBy ?? []) {
+        for (const blockerTask of reqToTasks.get(blockerReqId) ?? []) {
+          graph.edges.push({
+            id: crypto.randomUUID(),
+            from: blockerTask.id,
+            to: newTask.id,
+            type: 'depends_on',
+          });
+        }
+      }
+    }
+
+    const blockedTaskIds = new Set<string>();
+    for (const edge of graph.edges) {
+      if (edge.type === 'depends_on' && graph.nodes.has(edge.from) && graph.nodes.has(edge.to)) {
+        blockedTaskIds.add(edge.to);
+      }
+    }
+    graph.rootNodes = Array.from(graph.nodes.keys()).filter((id) => !blockedTaskIds.has(id));
 
     graph.requiredRequirementIds = Array.from(
       new Set(newSpec.requirements.map((requirement) => requirement.id)),

@@ -362,4 +362,100 @@ describe('SpecVersioning', () => {
 
     expect(() => versioning.updateTaskGraph(makeGraph(), old, updated)).toThrow();
   });
+
+  it('wires depends_on edges for added blockedBy requirements, promotes unblocked tasks to rootNodes, clamps progress bars, and normalizes TaskFlow maxConcurrent (F686)', async () => {
+    const { renderProgress, renderSpecAnalysis } = await import('../src/task-visualizer.js');
+    const { TaskFlow } = await import('../src/task-flow.js');
+    const { TaskTracker } = await import('../src/task-tracker.js');
+    const { DefaultTaskStore } = await import('@wrongstack/core/tasking');
+    const { EventBus } = await import('@wrongstack/contracts/kernel/events');
+
+    const old = makeSpec({
+      requirements: [
+        {
+          id: 'REQ-1',
+          type: 'functional',
+          priority: 'high',
+          description: 'Req 1',
+          acceptanceCriteria: [],
+        },
+        {
+          id: 'REQ-2',
+          type: 'functional',
+          priority: 'medium',
+          description: 'Req 2',
+          acceptanceCriteria: [],
+          blockedBy: ['REQ-1'],
+        },
+      ],
+    });
+    const n1 = makeNode('task-1', 'REQ-1');
+    const n2: TaskNode = { ...makeNode('task-2', 'REQ-2'), type: 'chore' };
+    const g: TaskGraph = {
+      ...makeGraph([n1, n2]),
+      edges: [{ id: 'e-1', from: 'task-1', to: 'task-2', type: 'depends_on' }],
+      rootNodes: ['task-1'],
+    };
+
+    const next = makeSpec({
+      requirements: [
+        {
+          id: 'REQ-2',
+          type: 'security',
+          priority: 'medium',
+          description: 'Req 2 updated',
+          acceptanceCriteria: [],
+        },
+        {
+          id: 'REQ-3',
+          type: 'functional',
+          priority: 'low',
+          description: 'Req 3',
+          acceptanceCriteria: [],
+          blockedBy: ['REQ-2'],
+        },
+      ],
+    });
+
+    versioning.updateTaskGraph(g, old, next);
+    const added = [...g.nodes.values()].find((n) => n.specRequirementId === 'REQ-3')!;
+    expect(g.nodes.get('task-2')?.type).toBe('feature');
+    expect(g.rootNodes).toEqual(['task-2']);
+    expect(
+      g.edges.some((e) => e.from === 'task-2' && e.to === added.id && e.type === 'depends_on'),
+    ).toBe(true);
+
+    expect(
+      renderProgress({
+        total: 1,
+        completed: 2,
+        failed: 0,
+        inProgress: 0,
+        pending: 0,
+        blocked: 0,
+        review: 0,
+        percentComplete: 150,
+        estimatedHours: 0,
+        actualHours: 0,
+      }),
+    ).toContain('100%');
+    expect(
+      renderSpecAnalysis(old, { completeness: -15, gaps: [], risks: [], suggestions: [] }),
+    ).toContain('0%');
+
+    const tracker = new TaskTracker({ store: new DefaultTaskStore() });
+    const flow = new TaskFlow({ tracker, events: new EventBus(), maxConcurrent: 0 });
+    await flow.fromSpec(
+      '# Spec\n\n## Overview\nOverview text\n\n## Requirements\n[critical] Feature 1\n\n## Acceptance\nDone',
+    );
+    const manual = tracker.addNode({
+      title: 'Manual',
+      description: 'd',
+      type: 'feature',
+      priority: 'high',
+      status: 'pending',
+    });
+    await flow.execute({ executeTask: async () => 'done' });
+    expect(tracker.getNode(manual.id)?.status).toBe('completed');
+  });
 });

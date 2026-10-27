@@ -146,12 +146,15 @@ function renderNode(
  */
 export function renderProgress(progress: TaskProgress): string {
   const barWidth = 30;
-  const filled = Math.round((progress.percentComplete / 100) * barWidth);
+  const pct = Number.isFinite(progress.percentComplete)
+    ? Math.max(0, Math.min(100, progress.percentComplete))
+    : 0;
+  const filled = Math.round((pct / 100) * barWidth);
   const empty = barWidth - filled;
   const bar = '█'.repeat(filled) + '░'.repeat(empty);
 
   return [
-    `Progress: [${bar}] ${progress.percentComplete}%`,
+    `Progress: [${bar}] ${pct}%`,
     `  ${progress.completed} done │ ${progress.inProgress} active │ ${progress.pending} pending │ ${progress.blocked} blocked │ ${progress.failed} failed`,
   ].join('\n');
 }
@@ -206,9 +209,12 @@ export function renderSpecAnalysis(
 
   // Completeness
   const barWidth = 20;
-  const filled = Math.round((analysis.completeness / 100) * barWidth);
+  const pct = Number.isFinite(analysis.completeness)
+    ? Math.max(0, Math.min(100, analysis.completeness))
+    : 0;
+  const filled = Math.round((pct / 100) * barWidth);
   const bar = '█'.repeat(filled) + '░'.repeat(barWidth - filled);
-  lines.push(`Completeness: [${bar}] ${analysis.completeness}%`);
+  lines.push(`Completeness: [${bar}] ${pct}%`);
   lines.push('');
 
   if (analysis.gaps.length > 0) {
