@@ -465,5 +465,13 @@ export class SqliteSageStore extends SqliteSageStoreCore implements MemoryStore 
 
   close(): void {
     closeSqliteStore(this.stmtCache, this.db);
+    // Drop the released handle and reopen state together. Leaving
+    // `initialized = true` while `db` points at the closed connection made
+    // `initialize()` a no-op after a close/dispose: `health()` reported
+    // `ready` and the next real call handed the closed handle to
+    // `db.prepare()` ("database is not open"). Resetting both makes a later
+    // `initialize()` reopen the store instead of lying about it.
+    this.initialized = false;
+    this.db = undefined as unknown as typeof this.db;
   }
 }
