@@ -1,14 +1,78 @@
 // SDD domain: spec-driven development — parsing, task generation, tracking, flow,
 // persistence, interactive building, visualization, and auto-execution.
 
-export { SpecParser } from './spec-parser.js';
+// TaskTracker and DefaultTaskStore moved to @wrongstack/core/tasking in
+// PR-10; re-exported here so existing `@wrongstack/sdd` consumers keep
+// working. New code should import directly from `@wrongstack/core/tasking`.
 export {
-  TaskGenerator,
-  extractVerificationCommand,
-  assessGeneratedTaskAtomicity,
-  type TaskGeneratorOptions,
-  type GeneratedTask,
-} from './task-generator.js';
+  DefaultTaskStore,
+  type TaskStore,
+  TaskTracker,
+  type TaskTrackerChange,
+  type TaskTrackerListener,
+  type TaskTrackerOptions,
+  type TaskTransition,
+} from '@wrongstack/core/tasking';
+// Auto-Executor
+export {
+  AutoExecutor,
+  type AutoExecutorOptions,
+  createAutoExecutor,
+  type ExecutionSummary,
+  type TaskExecutionContext,
+  type TaskExecutionResult,
+} from './auto-executor.js';
+// Live board model + persistence
+export {
+  buildBoardSnapshot,
+  buildBoardTasks,
+  type SddBoardColumn,
+  type SddBoardFeedEntry,
+  type SddBoardSnapshot,
+  type SddBoardStatus,
+  type SddBoardTask,
+  type SddDeadlockChain,
+  type SddTaskDisplayStatus,
+  shortIdMap,
+} from './board-types.js';
+export {
+  type ConflictSide,
+  hasConflictMarkers,
+  type LlmConflictResolverOptions,
+  makeLlmConflictResolver,
+  makePreferSideConflictResolver,
+  resolveConflictText,
+} from './conflict-resolver.js';
+// Critical Path
+export {
+  analyzeCriticalPath,
+  type BottleneckTask,
+  type CriticalPathAnalysis,
+} from './critical-path.js';
+export {
+  makeLlmSubtaskGenerator,
+  makePlanningDecomposer,
+  type PlanningDecomposer,
+  type PlanningDecomposerOptions,
+  type SubtaskGeneratorOptions,
+} from './decompose-task.js';
+export { type SplitGraphNodeOptions, splitGraphNode } from './graph-split.js';
+// Requirements Intake → spec-builder interview kickoff
+export {
+  type IntakeInterviewKickoff,
+  intakeToInterviewKickoff,
+  startInterviewFromIntake,
+} from './intake-kickoff.js';
+export { createKanbanSddSessionPersistence } from './kanban-sdd-session.js';
+export {
+  assessTaskNodeAtomicity,
+  type DecompositionProposal,
+  decomposeNonAtomicTasks,
+  type PlanDecomposeOptions,
+  type PlanDecomposeResult,
+} from './plan-decompose.js';
+// Project footprint for interview prompts (CLI + WebUI wizard share this)
+export { gatherProjectContext } from './project-context.js';
 export {
   assertSpecTaskGraphCoverage,
   assertTaskGraphExecutionIntegrity,
@@ -16,92 +80,58 @@ export {
   evaluateTaskGraphRequirementCoverage,
   type TaskGraphRequirementCoverage,
 } from './requirement-coverage.js';
-// TaskTracker and DefaultTaskStore moved to @wrongstack/core/tasking in
-// PR-10; re-exported here so existing `@wrongstack/sdd` consumers keep
-// working. New code should import directly from `@wrongstack/core/tasking`.
 export {
-  TaskTracker,
-  DefaultTaskStore,
-  type TaskStore,
-  type TaskTrackerOptions,
-  type TaskTransition,
-  type TaskTrackerChange,
-  type TaskTrackerListener,
-} from '@wrongstack/core/tasking';
-export {
-  TaskFlow,
-  SpecDrivenDev,
-  type TaskFlowPhase,
-  type TaskFlowOptions,
-  type TaskFlowExecutionContext,
-  type TaskFlowEventMap,
-  type TaskFlowEventName,
-  type SpecDrivenDevOptions,
-} from './task-flow.js';
-
-// Persistence
-export { SpecStore, type SpecStoreOptions, type SpecIndexEntry } from './spec-store.js';
-export {
-  TaskGraphStore,
-  type TaskGraphStoreOptions,
-  type TaskGraphIndexEntry,
-} from './task-graph-store.js';
-
-// Live board model + persistence
-export {
-  buildBoardTasks,
-  buildBoardSnapshot,
-  shortIdMap,
-  type SddBoardSnapshot,
-  type SddBoardTask,
-  type SddBoardColumn,
-  type SddBoardStatus,
-  type SddTaskDisplayStatus,
-  type SddDeadlockChain,
-  type SddBoardFeedEntry,
-} from './board-types.js';
-export {
-  SddBoardStore,
-  type SddBoardStoreOptions,
-  type SddBoardIndexEntry,
-  type SddBoardEvent,
-} from './sdd-board-store.js';
-export {
-  SddBoardProjector,
   type SddBoardPersistence,
+  SddBoardProjector,
   type SddBoardProjectorOptions,
 } from './sdd-board-projector.js';
-export { SddRunRegistry, type SddRunControl } from './sdd-run-registry.js';
 export {
-  SddInterviewDriver,
+  type SddBoardEvent,
+  type SddBoardIndexEntry,
+  SddBoardStore,
+  type SddBoardStoreOptions,
+} from './sdd-board-store.js';
+export {
   isExplanatoryText,
+  type SddIngestResult,
+  SddInterviewDriver,
   type SddInterviewDriverOptions,
   type SddInterviewSnapshot,
-  type SddIngestResult,
 } from './sdd-interview-driver.js';
 export {
-  startSddRun,
-  type StartSddRunOptions,
-  type SddRunHandle,
-} from './start-sdd-run.js';
-export {
-  cleanupSddWorktrees,
-  cleanupStaleWorktrees,
-  cleanupStaleSddWorktrees,
-  sddRunLiveReason,
-  rollbackSddRunFromDisk,
-  destroySddProject,
   applySddLifecycle,
-  type RollbackFromDiskOptions,
-  type DestroySddProjectOptions,
-  type DestroySddProjectResult,
   type CleanupStaleSddOptions,
   type CleanupStaleSddResult,
+  cleanupSddWorktrees,
+  cleanupStaleSddWorktrees,
+  cleanupStaleWorktrees,
+  type DestroySddProjectOptions,
+  type DestroySddProjectResult,
+  destroySddProject,
+  type RollbackFromDiskOptions,
+  rollbackSddRunFromDisk,
   type SddLifecycleOp,
   type SddLifecycleOptions,
   type SddLifecycleResult,
+  sddRunLiveReason,
 } from './sdd-lifecycle.js';
-
+export {
+  type RunResult,
+  SddParallelRun,
+  type SddParallelRunOptions,
+  type SddProgress,
+  type SddSubtaskSpec,
+  type SddSupervisorVerdict,
+  type WaveResult,
+} from './sdd-parallel-run.js';
+export { type SddRunControl, SddRunRegistry } from './sdd-run-registry.js';
+export { SddSupervisor, type SddSupervisorOptions } from './sdd-supervisor.js';
+// Parallel fan-out run (SDD TaskGraph → ParallelEternalEngine bridge)
+export {
+  SddTaskDecomposer,
+  type SddTaskDecomposerOptions,
+  type TaskBatch,
+} from './sdd-task-decomposer.js';
 // AI-Driven Interactive Builder
 export {
   AISpecBuilder,
@@ -112,115 +142,74 @@ export {
   type CollectedAnswer,
   isAISpecSession,
 } from './spec-builder.js';
-export { createKanbanSddSessionPersistence } from './kanban-sdd-session.js';
-
-// Project footprint for interview prompts (CLI + WebUI wizard share this)
-export { gatherProjectContext } from './project-context.js';
-
-// Requirements Intake → spec-builder interview kickoff
-export {
-  intakeToInterviewKickoff,
-  startInterviewFromIntake,
-  type IntakeInterviewKickoff,
-} from './intake-kickoff.js';
-
+export { SpecParser } from './spec-parser.js';
+// Persistence
+export { type SpecIndexEntry, SpecStore, type SpecStoreOptions } from './spec-store.js';
 // Templates
 export {
-  SPEC_TEMPLATES,
   getTemplate,
   listTemplates,
+  SPEC_TEMPLATES,
   templateToMarkdown,
 } from './spec-templates.js';
-
+// Spec Versioning
+export { type SpecDiff, type SpecVersion, SpecVersioning } from './spec-versioning.js';
+export {
+  type SddRunHandle,
+  type StartSddRunOptions,
+  startSddRun,
+} from './start-sdd-run.js';
+export {
+  SpecDrivenDev,
+  type SpecDrivenDevOptions,
+  TaskFlow,
+  type TaskFlowEventMap,
+  type TaskFlowEventName,
+  type TaskFlowExecutionContext,
+  type TaskFlowOptions,
+  type TaskFlowPhase,
+} from './task-flow.js';
+export {
+  assessGeneratedTaskAtomicity,
+  extractVerificationCommand,
+  type GeneratedTask,
+  TaskGenerator,
+  type TaskGeneratorOptions,
+} from './task-generator.js';
+export {
+  type TaskGraphIndexEntry,
+  TaskGraphStore,
+  type TaskGraphStoreOptions,
+} from './task-graph-store.js';
 // Visualization
 export {
-  renderTaskGraph,
   renderProgress,
-  renderTaskList,
   renderSpecAnalysis,
+  renderTaskGraph,
+  renderTaskList,
 } from './task-visualizer.js';
-
-// Critical Path
 export {
-  analyzeCriticalPath,
-  type CriticalPathAnalysis,
-  type BottleneckTask,
-} from './critical-path.js';
-
-// Spec Versioning
-export { SpecVersioning, type SpecVersion, type SpecDiff } from './spec-versioning.js';
-
-// Auto-Executor
-export {
-  AutoExecutor,
-  createAutoExecutor,
-  type AutoExecutorOptions,
-  type TaskExecutionContext,
-  type TaskExecutionResult,
-  type ExecutionSummary,
-} from './auto-executor.js';
-
-// Parallel fan-out run (SDD TaskGraph → ParallelEternalEngine bridge)
-export {
-  SddTaskDecomposer,
-  type SddTaskDecomposerOptions,
-  type TaskBatch,
-} from './sdd-task-decomposer.js';
-export {
-  SddParallelRun,
-  type SddParallelRunOptions,
-  type SddProgress,
-  type WaveResult,
-  type RunResult,
-  type SddSubtaskSpec,
-  type SddSupervisorVerdict,
-} from './sdd-parallel-run.js';
-export { SddSupervisor, type SddSupervisorOptions } from './sdd-supervisor.js';
-export {
+  type AcceptanceCriteriaVerifierOptions,
+  type CommandVerifierOptions,
   makeAcceptanceCriteriaVerifier,
   makeCommandVerifier,
   makeCompositeVerifier,
-  tokenizeCommand,
-  type AcceptanceCriteriaVerifierOptions,
-  type CommandVerifierOptions,
   type SddVerifyTask,
+  tokenizeCommand,
 } from './verify-task.js';
-export {
-  makeLlmSubtaskGenerator,
-  makePlanningDecomposer,
-  type PlanningDecomposer,
-  type PlanningDecomposerOptions,
-  type SubtaskGeneratorOptions,
-} from './decompose-task.js';
-export { splitGraphNode, type SplitGraphNodeOptions } from './graph-split.js';
-export {
-  assessTaskNodeAtomicity,
-  decomposeNonAtomicTasks,
-  type DecompositionProposal,
-  type PlanDecomposeOptions,
-  type PlanDecomposeResult,
-} from './plan-decompose.js';
-export {
-  makePreferSideConflictResolver,
-  makeLlmConflictResolver,
-  resolveConflictText,
-  hasConflictMarkers,
-  type ConflictSide,
-  type LlmConflictResolverOptions,
-} from './conflict-resolver.js';
 
 // VIBE Three-Stage Verification Protocol
 export {
-  synthesizeVibeSpec,
-  buildCoderContract,
   auditVibeExecution,
+  buildCoderContract,
   formatVibeReport,
   isIdentifierLikeExclusion,
-  type VibeScopeBoundaries,
-  type VibeSpecSynthesizerResult,
-  type VibeCoderContract,
+  synthesizeVibeSpec,
   type VibeAuditCheck,
   type VibeAuditVerdict,
+  type VibeCoderContract,
+  type VibeScopeBoundaries,
+  type VibeSpecSynthesizerResult,
   type VibeVerificationReport,
 } from './vibe-protocol.js';
 export { installVibeProtocol, VIBE_PROTOCOL_META_KEY } from './vibe-protocol-wiring.js';

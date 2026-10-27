@@ -12,9 +12,10 @@
  * On first use the model is fetched from the Hugging Face Hub and cached
  * under `cacheDir` (default: `.wrongstack/vector-memory/models`).
  */
-import type { EmbeddingProvider } from '@wrongstack/sage';
-import { createRequire } from 'node:module';
+
 import { existsSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import type { EmbeddingProvider } from '@wrongstack/sage';
 
 import { VectorMemoryProviderUnavailableError } from './errors.js';
 

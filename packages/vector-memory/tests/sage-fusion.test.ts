@@ -392,10 +392,9 @@ describe('asVectorRecallProvider', () => {
       const searchTool = createVectorMemoryTools(store).find(
         (t) => t.name === 'vector_memory_search',
       )!;
-      const res = (await searchTool.execute(
-        { query: 'Bulk entry', limit: 500 },
-        {} as never,
-      )) as { hits: unknown[] };
+      const res = (await searchTool.execute({ query: 'Bulk entry', limit: 500 }, {} as never)) as {
+        hits: unknown[];
+      };
       expect(res.hits.length).toBe(100);
     } finally {
       flakyStore.close();

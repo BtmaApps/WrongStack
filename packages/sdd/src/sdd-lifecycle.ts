@@ -12,7 +12,6 @@
 import * as fsp from 'node:fs/promises';
 import * as path from 'node:path';
 import { toErrorMessage } from '@wrongstack/core/utils';
-import { WorktreeManager } from '@wrongstack/worktree';
 import {
   deleteKanbanWorkflowState,
   kanbanWorkflowId,
@@ -22,6 +21,7 @@ import {
   removeBoard,
   writeKanbanWorkflowState,
 } from '@wrongstack/kanban';
+import { WorktreeManager } from '@wrongstack/worktree';
 import type { SddBoardSnapshot } from './board-types.js';
 import { SddBoardStore } from './sdd-board-store.js';
 

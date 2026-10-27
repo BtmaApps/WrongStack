@@ -11,9 +11,9 @@
 // when an undeclared subpath is requested).
 export {
   type TaskStore,
-  type TaskTrackerOptions,
-  type TaskTransition,
+  TaskTracker,
   type TaskTrackerChange,
   type TaskTrackerListener,
-  TaskTracker,
+  type TaskTrackerOptions,
+  type TaskTransition,
 } from '@wrongstack/core/tasking';
