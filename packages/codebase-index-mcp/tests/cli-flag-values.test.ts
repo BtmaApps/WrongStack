@@ -29,6 +29,20 @@ describe('Codebase Index MCP CLI — flag values', () => {
     expect(parsed.help).toBe(true);
   });
 
+  it('accepts --flag=value and never echoes an inline token as an unknown option', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const parsed = parseArgs(
+      ['--project-root=/p', '--http', '--token=s3cret', '--index-dir=/idx', '--port=9000'],
+      {},
+    );
+    expect(parsed.projectRoot).toBe(path.resolve('/p'));
+    expect(parsed.indexDir).toBe(path.resolve('/idx'));
+    expect(parsed.httpToken).toBe('s3cret');
+    expect(parsed.httpPort).toBe(9000);
+    expect(warn.mock.calls.map((c) => String(c[0])).join('\n')).not.toContain('s3cret');
+    expect(parseArgs(['--token='], {}).tokenMissing).toBe(true);
+  });
+
   it('rejects an out-of-range port and warns on unknown options', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const parsed = parseArgs(['--project-root', '.', '--port', '70000', '--writeable'], {});
