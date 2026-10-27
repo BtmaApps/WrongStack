@@ -47,8 +47,12 @@ export class TrendStore {
   constructor(private readonly source: SnapshotSource) {}
 
   analyze(projectId: string, limit = 100): TrendReport {
+    const parseTimestamp = (value: string): number => {
+      const parsed = Date.parse(value);
+      return Number.isFinite(parsed) ? parsed : 0;
+    };
     const snapshots = [...this.source.listSnapshots(projectId, limit)].sort(
-      (a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt),
+      (a, b) => parseTimestamp(a.createdAt) - parseTimestamp(b.createdAt),
     );
     const packageWorkspaces = new Map<string, Set<string>>();
     for (const snapshot of snapshots) {
@@ -73,7 +77,7 @@ export class TrendStore {
     const vulnerabilityDurations: number[] = [];
     const openVulnerabilities = new Map<string, number>();
     for (const snapshot of snapshots) {
-      const at = Date.parse(snapshot.createdAt);
+      const at = parseTimestamp(snapshot.createdAt);
       const active = new Set<string>();
       const vulnerableKeys = new Set<string>();
       const perSnapshot = new Map<

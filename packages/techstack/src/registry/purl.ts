@@ -170,18 +170,25 @@ export function parsePurl(purl: string): PurlParts | undefined {
   let namespace: string | undefined;
   let name: string;
   const nsSlashIdx = remainder.indexOf('/');
-  if (nsSlashIdx >= 0 && type !== 'npm') {
+  if (nsSlashIdx === 0) return undefined;
+  if (nsSlashIdx > 0 && type !== 'npm') {
     // Most ecosystems use namespace/name; npm uses @scope/name encoded as %40scope/name
     namespace = decodePurlSegment(remainder.slice(0, nsSlashIdx));
     name = decodePurlSegment(remainder.slice(nsSlashIdx + 1));
+    if (!namespace) return undefined;
   } else if (
-    nsSlashIdx >= 0 &&
+    nsSlashIdx > 0 &&
     type === 'npm' &&
-    (remainder.startsWith('%40') || remainder.startsWith('@'))
+    (remainder.startsWith('%40') ||
+      remainder.startsWith('%40'.toLowerCase()) ||
+      remainder.startsWith('@'))
   ) {
     // npm scoped: %40scope/name or unencoded @scope/name
     namespace = decodePurlSegment(remainder.slice(0, nsSlashIdx));
     name = decodePurlSegment(remainder.slice(nsSlashIdx + 1));
+    if (!namespace || namespace === '@' || name.includes('/')) return undefined;
+  } else if (nsSlashIdx > 0 && type === 'npm') {
+    return undefined;
   } else {
     name = decodePurlSegment(remainder);
   }

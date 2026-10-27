@@ -139,6 +139,9 @@ function suggestCommand(
   action: Finding['action'],
   targetVersion?: string,
 ): string | undefined {
+  if (action === 'replace' || action === 'investigate' || action === 'none') {
+    return undefined;
+  }
   // Mirror the executable path's requested version without inventing
   // `@latest`/`:latest` when no target is known. Dotnet translates its
   // structured `name@version` input to `name --version version`.
@@ -207,7 +210,10 @@ export function generateUpgradePlan(snapshot: Snapshot): UpgradePlan {
     );
     if (!dep) continue;
 
-    const targetVersion = dep.latestStable ?? dep.resolvable ?? dep.wanted;
+    const candidateTargetVersion = dep.latestStable ?? dep.resolvable ?? dep.wanted;
+    const isUpgradeAction = (act: Finding['action']): boolean =>
+      act === 'upgrade_patch' || act === 'upgrade_minor' || act === 'upgrade_major';
+    const targetVersion = isUpgradeAction(finding.action) ? candidateTargetVersion : undefined;
     const existing = byDepId.get(dep.id);
 
     if (!existing) {
@@ -236,16 +242,18 @@ export function generateUpgradePlan(snapshot: Snapshot): UpgradePlan {
       (actionRank.get(finding.action) ?? 0) > (actionRank.get(prevItem.action) ?? 0)
         ? finding.action
         : prevItem.action;
+    const nextTargetVersion = isUpgradeAction(nextAction) ? candidateTargetVersion : undefined;
     if (!existing.rationales.includes(finding.rationale)) {
       existing.rationales.push(finding.rationale);
     }
     existing.item = {
       ...prevItem,
+      targetVersion: nextTargetVersion,
       action: nextAction,
       severity: nextSeverity,
       rationale: existing.rationales.join('; '),
       breakingRisk: prevItem.breakingRisk || finding.breakingRisk,
-      suggestedCommand: suggestCommand(dep.ecosystem, dep.name, nextAction, targetVersion),
+      suggestedCommand: suggestCommand(dep.ecosystem, dep.name, nextAction, nextTargetVersion),
     };
   }
 
