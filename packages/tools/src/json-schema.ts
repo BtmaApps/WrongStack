@@ -197,6 +197,14 @@ export function validateJsonSchema(
         for (let i = 0; i < Math.min(value.length, s['items'].length); i++) {
           check(value[i], s['items'][i] as Record<string, unknown>, `${path}[${i}]`);
         }
+        // Tuple form: items past the tuple are governed by `additionalItems`
+        // (it has no meaning when `items` is a single schema).
+        const extra = s['additionalItems'];
+        for (let i = s['items'].length; i < value.length; i++) {
+          if (extra === false) errors.push(`${path}[${i}]: unexpected additional item`);
+          else if (typeof extra === 'object' && extra !== null)
+            check(value[i], extra as Record<string, unknown>, `${path}[${i}]`);
+        }
       } else if (typeof s['items'] === 'object' && s['items'] !== null) {
         for (let i = 0; i < value.length; i++) {
           check(value[i], s['items'] as Record<string, unknown>, `${path}[${i}]`);
