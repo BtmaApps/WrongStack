@@ -175,6 +175,51 @@ describe('Mailbox MCP actor-scoped reads', () => {
     expect(messageIds(foreignRecipient)).toEqual([]);
   });
 
+  it('keeps another actor mail out of the writable tier ack, delete and restore', async () => {
+    if (!mailbox || !emitter) throw new Error('Mailbox test backend was not initialized');
+
+    const foreign = await mailbox.send({
+      from: 'other-agent',
+      to: 'other-agent',
+      type: 'note',
+      subject: 'Foreign mail for the writable tier',
+      body: 'writable-foreign-body',
+    });
+    const own = await mailbox.send({
+      from: 'other-agent',
+      to: 'external-agent',
+      type: 'note',
+      subject: 'Own mail for the writable tier',
+      body: 'writable-own-body',
+    });
+    const host = createMailboxMcpToolHost(mailbox, emitter, {
+      actor: 'external-agent',
+      sessionId: 'mcp-scope',
+      writable: true,
+    });
+
+    // `mailbox_watch` hands out every message id; an id must not unlock a
+    // body read or a project-wide delete of mail this actor cannot read.
+    for (const args of [
+      { action: 'ack', messageId: foreign.id, read: true },
+      { action: 'ack_many', messageIds: [own.id, foreign.id], read: true },
+      { action: 'soft_delete', messageId: foreign.id },
+      { action: 'restore', messageId: foreign.id },
+    ]) {
+      const result = await host.callTool('mailbox_manage', args);
+      expect(result.isError).toBe(true);
+      expect(JSON.stringify(result.content)).not.toContain('writable-foreign-body');
+    }
+    const [stored] = await mailbox.query({ ids: [foreign.id], includeDeleted: true });
+    expect(stored?.deletedAt).toBeUndefined();
+
+    objectContent(await host.callTool('mailbox_manage', { action: 'ack', messageId: own.id }));
+    objectContent(
+      await host.callTool('mailbox_manage', { action: 'soft_delete', messageId: own.id }),
+    );
+    objectContent(await host.callTool('mailbox_manage', { action: 'restore', messageId: own.id }));
+  });
+
   it('keeps the full-access tier able to read every actor mail', async () => {
     if (!mailbox || !emitter) throw new Error('Mailbox test backend was not initialized');
 

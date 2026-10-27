@@ -34,6 +34,20 @@ function backend(overrides: Record<string, unknown> = {}): RemoteMailbox {
   } as unknown as RemoteMailbox;
 }
 
+/** A `query` that returns each requested id as mail addressed to `actor`. */
+function addressedTo(actor: string) {
+  return vi.fn().mockImplementation(async ({ ids, to }: { ids?: string[]; to?: string }) =>
+    to === actor
+      ? (ids ?? []).map((id) => ({
+          id,
+          from: 'leader',
+          to: actor,
+          timestamp: '2026-10-14T10:00:00Z',
+        }))
+      : [],
+  );
+}
+
 describe('request bounds', () => {
   it('reads the configured actor inbox without requiring the agent to supply its identity', async () => {
     const direct = { id: 'direct', timestamp: '2026-10-14T10:00:00Z' };
@@ -93,10 +107,11 @@ describe('request bounds', () => {
 
   it('refuses an ack batch over the ceiling before touching the store', async () => {
     const ackMany = vi.fn().mockResolvedValue([]);
-    const host = createMailboxMcpToolHost(backend({ ackMany }), new MailboxEventEmitter(), {
-      actor: 'external-agent',
-      writable: true,
-    });
+    const host = createMailboxMcpToolHost(
+      backend({ ackMany, query: addressedTo('external-agent') }),
+      new MailboxEventEmitter(),
+      { actor: 'external-agent', writable: true },
+    );
 
     // `ackMany` runs the whole batch in one `BEGIN IMMEDIATE`; unbounded, a
     // single call holds the project's only write lock past every other
@@ -184,7 +199,7 @@ describe('createMailboxMcpToolHost', () => {
     const send = vi.fn().mockResolvedValue({ id: 'message-1' });
     const ack = vi.fn().mockResolvedValue({ id: 'message-1' });
     const softDelete = vi.fn().mockResolvedValue({ id: 'message-1' });
-    const mailbox = backend({ send, ack, softDelete });
+    const mailbox = backend({ send, ack, softDelete, query: addressedTo('trusted-external') });
     const host = createMailboxMcpToolHost(mailbox, new MailboxEventEmitter(), {
       actor: 'trusted-external',
       sessionId: 'session-1',

@@ -338,11 +338,52 @@ async function executeRead(
   }
 }
 
+/**
+ * Refuse a receipt or delete on mail this actor cannot read.
+ *
+ * `ack`, `soft_delete` and `restore` return the whole message and act on it
+ * project-wide, and `mailbox_watch` hands every message id to any tier. Without
+ * this, a `--writable` actor read another actor's bodies and hid their mail.
+ * Visible means the shared actor projection returns it (the rule the HTTP
+ * bridge applies to `/mailbox/ack`) or the actor sent it.
+ */
+async function requireActorMessages(
+  mailbox: RemoteMailbox,
+  scope: MailboxActorReadScope,
+  messageIds: readonly string[],
+): Promise<void> {
+  const requested = [...new Set(messageIds)];
+  const visible = new Set(
+    (
+      await queryMessagesForActor(mailbox, scope, {
+        ids: requested,
+        includeDeleted: true,
+        ...(scope.role ? { readerRole: scope.role } : {}),
+        limit: requested.length,
+      })
+    ).map((message) => message.id),
+  );
+  const unseen = requested.filter((id) => !visible.has(id));
+  if (unseen.length > 0) {
+    const sent = await mailbox.query({
+      ids: unseen,
+      from: scope.actorId,
+      includeDeleted: true,
+      limit: unseen.length,
+    });
+    for (const message of sent) visible.add(message.id);
+  }
+  const missing = requested.find((id) => !visible.has(id));
+  if (missing !== undefined) throw new Error(`message not found: ${missing}`);
+}
+
 async function executeManage(
   mailbox: RemoteMailbox,
   action: string,
   args: Record<string, unknown>,
   identity: ResolvedMailboxIdentity,
+  scope: MailboxActorReadScope,
+  fullAccess: boolean,
 ): Promise<unknown> {
   switch (action) {
     case 'send': {
@@ -375,10 +416,12 @@ async function executeManage(
         }),
       };
     }
-    case 'ack':
+    case 'ack': {
+      const messageId = requiredString(args, 'messageId');
+      if (!fullAccess) await requireActorMessages(mailbox, scope, [messageId]);
       return {
         message: await mailbox.ack({
-          messageId: requiredString(args, 'messageId'),
+          messageId,
           readerId: identity.actor,
           ...(optionalBoolean(args, 'read') !== undefined
             ? { read: optionalBoolean(args, 'read') }
@@ -391,6 +434,7 @@ async function executeManage(
             : {}),
         }),
       };
+    }
     case 'ack_many': {
       const messageIds = args['messageIds'];
       if (
@@ -411,6 +455,13 @@ async function executeManage(
           `messageIds must contain at most ${MAILBOX_MAX_ACK_BATCH} ids (got ${messageIds.length})`,
         );
       }
+      if (!fullAccess) {
+        await requireActorMessages(
+          mailbox,
+          scope,
+          messageIds.map((id) => id.trim()),
+        );
+      }
       const acks: MailboxAckInput[] = messageIds.map((messageId) => ({
         messageId: messageId.trim(),
         readerId: identity.actor,
@@ -426,12 +477,16 @@ async function executeManage(
       }));
       return { messages: await mailbox.ackMany({ acks }) };
     }
-    case 'soft_delete':
-      return {
-        message: await mailbox.softDelete(requiredString(args, 'messageId'), identity.actor),
-      };
-    case 'restore':
-      return { message: await mailbox.restore(requiredString(args, 'messageId')) };
+    case 'soft_delete': {
+      const messageId = requiredString(args, 'messageId');
+      if (!fullAccess) await requireActorMessages(mailbox, scope, [messageId]);
+      return { message: await mailbox.softDelete(messageId, identity.actor) };
+    }
+    case 'restore': {
+      const messageId = requiredString(args, 'messageId');
+      if (!fullAccess) await requireActorMessages(mailbox, scope, [messageId]);
+      return { message: await mailbox.restore(messageId) };
+    }
     case 'register_self': {
       const role = optionalString(args, 'role')?.trim() || identity.actorRole;
       await mailbox.registerAgent({
@@ -611,7 +666,7 @@ export function createMailboxMcpToolHost(
           name === 'mailbox_read'
             ? await executeRead(mailbox, action, args, identity, scope, fullAccess)
             : name === 'mailbox_manage'
-              ? await executeManage(mailbox, action, args, identity)
+              ? await executeManage(mailbox, action, args, identity, scope, fullAccess)
               : await executeAdmin(mailbox, action, args, actor);
         signal.throwIfAborted();
         return { content, isError: false };
