@@ -49,6 +49,16 @@ describe('safeJsonStringify', () => {
     };
     expect(safeJsonStringify(hostile)).toBe(UNSERIALIZABLE);
   });
+
+  it('detects cycles through objects whose toJSON() returns a fresh wrapper (F790)', () => {
+    const node = {
+      name: 'root',
+      toJSON() {
+        return { name: this.name, self: this };
+      },
+    };
+    expect(safeJsonStringify(node)).toBe('{"name":"root","self":"[circular]"}');
+  });
 });
 
 describe('credential patterns', () => {

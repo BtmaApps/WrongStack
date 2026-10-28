@@ -609,7 +609,14 @@ export async function probeRunner(
   probeArg: string = '--version',
   options: RunOptions,
 ): Promise<boolean> {
-  const resolved = resolveRunnerCommand(runtime, `${runtime.executable} ${probeArg}`, options);
+  const probeRuntime: LanguageRuntime =
+    probeArg.startsWith('-') && !runtime.allowedFlags?.has(probeArg)
+      ? {
+          ...runtime,
+          allowedFlags: new Set([...(runtime.allowedFlags ?? []), probeArg]),
+        }
+      : runtime;
+  const resolved = resolveRunnerCommand(probeRuntime, `${runtime.executable} ${probeArg}`, options);
   if (!resolved) return false;
   const result = await runRunnerCommand([resolved.cmd, ...resolved.args], {
     ...options,

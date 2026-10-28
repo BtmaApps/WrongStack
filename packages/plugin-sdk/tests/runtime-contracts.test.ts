@@ -8,6 +8,7 @@ import {
   clearLocalBinCache,
   type LanguageRuntime,
   parseLlmJsonObject,
+  probeRunner,
   resolveNodeBin,
   resolveRunnerCommand,
   runOptionalPluginLlm,
@@ -161,5 +162,23 @@ describe('runtime helper contracts', () => {
     clearLocalBinCache();
 
     expect(resolveNodeBin('sdk-bin-fixture', 'fixture', root)).toBeNull();
+  });
+
+  it('probeRunner allows the probe flag even when runtime.allowedFlags omits it or is null (F855)', async () => {
+    const runtime: LanguageRuntime = {
+      id: 'javascript',
+      packageManager: 'none',
+      executable: 'node',
+      subcommands: [],
+      allowedFlags: new Set(['--check']),
+      defaultCommand: 'node --check',
+    };
+    const ok = await probeRunner(runtime, '--version', {
+      cwd: process.cwd(),
+      projectRoot: process.cwd(),
+      timeoutMs: 5_000,
+    });
+    expect(ok).toBe(true);
+    expect(runtime.allowedFlags?.has('--version')).toBe(false);
   });
 });

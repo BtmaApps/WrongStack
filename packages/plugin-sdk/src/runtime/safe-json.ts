@@ -28,17 +28,37 @@ export function safeJsonStringify(value: unknown, indent?: number): string {
     // A `WeakSet` of the ancestors currently on the stack: replacing only
     // true cycles keeps repeated-but-acyclic references intact, which a
     // naive "seen everything" set would mangle into false positives.
-    const stack: unknown[] = [];
+    const stack: Array<{ raw: object; val: object }> = [];
     const out = JSON.stringify(
       value,
-      function replacer(this: unknown, _key: string, val: unknown): unknown {
+      function replacer(this: unknown, key: string, val: unknown): unknown {
         if (typeof val === 'bigint') return `${val.toString()}n`;
         if (val === null || typeof val !== 'object') return val;
         // `this` is the container being serialised; unwind the stack back
         // to it before testing membership.
-        while (stack.length > 0 && stack[stack.length - 1] !== this) stack.pop();
-        if (stack.includes(val)) return '[circular]';
-        stack.push(val);
+        while (
+          stack.length > 0 &&
+          stack[stack.length - 1]!.val !== this &&
+          stack[stack.length - 1]!.raw !== this
+        ) {
+          stack.pop();
+        }
+        const raw =
+          typeof this === 'object' &&
+          this !== null &&
+          typeof (this as Record<string, unknown>)[key] === 'object' &&
+          (this as Record<string, unknown>)[key] !== null
+            ? ((this as Record<string, unknown>)[key] as object)
+            : val;
+        if (
+          stack.some(
+            (entry) =>
+              entry.val === val || entry.raw === val || entry.raw === raw || entry.val === raw,
+          )
+        ) {
+          return '[circular]';
+        }
+        stack.push({ raw, val });
         return val;
       },
       indent,

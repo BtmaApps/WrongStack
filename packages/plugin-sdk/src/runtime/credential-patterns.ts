@@ -82,6 +82,12 @@ export const CREDENTIAL_PATTERNS: readonly CredentialPattern[] = [
     regex:
       /https:\/\/hooks\.slack\.com\/services\/T[A-Za-z0-9_-]+\/B[A-Za-z0-9_-]+\/[A-Za-z0-9]{16,}/g,
   },
+  // Discord: the token is the last path segment of the webhook URL.
+  {
+    type: 'discord_webhook',
+    regex:
+      /https:\/\/(?:(?:canary|ptb)\.)?discord(?:app)?\.com\/api(?:\/v\d+)?\/webhooks\/\d+\/[A-Za-z0-9_-]{40,}/g,
+  },
   // Stripe
   {
     type: 'stripe_key',
