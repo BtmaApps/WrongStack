@@ -1,0 +1,382 @@
+.automation-templates {
+  margin: 24px 0;
+}
+.automation-workspace .feature-split {
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+}
+.automation-templates > :where(header) h3 {
+  font-size: 16px;
+  margin-bottom: 7px;
+}
+.automation-templates p,
+.automation-config-section > p,
+.automation-environment-editor p,
+.automation-template-review p {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
+.automation-templates > div {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+.automation-templates > :where(div) > button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  text-align: left;
+  background: var(--raised);
+  color: var(--text);
+}
+.automation-templates > :where(div) > button:hover {
+  border-color: var(--accent);
+}
+.automation-templates strong {
+  font-size: 14px;
+  font-weight: 600;
+}
+.automation-templates small {
+  margin-top: auto;
+  color: var(--subtle);
+  font-size: 10px;
+  line-height: 1.6;
+}
+.automation-draft-status {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.8;
+}
+.automation-editor-fields {
+  border: 0;
+  padding: 0;
+  min-width: 0;
+}
+.automation-config-section {
+  margin: 24px 0;
+  padding: 22px 0;
+  border-top: 1px solid var(--border);
+}
+.automation-config-section > header,
+.automation-environment-editor :where(header) {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.automation-config-section h3 {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  font-size: 16px;
+  margin: 8px 0 0;
+}
+.automation-config-section > header .feature-checkbox {
+  margin: 0;
+}
+.automation-config-section > ul {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.8;
+  padding-left: 18px;
+  overflow-wrap: anywhere;
+}
+.automation-environment-summary {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border-left: 3px solid var(--accent);
+  background: var(--base);
+}
+.automation-environment-summary > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.automation-environment-summary code {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.automation-environment-summary small {
+  font-size: 10px;
+  color: var(--muted);
+}
+.automation-config-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.automation-credential-row,
+.automation-environment-editor fieldset {
+  margin: 16px 0;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 14px;
+  min-width: 0;
+}
+.automation-credential-row legend,
+.automation-environment-editor legend {
+  padding: 0 6px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.automation-reference-note {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+.automation-template-label {
+  color: var(--accent);
+  font-size: 11px;
+}
+.modal:has(.automation-environment-editor) {
+  width: min(960px, calc(100vw - 32px));
+  max-height: calc(100dvh - 48px);
+  margin: auto;
+}
+.automation-environment-editor :where(h2) {
+  font-size: 26px;
+  margin-top: 8px;
+}
+.automation-environment-editor :where(h3) {
+  font-size: 16px;
+}
+.automation-environment-editor > section {
+  margin: 24px 0;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+.automation-environment-editor > section > p {
+  margin-bottom: 12px;
+}
+.automation-environment-editor textarea {
+  width: 100%;
+  font-family: monospace;
+  resize: vertical;
+}
+.automation-environment-editor > footer {
+  position: sticky;
+  bottom: -26px;
+  padding: 14px 0;
+  border-top: 1px solid var(--border);
+  background: var(--raised);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.automation-environment-editor > :where(footer) span {
+  color: var(--muted);
+  font-size: 11px;
+}
+.automation-template-review :where(blockquote) {
+  margin: 20px 0;
+  padding: 16px;
+  border-left: 2px solid var(--accent);
+  background: var(--base);
+  font-size: 13px;
+  line-height: 1.8;
+}
+.automation-template-review :where(ul) {
+  margin: 14px 0 24px;
+  padding-left: 20px;
+  line-height: 1.9;
+  font-size: 12px;
+  color: var(--muted);
+}
+.automation-template-review > button {
+  margin: 4px;
+}
+.automation-leave {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+}
+.automation-leave > button {
+  margin: 8px 8px 0 0;
+}
+.modal:has(.automation-run-inspector) {
+  width: min(1060px, calc(100vw - 32px));
+  max-height: calc(100dvh - 48px);
+  margin: auto;
+}
+.automation-run-inspector > :where(header),
+.automation-recorded-artifact > :where(header),
+.automation-publication > :where(header) {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+.automation-run-inspector :where(h2) {
+  font-size: 26px;
+  margin: 8px 0 16px;
+}
+.automation-run-inspector :where(h3) {
+  font-size: 17px;
+  margin-bottom: 14px;
+}
+.automation-run-inspector :where(h4) {
+  font-size: 14px;
+  margin: 18px 0 10px;
+}
+.automation-run-inspector :where(p, li) {
+  font-size: 12px;
+  line-height: 1.8;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.automation-run-inspector > :where(section) {
+  border-top: 1px solid var(--border);
+  margin-top: 24px;
+  padding-top: 24px;
+}
+.automation-run-inspector :where(ul) {
+  padding-left: 18px;
+  margin: 12px 0;
+}
+.automation-run-inspector :where(dl) {
+  display: grid;
+  grid-template-columns: minmax(130px, 0.3fr) minmax(0, 1fr);
+  gap: 10px 18px;
+  font-size: 12px;
+  margin: 16px 0;
+}
+.automation-run-inspector :where(dt) {
+  color: var(--muted);
+}
+.automation-run-inspector :where(dd, code) {
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.automation-run-inspector :where(summary) {
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1.8;
+  margin: 12px 0;
+}
+.automation-run-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: center;
+  color: var(--muted);
+  font-size: 12px;
+  padding: 14px 0;
+}
+.automation-run-status strong {
+  color: var(--accent);
+  background: var(--accent-soft);
+  padding: 6px 10px;
+  border-radius: 5px;
+}
+.automation-run-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 20px 0;
+}
+.automation-run-metrics > div {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  background: var(--base);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+}
+.automation-run-metrics small {
+  color: var(--muted);
+  font-size: 11px;
+}
+.automation-run-metrics strong {
+  font-size: 17px;
+  font-weight: 550;
+}
+.automation-check-list > article {
+  display: grid;
+  gap: 9px;
+  padding: 14px;
+  margin: 12px 0;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  font-size: 12px;
+}
+.automation-check-list :where(small, span) {
+  color: var(--muted);
+  font-size: 11px;
+}
+.automation-run-log,
+.automation-patch {
+  max-height: 480px;
+  overflow: auto;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--base);
+  font: 11px / 1.8 monospace;
+}
+.automation-run-log {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.automation-patch span {
+  display: block;
+  min-width: max-content;
+}
+.automation-patch .patch-add {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.automation-patch .patch-remove {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+.automation-patch :where(.patch-file, .patch-hunk) {
+  color: var(--muted);
+  font-weight: 600;
+}
+.automation-publication > form {
+  margin-top: 18px;
+}
+.automation-publication fieldset {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+}
+.automation-publication :where(legend) {
+  padding: 0 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+@media (max-width: 1050px) {
+  .automation-templates > div {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 1200px) {
+  .automation-workspace .feature-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 800px) {
+  .automation-config-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .automation-run-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .automation-run-inspector :where(dl) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

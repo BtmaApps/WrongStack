@@ -39,6 +39,7 @@ function ProjectToolsContent({
       send={send}
       state={state}
       scopeKey={projectRoot}
+      projectId={projectId}
       mode={view}
       initialPath={initialPath}
       onReview={onReview}

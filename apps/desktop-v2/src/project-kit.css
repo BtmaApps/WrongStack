@@ -1,0 +1,235 @@
+.project-kit {
+  padding: 28px;
+  min-width: 0;
+}
+.kit-layout {
+  display: grid;
+  grid-template-columns: minmax(210px, 280px) minmax(0, 1fr);
+  gap: 24px;
+  margin-top: 24px;
+}
+.kit-catalog {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.project-kit input:not([type="checkbox"]),
+.project-kit select {
+  width: 100%;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  background: var(--surface);
+  font: inherit;
+}
+.kit-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.kit-catalog > button {
+  display: flex;
+  gap: 12px;
+  text-align: left;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+.kit-catalog > button[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.kit-catalog p,
+.kit-detail p {
+  line-height: 1.6;
+}
+.kit-catalog small,
+.kit-detail small,
+.kit-run-form > p,
+.kit-detail > header p {
+  color: var(--muted);
+}
+.kit-detail {
+  min-width: 0;
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+}
+.kit-detail > header {
+  display: flex;
+  gap: 20px;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+.kit-detail h2 {
+  margin: 8px 0;
+}
+.kit-detail > section {
+  margin: 28px 0;
+}
+.kit-verification {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px;
+  border-radius: 8px;
+  background: var(--raised);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.kit-verification.verified {
+  color: var(--accent);
+}
+.kit-facts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  padding: 18px 0;
+  border-block: 1px solid var(--border);
+}
+.kit-facts > div,
+.kit-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.kit-facts strong,
+.kit-facts code {
+  overflow-wrap: anywhere;
+}
+.kit-parameters {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  min-width: 0;
+  margin: 12px 0;
+}
+.kit-parameters legend {
+  font-size: 13px;
+  color: var(--muted);
+}
+.kit-property {
+  margin-bottom: 14px;
+}
+.kit-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0;
+}
+.kit-check span {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.kit-array-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 12px 0;
+}
+.kit-array-item > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+.kit-actions {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+.kit-actions label {
+  flex: 1;
+}
+.kit-request {
+  padding: 20px;
+  border: 1px solid var(--accent);
+  border-radius: 12px;
+}
+.kit-detail details {
+  padding: 16px 0;
+  border-top: 1px solid var(--border);
+}
+.kit-detail summary,
+.kit-invalid summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.kit-values {
+  margin: 8px 0;
+  padding-left: 16px;
+}
+dl.kit-values {
+  padding-left: 0;
+}
+.kit-values > div {
+  display: grid;
+  grid-template-columns: minmax(90px, 1fr) minmax(0, 3fr);
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.kit-values dd {
+  margin: 0;
+  min-width: 0;
+}
+.kit-value {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.kit-schema-row {
+  margin-top: 12px;
+  padding: 12px;
+  border-left: 2px solid var(--border);
+}
+.kit-schema-row > span {
+  margin-left: 12px;
+  color: var(--muted);
+}
+.kit-test,
+.kit-history-row {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border);
+}
+.kit-history-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-wrap: anywhere;
+}
+.kit-source-files {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding-top: 16px;
+}
+.kit-empty {
+  padding: 32px 12px;
+  color: var(--muted);
+}
+.kit-empty h2,
+.kit-empty h3 {
+  color: var(--text);
+}
+@media (max-width: 1000px) {
+  .kit-layout {
+    grid-template-columns: 1fr;
+  }
+  .kit-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .kit-detail > header {
+    flex-direction: column;
+  }
+  .project-kit {
+    padding: 16px;
+  }
+}

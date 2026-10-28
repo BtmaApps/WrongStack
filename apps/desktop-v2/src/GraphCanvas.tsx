@@ -1,5 +1,5 @@
 import { Focus, Minus, Plus } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { graphScope, placeGraph, type VisualGraph } from './graph-model';
 
 const emptyPath: string[] = [];
@@ -15,6 +15,7 @@ export function GraphCanvas({
   onActivate,
   minimap = false,
   nodeLimit = 160,
+  directed = false,
 }: {
   graph: VisualGraph;
   selected: string;
@@ -26,7 +27,9 @@ export function GraphCanvas({
   onActivate?: (id: string) => void;
   minimap?: boolean;
   nodeLimit?: number | null;
+  directed?: boolean;
 }) {
+  const arrowId = `graph-arrow-${useId().replaceAll(':', '')}`;
   const surface = useRef<HTMLElement>(null);
   const visible = useMemo(
     () => graphScope(graph, selected, highlightPath, nodeLimit),
@@ -139,6 +142,21 @@ export function GraphCanvas({
         >
           <svg className="graph-edges" aria-hidden="true">
             <title>Relationships</title>
+            {directed && (
+              <defs>
+                <marker
+                  id={arrowId}
+                  viewBox="0 0 10 10"
+                  refX="9"
+                  refY="5"
+                  markerWidth="7"
+                  markerHeight="7"
+                  orient="auto-start-reverse"
+                >
+                  <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor" />
+                </marker>
+              </defs>
+            )}
             {graph.edges.map((edge, index) => {
               const a = positions.get(edge.source),
                 b = positions.get(edge.target);
@@ -150,7 +168,8 @@ export function GraphCanvas({
                   className={`${active ? 'edge-active' : ''} ${highlightPath.indexOf(edge.source) >= 0 && highlightPath[highlightPath.indexOf(edge.source) + 1] === edge.target ? 'edge-path' : ''}`}
                 >
                   <path
-                    d={`M${a.x},${a.y} C${a.x + (b.x - a.x) * 0.45},${a.y} ${b.x - (b.x - a.x) * 0.45},${b.y} ${b.x},${b.y}`}
+                    d={`M${a.x},${a.y} C${a.x + (b.x - a.x) * 0.45},${a.y} ${b.x - (b.x - a.x) * 0.45},${b.y} ${directed ? b.x - (b.x >= a.x ? 106 : -106) : b.x},${b.y}`}
+                    markerEnd={directed ? `url(#${arrowId})` : undefined}
                   />
                   <text x={(a.x + b.x) / 2} y={(a.y + b.y) / 2 - 7}>
                     {active ? edge.label : ''}

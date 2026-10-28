@@ -1,0 +1,60 @@
+import { Background, Controls, type Edge, type Node, Position, ReactFlow } from '@xyflow/react';
+import { entries } from './engine-state';
+import '@xyflow/react/dist/style.css';
+
+/** The engine reports dependencies as short task IDs in topological columns. */
+export function sddGraphElements(columns: Record<string, unknown>[]): {
+  nodes: Node[];
+  edges: Edge[];
+} {
+  const nodes: Node[] = [];
+  const tasks: Record<string, unknown>[] = [];
+  const byShortId = new Map<string, string>();
+  for (const [columnIndex, column] of columns.entries()) {
+    for (const [rowIndex, task] of entries(column['tasks']).entries()) {
+      if (typeof task['id'] !== 'string' || !task['id']) continue;
+      const id = task['id'];
+      if (typeof task['shortId'] === 'string') byShortId.set(task['shortId'], id);
+      tasks.push(task);
+      nodes.push({
+        id,
+        sourcePosition: Position.Right,
+        targetPosition: Position.Left,
+        position: { x: columnIndex * 270, y: rowIndex * 110 },
+        data: {
+          label: `${typeof task['shortId'] === 'string' ? `${task['shortId']} · ` : ''}${typeof task['title'] === 'string' ? task['title'] : 'Task'}`,
+        },
+        draggable: false,
+      });
+    }
+  }
+  const edges: Edge[] = [];
+  for (const task of tasks) {
+    if (!Array.isArray(task['deps']) || typeof task['id'] !== 'string') continue;
+    for (const dependency of task['deps']) {
+      const source = typeof dependency === 'string' ? byShortId.get(dependency) : undefined;
+      if (source) edges.push({ id: `${source}->${task['id']}`, source, target: task['id'] });
+    }
+  }
+  return { nodes, edges };
+}
+
+export function SddDependencyGraph({ columns }: { columns: Record<string, unknown>[] }) {
+  const { nodes, edges } = sddGraphElements(columns);
+  return (
+    <section className="sdd-flow" aria-label="Specification dependency graph">
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        fitView
+        nodesConnectable={false}
+        nodesDraggable={false}
+        elementsSelectable={false}
+        proOptions={{ hideAttribution: true }}
+      >
+        <Background />
+        <Controls showInteractive={false} />
+      </ReactFlow>
+    </section>
+  );
+}

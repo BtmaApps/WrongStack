@@ -1,5 +1,7 @@
 import { Anchor, Clock, ShieldCheck, Users } from 'lucide-react';
+import type { EngineCommand } from './engine-operations';
 import { entries, record } from './engine-values';
+import { SageValidityReview } from './SageValidityReview';
 import type { SageEditor } from './sage-model';
 export function SageEditorFields({
   value,
@@ -73,13 +75,92 @@ export function SageEditorFields({
         Applicability assumptions
         <textarea
           aria-label="Memory applicability"
+          maxLength={1000}
+          required={value.validityChecks.length > 0}
           rows={3}
           placeholder="When should this knowledge apply?"
           value={value.validity}
           onChange={(event) => set('validity', event.target.value)}
         />
-        <small>Existing literal source checks remain attached.</small>
+        <small>
+          State when this knowledge applies. Source literals support the statement; they do not
+          prove every assumption.
+        </small>
       </label>
+      <section className="sage-validity-editor" aria-label="Applicability source checks">
+        <h3>Source checks</h3>
+        <p>Use exact text you inspected in a project file. Up to four checks can be attached.</p>
+        {value.validityChecks.map((check, index) => (
+          <div className="sage-validity-check-editor" key={index}>
+            <label>
+              Project file
+              <input
+                aria-label={`Validity check ${index + 1} project path`}
+                required
+                maxLength={500}
+                placeholder="src/security/vault.ts"
+                value={check.path}
+                onChange={(event) =>
+                  onChange({
+                    ...value,
+                    validityChecks: value.validityChecks.map((item, position) =>
+                      position === index ? { ...item, path: event.target.value } : item,
+                    ),
+                  })
+                }
+              />
+            </label>
+            <label>
+              Required literal
+              <textarea
+                aria-label={`Validity check ${index + 1} required text`}
+                required
+                maxLength={400}
+                rows={2}
+                value={check.text}
+                placeholder="Exact source text, including whitespace"
+                onChange={(event) =>
+                  onChange({
+                    ...value,
+                    validityChecks: value.validityChecks.map((item, position) =>
+                      position === index ? { ...item, text: event.target.value } : item,
+                    ),
+                  })
+                }
+              />
+            </label>
+            <button
+              type="button"
+              className="button secondary"
+              onClick={() =>
+                onChange({
+                  ...value,
+                  validityChecks: value.validityChecks.filter((_, position) => position !== index),
+                })
+              }
+            >
+              Remove source check {index + 1}
+            </button>
+          </div>
+        ))}
+        <button
+          type="button"
+          className="button secondary"
+          disabled={value.validityChecks.length >= 4}
+          onClick={() =>
+            onChange({
+              ...value,
+              validityChecks: [
+                ...value.validityChecks,
+                { type: 'source_contains', path: '', text: '' },
+              ],
+            })
+          }
+        >
+          Add source check
+        </button>
+        <p>Clearing the statement and all checks removes these conditions when you save.</p>
+      </section>
       <div className="sage-audience-editor">
         <h3>
           <Users size={14} />
@@ -120,9 +201,11 @@ export function SageEditorFields({
 export function SageRecordDetails({
   memory,
   onOpen,
+  command,
 }: {
   memory: Record<string, unknown>;
   onOpen?: (id: string) => void;
+  command?: EngineCommand;
 }) {
   const anchors = entries(memory['anchors']),
     sources = entries(memory['sources']),
@@ -170,6 +253,7 @@ export function SageRecordDetails({
               <code>{String(check['text'])}</code>
             </div>
           ))}
+          {command && <SageValidityReview memory={memory} command={command} />}
         </section>
       )}
       {anchors.length > 0 && (

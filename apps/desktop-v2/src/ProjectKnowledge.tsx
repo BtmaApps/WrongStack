@@ -354,7 +354,7 @@ function SageReview({ command, onOpen }: { command: EngineCommand; onOpen: (id: 
               </button>
             </header>
             <p>{String(target['text'])}</p>
-            <SageRecordDetails memory={target} onOpen={onOpen} />
+            <SageRecordDetails memory={target} onOpen={onOpen} command={command} />
             <button
               type="button"
               className="button secondary"

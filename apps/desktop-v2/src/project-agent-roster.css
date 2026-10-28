@@ -1,0 +1,651 @@
+.project-agent-roster {
+  padding: 28px;
+  min-width: 0;
+}
+:where(.project-agent-roster) :where(input:not([type="checkbox"]), select, textarea) {
+  width: 100%;
+  min-height: 38px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--raised);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.6;
+}
+:where(.project-agent-roster) :where(input, select, textarea):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.roster-hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: flex-start;
+}
+.roster-hero h1 {
+  font-size: clamp(28px, 3vw, 40px);
+  font-weight: 550;
+  letter-spacing: -1.5px;
+  margin: 6px 0 12px;
+}
+.roster-hero p {
+  color: var(--muted);
+  max-width: 680px;
+  font-size: 13px;
+  line-height: 1.7;
+}
+.roster-hero > div:last-child {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.roster-summary {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 20px 0;
+  margin: 14px 0 20px;
+  border-bottom: 1px solid var(--border);
+}
+.roster-summary > span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.roster-summary strong {
+  color: var(--text);
+  font-size: 20px;
+  font-weight: 550;
+}
+.roster-summary button {
+  margin-left: auto;
+}
+.roster-workbench {
+  display: grid;
+  grid-template-columns: minmax(220px, 300px) minmax(0, 1fr);
+  gap: 24px;
+}
+.roster-catalog {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  max-height: calc(100vh - 300px);
+  overflow-y: auto;
+  padding-right: 8px;
+}
+.roster-catalog > label {
+  display: grid;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.roster-catalog :is(input, select) {
+  width: 100%;
+  min-height: 38px;
+  padding: 9px 11px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--raised);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+}
+.roster-catalog :is(input, select):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.roster-catalog-card {
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 14px;
+  text-align: left;
+  background: var(--raised);
+  color: var(--text);
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+.roster-catalog-card[aria-pressed="true"] {
+  border-color: var(--accent);
+  box-shadow: inset 3px 0 var(--accent);
+  background: var(--accent-soft);
+}
+.roster-catalog-card > span,
+.roster-catalog-card footer {
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+.roster-catalog-card strong {
+  font-size: 13px;
+  font-weight: 600;
+}
+.roster-catalog-card :is(small, code, footer) {
+  font-size: 10px;
+  color: var(--muted);
+}
+.roster-catalog-card p {
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.roster-inspector {
+  min-width: 0;
+}
+.roster-empty {
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  min-height: 350px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  gap: 16px;
+  color: var(--muted);
+  padding: 28px;
+}
+.roster-empty h2 {
+  color: var(--text);
+  font-size: 22px;
+}
+.roster-role-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0 0 18px;
+}
+.roster-role-header h2 {
+  font-size: 27px;
+  letter-spacing: -0.8px;
+  margin: 6px 0 10px;
+}
+.roster-role-header p,
+.roster-role-header small {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+.roster-sections {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 16px;
+}
+.roster-sections button {
+  padding: 9px 13px;
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.roster-sections [aria-current="page"] {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.roster-role-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 16px 0;
+}
+.roster-inspector > section,
+.roster-inspector > details {
+  margin: 20px 0;
+}
+.roster-inspector h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+.roster-facts,
+.roster-resolved,
+.roster-teach,
+.roster-improve,
+.roster-policy-note,
+.roster-prepared-instruction {
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--raised);
+  padding: 18px;
+}
+.roster-facts dl,
+.roster-resolved dl,
+.roster-directives dl {
+  display: grid;
+  grid-template-columns: minmax(110px, 0.45fr) minmax(0, 1fr);
+  gap: 10px 18px;
+  font-size: 12px;
+}
+.roster-resolved > dl {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.roster-resolved > :where(dl) > div {
+  padding: 12px;
+  background: var(--base);
+  border-radius: 6px;
+}
+.roster-inspector dt {
+  color: var(--muted);
+}
+.roster-inspector dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.roster-resolved > dl dt {
+  font-size: 10px;
+  margin-bottom: 6px;
+}
+.roster-resolved details {
+  margin-top: 14px;
+  font-size: 12px;
+}
+.roster-resolved summary,
+.roster-retired summary {
+  cursor: pointer;
+  color: var(--muted);
+  padding: 8px 0;
+}
+.roster-resolved :where(details) dl {
+  margin-top: 12px;
+}
+.roster-inspector textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+.roster-inspector > label,
+:where(.roster-inspector) .roster-prepared-instruction label {
+  display: grid;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 12px;
+  margin: 16px 0;
+}
+.roster-teach p,
+.roster-improve p,
+.roster-policy-note,
+.roster-policy-note p {
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--muted);
+}
+.roster-teach button,
+.roster-improve button {
+  margin-top: 12px;
+}
+.roster-learning-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.roster-learning-metrics > div {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: grid;
+  gap: 6px;
+}
+.roster-learning-metrics strong {
+  font-size: 24px;
+  font-weight: 550;
+}
+.roster-learning-metrics span {
+  font-size: 10px;
+  color: var(--muted);
+}
+.roster-directives {
+  display: grid;
+  gap: 10px;
+}
+.roster-directives details {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--raised);
+  padding: 14px;
+}
+.roster-directives summary {
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1.7;
+}
+.roster-directives summary span {
+  display: inline-block;
+  font-size: 10px;
+  margin-right: 8px;
+  color: var(--accent);
+  text-transform: uppercase;
+}
+.roster-directives dl {
+  margin-top: 18px;
+}
+.roster-retired article {
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 12px;
+}
+.roster-skill-layer > :where(header) p {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
+.roster-skill-layer article {
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  margin: 12px 0;
+  background: var(--raised);
+}
+:where(.roster-skill-layer article) header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.roster-skill-layer h4 {
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+.roster-skill-layer :is(small, article > p, header > span) {
+  color: var(--muted);
+  font-size: 11px;
+}
+.roster-skill-layer :where(article) > p {
+  margin: 12px 0;
+}
+.roster-skill-layer :where(article) > div {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.roster-role-maintenance {
+  margin-top: 30px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.roster-inheritance > div {
+  height: 360px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--base);
+}
+.roster-inheritance > p {
+  margin-bottom: 12px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.roster-inheritance :where(.react-flow__node) small {
+  display: block;
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 6px;
+}
+.modal:has(:is(.roster-runtime-editor, .roster-document)) {
+  width: min(960px, calc(100vw - 32px));
+  margin: auto;
+  max-height: calc(100dvh - 48px);
+}
+:is(.roster-runtime-editor, .roster-document, .roster-create) > header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+:is(.roster-runtime-editor, .roster-document) > p {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.7;
+  margin: 14px 0;
+}
+.roster-runtime-editor > fieldset {
+  border: 0;
+  padding: 0;
+  min-width: 0;
+}
+.roster-runtime-editor section {
+  margin: 24px 0;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+.roster-runtime-editor h3 {
+  font-size: 16px;
+  margin-bottom: 12px;
+}
+.roster-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.roster-form-grid label {
+  margin: 0;
+  min-width: 0;
+}
+.roster-form-grid small,
+.roster-list-override > p {
+  color: var(--muted);
+  line-height: 1.6;
+  font-size: 11px;
+}
+.roster-form-grid .field-label {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+.roster-form-grid > :where(div) > button {
+  margin: 3px;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.roster-runtime-editor .roster-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.roster-checkbox input,
+.roster-weekdays input,
+.roster-grant-options input {
+  width: auto;
+}
+.roster-model-targets {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0;
+}
+.roster-model-targets :is(div, li) {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 10px;
+  min-width: 0;
+}
+.roster-model-targets code {
+  flex: 1;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+.roster-model-targets label {
+  margin: 0;
+  font-size: 11px;
+}
+.roster-weekdays {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+.roster-weekdays label {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+.roster-grant-options {
+  max-height: 240px;
+  overflow: auto;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+.roster-grant-options label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px;
+  margin: 0;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+.roster-grant-options small {
+  margin-left: auto;
+  color: var(--muted);
+}
+.roster-document-actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.roster-document textarea {
+  width: 100%;
+  min-height: 38vh;
+  font-family: monospace;
+  resize: vertical;
+  line-height: 1.7;
+}
+.roster-markdown {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--base);
+}
+.roster-document-conflict {
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+  margin-top: 16px;
+}
+.roster-document-conflict h3 {
+  margin-bottom: 10px;
+}
+.roster-document-conflict > div {
+  display: flex;
+  gap: 8px;
+  margin: 12px 0;
+}
+.roster-confirm {
+  padding: 14px;
+  border: 1px solid var(--accent-border);
+  border-radius: 8px;
+  margin-top: 18px;
+}
+.roster-confirm button {
+  margin: 5px;
+}
+.roster-consolidation-fact {
+  display: contents;
+}
+.roster-capture {
+  border: 1px solid var(--border);
+  padding: 16px;
+  border-radius: 8px;
+  background: var(--raised);
+}
+.roster-capture summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+.roster-capture button {
+  margin-top: 10px;
+}
+.roster-overlap article {
+  margin: 12px 0;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--raised);
+}
+.roster-overlap article header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+}
+.roster-overlap blockquote {
+  font-size: 12px;
+  line-height: 1.7;
+  margin: 12px 0;
+  padding: 10px 14px;
+  border-left: 2px solid var(--accent);
+  color: var(--muted);
+  background: var(--base);
+}
+.roster-overlap small {
+  font-size: 10px;
+  color: var(--muted);
+}
+:is(.roster-document, .roster-runtime-editor) > footer {
+  position: sticky;
+  bottom: -26px;
+  padding: 12px 0;
+  background: var(--raised);
+  border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+  z-index: 1;
+}
+:is(.roster-document, .roster-runtime-editor) > footer > span {
+  margin-right: auto;
+  color: var(--muted);
+  font-size: 11px;
+}
+@media (max-width: 1000px) {
+  .project-agent-roster {
+    padding: 18px;
+  }
+  .roster-workbench {
+    grid-template-columns: minmax(190px, 240px) minmax(0, 1fr);
+    gap: 16px;
+  }
+  .roster-hero {
+    flex-wrap: wrap;
+  }
+  .roster-summary {
+    gap: 14px;
+  }
+}
+@media (max-width: 700px) {
+  .roster-workbench {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .roster-catalog {
+    max-height: 330px;
+  }
+  .roster-form-grid,
+  .roster-grant-options {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .roster-learning-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .roster-resolved > dl {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .roster-role-header {
+    flex-wrap: wrap;
+  }
+}

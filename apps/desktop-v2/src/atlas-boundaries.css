@@ -1,0 +1,88 @@
+.atlas-boundaries {
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+  min-width: 0;
+}
+.atlas-boundaries > header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.atlas-boundaries h3 {
+  margin: 8px 0;
+  font-size: 16px;
+}
+.atlas-boundaries p {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.atlas-boundaries .graph-surface {
+  height: 390px;
+  min-height: 300px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin: 12px 0;
+}
+.boundary-groups {
+  padding: 0;
+  margin: 0;
+  border: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-height: 140px;
+  overflow: auto;
+}
+.atlas-boundaries .graph-edges marker path {
+  fill: var(--accent);
+  stroke: none;
+}
+.boundary-groups button {
+  padding: 6px 9px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--muted);
+  font-size: 10px;
+  overflow-wrap: anywhere;
+}
+.boundary-groups button[aria-expanded="true"] {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.boundary-detail {
+  padding: 16px;
+  background: var(--raised);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.boundary-detail h4 {
+  font-size: 12px;
+  margin: 10px 0;
+}
+.boundary-detail ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 240px;
+  overflow: auto;
+}
+.boundary-detail li {
+  font-size: 11px;
+  border-top: 1px solid var(--border);
+  padding: 10px 0;
+  overflow-wrap: anywhere;
+}
+.boundary-detail li button {
+  color: var(--accent);
+  text-align: left;
+}
+.boundary-detail small {
+  display: block;
+  color: var(--muted);
+  margin-top: 6px;
+}

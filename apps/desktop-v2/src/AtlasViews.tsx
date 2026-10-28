@@ -8,6 +8,7 @@ import {
   FileCode2,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { AtlasBoundaryMap } from './AtlasBoundaryMap';
 import { atlasImpact, atlasSubsystems } from './atlas-views-model';
 import type { VisualGraph } from './graph-model';
 
@@ -16,8 +17,9 @@ type Props = {
   selected: string;
   onSelect: (id: string) => void;
   onOpen: (id: string) => void;
+  nodeLimit?: number | null;
 };
-export function AtlasSubsystemView({ graph, selected, onSelect, onOpen }: Props) {
+export function AtlasSubsystemView({ graph, selected, onSelect, onOpen, nodeLimit = 160 }: Props) {
   const groups = useMemo(() => atlasSubsystems(graph), [graph]);
   return (
     <section className="atlas-subsystem-view" aria-label="Atlas subsystems">
@@ -28,6 +30,7 @@ export function AtlasSubsystemView({ graph, selected, onSelect, onOpen }: Props)
           <p>Compare code ownership, internal cohesion, and references crossing each boundary.</p>
         </div>
       </header>
+      <AtlasBoundaryMap graph={graph} onSelect={onSelect} onOpen={onOpen} nodeLimit={nodeLimit} />
       <div className="atlas-subsystem-grid">
         {groups.map((g, index) => (
           <article className={`atlas-subsystem-card atlas-group-${index % 4}`} key={g.name}>

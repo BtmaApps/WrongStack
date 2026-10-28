@@ -579,6 +579,7 @@ export function CodeAtlas({
         {view === 'subsystems' ? (
           <AtlasSubsystemView
             graph={filtered}
+            nodeLimit={canvasMode === 'all' ? null : 160}
             selected={selected}
             onSelect={selectNode}
             onOpen={exploreNode}

@@ -19,7 +19,13 @@ import { entries, record } from './engine-values';
 import { MarkdownContent } from './MarkdownContent';
 import { SageEditorFields, SageRecordDetails } from './SageRecordDetails';
 import { SageRelationGraph } from './SageRelationGraph';
-import { sageEditor, sageEditorPatch, sageKinds, sageStatuses } from './sage-model';
+import {
+  assertSageValiditySaved,
+  sageEditor,
+  sageEditorPatch,
+  sageKinds,
+  sageStatuses,
+} from './sage-model';
 import { sageRelationModel } from './sage-relation-model';
 
 export function ProjectMemory({
@@ -154,12 +160,13 @@ export function ProjectMemory({
   const save = () =>
     run(async () => {
       const type = selected ? 'memory.sage.update' : 'memory.sage.remember';
+      const metadata = sageEditorPatch(advanced, selected);
       const reply = await command(
         type,
         {
           ...(selected ? { id: selected['id'], expectedRevision: selected['revision'] } : { kind }),
           kind,
-          ...sageEditorPatch(advanced, selected),
+          ...metadata,
           text: text.trim(),
           tags: tags
             .split(',')
@@ -169,7 +176,19 @@ export function ProjectMemory({
         },
         [type],
       );
-      choose(record(reply['memory']));
+      let saved = record(reply['memory']);
+      if (metadata.validity !== undefined) {
+        if (typeof saved['id'] !== 'string')
+          throw Error('The saved memory identity could not be verified. Your edits are retained.');
+        const checked = record(
+          (await command('memory.sage.get', { id: saved['id'] }, ['memory.sage.get']))['memory'],
+        );
+        if (checked['id'] !== saved['id'])
+          throw Error('The runtime returned a different saved memory. Your edits are retained.');
+        assertSageValiditySaved(metadata.validity, checked['validity']);
+        saved = checked;
+      }
+      choose(saved);
       await load();
       setNotice('Saved to project memory.');
     });
@@ -659,6 +678,7 @@ export function ProjectMemory({
             <div className="memory-provenance">
               <SageRecordDetails
                 memory={selected}
+                {...(mode === 'read' ? { command } : {})}
                 onOpen={(id) =>
                   void openMemory(id).catch((error: unknown) => setError(String(error)))
                 }

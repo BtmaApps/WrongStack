@@ -1035,3 +1035,41 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+.sage-validity-check-editor,
+.sage-validity-result,
+.sage-validity-review {
+  margin: 14px 0;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  min-width: 0;
+}
+.sage-validity-review > header,
+.sage-validity-result > header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.sage-validity-result pre,
+.sage-validity-result code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 11px;
+}
+.sage-validity-result header strong {
+  overflow-wrap: anywhere;
+}
+.sage-validity-result.satisfied header span {
+  color: var(--accent);
+}
+.sage-validity-result.not_satisfied header span {
+  color: var(--danger);
+}
+.sage-validity-editor p,
+.sage-validity-review p {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
