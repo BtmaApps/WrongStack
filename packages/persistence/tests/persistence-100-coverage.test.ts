@@ -27,7 +27,12 @@ import {
   unixSocketPathLimit,
 } from '../src/socket-path.js';
 import { isRuntimeSqliteAvailable, loadRuntimeDatabaseSync } from '../src/sqlite-runtime.js';
-import { canonicalProjectRoot, projectSlug, resolveWstackPaths } from '../src/wstack-paths.js';
+import {
+  canonicalProjectRoot,
+  projectSlug,
+  resolveWstackPaths,
+  safeProfileName,
+} from '../src/wstack-paths.js';
 
 describe('persistence 100% coverage suite', () => {
   const originalEnv = { ...process.env };
@@ -628,6 +633,18 @@ describe('persistence 100% coverage suite', () => {
         process.chdir(savedCwd);
         await fsPromises.rm(tmpRoot, { recursive: true, force: true });
       }
+    });
+
+    it('strips trailing hyphens after 40-char slug truncation and normalizes dot-padded profile names (F770)', () => {
+      const slug = projectSlug(`/workspace/${'a'.repeat(39)}-service`);
+      expect(slug).not.toContain('--');
+      expect(slug).toMatch(/^a{39}-[0-9a-f]{6}$/);
+
+      expect(safeProfileName('work.')).toBe('work');
+      expect(safeProfileName('.work.profile.')).toBe('work.profile');
+      expect(safeProfileName('...')).toBe('default');
+      expect(safeProfileName('..')).toBe('default');
+      expect(safeProfileName('///')).toBe('default');
     });
   });
 });

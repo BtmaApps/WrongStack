@@ -281,7 +281,7 @@ export async function bindProjectEndpoint(
   const { server, endpoint, service } = options;
   const maxAttempts =
     typeof options.maxAttempts === 'number' && Number.isFinite(options.maxAttempts)
-      ? Math.max(0, Math.trunc(options.maxAttempts))
+      ? Math.max(1, Math.trunc(options.maxAttempts))
       : DEFAULT_MAX_ATTEMPTS;
   const isWindows = _projectEndpointOps.platform === 'win32';
 
@@ -439,10 +439,12 @@ export function createProjectMetadataReasserter(options: {
         try {
           do {
             rerun = false;
-            if (!(await namesThisDaemon()) && enabled) await options.write();
+            try {
+              if (!(await namesThisDaemon()) && enabled) await options.write();
+            } catch {
+              // Best effort: coalesced rerun or the next refused request tries again.
+            }
           } while (rerun && enabled);
-        } catch {
-          // Best effort: the next refused request tries again.
         } finally {
           inFlight = null;
         }

@@ -8,12 +8,15 @@
  * upgrade's `UnauthorizedSageRequest`). The owner now puts its file back on a
  * refused token, and clients retry with a re-read token.
  */
+import { EventEmitter } from 'node:events';
 import * as fs from 'node:fs/promises';
+import type net from 'node:net';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  bindProjectEndpoint,
   createProjectMetadataReasserter,
   retryWhileUnauthorized,
 } from '../src/project-endpoint.js';
@@ -174,5 +177,51 @@ describe('retryWhileUnauthorized', () => {
       retryWhileUnauthorized(attempt, isUnauthorized, { attempts: 2, delayMs: 1 }),
     ).rejects.toThrow('refused');
     expect(attempt).toHaveBeenCalledTimes(3);
+  });
+
+  it('executes coalesced rerun even if the first write throws a transient error and clamps bindProjectEndpoint maxAttempts to at least 1 (F769)', async () => {
+    const { guard, write, read } = await setup({ ...OWN, pid: 99999, authToken: 'other' });
+    let unblockFirst!: () => void;
+    const firstBlocked = new Promise<void>((resolve) => {
+      unblockFirst = resolve;
+    });
+    let firstEntered!: () => void;
+    const enteredPromise = new Promise<void>((resolve) => {
+      firstEntered = resolve;
+    });
+
+    write.mockImplementationOnce(async () => {
+      firstEntered();
+      await firstBlocked;
+      throw new Error('EBUSY: transient rename failure');
+    });
+
+    guard.enable();
+    const firstCall = guard.reassert();
+    await enteredPromise;
+    const secondCall = guard.reassert();
+    unblockFirst();
+    await Promise.all([firstCall, secondCall]);
+
+    expect(write).toHaveBeenCalledTimes(2);
+    expect(await read()).toEqual(OWN);
+
+    let listenCalls = 0;
+    const fakeServer = Object.assign(new EventEmitter(), {
+      listen() {
+        listenCalls += 1;
+        queueMicrotask(() => fakeServer.emit('listening'));
+        return fakeServer;
+      },
+    }) as unknown as net.Server;
+
+    const bindOutcome = await bindProjectEndpoint({
+      server: fakeServer,
+      endpoint: '\\\\.\\pipe\\ws-f769-zero-attempts',
+      service: 'test-svc',
+      maxAttempts: 0,
+    });
+    expect(bindOutcome.outcome).toBe('bound');
+    expect(listenCalls).toBe(1);
   });
 });

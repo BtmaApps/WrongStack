@@ -24,11 +24,31 @@ export function initializeSqliteTextIndex(db: DatabaseSync, index: SqliteTextInd
   if (!columns.some((entry) => entry.name.toLowerCase() === columnLower)) {
     db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} TEXT`);
   }
+  const triggerName = `${table}_${column}_invalidate`;
+  const existingTrigger = db
+    .prepare(
+      "SELECT sql FROM sqlite_master WHERE type = 'trigger' AND lower(name) = lower(?) LIMIT 1",
+    )
+    .get(triggerName) as { sql?: string | null } | undefined;
+  if (typeof existingTrigger?.sql === 'string') {
+    const normalizedSql = existingTrigger.sql.replace(/\s+/g, ' ').toLowerCase();
+    const expectedSourceClause = `after update of ${source.toLowerCase()} on ${table.toLowerCase()}`;
+    const expectedFieldClause = `'$.${field.toLowerCase()}'`;
+    if (
+      !normalizedSql.includes(expectedSourceClause) ||
+      !normalizedSql.includes(expectedFieldClause)
+    ) {
+      db.exec(`
+        DROP TRIGGER IF EXISTS ${triggerName};
+        UPDATE ${table} SET ${column}=NULL;
+      `);
+    }
+  }
   db.exec(`
     CREATE TABLE IF NOT EXISTS ws_text_index_revisions (name TEXT PRIMARY KEY, revision TEXT NOT NULL);
     CREATE INDEX IF NOT EXISTS idx_${table}_${column}_pending
       ON ${table}(${key}) WHERE ${column} IS NULL;
-    CREATE TRIGGER IF NOT EXISTS ${table}_${column}_invalidate
+    CREATE TRIGGER IF NOT EXISTS ${triggerName}
       AFTER UPDATE OF ${source} ON ${table}
       WHEN (CASE WHEN json_valid(OLD.${source}) THEN json_extract(OLD.${source}, '$.${field}') END)
         IS NOT (CASE WHEN json_valid(NEW.${source}) THEN json_extract(NEW.${source}, '$.${field}') END)
@@ -70,7 +90,10 @@ export function withSqliteTextIndex<T>(
     ).all() as Array<{ key: string; text: unknown }>;
     if (pending.length > 0) {
       const update = stmt(`UPDATE ${table} SET ${column}=? WHERE ${key}=?`);
-      for (const row of pending) update.run(fold(row.text), row.key);
+      for (const row of pending) {
+        const folded = fold(row.text);
+        update.run(typeof folded === 'string' ? folded : String(folded ?? ''), row.key);
+      }
     }
     const result = read();
     stmt(`RELEASE ${savepoint}`).run();

@@ -250,7 +250,8 @@ function slugify(name: string): string {
       // Collapse any run of non-alphanumeric chars into a single hyphen.
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '')
-      .slice(0, 40) || 'project'
+      .slice(0, 40)
+      .replace(/-+$/g, '') || 'project'
   );
 }
 
@@ -265,12 +266,13 @@ export interface WstackPathOptions {
 
 /** Make an untrusted profile name safe for use as one path segment. */
 export function safeProfileName(name: string | undefined): string {
-  const safe = (name ?? '')
-    .replace(/\0/g, '')
+  const trimmed = (name ?? '').replace(/\0/g, '').replace(/^[.\s]+|[.\s]+$/g, '');
+  if (!trimmed) return 'default';
+  const safe = trimmed
     .replace(/[/\\:]/g, '_')
-    .replace(/\.\./g, '_')
-    .trim();
-  if (safe === '.' || !safe) return 'default';
+    .replace(/\.{2,}/g, '_')
+    .replace(/^[.\s]+|[.\s]+$/g, '');
+  if (!safe || /^_+$/.test(safe)) return 'default';
   return safe;
 }
 

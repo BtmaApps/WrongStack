@@ -141,4 +141,65 @@ describe('SQLite Unicode text index', () => {
       db.close();
     }
   });
+
+  it('replaces stale triggers when source or field changes and coerces nullish fold results so rows are not re-folded on every read (F768)', () => {
+    const Database = loadRuntimeDatabaseSync();
+    const db = new Database(':memory:');
+    try {
+      db.exec('CREATE TABLE records(id TEXT PRIMARY KEY, data TEXT NOT NULL)');
+      const titleIndex = {
+        table: 'records',
+        key: 'id',
+        source: 'data',
+        field: 'title',
+        column: 'unicode_text',
+      };
+      initializeSqliteTextIndex(db, titleIndex);
+      db.prepare('INSERT INTO records(id, data) VALUES (?, ?)').run(
+        'r1',
+        JSON.stringify({ title: 'Alpha', summary: 'First Summary' }),
+      );
+      const fold = (value: unknown) => (typeof value === 'string' ? value.toLowerCase() : '');
+      expect(
+        withSqliteTextIndex(db.prepare.bind(db), titleIndex, fold, () => {
+          return db.prepare('SELECT unicode_text FROM records WHERE id=?').get('r1');
+        }),
+      ).toEqual({ unicode_text: 'alpha' });
+
+      // Evolve index to watch 'summary' instead of 'title'
+      const summaryIndex = {
+        table: 'records',
+        key: 'id',
+        source: 'data',
+        field: 'summary',
+        column: 'unicode_text',
+      };
+      initializeSqliteTextIndex(db, summaryIndex);
+      db.prepare('UPDATE records SET data=? WHERE id=?').run(
+        JSON.stringify({ title: 'Alpha', summary: 'Updated Summary' }),
+        'r1',
+      );
+      expect(
+        withSqliteTextIndex(db.prepare.bind(db), summaryIndex, fold, () => {
+          return db.prepare('SELECT unicode_text FROM records WHERE id=?').get('r1');
+        }),
+      ).toEqual({ unicode_text: 'updated summary' });
+
+      // Nullish return from fold() is coerced to '' so the row does not remain NULL
+      db.prepare('INSERT INTO records(id, data) VALUES (?, ?)').run('r-missing', '{}');
+      let foldCalls = 0;
+      const nullishFold = (value: unknown) => {
+        if (value == null) {
+          foldCalls += 1;
+          return null as unknown as string;
+        }
+        return String(value).toLowerCase();
+      };
+      withSqliteTextIndex(db.prepare.bind(db), summaryIndex, nullishFold, () => null);
+      withSqliteTextIndex(db.prepare.bind(db), summaryIndex, nullishFold, () => null);
+      expect(foldCalls).toBe(1);
+    } finally {
+      db.close();
+    }
+  });
 });
