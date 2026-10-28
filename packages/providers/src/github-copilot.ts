@@ -147,10 +147,16 @@ export class GitHubCopilotProvider extends WireFormatProvider<OpenAIStreamState>
 
   override async *stream(req: Request, opts: { signal: AbortSignal }) {
     await this.ensureFreshToken(opts.signal);
+    let emitted = false;
     try {
-      yield* super.stream(req, opts);
+      for await (const event of super.stream(req, opts)) {
+        if (event.type !== 'message_start' && event.type !== 'model_rerouted') {
+          emitted = true;
+        }
+        yield event;
+      }
     } catch (err) {
-      if (err instanceof ProviderError && err.status === 401 && this.githubToken) {
+      if (!emitted && err instanceof ProviderError && err.status === 401 && this.githubToken) {
         await this.doRefresh(opts.signal);
         yield* super.stream(req, opts);
         return;
@@ -179,7 +185,11 @@ export class GitHubCopilotProvider extends WireFormatProvider<OpenAIStreamState>
           { body: { message: 'no GitHub token available to mint a Copilot token' } },
         );
       }
-      await this.refreshCoordinator.doRefresh(signal);
+      if (!this.copilotToken) {
+        await this.refreshCoordinator.doRefresh(signal);
+      } else {
+        await this.refreshCoordinator.ensureFreshToken(signal);
+      }
     }
   }
 

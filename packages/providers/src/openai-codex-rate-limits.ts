@@ -165,9 +165,10 @@ export function parseCodexRateLimitForLimit(
     const window = parseWindow(headers, prefix, id, now);
     if (window) windows.push(window);
   }
-  const credits = parseCredits(headers);
+  const isDefault = meterId === DEFAULT_LIMIT_ID;
+  const credits = isDefault ? parseCredits(headers) : undefined;
   const meterLabel = headerStr(headers, `${prefix}-limit-name`);
-  const note = headerStr(headers, 'x-codex-promo-message');
+  const note = isDefault ? headerStr(headers, 'x-codex-promo-message') : undefined;
   // Authoritative plan tier as the backend sees it right now. The JWT claim
   // that used to be the only source is a snapshot from when the token was
   // minted, so it lags an upgrade until the next refresh.

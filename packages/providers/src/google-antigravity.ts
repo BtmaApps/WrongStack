@@ -238,10 +238,17 @@ export class AntigravityProvider extends WireFormatProvider<GoogleStreamState> {
   override async *stream(req: Request, opts: { signal: AbortSignal }): AsyncIterable<StreamEvent> {
     await this.ensureFreshToken(opts.signal);
     await this.ensureProject(opts.signal);
+    let emitted = false;
     try {
-      yield* super.stream(req, opts);
+      for await (const event of super.stream(req, opts)) {
+        if (event.type !== 'message_start' && event.type !== 'model_rerouted') {
+          emitted = true;
+        }
+        yield event;
+      }
     } catch (err) {
       if (
+        !emitted &&
         err instanceof ProviderError &&
         err.status === 401 &&
         this.opts.credentials.refreshToken
@@ -257,9 +264,7 @@ export class AntigravityProvider extends WireFormatProvider<GoogleStreamState> {
   }
 
   private async ensureFreshToken(signal: AbortSignal): Promise<void> {
-    if (this.refreshCoordinator.isStale()) {
-      await this.refreshCoordinator.doRefresh(signal);
-    }
+    await this.refreshCoordinator.ensureFreshToken(signal);
   }
 
   /**

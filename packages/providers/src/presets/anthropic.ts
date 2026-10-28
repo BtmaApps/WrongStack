@@ -446,7 +446,7 @@ function redactedThinkingData(b: ContentBlock): string | undefined {
 function normalizeMessageContent(m: Message, capabilities: Capabilities | undefined): unknown {
   if (typeof m.content === 'string') return m.content;
   return (
-    (m.content as ContentBlock[])
+    toolResultsFirst(m.content as ContentBlock[])
       // A thinking block with no text is rejected outright
       // ("content[].thinking.thinking: cannot be empty"). Other wires legitimately
       // produce one — the Codex Responses wire returns reasoning whose value is
@@ -460,6 +460,26 @@ function normalizeMessageContent(m: Message, capabilities: Capabilities | undefi
       )
       .map((b) => sanitizeAnthropicBlock(b, capabilities))
   );
+}
+
+/**
+ * Move `tool_result` blocks ahead of any other block in a turn, keeping each
+ * group's order. The Messages API wants a tool-result turn to open with its
+ * results, and Anthropic-compatible proxies that convert to the OpenAI shape
+ * (Kimi For Coding) turn a leading text block into a `user` message wedged
+ * between `tool_calls` and their answers — a 400 that names every call as
+ * unanswered. Histories journaled before the producer was fixed still carry
+ * that order, so the wire enforces it.
+ */
+function toolResultsFirst(blocks: ContentBlock[]): ContentBlock[] {
+  const firstOther = blocks.findIndex((b) => b.type !== 'tool_result');
+  if (firstOther === -1 || !blocks.slice(firstOther).some((b) => b.type === 'tool_result')) {
+    return blocks;
+  }
+  return [
+    ...blocks.filter((b) => b.type === 'tool_result'),
+    ...blocks.filter((b) => b.type !== 'tool_result'),
+  ];
 }
 
 /**

@@ -861,4 +861,37 @@ describe('429 reset time', () => {
   it('ignores a reset window beyond a day', () => {
     expect(retryAfterMsFromBody({ message: 'resets in 48h0m0s' })).toBeUndefined();
   });
+
+  it('does not replay stream on mid-stream 401 after text_delta and survives refresh blips inside the skew window', async () => {
+    let calls = 0;
+    const provider = new AntigravityProvider({
+      credentials: {
+        accessToken: 'ya29.valid',
+        refreshToken: '1//refresh',
+        expiresAt: Date.now() + 30_000,
+        project: 'proj-1',
+      },
+      refreshFn: async () => {
+        throw new Error('google oauth 503 blip');
+      },
+      fetchImpl: (async () => new Response('{}', { status: 200 })) as never as typeof fetch,
+    });
+    (provider as any).parseStream = async function* () {
+      calls++;
+      yield { type: 'message_start', model: 'gemini-3-pro' };
+      yield { type: 'text_delta', text: 'partial-' };
+      throw new ProviderError('Mid-stream 401', 401, false, 'google-antigravity');
+    };
+    const seen: string[] = [];
+    await expect(async () => {
+      for await (const ev of provider.stream(
+        { model: 'gemini-3-pro', messages: [{ role: 'user', content: 'hi' }] } as Request,
+        { signal: new AbortController().signal },
+      )) {
+        if (ev.type === 'text_delta') seen.push(ev.text);
+      }
+    }).rejects.toThrow(/Mid-stream 401/);
+    expect(calls).toBe(1);
+    expect(seen).toEqual(['partial-']);
+  });
 });

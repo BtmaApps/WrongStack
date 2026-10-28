@@ -225,4 +225,51 @@ describe('GitHubCopilotProvider token refresh', () => {
     expect(refreshFn).toHaveBeenCalledTimes(1);
     expect(onRefresh).toHaveBeenCalledTimes(1);
   });
+
+  it('does not replay stream on mid-stream 401 after text_delta and survives refresh blips inside the skew window', async () => {
+    const { ProviderError } = await import('@wrongstack/contracts/types');
+    let midCalls = 0;
+    const midProvider = new GitHubCopilotProvider({
+      credentials: {
+        copilotToken: COPILOT_TOKEN,
+        githubToken: 'gho_mid',
+        expiresAt: Date.now() + 3_600_000,
+      },
+      refreshFn: async (): Promise<CopilotTokenResult> => ({
+        token: COPILOT_TOKEN,
+        expires: Date.now() + 3_600_000,
+      }),
+      fetchImpl: capturingFetch(OPENAI_SSE, {}),
+    });
+    (midProvider as any).parseStream = async function* () {
+      midCalls++;
+      yield { type: 'message_start', model: 'gpt-4o' };
+      yield { type: 'text_delta', text: 'partial-' };
+      throw new ProviderError('Mid-stream 401', 401, false, 'github-copilot');
+    };
+    const seen: string[] = [];
+    await expect(async () => {
+      for await (const ev of midProvider.stream(baseReq, {
+        signal: new AbortController().signal,
+      })) {
+        if (ev.type === 'text_delta') seen.push(ev.text);
+      }
+    }).rejects.toThrow(/Mid-stream 401/);
+    expect(midCalls).toBe(1);
+    expect(seen).toEqual(['partial-']);
+
+    const skewProvider = new GitHubCopilotProvider({
+      credentials: {
+        copilotToken: COPILOT_TOKEN,
+        githubToken: 'gho_skew',
+        expiresAt: Date.now() + 30_000,
+      },
+      refreshFn: async (): Promise<CopilotTokenResult> => {
+        throw new Error('token endpoint 503 blip');
+      },
+      fetchImpl: capturingFetch(OPENAI_SSE, {}),
+    });
+    const res = await skewProvider.complete(baseReq, { signal: new AbortController().signal });
+    expect(res.stopReason).toBe('end_turn');
+  });
 });

@@ -44,7 +44,7 @@ export async function* trackCodexStream(
     // it before a response.failed envelope, and retrying at that point is
     // still safe. Every other streamed event is treated as an output
     // boundary to prevent duplicate text/tool/reasoning delivery.
-    if (event.type !== 'message_start') onOutput();
+    if (event.type !== 'message_start' && event.type !== 'model_rerouted') onOutput();
     // The charge for the request whose prefix the probe just fingerprinted.
     // Recorded here rather than in `parseStream` because the WebSocket
     // transport parses the stream itself and never calls that override.

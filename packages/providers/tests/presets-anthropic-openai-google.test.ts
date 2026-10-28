@@ -156,6 +156,35 @@ describe('Anthropic preset - buildBody variants', () => {
     expect(body).not.toHaveProperty('stop_sequences');
     expect(body).not.toHaveProperty('tool_choice');
   });
+
+  it('sends a tool-result turn with its results first', () => {
+    // A leading text block (directory instructions journaled before the
+    // producer was fixed) made Kimi For Coding reject every call as unanswered.
+    const body = anthropicWireFormat.buildBody({
+      model: 'anthropic-preset-test-model',
+      maxTokens: 100,
+      messages: [
+        { role: 'user', content: 'go' },
+        {
+          role: 'assistant',
+          content: [
+            { type: 'tool_use', id: 'a', name: 'read', input: {} },
+            { type: 'tool_use', id: 'b', name: 'grep', input: {} },
+          ],
+        },
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: 'directory instructions' },
+            { type: 'tool_result', tool_use_id: 'a', content: 'A' },
+            { type: 'tool_result', tool_use_id: 'b', content: 'B' },
+          ],
+        },
+      ],
+    } as Parameters<typeof anthropicWireFormat.buildBody>[0]);
+    const turn = (body.messages as Array<{ content: Array<Record<string, unknown>> }>)[2]!;
+    expect(turn.content.map((b) => b['tool_use_id'] ?? b['type'])).toEqual(['a', 'b', 'text']);
+  });
 });
 
 describe('Anthropic preset - parseStreamEvent error handling', () => {

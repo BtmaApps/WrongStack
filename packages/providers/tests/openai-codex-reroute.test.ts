@@ -160,4 +160,41 @@ describe('OpenAICodexProvider surfaces the reroute from its HTTP headers', () =>
       reason: CODEX_REROUTE_REASON,
     });
   });
+
+  it('does not treat model_rerouted as user-visible output in trackCodexStream or emit it on response.failed frames', async () => {
+    const { trackCodexStream } = await import('../src/openai-codex-cache-probe.js');
+    const { parseOpenAIResponsesStream } = await import('../src/openai-codex-stream.js');
+    const enc = new TextEncoder();
+    const sse = new ReadableStream<Uint8Array>({
+      start(c) {
+        c.enqueue(
+          enc.encode(
+            `event: response.created\ndata: ${JSON.stringify({
+              type: 'response.created',
+              response: { id: 'resp_1', model: 'gpt-5.2' },
+            })}\n\nevent: response.failed\ndata: ${JSON.stringify({
+              type: 'response.failed',
+              response: { error: { code: 'server_error', message: 'transient' } },
+            })}\n\n`,
+          ),
+        );
+        c.close();
+      },
+    });
+    let outputMarked = false;
+    await expect(async () => {
+      for await (const _ of trackCodexStream(
+        parseOpenAIResponsesStream(sse, 'gpt-5.3-codex', 'openai-codex', undefined, undefined, {
+          servedModel: () => 'gpt-5.2',
+        }),
+        { providerId: 'openai-codex', req, probe: undefined },
+        () => {
+          outputMarked = true;
+        },
+      )) {
+        // consume
+      }
+    }).rejects.toThrow(/transient/);
+    expect(outputMarked).toBe(false);
+  });
 });

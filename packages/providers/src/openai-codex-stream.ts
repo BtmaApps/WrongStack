@@ -221,17 +221,19 @@ export async function* parseOpenAIResponsesStream(
     // Server model: the transport's own response headers (HTTP, WebSocket
     // handshake), then any event carrying `response.headers` or — on metadata
     // frames — top-level `headers`, in the official client's precedence.
-    const rerouted = reroute(
-      options.servedModel?.() ??
-        servedModelFromHeaders(
-          (evt['response'] as Record<string, unknown> | undefined)?.['headers'],
-        ) ??
-        servedModelFromHeaders(evt['headers']) ??
-        servedModelFromHeaders(
-          (evt['metadata'] as Record<string, unknown> | undefined)?.['headers'],
-        ),
-    );
-    if (rerouted) yield rerouted;
+    if (type !== 'error' && type !== 'response.failed') {
+      const rerouted = reroute(
+        options.servedModel?.() ??
+          servedModelFromHeaders(
+            (evt['response'] as Record<string, unknown> | undefined)?.['headers'],
+          ) ??
+          servedModelFromHeaders(evt['headers']) ??
+          servedModelFromHeaders(
+            (evt['metadata'] as Record<string, unknown> | undefined)?.['headers'],
+          ),
+      );
+      if (rerouted) yield rerouted;
+    }
 
     switch (type) {
       case 'response.metadata':

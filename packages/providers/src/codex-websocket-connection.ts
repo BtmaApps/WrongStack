@@ -315,7 +315,7 @@ export class CodexWebSocketConnection {
         opts.providerId,
         opts.onMetadata,
       )) {
-        if (event.type !== 'message_start') this.emitted = true;
+        if (event.type !== 'message_start' && event.type !== 'model_rerouted') this.emitted = true;
         yield event;
       }
       if (!this.terminalSeen) {

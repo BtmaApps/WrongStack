@@ -228,6 +228,24 @@ describe('parseCodexRateLimitHeaders', () => {
     const [snapshot] = parseCodexRateLimitHeaders(headers({}));
     expect(hasQuotaData(snapshot!)).toBe(false);
   });
+
+  it('does not attach account-wide credits or promo notes to unmetered extra header families (F783)', () => {
+    const snapshots = parseCodexRateLimitHeaders(
+      headers({
+        'x-codex-primary-used-percent': '25',
+        'x-codex-primary-window-minutes': '300',
+        'x-codex-credits-has-credits': 'true',
+        'x-codex-credits-unlimited': 'false',
+        'x-codex-credits-balance': '10.00',
+        'x-codex-promo-message': 'Pro plan active',
+        'x-codex-bengalfox-primary-used-percent': '0',
+        'x-codex-bengalfox-primary-window-minutes': '0',
+      }),
+    );
+    expect(snapshots.map((s) => s.meterId)).toEqual(['codex']);
+    expect(snapshots[0]?.credits?.balance).toBe('10.00');
+    expect(snapshots[0]?.note).toBe('Pro plan active');
+  });
 });
 
 describe('parseCodexRateLimitEvent', () => {
