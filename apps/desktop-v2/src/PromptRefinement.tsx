@@ -7,6 +7,9 @@ import type { EngineCommand } from './engine-operations';
 import type { EngineState } from './engine-state';
 import { MarkdownContent } from './MarkdownContent';
 import { Modal } from './Modal';
+import { ProfileModelPicker } from './ProfileModelPicker';
+import { preferredRefinementVariant } from './refinement-policy-model';
+import { type RefinerTarget, refinementRecovery } from './refinement-recovery';
 
 export function PromptRefinement({
   original,
@@ -37,24 +40,35 @@ export function PromptRefinement({
     [feedback, setFeedback] = useState(''),
     [provider, setProvider] = useState(''),
     [model, setModel] = useState(''),
+    [picker, setPicker] = useState(false),
+    [pickerBusy, setPickerBusy] = useState(false),
+    [failure, setFailure] = useState<ReturnType<typeof refinementRecovery> | null>(null),
     [edited, setEdited] = useState<string | null>(null),
     [edit, setEdit] = useState(false);
   const generation = useRef(0);
-  const refine = async (previous?: Record<string, unknown>) => {
+  const refine = async (
+    previous?: Record<string, unknown>,
+    target?: RefinerTarget,
+    timeoutOverride?: number,
+  ) => {
     const own = ++generation.current;
     setBusy(true);
     setError('');
+    setFailure(null);
     try {
-      if (!!provider.trim() !== !!model.trim())
+      const chosenProvider = target?.provider ?? provider.trim(),
+        chosenModel = target?.model ?? model.trim();
+      if (!!chosenProvider !== !!chosenModel)
         throw Error(
           'Enter both a provider and model, or leave both empty to use your configured refiner.',
         );
+      const timeoutMs = timeoutOverride ?? (previous ? 180000 : 90000);
       const reply = await command(
         'model.refine',
         {
           text: original,
-          timeoutMs: previous ? 180000 : 90000,
-          ...(provider.trim() ? { provider: provider.trim(), model: model.trim() } : {}),
+          timeoutMs,
+          ...(chosenProvider ? { provider: chosenProvider, model: chosenModel } : {}),
           ...(previous
             ? {
                 previousRefined: previous['refined'],
@@ -64,16 +78,22 @@ export function PromptRefinement({
             : {}),
         },
         ['model.refine_result'],
-        { timeoutMs: previous ? 195000 : 105000 },
+        { timeoutMs: timeoutMs + 15000 },
       );
       if (own !== generation.current) return;
       refinementText(reply, 'refined', original);
       setResult(reply);
-      setVariant('refined');
+      setVariant(
+        preferredRefinementVariant(state.results['prefs.updated']?.['enhanceLanguage'], reply),
+      );
       setEdited(null);
       setEdit(false);
     } catch (e) {
-      if (own === generation.current) setError(e instanceof Error ? e.message : String(e));
+      if (own === generation.current) {
+        const recovery = refinementRecovery(e);
+        setError(recovery.message);
+        setFailure(recovery);
+      }
     } finally {
       if (own === generation.current) setBusy(false);
     }
@@ -94,6 +114,7 @@ export function PromptRefinement({
   const send = async () => {
     setSending(true);
     setError('');
+    setFailure(null);
     try {
       await onSend(text, mode);
     } catch (e) {
@@ -102,6 +123,29 @@ export function PromptRefinement({
       setSending(false);
     }
   };
+  if (picker)
+    return (
+      <Modal
+        title="Choose a refiner"
+        onClose={() => {
+          if (!pickerBusy) setPicker(false);
+        }}
+      >
+        <ProfileModelPicker
+          session={{ ...state, provider: provider || state.provider, model }}
+          title="Choose a refiner"
+          providerLabel="Refiner model provider"
+          searchLabel="Search refiner models"
+          description="Choose a model for the next refinement retry. Your chat model and profile defaults stay unchanged. Selecting does not run a request."
+          onPick={(provider, model) => {
+            setProvider(provider);
+            setModel(model);
+          }}
+          onClose={() => setPicker(false)}
+          onBusy={setPickerBusy}
+        />
+      </Modal>
+    );
   return (
     <Modal
       onClose={() => {
@@ -174,9 +218,50 @@ export function PromptRefinement({
           </p>
         )}
         {error && (
-          <p role="alert" className="composer-error">
-            {error} Your draft is kept.
-          </p>
+          <section role="alert" className="composer-error refine-recovery">
+            <p>{failure?.guidance ?? error} Your draft is kept.</p>
+            {failure && (
+              <details>
+                <summary>Error details</summary>
+                <p>{error}</p>
+              </details>
+            )}
+            {failure && (
+              <button
+                type="button"
+                className="button secondary"
+                disabled={busy || sending}
+                onClick={() =>
+                  void refine(
+                    Object.keys(result).length ? result : undefined,
+                    undefined,
+                    failure.retryTimeoutMs,
+                  )
+                }
+              >
+                Retry with {Math.ceil(failure.retryTimeoutMs / 1000)}s window
+              </button>
+            )}
+            {failure?.fallback && (
+              <button
+                type="button"
+                className="button secondary"
+                disabled={busy || sending}
+                onClick={() => {
+                  const target = failure.fallback!;
+                  setProvider(target.provider);
+                  setModel(target.model);
+                  void refine(
+                    Object.keys(result).length ? result : undefined,
+                    target,
+                    failure.retryTimeoutMs,
+                  );
+                }}
+              >
+                Retry with {failure.fallback.provider}/{failure.fallback.model}
+              </button>
+            )}
+          </section>
         )}
         <label className="refine-edit-toggle">
           <input type="checkbox" checked={edit} onChange={(e) => setEdit(e.target.checked)} /> Edit
@@ -200,12 +285,34 @@ export function PromptRefinement({
             Empty fields use the configured refiner and fallback policy. This selection does not
             change the chat model.
           </p>
+          <button
+            type="button"
+            className="button secondary"
+            disabled={busy || sending}
+            onClick={() => setPicker(true)}
+          >
+            Choose refiner model
+          </button>
+          {(provider || model) && (
+            <button
+              type="button"
+              className="button secondary"
+              disabled={busy || sending}
+              onClick={() => {
+                setProvider('');
+                setModel('');
+              }}
+            >
+              Use configured refiner
+            </button>
+          )}
           <div>
             <label>
               Provider ID
               <input
                 aria-label="Refiner provider"
                 value={provider}
+                disabled={busy || sending}
                 onChange={(e) => setProvider(e.target.value)}
                 placeholder={state.provider}
               />
@@ -215,6 +322,7 @@ export function PromptRefinement({
               <input
                 aria-label="Refiner model"
                 value={model}
+                disabled={busy || sending}
                 onChange={(e) => setModel(e.target.value)}
                 placeholder={state.model}
               />

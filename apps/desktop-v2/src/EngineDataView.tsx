@@ -1,6 +1,6 @@
 import { ArrowRight, File, Folder, RefreshCw } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import type { EngineSend, EngineTab } from './EngineWorkspace';
+import type { EngineSend } from './engine-operations';
 import { contentText, type EngineState, entries, record } from './engine-state';
 
 const queries = {
@@ -16,7 +16,7 @@ export function EngineDataView({
   send,
   onError,
 }: {
-  tab: Exclude<EngineTab, 'chat' | 'activity' | 'settings' | 'workspace'>;
+  tab: keyof typeof queries;
   state: EngineState;
   send: EngineSend;
   onError: (error: unknown) => void;

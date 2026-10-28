@@ -1,6 +1,13 @@
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
-export async function exerciseNativeAtlas({ page, rpc, project, waitFor, artifactDir }) {
+export async function exerciseNativeAtlas({
+  page,
+  rpc,
+  project,
+  waitFor,
+  artifactDir,
+  boundariesOnly = false,
+}) {
   const tool = (name) =>
     page
       .getByRole('navigation', { name: `${project.name} workspace` })
@@ -35,13 +42,91 @@ export async function exerciseNativeAtlas({ page, rpc, project, waitFor, artifac
     path: join(artifactDir, 'native-atlas-large-scope.png'),
     fullPage: true,
   });
+  const views = page.getByRole('navigation', { name: 'Atlas views', exact: true });
+  await views.getByRole('button').filter({ hasText: 'Subsystems' }).click();
+  const largeMap = page.getByRole('region', { name: 'Collapsible subsystem map', exact: true });
+  assert.equal(await largeMap.locator('.graph-node').count(), 1);
+  await largeMap.getByRole('button', { name: 'Expand @fixture/large', exact: true }).click();
+  assert.equal(await largeMap.locator('.graph-node').count(), 160);
+  await page.getByRole('button', { name: 'All nodes', exact: true }).click();
+  await waitFor(
+    async () => (await largeMap.locator('.graph-node').count()) === canonical.data.nodes.length,
+    'Expanded boundary honors All nodes beyond 160',
+  );
+  await largeMap.getByRole('button', { name: 'Collapse all subsystems', exact: true }).click();
+  assert.equal(await largeMap.locator('.graph-node').count(), 1);
+  await views.getByRole('button').filter({ hasText: 'Architecture' }).click();
+  await page.getByRole('button', { name: 'Smart scope', exact: true }).click();
   await page.getByRole('button', { name: 'Packages', exact: true }).click();
   await page.getByRole('button', { name: 'Select @fixture/alpha', exact: true }).waitFor();
-  const views = page.getByRole('navigation', { name: 'Atlas views', exact: true });
   await views.getByRole('button').filter({ hasText: 'Subsystems' }).click();
   await page.getByRole('region', { name: 'Atlas subsystems', exact: true }).waitFor();
   assert.ok((await page.locator('.atlas-subsystem-card').count()) > 0);
+  const boundaries = page.getByRole('region', { name: 'Collapsible subsystem map', exact: true });
+  await boundaries.getByRole('heading', { name: 'Boundary map', exact: true }).waitFor();
+  const expansion = boundaries.getByRole('group', {
+    name: 'Subsystem expansion controls',
+    exact: true,
+  });
+  const groupCount = await expansion.getByRole('button').count();
+  assert.ok(groupCount > 0);
+  assert.equal(await boundaries.locator('.graph-node').count(), groupCount);
+  for (const button of await expansion.getByRole('button').all()) await button.click();
+  await boundaries.getByRole('button', { name: '@fixture/alpha', exact: true }).click();
+  const boundaryDetail = boundaries.getByRole('complementary', {
+    name: 'Selected subsystem boundary',
+    exact: true,
+  });
+  assert.ok((await boundaryDetail.innerText()).includes('@fixture/beta'));
+  assert.ok((await boundaryDetail.innerText()).includes('stored weight'));
+  await page.screenshot({
+    path: join(artifactDir, 'native-atlas-expanded-boundaries.png'),
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 800, height: 640 });
+  await boundaries
+    .getByRole('region', { name: 'Subsystem boundary graph', exact: true })
+    .scrollIntoViewIfNeeded();
+  assert.equal(
+    await boundaries.evaluate((element) => element.scrollWidth > element.clientWidth),
+    false,
+  );
+  await page.screenshot({
+    path: join(artifactDir, 'native-atlas-boundaries-compact.png'),
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 1480, height: 960 });
+  const darkMode = page.getByRole('button', { name: 'Switch to dark mode', exact: true });
+  if (await darkMode.count()) {
+    await darkMode.click();
+    await page.screenshot({
+      path: join(artifactDir, 'native-atlas-boundaries-dark.png'),
+      fullPage: true,
+    });
+    await page.getByRole('button', { name: 'Switch to light mode', exact: true }).click();
+  }
+  await boundaries.getByRole('button', { name: 'Collapse all subsystems', exact: true }).click();
+  assert.equal(await boundaries.locator('.graph-node').count(), groupCount);
+  assert.equal(await boundaryDetail.count(), 0);
+  await page.getByLabel('Search code atlas', { exact: true }).fill('no-boundary-match');
+  await boundaries
+    .getByText('No indexed nodes match the current filters.', { exact: true })
+    .waitFor();
+  assert.equal(await boundaries.locator('.graph-node').count(), 0);
+  await page.getByLabel('Search code atlas', { exact: true }).fill('');
+  await boundaries.locator('.graph-node').first().waitFor();
   await page.screenshot({ path: join(artifactDir, 'native-atlas-subsystems.png'), fullPage: true });
+  if (boundariesOnly) {
+    assert.equal(
+      (await rpc('snapshot')).sessions.length,
+      0,
+      'Boundary exploration creates no desktop conversations',
+    );
+    console.log(
+      'PASS: actual indexed boundary collapse/expand, directed reference inspector, selected real member, empty filter, compact/dark views and zero conversations',
+    );
+    return;
+  }
   await views.getByRole('button').filter({ hasText: 'Dependency matrix' }).click();
   await page.getByRole('region', { name: 'Atlas dependency matrix', exact: true }).waitFor();
   assert.ok((await page.locator('.matrix-reference').count()) > 0);

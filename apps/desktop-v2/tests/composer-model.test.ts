@@ -34,6 +34,44 @@ function fixture(running = false) {
   };
 }
 describe('desktop composer delivery contracts', () => {
+  it('carries an approved fresh context only through an idle human turn, including refinement metadata', async () => {
+    const ports = fixture();
+    ports.update({
+      results: {
+        ...ports.current().results,
+        'session.start': {
+          ...ports.current().results['session.start'],
+          protocolCapabilities: ['session.user-ack', 'context.topic-boundary'],
+        },
+      },
+    });
+    await dispatchComposer(
+      'Approved topic after refinement',
+      'btw',
+      ports,
+      'Original new topic',
+      [],
+      true,
+    );
+    expect(ports.command).toHaveBeenCalledWith(
+      'user_message',
+      expect.objectContaining({ freshContext: true, journalRaw: 'Original new topic' }),
+      ['key.operation_result'],
+    );
+    const unsupported = fixture();
+    await expect(
+      dispatchComposer('new topic', 'btw', unsupported, undefined, [], true),
+    ).rejects.toThrow('supporting engine');
+    expect(unsupported.command).not.toHaveBeenCalled();
+    for (const mode of ['queue', 'steer', 'btw'] as const) {
+      const busy = fixture(true);
+      await expect(dispatchComposer('new topic', mode, busy, undefined, [], true)).rejects.toThrow(
+        'idle conversation',
+      );
+      expect(busy.send).not.toHaveBeenCalled();
+      expect(busy.command).not.toHaveBeenCalled();
+    }
+  });
   it('preserves binary attachments through direct, queued and reviewed steering submissions', async () => {
     const images = [{ data: 'iVBORw0KGgo=', mediaType: 'image/png', name: 'screen.png' }];
     for (const mode of ['btw', 'queue', 'steer'] as const) {

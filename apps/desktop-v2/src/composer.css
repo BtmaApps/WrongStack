@@ -361,6 +361,12 @@
 }
 .refine-options > button {
   margin-top: 12px;
+  margin-right: 8px;
+}
+.refine-recovery button {
+  margin: 6px 8px 0 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 @media (max-width: 1050px) {
   .composer-queue > summary small {

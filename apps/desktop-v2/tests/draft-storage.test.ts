@@ -8,10 +8,13 @@ describe('session draft persistence', () => {
     const first = new Promise<void>((resolve) => {
       release = resolve;
     });
-    const writer = new DraftWriter(async (id, text) => {
+    const writer = new DraftWriter(async (id, text, revision) => {
       seen.push(`${id}:${text}`);
       if (text === 'first') await first;
+      return revision + 1;
     });
+    writer.initialize('a', 0);
+    writer.initialize('b', 0);
     const a = writer.write('a', 'first');
     const b = writer.write('a', 'second');
     const c = writer.write('b', 'other');
@@ -22,10 +25,29 @@ describe('session draft persistence', () => {
     expect(seen).toEqual(['a:first', 'b:other', 'a:second']);
   });
   it('reports failed writes while allowing a later save', async () => {
-    const writer = new DraftWriter(async (_id, text) => {
+    const writer = new DraftWriter(async (_id, text, revision) => {
       if (text === 'bad') throw Error('disk full');
+      return revision + 1;
     });
+    writer.initialize('a', 0);
     await expect(writer.write('a', 'bad')).rejects.toThrow('disk full');
     await expect(writer.write('a', 'recovered')).resolves.toBeUndefined();
+  });
+  it('blocks queued stale writes after a conflict until the saved revision is explicitly reloaded', async () => {
+    let calls = 0;
+    const writer = new DraftWriter(async (_id, _text, revision) => {
+      calls++;
+      if (revision === 0) throw Error('DRAFT_CONFLICT: changed elsewhere');
+      return revision + 1;
+    });
+    writer.initialize('a', 0);
+    const first = writer.write('a', 'my draft');
+    const second = writer.write('a', 'my newer draft');
+    await expect(first).rejects.toThrow('DRAFT_CONFLICT');
+    await expect(second).rejects.toThrow('DRAFT_CONFLICT');
+    expect(calls).toBe(1);
+    await writer.drain('a');
+    writer.initialize('a', 2);
+    await expect(writer.write('a', 'after reload')).resolves.toBeUndefined();
   });
 });

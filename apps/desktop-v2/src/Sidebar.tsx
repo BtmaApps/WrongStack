@@ -9,14 +9,18 @@ import {
   GitCompareArrows,
   Layers3,
   LayoutGrid,
+  Mail,
   Network,
   Plus,
   Search,
   Settings2,
   ShieldCheck,
+  Target,
+  Workflow,
 } from 'lucide-react';
 import { useState } from 'react';
 import { isLive } from './model';
+import { ProjectToolsMenu } from './ProjectToolsMenu';
 import { addProject, native } from './platform';
 
 import type { DesktopController } from './useDesktop';
@@ -176,6 +180,10 @@ export function Sidebar({ vm }: { vm: DesktopController }) {
                       <span>{label}</span>
                     </button>
                   ))}
+                  <ProjectToolsMenu
+                    page={section === 'project' ? vm.projectPage : 'overview'}
+                    onOpen={(page) => vm.openProjectPage(p.id, page)}
+                  />
                   <div className="project-files-shortcuts">
                     <button
                       type="button"
@@ -206,12 +214,45 @@ export function Sidebar({ vm }: { vm: DesktopController }) {
                     type="button"
                     className="project-chronicle-link"
                     aria-current={
+                      section === 'project' && vm.projectPage === 'sdd' ? 'page' : undefined
+                    }
+                    onClick={() => vm.openProjectPage(p.id, 'sdd')}
+                  >
+                    <Workflow size={13} />
+                    <span>SDD</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="project-chronicle-link"
+                    aria-current={
+                      section === 'project' && vm.projectPage === 'goals' ? 'page' : undefined
+                    }
+                    onClick={() => vm.openProjectPage(p.id, 'goals')}
+                  >
+                    <Target size={13} />
+                    <span>Goals</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="project-chronicle-link"
+                    aria-current={
                       section === 'project' && vm.projectPage === 'chronicle' ? 'page' : undefined
                     }
                     onClick={() => vm.openProjectPage(p.id, 'chronicle')}
                   >
                     <Activity size={13} />
                     <span>Chronicle</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="project-chronicle-link"
+                    aria-current={
+                      section === 'project' && vm.projectPage === 'mailbox' ? 'page' : undefined
+                    }
+                    onClick={() => vm.openProjectPage(p.id, 'mailbox')}
+                  >
+                    <Mail size={13} />
+                    <span>Mailbox</span>
                   </button>
                 </nav>
               )}

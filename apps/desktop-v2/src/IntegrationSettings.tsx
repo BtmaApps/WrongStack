@@ -1,7 +1,14 @@
 import { Check, Link2, Plug, Plus, Power, RefreshCw, Server, Trash2, X } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import type { EngineCommand } from './engine-operations';
-import { entries } from './engine-values';
+import { entries, record } from './engine-values';
+
+const McpContentBrowser = lazy(() =>
+  import('./McpContentBrowser').then((module) => ({ default: module.McpContentBrowser })),
+);
+const McpConnectionEditor = lazy(() =>
+  import('./McpConnectionEditor').then((module) => ({ default: module.McpConnectionEditor })),
+);
 
 export function IntegrationSettings({ command }: { command: EngineCommand }) {
   const [servers, setServers] = useState<Record<string, unknown>[]>([]),
@@ -10,6 +17,8 @@ export function IntegrationSettings({ command }: { command: EngineCommand }) {
     [creating, setCreating] = useState(false),
     [removing, setRemoving] = useState(''),
     [notice, setNotice] = useState('');
+  const [browsing, setBrowsing] = useState('');
+  const [editing, setEditing] = useState<Record<string, unknown> | null>(null);
   const load = useCallback(async () => {
     const result = await command('mcp.list', {}, ['mcp.list']);
     setServers(entries(result['servers']));
@@ -67,7 +76,11 @@ export function IntegrationSettings({ command }: { command: EngineCommand }) {
           const status = String(
             server['status'] ?? (server['enabled'] ? 'Configured' : 'Disabled'),
           );
-          const tools = entries(server['tools']);
+          const tools = Array.isArray(server['tools'])
+            ? server['tools']
+                .map((tool: unknown) => (typeof tool === 'string' ? { name: tool } : record(tool)))
+                .filter((tool: Record<string, unknown>) => typeof tool['name'] === 'string')
+            : [];
           return (
             <article className="integration-card" key={name}>
               <header>
@@ -85,7 +98,8 @@ export function IntegrationSettings({ command }: { command: EngineCommand }) {
                 <button
                   type="button"
                   className="icon-button"
-                  aria-label={`Refresh ${name}`}
+                  aria-label={`Restart ${name}`}
+                  title="Restart server connection"
                   disabled={Boolean(busy)}
                   onClick={() => void action(name, 'mcp.restart')}
                 >
@@ -97,6 +111,14 @@ export function IntegrationSettings({ command }: { command: EngineCommand }) {
                   server['url'] ?? server['command'] ?? server['transport'] ?? 'MCP connection',
                 )}
               </p>
+              {typeof server['description'] === 'string' && server['description'] && (
+                <p>{server['description']}</p>
+              )}
+              {typeof server['error'] === 'string' && server['error'] && (
+                <p className="session-error" role="alert">
+                  {server['error']}
+                </p>
+              )}
               <div className="integration-tools-summary">
                 <Plug size={14} />
                 {Number(server['toolCount'] ?? tools.length)} tools available
@@ -109,12 +131,46 @@ export function IntegrationSettings({ command }: { command: EngineCommand }) {
                       <div key={String(tool['name'])}>
                         <strong>{String(tool['name'])}</strong>
                         <p>{String(tool['description'] ?? '')}</p>
+                        {(() => {
+                          const hint = record(
+                            record(server['toolAnnotations'])[String(tool['name'])],
+                          );
+                          const labels = [
+                            ['readOnlyHint', 'read-only'],
+                            ['destructiveHint', 'destructive'],
+                            ['openWorldHint', 'open-world'],
+                          ]
+                            .filter(([key]) => hint[key!] === true)
+                            .map(([, label]) => label);
+                          return labels.length ? (
+                            <small>
+                              Server-reported hints: {labels.join(', ')}. Execution permissions are
+                              evaluated separately.
+                            </small>
+                          ) : null;
+                        })()}
                       </div>
                     ))}
                   </div>
                 </details>
               )}
               <footer>
+                <button
+                  type="button"
+                  className="button secondary small"
+                  disabled={Boolean(busy)}
+                  onClick={() => setEditing(server)}
+                >
+                  Edit connection
+                </button>
+                <button
+                  type="button"
+                  className="button secondary small"
+                  disabled={Boolean(busy) || server['enabled'] === false}
+                  onClick={() => setBrowsing(name)}
+                >
+                  Browse resources & prompts
+                </button>
                 <button
                   type="button"
                   className="button secondary small"
@@ -198,6 +254,31 @@ export function IntegrationSettings({ command }: { command: EngineCommand }) {
           onSave={(payload) => void action(String(payload['name']), 'mcp.add', payload)}
         />
       )}
+      {browsing && (
+        <Suspense fallback={<p role="status">Opening MCP content browser…</p>}>
+          <McpContentBrowser
+            key={browsing}
+            name={browsing}
+            command={command}
+            onClose={() => setBrowsing('')}
+          />
+        </Suspense>
+      )}
+      {editing && (
+        <Suspense fallback={<p role="status">Opening connection editor…</p>}>
+          <McpConnectionEditor
+            key={String(editing['name'])}
+            server={editing}
+            command={command}
+            onRefresh={() => void load().catch((error) => setError(String(error)))}
+            onClose={() => setEditing(null)}
+            onSaved={() => {
+              void load().catch((error) => setError(String(error)));
+              setNotice('Changed connection fields saved and read back.');
+            }}
+          />
+        </Suspense>
+      )}
     </section>
   );
 }
@@ -219,6 +300,7 @@ function IntegrationDialog({
     [url, setUrl] = useState(''),
     [command, setCommand] = useState(''),
     [args, setArgs] = useState('');
+  const [allowPrivateNetworks, setAllowPrivateNetworks] = useState(false);
   return (
     <dialog ref={dialog} className="modal" aria-label="Add MCP connection" onCancel={onClose}>
       <header>
@@ -242,8 +324,9 @@ function IntegrationDialog({
             name: name.trim(),
             enabled: false,
             ...(mode === 'remote'
-              ? { url: url.trim() }
+              ? { transport: 'streamable-http', url: url.trim(), allowPrivateNetworks }
               : {
+                  transport: 'stdio',
                   command: command.trim(),
                   args: args
                     .split('\n')
@@ -313,6 +396,18 @@ function IntegrationDialog({
               </small>
             </label>
           </>
+        )}
+        {mode === 'remote' && (
+          <label className="authorization-checkbox">
+            <input
+              type="checkbox"
+              aria-label="Allow private MCP network addresses"
+              checked={allowPrivateNetworks}
+              onChange={(event) => setAllowPrivateNetworks(event.target.checked)}
+            />
+            Allow private network addresses for this connection
+            <small>Use for a trusted loopback or private-network MCP endpoint.</small>
+          </label>
         )}
         <p className="form-note">
           The connection will be saved disabled. Enable it from its card to connect.

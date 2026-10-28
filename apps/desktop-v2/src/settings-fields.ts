@@ -45,13 +45,6 @@ export const settingsSections = [
         unit: 'ms',
       },
       {
-        key: 'yolo',
-        label: 'Reduced confirmations',
-        description:
-          'Use the engine’s YOLO permission mode for new conversations. Protected operations still follow its policy.',
-        kind: 'toggle',
-      },
-      {
         key: 'breakerEnabled',
         label: 'Circuit breaker',
         description: 'Stop repeated failures and runaway tool loops.',
@@ -122,10 +115,23 @@ export const settingsSections = [
       },
       {
         key: 'systemPromptVariant',
-        label: 'Agent identity depth',
-        description: 'Choose a compact identity or the full operating instructions for new runs.',
+        label: 'Agent identity',
+        description:
+          'Choose the identity for new runs: Lite, Standard or Pro coding guidance, general-purpose Scout, or minimal Quick.',
         kind: 'select',
-        options: ['lite', 'default', 'pro'],
+        options: ['lite', 'default', 'pro', 'scout', 'quick'],
+      },
+      {
+        key: 'includeGlobalAgents',
+        label: 'Global AGENTS.md',
+        description: 'Load ~/.wrongstack/AGENTS.md into the system prompt of new runs.',
+        kind: 'toggle',
+      },
+      {
+        key: 'includeProjectAgents',
+        label: 'Project AGENTS.md',
+        description: "Load the project's root AGENTS.md into the system prompt of new runs.",
+        kind: 'toggle',
       },
     ],
   },

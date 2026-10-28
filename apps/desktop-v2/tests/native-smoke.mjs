@@ -10,42 +10,148 @@ import { chromium } from '@playwright/test';
 import { createSqliteMemoryPort, getSageSurface } from '../../../packages/sage/dist/index.js';
 import { portableDirectory } from '../scripts/portable.ts';
 import { fixtureKey, fixtureModel, fixtureText, startLocalProvider } from './local-provider.mjs';
+import { configureRosterProvider, exerciseNativeAgentRoster } from './native-agent-roster.mjs';
 import { exerciseNativeAppearance } from './native-appearance.mjs';
 import { exerciseNativeApprovals } from './native-approvals.mjs';
 import { exerciseNativeAtlas } from './native-atlas.mjs';
 import { exerciseNativeAttachments } from './native-attachments.mjs';
+import { exerciseNativeAutomationManagement } from './native-automation-management.mjs';
+import { exerciseNativeBrainPolicy } from './native-brain-policy.mjs';
+import { exerciseNativeChimera } from './native-chimera.mjs';
 import { seedNativeChronicle } from './native-chronicle-fixture.mjs';
 import { exerciseNativeChronicleInsights } from './native-chronicle-insights.mjs';
 import { exerciseNativeComposer } from './native-composer.mjs';
 import { exerciseNativeComposerResources } from './native-composer-resources.mjs';
 import { exerciseNativeConversation } from './native-conversation.mjs';
+import { exerciseNativeDeadCode } from './native-dead-code.mjs';
+import { exerciseNativeDesignStudio } from './native-design-studio.mjs';
+import { exerciseNativeDraftConflict } from './native-draft-conflict.mjs';
 import { exerciseNativeEvidence } from './native-evidence.mjs';
+import { exerciseNativeExecutionPolicy } from './native-execution-policy.mjs';
 import { exerciseNativeFiles } from './native-files.mjs';
+import { exerciseNativeFleetPolicy } from './native-fleet-policy.mjs';
+import { exerciseNativeGoals } from './native-goals.mjs';
 import { exerciseNativeTaskExecution } from './native-kanban-execution.mjs';
+import { exerciseNativeLiveFleet } from './native-live-fleet.mjs';
+import { exerciseNativeMailbox } from './native-mailbox.mjs';
+import { exerciseNativeMcpComposer, exerciseNativeMcpContent } from './native-mcp-content.mjs';
+import { exerciseNativeMcpTasks } from './native-mcp-tasks.mjs';
+import { exerciseNativeModelCatalog } from './native-model-catalog.mjs';
 import { exerciseNativeNextSteps } from './native-next-steps.mjs';
+import { exerciseNativeProcesses } from './native-processes.mjs';
+import { exerciseNativeProjectHistory } from './native-project-history.mjs';
+import { exerciseNativeProjectKit } from './native-project-kit.mjs';
 import { exerciseNativeProjects } from './native-projects.mjs';
+import { exerciseNativeProviderHealth } from './native-provider-health.mjs';
+import { exerciseNativeRefinementPolicy } from './native-refinement-policy.mjs';
+import { exerciseNativeReviewPolicy } from './native-review-policy.mjs';
 import { exerciseNativeSage } from './native-sage.mjs';
+import { exerciseNativeSageValidity } from './native-sage-validity.mjs';
+import { exerciseNativeSdd } from './native-sdd.mjs';
+import { exerciseNativeSessionRecovery } from './native-session-recovery.mjs';
+import { exerciseNativeSessionUsage } from './native-session-usage.mjs';
 import { exerciseNativeSettingsManagement } from './native-settings-management.mjs';
 import { exerciseNativeSettingsPolicy } from './native-settings-policy.mjs';
 import { exerciseNativeSkills } from './native-skills.mjs';
+import { exerciseNativeTechStack } from './native-techstack.mjs';
 
 // Real Tauri + WebView2 + ConPTY + existing WrongStack engine. No external LLM calls.
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 const companion = process.argv.includes('--companion');
 const composerOnly = process.argv.includes('--composer');
 const chronicleOnly = process.argv.includes('--chronicle');
+const goalsOnly = process.argv.includes('--goals');
+const sddOnly = process.argv.includes('--sdd');
+const modelsOnly = process.argv.includes('--models');
+const mailboxOnly = process.argv.includes('--mailbox');
+const kitOnly = process.argv.includes('--kit');
+const techstackOnly = process.argv.includes('--techstack');
+const deadCodeOnly = process.argv.includes('--deadcode');
+const designOnly = process.argv.includes('--design');
+const chimeraOnly = process.argv.includes('--chimera');
+const recoveryOnly = process.argv.includes('--recovery');
+const historyOnly = process.argv.includes('--history');
+const settingsOnly = process.argv.includes('--settings');
+const filesOnly = process.argv.includes('--files');
+const rosterOnly = process.argv.includes('--roster');
+const automationOnly = process.argv.includes('--automation');
+const mcpOnly = process.argv.includes('--mcp');
+const mcpTasksOnly = process.argv.includes('--mcp-tasks');
+const processesOnly = process.argv.includes('--processes');
+const fleetOnly = process.argv.includes('--fleet');
+const atlasOnly = process.argv.includes('--atlas');
+const fleetPolicyOnly = process.argv.includes('--fleet-policy');
+const brainPolicyOnly = process.argv.includes('--brain-policy');
+const executionPolicyOnly = process.argv.includes('--execution-policy');
+const refinementPolicyOnly = process.argv.includes('--refinement-policy');
+const sageOnly = process.argv.includes('--sage');
+const usageOnly = process.argv.includes('--usage');
 const artifactDir = resolve(
   root,
   '.temp_files/desktop-v2-native',
-  chronicleOnly
-    ? 'chronicle'
-    : composerOnly
-      ? companion
-        ? 'composer-companion'
-        : 'composer'
-      : companion
-        ? 'companion'
-        : '.',
+  usageOnly
+    ? 'session-usage'
+    : sageOnly
+      ? 'sage-validity'
+      : refinementPolicyOnly
+        ? 'refinement-policy'
+        : executionPolicyOnly
+          ? 'execution-policy'
+          : brainPolicyOnly
+            ? 'brain-policy'
+            : fleetPolicyOnly
+              ? 'fleet-policy'
+              : atlasOnly
+                ? 'atlas-boundaries'
+                : fleetOnly
+                  ? 'fleet'
+                  : processesOnly
+                    ? 'processes'
+                    : mcpTasksOnly
+                      ? 'mcp-tasks'
+                      : mcpOnly
+                        ? 'mcp'
+                        : automationOnly
+                          ? 'automation'
+                          : rosterOnly
+                            ? 'roster'
+                            : filesOnly
+                              ? 'files'
+                              : settingsOnly
+                                ? 'settings'
+                                : historyOnly
+                                  ? companion
+                                    ? 'history-companion'
+                                    : 'history'
+                                  : recoveryOnly
+                                    ? 'recovery'
+                                    : chimeraOnly
+                                      ? 'chimera'
+                                      : designOnly
+                                        ? 'design'
+                                        : deadCodeOnly
+                                          ? 'deadcode'
+                                          : techstackOnly
+                                            ? 'techstack'
+                                            : kitOnly
+                                              ? 'kit'
+                                              : mailboxOnly
+                                                ? 'mailbox'
+                                                : modelsOnly
+                                                  ? 'models'
+                                                  : sddOnly
+                                                    ? 'sdd'
+                                                    : goalsOnly
+                                                      ? 'goals'
+                                                      : chronicleOnly
+                                                        ? 'chronicle'
+                                                        : composerOnly
+                                                          ? companion
+                                                            ? 'composer-companion'
+                                                            : 'composer'
+                                                          : companion
+                                                            ? 'companion'
+                                                            : '.',
 );
 await mkdir(artifactDir, { recursive: true });
 const dir = await mkdtemp(join(tmpdir(), 'wrongstack-desktop-v2-'));
@@ -117,8 +223,82 @@ const env = {
 await mkdir(join(dir, 'wrongstack/profiles/default'), { recursive: true });
 await writeFile(
   join(dir, 'wrongstack/profiles/default/config.json'),
-  JSON.stringify({ skills: { readClaudeSkills: false, foreignSources: false } }),
+  JSON.stringify({
+    skills: { readClaudeSkills: false, foreignSources: false },
+    ...(executionPolicyOnly
+      ? {
+          autonomy: {
+            yolo: false,
+            yoloPlus: false,
+            yoloConfirm: { 'bulk-delete': false, 'git-history': false },
+          },
+        }
+      : {}),
+    ...(brainPolicyOnly
+      ? {
+          brain: {
+            maxAutoRisk: 'low',
+            mode: 'headless',
+            decisionTimeoutMs: 54321,
+            monitor: {
+              cooldownMs: 123456,
+              signals: { toolFailureStreak: false, agentStall: false },
+            },
+            trace: { maxOpenRecords: 777 },
+            rules: [
+              {
+                id: 'native-brain-rule',
+                when: { source: 'system', question: 'native fixture decision' },
+                // biome-ignore lint/suspicious/noThenProperty: BrainRule's canonical action field is named then.
+                then: { action: 'defer' },
+              },
+            ],
+          },
+        }
+      : {}),
+    ...(fleetPolicyOnly
+      ? {
+          fleet: {
+            memoryCompanion: { enabled: true },
+            exploreCompanion: {
+              enabled: true,
+              maxToolCallsPerProbe: 600000,
+              probeTimeoutMs: 18000000,
+              signals: { editUnreadFile: false },
+            },
+            skillCompanion: { enabled: true, maxCandidates: 256, enforce: 'off' },
+            lifecycle: { idleTimeoutMs: 900000, retireOnTaskComplete: true },
+          },
+        }
+      : {}),
+  }),
 );
+if (modelsOnly) {
+  const now = Date.now();
+  await writeFile(
+    join(dir, 'wrongstack/profiles/default/provider-status.json'),
+    JSON.stringify({
+      version: 1,
+      statuses: [
+        {
+          providerId: 'native-health-fixture',
+          model: 'blocked-model',
+          state: 'blocked',
+          stateExpiresAt: now + 3600000,
+          lastFailureAt: now,
+          firstFailureAt: now,
+          consecutiveFailures: 1,
+          totalFailures: 1,
+          rateLimitHits: 1,
+          lastErrorKind: 'quota_exhausted',
+          lastErrorStatus: 429,
+          lastErrorMessage: 'Native recorded quota failure',
+          recentErrors: [],
+        },
+      ],
+    }),
+  );
+}
 if (companion) env.WRONGSTACK_DESKTOP_USE_COMPANION_HOST = '1';
 // Never inherit provider credentials from the developer's shell into this isolated test.
 for (const name of Object.keys(env)) {
@@ -235,7 +415,11 @@ const stopUi = async () => {
 };
 
 try {
-  providerFixture = await startLocalProvider();
+  providerFixture = await startLocalProvider(
+    refinementPolicyOnly
+      ? { models: [fixtureModel, 'profile/refiner', 'explicit/refiner'] }
+      : { models: [fixtureModel, 'alternate-refiner'] },
+  );
   await launch();
   console.log('PASS: native shell boot');
   const initialPid = (await rpc('snapshot')).hostPid;
@@ -273,6 +457,55 @@ try {
     );
   assert.equal((await rpc('snapshot')).projects.length, 0, 'Profile settings need no project');
   assert.equal((await rpc('snapshot')).sessions.length, 0, 'Profile settings need no session');
+  if (mcpOnly)
+    await exerciseNativeMcpContent({
+      page,
+      rpc: workspaceRpc,
+      waitFor,
+      artifactDir,
+      configPath: join(dir, 'wrongstack/profiles/default/config.json'),
+    });
+  if (fleetPolicyOnly)
+    await exerciseNativeFleetPolicy({
+      page,
+      rpc: workspaceRpc,
+      waitFor,
+      artifactDir,
+      configPath: join(dir, 'wrongstack/profiles/default/config.json'),
+    });
+  if (refinementPolicyOnly) {
+    await configureRosterProvider({ rpc: workspaceRpc, waitFor, providerFixture });
+    await exerciseNativeRefinementPolicy({
+      page,
+      rpc: workspaceRpc,
+      waitFor,
+      artifactDir,
+      configPath: join(dir, 'wrongstack/profiles/default/config.json'),
+      providerFixture,
+    });
+  }
+  if (executionPolicyOnly)
+    await exerciseNativeExecutionPolicy({
+      page,
+      rpc: workspaceRpc,
+      waitFor,
+      artifactDir,
+      configPath: join(dir, 'wrongstack/profiles/default/config.json'),
+      providerFixture,
+    });
+  if (brainPolicyOnly) {
+    await configureRosterProvider({ rpc: workspaceRpc, waitFor, providerFixture });
+    await exerciseNativeBrainPolicy({
+      page,
+      rpc: workspaceRpc,
+      waitFor,
+      artifactDir,
+      configPath: join(dir, 'wrongstack/profiles/default/config.json'),
+      providerFixture,
+    });
+  }
+  if (rosterOnly || automationOnly || mcpTasksOnly || processesOnly || fleetOnly || usageOnly)
+    await configureRosterProvider({ rpc: workspaceRpc, waitFor, providerFixture });
   await page
     .getByRole('navigation', { name: 'Main navigation' })
     .getByRole('button', { name: 'Mission control', exact: true })
@@ -400,7 +633,515 @@ try {
     .getByRole('button', { name: 'Close prompt workspace', exact: true })
     .click();
   console.log('PASS: project-owned prompt library without a desktop conversation');
-  if (chronicleOnly) {
+  if (refinementPolicyOnly) {
+    assert.deepEqual(errors, []);
+    result = {
+      result: 'PASS',
+      scope: 'refinement-policy',
+      portableIdentity,
+      bundledEngine: bundled,
+      portableChecksumsVerified: bundled,
+      artifacts: artifactDir,
+    };
+  } else if (executionPolicyOnly) {
+    assert.deepEqual(errors, []);
+    result = {
+      result: 'PASS',
+      scope: 'execution-policy',
+      portableIdentity,
+      bundledEngine: bundled,
+      portableChecksumsVerified: bundled,
+      artifacts: artifactDir,
+    };
+  } else if (brainPolicyOnly) {
+    assert.deepEqual(errors, []);
+    result = {
+      result: 'PASS',
+      scope: 'brain-policy',
+      portableIdentity,
+      bundledEngine: bundled,
+      portableChecksumsVerified: bundled,
+      artifacts: artifactDir,
+    };
+  } else if (fleetPolicyOnly) {
+    assert.deepEqual(errors, []);
+    result = {
+      result: 'PASS',
+      scope: 'fleet-policy',
+      portableIdentity,
+      bundledEngine: bundled,
+      portableChecksumsVerified: bundled,
+      artifacts: artifactDir,
+    };
+  } else if (atlasOnly) {
+    await page
+      .getByRole('navigation', { name: `${a.name} workspace` })
+      .getByRole('button', { name: 'Code Atlas', exact: true })
+      .click();
+    await page.getByRole('button', { name: 'Index project', exact: true }).click();
+    await waitFor(
+      async () => {
+        const value = await workspaceRpc('project.http', {
+          projectId: a.id,
+          method: 'GET',
+          resource: '/api/codemap/status',
+        });
+        if (value.data.status === 'error') throw new Error(value.data.error);
+        return value.data.status === 'ready';
+      },
+      'Actual project index ready for boundary exploration',
+      120000,
+    );
+    await exerciseNativeAtlas({
+      page,
+      rpc: workspaceRpc,
+      project: a,
+      waitFor,
+      artifactDir,
+      boundariesOnly: true,
+    });
+    assert.deepEqual(errors, []);
+    result = {
+      result: 'PASS',
+      scope: 'atlas-boundaries',
+      portableIdentity,
+      bundledEngine: bundled,
+      portableChecksumsVerified: bundled,
+      artifacts: artifactDir,
+    };
+  } else if (fleetOnly) {
+    await exerciseNativeLiveFleet({
+      page,
+      rpc: workspaceRpc,
+      waitFor,
+      project: a,
+      otherProject: b,
+      artifactDir,
+      configPath: join(dir, 'wrongstack/profiles/default/config.json'),
+      sessionIds: sessions,
+    });
+    assert.deepEqual(errors, []);
+    result = {
+      result: 'PASS',
+      scope: 'fleet',
+      portableIdentity,
+      bundledEngine: bundled,
+      portableChecksumsVerified: bundled,
+      artifacts: artifactDir,
+    };
+  } else if (processesOnly) {
+    await exerciseNativeProcesses({
+      page,
+      rpc: workspaceRpc,
+      waitFor,
+      project: a,
+      artifactDir,
+      configPath: join(dir, 'wrongstack/profiles/default/config.json'),
+      sessionIds: sessions,
+    });
+    assert.deepEqual(errors, []);
+    result = {
+      result: 'PASS',
+      scope: 'processes',
+      portableIdentity,
+      bundledEngine: bundled,
+      portableChecksumsVerified: bundled,
+      artifacts: artifactDir,
+    };
+  } else if (mcpTasksOnly) {
+    await exerciseNativeMcpTasks({
+      page,
+      rpc: workspaceRpc,
+      waitFor,
+      project: a,
+      artifactDir,
+      configPath: join(dir, 'wrongstack/profiles/default/config.json'),
+      sessionIds: sessions,
+    });
+    assert.deepEqual(errors, []);
+    result = {
+      result: 'PASS',
+      scope: 'mcp-tasks',
+      portableIdentity,
+      bundledEngine: bundled,
+      portableChecksumsVerified: bundled,
+      artifacts: artifactDir,
+    };
+  } else if (mcpOnly) {
+    await exerciseNativeMcpComposer({
+      page,
+      rpc: workspaceRpc,
+      waitFor,
+      artifactDir,
+      project: a,
+      sessionIds: sessions,
+    });
+    assert.deepEqual(errors, []);
+    result = {
+      result: 'PASS',
+      scope: 'mcp',
+      portableIdentity,
+      bundledEngine: bundled,
+      portableChecksumsVerified: bundled,
+      artifacts: artifactDir,
+    };
+  } else if (automationOnly) {
+    await exerciseNativeAutomationManagement({
+      page,
+      rpc: workspaceRpc,
+      waitFor,
+      artifactDir,
+      project: a,
+      otherProject: b,
+      configPath: join(dir, 'wrongstack/profiles/default/config.json'),
+      wrongstackHome: env.WRONGSTACK_HOME,
+    });
+    assert.deepEqual(errors, []);
+    result = {
+      result: 'PASS',
+      scope: 'automation',
+      portableIdentity,
+      bundledEngine: bundled,
+      portableChecksumsVerified: bundled,
+      artifacts: artifactDir,
+    };
+  } else if (rosterOnly) {
+    await exerciseNativeAgentRoster({
+      page,
+      rpc: workspaceRpc,
+      waitFor,
+      artifactDir,
+      project: a,
+      otherProject: b,
+      configPath: join(dir, 'wrongstack/profiles/default/config.json'),
+      providerFixture,
+    });
+    assert.deepEqual(errors, []);
+    result = {
+      result: 'PASS',
+      scope: 'roster',
+      portableIdentity,
+      bundledEngine: bundled,
+      portableChecksumsVerified: bundled,
+      artifacts: artifactDir,
+    };
+  } else if (historyOnly) {
+    await exerciseNativeProjectHistory({
+      page,
+      rpc: workspaceRpc,
+      waitFor,
+      project: a,
+      otherProject: b,
+      wrongstackHome: env.WRONGSTACK_HOME,
+      artifactDir,
+      sessionIds: sessions,
+    });
+    assert.deepEqual(errors, []);
+    result = {
+      result: 'PASS',
+      scope: companion ? 'history-companion' : 'history',
+      portableIdentity,
+      bundledEngine: bundled,
+      portableChecksumsVerified: bundled,
+      artifacts: artifactDir,
+    };
+  } else if (filesOnly) {
+    await seedNativeChronicle({ rpc: workspaceRpc, project: a, waitFor });
+    await page
+      .getByRole('navigation', { name: `${a.name} workspace` })
+      .getByRole('button', { name: 'Memory', exact: true })
+      .click();
+    await page
+      .getByRole('navigation', { name: 'SAGE workspace' })
+      .getByRole('button', { name: 'Review queue', exact: true })
+      .click();
+    const proposal = page
+      .locator('.sage-candidate-card')
+      .filter({ hasText: 'Native SAGE proposal keeps file boundaries explicit.' });
+    await proposal.getByRole('button', { name: 'Review & accept', exact: true }).click();
+    await page
+      .getByRole('dialog', { name: 'Accept SAGE proposal' })
+      .getByRole('button', { name: 'Confirm action' })
+      .click();
+    await proposal.waitFor({ state: 'detached' });
+    await exerciseNativeFiles({ page, waitFor, artifactDir, project: a, rpc: workspaceRpc });
+    assert.deepEqual(errors, []);
+    result = {
+      result: 'PASS',
+      scope: 'files',
+      portableIdentity,
+      bundledEngine: bundled,
+      portableChecksumsVerified: bundled,
+      artifacts: artifactDir,
+    };
+  } else if (settingsOnly) {
+    await exerciseNativeSettingsManagement({
+      page,
+      rpc: workspaceRpc,
+      waitFor,
+      artifactDir,
+      instructionsPath: join(dir, 'wrongstack/AGENTS.md'),
+      configPath: join(dir, 'wrongstack/profiles/default/config.json'),
+    });
+    assert.deepEqual(errors, []);
+    result = {
+      result: 'PASS',
+      scope: 'settings',
+      portableIdentity,
+      bundledEngine: bundled,
+      artifacts: artifactDir,
+    };
+  } else if (recoveryOnly) {
+    await exerciseNativeSessionRecovery({
+      page,
+      rpc: workspaceRpc,
+      waitFor,
+      project: a,
+      wrongstackHome: env.WRONGSTACK_HOME,
+      artifactDir,
+      sessionIds: sessions,
+      providerFixture,
+      configPath: join(dir, 'wrongstack/profiles/default/config.json'),
+    });
+    assert.deepEqual(errors, []);
+    result = {
+      result: 'PASS',
+      scope: 'recovery',
+      portableIdentity,
+      bundledEngine: bundled,
+      portableChecksumsVerified: bundled,
+      artifacts: artifactDir,
+    };
+  } else if (chimeraOnly) {
+    await exerciseNativeReviewPolicy({
+      page,
+      rpc: workspaceRpc,
+      waitFor,
+      artifactDir,
+      configPath: join(dir, 'wrongstack/profiles/default/config.json'),
+    });
+    await exerciseNativeChimera({
+      page,
+      rpc: workspaceRpc,
+      project: a,
+      otherProject: b,
+      wrongstackHome: env.WRONGSTACK_HOME,
+      waitFor,
+      artifactDir,
+      sessionIds: sessions,
+    });
+    assert.deepEqual(errors, []);
+    result = {
+      result: 'PASS',
+      scope: 'chimera',
+      portableIdentity,
+      bundledEngine: bundled,
+      portableChecksumsVerified: bundled,
+      artifacts: artifactDir,
+    };
+  } else if (designOnly) {
+    await exerciseNativeDesignStudio({
+      page,
+      rpc: workspaceRpc,
+      project: a,
+      otherProject: b,
+      root: repo1,
+      waitFor,
+      artifactDir,
+    });
+    assert.deepEqual(errors, []);
+    result = {
+      result: 'PASS',
+      scope: 'design',
+      portableIdentity,
+      bundledEngine: bundled,
+      portableChecksumsVerified: bundled,
+      artifacts: artifactDir,
+    };
+  } else if (deadCodeOnly) {
+    await exerciseNativeDeadCode({
+      page,
+      rpc: workspaceRpc,
+      project: a,
+      otherProject: b,
+      root: repo1,
+      waitFor,
+      artifactDir,
+    });
+    assert.deepEqual(errors, []);
+    result = {
+      result: 'PASS',
+      scope: 'deadcode',
+      portableIdentity,
+      bundledEngine: bundled,
+      portableChecksumsVerified: bundled,
+      artifacts: artifactDir,
+    };
+  } else if (techstackOnly) {
+    await exerciseNativeTechStack({
+      page,
+      rpc: workspaceRpc,
+      project: a,
+      otherProject: b,
+      wrongstackHome: env.WRONGSTACK_HOME,
+      waitFor,
+      artifactDir,
+    });
+    assert.deepEqual(errors, []);
+    result = {
+      result: 'PASS',
+      scope: 'techstack',
+      portableIdentity,
+      bundledEngine: bundled,
+      portableChecksumsVerified: bundled,
+      artifacts: artifactDir,
+    };
+  } else if (kitOnly) {
+    await exerciseNativeProjectKit({
+      page,
+      rpc: workspaceRpc,
+      project: a,
+      otherProject: b,
+      root: repo1,
+      waitFor,
+      artifactDir,
+      sessionIds: sessions,
+    });
+    assert.deepEqual(errors, []);
+    result = {
+      result: 'PASS',
+      scope: 'kit',
+      portableIdentity,
+      bundledEngine: bundled,
+      portableChecksumsVerified: bundled,
+      artifacts: artifactDir,
+    };
+  } else if (mailboxOnly) {
+    await exerciseNativeMailbox({
+      page,
+      rpc: workspaceRpc,
+      project: a,
+      otherProject: b,
+      waitFor,
+      artifactDir,
+      wrongstackHome: env.WRONGSTACK_HOME,
+    });
+    assert.deepEqual(errors, []);
+    result = {
+      result: 'PASS',
+      scope: 'mailbox',
+      portableIdentity,
+      bundledEngine: bundled,
+      portableChecksumsVerified: bundled,
+      artifacts: artifactDir,
+    };
+  } else if (modelsOnly) {
+    await exerciseNativeModelCatalog({
+      page,
+      rpc: workspaceRpc,
+      waitFor,
+      artifactDir,
+      configPath: join(dir, 'wrongstack/profiles/default/config.json'),
+    });
+    await exerciseNativeProviderHealth({
+      page,
+      rpc: workspaceRpc,
+      waitFor,
+      artifactDir,
+      configPath: join(dir, 'wrongstack/profiles/default/config.json'),
+      expectWaitingRoom: true,
+    });
+    assert.deepEqual(errors, []);
+    result = {
+      result: 'PASS',
+      scope: 'models',
+      portableIdentity,
+      bundledEngine: bundled,
+      portableChecksumsVerified: bundled,
+      artifacts: artifactDir,
+    };
+  } else if (sddOnly) {
+    await exerciseNativeSdd({
+      page,
+      rpc: workspaceRpc,
+      project: a,
+      waitFor,
+      artifactDir,
+      wrongstackHome: env.WRONGSTACK_HOME,
+      otherProject: b,
+      restartUi: async () => {
+        await stopUi();
+        await launch();
+        return page;
+      },
+    });
+    assert.deepEqual(errors, []);
+    result = {
+      result: 'PASS',
+      scope: 'sdd',
+      portableIdentity,
+      bundledEngine: bundled,
+      portableChecksumsVerified: bundled,
+      artifacts: artifactDir,
+    };
+  } else if (goalsOnly) {
+    await exerciseNativeGoals({
+      page,
+      rpc: workspaceRpc,
+      project: a,
+      waitFor,
+      artifactDir,
+      wrongstackHome: env.WRONGSTACK_HOME,
+    });
+    assert.deepEqual(errors, []);
+    result = {
+      result: 'PASS',
+      scope: 'goals',
+      portableIdentity,
+      bundledEngine: bundled,
+      portableChecksumsVerified: bundled,
+      artifacts: artifactDir,
+    };
+  } else if (usageOnly) {
+    await exerciseNativeSessionUsage({
+      page,
+      rpc: workspaceRpc,
+      project: a,
+      waitFor,
+      artifactDir,
+      configPath: join(dir, 'wrongstack/profiles/default/config.json'),
+      providerFixture,
+      sessionIds: sessions,
+    });
+    assert.deepEqual(errors, []);
+    result = {
+      result: 'PASS',
+      scope: 'session-usage',
+      portableIdentity,
+      bundledEngine: bundled,
+      portableChecksumsVerified: bundled,
+      artifacts: artifactDir,
+    };
+  } else if (sageOnly) {
+    await exerciseNativeSageValidity({
+      page,
+      rpc: workspaceRpc,
+      project: a,
+      otherProject: b,
+      projectRoot: repo1,
+      waitFor,
+      artifactDir,
+    });
+    assert.deepEqual(errors, []);
+    result = {
+      result: 'PASS',
+      scope: 'sage-validity',
+      portableIdentity,
+      bundledEngine: bundled,
+      portableChecksumsVerified: bundled,
+      artifacts: artifactDir,
+    };
+  } else if (chronicleOnly) {
     await seedNativeChronicle({ rpc: workspaceRpc, project: a, waitFor });
     await exerciseNativeChronicleInsights({ page, rpc: workspaceRpc, project: a, artifactDir });
     assert.deepEqual(errors, []);
@@ -433,6 +1174,13 @@ try {
         configPath: join(dir, 'wrongstack/profiles/default/config.json'),
       });
       await exerciseNativeSage({ page, waitFor, artifactDir, project: a, rpc: workspaceRpc });
+      await exerciseNativeModelCatalog({
+        page,
+        rpc: workspaceRpc,
+        waitFor,
+        artifactDir,
+        configPath: join(dir, 'wrongstack/profiles/default/config.json'),
+      });
       await exerciseNativeFiles({ page, waitFor, artifactDir, project: a, rpc: workspaceRpc });
       await exerciseNativeAtlas({ page, waitFor, artifactDir, project: a, rpc: workspaceRpc });
       await exerciseNativeEvidence({ page, waitFor, artifactDir, project: a, rpc: workspaceRpc });
@@ -678,9 +1426,34 @@ try {
       60000,
     );
     assert.ok(providerFixture.calls.some((call) => call.authorized && call.stream === true));
+    await waitFor(
+      async () =>
+        (
+          await page.evaluate(
+            (id) =>
+              window.__TAURI_INTERNALS__.invoke('host_request', {
+                method: 'draft.get',
+                params: { id },
+              }),
+            agent.id,
+          )
+        ).text === '',
+      'Initial sent draft cleared',
+      60000,
+    );
+    await exerciseNativeDraftConflict({
+      page,
+      project: a,
+      agent,
+      identity,
+      waitFor,
+      providerFixture,
+      artifactDir,
+    });
     await exerciseNativeConversation({ page, identity, artifactDir, waitFor, providerFixture });
     await exerciseNativeComposer({
       page,
+      configPath: join(dir, 'wrongstack/profiles/default/config.json'),
       identity,
       agent,
       rpc,
@@ -1006,6 +1779,8 @@ try {
         nativeFileManager: true,
         nativeFileEvidenceDrawer: true,
         nativeFileMutationsAndConflict: true,
+        nativeFileDraftRecovery: true,
+        nativeFileContentSearch: true,
         nativeGitStageUnstageReview: true,
         sageReviewDoctorAudienceRetrieval: true,
         atlasDetailedAnalysis: true,
@@ -1032,10 +1807,13 @@ try {
         sessionContextInspector: true,
         nativeConversationForms: true,
         sessionModelAndEffort: true,
+        sessionAgentModelPlan: true,
+        topicBoundaryChoice: true,
         persistentPromptQueue: true,
         btwMailbox: true,
         stopAndSteer: true,
         refinementPreviewAndApproval: true,
+        refinerRequestModelAndRecovery: true,
         compactComposer: true,
         companionHostCompatibility: companion,
         artifacts: artifactDir,
@@ -1045,10 +1823,44 @@ try {
 } catch (error) {
   console.error('Native smoke failure:', error);
   await writeFile(
+    join(artifactDir, 'native-process-state.json'),
+    JSON.stringify(
+      {
+        uiPid: child?.pid,
+        uiExitCode: child?.exitCode,
+        uiSignal: child?.signalCode,
+        debugPort: port,
+        launchCount,
+        browserConnected: browser?.isConnected(),
+        pageClosed: page?.isClosed(),
+        ownedDirectory: dir,
+      },
+      null,
+      2,
+    ),
+  );
+  await writeFile(
     join(artifactDir, 'native-failure.txt'),
     error instanceof Error ? (error.stack ?? error.message) : String(error),
   );
   console.error('Native renderer errors:', errors);
+  if (providerFixture)
+    await writeFile(
+      join(artifactDir, 'native-provider-call-metadata.json'),
+      JSON.stringify(
+        providerFixture.calls.map((call, index) => ({
+          index,
+          model: call.model,
+          stream: call.stream,
+          refiner: call.refiner,
+          topicAdvisor: call.topicAdvisor,
+          instructionMarkers: call.instructionMarkers,
+          kanbanContext: call.kanbanContext,
+        })),
+        null,
+        2,
+      ),
+    );
   await writeFile(join(artifactDir, 'native-errors.json'), JSON.stringify(errors, null, 2));
   if (page && !page.isClosed()) {
     await bounded(

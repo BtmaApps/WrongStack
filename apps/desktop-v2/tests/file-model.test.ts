@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { fileTree, flattenFiles, lineDiff, parentPath, reviewText } from '../src/file-model';
+import {
+  fileTree,
+  flattenFiles,
+  lineDiff,
+  parentPath,
+  projectRelativePath,
+  reviewText,
+  workspaceFilePath,
+} from '../src/file-model';
 
 describe('desktop file and review models', () => {
   it('preserves empty folders, normalized paths and reported metadata', () => {
@@ -73,5 +81,13 @@ describe('desktop file and review models', () => {
     expect(reviewText([{ path: 'src/app.ts', line: 12, text: 'Handle the empty case.' }])).toBe(
       'src/app.ts:12\nHandle the empty case.',
     );
+  });
+
+  it('normalizes dot segments on absolute paths and handles Windows drive roots', () => {
+    expect(
+      workspaceFilePath('/repo/packages/app/../src/index.ts', '/repo', '/repo/packages/app'),
+    ).toBe('packages/src/index.ts');
+    expect(projectRelativePath('/repo/../outside/secret.ts', '/repo')).toBe('/outside/secret.ts');
+    expect(projectRelativePath('c:\\src\\app.ts', 'C:\\')).toBe('src/app.ts');
   });
 });

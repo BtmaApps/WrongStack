@@ -176,6 +176,8 @@ export function FallbackPolicySettings({ draft, change, command }: PolicyProps) 
     setError('');
   };
   const refs = (name: string) =>
+    draft['refinerFallbackProfile'] === name ||
+    draft['autoReviewFallbackProfile'] === name ||
     Object.values(record(draft['modelMatrix'])).some(
       (v) => record(v)['fallbackProfile'] === name,
     ) ||
@@ -233,7 +235,7 @@ export function FallbackPolicySettings({ draft, change, command }: PolicyProps) 
               disabled={refs(id)}
               title={
                 refs(id)
-                  ? 'Remove routing and tier references before deleting this profile'
+                  ? 'Remove refiner, review, routing and tier references before deleting this profile'
                   : 'Remove profile from this draft'
               }
               aria-label={'Remove profile ' + id}
@@ -247,7 +249,9 @@ export function FallbackPolicySettings({ draft, change, command }: PolicyProps) 
             value={chain}
             onChange={(v) => change('fallbackProfiles', { ...profiles, [id]: v })}
           />
-          {refs(id) && <p className="field-help">Used by a routing rule or cost tier.</p>}
+          {refs(id) && (
+            <p className="field-help">Used by refinement, review, routing or a cost tier.</p>
+          )}
         </article>
       ))}
     </div>

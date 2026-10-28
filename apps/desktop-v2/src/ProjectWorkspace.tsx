@@ -3,32 +3,62 @@ import {
   ArrowLeft,
   ArrowRight,
   BookOpen,
+  Box,
   Brain,
   CalendarClock,
   Folder,
+  Mail,
   Network,
   Plus,
+  Target,
   Terminal,
   Workflow,
 } from 'lucide-react';
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
-import { AutomationWorkspace } from './AutomationWorkspace';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { CodeAtlas } from './CodeAtlas';
 import { projectHttp } from './engine-http';
 import { entries, record } from './engine-values';
 import { FileWorkspace } from './FileWorkspace';
 import { isLive, type Project } from './model';
 import { ProjectChronicle } from './ProjectChronicle';
+import { ProjectGoals } from './ProjectGoals';
 import { ProjectKanban } from './ProjectKanban';
 import { ProjectKnowledge } from './ProjectKnowledge';
+import { ProjectMailbox } from './ProjectMailbox';
+import { ProjectSdd } from './ProjectSdd';
 import { PromptWorkspace } from './PromptWorkspace';
+import { requirementDraftStorage, requirementRecordDraftStorage } from './platform';
 import { RuntimeGate } from './RuntimeGate';
 import { SkillLibrary } from './SkillLibrary';
 import type { DesktopController } from './useDesktop';
 import { useProjectEngine } from './useEngine';
 
+const AutomationWorkspace = lazy(() =>
+  import('./AutomationWorkspace').then((module) => ({ default: module.AutomationWorkspace })),
+);
+const ProjectKit = lazy(() =>
+  import('./ProjectKit').then((module) => ({ default: module.ProjectKit })),
+);
+const ProjectAgentRoster = lazy(() =>
+  import('./ProjectAgentRoster').then((module) => ({ default: module.ProjectAgentRoster })),
+);
 const ProjectLiveFleet = lazy(() =>
   import('./ProjectLiveFleet').then((module) => ({ default: module.ProjectLiveFleet })),
+);
+const ProjectDeadCode = lazy(() =>
+  import('./ProjectDeadCode').then((module) => ({ default: module.ProjectDeadCode })),
+);
+const ProjectDesignStudio = lazy(() =>
+  import('./ProjectDesignStudio').then((module) => ({ default: module.ProjectDesignStudio })),
+);
+const ProjectChimera = lazy(() =>
+  import('./ProjectChimera').then((module) => ({ default: module.ProjectChimera })),
+);
+const ProjectSessionHistory = lazy(() =>
+  import('./ProjectSessionHistory').then((module) => ({ default: module.ProjectSessionHistory })),
+);
+const ProjectTechStack = lazy(() =>
+  import('./ProjectTechStack').then((module) => ({ default: module.ProjectTechStack })),
 );
 
 export function ProjectWorkspace({ project, vm }: { project: Project; vm: DesktopController }) {
@@ -75,6 +105,11 @@ export function ProjectWorkspace({ project, vm }: { project: Project; vm: Deskto
 function ProjectContent({ project, vm }: { project: Project; vm: DesktopController }) {
   const { state, send, command } = useProjectEngine(project.id, vm.reportError);
   const http = useMemo(() => projectHttp(project.id), [project.id]);
+  const requirementDrafts = useMemo(() => requirementDraftStorage(project.id), [project.id]);
+  const recordDraftStorage = useCallback(
+    (id: string) => requirementRecordDraftStorage(project.id, id),
+    [project.id],
+  );
   const [fileTarget, setFileTarget] = useState(''),
     [memoryTarget, setMemoryTarget] = useState('');
   useEffect(() => {
@@ -95,9 +130,20 @@ function ProjectContent({ project, vm }: { project: Project; vm: DesktopControll
           send={send}
           state={state}
           scopeKey={project.root}
+          projectId={project.id}
           mode={vm.projectPage}
           initialPath={fileTarget}
         />
+      ) : vm.projectPage === 'chronicle' ? (
+        <ProjectChronicle
+          command={command}
+          onOpenFile={(path) => {
+            setFileTarget(path);
+            vm.setProjectPage('files');
+          }}
+        />
+      ) : vm.projectPage === 'mailbox' ? (
+        <ProjectMailbox key={project.id} command={command} projectId={project.id} state={state} />
       ) : vm.projectPage === 'live-fleet' ? (
         <Suspense fallback={<p role="status">Opening live project fleet…</p>}>
           <ProjectLiveFleet
@@ -110,14 +156,109 @@ function ProjectContent({ project, vm }: { project: Project; vm: DesktopControll
             )}
           />
         </Suspense>
-      ) : vm.projectPage === 'chronicle' ? (
-        <ProjectChronicle
-          command={command}
-          onOpenFile={(path) => {
-            setFileTarget(path);
-            vm.setProjectPage('files');
-          }}
-        />
+      ) : vm.projectPage === 'roster' ? (
+        <Suspense fallback={<p role="status">Opening project agent roster…</p>}>
+          <ProjectAgentRoster
+            key={project.id}
+            command={command}
+            projectId={project.id}
+            projectName={project.name}
+            events={state.results}
+            sessions={vm.snapshot.sessions.filter((session) => session.projectId === project.id)}
+            onPrepare={(id, text) => vm.prepareProjectRequest(project.id, id, text)}
+            onNewSession={() => vm.newSession(project.id)}
+            onOpenFile={(path) => {
+              setFileTarget(path);
+              vm.setProjectPage('files');
+            }}
+          />
+        </Suspense>
+      ) : vm.projectPage === 'techstack' ? (
+        <Suspense fallback={<p role="status">Opening project TechStack…</p>}>
+          <ProjectTechStack
+            key={project.id}
+            http={http}
+            projectId={project.id}
+            events={state.results}
+            onOpenFile={(path) => {
+              setFileTarget(path);
+              vm.setProjectPage('files');
+            }}
+          />
+        </Suspense>
+      ) : vm.projectPage === 'deadcode' ? (
+        <Suspense fallback={<p role="status">Opening dead-code analysis…</p>}>
+          <ProjectDeadCode
+            key={project.id}
+            http={http}
+            projectId={project.id}
+            sessions={vm.snapshot.sessions.filter((item) => item.projectId === project.id)}
+            onPrepare={(id, text) => vm.prepareProjectRequest(project.id, id, text)}
+            onNewSession={() => vm.newSession(project.id)}
+            onOpenFile={(path) => {
+              setFileTarget(path);
+              vm.setProjectPage('files');
+            }}
+          />
+        </Suspense>
+      ) : vm.projectPage === 'design' ? (
+        <Suspense fallback={<p role="status">Opening project Design Studio…</p>}>
+          <ProjectDesignStudio
+            key={project.id}
+            command={command}
+            onOpenFile={(path) => {
+              setFileTarget(path);
+              vm.setProjectPage('files');
+            }}
+          />
+        </Suspense>
+      ) : vm.projectPage === 'history' ? (
+        <Suspense fallback={<p role="status">Opening project session history…</p>}>
+          <ProjectSessionHistory
+            key={project.id}
+            projectId={project.id}
+            carrierId={state.sessionId}
+            command={command}
+            sessions={vm.snapshot.sessions.filter((item) => item.projectId === project.id)}
+            onOpen={vm.jumpToSession}
+            onPrepare={(id, text) => vm.prepareProjectRequest(project.id, id, text)}
+            onNewSession={() => vm.newSession(project.id)}
+            onOpenFile={(path) => {
+              setFileTarget(path);
+              vm.setProjectPage('files');
+            }}
+          />
+        </Suspense>
+      ) : vm.projectPage === 'reviews' ? (
+        <Suspense fallback={<p role="status">Opening project Chimera reviews…</p>}>
+          <ProjectChimera
+            key={project.id}
+            command={command}
+            projectId={project.id}
+            events={state.results}
+            sessions={vm.snapshot.sessions.filter((item) => item.projectId === project.id)}
+            onPrepare={(id, text) => vm.prepareProjectRequest(project.id, id, text)}
+            onNewSession={() => vm.newSession(project.id)}
+            onOpenFile={(path) => {
+              setFileTarget(path);
+              vm.setProjectPage('files');
+            }}
+          />
+        </Suspense>
+      ) : vm.projectPage === 'kit' ? (
+        <Suspense fallback={<p role="status">Opening project kits…</p>}>
+          <ProjectKit
+            key={project.id}
+            http={http}
+            sessions={vm.snapshot.sessions.filter((item) => item.projectId === project.id)}
+            onPrepare={(id, text) => vm.prepareProjectRequest(project.id, id, text)}
+            onNewSession={() => vm.newSession(project.id)}
+            onOpenFile={(path) => {
+              setFileTarget(path);
+              vm.setProjectPage('files');
+            }}
+          />
+        </Suspense>
       ) : vm.projectPage === 'skills' ? (
         <SkillLibrary
           command={command}
@@ -131,6 +272,16 @@ function ProjectContent({ project, vm }: { project: Project; vm: DesktopControll
         <ProjectKnowledge command={command} http={http} initialMemoryId={memoryTarget} />
       ) : vm.projectPage === 'kanban' ? (
         <ProjectKanban command={command} />
+      ) : vm.projectPage === 'goals' ? (
+        <ProjectGoals state={state} send={send} onKanban={() => vm.setProjectPage('kanban')} />
+      ) : vm.projectPage === 'sdd' ? (
+        <ProjectSdd
+          state={state}
+          send={send}
+          http={http}
+          draftStorage={requirementDrafts}
+          recordDraftStorage={recordDraftStorage}
+        />
       ) : vm.projectPage === 'atlas' ? (
         <CodeAtlas
           http={http}
@@ -158,7 +309,9 @@ function ProjectContent({ project, vm }: { project: Project; vm: DesktopControll
               <p>Scheduled jobs and repeatable workflows for {project.name}.</p>
             </div>
           </header>
-          <AutomationWorkspace http={http} />
+          <Suspense fallback={<p role="status">Opening project automations…</p>}>
+            <AutomationWorkspace key={project.id} projectId={project.id} http={http} />
+          </Suspense>
         </section>
       ) : (
         <ProjectOverview project={project} vm={vm} command={command} http={http} />
@@ -319,6 +472,38 @@ function ProjectOverview({
         </button>
       </div>
       <div className="project-secondary-links">
+        <button type="button" onClick={() => vm.setProjectPage('techstack')}>
+          <Workflow size={21} />
+          <div>
+            <strong>TechStack</strong>
+            <span>Dependency inventory, registry evidence, research and remediation.</span>
+          </div>
+          <ArrowRight size={16} />
+        </button>
+        <button type="button" onClick={() => vm.setProjectPage('kit')}>
+          <Box size={21} />
+          <div>
+            <strong>Project Kit</strong>
+            <span>Reusable capabilities, typed contracts, tests and run evidence.</span>
+          </div>
+          <ArrowRight size={16} />
+        </button>
+        <button type="button" onClick={() => vm.setProjectPage('mailbox')}>
+          <Mail size={21} />
+          <div>
+            <strong>Mailbox</strong>
+            <span>Read project correspondence, receipts and agent replies.</span>
+          </div>
+          <ArrowRight size={16} />
+        </button>
+        <button type="button" onClick={() => vm.setProjectPage('goals')}>
+          <Target size={21} />
+          <div>
+            <strong>Goals</strong>
+            <span>Plan, follow and control project missions.</span>
+          </div>
+          <ArrowRight size={16} />
+        </button>
         <button type="button" onClick={() => vm.setProjectPage('skills')}>
           <BookOpen size={21} />
           <div>

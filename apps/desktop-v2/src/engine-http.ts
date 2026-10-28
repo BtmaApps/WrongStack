@@ -1,4 +1,7 @@
-import { record } from './engine-values';
+import { EngineHttpError } from './engine-http-error';
+
+export { EngineHttpError, engineHttpError } from './engine-http-error';
+
 import { request } from './platform';
 
 export type EngineHttp = (resource: string, method?: string, body?: unknown) => Promise<unknown>;
@@ -23,13 +26,7 @@ function scopedHttp(scope: 'engine' | 'project' | 'profile', id: string): Engine
         ...(method === 'POST' ? { operationId: crypto.randomUUID() } : {}),
       },
     );
-    if (!response.ok)
-      throw new Error(
-        String(
-          record(response.data)['error'] ??
-            `The engine refused this operation (${response.status}).`,
-        ),
-      );
+    if (!response.ok) throw new EngineHttpError(response.status, response.data);
     return response.data;
   };
 }

@@ -1,16 +1,38 @@
-import { ArrowUpRight, BookOpen, Folder, KeyRound, ListChecks, X } from 'lucide-react';
+import {
+  ArrowUpRight,
+  BookOpen,
+  Coins,
+  Folder,
+  History,
+  KeyRound,
+  ListChecks,
+  Plug,
+  ShieldCheck,
+  Terminal,
+  X,
+} from 'lucide-react';
 import { useEffect, useRef } from 'react';
 
 export function WorkspaceTools({
   onClose,
   onActivity,
+  onHistory,
   onSkills,
+  onMcpTasks,
+  onProcesses,
+  onSideEffects,
+  onUsage,
   onProject,
   onSettings,
 }: {
   onClose: () => void;
   onActivity: () => void;
+  onHistory: () => void;
   onSkills: () => void;
+  onMcpTasks: () => void;
+  onProcesses: () => void;
+  onSideEffects: () => void;
+  onUsage: () => void;
   onProject: () => void;
   onSettings: () => void;
 }) {
@@ -40,6 +62,52 @@ export function WorkspaceTools({
         </button>
       </header>
       <div className="session-tool-choices">
+        <button type="button" onClick={onUsage}>
+          <Coins size={21} />
+          <div>
+            <strong>Usage & cost</strong>
+            <span>
+              Session tokens, last-request cache behavior, routed providers and priced estimates.
+            </span>
+          </div>
+          <ArrowUpRight size={15} />
+        </button>
+        <button type="button" onClick={onSideEffects}>
+          <ShieldCheck size={21} />
+          <div>
+            <strong>Side effects</strong>
+            <span>Audit recorded commands, packages, network and configuration operations.</span>
+          </div>
+          <ArrowUpRight size={15} />
+        </button>
+        <button type="button" onClick={onProcesses}>
+          <Terminal size={21} />
+          <div>
+            <strong>Processes</strong>
+            <span>
+              Inspect this conversation's commands, background output and reviewed termination.
+            </span>
+          </div>
+          <ArrowUpRight size={15} />
+        </button>
+        <button type="button" onClick={onMcpTasks}>
+          <Plug size={21} />
+          <div>
+            <strong>MCP tasks</strong>
+            <span>
+              Observe remote work, recover results and request cancellation for this session.
+            </span>
+          </div>
+          <ArrowUpRight size={15} />
+        </button>
+        <button type="button" onClick={onHistory}>
+          <History size={21} />
+          <div>
+            <strong>History & recovery</strong>
+            <span>Recorded events, file activity and reviewed checkpoint rewind.</span>
+          </div>
+          <ArrowUpRight size={15} />
+        </button>
         <button type="button" onClick={onActivity}>
           <ListChecks size={21} />
           <div>

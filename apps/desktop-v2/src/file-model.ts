@@ -1,20 +1,38 @@
 import { entries } from './engine-values';
 
 export function projectRelativePath(value: string, projectRoot: string): string {
-  const normalize = (path: string) =>
-    path
+  const normalize = (rawPath: string) => {
+    const cleaned = rawPath
       .replaceAll('\\', '/')
       .replace(/^\/\/\?\//, '')
-      .replace(/\/$/, '');
+      .replace(/\/+$/, '');
+    const drive = /^[a-z]:/i.exec(cleaned)?.[0];
+    const absolute = Boolean(drive) || cleaned.startsWith('/');
+    const rest = drive ? cleaned.slice(2) : cleaned;
+    const parts: string[] = [];
+    for (const part of rest.split('/')) {
+      if (!part || part === '.') continue;
+      if (part === '..') {
+        if (parts.length && parts.at(-1) !== '..') parts.pop();
+        else if (!absolute) parts.push(part);
+      } else {
+        parts.push(part);
+      }
+    }
+    if (drive) return parts.length ? `${drive}/${parts.join('/')}` : drive;
+    if (absolute) return `/${parts.join('/')}`;
+    return parts.join('/');
+  };
   const path = normalize(value),
     root = normalize(projectRoot);
-  const windows = /^[a-z]:\//i.test(root);
+  const windows = /^[a-z]:(?:\/|$)/i.test(root);
   const target = windows ? path.toLowerCase() : path,
     prefix = windows ? root.toLowerCase() : root;
+  const slashPrefix = prefix === '/' ? '/' : `${prefix}/`;
   return target === prefix
     ? ''
-    : target.startsWith(`${prefix}/`)
-      ? path.slice(root.length + 1)
+    : target.startsWith(slashPrefix)
+      ? path.slice(slashPrefix.length)
       : path;
 }
 export function workspaceFilePath(value: string, projectRoot: string, workdir: string): string {

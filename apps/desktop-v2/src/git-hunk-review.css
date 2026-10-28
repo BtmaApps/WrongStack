@@ -1,0 +1,79 @@
+.modal:has(.git-hunk-review) {
+  margin: auto;
+  width: min(1000px, calc(100vw - 48px));
+  max-width: calc(100vw - 48px);
+  max-height: calc(100dvh - 48px);
+}
+.git-hunk-review {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+.git-hunk-review > header,
+.git-hunk-review article > header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+.git-hunk-review h2 {
+  margin: 8px 0;
+}
+.git-hunk-review p,
+.git-hunk-review small {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+.git-hunk-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 15px;
+  margin: 20px 0;
+}
+.git-hunk-controls label {
+  display: grid;
+  gap: 8px;
+  font-size: 12px;
+}
+.git-hunk-controls select {
+  padding: 10px;
+  background: var(--base);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  max-width: 100%;
+}
+.git-hunk-review article {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin: 15px 0;
+  overflow: hidden;
+}
+.git-hunk-review article > header {
+  padding: 12px;
+  background: var(--raised);
+  flex-wrap: wrap;
+}
+.git-hunk-review pre {
+  margin: 0;
+  overflow: auto;
+  padding: 15px;
+  font-size: 12px;
+  line-height: 1.7;
+  max-height: 38vh;
+}
+.git-hunk-review pre span {
+  display: block;
+  white-space: pre;
+}
+.git-hunk-add {
+  color: hsl(var(--ws-success));
+  background: color-mix(in srgb, hsl(var(--ws-success)) 8%, transparent);
+}
+.git-hunk-remove {
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 8%, transparent);
+}

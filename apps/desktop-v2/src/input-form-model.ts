@@ -86,17 +86,37 @@ export function parseInputRequest(value: unknown): UserInputRequest | null {
   }
   return request as unknown as UserInputRequest;
 }
+function effectiveRecommendation(question: UserInputQuestion): {
+  selectedOptionIds: string[];
+  text: string;
+} {
+  const validOptions =
+    question.kind === 'text'
+      ? []
+      : [...new Set(question.recommendedOptionIds ?? [])].filter((id) =>
+          question.options?.some((option) => option.id === id),
+        );
+  const selectedOptionIds =
+    question.kind === 'single_select' ? validOptions.slice(0, 1) : validOptions;
+  const allowsText = question.kind === 'text' || question.allowCustomResponse !== false;
+  const rawText = allowsText ? (question.recommendedText ?? '').trim() : '';
+  const text = question.kind === 'single_select' && selectedOptionIds.length > 0 ? '' : rawText;
+  return { selectedOptionIds, text };
+}
 export function recommendedDraft(request: UserInputRequest): InputDraft {
   return Object.fromEntries(
     request.tabs.flatMap((tab) =>
-      tab.questions.map((q) => [
-        q.id,
-        {
-          selectedOptionIds: [...(q.recommendedOptionIds ?? [])],
-          text: q.recommendedText ?? '',
-          delegated: false,
-        },
-      ]),
+      tab.questions.map((q) => {
+        const rec = effectiveRecommendation(q);
+        return [
+          q.id,
+          {
+            selectedOptionIds: rec.selectedOptionIds,
+            text: rec.text,
+            delegated: false,
+          },
+        ];
+      }),
     ),
   );
 }
@@ -114,7 +134,7 @@ export function answerFor(question: UserInputQuestion, draft: InputDraft): UserI
     (question.kind === 'text' || question.allowCustomResponse !== false) && !value.delegated
       ? value.text.trim()
       : '';
-  const recommended = question.recommendedOptionIds ?? [];
+  const recommended = effectiveRecommendation(question);
   return {
     questionId: question.id,
     selectedOptionIds: selected,
@@ -122,10 +142,10 @@ export function answerFor(question: UserInputQuestion, draft: InputDraft): UserI
     delegated: value.delegated,
     usedRecommendation:
       !value.delegated &&
-      (recommended.length > 0 || Boolean(question.recommendedText?.trim())) &&
-      selected.length === recommended.length &&
-      selected.every((id) => recommended.includes(id)) &&
-      text === (question.recommendedText ?? '').trim(),
+      (recommended.selectedOptionIds.length > 0 || Boolean(recommended.text)) &&
+      selected.length === recommended.selectedOptionIds.length &&
+      selected.every((id) => recommended.selectedOptionIds.includes(id)) &&
+      text === recommended.text,
   };
 }
 export function unanswered(

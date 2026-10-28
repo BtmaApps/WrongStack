@@ -69,5 +69,8 @@ describe('native desktop feature coverage', () => {
       verifyTasks: true,
       worktrees: true,
     });
+    const sddStart = featureActions.find((action) => action.type === 'sdd.run.start')!;
+    expect(actionPayload(sddStart, { parallelSlots: '' })['parallelSlots']).toBe(4);
+    expect(actionPayload(sddStart, { parallelSlots: '   ' })['parallelSlots']).toBe(4);
   });
 });

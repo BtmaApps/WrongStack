@@ -138,4 +138,78 @@ describe('native structured user input', () => {
       ).toContain('invalid question form');
     }
   });
+  it('normalizes recommendedDraft and usedRecommendation across single_select, multi_select, and allowCustomResponse=false (F816)', () => {
+    const complexRequest: UserInputRequest = {
+      id: 'request-f816',
+      title: 'Normalized recommendations',
+      tabs: [
+        {
+          id: 'tab-1',
+          label: 'Tab 1',
+          questions: [
+            {
+              id: 'q_both',
+              prompt: 'Choose runtime',
+              kind: 'single_select',
+              required: true,
+              options: [
+                { id: 'native', label: 'Native' },
+                { id: 'web', label: 'Web' },
+              ],
+              recommendedOptionIds: ['native'],
+              recommendedText: 'Custom fallback',
+              allowCustomResponse: true,
+            },
+            {
+              id: 'q_no_custom',
+              prompt: 'Choose features',
+              kind: 'multi_select',
+              required: true,
+              options: [
+                { id: 'chat', label: 'Chat' },
+                { id: 'term', label: 'Terminal' },
+              ],
+              recommendedOptionIds: ['chat'],
+              recommendedText: 'Rationale note',
+              allowCustomResponse: false,
+            },
+            {
+              id: 'q_multi_rec',
+              prompt: 'Choose target',
+              kind: 'single_select',
+              required: true,
+              options: [
+                { id: 'desktop', label: 'Desktop' },
+                { id: 'mobile', label: 'Mobile' },
+              ],
+              recommendedOptionIds: ['unknown', 'desktop', 'mobile'],
+              allowCustomResponse: false,
+            },
+          ],
+        },
+      ],
+    };
+    const draft = recommendedDraft(complexRequest);
+    const response = inputResponse(complexRequest, draft, 'submitted');
+    expect(response.answers).toEqual([
+      {
+        questionId: 'q_both',
+        selectedOptionIds: ['native'],
+        delegated: false,
+        usedRecommendation: true,
+      },
+      {
+        questionId: 'q_no_custom',
+        selectedOptionIds: ['chat'],
+        delegated: false,
+        usedRecommendation: true,
+      },
+      {
+        questionId: 'q_multi_rec',
+        selectedOptionIds: ['desktop'],
+        delegated: false,
+        usedRecommendation: true,
+      },
+    ]);
+  });
 });

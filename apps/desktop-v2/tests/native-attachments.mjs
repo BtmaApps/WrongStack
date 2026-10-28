@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
 import { makePdf } from '../../../packages/tools/tests/pdf-fixture.ts';
+import { nativeComposerCalls } from './local-provider.mjs';
 
 export async function exerciseNativeAttachments({
   page,
@@ -21,7 +22,7 @@ export async function exerciseNativeAttachments({
       'Attachment run settles',
       60000,
     );
-  const calls = () => providerFixture.calls.filter((call) => call.stream && !call.refiner);
+  const calls = () => nativeComposerCalls(providerFixture.calls);
   const accepted = async (marker) => {
     await waitFor(
       () => calls().some((call) => call.composerPrompt.includes(marker)),
@@ -283,6 +284,14 @@ export async function exerciseNativeAttachments({
   await input().fill('[native-composer-attachment-queued] Review after the current turn.');
   await page.getByRole('button', { name: 'Send Queue attachments', exact: true }).click();
   await page.locator('.composer-queue summary').filter({ hasText: '1 queued' }).waitFor();
+  assert.equal(
+    await page
+      .locator('.chat-message.user')
+      .filter({ hasText: '[native-composer-attachment-queued]' })
+      .count(),
+    0,
+    'Queued media is not accepted as a new human turn before drain',
+  );
   assert.equal(calls().length, heldCalls, 'Attachment-aware BTW does not interrupt or use mailbox');
   await waitFor(
     async () => (await savedDraft()).attachments?.length === 0,
@@ -291,8 +300,11 @@ export async function exerciseNativeAttachments({
   );
   await page.reload();
   await page.locator('.composer-queue summary').filter({ hasText: '1 queued' }).waitFor();
-  await page.locator('.composer-queue summary').click();
-  await page.getByRole('button', { name: 'Copy text only', exact: true }).waitFor();
+  await waitFor(async () => {
+    const queue = page.locator('.composer-queue');
+    if (!(await queue.evaluate((element) => element.open))) await queue.locator('summary').click();
+    return page.getByRole('button', { name: 'Copy text only', exact: true }).isVisible();
+  }, 'Restored attachment queue is expanded');
   assert.equal(calls().length, heldCalls);
   providerFixture.releaseHold('media');
   const queued = await accepted('[native-composer-attachment-queued]');

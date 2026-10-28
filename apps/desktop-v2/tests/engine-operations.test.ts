@@ -3,6 +3,29 @@ import { EngineOperations } from '../src/engine-operations';
 
 afterEach(() => vi.useRealTimers());
 describe('native engine operation acknowledgements', () => {
+  it('retains correlated refinement recovery details on a refused operation', async () => {
+    let id: unknown;
+    const operations = new EngineOperations(async (_type, payload) => {
+      id = payload!['requestId'];
+    });
+    const pending = operations.request('model.refine', { text: 'Keep this draft' }, [
+      'model.refine_result',
+    ]);
+    operations.receive({
+      type: 'model.refine_result',
+      payload: {
+        requestId: id,
+        error: 'Refinement returned no result',
+        errorKind: 'timeout',
+        retryTimeoutMs: 240000,
+        fallbackRef: 'local/org/model',
+      },
+    });
+    await expect(pending).rejects.toMatchObject({
+      message: 'Refinement returned no result',
+      details: { errorKind: 'timeout', retryTimeoutMs: 240000, fallbackRef: 'local/org/model' },
+    });
+  });
   it('rejects a correlated queue refusal sent as a generic error', async () => {
     let id: unknown;
     const operations = new EngineOperations(async (_type, payload) => {

@@ -17,12 +17,20 @@ import {
   Search,
   ShieldCheck,
   SlidersHorizontal,
+  Sparkles,
   Wrench,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { AvailabilitySettings } from './AvailabilitySettings';
 import { availabilityIssue } from './availability-model';
+import { BrainPolicySettings } from './BrainPolicySettings';
+import { ExecutionPolicySettings } from './ExecutionPolicySettings';
+import { prepareExecutionPolicyPatch } from './execution-policy-model';
+import { FleetPolicySettings } from './FleetPolicySettings';
+import { fleetPolicyIssue } from './fleet-policy-model';
 import { IntegrationSettings } from './IntegrationSettings';
+import { RefinementPolicySettings } from './RefinementPolicySettings';
+import { prepareRefinementPolicyPatch } from './refinement-policy-model';
 import { ToolAccessSettings } from './ToolAccessSettings';
 import { type InstructionDraft, UserInstructionsSettings } from './UserInstructionsSettings';
 import './settings-management.css';
@@ -30,10 +38,16 @@ import { FallbackPolicySettings, RoutingPolicySettings } from './ModelPolicySett
 import { LimitsPolicySettings, TierPolicySettings } from './ResourcePolicySettings';
 import { prepareSettingsPatch, sameSetting } from './settings-save-model';
 import './settings-policy.css';
+import { ModelCatalogSettings } from './ModelCatalogSettings';
+import { ModelVisibilitySettings } from './ModelVisibilitySettings';
 import { ProviderDiagnostics } from './ProviderDiagnostics';
+import { ProviderHealth } from './ProviderHealth';
 import { ProviderSettings } from './ProviderSettings';
 import { request } from './platform';
+import { ReviewPolicySettings } from './ReviewPolicySettings';
 import { RuntimeGate } from './RuntimeGate';
+import { reviewPolicyIssue } from './review-policy-model';
+import './review-policy.css';
 import { SkillLibrary } from './SkillLibrary';
 import { changedSettings, type SettingField, settingsSections } from './settings-fields';
 import type { DesktopController } from './useDesktop';
@@ -50,6 +64,8 @@ function ProfileSettings({ vm }: { vm: DesktopController }) {
   const { state, send, command } = useProfileEngine(vm.reportError);
   const [search, setSearch] = useState('');
   const [loaded, setLoaded] = useState(false);
+  const [modelsOpened, setModelsOpened] = useState(false);
+  const [brainOpened, setBrainOpened] = useState(false);
   const [instructionDraft, setInstructionDraft] = useState<InstructionDraft>({
     document: null,
     text: '',
@@ -82,6 +98,34 @@ function ProfileSettings({ vm }: { vm: DesktopController }) {
   const dirty = changedSettings(base, draft);
   const fields = settingsSections.find((item) => item.id === section);
   const advanced: Record<string, { title: string; description: string }> = {
+    refinement: {
+      title: 'Prompt refinement',
+      description:
+        'Refiner provider/model, named profile, language, review on submit and a saved-route sample preview.',
+    },
+    execution: {
+      title: 'Execution & permissions',
+      description:
+        'Standard approvals, YOLO, YOLO+, destructive operation confirmations, disk wipe, publish, trusted state and credential binding.',
+    },
+    brain: {
+      title: 'Brain policy',
+      description:
+        'Risk ceiling, escalation, decision cache, heuristics, model quality, monitor, stall, error storm, file churn, cooldown, council, ledger and replay trace path/capacity.',
+    },
+    fleet: {
+      title: 'Fleet & companions',
+      description:
+        'Concurrent agents, Memory Companion, Explore Companion, Skill Companion and next-step guidance.',
+    },
+    'model-visibility': {
+      title: 'Model visibility',
+      description: 'Enabled models, favorites and reviewed cleanup of fallback references.',
+    },
+    reviews: {
+      title: 'Review policy',
+      description: 'Chimera and continuous review models, batches, follow-up and cascade policy.',
+    },
     'model-routing': {
       title: 'Model routing',
       description: 'Model and reasoning overrides for each role or phase.',
@@ -118,7 +162,24 @@ function ProfileSettings({ vm }: { vm: DesktopController }) {
     setNotice('');
     try {
       const live = await command('prefs.get', {}, ['prefs.updated']);
-      const patch = prepareSettingsPatch(base, draft, live);
+      const executionPatch = prepareExecutionPolicyPatch(
+        base,
+        draft,
+        live,
+        prepareSettingsPatch(base, draft, live),
+      );
+      const patch = prepareRefinementPolicyPatch(base, draft, live, executionPatch);
+      if (!Object.keys(patch).length) {
+        const { requestId: _requestId, sessionId: _sessionId, ...values } = live;
+        setBase(values);
+        setDraft(values);
+        setNotice('Profile settings already match saved values.');
+        return;
+      }
+      const fleetIssue = fleetPolicyIssue(patch);
+      if (fleetIssue) throw Error(fleetIssue);
+      const reviewIssue = reviewPolicyIssue(patch);
+      if (reviewIssue) throw Error(reviewIssue);
       if (Object.hasOwn(patch, 'modelAvailabilitySchedule')) {
         const issue = availabilityIssue(patch['modelAvailabilitySchedule']);
         if (issue) throw Error(issue);
@@ -215,15 +276,21 @@ function ProfileSettings({ vm }: { vm: DesktopController }) {
           {(
             [
               { id: 'providers', title: 'Providers & models', Icon: KeyRound },
+              { id: 'models', title: 'Model catalog', Icon: Layers3 },
+              { id: 'model-visibility', title: 'Model visibility', Icon: Layers3 },
               { id: 'execution', title: 'Execution & permissions', Icon: ShieldCheck },
+              { id: 'refinement', title: 'Prompt refinement', Icon: Sparkles },
               { id: 'context', title: 'Context & reasoning', Icon: Brain },
               { id: 'instructions', title: 'Global instructions', Icon: BookOpen },
               { id: 'capabilities', title: 'Capabilities', Icon: Layers3 },
               { id: 'tool-access', title: 'Tool availability', Icon: Wrench },
               { id: 'routing', title: 'Fallbacks & agent defaults', Icon: Bot },
+              { id: 'fleet', title: 'Fleet & companions', Icon: Layers3 },
+              { id: 'brain', title: 'Brain policy', Icon: Brain },
               { id: 'model-routing', title: 'Model routing', Icon: Route },
               { id: 'cost-tiers', title: 'Cost tiers', Icon: Coins },
               { id: 'resource-limits', title: 'Resource limits', Icon: SlidersHorizontal },
+              { id: 'reviews', title: 'Review policy', Icon: ShieldCheck },
               { id: 'availability', title: 'Model availability', Icon: CalendarDays },
               { id: 'integrations', title: 'Connected tools', Icon: Plug },
               { id: 'skills', title: 'Profile skills', Icon: BookOpen },
@@ -252,7 +319,11 @@ function ProfileSettings({ vm }: { vm: DesktopController }) {
                 type="button"
                 key={id}
                 aria-current={section === id ? 'page' : undefined}
-                onClick={() => setSection(id)}
+                onClick={() => {
+                  if (id === 'models') setModelsOpened(true);
+                  if (id === 'brain') setBrainOpened(true);
+                  setSection(id);
+                }}
               >
                 <Icon size={16} />
                 <span>{title}</span>
@@ -301,6 +372,16 @@ function ProfileSettings({ vm }: { vm: DesktopController }) {
               {notice}
             </div>
           )}
+          {loaded && modelsOpened && (
+            <div hidden={section !== 'models'}>
+              <ModelCatalogSettings command={command} />
+            </div>
+          )}
+          {loaded && brainOpened && (
+            <div hidden={section !== 'brain'}>
+              <BrainPolicySettings command={command} />
+            </div>
+          )}
           {!loaded ? (
             <p className="quiet-state">Loading saved profile settings…</p>
           ) : section === 'providers' ? (
@@ -311,12 +392,15 @@ function ProfileSettings({ vm }: { vm: DesktopController }) {
               onError={vm.reportError}
               onConfigured={configured}
             />
-          ) : section === 'skills' ? (
+          ) : section === 'models' || section === 'brain' ? null : section === 'skills' ? (
             <SkillLibrary command={command} scope="profile" />
           ) : section === 'integrations' ? (
             <IntegrationSettings command={command} />
           ) : section === 'health' ? (
-            <ProviderDiagnostics state={state} send={send} />
+            <>
+              <ProviderHealth state={state} command={command} />
+              <ProviderDiagnostics state={state} send={send} />
+            </>
           ) : section === 'instructions' ? (
             <UserInstructionsSettings
               command={command}
@@ -354,6 +438,18 @@ function ProfileSettings({ vm }: { vm: DesktopController }) {
                   {section === 'routing' && (
                     <FallbackPolicySettings draft={draft} change={change} command={command} />
                   )}
+                  {section === 'refinement' && (
+                    <RefinementPolicySettings
+                      draft={draft}
+                      saved={base}
+                      change={change}
+                      command={command}
+                    />
+                  )}
+                  {section === 'execution' && (
+                    <ExecutionPolicySettings draft={draft} change={change} />
+                  )}
+                  {section === 'fleet' && <FleetPolicySettings draft={draft} change={change} />}
                   {section === 'model-routing' && (
                     <RoutingPolicySettings draft={draft} change={change} command={command} />
                   )}
@@ -363,8 +459,24 @@ function ProfileSettings({ vm }: { vm: DesktopController }) {
                   {section === 'resource-limits' && (
                     <LimitsPolicySettings draft={draft} change={change} />
                   )}
+                  {section === 'reviews' && (
+                    <ReviewPolicySettings
+                      draft={draft}
+                      saved={base}
+                      change={change}
+                      command={command}
+                    />
+                  )}
                   {section === 'availability' && (
                     <AvailabilitySettings draft={draft} change={change} command={command} />
+                  )}
+                  {section === 'model-visibility' && (
+                    <ModelVisibilitySettings
+                      draft={draft}
+                      change={change}
+                      command={command}
+                      defaultProvider={state.provider}
+                    />
                   )}
                 </fieldset>
                 <div className="settings-save-bar">

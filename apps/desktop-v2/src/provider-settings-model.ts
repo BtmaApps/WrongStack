@@ -5,7 +5,13 @@ export interface ProviderChoice {
   name: string;
   family: string;
   saved: boolean;
-  keys: Array<{ label: string; maskedKey: string; active: boolean }>;
+  keys: Array<{
+    label: string;
+    maskedKey: string;
+    active: boolean;
+    authMethod?: string | undefined;
+    expiresAt?: string | undefined;
+  }>;
 }
 export function providerChoices(state: EngineState): ProviderChoice[] {
   const choices = new Map<string, ProviderChoice>();
@@ -31,6 +37,8 @@ export function providerChoices(state: EngineState): ProviderChoice[] {
         label: String(key['label']),
         maskedKey: String(key['maskedKey'] ?? '••••'),
         active: key['isActive'] === true,
+        ...(typeof key['authMethod'] === 'string' ? { authMethod: key['authMethod'] } : {}),
+        ...(typeof key['expiresAt'] === 'string' ? { expiresAt: key['expiresAt'] } : {}),
       })),
     });
   }

@@ -1,8 +1,10 @@
 import { ArrowLeft, Plus, Square, Terminal, Workflow, X } from 'lucide-react';
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useState } from 'react';
+import { CopyButton } from './CopyButton';
 import { EngineWorkspace } from './EngineWorkspace';
 import { isLive } from './model';
 import { request } from './platform';
+import './draft-conflict.css';
 
 const TerminalPane = lazy(() =>
   import('./TerminalPane').then((module) => ({ default: module.TerminalPane })),
@@ -73,7 +75,26 @@ export function SessionWorkbench({ vm }: { vm: DesktopController }) {
       </nav>
       <section className="session-workspace focused-session">
         {session.error && <div className="session-error">{session.error}</div>}
-        {session.kind === 'agent' && !Object.hasOwn(vm.drafts, session.id) ? (
+        {session.kind === 'agent' &&
+          vm.draftConflicts[session.id] &&
+          !vm.draftRecovering[session.id] && (
+            <DraftConflictNotice
+              key={`draft-conflict:${session.id}`}
+              text={getDraft(session.id)}
+              local={{
+                references: vm.composerReferences[session.id] ?? [],
+                attachments: vm.composerAttachments[session.id] ?? [],
+                mode: vm.draftModes[session.id] ?? 'btw',
+              }}
+              saved={vm.draftReviews[session.id]}
+              error={vm.draftReviewErrors[session.id] ?? ''}
+              loading={vm.draftReviewLoading[session.id] === true}
+              onReview={() => void vm.prepareDraftReview(session.id)}
+              onResolve={(choice) => void vm.resolveDraftConflict(session.id, choice)}
+            />
+          )}
+        {session.kind === 'agent' &&
+        (!Object.hasOwn(vm.drafts, session.id) || vm.draftRecovering[session.id]) ? (
           <div className="runtime-state">
             {vm.draftErrors[session.id] ? (
               <>
@@ -92,6 +113,7 @@ export function SessionWorkbench({ vm }: { vm: DesktopController }) {
           <EngineWorkspace
             key={session.id}
             id={session.id}
+            sessionTitle={session.title}
             scopeKey={session.workdir}
             projectId={session.projectId}
             projectRoot={
@@ -100,6 +122,8 @@ export function SessionWorkbench({ vm }: { vm: DesktopController }) {
             }
             draft={getDraft(session.id)}
             mode={vm.draftModes[session.id] ?? 'btw'}
+            draftConflict={vm.draftConflicts[session.id] === true}
+            validateDraft={() => vm.validateDraft(session.id)}
             onModeChange={(mode) => vm.setDraftMode(session.id, mode)}
             onDraftChange={(text) => setDraft(session.id, text)}
             references={vm.composerReferences[session.id] ?? []}
@@ -140,5 +164,96 @@ export function SessionWorkbench({ vm }: { vm: DesktopController }) {
         </footer>
       </section>
     </section>
+  );
+}
+
+function DraftConflictNotice({
+  text,
+  local,
+  saved,
+  error,
+  loading,
+  onReview,
+  onResolve,
+}: {
+  text: string;
+  local: { references: { path: string }[]; attachments: { name: string }[]; mode: string };
+  saved:
+    | {
+        text: string;
+        references: { path: string }[];
+        attachments: { name: string }[];
+        mode: string;
+      }
+    | undefined;
+  error: string;
+  loading: boolean;
+  onReview: () => void;
+  onResolve: (choice: 'local' | 'saved') => void;
+}) {
+  const [confirm, setConfirm] = useState<'local' | 'saved' | null>(null);
+  return (
+    <div className="draft-conflict" role="alert">
+      <strong>This draft changed in another window.</strong>
+      <p>
+        Your local edits are still visible here but are not saved. Sending is paused to avoid mixing
+        versions.
+      </p>
+      <CopyButton text={text} label="Copy my local draft" />{' '}
+      <button
+        type="button"
+        onClick={() => {
+          setConfirm(null);
+          onReview();
+        }}
+        disabled={loading}
+      >
+        {loading ? 'Loading…' : saved ? 'Refresh saved version' : 'Compare versions'}
+      </button>
+      {error && <p role="alert">{error}</p>}
+      {saved && (
+        <div className="draft-comparison">
+          {[
+            { title: 'This window', text, ...local },
+            { title: 'Saved version', ...saved },
+          ].map((item) => (
+            <section key={item.title}>
+              <h3>{item.title}</h3>
+              <pre>{item.text || '(No text)'}</pre>
+              <p>
+                Delivery: {item.mode} · Files:{' '}
+                {item.references.map((ref) => ref.path).join(', ') || 'None'} · Attachments:{' '}
+                {item.attachments.map((attachment) => attachment.name).join(', ') || 'None'}
+              </p>
+            </section>
+          ))}
+        </div>
+      )}
+      {saved &&
+        (confirm ? (
+          <>
+            <span>
+              {confirm === 'local'
+                ? 'This replaces the saved draft with this window’s version.'
+                : 'This replaces this window’s draft with the saved version.'}
+            </span>{' '}
+            <button type="button" onClick={() => onResolve(confirm)}>
+              {confirm === 'local' ? 'Confirm use my version' : 'Confirm use saved version'}
+            </button>{' '}
+            <button type="button" onClick={() => setConfirm(null)}>
+              Cancel
+            </button>
+          </>
+        ) : (
+          <>
+            <button type="button" onClick={() => setConfirm('local')}>
+              Keep my version
+            </button>{' '}
+            <button type="button" onClick={() => setConfirm('saved')}>
+              Use saved version
+            </button>
+          </>
+        ))}
+    </div>
   );
 }

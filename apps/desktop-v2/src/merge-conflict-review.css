@@ -1,0 +1,117 @@
+.modal:has(.merge-conflict-review) {
+  margin: auto;
+  width: min(1250px, calc(100vw - 48px));
+  max-width: calc(100vw - 48px);
+  max-height: calc(100dvh - 48px);
+}
+.merge-conflict-review {
+  min-width: 0;
+  width: 100%;
+}
+.merge-conflict-review > header,
+.merge-conflict-sides article > header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.merge-conflict-review h2 {
+  margin: 8px 0;
+}
+.merge-conflict-review p {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+.merge-conflict-sides {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin: 22px 0;
+}
+.merge-conflict-sides article {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.merge-conflict-sides article > header {
+  padding: 12px;
+  background: var(--base);
+  flex-wrap: wrap;
+  font-size: 12px;
+}
+.merge-conflict-sides pre {
+  padding: 12px;
+  margin: 0;
+  min-height: 100px;
+  max-height: 25vh;
+  overflow: auto;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.merge-result-label {
+  display: grid;
+  gap: 10px;
+  font-size: 12px;
+}
+.merge-result-label textarea {
+  width: 100%;
+  min-height: 180px;
+  padding: 15px;
+  color: var(--text);
+  background: var(--base);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-family: Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.7;
+  resize: vertical;
+}
+.merge-conflict-review footer,
+.merge-close-review {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 22px;
+}
+.merge-close-review p {
+  flex-basis: 100%;
+}
+.merge-side-absent,
+.merge-binary-side {
+  padding: 14px;
+  min-height: 100px;
+}
+.merge-binary-side code,
+.merge-related-paths code {
+  overflow-wrap: anywhere;
+}
+.merge-delete-choice {
+  margin: 18px 0;
+}
+.merge-delete-choice button[aria-pressed="true"] {
+  outline: 2px solid var(--danger);
+  outline-offset: 2px;
+}
+.merge-conflict-sides button[aria-pressed="true"] {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.merge-related-paths {
+  padding: 15px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin-top: 20px;
+  font-size: 12px;
+}
+.merge-related-paths li {
+  margin: 8px 0;
+}
+@media (max-width: 1000px) {
+  .merge-conflict-sides {
+    grid-template-columns: 1fr;
+  }
+}

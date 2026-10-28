@@ -8,6 +8,16 @@ export type EngineCommand = (
   options?: { timeoutMs?: number },
 ) => Promise<Record<string, unknown>>;
 
+export class EngineReplyError extends Error {
+  constructor(
+    message: string,
+    readonly details: Readonly<Record<string, unknown>>,
+  ) {
+    super(message);
+    this.name = 'EngineReplyError';
+  }
+}
+
 /** Tracks acknowledgements without persisting outgoing payloads or credentials. */
 export class EngineOperations {
   private pending = new Map<
@@ -58,8 +68,9 @@ export class EngineOperations {
       typeof event.payload['error'] === 'string'
     )
       pending.reject(
-        new Error(
+        new EngineReplyError(
           String(event.payload['error'] ?? event.payload['message'] ?? 'Engine request failed.'),
+          { ...event.payload },
         ),
       );
     else pending.resolve(event.payload);

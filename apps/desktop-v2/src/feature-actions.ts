@@ -473,11 +473,12 @@ export function actionPayload(
 ): Record<string, unknown> {
   const payload: Record<string, unknown> = {};
   for (const field of action.fields) {
-    const value = values[field.key] ?? field.value ?? '';
+    const raw = values[field.key];
+    const value = (typeof raw === 'string' && !raw.trim() ? undefined : raw) ?? field.value ?? '';
     if (field.required && typeof value === 'string' && !value.trim())
       throw new Error(`${field.label} is required.`);
     if (field.kind === 'number') {
-      const num = Number(value);
+      const num = typeof value === 'string' && !value.trim() ? Number.NaN : Number(value);
       if (!Number.isFinite(num)) throw new Error(`${field.label} must be a number.`);
       payload[field.key] = num;
     } else if (field.kind === 'boolean') payload[field.key] = value === true;

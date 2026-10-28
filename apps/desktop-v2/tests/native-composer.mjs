@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
 import { fixtureModel } from './local-provider.mjs';
+import { exerciseNativeProfileModelPolicy } from './native-profile-model-policy.mjs';
+import { exerciseNativeSessionAgentPlan } from './native-session-agent-plan.mjs';
+import { exerciseNativeTopicBoundary } from './native-topic-boundary.mjs';
 
 /** Actual Tauri composer -> native IPC -> production engine -> isolated provider. */
 export async function exerciseNativeComposer({
@@ -11,7 +14,16 @@ export async function exerciseNativeComposer({
   artifactDir,
   waitFor,
   providerFixture,
+  configPath,
 }) {
+  await exerciseNativeProfileModelPolicy({
+    page,
+    rpc,
+    agent,
+    waitFor,
+    artifactDir,
+    providerFixture,
+  });
   let offset = 0;
   const call = async (type, payload = {}, replies = []) => {
     const requestId = crypto.randomUUID();
@@ -40,6 +52,15 @@ export async function exerciseNativeComposer({
     );
   };
   const composer = () => page.getByRole('textbox', { name: 'Message WrongStack', exact: true });
+  await exerciseNativeSessionAgentPlan({
+    page,
+    rpc,
+    agent,
+    call,
+    waitFor,
+    artifactDir,
+    configPath,
+  });
   const idle = () =>
     waitFor(
       async () => !(await page.getByRole('button', { name: 'Stop run', exact: true }).count()),
@@ -184,6 +205,11 @@ export async function exerciseNativeComposer({
     'Real model refinement result',
     120000,
   );
+  assert.equal(
+    await refine.getByRole('button', { name: 'English', exact: true }).getAttribute('aria-pressed'),
+    'true',
+  );
+  await refine.getByRole('button', { name: 'Refined', exact: true }).click();
   await refine
     .getByRole('region', { name: 'Prompt preview', exact: true })
     .getByText('Build the desktop composer and preserve the requested session boundaries.', {
@@ -193,6 +219,141 @@ export async function exerciseNativeComposer({
   assert.ok(
     providerFixture.calls.some((c) => c.refiner),
     'Refinement calls the production refiner/provider path',
+  );
+  const refinerPrefs = await call('prefs.get', {}, ['prefs.updated']);
+  const refinerIdentity = await rpc('engine.identity', { id: agent.id });
+  let profileOffset = 0;
+  const profileCall = async (type, payload) => {
+    const requestId = crypto.randomUUID();
+    await rpc('profile.send', { message: { type, payload: { ...payload, requestId } } });
+    return await waitFor(async () => {
+      const batch = await rpc('profile.events', { offset: profileOffset });
+      profileOffset = batch.offset;
+      const event = batch.events.find((event) => event.payload?.requestId === requestId);
+      if (event?.type === 'error' || event?.payload?.success === false || event?.payload?.error)
+        throw Error(event.payload.error ?? event.payload.message);
+      return event?.payload;
+    }, `Refiner profile ${type}`);
+  };
+  await profileCall('provider.custom_models.set', {
+    providerId: refinerIdentity.provider,
+    modelId: 'alternate-refiner',
+    customModel: { name: 'Alternate refiner', capabilities: { streaming: true } },
+  });
+  const optionsForRefiner = async () => {
+    const details = refine.locator('.refine-options');
+    if (!(await details.evaluate((element) => element.open)))
+      await details.locator('summary').click();
+    return details;
+  };
+  const refinerCallsBeforeSelection = providerFixture.calls.filter((call) => call.refiner).length;
+  await (await optionsForRefiner())
+    .getByRole('button', { name: 'Choose refiner model', exact: true })
+    .click();
+  const refinerPicker = page.getByRole('dialog', { name: 'Choose a refiner', exact: true });
+  await refinerPicker
+    .getByLabel('Search refiner models', { exact: true })
+    .fill('no-native-model-matches');
+  await refinerPicker
+    .getByText('No available models match the current profile policy.', { exact: true })
+    .waitFor();
+  await refinerPicker
+    .getByLabel('Search refiner models', { exact: true })
+    .fill('alternate-refiner');
+  await refinerPicker
+    .locator('.composer-model-list button')
+    .filter({ hasText: 'alternate-refiner' })
+    .waitFor();
+  await page.screenshot({ path: join(artifactDir, 'native-refiner-picker.png'), fullPage: true });
+  await page.setViewportSize({ width: 800, height: 640 });
+  assert.equal(
+    await refinerPicker.evaluate((element) => element.scrollWidth > element.clientWidth),
+    false,
+  );
+  await page.screenshot({
+    path: join(artifactDir, 'native-refiner-picker-compact.png'),
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 1480, height: 960 });
+  await refinerPicker
+    .locator('.composer-model-list button')
+    .filter({ hasText: 'alternate-refiner' })
+    .click();
+  await refine.waitFor();
+  await optionsForRefiner();
+  assert.equal(
+    await refine.getByLabel('Refiner model', { exact: true }).inputValue(),
+    'alternate-refiner',
+  );
+  assert.equal(
+    providerFixture.calls.filter((call) => call.refiner).length,
+    refinerCallsBeforeSelection,
+    'Choosing a refiner does not invoke it',
+  );
+  assert.equal(
+    (await rpc('engine.identity', { id: agent.id })).model,
+    refinerIdentity.model,
+    'Refiner picker never switches the chat model',
+  );
+  const prefsAfterSelection = await call('prefs.get', {}, ['prefs.updated']);
+  for (const key of ['refinerProvider', 'refinerModel', 'refinerFallbackProfile'])
+    assert.equal(
+      prefsAfterSelection[key],
+      refinerPrefs[key],
+      'Refiner selection never changes profile defaults',
+    );
+  await refine.getByRole('button', { name: 'Retry refinement', exact: true }).click();
+  await refine
+    .getByText(`Refined with ${refinerIdentity.provider} / alternate-refiner`, { exact: true })
+    .waitFor();
+  assert.ok(
+    providerFixture.calls.some((call) => call.refiner && call.model === 'alternate-refiner'),
+  );
+
+  await call(
+    'prefs.update',
+    { fallbackModels: [`${refinerIdentity.provider}/alternate-refiner`] },
+    ['key.operation_result'],
+  );
+  await (await optionsForRefiner())
+    .getByLabel('Refiner provider', { exact: true })
+    .fill('desktop-refiner-unavailable');
+  await refine.getByRole('button', { name: 'Retry refinement', exact: true }).click();
+  await refine
+    .getByRole('alert')
+    .filter({ hasText: 'Check the connection or choose another model' })
+    .waitFor();
+  const beforeFallback = providerFixture.calls.filter((call) => call.refiner).length;
+  await page.screenshot({ path: join(artifactDir, 'native-refiner-recovery.png'), fullPage: true });
+  assert.equal(
+    await composer().inputValue(),
+    '[native-composer-refine] Build the desktop composer.',
+  );
+  await refine
+    .getByRole('button', {
+      name: `Retry with ${refinerIdentity.provider}/alternate-refiner`,
+      exact: true,
+    })
+    .click();
+  await waitFor(
+    async () =>
+      !(await refine.getByRole('alert').count()) &&
+      (await refine.getByRole('button', { name: 'Retry refinement', exact: true }).isEnabled()),
+    'Explicit refiner fallback completion',
+  );
+  assert.ok(providerFixture.calls.filter((call) => call.refiner).length > beforeFallback);
+  assert.equal((await rpc('engine.identity', { id: agent.id })).model, refinerIdentity.model);
+  await refine.getByRole('button', { name: 'Use configured refiner', exact: true }).click();
+  assert.equal(await refine.getByLabel('Refiner model', { exact: true }).inputValue(), '');
+  await call('prefs.update', { fallbackModels: refinerPrefs.fallbackModels ?? [] }, [
+    'key.operation_result',
+  ]);
+  await profileCall('provider.custom_models.remove', {
+    providerId: refinerIdentity.provider,
+    modelId: 'alternate-refiner',
+  });
+  console.log(
+    'PASS: searchable per-request refiner, no selection-time completion/chat-model change, provider failure guidance and explicit actual-model fallback',
   );
   assert.equal(
     await refine.evaluate((el) => el.scrollWidth > el.clientWidth),
@@ -291,6 +452,16 @@ export async function exerciseNativeComposer({
   await page.screenshot({ path: join(artifactDir, 'native-composer-compact.png'), fullPage: true });
   await page.setViewportSize({ width: 1480, height: 960 });
   await page.getByRole('combobox', { name: 'Message delivery mode' }).selectOption('btw');
+  await exerciseNativeTopicBoundary({
+    page,
+    rpc,
+    agent,
+    call,
+    idle,
+    waitFor,
+    artifactDir,
+    providerFixture,
+  });
   console.log(
     'PASS: native model/effort, BTW without interrupt, persistent queue/reload/remove/drain, stop-and-steer, real bilingual refinement approval, draft retention and compact composer',
   );

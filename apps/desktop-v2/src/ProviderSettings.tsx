@@ -2,7 +2,10 @@ import { Check, KeyRound, LoaderCircle, Plus, RefreshCw, Server } from 'lucide-r
 import { useEffect, useRef, useState } from 'react';
 import type { EngineCommand, EngineSend } from './engine-operations';
 import type { EngineState } from './engine-state';
+import { entries } from './engine-values';
+import { ProviderOAuth } from './ProviderOAuth';
 import { buildProviderSave, providerChoices, providerModels } from './provider-settings-model';
+import './provider-management.css';
 
 export function ProviderSettings({
   state,
@@ -35,6 +38,10 @@ export function ProviderSettings({
   const [apiKey, setApiKey] = useState('');
   const [label, setLabel] = useState('desktop');
   const [pending, setPending] = useState(false);
+  const managementBusy = useRef(false);
+  const [confirmation, setConfirmation] = useState<{ providerId: string; label?: string } | null>(
+    null,
+  );
   const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null);
   const providers = providerChoices(state);
   const models = providerModels(state, selected);
@@ -102,6 +109,54 @@ export function ProviderSettings({
       setPending(false);
     }
   };
+  const manage = async (
+    type: 'key.set_active' | 'key.delete' | 'provider.remove',
+    providerId: string,
+    keyLabel?: string,
+  ) => {
+    if (managementBusy.current || pending) return;
+    managementBusy.current = true;
+    setPending(true);
+    setStatus(null);
+    try {
+      await command(type, { providerId, ...(keyLabel ? { label: keyLabel } : {}) }, [
+        'key.operation_result',
+      ]);
+      const saved = await command('providers.saved', {}, ['providers.saved']);
+      const provider = entries(saved['providers']).find((item) => item['id'] === providerId);
+      const keys = entries(provider?.['apiKeys']);
+      const verified =
+        type === 'provider.remove'
+          ? !provider
+          : type === 'key.delete'
+            ? !!provider && !keys.some((item) => item['label'] === keyLabel)
+            : keys.some((item) => item['label'] === keyLabel && item['isActive'] === true);
+      if (!verified)
+        throw Error(
+          'The connection change was acknowledged but could not be verified. Refresh before retrying.',
+        );
+      setConfirmation(null);
+      if (type === 'provider.remove' && selected === providerId) {
+        selectionEdited.current = true;
+        setSelected('');
+        setModel('');
+      }
+      setStatus({
+        ok: true,
+        text:
+          type === 'key.set_active'
+            ? 'Active key changed and verified.'
+            : type === 'key.delete'
+              ? 'Saved key deleted and verified.'
+              : 'Provider connection removed and verified.',
+      });
+    } catch (error) {
+      setStatus({ ok: false, text: error instanceof Error ? error.message : String(error) });
+    } finally {
+      managementBusy.current = false;
+      setPending(false);
+    }
+  };
   return (
     <section className="engine-data-view provider-settings" aria-label="Provider settings">
       <header className="provider-heading">
@@ -128,6 +183,7 @@ export function ProviderSettings({
           {status.ok && <Check size={14} />} {status.text}
         </p>
       )}
+      <ProviderOAuth command={command} send={send} status={state.results['auth.oauth.status']} />
       <div className="provider-grid">
         <section className="provider-card">
           <div className="provider-card-title">
@@ -221,14 +277,89 @@ export function ProviderSettings({
                         <div className="saved-key" key={key.label}>
                           <KeyRound size={11} />
                           <span>{key.label}</span>
+                          {key.authMethod === 'oauth' && <small>SUBSCRIPTION SIGN-IN</small>}
+                          {key.expiresAt && <small>Expires {key.expiresAt}</small>}
                           <code>{key.maskedKey}</code>
                           {key.active && <small>ACTIVE</small>}
+                          <div className="saved-key-actions">
+                            {!key.active && (
+                              <button
+                                type="button"
+                                className="button secondary small"
+                                disabled={pending}
+                                aria-label={`Use key ${key.label} for ${provider.id}`}
+                                onClick={() =>
+                                  void manage('key.set_active', provider.id, key.label)
+                                }
+                              >
+                                Use key
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              className="button secondary small"
+                              disabled={pending}
+                              aria-label={`Delete key ${key.label} for ${provider.id}`}
+                              onClick={() =>
+                                setConfirmation({ providerId: provider.id, label: key.label })
+                              }
+                            >
+                              {key.authMethod === 'oauth' ? 'Remove saved sign-in' : 'Delete key'}
+                            </button>
+                          </div>
                         </div>
                       ))
                     ) : (
                       <p className="provider-hint">
                         No saved API key. The engine may use local or environment authentication.
                       </p>
+                    )}
+                    <button
+                      type="button"
+                      className="provider-remove-button"
+                      disabled={pending}
+                      aria-label={`Remove connection ${provider.id}`}
+                      onClick={() => setConfirmation({ providerId: provider.id })}
+                    >
+                      Remove connection
+                    </button>
+                    {confirmation?.providerId === provider.id && (
+                      <fieldset
+                        className="provider-management-confirm"
+                        aria-label="Confirm connection change"
+                      >
+                        <p>
+                          {confirmation.label
+                            ? `Delete saved key “${confirmation.label}” from ${provider.id}? The engine selects another saved key when the active key is removed.`
+                            : `Remove ${provider.id} and its saved keys and model definitions from this profile? Existing runs may retain their current connection until restarted.`}
+                        </p>
+                        <div className="sdd-actions">
+                          <button
+                            type="button"
+                            className="button secondary"
+                            disabled={pending}
+                            onClick={() => setConfirmation(null)}
+                          >
+                            Keep connection
+                          </button>
+                          <button
+                            type="button"
+                            className="button secondary danger"
+                            disabled={pending}
+                            onClick={() =>
+                              void manage(
+                                confirmation.label ? 'key.delete' : 'provider.remove',
+                                provider.id,
+                                confirmation.label,
+                              )
+                            }
+                          >
+                            {confirmation.label
+                              ? 'Confirm delete key'
+                              : 'Confirm remove connection'}
+                          </button>
+                        </div>
+                      </fieldset>
                     )}
                   </article>
                 ))}

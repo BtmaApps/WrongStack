@@ -10,13 +10,65 @@ import { nextSessionAfterDetach, restoreSessionTabs } from './session-layout';
 import { useAppearance } from './useAppearance';
 
 type Section = 'fleet' | 'projects' | 'activity' | 'engine' | 'project' | 'wrongstack';
+type DraftRevisions = Record<'text' | 'references' | 'attachments' | 'mode', number>;
+interface SavedDraft {
+  text: string;
+  references: ComposerFileReference[];
+  attachments: ComposerAttachment[];
+  mode: SubmitMode;
+  revisions: DraftRevisions;
+}
+function validateSavedDraft(value: SavedDraft): SavedDraft {
+  if (typeof value.text !== 'string') throw Error('Saved draft text is invalid.');
+  if (
+    !Array.isArray(value.references) ||
+    value.references.some((ref) => !ref || typeof ref.path !== 'string' || !ref.path)
+  )
+    throw Error('Saved file references are invalid.');
+  if (
+    !Array.isArray(value.attachments) ||
+    value.attachments.some(
+      (item) =>
+        !item ||
+        typeof item.id !== 'string' ||
+        typeof item.name !== 'string' ||
+        typeof item.data !== 'string' ||
+        typeof item.mediaType !== 'string' ||
+        typeof item.bytes !== 'number',
+    )
+  )
+    throw Error('Saved attachments are invalid.');
+  validateAttachments(value.attachments);
+  if (!['btw', 'queue', 'steer'].includes(value.mode))
+    throw Error('Saved delivery mode is invalid.');
+  if (
+    !value.revisions ||
+    ['text', 'references', 'attachments', 'mode'].some(
+      (key) =>
+        !Number.isSafeInteger(value.revisions[key as keyof DraftRevisions]) ||
+        value.revisions[key as keyof DraftRevisions] < 0,
+    )
+  )
+    throw Error('Saved draft revisions are invalid.');
+  return value;
+}
 export type ProjectPage =
   | 'overview'
   | 'memory'
   | 'kanban'
+  | 'goals'
+  | 'sdd'
   | 'atlas'
   | 'automations'
   | 'chronicle'
+  | 'mailbox'
+  | 'kit'
+  | 'techstack'
+  | 'deadcode'
+  | 'design'
+  | 'reviews'
+  | 'history'
+  | 'roster'
   | 'live-fleet'
   | 'skills'
   | 'files'
@@ -44,29 +96,55 @@ export function useDesktop() {
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [draftModes, setDraftModes] = useState<Record<string, SubmitMode>>({});
   const [draftErrors, setDraftErrors] = useState<Record<string, string>>({});
+  const [draftConflicts, setDraftConflicts] = useState<Record<string, boolean>>({});
+  const draftConflictRef = useRef<Record<string, boolean>>({});
+  const [draftReviews, setDraftReviews] = useState<Record<string, SavedDraft>>({});
+  const [draftReviewErrors, setDraftReviewErrors] = useState<Record<string, string>>({});
+  const [draftReviewLoading, setDraftReviewLoading] = useState<Record<string, boolean>>({});
+  const [draftRecovering, setDraftRecovering] = useState<Record<string, boolean>>({});
   const [draftRetry, setDraftRetry] = useState(0);
   const draftWriter = useMemo(
-    () => new DraftWriter((id, text) => request('draft.save', { id, text }).then(() => {})),
+    () =>
+      new DraftWriter((id, text, expectedRevision) =>
+        request<{ revision: number }>('draft.save', { id, text, expectedRevision }).then(
+          (result) => result.revision,
+        ),
+      ),
     [],
   );
   const referenceWriter = useMemo(
     () =>
-      new DraftWriter((id, text) =>
-        request('draft.save', { id, part: 'references', text }).then(() => {}),
+      new DraftWriter((id, text, expectedRevision) =>
+        request<{ revision: number }>('draft.save', {
+          id,
+          part: 'references',
+          text,
+          expectedRevision,
+        }).then((result) => result.revision),
       ),
     [],
   );
   const attachmentWriter = useMemo(
     () =>
-      new DraftWriter((id, text) =>
-        request('draft.save', { id, part: 'attachments', text }).then(() => {}),
+      new DraftWriter((id, text, expectedRevision) =>
+        request<{ revision: number }>('draft.save', {
+          id,
+          part: 'attachments',
+          text,
+          expectedRevision,
+        }).then((result) => result.revision),
       ),
     [],
   );
   const modeWriter = useMemo(
     () =>
-      new DraftWriter((id, text) =>
-        request('draft.save', { id, part: 'mode', text }).then(() => {}),
+      new DraftWriter((id, text, expectedRevision) =>
+        request<{ revision: number }>('draft.save', {
+          id,
+          part: 'mode',
+          text,
+          expectedRevision,
+        }).then((result) => result.revision),
       ),
     [],
   );
@@ -120,46 +198,60 @@ export function useDesktop() {
     (e: unknown) => setError(String(e instanceof Error ? e.message : e)),
     [],
   );
+  const reportDraftFailure = useCallback(
+    (id: string, error: unknown, message: string) => {
+      if (String(error).includes('DRAFT_CONFLICT')) {
+        draftConflictRef.current[id] = true;
+        setDraftConflicts((current) => ({ ...current, [id]: true }));
+      } else reportError(new Error(message));
+    },
+    [reportError],
+  );
   const setAttachments = useCallback(
     (id: string, items: ComposerAttachment[]) => {
       setComposerAttachments((current) => ({ ...current, [id]: items }));
+      if (draftConflictRef.current[id]) return Promise.resolve(false);
       return native
         ? attachmentWriter.write(id, JSON.stringify(items)).then(
             () => true,
-            () => {
-              reportError(new Error('Could not save draft attachments for restart.'));
+            (error) => {
+              reportDraftFailure(id, error, 'Could not save draft attachments for restart.');
               return false;
             },
           )
         : Promise.resolve(true);
     },
-    [attachmentWriter, reportError],
+    [attachmentWriter, reportDraftFailure],
   );
   const setComposerRefs = useCallback(
     (id: string, refs: ComposerFileReference[]) => {
       setComposerReferences((current) => ({ ...current, [id]: refs }));
+      if (draftConflictRef.current[id]) return Promise.resolve(false);
       return native
         ? referenceWriter.write(id, JSON.stringify(refs)).then(
             () => true,
-            () => {
-              reportError(new Error('Could not save draft file references for restart.'));
+            (error) => {
+              reportDraftFailure(id, error, 'Could not save draft file references for restart.');
               return false;
             },
           )
         : Promise.resolve(true);
     },
-    [referenceWriter, reportError],
+    [referenceWriter, reportDraftFailure],
   );
   const appearance = useAppearance(snapshot.appearance, reportError);
   const setDraftMode = useCallback(
     (id: string, mode: SubmitMode) => {
       setDraftModes((current) => ({ ...current, [id]: mode }));
+      if (draftConflictRef.current[id]) return;
       if (native)
         void modeWriter
           .write(id, mode)
-          .catch(() => reportError(new Error('Could not save delivery mode for restart.')));
+          .catch((error) =>
+            reportDraftFailure(id, error, 'Could not save delivery mode for restart.'),
+          );
     },
-    [modeWriter, reportError],
+    [modeWriter, reportDraftFailure],
   );
   const refresh = useCallback(async () => {
     try {
@@ -184,9 +276,19 @@ export function useDesktop() {
                 'overview',
                 'memory',
                 'kanban',
+                'goals',
+                'sdd',
                 'atlas',
                 'automations',
                 'chronicle',
+                'mailbox',
+                'kit',
+                'techstack',
+                'deadcode',
+                'design',
+                'reviews',
+                'history',
+                'roster',
                 'live-fleet',
                 'skills',
                 'files',
@@ -289,40 +391,22 @@ export function useDesktop() {
   useEffect(() => {
     if (!selected || sessionKind !== 'agent' || Object.hasOwn(drafts, selected)) return;
     let active = true;
-    void request<{
-      text: string;
-      references: ComposerFileReference[];
-      attachments: ComposerAttachment[];
-      mode: SubmitMode;
-    }>('draft.get', { id: selected })
-      .then(({ text, references, attachments, mode }) => {
+    void request<SavedDraft>('draft.get', { id: selected })
+      .then((saved) => {
         if (!active) return;
-        if (
-          !Array.isArray(references) ||
-          references.some((ref) => !ref || typeof ref.path !== 'string' || !ref.path)
-        )
-          throw Error('Saved file references are invalid.');
-        if (
-          !Array.isArray(attachments) ||
-          attachments.some(
-            (item) =>
-              !item ||
-              typeof item.id !== 'string' ||
-              typeof item.name !== 'string' ||
-              typeof item.data !== 'string' ||
-              typeof item.mediaType !== 'string' ||
-              typeof item.bytes !== 'number',
-          )
-        )
-          throw Error('Saved attachments are invalid.');
-        validateAttachments(attachments);
-        if (!['btw', 'queue', 'steer'].includes(mode))
-          throw Error('Saved delivery mode is invalid.');
+        const { text, references, attachments, mode, revisions } = validateSavedDraft(saved);
+        draftWriter.initialize(selected, revisions?.text);
+        referenceWriter.initialize(selected, revisions?.references);
+        attachmentWriter.initialize(selected, revisions?.attachments);
+        modeWriter.initialize(selected, revisions?.mode);
         setComposerReferences((current) => ({ ...current, [selected]: references }));
         setComposerAttachments((current) => ({ ...current, [selected]: attachments }));
         setDraftModes((current) => ({ ...current, [selected]: mode }));
         setDrafts((current) => ({ ...current, [selected]: text }));
         setDraftErrors((current) => ({ ...current, [selected]: '' }));
+        draftConflictRef.current[selected] = false;
+        setDraftConflicts((current) => ({ ...current, [selected]: false }));
+        setDraftRecovering((current) => ({ ...current, [selected]: false }));
       })
       .catch((error: unknown) => {
         if (active)
@@ -334,7 +418,16 @@ export function useDesktop() {
     return () => {
       active = false;
     };
-  }, [selected, sessionKind, draftRetry, drafts]);
+  }, [
+    selected,
+    sessionKind,
+    draftRetry,
+    drafts,
+    draftWriter,
+    referenceWriter,
+    attachmentWriter,
+    modeWriter,
+  ]);
   const jumpToSession = (s: Session) => {
     setOpenSessionIds((ids) => (ids.includes(s.id) ? ids : [...ids, s.id]));
     setSelected(s.id);
@@ -352,19 +445,157 @@ export function useDesktop() {
   const getDraft = (id: string) => drafts[id] ?? '';
   const setDraft = (id: string, text: string) => {
     setDrafts((current) => ({ ...current, [id]: text }));
+    if (draftConflictRef.current[id]) return Promise.resolve(false);
     return native
       ? draftWriter.write(id, text).then(
           () => true,
-          () => {
-            reportError(
-              new Error(
-                'Could not save this draft for restart. Keep the application open or copy your text.',
-              ),
+          (error) => {
+            reportDraftFailure(
+              id,
+              error,
+              'Could not save this draft for restart. Keep the application open or copy your text.',
             );
             return false;
           },
         )
       : Promise.resolve(true);
+  };
+  const projectRequestLock = useRef(false);
+  const prepareProjectRequest = async (projectId: string, id: string, text: string) => {
+    const target = snapshot.sessions.find(
+      (item) => item.id === id && item.projectId === projectId && item.kind === 'agent',
+    );
+    if (!target || projectRequestLock.current)
+      throw Error('Choose an available conversation in this project.');
+    projectRequestLock.current = true;
+    try {
+      let current = drafts[id];
+      if (current === undefined) {
+        const saved = validateSavedDraft(await request<SavedDraft>('draft.get', { id }));
+        current = saved.text;
+        draftWriter.initialize(id, saved.revisions.text);
+        referenceWriter.initialize(id, saved.revisions.references);
+        attachmentWriter.initialize(id, saved.revisions.attachments);
+        modeWriter.initialize(id, saved.revisions.mode);
+        setComposerReferences((all) => ({ ...all, [id]: saved.references }));
+        setComposerAttachments((all) => ({ ...all, [id]: saved.attachments }));
+        setDraftModes((all) => ({ ...all, [id]: saved.mode }));
+      }
+      const saved = await setDraft(id, current.trim() ? `${current}\n\n${text}` : text);
+      // Never send automatically. The user reviews the appended instruction in chat.
+      jumpToSession(target);
+      return saved;
+    } finally {
+      projectRequestLock.current = false;
+    }
+  };
+  const prepareDraftReview = async (id: string) => {
+    setDraftReviewLoading((current) => ({ ...current, [id]: true }));
+    setDraftReviewErrors((current) => ({ ...current, [id]: '' }));
+    try {
+      await Promise.all([
+        draftWriter.drain(id),
+        referenceWriter.drain(id),
+        attachmentWriter.drain(id),
+        modeWriter.drain(id),
+      ]);
+      const saved = validateSavedDraft(await request<SavedDraft>('draft.get', { id }));
+      setDraftReviews((current) => ({ ...current, [id]: saved }));
+    } catch (error) {
+      setDraftReviewErrors((current) => ({
+        ...current,
+        [id]: error instanceof Error ? error.message : String(error),
+      }));
+    } finally {
+      setDraftReviewLoading((current) => ({ ...current, [id]: false }));
+    }
+  };
+  const resolveDraftConflict = async (id: string, choice: 'local' | 'saved') => {
+    const reviewed = draftReviews[id];
+    if (!reviewed) return;
+    const local = {
+      text: drafts[id] ?? '',
+      references: composerReferences[id] ?? [],
+      attachments: composerAttachments[id] ?? [],
+      mode: draftModes[id] ?? 'btw',
+    };
+    setDraftRecovering((current) => ({ ...current, [id]: true }));
+    setDraftReviewErrors((current) => ({ ...current, [id]: '' }));
+    try {
+      await Promise.all([
+        draftWriter.drain(id),
+        referenceWriter.drain(id),
+        attachmentWriter.drain(id),
+        modeWriter.drain(id),
+      ]);
+      let next: SavedDraft;
+      if (choice === 'saved') {
+        next = validateSavedDraft(await request<SavedDraft>('draft.get', { id }));
+        if (
+          Object.keys(reviewed.revisions).some(
+            (key) =>
+              reviewed.revisions[key as keyof DraftRevisions] !==
+              next.revisions[key as keyof DraftRevisions],
+          )
+        )
+          throw Error('DRAFT_CONFLICT: The saved draft changed again. Review the latest version.');
+      } else {
+        validateAttachments(local.attachments);
+        const revisions = await request<DraftRevisions>('draft.replace', {
+          id,
+          draft: local,
+          expectedRevisions: reviewed.revisions,
+        });
+        next = validateSavedDraft({ ...local, revisions });
+      }
+      draftWriter.initialize(id, next.revisions.text);
+      referenceWriter.initialize(id, next.revisions.references);
+      attachmentWriter.initialize(id, next.revisions.attachments);
+      modeWriter.initialize(id, next.revisions.mode);
+      setDrafts((current) => ({ ...current, [id]: next.text }));
+      setComposerReferences((current) => ({ ...current, [id]: next.references }));
+      setComposerAttachments((current) => ({ ...current, [id]: next.attachments }));
+      setDraftModes((current) => ({ ...current, [id]: next.mode }));
+      draftConflictRef.current[id] = false;
+      setDraftConflicts((current) => ({ ...current, [id]: false }));
+      setDraftReviews((current) => {
+        const updated = { ...current };
+        delete updated[id];
+        return updated;
+      });
+    } catch (error) {
+      setDraftReviewErrors((current) => ({
+        ...current,
+        [id]: String(error).includes('DRAFT_CONFLICT')
+          ? 'The saved draft changed again. Review the latest version before choosing.'
+          : error instanceof Error
+            ? error.message
+            : String(error),
+      }));
+    } finally {
+      setDraftRecovering((current) => ({ ...current, [id]: false }));
+    }
+  };
+  const validateDraft = async (id: string): Promise<boolean> => {
+    if (!native) return true;
+    await Promise.all([
+      draftWriter.drain(id),
+      referenceWriter.drain(id),
+      attachmentWriter.drain(id),
+      modeWriter.drain(id),
+    ]);
+    const saved = await request<Record<'text' | 'references' | 'attachments' | 'mode', number>>(
+      'draft.revisions',
+      { id },
+    );
+    const matches =
+      saved.text === draftWriter.revision(id) &&
+      saved.references === referenceWriter.revision(id) &&
+      saved.attachments === attachmentWriter.revision(id) &&
+      saved.mode === modeWriter.revision(id);
+    if (!matches) setDraftConflicts((current) => ({ ...current, [id]: true }));
+    if (!matches) draftConflictRef.current[id] = true;
+    return matches;
   };
   const showFleet = () => {
     setSelected(null);
@@ -402,12 +633,21 @@ export function useDesktop() {
     setDraftMode,
     getDraft,
     draftErrors,
+    draftConflicts,
+    draftRecovering,
+    draftReviews,
+    draftReviewErrors,
+    draftReviewLoading,
+    prepareDraftReview,
+    resolveDraftConflict,
+    validateDraft,
     retryDraft: () => setDraftRetry((value) => value + 1),
     composerReferences,
     composerAttachments,
     setAttachments,
     setComposerRefs,
     setDraft,
+    prepareProjectRequest,
     inputDrafts,
     setInputDraft,
     setSelected,

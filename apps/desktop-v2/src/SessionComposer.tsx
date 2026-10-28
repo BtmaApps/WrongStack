@@ -12,11 +12,12 @@ import {
   Pencil,
   RefreshCw,
   Sparkles,
+  Split,
   Square,
   Terminal,
   X,
 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { ComposerAttachments, useComposerAttachments } from './ComposerAttachments';
 import { type ComposerAttachment, wireAttachments } from './composer-attachments';
 import { dispatchComposer, type SubmitMode, supportsQueue } from './composer-model';
@@ -35,11 +36,16 @@ import { Modal } from './Modal';
 import { NextStepsPanel } from './NextStepsPanel';
 import { PromptRefinement } from './PromptRefinement';
 import { PromptWorkspace } from './PromptWorkspace';
+import { SessionAgentPlan } from './SessionAgentPlan';
 import { SessionContextPanel } from './SessionContextPanel';
 import { SessionModelControls } from './SessionModelControls';
 import { useComposerInput } from './useComposerInput';
 import './composer.css';
 import './composer-resources.css';
+
+const McpComposerPicker = lazy(() =>
+  import('./McpComposerPicker').then((module) => ({ default: module.McpComposerPicker })),
+);
 
 export function SessionComposer({
   state,
@@ -48,6 +54,8 @@ export function SessionComposer({
   draft,
   mode,
   onModeChange,
+  draftConflict,
+  validateDraft,
   onDraftChange,
   onSettings,
   projectId,
@@ -64,6 +72,8 @@ export function SessionComposer({
   draft: string;
   mode: SubmitMode;
   onModeChange: (mode: SubmitMode) => void;
+  draftConflict: boolean;
+  validateDraft: () => Promise<boolean>;
   onDraftChange: (text: string) => Promise<boolean>;
   onSettings: () => void;
   projectId: string;
@@ -72,7 +82,9 @@ export function SessionComposer({
   attachments: ComposerAttachment[];
   onAttachmentsChange: (items: ComposerAttachment[]) => Promise<boolean>;
   onReferencesChange: (refs: ComposerFileReference[]) => Promise<boolean>;
-  onNavigate: (target: 'files' | 'changes' | 'skills' | 'memory' | 'kanban' | 'atlas') => void;
+  onNavigate: (
+    target: 'files' | 'changes' | 'skills' | 'memory' | 'kanban' | 'atlas' | 'mailbox' | 'history',
+  ) => void;
 }) {
   const [sending, setSending] = useState(false),
     [notice, setNotice] = useState(''),
@@ -81,6 +93,7 @@ export function SessionComposer({
       original: string;
       mode: SubmitMode;
       draftAtOpen: string;
+      freshContext?: boolean;
     } | null>(null),
     [restore, setRestore] = useState<{
       text: string;
@@ -108,6 +121,12 @@ export function SessionComposer({
   refsNow.current = references;
   const textarea = useRef<HTMLTextAreaElement>(null);
   const queuePanel = useRef<HTMLDetailsElement>(null);
+  const checkingTopic = useRef(false);
+  const topicResolution = useRef<((choice: boolean | null) => void) | null>(null);
+  const [topicBusy, setTopicBusy] = useState(false);
+  const [agentPlan, setAgentPlan] = useState(false);
+  const [mcpContent, setMcpContent] = useState(false);
+  const [topic, setTopic] = useState<{ reason: string; nextTopic: string } | null>(null);
   const input = useComposerInput({
     draft,
     onDraftChange,
@@ -145,6 +164,8 @@ export function SessionComposer({
     mounted.current = true;
     return () => {
       mounted.current = false;
+      topicResolution.current?.(null);
+      topicResolution.current = null;
     };
   }, []);
   useEffect(() => {
@@ -171,13 +192,17 @@ export function SessionComposer({
     selected: SubmitMode,
     original = text,
     refinedFrom?: string,
+    freshContext = false,
   ) => {
     if (busy.current) throw Error('A submit is already in progress.');
+    if (draftConflict) throw Error('Resolve the draft conflict before sending.');
     busy.current = true;
     setSending(true);
     setError('');
     setNotice('');
     try {
+      if (!(await validateDraft()))
+        throw Error('This draft changed in another window. Resolve the conflict before sending.');
       const attached = [...refsNow.current];
       const files = [...attachmentsNow.current];
       const response = await dispatchComposer(
@@ -204,6 +229,7 @@ export function SessionComposer({
           ? referenceMessage(refinedFrom, attached, projectRoot)
           : undefined,
         wireAttachments(files),
+        freshContext,
       );
       if (!mounted.current) return;
       const cleared = await Promise.all([
@@ -227,6 +253,79 @@ export function SessionComposer({
     } finally {
       busy.current = false;
       if (mounted.current) setSending(false);
+    }
+  };
+  const resolveTopic = (choice: boolean | null) => {
+    const resolve = topicResolution.current;
+    topicResolution.current = null;
+    setTopic(null);
+    resolve?.(choice);
+  };
+  const beginSubmission = async (text: string, selected: SubmitMode, forceRefine = false) => {
+    if (checkingTopic.current || busy.current) return;
+    checkingTopic.current = true;
+    setError('');
+    const draftAtOpen = currentDraft.current;
+    const owner = current.current.sessionId;
+    const referenceState = JSON.stringify(refsNow.current);
+    const mediaState = attachmentsNow.current.map((item) => item.id).join('\0');
+    let freshContext = false;
+    try {
+      const snapshot = current.current;
+      const caps = snapshot.results['session.start']?.['protocolCapabilities'];
+      if (
+        selected === 'btw' &&
+        !snapshot.running &&
+        text.trim() &&
+        Array.isArray(caps) &&
+        caps.includes('context.topic-boundary') &&
+        snapshot.messages.filter((message) => message.role === 'user').length >= 5
+      ) {
+        setTopicBusy(true);
+        let advice: Record<string, unknown> | null = null;
+        try {
+          advice = await command(
+            'topic.advice',
+            { prompt: referenceMessage(text, refsNow.current, projectRoot) },
+            ['topic.advice_result'],
+          );
+        } catch {
+          /* Advice is optional; a failed check must not invent a context reset. */
+        }
+        if (!mounted.current || current.current.sessionId !== owner) return;
+        if (advice?.['suggestNewContext'] === true) {
+          const choice = await new Promise<boolean | null>((resolve) => {
+            topicResolution.current = resolve;
+            setTopic({
+              reason:
+                typeof advice['reason'] === 'string'
+                  ? advice['reason']
+                  : 'This request appears to start a different goal.',
+              nextTopic: typeof advice['nextTopic'] === 'string' ? advice['nextTopic'] : '',
+            });
+          });
+          if (choice === null) return;
+          freshContext = choice;
+        }
+      }
+      if (!mounted.current || current.current.sessionId !== owner) return;
+      setTopicBusy(false);
+      if (
+        currentDraft.current !== draftAtOpen ||
+        JSON.stringify(refsNow.current) !== referenceState ||
+        attachmentsNow.current.map((item) => item.id).join('\0') !== mediaState
+      ) {
+        setNotice('The draft changed during the topic check. Review it and send again.');
+        return;
+      }
+      if ((forceRefine || enhanceEnabled) && text.trim()) {
+        setRefine({ original: text, mode: selected, draftAtOpen, freshContext });
+        return;
+      }
+      await deliver(text, selected, draftAtOpen, undefined, freshContext);
+    } finally {
+      checkingTopic.current = false;
+      if (mounted.current) setTopicBusy(false);
     }
   };
   const runCommand = (action: DesktopCommandAction | 'unknown', argument: string): boolean => {
@@ -266,8 +365,10 @@ export function SessionComposer({
   const submit = () => {
     if (
       (!draft.trim() && !references.length && !attachments.length) ||
+      draftConflict ||
       media.processing ||
       sending ||
+      checkingTopic.current ||
       !state.connected ||
       state.needsSetup ||
       state.inputs.length
@@ -281,11 +382,7 @@ export function SessionComposer({
         ? parsed.action
         : mode;
     const text = parsed?.argument || (draft.startsWith('//') ? draft.slice(1) : draft);
-    if (enhanceEnabled && text.trim()) {
-      setRefine({ original: text, mode: selected, draftAtOpen: draft });
-      return;
-    }
-    void deliver(text, selected, draft).catch(() => {});
+    void beginSubmission(text, selected).catch(() => {});
   };
   const queueAction = async (type: string, payload: Record<string, unknown> = {}) => {
     setQueueBusy(true);
@@ -322,11 +419,13 @@ export function SessionComposer({
   };
   const canSend =
     state.connected &&
+    !draftConflict &&
     !state.hydrating &&
     !state.needsSetup &&
     (!!draft.trim() || !!references.length || !!attachments.length) &&
     !media.processing &&
     !sending &&
+    !topicBusy &&
     !prefBusy;
   const modeLabel =
     mode === 'queue'
@@ -340,6 +439,61 @@ export function SessionComposer({
           : 'Message';
   return (
     <div className="native-composer-stack">
+      {agentPlan && (
+        <SessionAgentPlan state={state} command={command} onClose={() => setAgentPlan(false)} />
+      )}
+      {topicBusy && !topic && (
+        <p className="composer-notice" role="status">
+          <LoaderCircle className="spin" size={13} />
+          Checking whether this request starts a different topic… Your draft is kept.
+        </p>
+      )}
+      {topic && (
+        <Modal onClose={() => resolveTopic(null)}>
+          <div className="composer-dialog">
+            <header>
+              <div>
+                <span className="eyebrow">CONTEXT CHOICE</span>
+                <h2 id="dialog-title">Start a new topic context?</h2>
+              </div>
+              <button
+                type="button"
+                className="icon-button"
+                aria-label="Cancel topic choice"
+                onClick={() => resolveTopic(null)}
+              >
+                <X size={18} />
+              </button>
+            </header>
+            <p>{topic.reason}</p>
+            {topic.nextTopic && (
+              <p>
+                <strong>Suggested topic:</strong> {topic.nextTopic}
+              </p>
+            )}
+            <p>
+              A fresh context keeps earlier conversation details out of the next request. Project
+              files and the recorded session stay available. This choice applies only when you
+              approve sending.
+            </p>
+            <footer>
+              <button type="button" className="button secondary" onClick={() => resolveTopic(null)}>
+                Keep draft
+              </button>
+              <button
+                type="button"
+                className="button secondary"
+                onClick={() => resolveTopic(false)}
+              >
+                Continue in same context
+              </button>
+              <button type="button" className="button primary" onClick={() => resolveTopic(true)}>
+                Use fresh context
+              </button>
+            </footer>
+          </div>
+        </Modal>
+      )}
       {state.hydrating && (
         <p className="composer-notice" role="status">
           Syncing session history… Your draft stays here.
@@ -573,10 +727,21 @@ export function SessionComposer({
               <div>
                 <button
                   type="button"
+                  disabled={sending || topicBusy || !state.connected}
+                  onClick={(event) => {
+                    event.currentTarget.closest('details')?.removeAttribute('open');
+                    setAgentPlan(true);
+                  }}
+                >
+                  <Split size={14} />
+                  Agent model plan
+                </button>
+                <button
+                  type="button"
                   disabled={!canSend || !draft.trim()}
                   onClick={(e) => {
                     e.currentTarget.closest('details')?.removeAttribute('open');
-                    setRefine({ original: draft, mode, draftAtOpen: draft });
+                    void beginSubmission(draft, mode, true).catch(() => {});
                   }}
                 >
                   <Sparkles size={14} /> Refine this draft
@@ -589,6 +754,16 @@ export function SessionComposer({
                   }}
                 >
                   <BookOpen size={14} /> Prompt library
+                </button>
+                <button
+                  type="button"
+                  disabled={sending || draftConflict || !state.connected}
+                  onClick={(event) => {
+                    event.currentTarget.closest('details')?.removeAttribute('open');
+                    setMcpContent(true);
+                  }}
+                >
+                  <FilePlus2 size={14} /> MCP resources & prompts
                 </button>
                 <button
                   type="button"
@@ -738,7 +913,9 @@ export function SessionComposer({
             onDraftChange(text);
             setRefine(null);
           }}
-          onSend={(text, selected) => deliver(text, selected, refine.draftAtOpen, refine.original)}
+          onSend={(text, selected) =>
+            deliver(text, selected, refine.draftAtOpen, refine.original, refine.freshContext)
+          }
         />
       )}
       {promptWorkspace && (
@@ -752,6 +929,24 @@ export function SessionComposer({
             setPromptWorkspace(null);
           }}
         />
+      )}
+      {mcpContent && (
+        <Suspense fallback={<p role="status">Opening MCP content…</p>}>
+          <McpComposerPicker
+            command={command}
+            onClose={() => setMcpContent(false)}
+            onInsert={async (text) => {
+              if (!(await validateDraft()))
+                throw Error('Resolve the saved draft conflict before adding MCP text.');
+              if (!(await onDraftChange(appendToDraft(currentDraft.current, text))))
+                throw Error(
+                  'The draft could not be saved. MCP content remains available for review.',
+                );
+              setMcpContent(false);
+              textarea.current?.focus();
+            }}
+          />
+        </Suspense>
       )}
       {contextPanel && (
         <SessionContextPanel

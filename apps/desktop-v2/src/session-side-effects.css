@@ -1,0 +1,185 @@
+.session-side-effects {
+  padding: 24px;
+  min-height: 0;
+  height: 100%;
+  overflow: auto;
+}
+.session-side-effects > header,
+.effect-inspector > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.session-side-effects h2 {
+  font-size: 26px;
+  margin: 8px 0;
+}
+.session-side-effects p {
+  line-height: 1.8;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.session-side-effects > header p {
+  max-width: 650px;
+}
+.effects-summary {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  flex-wrap: wrap;
+  border-block: 1px solid var(--border);
+  padding: 18px 0;
+  margin: 24px 0;
+}
+.effects-summary strong {
+  font-size: 24px;
+  margin-right: 8px;
+}
+.effects-summary small {
+  margin-left: auto;
+  color: var(--muted);
+}
+.effects-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 18px 0;
+}
+.effects-filters label {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex: 1;
+  min-width: 200px;
+}
+.effects-filters input {
+  width: 100%;
+}
+.effects-filters input,
+.effects-filters select {
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--base);
+  color: var(--text);
+  font: inherit;
+}
+.effects-export {
+  justify-content: flex-end;
+  margin: 16px 0;
+  font-size: 11px;
+  color: var(--muted);
+}
+.effects-window-note {
+  padding: 12px;
+  border-left: 3px solid var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  font-size: 12px;
+}
+.effects-records {
+  display: grid;
+  gap: 10px;
+}
+.effects-records > button {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px 16px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--raised);
+  color: var(--text);
+  text-align: left;
+  min-width: 0;
+}
+.effects-records > button p {
+  grid-column: 1 / -1;
+  margin: 0;
+  white-space: pre-wrap;
+}
+.effects-records > button small {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.effects-records time {
+  font-size: 11px;
+  color: var(--muted);
+}
+.effect-kind {
+  padding: 3px 7px;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  border-radius: 4px;
+  font-size: 11px;
+}
+.effects-empty {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  padding: 56px 20px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  color: var(--muted);
+}
+.effect-inspector {
+  margin-top: 24px;
+  border: 1px solid var(--border);
+  background: var(--raised);
+  padding: 22px;
+  border-radius: 8px;
+}
+.effect-inspector dl {
+  display: grid;
+  grid-template-columns: 135px minmax(0, 1fr);
+  gap: 12px;
+  font-size: 12px;
+}
+.effect-inspector dt {
+  color: var(--muted);
+}
+.effect-inspector dd {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.effect-input dl {
+  display: block;
+}
+.effect-input dl > div {
+  display: grid;
+  grid-template-columns: 135px minmax(0, 1fr);
+  gap: 12px;
+  margin-block: 12px;
+}
+.effect-input pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin: 0;
+  font: inherit;
+}
+@media (max-width: 900px) {
+  .session-side-effects {
+    padding: 16px;
+  }
+  .effects-summary small {
+    margin-left: 0;
+  }
+  .effects-records > button {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .effects-records time {
+    grid-column: 1 / -1;
+  }
+  .effect-inspector dl {
+    grid-template-columns: 1fr;
+  }
+  .effect-input dl > div {
+    grid-template-columns: 1fr;
+  }
+}

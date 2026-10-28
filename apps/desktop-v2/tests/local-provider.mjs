@@ -4,6 +4,14 @@ import { createServer } from 'node:http';
 // An isolated loopback protocol fixture, never an external LLM or a real credential.
 export const fixtureKey = 'desktop-fixture-key-not-a-real-secret-7654';
 export const fixtureModel = 'desktop-fixture-model';
+export function nativeComposerCalls(calls) {
+  return calls.filter(
+    (call) =>
+      call.stream &&
+      !call.refiner &&
+      call.instructionMarkers?.some((marker) => marker.startsWith('[native-composer-')),
+  );
+}
 export const fixtureText = 'Native provider connection verified.';
 export const fixtureMarkdown = `${fixtureText}
 
@@ -73,7 +81,8 @@ export const inputFixture = {
     },
   ],
 };
-export async function startLocalProvider() {
+export async function startLocalProvider({ models = [fixtureModel] } = {}) {
+  const acceptedModels = new Set(models);
   const calls = [];
   const toolResults = [];
   const holds = new Map();
@@ -85,7 +94,11 @@ export async function startLocalProvider() {
         response.end(
           JSON.stringify({
             object: 'list',
-            data: [{ id: fixtureModel, object: 'model', owned_by: 'desktop-test' }],
+            data: [...acceptedModels].map((id) => ({
+              id,
+              object: 'model',
+              owned_by: 'desktop-test',
+            })),
           }),
         );
         return;
@@ -102,7 +115,15 @@ export async function startLocalProvider() {
       const refiner = (body.messages ?? []).some(
         (m) => m.role === 'system' && String(m.content).includes('You are a request refiner'),
       );
-      const composerPrompt = userTexts.findLast((text) => /\[native-composer-/.test(text)) ?? '';
+      const topicAdvisor = (body.messages ?? []).some(
+        (m) =>
+          m.role === 'system' &&
+          String(m.content).includes('You classify whether a new user prompt belongs'),
+      );
+      const topicPrompt = topicAdvisor ? (userTexts.at(-1)?.split('NEW PROMPT:').at(-1) ?? '') : '';
+      const composerPrompt = topicAdvisor
+        ? ''
+        : (userTexts.findLast((text) => /\[native-composer-/.test(text)) ?? '');
       // Engine notes can quote earlier prompts inside a multimodal message.
       // Only a literal current instruction may activate this fixture's hold.
       const composerInstruction =
@@ -120,29 +141,69 @@ export async function startLocalProvider() {
               /^\[native-composer-/.test(text.trim()) ||
               text.includes('[native-composer-nextstep-selected]'),
           ) ?? '';
-      const answer = refiner
-        ? 'Build the desktop composer and preserve the requested session boundaries.\n---\nImplement the desktop composer while keeping the requested session boundaries.'
-        : composerInstruction.trim().startsWith('[native-composer-nextsteps]')
-          ? `${fixtureMarkdown}\n\n<nextsteps>\n1. [native-composer-nextstep-selected] Inspect the result\n2. Run the checks\n</nextsteps>`
-          : fixtureMarkdown;
+      const answer = topicAdvisor
+        ? JSON.stringify({
+            decision: /new topic|yeni konu/i.test(topicPrompt) ? 'new_context' : 'same_context',
+            confidence: 0.99,
+            reason: 'The isolated fixture identified a different goal.',
+            nextTopic: 'Native topic boundary proof',
+          })
+        : refiner
+          ? 'Build the desktop composer and preserve the requested session boundaries.\n---\nImplement the desktop composer while keeping the requested session boundaries.'
+          : composerInstruction.trim().startsWith('[native-composer-nextsteps]')
+            ? `${fixtureMarkdown}\n\n<nextsteps>\n1. [native-composer-nextstep-selected] Inspect the result\n2. Run the checks\n</nextsteps>`
+            : fixtureMarkdown;
       calls.push({
         path: request.url,
         authorized: request.headers.authorization === `Bearer ${fixtureKey}`,
         model: body.model,
         stream: body.stream,
         refiner,
+        topicAdvisor,
+        instructionMarkers: [...new Set(composerInstruction.match(/\[native-[^\]]+\]/g) ?? [])],
+        kanbanContext: (body.messages ?? []).some(
+          (message) =>
+            message.role === 'system' && /kanban|task execution/i.test(String(message.content)),
+        ),
+        freshTopicContext: (body.messages ?? []).some((m) =>
+          String(typeof m.content === 'string' ? m.content : JSON.stringify(m.content)).includes(
+            '[context_boundary:',
+          ),
+        ),
+        topicSameMarker: userTexts.some((text) => text.includes('[native-composer-topic-same]')),
         composerPrompt,
         reasoningEffort: body.reasoning_effort,
+        profilePolicyDraft: userTexts.some((text) =>
+          text.includes('[native-profile-policy-draft]'),
+        ),
       });
       assert.equal(request.url, '/v1/chat/completions');
-      assert.equal(body.model, fixtureModel);
+      assert.ok(acceptedModels.has(body.model), 'The request must use a configured fixture model');
       assert.ok(calls.at(-1).authorized, 'The encrypted saved key must reach the local provider');
       const common = {
         id: `desktop-fixture-response-${calls.length}`,
         created: Math.floor(Date.now() / 1000),
-        model: fixtureModel,
+        model: body.model,
       };
-      const usage = { prompt_tokens: 100, completion_tokens: 5, total_tokens: 105 };
+      const usagePrompt =
+        !refiner && !topicAdvisor
+          ? (userTexts.findLast((text) => /^\[native-usage-(cold|warm)\]/.test(text.trim())) ?? '')
+          : '';
+      const usageCase = usagePrompt.startsWith('[native-usage-warm]')
+        ? 'warm'
+        : usagePrompt.startsWith('[native-usage-cold]')
+          ? 'cold'
+          : undefined;
+      calls.at(-1).usageCase = usageCase;
+      const usage =
+        usageCase === 'warm'
+          ? {
+              prompt_tokens: 600,
+              completion_tokens: 20,
+              total_tokens: 620,
+              prompt_tokens_details: { cached_tokens: 480 },
+            }
+          : { prompt_tokens: 100, completion_tokens: 5, total_tokens: 105 };
       // The real engine may append a context note as a user-role message after
       // tool output. Find the actual test prompt rather than that generated note.
       const lastUser =
@@ -195,6 +256,53 @@ export async function startLocalProvider() {
           content: approvalReply.content,
         });
       const needsApproval = approvalChallenge && !approvalReply;
+      const mcpTaskUser =
+        body.messages?.findLastIndex(
+          (message) =>
+            message.role === 'user' &&
+            (typeof message.content === 'string'
+              ? [message.content]
+              : (message.content ?? [])
+                  .filter((part) => part.type === 'text')
+                  .map((part) => part.text ?? '')
+            ).some((text) => /^\[native-mcp-task-(start|recover|input)\]/.test(text.trim())),
+        ) ?? -1;
+      const mcpTaskCallId = `native-mcp-task-call-${mcpTaskUser}`;
+      const mcpTaskReply =
+        mcpTaskUser >= 0 &&
+        body.messages
+          .slice(mcpTaskUser + 1)
+          .find((message) => message.role === 'tool' && message.tool_call_id === mcpTaskCallId);
+      const needsMcpTask = !refiner && !topicAdvisor && mcpTaskUser >= 0 && !mcpTaskReply;
+      if (needsMcpTask)
+        assert.ok(
+          body.tools?.some((tool) => tool.function?.name === 'mcp__native_tasks__build'),
+          'The real MCP task tool must be offered by the engine',
+        );
+      if (mcpTaskReply) toolResults.push({ challenge: 'mcp-task', content: mcpTaskReply.content });
+      const processUser =
+        body.messages?.findLastIndex(
+          (message) =>
+            message.role === 'user' &&
+            (typeof message.content === 'string'
+              ? [message.content]
+              : (message.content ?? [])
+                  .filter((part) => part.type === 'text')
+                  .map((part) => part.text ?? '')
+            ).some((text) => text.trim().startsWith('[native-process-start]')),
+        ) ?? -1;
+      const processCallId = `native-process-call-${processUser}`;
+      const processReply =
+        processUser >= 0 &&
+        body.messages
+          .slice(processUser + 1)
+          .find((message) => message.role === 'tool' && message.tool_call_id === processCallId);
+      const needsProcess = !refiner && !topicAdvisor && processUser >= 0 && !processReply;
+      if (needsProcess)
+        assert.ok(
+          body.tools?.some((tool) => tool.function?.name === 'bash'),
+          'The real background shell tool must be offered',
+        );
       if (needsApproval)
         assert.ok(
           body.tools?.some((tool) => tool.function?.name === 'exec'),
@@ -235,7 +343,28 @@ export async function startLocalProvider() {
                 }),
               },
             }
-          : undefined;
+          : needsMcpTask
+            ? {
+                index: 0,
+                id: mcpTaskCallId,
+                type: 'function',
+                function: { name: 'mcp__native_tasks__build', arguments: '{}' },
+              }
+            : needsProcess
+              ? {
+                  index: 0,
+                  id: processCallId,
+                  type: 'function',
+                  function: {
+                    name: 'bash',
+                    arguments: JSON.stringify({
+                      command: `"${process.env.SystemRoot ?? 'C:\\Windows'}\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -NoProfile -NonInteractive -Command "Write-Output 'native-process-output-ready'; Start-Sleep -Seconds 240"`,
+                      background: true,
+                      hermetic: true,
+                    }),
+                  },
+                }
+              : undefined;
       if (!body.stream) {
         response.setHeader('content-type', 'application/json');
         response.end(
@@ -272,7 +401,7 @@ export async function startLocalProvider() {
       chunk([
         {
           index: 0,
-          delta: { role: 'assistant', content: refiner ? '' : 'Native provider ' },
+          delta: { role: 'assistant', content: refiner || topicAdvisor ? '' : 'Native provider ' },
           finish_reason: null,
         },
       ]);
@@ -293,7 +422,7 @@ export async function startLocalProvider() {
       chunk([
         {
           index: 0,
-          delta: { content: answer.slice(refiner ? 0 : 'Native provider '.length) },
+          delta: { content: answer.slice(refiner || topicAdvisor ? 0 : 'Native provider '.length) },
           finish_reason: null,
         },
       ]);

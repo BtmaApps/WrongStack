@@ -7,43 +7,85 @@ import {
   editableAutomationJob,
   formatAutomationCommands,
   parseAutomationCommands,
+  VERSIONED_AUTOMATION_TEMPLATES,
 } from '@wrongstack/webui-protocol';
 import { Download, Eye, Pause, Play, Plus, RefreshCw, Save } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { AutomationConfiguration, AutomationTemplates } from './AutomationConfiguration';
+import { AutomationEnvironmentEditor } from './AutomationEnvironmentEditor';
+import { AutomationRunInspector } from './AutomationRunInspector';
 import type { EngineHttp } from './engine-http';
-import { record } from './engine-values';
+import { emptyEngineState } from './engine-state';
+import { Modal } from './Modal';
+import { ProfileModelPicker } from './ProfileModelPicker';
+import { sameSetting } from './settings-save-model';
+import './automation-workspace.css';
 
-export function AutomationWorkspace({ http }: { http: EngineHttp }) {
+type AutomationDraft = {
+  selected: AutomationJobRecord | null;
+  draft: AutomationJobInput;
+  commands: string;
+};
+const activeDrafts = new Map<string, AutomationDraft>(),
+  jobDrafts = new Map<string, AutomationDraft>();
+const fresh = () => ({ ...createAutomationJobInput(), enabled: false });
+export function AutomationWorkspace({ http, projectId }: { http: EngineHttp; projectId: string }) {
+  const cached = useRef(activeDrafts.get(projectId)).current;
   const [data, setData] = useState<AutomationStateView>({
     jobs: [],
     runs: [],
     workerOnline: false,
   });
-  const [selected, setSelected] = useState<AutomationJobRecord | null>(null);
-  const [draft, setDraft] = useState<AutomationJobInput>(() => ({
-    ...createAutomationJobInput(),
-    enabled: false,
-  }));
-  const [commands, setCommands] = useState('');
+  const [selected, setSelected] = useState<AutomationJobRecord | null>(cached?.selected ?? null);
+  const [draft, setDraft] = useState<AutomationJobInput>(cached?.draft ?? fresh());
+  const [commands, setCommands] = useState(cached?.commands ?? '');
   const [preview, setPreview] = useState<AutomationPreview | null>(null);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
-  const [artifact, setArtifact] = useState('');
-  const load = useCallback(
-    async () => setData((await http('/api/automation/state')) as AutomationStateView),
-    [http],
-  );
+  const [inspectedRun, setInspectedRun] = useState<string | null>(null);
+  const [modelPicker, setModelPicker] = useState(false),
+    [environmentOpen, setEnvironmentOpen] = useState(false),
+    [modelBusy, setModelBusy] = useState(false),
+    [reload, setReload] = useState(false);
+  const alive = useRef(true),
+    working = useRef(false),
+    previewSequence = useRef(0),
+    loadSequence = useRef(0);
+  const draftKey = (id?: string) => JSON.stringify([projectId, id ?? '@new']);
+  const dirty =
+    !sameSetting(draft, selected ? editableAutomationJob(selected) : fresh()) ||
+    commands !== formatAutomationCommands(selected?.verification?.commands ?? []);
   useEffect(() => {
+    const snapshot = { selected, draft, commands };
+    activeDrafts.set(projectId, snapshot);
+    if (dirty) jobDrafts.set(draftKey(selected?.id), snapshot);
+    else jobDrafts.delete(draftKey(selected?.id));
+  }, [projectId, selected, draft, commands, dirty]);
+  const load = useCallback(async () => {
+    const sequence = ++loadSequence.current;
+    const next = (await http('/api/automation/state')) as AutomationStateView;
+    if (alive.current && sequence === loadSequence.current) setData(next);
+    return next;
+  }, [http]);
+  useEffect(() => {
+    alive.current = true;
     void load().catch((error: unknown) =>
       setError(String(error instanceof Error ? error.message : error)),
     );
     const timer = setInterval(() => {
       void load().catch(() => {});
     }, 5000);
-    return () => clearInterval(timer);
+    return () => {
+      alive.current = false;
+      previewSequence.current++;
+      loadSequence.current++;
+      clearInterval(timer);
+    };
   }, [load]);
-  const run = async (action: () => Promise<void>) => {
+  const run = async (action: () => Promise<unknown>) => {
+    if (working.current) return;
+    working.current = true;
     setBusy(true);
     setError('');
     setNotice('');
@@ -51,17 +93,21 @@ export function AutomationWorkspace({ http }: { http: EngineHttp }) {
       await action();
       await load();
     } catch (error) {
-      setError(error instanceof Error ? error.message : String(error));
+      if (alive.current) setError(error instanceof Error ? error.message : String(error));
     } finally {
-      setBusy(false);
+      working.current = false;
+      if (alive.current) setBusy(false);
     }
   };
-  const edit = (job: AutomationJobRecord | null) => {
-    setSelected(job);
-    setDraft(job ? editableAutomationJob(job) : { ...createAutomationJobInput(), enabled: false });
-    setCommands(job?.verification ? formatAutomationCommands(job.verification.commands) : '');
+  const edit = (job: AutomationJobRecord | null, discard = false) => {
+    if (discard) jobDrafts.delete(draftKey(job?.id));
+    const restored = discard ? undefined : jobDrafts.get(draftKey(job?.id));
+    previewSequence.current++;
+    setSelected(restored?.selected ?? job);
+    setDraft(restored?.draft ?? (job ? editableAutomationJob(job) : fresh()));
+    setCommands(restored?.commands ?? formatAutomationCommands(job?.verification?.commands ?? []));
     setPreview(null);
-    setNotice('');
+    setNotice(restored ? 'Recovered this job’s unsaved draft from this window.' : '');
   };
   const spec = (): AutomationJobInput => ({
     ...draft,
@@ -75,6 +121,7 @@ export function AutomationWorkspace({ http }: { http: EngineHttp }) {
       : { verification: undefined }),
   });
   const update = <K extends keyof AutomationJobInput>(key: K, value: AutomationJobInput[K]) => {
+    previewSequence.current++;
     setDraft((draft) => ({ ...draft, [key]: value }));
     setPreview(null);
   };
@@ -85,7 +132,9 @@ export function AutomationWorkspace({ http }: { http: EngineHttp }) {
         selected ? 'PUT' : 'POST',
         { spec: spec(), ...(selected ? { expectedRevision: selected.revision ?? 1 } : {}) },
       )) as AutomationJobRecord;
-      edit(saved);
+      if (!alive.current) return;
+      jobDrafts.delete(draftKey(selected?.id));
+      edit(saved, true);
       setNotice('The engine saved this automation.');
     });
   const exportJob = () =>
@@ -107,11 +156,12 @@ export function AutomationWorkspace({ http }: { http: EngineHttp }) {
       const saved = (await http('/api/automation/import', 'POST', {
         document,
       })) as AutomationJobRecord;
-      edit(saved);
+      if (!alive.current) return;
+      edit(saved, true);
       setNotice('Imported as a disabled automation for local review.');
     });
   return (
-    <div className="feature-management">
+    <div className="feature-management automation-workspace">
       <div className="feature-toolbar">
         <span className={`automation-worker ${data.workerOnline ? 'online' : ''}`}>
           {data.workerOnline ? 'Worker online' : 'Worker offline · jobs remain editable'}
@@ -138,7 +188,7 @@ export function AutomationWorkspace({ http }: { http: EngineHttp }) {
             }}
           />
         </label>
-        <button type="button" className="button primary" onClick={() => edit(null)}>
+        <button type="button" className="button primary" disabled={busy} onClick={() => edit(null)}>
           <Plus size={13} />
           New automation
         </button>
@@ -153,6 +203,28 @@ export function AutomationWorkspace({ http }: { http: EngineHttp }) {
           {notice}
         </p>
       )}
+      <p className="automation-draft-status" role="status">
+        {dirty
+          ? 'Unsaved job draft'
+          : selected
+            ? `Saved revision ${selected.revision ?? 1}`
+            : 'New automation'}{' '}
+        · Drafts are kept per job in this window.{' '}
+        <button type="button" className="text-link" disabled={busy} onClick={() => setReload(true)}>
+          Discard draft / reload saved
+        </button>
+      </p>
+      <AutomationTemplates
+        disabled={busy}
+        onApply={(id) => {
+          const item = VERSIONED_AUTOMATION_TEMPLATES.find((entry) => entry.id === id);
+          if (item) {
+            update('name', item.name);
+            update('prompt', item.prompt);
+            update('template', { id: item.id, version: item.version });
+          }
+        }}
+      />
       <div className="feature-split">
         <div>
           <section className="feature-record-list" aria-label="Automation jobs">
@@ -160,6 +232,7 @@ export function AutomationWorkspace({ http }: { http: EngineHttp }) {
               <button
                 type="button"
                 key={job.id}
+                disabled={busy}
                 className={selected?.id === job.id ? 'selected-record' : ''}
                 onClick={() => edit(job)}
               >
@@ -203,23 +276,13 @@ export function AutomationWorkspace({ http }: { http: EngineHttp }) {
                       Cancel run
                     </button>
                   )}
-                  {['output.log', 'verification.json', 'changes.patch'].map((name) => (
-                    <button
-                      type="button"
-                      key={name}
-                      className="text-link"
-                      onClick={() =>
-                        void run(async () => {
-                          const reply = await http(
-                            `/api/automation/runs/${item.id}/artifact?name=${encodeURIComponent(name)}`,
-                          );
-                          setArtifact(String(record(reply)['content'] ?? ''));
-                        })
-                      }
-                    >
-                      {name}
-                    </button>
-                  ))}
+                  <button
+                    type="button"
+                    className="button secondary"
+                    onClick={() => setInspectedRun(item.id)}
+                  >
+                    Inspect run
+                  </button>
                 </div>
               </article>
             ))}
@@ -236,276 +299,413 @@ export function AutomationWorkspace({ http }: { http: EngineHttp }) {
           }}
         >
           <h3>{selected ? 'Edit automation' : 'Create automation'}</h3>
-          <label>
-            Name
-            <input
-              aria-label="Automation name"
-              required
-              value={draft.name}
-              onChange={(event) => update('name', event.target.value)}
-            />
-          </label>
-          <label>
-            Runtime image
-            <input
-              aria-label="Automation image"
-              required
-              value={draft.image}
-              placeholder="wrongstack:latest"
-              onChange={(event) => update('image', event.target.value)}
-            />
-          </label>
-          <label>
-            Instructions
-            <textarea
-              aria-label="Automation instructions"
-              required
-              rows={5}
-              value={draft.prompt}
-              onChange={(event) => update('prompt', event.target.value)}
-            />
-          </label>
-          <div className="feature-field-grid">
-            <label>
-              Provider
-              <input
-                aria-label="Automation provider"
-                value={draft.provider ?? ''}
-                onChange={(event) => update('provider', event.target.value || undefined)}
-              />
-            </label>
-            <label>
-              Model
-              <input
-                aria-label="Automation model"
-                value={draft.model ?? ''}
-                onChange={(event) => update('model', event.target.value || undefined)}
-              />
-            </label>
-            <label>
-              Timeout (minutes)
-              <input
-                aria-label="Automation timeout"
-                type="number"
-                min={1}
-                max={1440}
-                value={draft.timeoutMs / 60000}
-                onChange={(event) => update('timeoutMs', Number(event.target.value) * 60000)}
-              />
-            </label>
-            <label>
-              Maximum iterations
-              <input
-                aria-label="Automation iterations"
-                type="number"
-                min={1}
-                max={1000}
-                value={draft.maxIterations ?? 40}
-                onChange={(event) => update('maxIterations', Number(event.target.value))}
-              />
-            </label>
-          </div>
-          <label>
-            Environment variable names
-            <input
-              aria-label="Automation environment names"
-              value={draft.envNames.join(', ')}
-              placeholder="Names only, separated by commas"
-              onChange={(event) =>
-                update(
-                  'envNames',
-                  event.target.value
-                    .split(',')
-                    .map((name) => name.trim())
-                    .filter(Boolean),
-                )
-              }
-            />
-          </label>
-          <label>
-            Schedule
-            <select
-              aria-label="Automation schedule"
-              value={draft.schedule ? 'cron' : draft.intervalMs ? 'interval' : 'manual'}
-              onChange={(event) => {
-                const kind = event.target.value;
-                setDraft((draft) => ({
-                  ...draft,
-                  schedule:
-                    kind === 'cron'
-                      ? {
-                          type: 'cron',
-                          expression: '0 9 * * *',
-                          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-                        }
-                      : undefined,
-                  intervalMs: kind === 'interval' ? 3600000 : undefined,
-                }));
-              }}
-            >
-              <option value="manual">Manual only</option>
-              <option value="interval">Interval</option>
-              <option value="cron">Cron schedule</option>
-            </select>
-          </label>
-          {draft.intervalMs && (
-            <label>
-              Interval (minutes)
-              <input
-                aria-label="Automation interval"
-                type="number"
-                min={1}
-                value={draft.intervalMs / 60000}
-                onChange={(event) => update('intervalMs', Number(event.target.value) * 60000)}
-              />
-            </label>
+          {draft.template && (
+            <p className="automation-template-label">
+              {VERSIONED_AUTOMATION_TEMPLATES.find((item) => item.id === draft.template?.id)
+                ?.name ?? draft.template.id}{' '}
+              · v{draft.template.version}
+            </p>
           )}
-          {draft.schedule && (
+          <fieldset className="automation-editor-fields" disabled={busy}>
+            <label>
+              Name
+              <input
+                aria-label="Automation name"
+                required
+                value={draft.name}
+                onChange={(event) => update('name', event.target.value)}
+              />
+            </label>
+            <label>
+              Runtime image
+              <input
+                aria-label="Automation image"
+                required
+                readOnly={!!draft.environment}
+                value={draft.image}
+                placeholder="wrongstack:latest"
+                onChange={(event) => update('image', event.target.value)}
+              />
+            </label>
+            <label>
+              Instructions
+              <textarea
+                aria-label="Automation instructions"
+                required
+                rows={5}
+                value={draft.prompt}
+                onChange={(event) => update('prompt', event.target.value)}
+              />
+            </label>
             <div className="feature-field-grid">
               <label>
-                Cron expression
+                Provider
                 <input
-                  aria-label="Automation cron"
-                  value={draft.schedule.expression}
-                  onChange={(event) =>
-                    update('schedule', { ...draft.schedule!, expression: event.target.value })
-                  }
+                  aria-label="Automation provider"
+                  value={draft.provider ?? ''}
+                  onChange={(event) => update('provider', event.target.value || undefined)}
                 />
               </label>
               <label>
-                Timezone
+                Model
                 <input
-                  aria-label="Automation timezone"
-                  value={draft.schedule.timezone}
-                  onChange={(event) =>
-                    update('schedule', { ...draft.schedule!, timezone: event.target.value })
-                  }
+                  aria-label="Automation model"
+                  value={draft.model ?? ''}
+                  onChange={(event) => update('model', event.target.value || undefined)}
+                />
+              </label>
+              <label>
+                Timeout (minutes)
+                <input
+                  aria-label="Automation timeout"
+                  type="number"
+                  min={1}
+                  max={1440}
+                  value={draft.timeoutMs / 60000}
+                  onChange={(event) => update('timeoutMs', Number(event.target.value) * 60000)}
+                />
+              </label>
+              <label>
+                Maximum iterations
+                <input
+                  aria-label="Automation iterations"
+                  type="number"
+                  min={1}
+                  max={1000}
+                  value={draft.maxIterations ?? 40}
+                  onChange={(event) => update('maxIterations', Number(event.target.value))}
                 />
               </label>
             </div>
-          )}
-          <label>
-            Verification commands
-            <textarea
-              aria-label="Automation verification commands"
-              rows={3}
-              value={commands}
-              onChange={(event) => setCommands(event.target.value)}
-              placeholder={'bun run typecheck\nbun run test'}
-            />
-          </label>
-          <label className="feature-checkbox">
-            <input
-              type="checkbox"
-              checked={draft.enabled}
-              onChange={(event) => update('enabled', event.target.checked)}
-            />
-            Enable this automation
-          </label>
-          <label className="feature-checkbox">
-            <input
-              type="checkbox"
-              checked={draft.yolo}
-              onChange={(event) => update('yolo', event.target.checked)}
-            />
-            Use the engine's YOLO permission mode
-          </label>
-          {preview && (
-            <div className="automation-preview">
-              <h4>Launch preview</h4>
-              <p>
-                {preview.nextRunTimes.length
-                  ? preview.nextRunTimes.map((time) => new Date(time).toLocaleString()).join(' · ')
-                  : 'Manual execution'}
-              </p>
-              {preview.missingReferences.length > 0 && (
-                <p>Missing references: {preview.missingReferences.join(', ')}</p>
-              )}
-              <details>
-                <summary>Runtime command</summary>
-                <pre>{preview.args.join(' ')}</pre>
-              </details>
-            </div>
-          )}
-          <div className="feature-actions">
-            <button
-              type="button"
-              className="button secondary"
-              disabled={busy || !draft.name || !draft.image || !draft.prompt}
-              onClick={() =>
-                void run(async () => {
-                  setPreview(
-                    (await http('/api/automation/preview', 'POST', {
-                      spec: spec(),
-                    })) as AutomationPreview,
-                  );
-                })
-              }
-            >
-              <Eye size={13} />
-              Preview
-            </button>
-            <button type="submit" className="button primary" disabled={busy}>
-              <Save size={13} />
-              {busy ? 'Working…' : 'Save automation'}
-            </button>
-          </div>
-          {selected && (
             <div className="feature-actions">
               <button
                 type="button"
                 className="button secondary"
-                disabled={busy}
-                onClick={() =>
-                  void run(async () => {
-                    await http(`/api/automation/jobs/${selected.id}/run`, 'POST', {
-                      expectedRevision: selected.revision ?? 1,
-                    });
-                    setNotice('The engine queued this run.');
-                  })
-                }
+                onClick={() => setModelPicker(true)}
               >
-                <Play size={13} />
-                Queue run
+                Choose automation model
               </button>
               <button
                 type="button"
-                className="button secondary"
-                disabled={busy}
-                onClick={() =>
-                  void run(async () => {
-                    await http(`/api/automation/jobs/${selected.id}/enabled`, 'POST', {
-                      enabled: !selected.enabled,
-                      expectedRevision: selected.revision ?? 1,
-                    });
-                    const latest = (await http('/api/automation/state')) as AutomationStateView;
-                    setData(latest);
-                    const updated = latest.jobs.find((job) => job.id === selected.id);
-                    if (updated) edit(updated);
-                  })
-                }
+                className="text-link"
+                onClick={() => {
+                  update('provider', undefined);
+                  update('model', undefined);
+                }}
               >
-                <Pause size={13} />
-                {selected.enabled ? 'Disable' : 'Enable'}
-              </button>
-              <button
-                type="button"
-                className="button secondary"
-                disabled={busy}
-                onClick={() => void exportJob()}
-              >
-                <Download size={13} />
-                Export
+                Inherit model routing
               </button>
             </div>
-          )}
+            <AutomationConfiguration
+              key={selected?.id ?? '@new'}
+              draft={draft}
+              update={update}
+              onEditEnvironment={() => setEnvironmentOpen(true)}
+            />
+            <label>
+              Environment variable names
+              <input
+                aria-label="Automation environment names"
+                value={draft.envNames.join(', ')}
+                placeholder="Names only, separated by commas"
+                onChange={(event) =>
+                  update(
+                    'envNames',
+                    event.target.value
+                      .split(',')
+                      .map((name) => name.trim())
+                      .filter(Boolean),
+                  )
+                }
+              />
+            </label>
+            <label>
+              Schedule
+              <select
+                aria-label="Automation schedule"
+                value={draft.schedule ? 'cron' : draft.intervalMs ? 'interval' : 'manual'}
+                onChange={(event) => {
+                  previewSequence.current++;
+                  setPreview(null);
+                  const kind = event.target.value;
+                  setDraft((draft) => ({
+                    ...draft,
+                    schedule:
+                      kind === 'cron'
+                        ? {
+                            type: 'cron',
+                            expression: '0 9 * * *',
+                            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                          }
+                        : undefined,
+                    intervalMs: kind === 'interval' ? 3600000 : undefined,
+                  }));
+                }}
+              >
+                <option value="manual">Manual only</option>
+                <option value="interval">Interval</option>
+                <option value="cron">Cron schedule</option>
+              </select>
+            </label>
+            {draft.intervalMs && (
+              <label>
+                Interval (minutes)
+                <input
+                  aria-label="Automation interval"
+                  type="number"
+                  min={1}
+                  value={draft.intervalMs / 60000}
+                  onChange={(event) => update('intervalMs', Number(event.target.value) * 60000)}
+                />
+              </label>
+            )}
+            {draft.schedule && (
+              <div className="feature-field-grid">
+                <label>
+                  Cron expression
+                  <input
+                    aria-label="Automation cron"
+                    value={draft.schedule.expression}
+                    onChange={(event) =>
+                      update('schedule', { ...draft.schedule!, expression: event.target.value })
+                    }
+                  />
+                </label>
+                <label>
+                  Timezone
+                  <input
+                    aria-label="Automation timezone"
+                    value={draft.schedule.timezone}
+                    onChange={(event) =>
+                      update('schedule', { ...draft.schedule!, timezone: event.target.value })
+                    }
+                  />
+                </label>
+              </div>
+            )}
+            <label>
+              Verification commands
+              <textarea
+                aria-label="Automation verification commands"
+                rows={3}
+                value={commands}
+                onChange={(event) => {
+                  previewSequence.current++;
+                  setPreview(null);
+                  setCommands(event.target.value);
+                }}
+                placeholder={'bun run typecheck\nbun run test'}
+              />
+            </label>
+            <label>
+              Verification timeout (seconds)
+              <input
+                aria-label="Automation verification timeout"
+                type="number"
+                min={1}
+                max={3600}
+                value={(draft.verification?.timeoutMs ?? 120000) / 1000}
+                onChange={(event) =>
+                  update('verification', {
+                    commands: draft.verification?.commands ?? [],
+                    timeoutMs: Number(event.target.value) * 1000,
+                  })
+                }
+              />
+            </label>
+            <label className="feature-checkbox">
+              <input
+                type="checkbox"
+                checked={draft.enabled}
+                onChange={(event) => update('enabled', event.target.checked)}
+              />
+              Enable this automation
+            </label>
+            <label className="feature-checkbox">
+              <input
+                type="checkbox"
+                checked={draft.yolo}
+                onChange={(event) => update('yolo', event.target.checked)}
+              />
+              Use the engine's YOLO permission mode
+            </label>
+            {preview && (
+              <div className="automation-preview">
+                <h4>Launch preview</h4>
+                <p>
+                  {preview.nextRunTimes.length
+                    ? preview.nextRunTimes
+                        .map((time) => new Date(time).toLocaleString())
+                        .join(' · ')
+                    : 'Manual execution'}
+                </p>
+                {preview.missingReferences.length > 0 && (
+                  <p>Missing references: {preview.missingReferences.join(', ')}</p>
+                )}
+                <details>
+                  <summary>Runtime command</summary>
+                  <pre>{preview.args.join(' ')}</pre>
+                </details>
+              </div>
+            )}
+            <div className="feature-actions">
+              <button
+                type="button"
+                className="button secondary"
+                disabled={busy || !draft.name || !draft.image || !draft.prompt}
+                onClick={() =>
+                  void run(async () => {
+                    const sequence = ++previewSequence.current;
+                    const result = (await http('/api/automation/preview', 'POST', {
+                      spec: spec(),
+                    })) as AutomationPreview;
+                    if (alive.current && sequence === previewSequence.current) setPreview(result);
+                  })
+                }
+              >
+                <Eye size={13} />
+                Preview
+              </button>
+              <button type="submit" className="button primary" disabled={busy}>
+                <Save size={13} />
+                {busy ? 'Working…' : 'Save automation'}
+              </button>
+            </div>
+            {selected && (
+              <div className="feature-actions">
+                <button
+                  type="button"
+                  className="button secondary"
+                  disabled={busy || dirty}
+                  onClick={() =>
+                    void run(async () => {
+                      await http(`/api/automation/jobs/${selected.id}/run`, 'POST', {
+                        expectedRevision: selected.revision ?? 1,
+                      });
+                      setNotice('The engine queued this run.');
+                    })
+                  }
+                >
+                  <Play size={13} />
+                  Queue run
+                </button>
+                <button
+                  type="button"
+                  className="button secondary"
+                  disabled={busy || dirty}
+                  onClick={() =>
+                    void run(async () => {
+                      await http(`/api/automation/jobs/${selected.id}/enabled`, 'POST', {
+                        enabled: !selected.enabled,
+                        expectedRevision: selected.revision ?? 1,
+                      });
+                      const latest = (await http('/api/automation/state')) as AutomationStateView;
+                      setData(latest);
+                      const updated = latest.jobs.find((job) => job.id === selected.id);
+                      if (updated && alive.current) edit(updated, true);
+                    })
+                  }
+                >
+                  <Pause size={13} />
+                  {selected.enabled ? 'Disable' : 'Enable'}
+                </button>
+                <button
+                  type="button"
+                  className="button secondary"
+                  disabled={busy}
+                  onClick={() => void exportJob()}
+                >
+                  <Download size={13} />
+                  Export
+                </button>
+              </div>
+            )}
+          </fieldset>
         </form>
       </div>
-      {artifact && (
-        <section className="automation-artifact">
-          <h3>Run evidence</h3>
-          <pre>{artifact}</pre>
-        </section>
+      {inspectedRun && data.runs.some((run) => run.id === inspectedRun) && (
+        <AutomationRunInspector
+          key={inspectedRun}
+          run={data.runs.find((run) => run.id === inspectedRun)!}
+          http={http}
+          onClose={() => setInspectedRun(null)}
+        />
+      )}
+      {modelPicker && (
+        <Modal
+          title="Choose automation model"
+          onClose={() => {
+            if (!modelBusy) setModelPicker(false);
+          }}
+        >
+          <ProfileModelPicker
+            session={{
+              ...emptyEngineState,
+              provider: draft.provider ?? '',
+              model: draft.model ?? '',
+            }}
+            title="Choose automation model"
+            description="This selection updates the job draft. It does not switch any conversation."
+            onPick={(provider, model) => {
+              update('provider', provider);
+              update('model', model);
+            }}
+            onClose={() => {
+              if (!modelBusy) setModelPicker(false);
+            }}
+            onBusy={setModelBusy}
+          />
+        </Modal>
+      )}
+      {environmentOpen && (
+        <AutomationEnvironmentEditor
+          {...(draft.environment ? { value: draft.environment } : {})}
+          image={draft.image}
+          onClose={() => setEnvironmentOpen(false)}
+          onApply={(profile) => {
+            update('environment', profile);
+            update('image', profile.image);
+          }}
+        />
+      )}
+      {reload && (
+        <Modal
+          title="Reload automation draft"
+          onClose={() => {
+            if (!busy) setReload(false);
+          }}
+        >
+          <div className="automation-template-review">
+            <h2>Reload saved job?</h2>
+            <p>
+              This discards the current job's unsaved form. Other job drafts remain in this window.
+            </p>
+            <button
+              type="button"
+              className="button secondary"
+              disabled={busy}
+              onClick={() => setReload(false)}
+            >
+              Keep editing automation
+            </button>
+            <button
+              type="button"
+              className="button primary"
+              disabled={busy}
+              onClick={() =>
+                void run(async () => {
+                  const latest = await load();
+                  if (!alive.current) return;
+                  jobDrafts.delete(draftKey(selected?.id));
+                  edit(latest.jobs.find((job) => job.id === selected?.id) ?? null, true);
+                  setReload(false);
+                })
+              }
+            >
+              Discard and reload automation
+            </button>
+          </div>
+        </Modal>
       )}
     </div>
   );

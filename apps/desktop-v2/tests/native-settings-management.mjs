@@ -25,7 +25,7 @@ export async function exerciseNativeSettingsManagement({
       45000,
     );
     if (reply.success === false || reply.ok === false || typeof reply.error === 'string')
-      throw Error(reply.error ?? reply.message ?? 'Operation refused');
+      throw Error(`${type}: ${reply.error ?? reply.message ?? 'Operation refused'}`);
     if (type === 'user_instructions.get' && reply.exists)
       assert.equal(
         reply.mtimeMs,
@@ -254,7 +254,9 @@ export async function exerciseNativeSettingsManagement({
       text: initial.text ?? '',
       baseMtimeMs: doc.mtimeMs ?? null,
     });
-    await call(readTool.disabled ? 'tool.disable' : 'tool.enable', { name: 'read' });
+    const currentTools = (await call('tools.list')).tools;
+    if (currentTools.find((tool) => tool.name === 'read')?.disabled !== readTool.disabled)
+      await call(readTool.disabled ? 'tool.disable' : 'tool.enable', { name: 'read' });
     await call('prefs.update', {
       modelAvailabilitySchedule: initialPrefs.modelAvailabilitySchedule ?? [],
     });

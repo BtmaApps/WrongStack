@@ -68,6 +68,7 @@ export async function dispatchComposer(
   },
   journalRaw?: string,
   images: WSUserMessageImage[] = [],
+  freshContext = false,
 ): Promise<string> {
   const content = text.trim();
   const state = ports.current();
@@ -78,6 +79,16 @@ export async function dispatchComposer(
   const media = images.length ? { images } : {};
   validateAttachmentPayload({ content, journalRaw, ...media }, delivery === 'queue');
   const capabilities = state.results['session.start']?.['protocolCapabilities'];
+  if (
+    freshContext &&
+    (delivery !== 'btw' ||
+      state.running ||
+      !Array.isArray(capabilities) ||
+      !capabilities.includes('context.topic-boundary'))
+  )
+    throw Error(
+      'A fresh topic context requires an idle conversation on a supporting engine. Your draft is kept.',
+    );
   if (
     images.length &&
     delivery !== 'queue' &&
@@ -117,6 +128,10 @@ export async function dispatchComposer(
   const latest = ports.current();
   if (!latest.connected || latest.inputs.length)
     throw Error('The session changed. Your draft is kept.');
+  if (freshContext && latest.running)
+    throw Error(
+      'A turn started while choosing the topic context. Your draft is kept; review it before sending.',
+    );
   if (delivery === 'queue' && supportsQueue(latest)) {
     await ports.command(
       'queue.add',
@@ -139,6 +154,7 @@ export async function dispatchComposer(
     id: crypto.randomUUID(),
     content,
     timestamp: Date.now(),
+    ...(freshContext ? { freshContext: true } : {}),
     ...media,
     ...(journalRaw !== undefined && journalRaw !== content ? { journalRaw } : {}),
   };

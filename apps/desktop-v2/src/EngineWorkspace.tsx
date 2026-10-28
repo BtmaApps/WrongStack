@@ -11,7 +11,7 @@ import {
   Square,
   Workflow,
 } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { AttachmentPreview } from './ComposerAttachments';
 import { CopyButton } from './CopyButton';
 import type { ComposerAttachment } from './composer-attachments';
@@ -28,19 +28,48 @@ import { ProjectSessionTools } from './ProjectSessionTools';
 import { openExternal } from './platform';
 import { SessionActivity } from './SessionActivity';
 import { SessionComposer } from './SessionComposer';
+import { SessionRecovery } from './SessionRecovery';
+import { inlineUsageEstimate } from './session-usage-model';
 import { ToolApprovalCard } from './ToolApprovalCard';
 import type { ProjectPage } from './useDesktop';
 import { useEngine } from './useEngine';
 import { WorkspaceTools } from './WorkspaceTools';
 
-export type EngineTab = 'chat' | 'activity' | 'files' | 'changes' | 'skills' | 'mailbox' | 'kanban';
+const SessionMcpTasks = lazy(() =>
+  import('./SessionMcpTasks').then((module) => ({ default: module.SessionMcpTasks })),
+);
+const SessionProcesses = lazy(() =>
+  import('./SessionProcesses').then((module) => ({ default: module.SessionProcesses })),
+);
+const SessionSideEffects = lazy(() =>
+  import('./SessionSideEffects').then((module) => ({ default: module.SessionSideEffects })),
+);
+const SessionUsage = lazy(() =>
+  import('./SessionUsage').then((module) => ({ default: module.SessionUsage })),
+);
+export type EngineTab =
+  | 'chat'
+  | 'activity'
+  | 'history'
+  | 'mcp-tasks'
+  | 'processes'
+  | 'side-effects'
+  | 'usage'
+  | 'files'
+  | 'changes'
+  | 'skills'
+  | 'mailbox'
+  | 'kanban';
 export type { EngineSend } from './engine-operations';
 export function EngineWorkspace({
   id,
+  sessionTitle,
   onError,
   draft,
   mode,
   onModeChange,
+  draftConflict,
+  validateDraft,
   onDraftChange,
   references,
   attachments,
@@ -55,10 +84,13 @@ export function EngineWorkspace({
   projectRoot,
 }: {
   id: string;
+  sessionTitle: string;
   onError: (error: unknown) => void;
   draft: string;
   mode: SubmitMode;
   onModeChange: (mode: SubmitMode) => void;
+  draftConflict: boolean;
+  validateDraft: () => Promise<boolean>;
   onDraftChange: (text: string) => Promise<boolean>;
   references: ComposerFileReference[];
   attachments: ComposerAttachment[];
@@ -155,7 +187,15 @@ export function EngineWorkspace({
         <button
           type="button"
           className={
-            ['activity', 'skills'].includes(tab)
+            [
+              'activity',
+              'skills',
+              'history',
+              'mcp-tasks',
+              'processes',
+              'side-effects',
+              'usage',
+            ].includes(tab)
               ? 'chosen-tab project-tools-button'
               : 'project-tools-button'
           }
@@ -178,8 +218,28 @@ export function EngineWorkspace({
       {toolsOpen && (
         <WorkspaceTools
           onClose={() => setToolsOpen(false)}
+          onHistory={() => {
+            setTab('history');
+            setToolsOpen(false);
+          }}
           onSkills={() => {
             setTab('skills');
+            setToolsOpen(false);
+          }}
+          onMcpTasks={() => {
+            setTab('mcp-tasks');
+            setToolsOpen(false);
+          }}
+          onProcesses={() => {
+            setTab('processes');
+            setToolsOpen(false);
+          }}
+          onSideEffects={() => {
+            setTab('side-effects');
+            setToolsOpen(false);
+          }}
+          onUsage={() => {
+            setTab('usage');
             setToolsOpen(false);
           }}
           onProject={() => {
@@ -353,6 +413,8 @@ export function EngineWorkspace({
               draft={draft}
               mode={mode}
               onModeChange={onModeChange}
+              draftConflict={draftConflict}
+              validateDraft={validateDraft}
               onDraftChange={onDraftChange}
               onSettings={onSettings}
               references={references}
@@ -369,6 +431,61 @@ export function EngineWorkspace({
             />
           )}
         </>
+      ) : tab === 'side-effects' ? (
+        <Suspense fallback={<p role="status">Opening side-effect history…</p>}>
+          <SessionSideEffects
+            key={state.sessionId}
+            sessionId={state.sessionId}
+            connected={state.connected}
+            command={command}
+            onBack={() => setTab('chat')}
+          />
+        </Suspense>
+      ) : tab === 'usage' ? (
+        <Suspense fallback={<p role="status">Opening conversation usage…</p>}>
+          <SessionUsage
+            key={state.sessionId}
+            sessionId={state.sessionId}
+            sessionTitle={sessionTitle}
+            connected={state.connected}
+            command={command}
+            onBack={() => setTab('chat')}
+          />
+        </Suspense>
+      ) : tab === 'processes' ? (
+        <Suspense fallback={<p role="status">Opening session processes…</p>}>
+          <SessionProcesses
+            key={state.sessionId}
+            sessionId={state.sessionId}
+            connected={state.connected}
+            command={command}
+            onBack={() => setTab('chat')}
+          />
+        </Suspense>
+      ) : tab === 'mcp-tasks' ? (
+        <Suspense fallback={<p role="status">Opening session MCP tasks…</p>}>
+          <SessionMcpTasks
+            key={state.sessionId}
+            sessionId={state.sessionId}
+            connected={state.connected}
+            command={command}
+            pendingReviews={state.approvals.length + state.inputs.length}
+            onBack={() => setTab('chat')}
+          />
+        </Suspense>
+      ) : tab === 'history' ? (
+        <SessionRecovery
+          key={state.sessionId}
+          sessionTitle={sessionTitle}
+          sessionId={state.sessionId}
+          running={state.running}
+          command={command}
+          onBack={() => setTab('chat')}
+          onOpenFile={(path) => {
+            setFileTarget(path);
+            setTab('files');
+          }}
+        />
       ) : tab === 'activity' ? (
         <SessionActivity
           events={state.activity}
@@ -420,6 +537,7 @@ function UserComposerMessage({ text }: { text: string }) {
 function EngineUsage({ state, refresh }: { state: EngineState; refresh: () => void }) {
   const stats = state.results['stats.get'];
   const usage = record(stats?.['usage']);
+  const estimate = inlineUsageEstimate(stats);
   return (
     <div className="native-usage">
       <span>{state.running ? 'RUNNING' : state.connected ? 'READY' : 'CONNECTING'}</span>
@@ -429,7 +547,7 @@ function EngineUsage({ state, refresh }: { state: EngineState; refresh: () => vo
           : 'Usage not reported'}
       </span>
       {typeof usage['output'] === 'number' && <span>{usage['output'].toLocaleString()} out</span>}
-      {typeof stats?.['cost'] === 'number' && <span>Estimated ${stats['cost'].toFixed(4)}</span>}
+      {typeof estimate === 'number' && <span>Estimated ${estimate.toFixed(4)}</span>}
       <button
         type="button"
         title="Refresh engine usage"

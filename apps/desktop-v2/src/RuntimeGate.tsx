@@ -6,10 +6,12 @@ export function RuntimeGate({
   scope,
   projectId,
   children,
+  loadingTitle,
 }: {
   scope: 'project' | 'profile';
   projectId?: string;
   children: React.ReactNode;
+  loadingTitle?: string;
 }) {
   const [status, setStatus] = useState('starting');
   const [error, setError] = useState('');
@@ -72,7 +74,10 @@ export function RuntimeGate({
     return (
       <section className="runtime-state">
         <LoaderCircle className="spin" size={25} />
-        <h2>{scope === 'project' ? 'Opening your project…' : 'Opening WrongStack settings…'}</h2>
+        <h2>
+          {loadingTitle ??
+            (scope === 'project' ? 'Opening your project…' : 'Opening WrongStack settings…')}
+        </h2>
         <p>Your workspace will be ready in a moment.</p>
       </section>
     );

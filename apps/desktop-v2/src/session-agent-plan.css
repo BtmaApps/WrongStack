@@ -1,0 +1,120 @@
+.modal:has(.session-agent-plan) {
+  width: min(940px, calc(100vw - 32px));
+  margin: auto;
+  max-height: calc(100dvh - 48px);
+}
+.session-agent-plan > header,
+.agent-plan-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+.agent-plan-policy {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.agent-plan-switches {
+  border: 0;
+  display: grid;
+  gap: 10px;
+  padding: 16px 0;
+}
+.agent-plan-switches label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+.agent-plan-switches input {
+  width: auto;
+}
+.agent-plan-section {
+  margin: 20px 0 12px;
+}
+.agent-plan-section h3 {
+  font-size: 16px;
+  font-weight: 600;
+}
+.agent-plan-section p {
+  font-size: 12px;
+}
+.agent-plan-section input {
+  width: 80px;
+}
+.agent-plan-routes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.agent-plan-route {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+}
+.agent-plan-route legend {
+  padding: 0 6px;
+  font-weight: 600;
+  font-size: 12px;
+}
+.agent-plan-route label {
+  margin: 0;
+}
+.agent-plan-route button {
+  overflow-wrap: anywhere;
+  justify-content: flex-start;
+}
+.agent-plan-route details {
+  font-size: 12px;
+}
+.agent-plan-route summary {
+  color: var(--muted);
+  cursor: pointer;
+  padding: 6px 0;
+}
+.agent-plan-route details label {
+  margin-top: 8px;
+}
+.agent-plan-role-create {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.agent-plan-confirm {
+  margin: 16px 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+}
+.agent-plan-confirm button {
+  margin: 4px;
+}
+.session-agent-plan footer {
+  flex-wrap: wrap;
+  position: sticky;
+  bottom: -26px;
+  background: var(--raised);
+  border-top: 1px solid var(--border);
+  padding: 12px 0;
+  margin-top: 20px;
+  z-index: 1;
+}
+.session-agent-plan footer > span {
+  margin-right: auto;
+  font-size: 12px;
+  color: var(--muted);
+}
+@media (max-width: 640px) {
+  .agent-plan-routes {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

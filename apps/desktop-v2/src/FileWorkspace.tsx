@@ -29,7 +29,9 @@ import { DiffPreview } from './DiffPreview';
 import type { EngineCommand, EngineSend } from './engine-operations';
 import type { EngineState } from './engine-state';
 import { entries } from './engine-values';
+import { FileContentSearch } from './FileContentSearch';
 import { FileEvidenceDrawer } from './FileEvidenceDrawer';
+import { type FileDraftSnapshot, FileDraftStore } from './file-draft';
 import {
   byteSize,
   type FileNode,
@@ -42,6 +44,12 @@ import {
   reviewText,
 } from './file-model';
 import { GitHistory } from './GitHistory';
+import { GitHunkReview } from './GitHunkReview';
+import { MergeConflictReview } from './MergeConflictReview';
+import { Modal } from './Modal';
+import { useReviewNotes } from './useReviewNotes';
+import './file-draft.css';
+import { fileDraftStorage, request } from './platform';
 
 interface Document {
   content: string;
@@ -65,6 +73,9 @@ interface Chrome {
   includeIgnored: boolean;
 }
 const chrome = new Map<string, Chrome>();
+// A window retains the same draft revisions when its project tools remount.
+// Other native windows have independent stores and must still pass the SQLite revision check.
+const fileDraftStores = new Map<string, FileDraftStore>();
 type Action = {
   kind:
     | 'file'
@@ -83,6 +94,7 @@ type Action = {
 export function FileWorkspace({
   command,
   scopeKey,
+  projectId,
   mode = 'files',
   initialPath = '',
   onReview,
@@ -91,6 +103,7 @@ export function FileWorkspace({
 }: {
   command: EngineCommand;
   scopeKey: string;
+  projectId: string;
   mode?: 'files' | 'changes';
   initialPath?: string;
   onReview?: (text: string) => void;
@@ -116,7 +129,8 @@ export function FileWorkspace({
     [diff, setDiff] = useState<Record<string, unknown> | null>(null),
     [action, setAction] = useState<Action | null>(null),
     [value, setValue] = useState(''),
-    [notes, setNotes] = useState<ReviewNote[]>(cached?.notes ?? []),
+    [hunkReview, setHunkReview] = useState(false),
+    [mergeReview, setMergeReview] = useState(false),
     [menu, setMenu] = useState<{ path: string; x: number; y: number } | null>(null),
     [sort, setSort] = useState('name'),
     [history, setHistory] = useState(false),
@@ -124,6 +138,40 @@ export function FileWorkspace({
     [includeIgnored, setIncludeIgnored] = useState(cached?.includeIgnored ?? false),
     [treeFilter, setTreeFilter] = useState<boolean | null>(null);
   const revealed = useRef('');
+  const reviewNotes = useReviewNotes(projectId, cached?.notes ?? []);
+  const notes = reviewNotes.notes;
+  const contentElement = useRef<HTMLDivElement>(null);
+  const fileReads = useRef(new Set<string>());
+  const searchRevealed = useRef('');
+  const [contentSearch, setContentSearch] = useState(false);
+  const [searchSelection, setSearchSelection] = useState<{
+    path: string;
+    line: number;
+    id: string;
+  } | null>(null);
+  const draftStore = useMemo(() => {
+    const owner = `${projectId}:${key}`;
+    let store = fileDraftStores.get(owner);
+    if (!store) {
+      store = new FileDraftStore(fileDraftStorage(projectId));
+      fileDraftStores.set(owner, store);
+    }
+    return store;
+  }, [projectId, key]);
+  const [recoverable, setRecoverable] = useState<string[]>([]);
+  const [draftConflict, setDraftConflict] = useState<{
+    path: string;
+    snapshot: FileDraftSnapshot;
+  } | null>(null);
+  const refreshDrafts = useCallback(async () => {
+    const result = await request<{ drafts: { path: string }[] }>('file-drafts.list', { projectId });
+    setRecoverable(
+      result.drafts.map((draft) => draft.path).filter((path) => typeof path === 'string'),
+    );
+  }, [projectId]);
+  useEffect(() => {
+    void refreshDrafts().catch((error: unknown) => setError(String(error)));
+  }, [refreshDrafts]);
   const docs = useRef(documents);
   docs.current = documents;
   useEffect(() => {
@@ -180,12 +228,22 @@ export function FileWorkspace({
             ),
         ]),
       ]);
-      if (docs.current[path]) return;
+      if (docs.current[path] || fileReads.current.has(path)) return;
+      fileReads.current.add(path);
       setLoading(path);
       try {
-        const result = await command('files.read', { filePath: path }, ['files.read']);
+        const draft = (await draftStore.load(path)).value;
+        const result = await command('files.read', { filePath: path }, ['files.read']).catch(
+          (error: unknown) => {
+            if (!draft) throw error;
+            setNotice(
+              'The source file is unavailable. Your recovered draft is preserved; copy it before recreating the file.',
+            );
+            return {} as Record<string, unknown>;
+          },
+        );
         let image: string | undefined;
-        if (result['binary'] && /\.(png|jpe?g|gif|webp|avif|bmp)$/i.test(path)) {
+        if (!draft && result['binary'] && /\.(png|jpe?g|gif|webp|avif|bmp)$/i.test(path)) {
           const preview = await command('files.image', { filePath: path }, ['files.image']);
           if (
             typeof preview['dataUrl'] === 'string' &&
@@ -197,22 +255,26 @@ export function FileWorkspace({
         setDocuments((docs) => ({
           ...docs,
           [path]: {
-            content,
-            saved: content,
-            binary: result['binary'] === true,
-            tooLarge: result['tooLarge'] === true,
-            editing: false,
+            content: draft?.content ?? content,
+            saved: draft?.saved ?? content,
+            binary: !draft && result['binary'] === true,
+            tooLarge: !draft && result['tooLarge'] === true,
+            editing: !!draft,
             ...(image ? { image } : {}),
           },
         }));
       } catch (error) {
         setError(error instanceof Error ? error.message : String(error));
       } finally {
+        fileReads.current.delete(path);
         setLoading((current) => (current === path ? '' : current));
       }
     },
-    [command, scopeKey],
+    [command, scopeKey, draftStore],
   );
+  useEffect(() => {
+    if (mode === 'files' && active && !docs.current[active]) void openFile(active);
+  }, [mode, active, openFile]);
   useEffect(() => {
     const identity = `${key}\0${initialPath}`;
     if (
@@ -277,13 +339,36 @@ export function FileWorkspace({
       setBusy(false);
     }
   };
-  const updateDocument = (path: string, patch: Partial<Document>) =>
-    setDocuments((current) =>
-      current[path] ? { ...current, [path]: { ...current[path], ...patch } } : current,
-    );
+  const persistDocument = async (path: string, document: Document) => {
+    if (document.binary || document.tooLarge) return;
+    try {
+      await draftStore.write(path, document.content, document.saved);
+      await refreshDrafts();
+    } catch (error) {
+      setError(`Local draft was not saved: ${String(error)}. Your editor text is still available.`);
+      if (String(error).includes('DRAFT_CONFLICT'))
+        setDraftConflict({ path, snapshot: await draftStore.inspect(path) });
+    }
+  };
+  const updateDocument = (path: string, patch: Partial<Document>) => {
+    const previous = docs.current[path];
+    if (!previous) return;
+    const document = { ...previous, ...patch };
+    docs.current = { ...docs.current, [path]: document };
+    setDocuments(docs.current);
+    if ('content' in patch || 'saved' in patch)
+      void persistDocument(path, document).catch((error: unknown) => setError(String(error)));
+  };
   const save = async (path: string, overwrite = false) => {
     const document = docs.current[path];
     if (!document) return;
+    try {
+      await draftStore.verify(path);
+    } catch (error) {
+      if (String(error).includes('DRAFT_CONFLICT'))
+        setDraftConflict({ path, snapshot: await draftStore.inspect(path) });
+      throw error;
+    }
     const latest = await command('files.read', { filePath: path }, ['files.read']);
     if (latest['binary'] || latest['tooLarge'])
       throw new Error('This file can no longer be saved as text. Your draft is still open.');
@@ -306,6 +391,18 @@ export function FileWorkspace({
       setAction({ kind: 'close', path });
       return;
     }
+    if (discard && document && document.content !== document.saved) {
+      void run(async () => {
+        await draftStore.verify(path);
+        await draftStore.write(path, document.saved, document.saved);
+        docs.current = { ...docs.current, [path]: { ...document, content: document.saved } };
+        setDocuments(docs.current);
+        close(path);
+        await refreshDrafts();
+      });
+      return;
+    }
+    draftStore.forget(path);
     setDocuments((current) => {
       const next = { ...current };
       delete next[path];
@@ -408,7 +505,10 @@ export function FileWorkspace({
         setNotice('Commit created from staged changes.');
       }
       if (action.kind === 'comment')
-        setNotes((notes) => [...notes, { path, line: action.line ?? 1, text: value.trim() }]);
+        await reviewNotes.store.save([
+          ...notes,
+          { path, line: action.line ?? 1, text: value.trim() },
+        ]);
       await refresh();
       setAction(null);
     });
@@ -421,6 +521,40 @@ export function FileWorkspace({
       refreshDiff();
     });
   const document = documents[active];
+  useEffect(() => {
+    if (
+      !searchSelection ||
+      searchSelection.path !== active ||
+      !document ||
+      searchRevealed.current === searchSelection.id
+    )
+      return;
+    const root = contentElement.current;
+    if (!root) return;
+    const editor = root.querySelector('textarea');
+    if (editor) {
+      const offset = document.content
+        .split('\n')
+        .slice(0, searchSelection.line - 1)
+        .reduce((total, line) => total + line.length + 1, 0);
+      editor.focus();
+      editor.setSelectionRange(
+        offset,
+        Math.min(
+          document.content.length,
+          offset + (document.content.split('\n')[searchSelection.line - 1]?.length ?? 0),
+        ),
+      );
+      editor.scrollTop = Math.max(
+        0,
+        (searchSelection.line - 4) * (Number.parseFloat(getComputedStyle(editor).lineHeight) || 20),
+      );
+    } else
+      root
+        .querySelector(`[data-source-line="${searchSelection.line}"]`)
+        ?.scrollIntoView({ block: 'center' });
+    searchRevealed.current = searchSelection.id;
+  }, [searchSelection, active, document]);
   const isDirty = Boolean(document && document.content !== document.saved);
   const children = folder ? (all.find((node) => node.path === folder)?.children ?? []) : tree;
   const visible = (
@@ -480,6 +614,16 @@ export function FileWorkspace({
             onChange={(event) => setSearch(event.target.value)}
           />
         </div>
+        {mode === 'files' && (
+          <button
+            type="button"
+            className="button secondary small"
+            onClick={() => setContentSearch(true)}
+          >
+            <Search size={13} />
+            Search contents
+          </button>
+        )}
         <button type="button" className="button secondary small" onClick={() => setHistory(true)}>
           <GitBranch size={13} />
           History
@@ -537,6 +681,22 @@ export function FileWorkspace({
           <Eye size={15} />
         </button>
       </header>
+      {contentSearch && (
+        <FileContentSearch
+          command={command}
+          folder={folder}
+          includeIgnored={includeIgnored}
+          onClose={() => setContentSearch(false)}
+          onOpen={(path, line) => {
+            setContentSearch(false);
+            setSearchSelection({ path, line, id: crypto.randomUUID() });
+            void openFile(path);
+            setNotice(
+              `Search match: ${path}, line ${line}. Search results reflect saved files; an open draft may differ.`,
+            );
+          }}
+        />
+      )}
       {error && (
         <p className="file-workspace-error" role="alert">
           {error}
@@ -547,6 +707,131 @@ export function FileWorkspace({
           <Check size={12} />
           {notice}
         </p>
+      )}
+      {recoverable.length > 0 && (
+        <details className="file-draft-recovery">
+          <summary>{recoverable.length} local file drafts · saved on this device</summary>
+          <p>
+            These edits have not been written to project files. Open a draft to review or save it.
+            {recoverable.length === 500 &&
+              ' Showing the most recent 500 drafts; other drafts remain stored and are recovered when their file is opened.'}
+          </p>
+          {recoverable.map((path) => (
+            <button
+              key={path}
+              type="button"
+              className="button secondary"
+              onClick={() => void openFile(path)}
+            >
+              {path}
+            </button>
+          ))}
+        </details>
+      )}
+      {draftConflict && (
+        <Modal
+          onClose={() => {
+            if (!busy) setDraftConflict(null);
+          }}
+        >
+          <div className="file-draft-comparison">
+            <h2 id="dialog-title">File draft changed in another window</h2>
+            <p>
+              <strong>{draftConflict.path}</strong>
+            </p>
+            <p>
+              Compare the saved local draft with your editor before choosing which version to keep.
+              Project files are unchanged.
+            </p>
+            <div className="file-draft-versions">
+              <label>
+                Your editor
+                <textarea
+                  aria-label="Your editor"
+                  readOnly
+                  value={documents[draftConflict.path]?.content ?? ''}
+                />
+              </label>
+              <label>
+                Stored draft
+                <textarea
+                  aria-label="Stored draft"
+                  readOnly
+                  value={
+                    draftConflict.snapshot.value?.content ?? 'No unsaved draft remains in storage.'
+                  }
+                />
+              </label>
+            </div>
+            {error && (
+              <p role="alert" className="file-workspace-error">
+                {error}
+              </p>
+            )}
+            <footer>
+              <button
+                type="button"
+                className="button secondary"
+                onClick={() => setDraftConflict(null)}
+              >
+                Keep editing locally
+              </button>
+              <button
+                type="button"
+                className="button secondary"
+                disabled={busy}
+                onClick={() =>
+                  void run(async () => {
+                    const { path, snapshot } = draftConflict;
+                    const document = docs.current[path];
+                    if (!document) return;
+                    try {
+                      await draftStore.resolve(
+                        path,
+                        snapshot.revision,
+                        document.content,
+                        document.saved,
+                      );
+                    } catch (error) {
+                      if (String(error).includes('DRAFT_CONFLICT'))
+                        setDraftConflict({ path, snapshot: await draftStore.inspect(path) });
+                      throw error;
+                    }
+                    setDraftConflict(null);
+                    await refreshDrafts();
+                    setNotice(
+                      'Your local version is now stored as a draft. Project files are unchanged.',
+                    );
+                  })
+                }
+              >
+                Keep my draft
+              </button>
+              <button
+                type="button"
+                className="button primary"
+                disabled={busy}
+                onClick={() =>
+                  void run(async () => {
+                    const { path, snapshot } = draftConflict;
+                    const latest = await draftStore.inspect(path);
+                    if (latest.revision !== snapshot.revision) {
+                      setDraftConflict({ path, snapshot: latest });
+                      throw Error('The stored draft changed again. Review the latest version.');
+                    }
+                    draftStore.forget(path);
+                    delete docs.current[path];
+                    setDocuments({ ...docs.current });
+                    setDraftConflict(null);
+                    await openFile(path);
+                  })
+                }
+              >
+                Use stored draft
+              </button>
+            </footer>
+          </div>
+        </Modal>
       )}
       <div className="file-workspace-body">
         <aside className="file-navigation">
@@ -647,7 +932,14 @@ export function FileWorkspace({
                           <button
                             type="button"
                             aria-label={`Review ${String(file['path'])}`}
-                            onClick={() => void openFile(fromGitPath(String(file['path'])))}
+                            onClick={() => {
+                              const path = fromGitPath(String(file['path']));
+                              if (file['status'] === 'U' || file['status'] === 'D') {
+                                setActive(path);
+                                setError('');
+                                setNotice('');
+                              } else void openFile(path);
+                            }}
                           >
                             <FileDiff size={14} />
                             <span>
@@ -716,6 +1008,22 @@ export function FileWorkspace({
                 </button>
               </div>
             ))}
+            {active && !documents[active] && (
+              <div className="file-tab-current">
+                <button
+                  type="button"
+                  aria-label={`Open file tab ${active}`}
+                  title={active}
+                  onClick={() => setActive(active)}
+                >
+                  <FileDiff size={13} />
+                  {fileName(active)}
+                </button>
+                <button type="button" aria-label={`Close ${active}`} onClick={() => setActive('')}>
+                  <X size={12} />
+                </button>
+              </div>
+            )}
           </nav>
           {active ? (
             <>
@@ -769,7 +1077,16 @@ export function FileWorkspace({
                   <MoreHorizontal size={16} />
                 </button>
               </div>
-              <div className="file-document native-file-content">
+              <div className="file-document native-file-content" ref={contentElement}>
+                {mode === 'changes' && change?.['status'] === 'U' && (
+                  <button
+                    type="button"
+                    className="button secondary"
+                    onClick={() => setMergeReview(true)}
+                  >
+                    Resolve merge conflict
+                  </button>
+                )}
                 {loading === active && !document ? (
                   <div className="file-quiet-state">
                     <LoaderCircle size={20} className="spin" />
@@ -785,15 +1102,27 @@ export function FileWorkspace({
                         : 'File exceeds the text review limit.'}
                     </p>
                   ) : diff ? (
-                    <DiffPreview
-                      before={String(diff['oldText'] ?? '')}
-                      after={String(diff['newText'] ?? '')}
-                      path={active}
-                      onComment={(line) => {
-                        setAction({ kind: 'comment', path: active, line });
-                        setValue('');
-                      }}
-                    />
+                    <>
+                      {change?.['status'] !== 'U' && (
+                        <button
+                          type="button"
+                          className="button secondary"
+                          disabled={busy}
+                          onClick={() => setHunkReview(true)}
+                        >
+                          Review & stage hunks
+                        </button>
+                      )}
+                      <DiffPreview
+                        before={String(diff['oldText'] ?? '')}
+                        after={String(diff['newText'] ?? '')}
+                        path={active}
+                        onComment={(line) => {
+                          setAction({ kind: 'comment', path: active, line });
+                          setValue('');
+                        }}
+                      />
+                    </>
                   ) : (
                     <p className="file-quiet-state">Reading repository changes…</p>
                   )
@@ -834,7 +1163,11 @@ export function FileWorkspace({
                 ) : document ? (
                   <section className="file-source-code" aria-label={`Source of ${active}`}>
                     {document.content.split('\n').map((line, index) => (
-                      <div className="file-source-line" key={index}>
+                      <div
+                        className={`file-source-line${searchSelection?.path === active && searchSelection.line === index + 1 ? ' search-match' : ''}`}
+                        data-source-line={index + 1}
+                        key={index}
+                      >
                         <span aria-hidden="true">{index + 1}</span>
                         <code>
                           <HighlightLine text={line} />
@@ -973,15 +1306,30 @@ export function FileWorkspace({
               </div>
             </>
           )}
-          {mode === 'changes' && notes.length > 0 && (
+          {mode === 'changes' && (
             <section className="file-review-tray">
               <header>
                 <strong>{notes.length} review notes</strong>
+                <button
+                  type="button"
+                  disabled={reviewNotes.busy}
+                  onClick={() => void reviewNotes.store.load()}
+                >
+                  Reload saved review notes
+                </button>
                 <button type="button" onClick={review}>
                   <Copy size={13} />
                   {onReview ? 'Use in conversation' : 'Copy review'}
                 </button>
               </header>
+              {reviewNotes.error && <p role="alert">{reviewNotes.error}</p>}
+              <small>
+                {reviewNotes.busy
+                  ? 'Saving or loading review notes…'
+                  : reviewNotes.ready
+                    ? 'Saved per project on this desktop. Line anchors refer to the reviewed file version.'
+                    : 'Review notes are unavailable.'}
+              </small>
               <div>
                 {notes.map((note, index) => (
                   <article key={index}>
@@ -992,7 +1340,10 @@ export function FileWorkspace({
                     <button
                       type="button"
                       aria-label={`Remove review note ${index + 1}`}
-                      onClick={() => setNotes((notes) => notes.filter((_, i) => i !== index))}
+                      disabled={!reviewNotes.ready || reviewNotes.busy}
+                      onClick={() =>
+                        void run(() => reviewNotes.store.save(notes.filter((_, i) => i !== index)))
+                      }
                     >
                       <X size={12} />
                     </button>
@@ -1003,6 +1354,28 @@ export function FileWorkspace({
           )}
         </div>
       </div>
+      {hunkReview && active && (
+        <GitHunkReview
+          path={asGitPath(active)}
+          command={command}
+          onClose={() => setHunkReview(false)}
+          onApplied={() => {
+            void refresh();
+            refreshDiff();
+          }}
+        />
+      )}
+      {mergeReview && active && (
+        <MergeConflictReview
+          path={asGitPath(active)}
+          command={command}
+          onClose={() => setMergeReview(false)}
+          onResolved={() => {
+            void refresh();
+            refreshDiff();
+          }}
+        />
+      )}
       {menu && (
         <>
           <button

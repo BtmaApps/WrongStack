@@ -85,6 +85,12 @@ export const desktopCommands = [
   },
   { name: '/history', description: 'Read this project’s prompt journal', action: 'journal' },
   {
+    name: '/sessions',
+    aliases: ['/session-history'],
+    description: 'Browse this project’s recorded conversations',
+    action: 'history',
+  },
+  {
     name: '/context',
     aliases: ['/debug'],
     description: 'Inspect this session’s context and instructions',
@@ -138,6 +144,7 @@ export const desktopCommands = [
   },
   { name: '/memory', description: 'Open project SAGE memory', action: 'memory' },
   { name: '/kanban', description: 'Open the project task board', action: 'kanban' },
+  { name: '/mailbox', description: 'Open project correspondence and receipts', action: 'mailbox' },
   { name: '/atlas', description: 'Open project Code Atlas', action: 'atlas' },
   {
     name: '/settings',
