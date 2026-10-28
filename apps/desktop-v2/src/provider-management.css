@@ -1,0 +1,36 @@
+.saved-key-actions {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+}
+.saved-provider-list .saved-key-actions button {
+  width: auto;
+  display: inline-flex;
+  font-size: 10px;
+  padding: 5px 8px;
+}
+.saved-provider-list .provider-remove-button {
+  display: inline-flex;
+  width: auto;
+  margin-top: 14px;
+  padding: 5px 0;
+  font-size: 11px;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+}
+.provider-management-confirm {
+  padding: 12px;
+  margin-top: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--sidebar);
+}
+.provider-management-confirm p {
+  font-size: 12px;
+  line-height: 1.6;
+}
+.saved-provider-list .provider-management-confirm button {
+  width: auto;
+  display: inline-flex;
+}

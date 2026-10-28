@@ -1,0 +1,55 @@
+.modal:has(.mcp-connection-editor) {
+  width: min(760px, calc(100vw - 32px));
+  max-height: calc(100dvh - 48px);
+  margin: auto;
+}
+.mcp-connection-editor > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.mcp-connection-editor h2 {
+  font-size: 25px;
+  margin: 8px 0 16px;
+}
+.mcp-connection-editor :where(p, small, li) {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.8;
+}
+.mcp-connection-editor > fieldset {
+  border: 0;
+  min-width: 0;
+  padding: 0;
+}
+.mcp-connection-editor > footer {
+  position: sticky;
+  bottom: -26px;
+  padding: 14px 0;
+  margin-top: 20px;
+  border-top: 1px solid var(--border);
+  background: var(--raised);
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.mcp-connection-editor :where(summary) {
+  margin-top: 20px;
+  cursor: pointer;
+  font-size: 12px;
+}
+.mcp-connection-editor :where(ul) {
+  padding-left: 20px;
+  margin: 10px 0;
+}
+.mcp-connection-review {
+  padding: 16px;
+  margin-top: 20px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+}
+.mcp-connection-review > button {
+  margin: 8px 8px 0 0;
+}

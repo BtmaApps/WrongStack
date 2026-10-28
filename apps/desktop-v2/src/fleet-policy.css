@@ -1,0 +1,96 @@
+.fleet-policy-settings {
+  display: grid;
+  gap: 22px;
+}
+.fleet-policy-settings :where(p, small) {
+  color: var(--muted);
+  line-height: 1.8;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+.fleet-policy-settings h3 {
+  margin: 5px 0;
+  font-size: 17px;
+}
+.fleet-capacity-card {
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 22px;
+  background: var(--raised);
+}
+.fleet-capacity-card > header {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  color: var(--accent);
+}
+.fleet-capacity-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  margin-top: 18px;
+}
+.fleet-capacity-fields label {
+  display: grid;
+  align-content: start;
+  gap: 9px;
+  min-width: 0;
+}
+.fleet-capacity-fields strong {
+  font-size: 12px;
+}
+.fleet-capacity-fields :where(input, select) {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 11px 12px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--base);
+  color: var(--text);
+  font: inherit;
+}
+.fleet-companions,
+.fleet-next-step-policy {
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 22px;
+}
+.fleet-policy-switch {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 0;
+  border-top: 1px solid var(--border);
+}
+.fleet-policy-switch > svg {
+  color: var(--accent);
+  flex: 0 0 auto;
+}
+.fleet-policy-switch > span {
+  flex: 1;
+  min-width: 0;
+}
+.fleet-policy-switch strong {
+  display: block;
+  font-size: 13px;
+}
+.fleet-policy-switch small {
+  display: block;
+  margin: 5px 0;
+}
+.fleet-policy-switch em {
+  font-size: 10px;
+  font-style: normal;
+  color: var(--subtle);
+}
+.fleet-policy-switch input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+  flex: 0 0 auto;
+}
+@media (max-width: 1050px) {
+  .fleet-capacity-fields {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,88 @@
+.model-visibility {
+  min-width: 0;
+}
+.model-visibility-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: end;
+  margin-bottom: 16px;
+}
+.model-visibility-toolbar label {
+  display: grid;
+  gap: 8px;
+  flex: 1;
+  min-width: 160px;
+}
+.model-visibility-toolbar :is(input, select) {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface);
+  color: inherit;
+  font: inherit;
+}
+.model-visibility-list {
+  display: grid;
+  gap: 10px;
+  max-height: 580px;
+  overflow: auto;
+  margin: 18px 0;
+}
+.model-visibility-list article {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+}
+.model-visibility-list article > div {
+  flex: 1;
+  min-width: 180px;
+  display: grid;
+  gap: 7px;
+}
+.model-visibility-list code {
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+.model-visibility-list span {
+  font-size: 11px;
+  color: var(--muted);
+}
+.model-visibility-rule {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.model-visibility-rule code {
+  overflow-wrap: anywhere;
+}
+.provider-visibility-control {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 18px;
+  margin: 20px 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.provider-visibility-copy {
+  flex: 1;
+  min-width: 180px;
+}
+.provider-visibility-control p {
+  margin: 8px 0 0;
+}

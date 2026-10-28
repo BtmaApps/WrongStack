@@ -1,0 +1,54 @@
+.brain-target-editor {
+  min-width: 0;
+}
+.brain-target-row {
+  padding: 18px 0;
+  border-block-start: 1px solid var(--border);
+  margin: 18px 0;
+}
+.brain-target-row > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+}
+.brain-target-actions {
+  display: flex;
+  gap: 6px;
+}
+.brain-target-fields,
+.brain-voter-policy {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 14px 0;
+}
+.brain-target-editor label {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 8px;
+  font-size: 11px;
+}
+.brain-target-editor :where(input, select) {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  color: var(--text);
+  background: var(--base);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 11px;
+  font: inherit;
+}
+.brain-pool-strategy {
+  max-width: 300px;
+  margin: 18px 0;
+}
+@media (max-width: 1150px) {
+  .brain-target-fields,
+  .brain-voter-policy {
+    grid-template-columns: 1fr;
+  }
+}

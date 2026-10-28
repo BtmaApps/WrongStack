@@ -1,0 +1,84 @@
+.execution-policy {
+  display: grid;
+  gap: 22px;
+  margin-top: 22px;
+  min-width: 0;
+}
+.execution-policy article {
+  border: 1px solid var(--border);
+  background: var(--raised);
+  border-radius: 7px;
+  padding: 22px;
+}
+.execution-policy header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: var(--accent);
+}
+.execution-policy h3 {
+  font-size: 17px;
+  margin: 6px 0;
+}
+.execution-policy p,
+.execution-policy small {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+.execution-mode-card > label {
+  display: grid;
+  gap: 9px;
+  font-size: 12px;
+  margin: 18px 0;
+}
+.execution-mode-card select {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--base);
+  color: var(--text);
+  font: inherit;
+  width: 100%;
+  min-width: 0;
+}
+.execution-mode-note {
+  padding: 12px;
+  border-left: 3px solid var(--accent);
+  background: var(--accent-soft);
+}
+.execution-kind {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 17px 0;
+  border-top: 1px solid var(--border);
+}
+.execution-kind > span {
+  min-width: 0;
+}
+.execution-kind strong {
+  display: block;
+  font-size: 12px;
+}
+.execution-kind small {
+  display: block;
+  margin-top: 5px;
+}
+.execution-kind em {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  color: var(--muted);
+  font-style: normal;
+  margin-top: 6px;
+}
+.execution-kind input {
+  height: 18px;
+  width: 18px;
+  flex: 0 0 auto;
+  accent-color: var(--accent);
+}
