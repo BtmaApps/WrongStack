@@ -195,11 +195,16 @@ export function evaluateContractGraph(
   for (const edge of graph.edges) {
     if (edge.type !== 'conflicts_with' || edge.enforcement !== 'blocking') continue;
     if (!reachable.has(edge.from) && !reachable.has(edge.to)) continue;
-    const fromState = stateByNode.get(edge.from);
-    const toState = stateByNode.get(edge.to);
-    const settled = [fromState, toState].every(
-      (state) => state === 'satisfied' || state === 'resolved' || state === 'waived',
-    );
+    const isEndpointSettled = (endpointId: string): boolean => {
+      const state = stateByNode.get(endpointId);
+      if (state === 'satisfied' || state === 'resolved') return true;
+      if (state === 'waived') {
+        const node = graph.nodes.find((candidate) => candidate.id === endpointId);
+        return Boolean(node && validWaiver(node));
+      }
+      return false;
+    };
+    const settled = isEndpointSettled(edge.from) && isEndpointSettled(edge.to);
     if (!settled) {
       issues.push({
         code: 'conflict-unresolved',
@@ -264,7 +269,7 @@ function effectiveNodeState(
     if (metric.status === 'met') return 'satisfied';
     if (metric.status === 'missed') return 'violated';
     if (metric.status === 'waived') return node.waiver ? 'waived' : 'violated';
-    return 'active';
+    return node.state === 'waived' ? 'waived' : 'active';
   }
   if (node.kind === 'verification' && node.enforcement === 'blocking') {
     issues.push({

@@ -8,8 +8,8 @@
  * - verify returns a structured KanbanVerificationCheckResult
  */
 import { describe, expect, it } from 'vitest';
-import { FileMatchesPlugin } from '../../../src/verification/plugins/file-matches.js';
 import type { KanbanCheck } from '../../../src/types.js';
+import { FileMatchesPlugin } from '../../../src/verification/plugins/file-matches.js';
 import type { VerificationContext } from '../../../src/verification/verification-context.js';
 
 describe('FileMatchesPlugin', () => {
@@ -130,6 +130,35 @@ describe('FileMatchesPlugin', () => {
       const result = await plugin.verify(checkFor('bar'), contextWith('foo\nbar'));
       expect(result.status).toBe('passed');
       expect(result.evidence.lineNumbers).toContain(2);
+    });
+
+    it('rejects description fallbacks without a should/must/contains delimiter and non-string JSON notes fields (F821)', async () => {
+      const noDelim = await plugin.verify(
+        {
+          id: 'fm-f821-1',
+          type: 'file_matches',
+          description: 'README.md',
+        } as unknown as KanbanCheck,
+        contextWith('# README.md\nProject documentation'),
+      );
+      expect(noDelim.status).toBe('error');
+
+      for (const badNotes of [
+        '{"file":"README.md","pattern":["Project"]}',
+        '{"file":"README.md","pattern":"Project","flags":123}',
+        '123',
+      ]) {
+        const res = await plugin.verify(
+          {
+            id: 'fm-f821-2',
+            type: 'file_matches',
+            description: 'README.md',
+            notes: badNotes,
+          } as unknown as KanbanCheck,
+          contextWith('# README.md\nProject documentation'),
+        );
+        expect(res.status).toBe('error');
+      }
     });
   });
 });

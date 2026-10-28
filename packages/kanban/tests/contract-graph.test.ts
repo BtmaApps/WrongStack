@@ -390,4 +390,60 @@ describe('Kanban contract graph', () => {
       }),
     ).rejects.toThrow('requires actor, reason, and timestamp');
   });
+
+  it('honors node waivers on pending metric-bound nodes and rejects expired waivers on blocking conflicts_with edges (F780)', async () => {
+    const { boardId, taskId, metricId } = await taskWithEvidence();
+    await configureContractGraph(tmpDir, boardId, 'strict');
+    const objNode = await upsertContractNode(tmpDir, boardId, {
+      taskId,
+      kind: 'objective',
+      title: 'Waived pending metric objective',
+      metricId,
+      state: 'waived',
+      waiver: {
+        actor: 'lead-reviewer',
+        reason: 'Deferred to next benchmark cycle',
+        at: '2026-08-26T00:00:00.000Z',
+        expiresAt: '2099-01-01T00:00:00.000Z',
+      },
+    });
+    expect(objNode).toBeDefined();
+
+    const readinessPendingWaived = await evaluateTaskContractGraph(tmpDir, boardId, taskId);
+    expect(
+      readinessPendingWaived?.evaluation.issues.some(
+        (d) => d.code === 'node-unresolved' || d.code === 'waiver-expired',
+      ),
+    ).toBe(false);
+
+    const c1 = await upsertContractNode(tmpDir, boardId, {
+      taskId,
+      kind: 'guardrail',
+      title: 'Guardrail A',
+      state: 'satisfied',
+    });
+    const c2 = await upsertContractNode(tmpDir, boardId, {
+      taskId,
+      kind: 'guardrail',
+      title: 'Guardrail B with expired waiver',
+      state: 'waived',
+      waiver: {
+        actor: 'lead-reviewer',
+        reason: 'Temporary waiver that expired',
+        at: '2020-01-01T00:00:00.000Z',
+        expiresAt: '2020-01-02T00:00:00.000Z',
+      },
+    });
+    await addContractEdge(tmpDir, boardId, {
+      from: c1!.node.id,
+      to: c2!.node.id,
+      type: 'conflicts_with',
+      enforcement: 'blocking',
+    });
+
+    const readinessExpiredConflict = await evaluateTaskContractGraph(tmpDir, boardId, taskId);
+    expect(
+      readinessExpiredConflict?.evaluation.issues.some((d) => d.code === 'conflict-unresolved'),
+    ).toBe(true);
+  });
 });

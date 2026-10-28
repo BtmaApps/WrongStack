@@ -25,7 +25,21 @@ export class FileMatchesPlugin implements VerifierPlugin {
     let config: { file: string; pattern: string; flags?: string } | null = null;
     try {
       if (check.notes?.trim()) {
-        config = JSON.parse(check.notes) as { file: string; pattern: string; flags?: string };
+        const parsed: unknown = JSON.parse(check.notes);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          const rec = parsed as Record<string, unknown>;
+          const validFlags = rec['flags'] === undefined || typeof rec['flags'] === 'string';
+          config =
+            typeof rec['file'] === 'string' && typeof rec['pattern'] === 'string' && validFlags
+              ? {
+                  file: rec['file'].trim(),
+                  pattern: rec['pattern'],
+                  ...(typeof rec['flags'] === 'string' ? { flags: rec['flags'] } : {}),
+                }
+              : { file: '', pattern: '' };
+        } else {
+          config = { file: '', pattern: '' };
+        }
       }
     } catch {
       // not JSON — parse from description
@@ -36,7 +50,7 @@ export class FileMatchesPlugin implements VerifierPlugin {
       const parts = check.description.split(/\s+(should|must|contains?)\s+/i);
       config = {
         file: parts[0]?.trim() ?? '',
-        pattern: parts[parts.length - 1]?.trim() ?? '',
+        pattern: parts.length >= 3 ? (parts[parts.length - 1]?.trim() ?? '') : '',
       };
     }
 
