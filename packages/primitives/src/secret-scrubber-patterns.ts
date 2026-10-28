@@ -360,6 +360,14 @@ export const PATTERNS: Pattern[] = [
     anchor: 'hooks.slack.com',
   },
   {
+    // The credential is the last path segment: no userinfo, no query, and a
+    // non-secret key name (`webhookUrl`), so nothing else in a scrub sees it.
+    type: 'discord_webhook',
+    regex:
+      /https:\/\/(?:(?:canary|ptb)\.)?discord(?:app)?\.com\/api(?:\/v\d+)?\/webhooks\/\d+\/[A-Za-z0-9_-]{40,}/g,
+    anchor: ['discord.com/api', 'discordapp.com/api'],
+  },
+  {
     type: 'sendgrid_key',
     regex: /(?<![A-Za-z0-9])SG\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}(?![A-Za-z0-9_-])/g,
     anchor: 'SG.',

@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { redactCommandArgs } from '../src/redact-command.js';
-import { stripCodeFences } from '../src/safe-json.js';
+import { safeStringify, stripCodeFences } from '../src/safe-json.js';
 import { truncate } from '../src/string.js';
 
 it('redacts attached password values whole while preserving argument shape and normal flags', () => {
@@ -51,4 +51,28 @@ it('handles surrogate pairs in truncate and trailing prose / single-line fences 
   expect(truncate('abcdef', 1)).toBe('…');
   expect(stripCodeFences('```json\n{"ok": true}\n```\nHope this helps!')).toBe('{"ok": true}');
   expect(stripCodeFences('Result: ```json {"ok": true} ```')).toBe('{"ok": true}');
+});
+
+it('detects circular .toJSON() objects in safeStringify and redacts whole env-style/comma argv secrets in redactCommandArgs (F851, F852)', () => {
+  const cyclicToJson: Record<string, unknown> = {
+    id: 'n1',
+    toJSON() {
+      return { id: 'n1', self: cyclicToJson };
+    },
+  };
+  const parsed = JSON.parse(safeStringify(cyclicToJson));
+  expect(parsed).toEqual({ id: 'n1', self: '[Circular]' });
+
+  const redacted = redactCommandArgs('env', [
+    'PASSWORD=hunter two',
+    'API_KEY=part1,part2',
+    'MY_AUTH_TOKEN=alpha beta',
+    '--token,secret tail',
+  ]);
+  expect(redacted.args).toEqual([
+    'PASSWORD=[REDACTED]',
+    'API_KEY=[REDACTED]',
+    'MY_AUTH_TOKEN=[REDACTED]',
+    '--token,[REDACTED]',
+  ]);
 });

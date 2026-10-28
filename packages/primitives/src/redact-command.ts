@@ -311,6 +311,8 @@ export function redactSecrets(text: string): string {
 // ["--db-password", "s3cr3t"] redacts like ["--password", "s3cr3t"] while
 // ["--token-file", "/path"] stays visible.
 const BARE_SENSITIVE_LONG_FLAG = new RegExp(`^--(?:[\\w-]+-)?(?:${KEYWORDS})$`, 'i');
+const ATTACHED_ENV_SECRET_KEY =
+  /^(?:[\w-]*[_-])?(?:TOKEN|API[-_]?KEY|API[-_]?SECRET|AUTH_TOKEN|GITHUB_TOKEN|GH_TOKEN|BEARER|JWT|OAUTH|CREDENTIAL|SECRET|SECRET_KEY|ACCESS_KEY|PRIVATE_KEY|PASSWORD|PASSWD|PASSPHRASE)$/i;
 const BARE_COOKIE_FLAG = /^--cookie$/i;
 // Short flags that carry a secret when bare (e.g. ["-p", "s3cr3t"]).
 const BARE_SENSITIVE_SHORT_FLAG = /^-(?:password|p|t|a)$/i;
@@ -364,6 +366,13 @@ export function redactCommandArgs(
     // An argv value can contain unquoted whitespace; it is already one token.
     if (equals > 0 && BARE_SENSITIVE_LONG_FLAG.test(a.slice(0, equals))) {
       return `${a.slice(0, equals + 1)}[REDACTED]`;
+    }
+    if (equals > 0 && ATTACHED_ENV_SECRET_KEY.test(a.slice(0, equals).trim())) {
+      return `${a.slice(0, equals + 1)}[REDACTED]`;
+    }
+    const comma = typeof a === 'string' ? a.indexOf(',') : -1;
+    if (comma > 0 && BARE_SENSITIVE_LONG_FLAG.test(a.slice(0, comma))) {
+      return `${a.slice(0, comma + 1)}[REDACTED]`;
     }
     return redactCommand(a);
   });

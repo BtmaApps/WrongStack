@@ -28,22 +28,32 @@ export function safeParse<T = unknown>(input: string, maxBytes = 5_000_000): Saf
 
 export function safeStringify(value: unknown, pretty = false): string {
   const stack: object[] = [];
+  const rawStack: object[] = [];
   const replacer = function (this: unknown, _k: string, v: unknown): unknown {
     if (typeof v === 'bigint') return v.toString();
-    if (v instanceof Error) {
-      return { name: v.name, message: v.message, stack: v.stack };
+    if (typeof this === 'object' && this !== null) {
+      const thisIndex = stack.indexOf(this);
+      if (thisIndex !== -1) {
+        stack.length = thisIndex + 1;
+        rawStack.length = thisIndex + 1;
+      }
     }
     if (typeof v === 'object' && v !== null) {
-      if (typeof this === 'object' && this !== null) {
-        const thisIndex = stack.indexOf(this);
-        if (thisIndex !== -1) {
-          stack.length = thisIndex + 1;
-        }
-      }
-      if (stack.includes(v as object)) {
+      const rawVal =
+        typeof this === 'object' && this !== null ? (this as Record<string, unknown>)[_k] : v;
+      const rawObj =
+        typeof rawVal === 'object' && rawVal !== null ? (rawVal as object) : (v as object);
+      if (stack.includes(v as object) || rawStack.includes(rawObj)) {
         return '[Circular]';
       }
+      if (v instanceof Error) {
+        const errObj = { name: v.name, message: v.message, stack: v.stack };
+        stack.push(errObj);
+        rawStack.push(rawObj);
+        return errObj;
+      }
       stack.push(v as object);
+      rawStack.push(rawObj);
     }
     return v;
   };

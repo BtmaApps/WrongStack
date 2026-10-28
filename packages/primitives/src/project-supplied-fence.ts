@@ -43,6 +43,8 @@ export const PROJECT_SUPPLIED_INSTRUCTIONS_TAG = 'project-supplied-instructions'
  * can run past the tag name, and keeps the negated class linear.
  */
 const MAX_DELIMITER_INTERIOR = 200;
+const FENCE_INVISIBLE = String.raw`[\u00AD\u034F\u180E\u200B-\u200F\u2060-\u2064\uFE00-\uFE0F\uFEFF]`;
+const FENCE_SPACE = String.raw`[\s\u00AD\u034F\u180E\u200B-\u200F\u2060-\u2064\uFE00-\uFE0F]`;
 
 /**
  * Matches an opening or closing fence delimiter for `tag`, tolerating the
@@ -65,8 +67,15 @@ const MAX_DELIMITER_INTERIOR = 200;
  * delimiter start is always rewritten, and without it nothing reads as a tag.
  */
 function fenceDelimiter(tag: string): RegExp {
+  // Characters nobody sees (zero-width, BOM, soft hyphen, variation selectors)
+  // still leave `<\u200B/project-sup\u200Bplied>` reading as the tag, and so does
+  // a Unicode space (`\s` covers NBSP): allowed wherever a space is, and
+  // between the letters of the name.
+  const name = [...tag]
+    .map((ch) => ch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    .join(`${FENCE_INVISIBLE}*`);
   return new RegExp(
-    `<([ \\t\\r\\n]*/?[ \\t\\r\\n]*${tag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b)([^>]{0,${MAX_DELIMITER_INTERIOR}}>)?`,
+    `<(${FENCE_SPACE}*/?${FENCE_SPACE}*${name}\\b)([^>]{0,${MAX_DELIMITER_INTERIOR}}>)?`,
     'gi',
   );
 }

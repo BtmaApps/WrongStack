@@ -263,6 +263,14 @@ const ANCHOR_PRESCAN = new RegExp(ALL_ANCHORS.map(escapeLiteral).join('|'));
 const BEARER_WORD = /bearer/i;
 
 /**
+ * `json_credential_key` matches its key words in any casing (`/gi`), but its
+ * anchors list three casings each, so `"PassWord"` or `"AccessTOKen"` passed
+ * the pre-scan unseen and went out verbatim. Every key that pattern accepts
+ * ends in one of these words right before the closing quote.
+ */
+const JSON_CREDENTIAL_WORD = /(?:key|token|secret|password|authorization|bearer)"/i;
+
+/**
  * Quick pre-scan: does the text contain any substring that MUST be present for
  * some credential pattern to match? If not, the text is guaranteed clean and
  * every regex pass is skipped.
@@ -283,7 +291,7 @@ const BEARER_WORD = /bearer/i;
  * more alternative in a single scan.
  */
 function hasCredentialAnchors(text: string): boolean {
-  return BEARER_WORD.test(text) || ANCHOR_PRESCAN.test(text);
+  return BEARER_WORD.test(text) || ANCHOR_PRESCAN.test(text) || JSON_CREDENTIAL_WORD.test(text);
 }
 
 export class DefaultSecretScrubber implements SecretScrubber {
