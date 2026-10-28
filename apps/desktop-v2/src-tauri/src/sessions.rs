@@ -77,7 +77,18 @@ impl HostState {
             "profile.events" => self.project_events("@profile", p["offset"].as_u64().unwrap_or(0)),
             "profile.send" => self.project_send("@profile", p["message"].clone()),
             "profile.http" => self.project_http("@profile", p),
-            "session.open" => self.open(p),
+            "session.open" => {
+                if p.get("history").is_some() {
+                    return Err("Recorded conversations require session.restore".into());
+                }
+                self.open(p)
+            }
+            "session.restore" => {
+                history_source(p)?.ok_or("Missing history source")?;
+                let mut params = p.clone();
+                params["kind"] = json!("agent");
+                self.open(&params)
+            }
             "session.read" => self.read(field(p, "id")?, p["offset"].as_u64()),
             "session.write" => {
                 let mut live = self.live.lock().map_err(err)?;
@@ -172,7 +183,11 @@ impl HostState {
         }
     }
     fn open(self: &Arc<Self>, p: &Value) -> Result<Value> {
+        let history = history_source(p)?;
         let kind = field(p, "kind")?;
+        if history.is_some() && (kind != "agent" || p.get("workdir").is_some()) {
+            return Err("History opens an agent at its registered project root".into());
+        }
         if kind != "terminal" && kind != "agent" {
             return Err("Session kind must be agent or terminal".into());
         }
@@ -209,7 +224,7 @@ impl HostState {
         let result = if kind == "terminal" {
             self.open_terminal(&s)
         } else {
-            self.open_agent(&s)
+            self.start_engine_with_history(&s.id, &s.workdir, true, history)
         };
         if let Err(e) = result {
             self.registry
@@ -336,19 +351,36 @@ impl HostState {
         });
         Ok(())
     }
-    fn open_agent(self: &Arc<Self>, s: &Session) -> Result<()> {
-        self.start_engine(&s.id, &s.workdir, true)
-    }
     pub(crate) fn start_engine(
         self: &Arc<Self>,
         runtime_id: &str,
         workdir: &str,
         bind_session: bool,
     ) -> Result<()> {
+        self.start_engine_with_history(runtime_id, workdir, bind_session, None)
+    }
+    fn start_engine_with_history(
+        self: &Arc<Self>,
+        runtime_id: &str,
+        workdir: &str,
+        bind_session: bool,
+        history: Option<(&str, bool)>,
+    ) -> Result<()> {
         let reservation = TcpListener::bind("127.0.0.1:0").map_err(err)?;
         let port = reservation.local_addr().map_err(err)?.port();
         let token = format!("{}{}", Uuid::new_v4().simple(), Uuid::new_v4().simple());
         let mut command = engine_command()?;
+        let ready_path = self
+            .dir
+            .join("transcripts")
+            .join(format!("{runtime_id}.restore.json"));
+        if let Some((id, fork)) = history {
+            command.args(["--resume", id]);
+            command.env("WRONGSTACK_DESKTOP_RESTORE_READY", &ready_path);
+            if fork {
+                command.arg("--fork-session");
+            }
+        }
         command
             .args([
                 "--host",
@@ -396,6 +428,7 @@ impl HostState {
         );
         let host = Arc::clone(self);
         let id = runtime_id.to_owned();
+        let restoring = history.is_some();
         thread::spawn(move || {
             let deadline = std::time::Instant::now() + Duration::from_secs(90);
             let mut ready = false;
@@ -403,6 +436,14 @@ impl HostState {
                 match child.try_wait() {
                     Ok(Some(code)) => {
                         host.live.lock().unwrap().remove(&id);
+                        let restore_error = if restoring {
+                            std::fs::read(&ready_path)
+                                .ok()
+                                .and_then(|bytes| serde_json::from_slice::<Value>(&bytes).ok())
+                                .and_then(|value| value["error"].as_str().map(str::to_owned))
+                        } else {
+                            None
+                        };
                         let _ = host.publish_runtime_state(
                             &id,
                             if code.success() { "stopped" } else { "error" },
@@ -410,7 +451,11 @@ impl HostState {
                             if code.success() {
                                 None
                             } else {
-                                Some("WrongStack engine exited; inspect engine logs")
+                                Some(
+                                    restore_error
+                                        .as_deref()
+                                        .unwrap_or("WrongStack engine exited; inspect engine logs"),
+                                )
                             },
                         );
                         break;
@@ -423,6 +468,40 @@ impl HostState {
                     _ => {}
                 }
                 if !ready {
+                    if restoring {
+                        let restored = std::fs::read(&ready_path)
+                            .ok()
+                            .and_then(|bytes| serde_json::from_slice::<Value>(&bytes).ok());
+                        if let Some(message) =
+                            restored.as_ref().and_then(|value| value["error"].as_str())
+                        {
+                            let _ = child.kill();
+                            let _ = child.wait();
+                            host.live.lock().unwrap().remove(&id);
+                            let _ = host.publish_runtime_state(&id, "error", None, Some(message));
+                            break;
+                        }
+                        if restored
+                            .as_ref()
+                            .and_then(|value| value["sessionId"].as_str())
+                            .is_none()
+                        {
+                            if std::time::Instant::now() > deadline {
+                                let _ = child.kill();
+                                let _ = child.wait();
+                                host.live.lock().unwrap().remove(&id);
+                                let _ = host.publish_runtime_state(
+                                    &id,
+                                    "error",
+                                    None,
+                                    Some("Recorded conversation startup timed out"),
+                                );
+                                break;
+                            }
+                            thread::sleep(Duration::from_millis(250));
+                            continue;
+                        }
+                    }
                     if let Ok(engine) = Engine::connect(
                         port,
                         &token,
@@ -511,6 +590,94 @@ impl HostState {
             }
         }
         Ok(Value::Null)
+    }
+}
+fn history_source(p: &Value) -> Result<Option<(&str, bool)>> {
+    let Some(source) = p.get("history") else {
+        return Ok(None);
+    };
+    let id = field(source, "id")?;
+    // Only project-relative journal identities. No prefix switches, traversal,
+    // absolute paths or platform-specific path spellings reach the CLI.
+    if id.is_empty()
+        || id.len() > 512
+        || id.split('/').any(|part| {
+            part.is_empty()
+                || part.starts_with('-')
+                || !part
+                    .bytes()
+                    .all(|c| c.is_ascii_alphanumeric() || c == b'_' || c == b'-')
+        })
+    {
+        return Err("Invalid recorded session identity".into());
+    }
+    let fork = match field(source, "mode")? {
+        "resume" => false,
+        "fork" => true,
+        _ => return Err("History mode must be resume or fork".into()),
+    };
+    Ok(Some((id, fork)))
+}
+
+#[cfg(test)]
+mod history_tests {
+    use super::*;
+
+    #[test]
+    fn restore_requires_a_source_and_refuses_alternate_roots_before_creating_tabs() {
+        let dir = std::env::temp_dir().join(format!("desktop-restore-contract-{}", Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let host = HostState::new(&dir).unwrap();
+        assert!(host
+            .request("session.restore", &json!({}))
+            .unwrap_err()
+            .contains("Missing history source"));
+        assert!(host
+            .request(
+                "session.open",
+                &json!({"history":{"id":"sess_ok","mode":"resume"}})
+            )
+            .unwrap_err()
+            .contains("session.restore"));
+        assert!(host
+            .request(
+                "session.restore",
+                &json!({"history":{"id":"sess_ok","mode":"resume"},"workdir":"outside"})
+            )
+            .unwrap_err()
+            .contains("project root"));
+        assert!(host.registry.lock().unwrap().sessions().unwrap().is_empty());
+        drop(host);
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn history_identity_refuses_paths_and_unknown_modes_before_launch() {
+        assert!(history_source(&json!({})).unwrap().is_none());
+        assert_eq!(
+            history_source(&json!({"history":{"id":"2026-10-27/sess_01ABC","mode":"fork"}}))
+                .unwrap(),
+            Some(("2026-10-27/sess_01ABC", true))
+        );
+        assert_eq!(
+            history_source(&json!({"history":{"id":"sess_legacy","mode":"resume"}})).unwrap(),
+            Some(("sess_legacy", false))
+        );
+        for id in [
+            "",
+            "../foreign",
+            "/absolute",
+            "C:/foreign",
+            "date//id",
+            "date\\id",
+            "--continue",
+        ] {
+            assert!(
+                history_source(&json!({"history":{"id":id,"mode":"resume"}})).is_err(),
+                "{id}"
+            );
+        }
+        assert!(history_source(&json!({"history":{"id":"sess_ok","mode":"new"}})).is_err());
     }
 }
 fn engine_command() -> Result<Command> {

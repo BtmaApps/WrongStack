@@ -7,6 +7,52 @@ const started = () =>
     payload: { sessionId: 'core-a', provider: 'local', model: 'test' },
   });
 describe('native agent session projection', () => {
+  it('keeps shared policy and session preferences when the server splits their updates', () => {
+    const shared = reduceEngine(started(), {
+      type: 'prefs.updated',
+      payload: { disabledModels: ['local/off'], favoriteModels: ['local/test'] },
+    });
+    const scoped = reduceEngine(shared, {
+      type: 'prefs.updated',
+      payload: { sessionId: 'core-a', reasoningEffort: 'high' },
+    });
+    expect(scoped.results['prefs.updated']).toMatchObject({
+      disabledModels: ['local/off'],
+      favoriteModels: ['local/test'],
+      reasoningEffort: 'high',
+    });
+    const foreign = reduceEngine(scoped, {
+      type: 'prefs.updated',
+      payload: { sessionId: 'other', reasoningEffort: 'low', favoriteModels: [] },
+    });
+    expect(foreign).toBe(scoped);
+  });
+  it('replaces the displayed transcript after rewind, including an empty retained history', () => {
+    const state = reduceEngine(started(), {
+      type: 'provider.text_delta',
+      payload: { messageId: 'future', text: 'Discarded future answer' },
+    });
+    for (const replayMessages of [[], [{ role: 'user', content: 'Retained prompt' }]]) {
+      const next = reduceEngine(state, {
+        type: 'session.start',
+        payload: { sessionId: 'core-a', reset: true, replayMessages },
+      });
+      expect(next.messages.map((message) => message.text)).toEqual(
+        replayMessages.map((message) => message.content),
+      );
+      expect(next.running).toBe(false);
+    }
+    expect(
+      reduceEngine(state, { type: 'session.start', payload: { sessionId: 'core-a', reset: true } })
+        .messages,
+    ).toEqual(state.messages);
+    expect(
+      reduceEngine(state, {
+        type: 'session.start',
+        payload: { sessionId: 'core-b', reset: true, replayMessages: [] },
+      }),
+    ).toBe(state);
+  });
   it('keeps completed replies separate when the server reuses the current stream ID', () => {
     for (const userTurn of [true, false]) {
       let state = started();

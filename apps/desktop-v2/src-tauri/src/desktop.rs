@@ -55,6 +55,7 @@ async fn host_request(
         "profile.send",
         "profile.http",
         "session.open",
+        "session.restore",
         "session.read",
         "session.write",
         "session.resize",
@@ -66,6 +67,11 @@ async fn host_request(
         "settings.save",
         "draft.save",
         "draft.get",
+        "draft.revisions",
+        "draft.replace",
+        "form-draft.get",
+        "form-draft.save",
+        "file-drafts.list",
     ]
     .contains(&method.as_str())
     {
@@ -76,21 +82,64 @@ async fn host_request(
     let drafts = Arc::clone(&state.drafts);
     let aliases = Arc::clone(&state.project_aliases);
     tauri::async_runtime::spawn_blocking(move || {
-        if method == "draft.get" || method == "draft.save" {
+        if method == "file-drafts.list" {
+            return drafts.lock().map_err(err)?.file_drafts(crate::sessions::field(&params, "projectId")?);
+        }
+        if method == "session.restore" {
+            if !crate::host::can_share_services(&client.call("ping", json!({}))?) {
+                return Err("The running session host uses an older engine. Keep reading history, or stop its sessions and restart the desktop before resuming or forking.".into());
+            }
+            // A dedicated command fails closed on older hosts, unlike optional
+            // session.open fields that an old binary could silently ignore.
+            return client.call(&method, params);
+        }
+        if method == "form-draft.get" || method == "form-draft.save" {
+            let registry = drafts.lock().map_err(err)?;
+            let project_id = crate::sessions::field(&params, "projectId")?;
+            let form_key = crate::sessions::field(&params, "formKey")?;
+            if method == "form-draft.get" {
+                return registry.form_draft(project_id, form_key);
+            }
+            let expected = params["expectedRevision"]
+                .as_i64()
+                .filter(|value| *value >= 0)
+                .ok_or("Missing form draft revision")?;
+            let value = params.get("value").ok_or("Missing form draft value")?;
+            let revision = registry.save_form_draft(project_id, form_key, value, expected)?;
+            return Ok(json!({"revision":revision}));
+        }
+        if method == "draft.get"
+            || method == "draft.save"
+            || method == "draft.revisions"
+            || method == "draft.replace"
+        {
             let registry = drafts.lock().map_err(err)?;
             let id = crate::sessions::field(&params, "id")?;
             if method == "draft.get" {
-                let references: Value = serde_json::from_str(&registry.draft_part(id, "references")?).map_err(err)?;
-                let attachments: Value = serde_json::from_str(&registry.draft_part(id, "attachments")?).map_err(err)?;
-                return Ok(json!({"text": registry.draft(id)?, "references":references, "attachments":attachments, "mode":registry.draft_mode(id)?}));
+                return registry.draft_snapshot(id);
+            }
+            if method == "draft.revisions" {
+                return registry.draft_revisions(id);
+            }
+            if method == "draft.replace" {
+                return registry.replace_draft_checked(
+                    id,
+                    &params["draft"],
+                    &params["expectedRevisions"],
+                );
             }
             let text = params["text"].as_str().ok_or("Missing draft text")?;
-            match params["part"].as_str().unwrap_or("text") {
-                "text" => registry.save_draft(id, text)?,
-                "mode" => registry.save_draft_mode(id, text)?,
-                part => registry.save_draft_part(id, part, text)?,
-            }
-            return Ok(Value::Null);
+            let expected = params["expectedRevision"]
+                .as_i64()
+                .filter(|value| *value >= 0)
+                .ok_or("Missing draft revision")?;
+            let revision = registry.save_draft_checked(
+                id,
+                params["part"].as_str().unwrap_or("text"),
+                text,
+                expected,
+            )?;
+            return Ok(json!({"revision":revision}));
         }
         if method.starts_with("profile.") {
             return services.call(&method, params);

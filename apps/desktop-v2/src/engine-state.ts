@@ -43,6 +43,11 @@ export interface EngineState {
   approvals: Record<string, unknown>[];
   inputs: UserInputRequest[];
   providerTests: Record<string, ProviderTestRun>;
+  goalStates: Record<string, Record<string, unknown>>;
+  goalErrors: Record<string, Record<string, unknown>>;
+  sddInterviewId: string;
+  sddAgentText: string;
+  specDetails: Record<string, Record<string, unknown>>;
   activity: EngineEvent[];
   nextSteps: ParsedNextStep[];
   results: Record<string, Record<string, unknown>>;
@@ -64,6 +69,11 @@ export const emptyEngineState: EngineState = {
   approvals: [],
   inputs: [],
   providerTests: {},
+  goalStates: {},
+  goalErrors: {},
+  sddInterviewId: '',
+  sddAgentText: '',
+  specDetails: {},
   activity: [],
   nextSteps: [],
   results: {},
@@ -93,6 +103,7 @@ export function reduceEngine(state: EngineState, input: unknown): EngineState {
     'goal.',
     'goal-state.',
     'sdd.',
+    'specs.',
     'kanban.',
     'agent-roster.',
     'chronicle.',
@@ -110,6 +121,26 @@ export function reduceEngine(state: EngineState, input: unknown): EngineState {
   )
     return state;
   let next = { ...state, results: { ...state.results, [event.type]: p } };
+  if (event.type === 'prefs.updated')
+    next.results['prefs.updated'] = { ...state.results['prefs.updated'], ...p };
+  if (event.type === 'goal.state' && typeof p['goalId'] === 'string')
+    next.goalStates = { ...state.goalStates, [p['goalId']]: p };
+  if (event.type === 'goal.error' && typeof p['goalId'] === 'string')
+    next.goalErrors = { ...state.goalErrors, [p['goalId']]: p };
+  if (event.type === 'specs.detail' && typeof p['specId'] === 'string')
+    next.specDetails = { ...state.specDetails, [p['specId']]: p };
+  if (event.type === 'sdd.spec.snapshot') {
+    const id = typeof p['sessionId'] === 'string' && p['discarded'] !== true ? p['sessionId'] : '';
+    next.sddInterviewId = id;
+    next.sddAgentText =
+      typeof p['lastAgentText'] === 'string'
+        ? p['lastAgentText']
+        : id === state.sddInterviewId
+          ? state.sddAgentText
+          : '';
+  }
+  if (event.type === 'sdd.spec.agent_text' && state.sddInterviewId && typeof p['text'] === 'string')
+    next.sddAgentText = p['text'];
   if (event.type.startsWith('code.assist.') && typeof p['requestId'] === 'string') {
     const id = p['requestId'];
     const previous = state.assists[id] ?? { text: '', status: 'running' };
@@ -158,7 +189,11 @@ export function reduceEngine(state: EngineState, input: unknown): EngineState {
           : !p['provider'] || p['provider'] === 'unconfigured' || !p['model'],
     };
     if (p['reset'] === true) next.nextSteps = [];
-    if (!state.messages.length && Array.isArray(p['replayMessages'])) {
+    if ((!state.messages.length || p['reset'] === true) && Array.isArray(p['replayMessages'])) {
+      if (p['reset'] === true) {
+        next.running = false;
+        next.pendingUserMessages = {};
+      }
       next.messages = entries(p['replayMessages'])
         .filter((m) => m['role'] === 'user' || m['role'] === 'assistant')
         .map((m, i) => ({

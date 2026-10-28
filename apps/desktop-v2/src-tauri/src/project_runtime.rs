@@ -126,6 +126,7 @@ impl HostState {
         if project_id == "@profile"
             && [
                 "kanban.",
+                "agent-roster.",
                 "memory.",
                 "files.",
                 "git.",
@@ -154,11 +155,14 @@ impl HostState {
         {
             return Err("Profile configuration belongs to WrongStack settings".into());
         }
-        if matches!(
-            kind,
-            "user_message" | "abort" | "user.input_submit" | "tool.confirm_result"
-        ) || kind.starts_with("session.")
-            || kind.starts_with("sessions.")
+        let project_history = project_id != "@profile"
+            && matches!(kind, "sessions.list" | "session.inspect" | "session.rename");
+        if !project_history
+            && (matches!(
+                kind,
+                "user_message" | "abort" | "user.input_submit" | "tool.confirm_result"
+            ) || kind.starts_with("session.")
+                || kind.starts_with("sessions."))
         {
             return Err("Conversation operations belong to an agent session".into());
         }
@@ -218,12 +222,37 @@ mod tests {
                 .unwrap_err()
                 .contains("agent session"));
         }
+        for kind in ["sessions.list", "session.inspect", "session.rename"] {
+            assert!(host
+                .project_send(&project.id, json!({"type":kind}))
+                .unwrap_err()
+                .contains("Project services are starting"));
+            assert!(host
+                .project_send("@profile", json!({"type":kind}))
+                .unwrap_err()
+                .contains("agent session"));
+        }
+        for kind in [
+            "session.resume",
+            "session.rewind",
+            "session.delete",
+            "session.subscribe",
+        ] {
+            assert!(host
+                .project_send(&project.id, json!({"type":kind}))
+                .unwrap_err()
+                .contains("agent session"));
+        }
         assert!(host
             .project_send(&project.id, json!({"type":"prefs.update"}))
             .unwrap_err()
             .contains("WrongStack settings"));
         assert!(host
             .project_send("@profile", json!({"type":"kanban.create"}))
+            .unwrap_err()
+            .contains("project workspace"));
+        assert!(host
+            .project_send("@profile", json!({"type":"agent-roster.create"}))
             .unwrap_err()
             .contains("project workspace"));
         assert!(host.registry.lock().unwrap().sessions().unwrap().is_empty());

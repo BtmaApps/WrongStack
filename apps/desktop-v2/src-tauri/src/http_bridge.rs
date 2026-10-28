@@ -62,6 +62,22 @@ impl EngineHttp {
             .request(Method::from_bytes(method.as_bytes()).map_err(err)?, url)
             .header("x-ws-token", &self.token)
             .header("accept", "application/json");
+        // Single-dependency research has a canonical 60-second server deadline.
+        // Preserve it rather than abandoning an accepted request after 30 seconds.
+        let path = resource.split('?').next().unwrap_or_default();
+        if method == "POST"
+            && path.starts_with("/api/techstack/deps/")
+            && path.ends_with("/research")
+        {
+            request = request.timeout(Duration::from_secs(75));
+        }
+        if method == "POST" && ["/api/deadcode/scan", "/api/deadcode/preview"].contains(&path) {
+            request = request.timeout(Duration::from_secs(300));
+        }
+        if method == "POST" && path == "/api/deadcode/apply" {
+            // Verification can run several workspace typechecks (10 minutes each).
+            request = request.timeout(Duration::from_secs(3600));
+        }
         if !body.is_null() {
             if serde_json::to_vec(body).map_err(err)?.len() > 128 * 1024 {
                 return Err("Engine API request exceeds 128 KiB".into());
@@ -83,6 +99,15 @@ impl EngineHttp {
             .send()
             .map_err(|_| "Engine API request failed or timed out")?;
         let status = response.status().as_u16();
+        let markdown_report = method == "GET"
+            && path.starts_with("/api/techstack/reports/")
+            && response
+                .headers()
+                .get(reqwest::header::CONTENT_TYPE)
+                .and_then(|value| value.to_str().ok())
+                .is_some_and(|value| {
+                    value.split(';').next().unwrap_or_default().trim() == "text/markdown"
+                });
         let mut bytes = Vec::new();
         response
             .take(2 * 1024 * 1024 + 1)
@@ -93,6 +118,8 @@ impl EngineHttp {
         }
         let data = if bytes.is_empty() {
             Value::Null
+        } else if markdown_report {
+            Value::String(String::from_utf8(bytes).map_err(|_| "Engine report is not UTF-8")?)
         } else {
             serde_json::from_slice(&bytes).map_err(|_| "Engine API returned non-JSON data")?
         };
@@ -218,5 +245,37 @@ mod tests {
         assert!(bridge
             .request("CONNECT", "/api/jobs", &Value::Null, "selected", None)
             .is_err());
+    }
+    #[test]
+    fn reads_markdown_only_for_the_report_api_and_keeps_json_validation_elsewhere() {
+        for (path, allowed) in [
+            ("/api/techstack/reports/fixture?format=md", true),
+            ("/api/other", false),
+        ] {
+            let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+            let port = listener.local_addr().unwrap().port();
+            let server = thread::spawn(move || {
+                let (mut socket, _) = listener.accept().unwrap();
+                socket
+                    .set_read_timeout(Some(Duration::from_secs(3)))
+                    .unwrap();
+                let mut request = [0; 4096];
+                let _ = socket.read(&mut request).unwrap();
+                socket.write_all(b"HTTP/1.1 200 OK\r\nContent-Type: text/markdown; charset=utf-8\r\nContent-Length: 8\r\nConnection: close\r\n\r\n# Report").unwrap();
+            });
+            let result = EngineHttp::new(port, "fixture").unwrap().request(
+                "GET",
+                path,
+                &Value::Null,
+                "selected",
+                None,
+            );
+            if allowed {
+                assert_eq!(result.unwrap()["data"], "# Report");
+            } else {
+                assert!(result.unwrap_err().contains("non-JSON"));
+            }
+            server.join().unwrap();
+        }
     }
 }

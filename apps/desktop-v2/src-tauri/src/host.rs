@@ -52,6 +52,39 @@ pub fn can_share_services(capabilities: &Value) -> bool {
 mod service_version_tests {
     use super::*;
     #[test]
+    fn native_client_preserves_fractional_revision_tokens_in_both_directions() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let expected = "1793127358526.4639".parse::<f64>().unwrap();
+        let peer = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            stream
+                .set_read_timeout(Some(Duration::from_secs(3)))
+                .unwrap();
+            let request = read_frame(stream.try_clone().unwrap(), REQUEST_FRAME_BYTES).unwrap();
+            assert!(request.contains("1793127358526.4639"));
+            stream
+                .write_all(b"{\"result\":{\"mtimeMs\":1793127358526.4639,\"control\":42}}\n")
+                .unwrap();
+        });
+        let client = Client {
+            endpoint: Endpoint {
+                port,
+                token: "fixture".into(),
+                pid: 0,
+            },
+        };
+        let response = client
+            .call("profile.send", json!({"baseMtimeMs":expected}))
+            .unwrap();
+        peer.join().unwrap();
+        assert_eq!(response["control"], 42);
+        assert_eq!(
+            response["mtimeMs"].as_f64().unwrap().to_bits(),
+            expected.to_bits()
+        );
+    }
+    #[test]
     fn does_not_reuse_project_services_from_a_different_engine_build() {
         assert!(can_share_services(
             &json!({"projectApi":1,"engineBuild":engine_build()})

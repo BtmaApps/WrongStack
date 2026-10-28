@@ -1,7 +1,7 @@
 use crate::{err, now, Result};
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{json, Value};
 use std::path::{Path, PathBuf};
 use uuid::Uuid;
 
@@ -42,7 +42,27 @@ impl Registry {
         db.execute_batch("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;
           CREATE TABLE IF NOT EXISTS projects (id TEXT PRIMARY KEY, name TEXT NOT NULL, root TEXT NOT NULL UNIQUE, created_at INTEGER NOT NULL);
           CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, project_id TEXT NOT NULL REFERENCES projects(id), title TEXT NOT NULL, kind TEXT NOT NULL, workdir TEXT NOT NULL, status TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, exit_code INTEGER, error TEXT);
-          CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);").map_err(err)?;
+          CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+          CREATE TABLE IF NOT EXISTS project_form_drafts (project_id TEXT NOT NULL REFERENCES projects(id), form_key TEXT NOT NULL, revision INTEGER NOT NULL, payload TEXT, updated_at INTEGER NOT NULL, PRIMARY KEY(project_id,form_key));
+          CREATE TABLE IF NOT EXISTS draft_revisions (session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE, part TEXT NOT NULL, revision INTEGER NOT NULL, PRIMARY KEY(session_id, part));
+          CREATE TRIGGER IF NOT EXISTS draft_revision_insert AFTER INSERT ON settings WHEN NEW.key LIKE 'draft:%' OR NEW.key LIKE 'draftrefs:%' OR NEW.key LIKE 'draftmedia:%' OR NEW.key LIKE 'draftmode:%' BEGIN
+            INSERT INTO draft_revisions(session_id,part,revision)
+              SELECT id, CASE NEW.key WHEN 'draft:'||id THEN 'text' WHEN 'draftrefs:'||id THEN 'references' WHEN 'draftmedia:'||id THEN 'attachments' ELSE 'mode' END, 1
+              FROM sessions WHERE kind='agent' AND id=CASE WHEN NEW.key LIKE 'draft:%' THEN substr(NEW.key,7) WHEN NEW.key LIKE 'draftrefs:%' THEN substr(NEW.key,11) WHEN NEW.key LIKE 'draftmedia:%' THEN substr(NEW.key,12) ELSE substr(NEW.key,11) END
+              ON CONFLICT(session_id,part) DO UPDATE SET revision=revision+1;
+          END;
+          CREATE TRIGGER IF NOT EXISTS draft_revision_update AFTER UPDATE OF value ON settings WHEN NEW.key LIKE 'draft:%' OR NEW.key LIKE 'draftrefs:%' OR NEW.key LIKE 'draftmedia:%' OR NEW.key LIKE 'draftmode:%' BEGIN
+            INSERT INTO draft_revisions(session_id,part,revision)
+              SELECT id, CASE NEW.key WHEN 'draft:'||id THEN 'text' WHEN 'draftrefs:'||id THEN 'references' WHEN 'draftmedia:'||id THEN 'attachments' ELSE 'mode' END, 1
+              FROM sessions WHERE kind='agent' AND id=CASE WHEN NEW.key LIKE 'draft:%' THEN substr(NEW.key,7) WHEN NEW.key LIKE 'draftrefs:%' THEN substr(NEW.key,11) WHEN NEW.key LIKE 'draftmedia:%' THEN substr(NEW.key,12) ELSE substr(NEW.key,11) END
+              ON CONFLICT(session_id,part) DO UPDATE SET revision=revision+1;
+          END;
+          CREATE TRIGGER IF NOT EXISTS draft_revision_delete AFTER DELETE ON settings WHEN OLD.key LIKE 'draft:%' OR OLD.key LIKE 'draftrefs:%' OR OLD.key LIKE 'draftmedia:%' OR OLD.key LIKE 'draftmode:%' BEGIN
+            INSERT INTO draft_revisions(session_id,part,revision)
+              SELECT id, CASE OLD.key WHEN 'draft:'||id THEN 'text' WHEN 'draftrefs:'||id THEN 'references' WHEN 'draftmedia:'||id THEN 'attachments' ELSE 'mode' END, 1
+              FROM sessions WHERE kind='agent' AND id=CASE WHEN OLD.key LIKE 'draft:%' THEN substr(OLD.key,7) WHEN OLD.key LIKE 'draftrefs:%' THEN substr(OLD.key,11) WHEN OLD.key LIKE 'draftmedia:%' THEN substr(OLD.key,12) ELSE substr(OLD.key,11) END
+              ON CONFLICT(session_id,part) DO UPDATE SET revision=revision+1;
+          END;").map_err(err)?;
         Ok(Self {
             db,
             dir: dir.to_owned(),
@@ -181,9 +201,274 @@ impl Registry {
             .optional()
             .map_err(err)
     }
+    fn ensure_form_project(&self, project_id: &str, form_key: &str) -> Result<()> {
+        let record_form = form_key
+            .strip_prefix("requirements-record:")
+            .is_some_and(|id| {
+                id.starts_with("reqi_")
+                    && id.len() <= 100
+                    && id.bytes().all(|value| {
+                        value.is_ascii_alphanumeric() || value == b'_' || value == b'-'
+                    })
+            });
+        let file_form = form_key
+            .strip_prefix("file-draft:")
+            .is_some_and(|id| id.len() == 64 && id.bytes().all(|value| value.is_ascii_hexdigit()));
+        let review_form = form_key
+            .strip_prefix("chimera-note:")
+            .is_some_and(|id| id.len() == 64 && id.bytes().all(|value| value.is_ascii_hexdigit()));
+        if form_key != "requirements-new"
+            && form_key != "history-view"
+            && form_key != "git-review-notes"
+            && !record_form
+            && !file_form
+            && !review_form
+        {
+            return Err("Unknown project form".into());
+        }
+        if Uuid::parse_str(project_id).is_err()
+            || !self
+                .db
+                .query_row(
+                    "SELECT EXISTS(SELECT 1 FROM projects WHERE id=?1)",
+                    [project_id],
+                    |row| row.get::<_, bool>(0),
+                )
+                .map_err(err)?
+        {
+            return Err("Unknown project".into());
+        }
+        Ok(())
+    }
+    pub fn form_draft(&self, project_id: &str, form_key: &str) -> Result<Value> {
+        use rusqlite::OptionalExtension;
+        self.ensure_form_project(project_id, form_key)?;
+        let row = self.db.query_row("SELECT revision,payload,updated_at FROM project_form_drafts WHERE project_id=?1 AND form_key=?2", params![project_id,form_key], |row| Ok((row.get::<_, i64>(0)?, row.get::<_, Option<String>>(1)?, row.get::<_, i64>(2)?))).optional().map_err(err)?;
+        let (revision, payload, updated_at) = row.unwrap_or((0, None, 0));
+        let value = payload
+            .map(|value| serde_json::from_str::<Value>(&value).map_err(err))
+            .transpose()?
+            .unwrap_or(Value::Null);
+        Ok(serde_json::json!({"revision":revision,"value":value,"updatedAt":updated_at}))
+    }
+    pub fn file_drafts(&self, project_id: &str) -> Result<Value> {
+        self.ensure_form_project(project_id, &format!("file-draft:{}", "0".repeat(64)))?;
+        let mut query = self.db.prepare("SELECT form_key,json_extract(payload,'$.path'),revision,updated_at FROM project_form_drafts WHERE project_id=?1 AND form_key LIKE 'file-draft:%' AND payload IS NOT NULL ORDER BY updated_at DESC,form_key LIMIT 500").map_err(err)?;
+        let rows = query.query_map([project_id], |row| Ok(json!({"key":row.get::<_,String>(0)?,"path":row.get::<_,Option<String>>(1)?,"revision":row.get::<_,i64>(2)?,"updatedAt":row.get::<_,i64>(3)?}))).map_err(err)?;
+        Ok(
+            json!({"drafts": rows.collect::<std::result::Result<Vec<_>,_>>().map_err(err)?,"limit":500}),
+        )
+    }
+    pub fn save_form_draft(
+        &self,
+        project_id: &str,
+        form_key: &str,
+        value: &Value,
+        expected: i64,
+    ) -> Result<i64> {
+        self.ensure_form_project(project_id, form_key)?;
+        if expected < 0 || (!value.is_object() && !value.is_null()) {
+            return Err("Invalid project form draft".into());
+        }
+        let payload = if value.is_null() {
+            None
+        } else {
+            Some(serde_json::to_string(value).map_err(err)?)
+        };
+        if payload
+            .as_ref()
+            .is_some_and(|value| value.len() > 2 * 1024 * 1024)
+        {
+            return Err("Form draft exceeds the 2 MB storage limit".into());
+        }
+        self.db.execute_batch("BEGIN IMMEDIATE").map_err(err)?;
+        let result = (|| {
+            let revision = self.form_draft(project_id, form_key)?["revision"]
+                .as_i64()
+                .ok_or("Invalid form revision")?;
+            if revision != expected {
+                return Err("DRAFT_CONFLICT: This project draft changed in another window".into());
+            }
+            let next = revision
+                .checked_add(1)
+                .ok_or("Form draft revision exhausted")?;
+            self.db.execute("INSERT INTO project_form_drafts(project_id,form_key,revision,payload,updated_at) VALUES (?1,?2,?3,?4,?5) ON CONFLICT(project_id,form_key) DO UPDATE SET revision=excluded.revision,payload=excluded.payload,updated_at=excluded.updated_at", params![project_id,form_key,next,payload,now()]).map_err(err)?;
+            Ok(next)
+        })();
+        match result {
+            Ok(next) => {
+                if let Err(error) = self.db.execute_batch("COMMIT") {
+                    let _ = self.db.execute_batch("ROLLBACK");
+                    return Err(err(error));
+                }
+                Ok(next)
+            }
+            Err(error) => {
+                let _ = self.db.execute_batch("ROLLBACK");
+                Err(error)
+            }
+        }
+    }
     pub fn draft(&self, id: &str) -> Result<String> {
         self.ensure_agent(id)?;
         Ok(self.setting(&format!("draft:{id}"))?.unwrap_or_default())
+    }
+    pub fn draft_revision(&self, id: &str, part: &str) -> Result<i64> {
+        use rusqlite::OptionalExtension;
+        self.ensure_agent(id)?;
+        if !["text", "references", "attachments", "mode"].contains(&part) {
+            return Err("Unknown draft part".into());
+        }
+        Ok(self
+            .db
+            .query_row(
+                "SELECT revision FROM draft_revisions WHERE session_id=?1 AND part=?2",
+                params![id, part],
+                |row| row.get(0),
+            )
+            .optional()
+            .map_err(err)?
+            .unwrap_or(0))
+    }
+    pub fn draft_snapshot(&self, id: &str) -> Result<Value> {
+        self.db.execute_batch("BEGIN").map_err(err)?;
+        let result = (|| {
+            let references: Value =
+                serde_json::from_str(&self.draft_part(id, "references")?).map_err(err)?;
+            let attachments: Value =
+                serde_json::from_str(&self.draft_part(id, "attachments")?).map_err(err)?;
+            Ok(
+                serde_json::json!({"text":self.draft(id)?,"references":references,"attachments":attachments,"mode":self.draft_mode(id)?,"revisions":{"text":self.draft_revision(id,"text")?,"references":self.draft_revision(id,"references")?,"attachments":self.draft_revision(id,"attachments")?,"mode":self.draft_revision(id,"mode")?}}),
+            )
+        })();
+        match result {
+            Ok(snapshot) => {
+                self.db.execute_batch("COMMIT").map_err(err)?;
+                Ok(snapshot)
+            }
+            Err(error) => {
+                let _ = self.db.execute_batch("ROLLBACK");
+                Err(error)
+            }
+        }
+    }
+    pub fn draft_revisions(&self, id: &str) -> Result<Value> {
+        self.db.execute_batch("BEGIN").map_err(err)?;
+        let result = (|| {
+            Ok(
+                serde_json::json!({"text":self.draft_revision(id,"text")?,"references":self.draft_revision(id,"references")?,"attachments":self.draft_revision(id,"attachments")?,"mode":self.draft_revision(id,"mode")?}),
+            )
+        })();
+        match result {
+            Ok(revisions) => {
+                self.db.execute_batch("COMMIT").map_err(err)?;
+                Ok(revisions)
+            }
+            Err(error) => {
+                let _ = self.db.execute_batch("ROLLBACK");
+                Err(error)
+            }
+        }
+    }
+    pub fn save_draft_checked(
+        &self,
+        id: &str,
+        part: &str,
+        value: &str,
+        expected: i64,
+    ) -> Result<i64> {
+        self.db.execute_batch("BEGIN IMMEDIATE").map_err(err)?;
+        let result = (|| {
+            let revision = self.draft_revision(id, part)?;
+            if revision != expected {
+                return Err("DRAFT_CONFLICT: This draft changed in another window".into());
+            }
+            match part {
+                "text" => self.save_draft(id, value)?,
+                "mode" => self.save_draft_mode(id, value)?,
+                "references" | "attachments" => self.save_draft_part(id, part, value)?,
+                _ => return Err("Unknown draft part".into()),
+            }
+            let next = revision.checked_add(1).ok_or("Draft revision exhausted")?;
+            if self.draft_revision(id, part)? == revision {
+                // Clearing a field that was already absent changes no settings row.
+                self.db.execute("INSERT INTO draft_revisions(session_id,part,revision) VALUES (?1,?2,?3) ON CONFLICT(session_id,part) DO UPDATE SET revision=excluded.revision", params![id,part,next]).map_err(err)?;
+            }
+            if self.draft_revision(id, part)? != next {
+                return Err("Unexpected draft revision".into());
+            }
+            Ok(next)
+        })();
+        match result {
+            Ok(next) => {
+                if let Err(error) = self.db.execute_batch("COMMIT") {
+                    let _ = self.db.execute_batch("ROLLBACK");
+                    return Err(err(error));
+                }
+                Ok(next)
+            }
+            Err(error) => {
+                let _ = self.db.execute_batch("ROLLBACK");
+                Err(error)
+            }
+        }
+    }
+    pub fn replace_draft_checked(
+        &self,
+        id: &str,
+        draft: &Value,
+        expected: &Value,
+    ) -> Result<Value> {
+        self.db.execute_batch("BEGIN IMMEDIATE").map_err(err)?;
+        let result = (|| {
+            let parts = ["text", "references", "attachments", "mode"];
+            let mut revisions = Vec::new();
+            for part in parts {
+                let expected = expected[part]
+                    .as_i64()
+                    .filter(|value| *value >= 0)
+                    .ok_or("Missing draft revision")?;
+                let actual = self.draft_revision(id, part)?;
+                if expected != actual {
+                    return Err("DRAFT_CONFLICT: The saved draft changed again".into());
+                }
+                revisions.push(actual);
+            }
+            let text = draft["text"].as_str().ok_or("Missing draft text")?;
+            let mode = draft["mode"].as_str().ok_or("Missing delivery mode")?;
+            if !draft["references"].is_array() || !draft["attachments"].is_array() {
+                return Err("Draft data must be a list".into());
+            }
+            self.save_draft(id, text)?;
+            self.save_draft_part(id, "references", &draft["references"].to_string())?;
+            self.save_draft_part(id, "attachments", &draft["attachments"].to_string())?;
+            self.save_draft_mode(id, mode)?;
+            for (part, previous) in parts.into_iter().zip(revisions) {
+                let next = previous.checked_add(1).ok_or("Draft revision exhausted")?;
+                if self.draft_revision(id, part)? == previous {
+                    self.db.execute("INSERT INTO draft_revisions(session_id,part,revision) VALUES (?1,?2,?3) ON CONFLICT(session_id,part) DO UPDATE SET revision=excluded.revision", params![id,part,next]).map_err(err)?;
+                }
+                if self.draft_revision(id, part)? != next {
+                    return Err("Unexpected draft revision".into());
+                }
+            }
+            Ok(
+                serde_json::json!({"text":self.draft_revision(id,"text")?,"references":self.draft_revision(id,"references")?,"attachments":self.draft_revision(id,"attachments")?,"mode":self.draft_revision(id,"mode")?}),
+            )
+        })();
+        match result {
+            Ok(revisions) => {
+                if let Err(error) = self.db.execute_batch("COMMIT") {
+                    let _ = self.db.execute_batch("ROLLBACK");
+                    return Err(err(error));
+                }
+                Ok(revisions)
+            }
+            Err(error) => {
+                let _ = self.db.execute_batch("ROLLBACK");
+                Err(error)
+            }
+        }
     }
     pub fn draft_mode(&self, id: &str) -> Result<String> {
         self.ensure_agent(id)?;
@@ -293,6 +578,155 @@ impl Registry {
 mod tests {
     use super::*;
     #[test]
+    fn file_drafts_are_project_scoped_persistent_metadata_with_checked_clears() {
+        let dir = std::env::temp_dir().join(Uuid::new_v4().to_string());
+        std::fs::create_dir_all(dir.join("a")).unwrap();
+        std::fs::create_dir_all(dir.join("b")).unwrap();
+        let db = Registry::open(&dir.join("state")).unwrap();
+        let a = db.register(&dir.join("a").to_string_lossy()).unwrap();
+        let b = db.register(&dir.join("b").to_string_lossy()).unwrap();
+        let key = format!("file-draft:{}", "a".repeat(64));
+        let value = json!({"version":1,"path":"src/a.ts","content":"draft","saved":"original"});
+        assert_eq!(db.save_form_draft(&a.id, &key, &value, 0).unwrap(), 1);
+        assert!(db.file_drafts(&b.id).unwrap()["drafts"]
+            .as_array()
+            .unwrap()
+            .is_empty());
+        assert!(db.form_draft(&a.id, "file-draft:../bad").is_err());
+        drop(db);
+        let reopened = Registry::open(&dir.join("state")).unwrap();
+        let list = reopened.file_drafts(&a.id).unwrap();
+        assert_eq!(list["drafts"][0]["path"], "src/a.ts");
+        assert!(list["drafts"][0].get("content").is_none());
+        assert_eq!(reopened.form_draft(&a.id, &key).unwrap()["value"], value);
+        assert!(reopened
+            .save_form_draft(&a.id, &key, &Value::Null, 0)
+            .unwrap_err()
+            .contains("DRAFT_CONFLICT"));
+        reopened
+            .save_form_draft(&a.id, &key, &Value::Null, 1)
+            .unwrap();
+        assert!(reopened.file_drafts(&a.id).unwrap()["drafts"]
+            .as_array()
+            .unwrap()
+            .is_empty());
+        drop(reopened);
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+    #[test]
+    fn project_form_drafts_persist_and_reject_stale_windows_and_clears() {
+        let dir = std::env::temp_dir().join(Uuid::new_v4().to_string());
+        std::fs::create_dir_all(dir.join("a")).unwrap();
+        std::fs::create_dir_all(dir.join("b")).unwrap();
+        let db = Registry::open(&dir.join("state")).unwrap();
+        let a = db.register(dir.join("a").to_str().unwrap()).unwrap();
+        let b = db.register(dir.join("b").to_str().unwrap()).unwrap();
+        let key = "requirements-new";
+        let record_key = "requirements-record:reqi_one";
+        assert_eq!(
+            db.save_form_draft(&a.id, record_key, &serde_json::json!({"answer":"one"}), 0)
+                .unwrap(),
+            1
+        );
+        assert!(db
+            .form_draft(&a.id, "requirements-record:reqi_two")
+            .unwrap()["value"]
+            .is_null());
+        assert!(db.form_draft(&b.id, record_key).unwrap()["value"].is_null());
+        assert!(db
+            .form_draft(&a.id, "requirements-record:reqi_../one")
+            .is_err());
+        assert_eq!(db.form_draft(&a.id, key).unwrap()["revision"], 0);
+        let value =
+            serde_json::json!({"original":"Keep exact text\n","resources":["docs/design.md"]});
+        assert_eq!(db.save_form_draft(&a.id, key, &value, 0).unwrap(), 1);
+        let peer = Registry::open(&dir.join("state")).unwrap();
+        let note_key = format!("chimera-note:{}", "a".repeat(64));
+        let history_key = "history-view";
+        let history_value = serde_json::json!({"version":1,"view":{"pageSize":200,"query":"release","provider":"local","outcome":"completed","includeEmpty":false,"selectedId":"recorded/session","anchorId":"first/row"}});
+        assert_eq!(
+            db.save_form_draft(&a.id, history_key, &history_value, 0)
+                .unwrap(),
+            1
+        );
+        assert_eq!(
+            peer.form_draft(&a.id, history_key).unwrap()["value"],
+            history_value
+        );
+        assert!(peer.form_draft(&b.id, history_key).unwrap()["value"].is_null());
+        assert!(peer
+            .save_form_draft(&a.id, history_key, &Value::Null, 0)
+            .is_err());
+        let note_value = serde_json::json!({"version":1,"reportId":"recorded/report","text":"Retain exact note\n"});
+        assert_eq!(
+            db.save_form_draft(&a.id, &note_key, &note_value, 0)
+                .unwrap(),
+            1
+        );
+        assert_eq!(
+            peer.form_draft(&a.id, &note_key).unwrap()["value"],
+            note_value
+        );
+        assert!(peer.form_draft(&b.id, &note_key).unwrap()["value"].is_null());
+        assert!(peer
+            .form_draft(&a.id, &format!("chimera-note:{}", "b".repeat(64)))
+            .unwrap()["value"]
+            .is_null());
+        assert!(peer
+            .save_form_draft(&a.id, &note_key, &Value::Null, 0)
+            .is_err());
+        assert!(peer.form_draft(&a.id, "chimera-note:../invalid").is_err());
+        let review_key = "git-review-notes";
+        let review = serde_json::json!({"version":1,"notes":[{"path":"src/main.rs","line":3,"text":"Check this boundary"}]});
+        assert_eq!(
+            db.save_form_draft(&a.id, review_key, &review, 0).unwrap(),
+            1
+        );
+        assert_eq!(peer.form_draft(&a.id, review_key).unwrap()["value"], review);
+        assert!(peer.form_draft(&b.id, review_key).unwrap()["value"].is_null());
+        assert!(peer
+            .save_form_draft(&a.id, review_key, &Value::Null, 0)
+            .is_err());
+        assert_eq!(peer.form_draft(&a.id, key).unwrap()["value"], value);
+        assert!(peer.form_draft(&b.id, key).unwrap()["value"].is_null());
+        assert!(peer
+            .save_form_draft(&a.id, key, &Value::Null, 0)
+            .unwrap_err()
+            .contains("DRAFT_CONFLICT"));
+        assert_eq!(
+            peer.save_form_draft(&a.id, key, &serde_json::json!({"original":"Newer"}), 1)
+                .unwrap(),
+            2
+        );
+        assert!(db.save_form_draft(&a.id, key, &Value::Null, 1).is_err());
+        assert_eq!(db.save_form_draft(&a.id, key, &Value::Null, 2).unwrap(), 3);
+        assert!(peer.save_form_draft(&a.id, key, &value, 2).is_err());
+        assert!(db.form_draft("missing", key).is_err());
+        assert!(db.form_draft(&a.id, "other-form").is_err());
+        assert!(db
+            .save_form_draft(&a.id, key, &serde_json::json!([]), 3)
+            .is_err());
+        drop(peer);
+        drop(db);
+        let reopened = Registry::open(&dir.join("state")).unwrap();
+        assert_eq!(
+            reopened.form_draft(&a.id, &note_key).unwrap()["value"],
+            note_value
+        );
+        assert_eq!(
+            reopened.form_draft(&a.id, history_key).unwrap()["value"],
+            history_value
+        );
+        assert_eq!(
+            reopened.form_draft(&a.id, review_key).unwrap()["value"],
+            review
+        );
+        assert_eq!(reopened.form_draft(&a.id, key).unwrap()["revision"], 3);
+        assert!(reopened.form_draft(&a.id, key).unwrap()["value"].is_null());
+        drop(reopened);
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+    #[test]
     fn registry_persists_projects_sessions_and_rejects_escape() {
         let dir = std::env::temp_dir().join(Uuid::new_v4().to_string());
         let project_dir = dir.join("repo");
@@ -355,10 +789,83 @@ mod tests {
         assert_eq!(db.draft(&b.id).unwrap(), "second project draft");
         assert_eq!(db.draft_mode(&a.id).unwrap(), "queue");
         assert_eq!(db.draft_mode(&b.id).unwrap(), "btw");
+        let base = db.draft_revision(&a.id, "text").unwrap();
+        assert_eq!(base, 1);
+        assert_eq!(
+            db.save_draft_checked(&a.id, "text", "first window", base)
+                .unwrap(),
+            base + 1
+        );
+        let peer = Registry::open(&dir.join("state")).unwrap();
+        assert!(peer
+            .save_draft_checked(&a.id, "text", "stale window", base)
+            .unwrap_err()
+            .contains("DRAFT_CONFLICT"));
+        assert_eq!(peer.draft(&a.id).unwrap(), "first window");
+        let media_base = db.draft_revision(&a.id, "attachments").unwrap();
+        assert_eq!(
+            peer.save_draft_checked(&a.id, "attachments", media, media_base)
+                .unwrap(),
+            media_base + 1
+        );
+        assert!(db
+            .save_draft_checked(&a.id, "attachments", "[]", media_base)
+            .unwrap_err()
+            .contains("DRAFT_CONFLICT"));
+        assert_eq!(
+            serde_json::from_str::<Value>(&db.draft_part(&a.id, "attachments").unwrap()).unwrap(),
+            serde_json::from_str::<Value>(media).unwrap()
+        );
+        let mode_base = db.draft_revision(&a.id, "mode").unwrap();
+        assert_eq!(
+            peer.save_draft_checked(&a.id, "mode", "queue", mode_base)
+                .unwrap(),
+            mode_base + 1
+        );
+        assert_eq!(
+            peer.save_draft_checked(&a.id, "text", "second window", base + 1)
+                .unwrap(),
+            base + 2
+        );
+        assert_eq!(db.draft(&a.id).unwrap(), "second window");
+        let legacy_base = db.draft_revision(&a.id, "text").unwrap();
+        peer.save_draft(&a.id, "older client edit").unwrap();
+        assert!(db
+            .save_draft_checked(&a.id, "text", "stale newer client", legacy_base)
+            .unwrap_err()
+            .contains("DRAFT_CONFLICT"));
+        assert_eq!(db.draft(&a.id).unwrap(), "older client edit");
+        let reviewed = db.draft_snapshot(&a.id).unwrap();
+        let local = serde_json::json!({"text":"local replacement", "references":serde_json::from_str::<Value>(refs).unwrap(), "attachments":serde_json::from_str::<Value>(media).unwrap(), "mode":"queue"});
+        peer.save_draft(&a.id, "changed after review").unwrap();
+        assert!(db
+            .replace_draft_checked(&a.id, &local, &reviewed["revisions"])
+            .unwrap_err()
+            .contains("DRAFT_CONFLICT"));
+        assert_eq!(db.draft(&a.id).unwrap(), "changed after review");
+        assert_eq!(db.draft_part(&a.id, "attachments").unwrap(), media);
+        let latest = db.draft_snapshot(&a.id).unwrap();
+        let updated = db
+            .replace_draft_checked(&a.id, &local, &latest["revisions"])
+            .unwrap();
+        assert_eq!(
+            updated["text"].as_i64().unwrap(),
+            latest["revisions"]["text"].as_i64().unwrap() + 1
+        );
+        assert_eq!(db.draft(&a.id).unwrap(), "local replacement");
+        assert_eq!(db.draft_part(&a.id, "references").unwrap(), refs);
+        assert_eq!(
+            serde_json::from_str::<Value>(&db.draft_part(&a.id, "attachments").unwrap()).unwrap(),
+            serde_json::from_str::<Value>(media).unwrap()
+        );
+        drop(peer);
         db.save_draft_mode(&a.id, "btw").unwrap();
         assert_eq!(db.draft_mode(&a.id).unwrap(), "btw");
         assert_eq!(db.draft_part(&a.id, "references").unwrap(), refs);
-        assert_eq!(db.draft_part(&a.id, "attachments").unwrap(), media);
+        assert_eq!(
+            serde_json::from_str::<Value>(&db.draft_part(&a.id, "attachments").unwrap()).unwrap(),
+            serde_json::from_str::<Value>(media).unwrap()
+        );
         assert_eq!(db.draft_part(&b.id, "attachments").unwrap(), "[]");
         db.save_draft_part(&a.id, "attachments", "[]").unwrap();
         assert_eq!(db.draft_part(&a.id, "attachments").unwrap(), "[]");

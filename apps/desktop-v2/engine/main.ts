@@ -18,6 +18,26 @@ if (!Number.isInteger(port) || port < 1 || port > 65535 || !accessToken || !dist
 const { hardenWin32ExecutableSearch } = await import('@wrongstack/core/utils');
 hardenWin32ExecutableSearch();
 const { startWebUI } = await import('@wrongstack/webui-server');
+const resumeIndex = process.argv.indexOf('--resume');
+const resumeSource = resumeIndex >= 0 ? process.argv[resumeIndex + 1] : undefined;
+const readyFile = process.env['WRONGSTACK_DESKTOP_RESTORE_READY'];
+let restoreId = resumeSource;
+if (resumeIndex >= 0) {
+  if (!resumeSource || !readyFile)
+    throw Error('Recorded conversation boot requires a source and native readiness path.');
+  if (process.argv.includes('--fork-session')) {
+    const { DefaultSessionStore } = await import('@wrongstack/core/storage');
+    const { resolveWstackPaths } = await import('@wrongstack/core/utils');
+    const projectRoot = process.cwd();
+    const paths = resolveWstackPaths({ projectRoot });
+    const store = new DefaultSessionStore({ dir: paths.projectSessions, projectRoot });
+    try {
+      restoreId = (await store.fork(resumeSource)).id;
+    } finally {
+      await store.dispose?.();
+    }
+  }
+}
 await startWebUI({
   wsHost: '127.0.0.1',
   httpPort: port,
@@ -26,3 +46,17 @@ await startWebUI({
   distDir,
   open: false,
 });
+if (restoreId && readyFile) {
+  const { writeFile } = await import('node:fs/promises');
+  const { restoreEngineSession } = await import('./restore-session');
+  try {
+    await restoreEngineSession(port, accessToken, restoreId);
+    await writeFile(readyFile, JSON.stringify({ sessionId: restoreId }));
+  } catch (error) {
+    await writeFile(
+      readyFile,
+      JSON.stringify({ error: error instanceof Error ? error.message : String(error) }),
+    );
+    throw error;
+  }
+}
