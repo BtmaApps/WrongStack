@@ -67,6 +67,22 @@ export interface SessionMoveResult {
   summary: SessionSummary;
 }
 
+export interface SessionHistoryPageOptions {
+  limit?: number;
+  offset?: number;
+  expectedRevision?: string;
+  excludeId?: string;
+  anchorId?: string;
+}
+export interface SessionHistoryPage {
+  sessions: SessionSummary[];
+  total: number;
+  offset: number;
+  limit: number;
+  nextOffset: number | null;
+  revision: string;
+  truncated: boolean;
+}
 export interface SessionStore {
   create(meta: Omit<SessionMetadata, 'startedAt'>): Promise<SessionWriter>;
   /**
@@ -113,6 +129,8 @@ export interface SessionStore {
     targetRoot: string,
   ): Promise<WorkspaceMaterializationResult>;
   list(limit?: number): Promise<SessionSummary[]>;
+  /** Bounded continuation across the catalog; the revision binds membership/order. */
+  listPage?(options?: SessionHistoryPageOptions): Promise<SessionHistoryPage>;
   /**
    * Resolve an exact, leaf-only, or unique-prefix reference to a canonical
    * persisted id. Implementations that omit this method require exact ids.

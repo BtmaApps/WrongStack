@@ -224,6 +224,8 @@ export type { SessionEvent, SessionEventAttribution } from './session-events.js'
 export type {
   SessionArchiveIdleResult,
   SessionArchiveResult,
+  SessionHistoryPage,
+  SessionHistoryPageOptions,
   SessionLoadProgress,
   SessionMoveResult,
   SessionMoveTarget,

@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-27T05:57:05.743Z
+**Generated:** 2026-10-28T17:18:46.537Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -8,20 +8,20 @@
 | Measure | Value |
 |---|---:|
 | Workspace packages | 45 |
-| Production source files | 5247 |
-| Production source lines | 1154158 |
-| Test files | 4600 |
+| Production source files | 5251 |
+| Production source lines | 1155883 |
+| Test files | 4604 |
 | Workspace dependency edges | 221 |
-| Relative module edges | 15686 |
+| Relative module edges | 15740 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
-| Type-inclusive module cycles | 4 |
-| Tests without TypeScript test-project coverage | 33 |
+| Type-inclusive module cycles | 5 |
+| Tests without TypeScript test-project coverage | 34 |
 | Tests in multiple TypeScript projects | 0 |
 
 ## Verification result
 
-- 1 unexcepted module cycle(s)
+- 2 unexcepted module cycle(s)
 
 ## Workspace packages
 
@@ -38,7 +38,7 @@
 | @wrongstack/contracts | 126 | 4 | @wrongstack/kanban, @wrongstack/primitives |
 | @wrongstack/coordination | 190 | 183 | @wrongstack/agent-catalog, @wrongstack/contracts, @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/core | 633 | 678 | @wrongstack/agent-catalog, @wrongstack/contracts, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
-| @wrongstack/desktop-v2 | 98 | 33 | @wrongstack/contracts, @wrongstack/core, @wrongstack/webui-protocol, @wrongstack/webui-server |
+| @wrongstack/desktop-v2 | 101 | 34 | @wrongstack/contracts, @wrongstack/core, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/goal | 22 | 22 | @wrongstack/contracts, @wrongstack/core, @wrongstack/worktree |
 | @wrongstack/governance | 45 | 37 | @wrongstack/persistence |
 | @wrongstack/hq | 62 | 42 | @wrongstack/contracts, @wrongstack/core, @wrongstack/persistence, @wrongstack/primitives |
@@ -61,7 +61,7 @@
 | @wrongstack/security-scanner | 21 | 34 | @wrongstack/contracts, @wrongstack/core |
 | @wrongstack/techstack | 55 | 65 | @wrongstack/contracts, @wrongstack/core, @wrongstack/persistence, @wrongstack/tools |
 | @wrongstack/telegram | 28 | 43 | @wrongstack/contracts, @wrongstack/core, @wrongstack/primitives |
-| @wrongstack/tools | 373 | 364 | @wrongstack/agent-catalog, @wrongstack/contracts, @wrongstack/coordination, @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
+| @wrongstack/tools | 374 | 367 | @wrongstack/agent-catalog, @wrongstack/contracts, @wrongstack/coordination, @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/tui | 497 | 431 | @wrongstack/chronicle, @wrongstack/contracts, @wrongstack/coordination, @wrongstack/core, @wrongstack/goal, @wrongstack/hq, @wrongstack/kanban, @wrongstack/primitives, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/tools |
 | @wrongstack/vector-memory | 18 | 28 | @wrongstack/contracts, @wrongstack/core, @wrongstack/persistence, @wrongstack/sage |
 | @wrongstack/vibeui | 69 | 24 | @wrongstack/webui-protocol |
@@ -85,6 +85,7 @@ None.
 - packages/cli/src/fleet/host.ts ↔ packages/cli/src/fleet/routing.ts
 - packages/contracts/src/kernel/events.ts ↔ packages/contracts/src/kernel/events/brain-events.ts ↔ packages/contracts/src/kernel/events/session-events.ts
 - packages/contracts/src/types/blocks.ts ↔ packages/contracts/src/types/context.ts ↔ packages/contracts/src/types/conversation-state.ts ↔ packages/contracts/src/types/messages.ts ↔ packages/contracts/src/types/provider.ts ↔ packages/contracts/src/types/run-env.ts ↔ packages/contracts/src/types/session-events.ts ↔ packages/contracts/src/types/session-storage.ts ↔ packages/contracts/src/types/session.ts ↔ packages/contracts/src/types/token-counter.ts ↔ packages/contracts/src/types/tool.ts
+- packages/tools/src/codebase-index/codebase-ast-replace-tool.ts ↔ packages/tools/src/codebase-index/codebase-atlas-tool.ts ↔ packages/tools/src/codebase-index/codebase-context-tool.ts ↔ packages/tools/src/codebase-index/codebase-diff-impact-tool.ts ↔ packages/tools/src/codebase-index/codebase-flow-trace-tool.ts ↔ packages/tools/src/codebase-index/codebase-impact-analysis-tool.ts ↔ packages/tools/src/codebase-index/codebase-incoming-calls-tool.ts ↔ packages/tools/src/codebase-index/codebase-index-tool.ts ↔ packages/tools/src/codebase-index/codebase-invariant-check-tool.ts ↔ packages/tools/src/codebase-index/codebase-onboard-tool.ts ↔ packages/tools/src/codebase-index/codebase-outgoing-calls-tool.ts ↔ packages/tools/src/codebase-index/codebase-read-symbol-tool.ts ↔ packages/tools/src/codebase-index/codebase-repo-map-tool.ts ↔ packages/tools/src/codebase-index/codebase-search-tool.ts ↔ packages/tools/src/codebase-index/codebase-skeleton-tool.ts ↔ packages/tools/src/codebase-index/codebase-stats-tool.ts ↔ packages/tools/src/codebase-index/codebase-targeted-test-tool.ts ↔ packages/tools/src/codebase-index/next-step-notes.ts
 
 ## Largest production files
 
@@ -118,12 +119,14 @@ None.
 | 705 | `packages/chronicle/src/project-server-client.ts` |
 | 703 | `packages/core/src/execution/auto-compaction-middleware.ts` |
 | 703 | `packages/mailbox-mcp/src/adapter.ts` |
+| 703 | `packages/tools/src/codebase-index/ast-symbol-mutator.ts` |
 | 701 | `packages/coordination/src/provider-status-tracker.ts` |
 | 700 | `packages/chronicle/src/project-server.ts` |
 | 699 | `packages/coordination/src/subagent-budget.ts` |
 | 699 | `packages/governance/src/runtime-compatibility.ts` |
 | 699 | `packages/sage/src/types.ts` |
 | 697 | `packages/core/src/core/agent-response.ts` |
+| 697 | `packages/tools/src/codebase-index/writer-graph-reader.ts` |
 | 697 | `packages/webui/src/components/KanbanView.tsx` |
 | 696 | `packages/cli/src/boot/tui-session-resume.ts` |
 | 696 | `packages/coordination/src/autonomous-brain.ts` |
@@ -138,8 +141,6 @@ None.
 | 693 | `packages/tui/src/hooks/use-provider-event-bridge.ts` |
 | 693 | `packages/vector-memory/src/store.ts` |
 | 693 | `packages/webui/src/components/MailboxPanel.tsx` |
-| 692 | `packages/governance/src/event-store.ts` |
-| 692 | `packages/tools/src/codebase-index/project-server.ts` |
 
 ## Exports only tests reference
 
@@ -149,7 +150,7 @@ None.
 
 ## TypeScript test coverage debt
 
-- 33 test files are not included in a package TypeScript test project.
+- 34 test files are not included in a package TypeScript test project.
 - 0 test files are included in more than one package TypeScript project.
 
 > This report is generated. Change architecture registry inputs or source code, then regenerate it; do not hand-edit measurements.

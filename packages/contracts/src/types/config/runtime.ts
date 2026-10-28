@@ -138,7 +138,21 @@ export function streamWatchdogMsError(value: unknown): string | null {
  * else through `tool_search` / `tool_use`.
  */
 export interface SystemPromptConfig {
-  variant?: 'default' | 'lite' | 'pro' | 'scout' | undefined;
+  variant?: 'default' | 'lite' | 'pro' | 'scout' | 'quick' | undefined;
+  /**
+   * Include the user-scope `~/.wrongstack/AGENTS.md` in the system prompt.
+   * Default: true. When false, the builder skips the user-instructions layer
+   * entirely (project AGENTS.md, bundled identities, and skills are
+   * unaffected). Applies from the next prompt build.
+   */
+  includeGlobalAgents?: boolean | undefined;
+  /**
+   * Include the project's root `AGENTS.md` (falling back to `CLAUDE.md`) in the
+   * system prompt. Default: true. When false, the builder skips the
+   * project-instructions layer; subdirectory instruction files, which arrive
+   * with tool results, are unaffected. Applies from the next prompt build.
+   */
+  includeProjectAgents?: boolean | undefined;
 }
 
 /**

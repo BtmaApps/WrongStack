@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { EventBus, ScopedEventBus } from '../events.js';
 import { RunController } from '../run-controller.js';
 
 describe('RunController post-disposal abort', () => {
@@ -38,5 +39,28 @@ describe('RunController post-disposal abort', () => {
     await run.dispose();
     parent.abort('after completion');
     expect(run.aborted).toBe(false);
+  });
+
+  it('ScopedEventBus.off and clear remove tracked registrations, and EventBus.off removes once() listeners (F856)', () => {
+    const scope = new ScopedEventBus();
+    const fn = () => {};
+    scope.on('run.started' as never, fn);
+    expect(scope.scopedListenerCount).toBe(1);
+    scope.off('run.started' as never, fn);
+    expect(scope.scopedListenerCount).toBe(0);
+
+    scope.on('run.started' as never, () => {});
+    scope.clear();
+    expect(scope.scopedListenerCount).toBe(0);
+
+    const bus = new EventBus();
+    let fired = false;
+    const onceFn = () => {
+      fired = true;
+    };
+    bus.once('run.started' as never, onceFn);
+    bus.off('run.started' as never, onceFn);
+    bus.emit('run.started' as never, {} as never);
+    expect(fired).toBe(false);
   });
 });

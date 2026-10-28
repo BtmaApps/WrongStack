@@ -3,7 +3,7 @@ import type { MailboxAgentStatus } from './mailbox.js';
 import type { Tool } from './tool.js';
 
 /** Which bundled system instruction a preset or session starts from. */
-export type SystemInstructionVariant = 'default' | 'lite' | 'pro' | 'scout';
+export type SystemInstructionVariant = 'default' | 'lite' | 'pro' | 'scout' | 'quick';
 
 /** Model capabilities relevant to prompt composition. */
 export interface ModelCapabilities {

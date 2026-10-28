@@ -129,9 +129,11 @@ export function reduceStreamActivity(
       typeof output === 'number' &&
       Number.isInteger(output) &&
       output >= 0 &&
-      (output > 0 || responseChars === 0);
+      (output > 0 || (responseChars === 0 && previous.requestTokens === 0));
     // A repeated response must not add the completed call twice.
-    if (!previous.requestOpen && previous.requestChars === 0) return previous;
+    if (!previous.requestOpen && previous.requestChars === 0 && previous.requestTokens === 0) {
+      return previous;
+    }
     return {
       ...previous,
       settledTokens:
@@ -140,7 +142,8 @@ export function reduceStreamActivity(
       requestChars: 0,
       requestTokens: 0,
       requestOpen: false,
-      estimated: previous.estimated || !exact,
+      estimated:
+        previous.estimated || (!exact && (responseChars > 0 || previous.requestTokens === 0)),
       phase: 'waiting',
     };
   }

@@ -46,6 +46,10 @@
       "lines": 715,
       "relativeImports": 0
     },
+    "packages/tools/src/codebase-index/ast-symbol-mutator.ts": {
+      "lines": 703,
+      "relativeImports": 6
+    },
     "packages/tools/src/codebase-index/infra-parser.ts": {
       "lines": 889,
       "relativeImports": 2

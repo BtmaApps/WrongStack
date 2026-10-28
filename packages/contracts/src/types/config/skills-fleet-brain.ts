@@ -236,6 +236,12 @@ export interface FleetConfig {
   /** Brain-gated fleet supervisor (rebalance/steer/spawn-helper). */
   supervisor?: FleetSupervisorConfig | undefined;
   /**
+   * Memory Companion — resident `memory-companion` subagent behind the leader.
+   * Recalls relevant memories at run start and curates learnings after runs.
+   * Default enabled.
+   */
+  memoryCompanion?: MemoryCompanionConfig | undefined;
+  /**
    * Explore Companion — state-triggered background codebase explorer behind
    * the leader. Watches the leader's in-progress work state and assigns
    * read-only exploration probes to a resident `explore-companion`
@@ -320,6 +326,12 @@ export interface FleetSupervisorConfig {
   allowSpawn?: boolean | undefined;
   /** Allow the supervisor to terminate subagents (highest risk). Default false. */
   allowTerminate?: boolean | undefined;
+}
+
+/** Config surface for the MemoryCompanion host wiring. */
+export interface MemoryCompanionConfig {
+  /** Kill switch. Default true. */
+  enabled?: boolean | undefined;
 }
 
 /** Config surface for the ExploreCompanion host wiring. */

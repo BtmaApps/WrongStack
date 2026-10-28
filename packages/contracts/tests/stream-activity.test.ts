@@ -258,4 +258,28 @@ describe('received model output activity', () => {
         ?.endedAt,
     ).toBe(2000);
   });
+
+  it('preserves exact tokens from provider.output_progress when provider.response has missing or zero output usage (F782)', () => {
+    let s1 = reduceStreamActivity(null, { type: 'iteration.started' }, 0);
+    s1 = reduceStreamActivity(
+      s1,
+      { type: 'provider.output_progress', payload: { tokens: 200, durationMs: 2000 } },
+      2000,
+    );
+    s1 = reduceStreamActivity(
+      s1,
+      { type: 'provider.response', payload: { usage: { output: 0 } } },
+      2500,
+    );
+    expect(streamActivityView(s1!, 2500)).toMatchObject({ tokens: 200, estimated: false });
+
+    let s2 = reduceStreamActivity(null, { type: 'iteration.started' }, 0);
+    s2 = reduceStreamActivity(
+      s2,
+      { type: 'provider.output_progress', payload: { tokens: 150, durationMs: 1500 } },
+      1500,
+    );
+    s2 = reduceStreamActivity(s2, { type: 'provider.response', payload: {} }, 2000);
+    expect(streamActivityView(s2!, 2000)).toMatchObject({ tokens: 150, estimated: false });
+  });
 });

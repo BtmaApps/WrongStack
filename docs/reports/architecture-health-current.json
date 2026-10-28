@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-27T05:57:05.743Z",
+  "generatedAt": "2026-10-28T17:18:46.537Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,20 +12,20 @@
   },
   "summary": {
     "packages": 45,
-    "sourceFiles": 5247,
-    "testFiles": 4600,
-    "sourceLines": 1154158,
+    "sourceFiles": 5251,
+    "testFiles": 4604,
+    "sourceLines": 1155883,
     "workspaceEdges": 221,
-    "moduleEdges": 15686,
+    "moduleEdges": 15740,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
-    "typeModuleCycles": 4,
-    "testsWithoutTypecheck": 33,
+    "typeModuleCycles": 5,
+    "testsWithoutTypecheck": 34,
     "testsWithMultipleTypechecks": 0,
     "testOnlyExports": 944
   },
   "errors": [
-    "1 unexcepted module cycle(s)"
+    "2 unexcepted module cycle(s)"
   ],
   "packageCycles": [],
   "coreAreas": {
@@ -387,8 +387,8 @@
     {
       "name": "@wrongstack/desktop-v2",
       "dir": "apps/desktop-v2",
-      "sourceFiles": 98,
-      "testFiles": 33,
+      "sourceFiles": 101,
+      "testFiles": 34,
       "workspaceDependencies": [
         "@wrongstack/contracts",
         "@wrongstack/core",
@@ -922,8 +922,8 @@
     {
       "name": "@wrongstack/tools",
       "dir": "packages/tools",
-      "sourceFiles": 373,
-      "testFiles": 364,
+      "sourceFiles": 374,
+      "testFiles": 367,
       "workspaceDependencies": [
         "@wrongstack/agent-catalog",
         "@wrongstack/contracts",
@@ -942,7 +942,7 @@
         {
           "path": "packages/tools/tsconfig.test.json",
           "error": null,
-          "testFiles": 364
+          "testFiles": 367
         }
       ]
     },
@@ -1260,6 +1260,29 @@
           "packages/contracts/src/types/token-counter.ts",
           "packages/contracts/src/types/tool.ts"
         ]
+      },
+      {
+        "kind": "type-module-cycle",
+        "members": [
+          "packages/tools/src/codebase-index/codebase-ast-replace-tool.ts",
+          "packages/tools/src/codebase-index/codebase-atlas-tool.ts",
+          "packages/tools/src/codebase-index/codebase-context-tool.ts",
+          "packages/tools/src/codebase-index/codebase-diff-impact-tool.ts",
+          "packages/tools/src/codebase-index/codebase-flow-trace-tool.ts",
+          "packages/tools/src/codebase-index/codebase-impact-analysis-tool.ts",
+          "packages/tools/src/codebase-index/codebase-incoming-calls-tool.ts",
+          "packages/tools/src/codebase-index/codebase-index-tool.ts",
+          "packages/tools/src/codebase-index/codebase-invariant-check-tool.ts",
+          "packages/tools/src/codebase-index/codebase-onboard-tool.ts",
+          "packages/tools/src/codebase-index/codebase-outgoing-calls-tool.ts",
+          "packages/tools/src/codebase-index/codebase-read-symbol-tool.ts",
+          "packages/tools/src/codebase-index/codebase-repo-map-tool.ts",
+          "packages/tools/src/codebase-index/codebase-search-tool.ts",
+          "packages/tools/src/codebase-index/codebase-skeleton-tool.ts",
+          "packages/tools/src/codebase-index/codebase-stats-tool.ts",
+          "packages/tools/src/codebase-index/codebase-targeted-test-tool.ts",
+          "packages/tools/src/codebase-index/next-step-notes.ts"
+        ]
       }
     ],
     "matchedExceptions": [
@@ -1273,6 +1296,29 @@
         "members": [
           "apps/desktop-v2/src/EngineDataView.tsx",
           "apps/desktop-v2/src/EngineWorkspace.tsx"
+        ]
+      },
+      {
+        "kind": "type-module-cycle",
+        "members": [
+          "packages/tools/src/codebase-index/codebase-ast-replace-tool.ts",
+          "packages/tools/src/codebase-index/codebase-atlas-tool.ts",
+          "packages/tools/src/codebase-index/codebase-context-tool.ts",
+          "packages/tools/src/codebase-index/codebase-diff-impact-tool.ts",
+          "packages/tools/src/codebase-index/codebase-flow-trace-tool.ts",
+          "packages/tools/src/codebase-index/codebase-impact-analysis-tool.ts",
+          "packages/tools/src/codebase-index/codebase-incoming-calls-tool.ts",
+          "packages/tools/src/codebase-index/codebase-index-tool.ts",
+          "packages/tools/src/codebase-index/codebase-invariant-check-tool.ts",
+          "packages/tools/src/codebase-index/codebase-onboard-tool.ts",
+          "packages/tools/src/codebase-index/codebase-outgoing-calls-tool.ts",
+          "packages/tools/src/codebase-index/codebase-read-symbol-tool.ts",
+          "packages/tools/src/codebase-index/codebase-repo-map-tool.ts",
+          "packages/tools/src/codebase-index/codebase-search-tool.ts",
+          "packages/tools/src/codebase-index/codebase-skeleton-tool.ts",
+          "packages/tools/src/codebase-index/codebase-stats-tool.ts",
+          "packages/tools/src/codebase-index/codebase-targeted-test-tool.ts",
+          "packages/tools/src/codebase-index/next-step-notes.ts"
         ]
       }
     ]
@@ -1383,6 +1429,12 @@
       },
       {
         "file": "apps/desktop-v2/tests/input-form-model.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "apps/desktop-v2/tests/live-fleet-model.test.ts",
         "projects": [
           "root-node"
         ]
@@ -18842,6 +18894,12 @@
         ]
       },
       {
+        "file": "packages/tools/tests/codebase-import-ownership.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/tools/tests/codebase-index-atomic.test.ts",
         "projects": [
           "root-node"
@@ -19112,6 +19170,12 @@
         ]
       },
       {
+        "file": "packages/tools/tests/codebase-next-step-notes.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/tools/tests/codebase-phase2-intelligence.test.ts",
         "projects": [
           "root-node"
@@ -19185,6 +19249,12 @@
       },
       {
         "file": "packages/tools/tests/codebase-tools-real-index-regressions.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tools/tests/codebase-transitive-bounds.test.ts",
         "projects": [
           "root-node"
         ]
@@ -29009,6 +29079,13 @@
         "typecheckProjects": []
       },
       {
+        "file": "apps/desktop-v2/tests/live-fleet-model.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
         "file": "apps/desktop-v2/tests/local-provider.test.ts",
         "runtimeProjects": [
           "root-node"
@@ -29378,6 +29455,11 @@
       "syntax": "import"
     },
     {
+      "from": "apps/desktop-v2/src/ProjectLiveFleet.tsx",
+      "specifier": "./project-live-fleet.css",
+      "syntax": "import"
+    },
+    {
       "from": "apps/desktop-v2/src/PromptWorkspace.tsx",
       "specifier": "./composer-resources.css",
       "syntax": "import"
@@ -29475,6 +29557,11 @@
       "file": "packages/plugins/src/audit/index.ts",
       "lines": 715,
       "relativeImports": 0
+    },
+    {
+      "file": "packages/tools/src/codebase-index/ast-symbol-mutator.ts",
+      "lines": 703,
+      "relativeImports": 6
     },
     {
       "file": "packages/tools/src/codebase-index/infra-parser.ts",
@@ -29709,6 +29796,11 @@
       "relativeImports": 3
     },
     {
+      "file": "packages/tools/src/codebase-index/ast-symbol-mutator.ts",
+      "lines": 703,
+      "relativeImports": 6
+    },
+    {
       "file": "packages/coordination/src/provider-status-tracker.ts",
       "lines": 701,
       "relativeImports": 4
@@ -29737,6 +29829,11 @@
       "file": "packages/core/src/core/agent-response.ts",
       "lines": 697,
       "relativeImports": 21
+    },
+    {
+      "file": "packages/tools/src/codebase-index/writer-graph-reader.ts",
+      "lines": 697,
+      "relativeImports": 7
     },
     {
       "file": "packages/webui/src/components/KanbanView.tsx",
@@ -29807,16 +29904,6 @@
       "file": "packages/webui/src/components/MailboxPanel.tsx",
       "lines": 693,
       "relativeImports": 2
-    },
-    {
-      "file": "packages/governance/src/event-store.ts",
-      "lines": 692,
-      "relativeImports": 8
-    },
-    {
-      "file": "packages/tools/src/codebase-index/project-server.ts",
-      "lines": 692,
-      "relativeImports": 13
     }
   ],
   "testOnlyExports": [

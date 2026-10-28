@@ -101,7 +101,7 @@ export interface SessionEventMap {
     seq: number;
     provider: string;
     model: string;
-    mechanism: 'explicit' | 'automatic' | 'none';
+    mechanism: 'explicit' | 'automatic' | 'implicit' | 'none';
     /** Effective context window (0 = unknown). */
     maxContext: number;
     /** Estimated request tokens and their cache lanes. */

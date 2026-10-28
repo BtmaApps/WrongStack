@@ -154,7 +154,14 @@ export class EventBus {
   off<E extends EventName>(event: E, fn: Listener<E>): void {
     const set = this.listeners.get(event);
     if (!set) return;
-    set.delete(fn as Listener<EventName>);
+    if (!set.delete(fn as Listener<EventName>)) {
+      for (const entry of set) {
+        if ((entry as { __onceOriginal?: unknown }).__onceOriginal === fn) {
+          set.delete(entry);
+          break;
+        }
+      }
+    }
     this.listenerSnapshots.delete(event);
     // Prune the now-empty Set so the map doesn't accumulate dead entries that
     // listenerCount() and iteration would otherwise walk. Safe during an
@@ -164,10 +171,11 @@ export class EventBus {
   }
 
   once<E extends EventName>(event: E, fn: Listener<E>): () => void {
-    const wrapper: Listener<E> = (payload) => {
+    const wrapper: Listener<E> & { __onceOriginal?: Listener<E> } = (payload) => {
       this.off(event, wrapper as Listener<EventName>);
       (fn as Listener<E>)(payload);
     };
+    wrapper.__onceOriginal = fn;
     this.on(event, wrapper as Listener<E>);
     return () => {
       this.off(event, wrapper as Listener<EventName>);
@@ -437,7 +445,10 @@ export class ScopedEventBus extends EventBus {
   // Track registrations by a unique counter key so that EventBus.once()'s
   // internal listener-removal doesn't affect our tracking (once removes the
   // fn from EventBus but we still need to call our unsub during teardown).
-  private readonly registrations = new Map<number, () => void>();
+  private readonly registrations = new Map<
+    number,
+    { event?: EventName; fn?: unknown; unsub: () => void }
+  >();
   private nextKey = 0;
 
   /**
@@ -450,11 +461,21 @@ export class ScopedEventBus extends EventBus {
     }
     const key = this.nextKey++;
     const unsub = super.on(event, fn);
-    this.registrations.set(key, unsub);
+    this.registrations.set(key, { event, fn, unsub });
     return () => {
       this.registrations.delete(key);
       unsub();
     };
+  }
+
+  override off<E extends EventName>(event: E, fn: Listener<E>): void {
+    super.off(event, fn);
+    for (const [key, entry] of this.registrations) {
+      if (entry.event === event && entry.fn === fn) {
+        this.registrations.delete(key);
+        break;
+      }
+    }
   }
 
   /**
@@ -481,7 +502,7 @@ export class ScopedEventBus extends EventBus {
       return () => {};
     }
     const key = this.nextKey++;
-    const wrapper: Listener<E> = (payload) => {
+    const wrapper: Listener<E> & { __onceOriginal?: Listener<E> } = (payload) => {
       // Bypass ScopedEventBus.on() — go straight to EventBus.off() so we
       // don't recurse and don't consume another key.
       EventBus.prototype.off.call(this, event, wrapper as Listener<EventName>);
@@ -491,6 +512,7 @@ export class ScopedEventBus extends EventBus {
       this.registrations.delete(key);
       (fn as Listener<E>)(payload);
     };
+    wrapper.__onceOriginal = fn;
     // Use the EventBus prototype directly to register without triggering
     // ScopedEventBus.on() which would consume a second key.
     EventBus.prototype.on.call(this, event, wrapper as Listener<EventName>);
@@ -498,7 +520,7 @@ export class ScopedEventBus extends EventBus {
       this.registrations.delete(key);
       EventBus.prototype.off.call(this, event, wrapper as Listener<EventName>);
     };
-    this.registrations.set(key, unsub);
+    this.registrations.set(key, { event, fn, unsub });
     return unsub;
   }
 
@@ -519,7 +541,7 @@ export class ScopedEventBus extends EventBus {
     // Call EventBus.onPattern directly so the wrapper-consumption in
     // ScopedEventBus.on() doesn't re-enter and create a second registration slot.
     const unsub = EventBus.prototype.onPattern.call(this, '*', fn, owner);
-    this.registrations.set(key, unsub);
+    this.registrations.set(key, { unsub });
     return () => {
       this.registrations.delete(key);
       unsub();
@@ -548,7 +570,7 @@ export class ScopedEventBus extends EventBus {
     }
     const key = this.nextKey++;
     const unsub = super.onPattern(pattern, fn, owner);
-    this.registrations.set(key, unsub);
+    this.registrations.set(key, { unsub });
     return () => {
       this.registrations.delete(key);
       unsub();
@@ -574,11 +596,16 @@ export class ScopedEventBus extends EventBus {
     }
     const key = this.nextKey++;
     const unsub = super.onRegex(regex, fn, owner);
-    this.registrations.set(key, unsub);
+    this.registrations.set(key, { unsub });
     return () => {
       this.registrations.delete(key);
       unsub();
     };
+  }
+
+  override clear(): void {
+    this.registrations.clear();
+    super.clear();
   }
 
   /**
@@ -593,7 +620,7 @@ export class ScopedEventBus extends EventBus {
    * ```
    */
   teardown(): void {
-    for (const unsub of this.registrations.values()) {
+    for (const { unsub } of this.registrations.values()) {
       try {
         unsub();
       } catch {

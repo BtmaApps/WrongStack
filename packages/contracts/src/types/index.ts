@@ -31,6 +31,13 @@ export {
   markVolatileSystemBlock,
   VOLATILE_SYSTEM_BLOCKS,
 } from './blocks.js';
+// ── chronicle-metrics (4 symbols) ──
+export type {
+  ChronicleFileLineageReader,
+  ChronicleFileLineageRow,
+  ChronicleUnderusedToolRow,
+  ChronicleUnderusedToolsReader,
+} from './chronicle-metrics.js';
 export type {
   CompactionObserver,
   CompactionTrigger,
@@ -286,20 +293,6 @@ export type {
   ShellHook,
 } from './hooks.js';
 export { HOOK_EVENTS, isHookEvent } from './hooks.js';
-export type {
-  GeneratedImage,
-  ImageGenerationRequest,
-  ImageGenerationResult,
-} from './image-generation.js';
-// ── input-reader (2 symbols) ──
-export type { InputReader, PromptOption, ReadKeyOptions } from './input-reader.js';
-// ── chronicle-metrics (4 symbols) ──
-export type {
-  ChronicleFileLineageReader,
-  ChronicleFileLineageRow,
-  ChronicleUnderusedToolRow,
-  ChronicleUnderusedToolsReader,
-} from './chronicle-metrics.js';
 // ── hq-mailbox-publisher (5 symbols) ──
 export type {
   HqMailboxEventAction,
@@ -307,6 +300,13 @@ export type {
   MailboxHqPublisherFactoryOptions,
   MailboxHqPublisherPort,
 } from './hq-mailbox-publisher.js';
+export type {
+  GeneratedImage,
+  ImageGenerationRequest,
+  ImageGenerationResult,
+} from './image-generation.js';
+// ── input-reader (2 symbols) ──
+export type { InputReader, PromptOption, ReadKeyOptions } from './input-reader.js';
 // ── logger (2 symbols) ──
 export type { Logger, LogLevel } from './logger.js';
 export type {
@@ -526,6 +526,8 @@ export type {
   SessionData,
   SessionEvent,
   SessionForkOptions,
+  SessionHistoryPage,
+  SessionHistoryPageOptions,
   SessionLoadProgress,
   SessionMetadata,
   SessionMoveResult,
