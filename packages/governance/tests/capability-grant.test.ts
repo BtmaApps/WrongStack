@@ -1365,6 +1365,55 @@ describe('governance capability grant registry — daemon self-grant exclusion',
     expect(registry.getGrant(claimed.result.control.grant.grantId)?.status).toBe('revoked');
     expect(registry.getGrant(claimed.result.model.grant.grantId)?.status).toBe('revoked');
 
+    // 4. Revoking an expired attachment controlGrantId still revokes an active rotated modelGrantId
+    const claimed2 = authenticated.handleUnknown(
+      {
+        protocolVersion: GOVERNANCE_SERVICE_PROTOCOL_VERSION,
+        requestId: 'claim-f829',
+        type: 'claim_runtime_attachment',
+        controlClientId: 'ctrl-f829',
+        modelClientId: 'mdl-f829',
+        modelCapabilities: ['task_read'],
+        ttlMs: 5_000,
+      },
+      { token: broker.token, projectId: 'project-1', clientId: 'broker-f679' },
+    );
+    if (!claimed2.ok || claimed2.result.type !== 'runtime_attachment_claimed') {
+      throw new Error('Expected runtime attachment claim');
+    }
+    const rotatedModel = authenticated.handleUnknown(
+      {
+        protocolVersion: GOVERNANCE_SERVICE_PROTOCOL_VERSION,
+        requestId: 'rotate-mdl-f829',
+        type: 'rotate_capability_grant',
+        grantId: claimed2.result.model.grant.grantId,
+        ttlMs: 25_000,
+      },
+      { token: admin2.token, projectId: 'project-1', clientId: 'admin-f679' },
+    );
+    if (!rotatedModel.ok || rotatedModel.result.type !== 'capability_grant_rotated') {
+      throw new Error('Expected model grant rotation');
+    }
+    advance(6_000);
+    const revokeExpiredCtrl = authenticated.handleUnknown(
+      {
+        protocolVersion: GOVERNANCE_SERVICE_PROTOCOL_VERSION,
+        requestId: 'revoke-expired-ctrl-f829',
+        type: 'revoke_capability_grant',
+        grantId: claimed2.result.control.grant.grantId,
+      },
+      { token: admin2.token, projectId: 'project-1', clientId: 'admin-f679' },
+    );
+    expect(revokeExpiredCtrl).toMatchObject({
+      ok: true,
+      result: {
+        type: 'capability_grant_revoked',
+        grantId: claimed2.result.control.grant.grantId,
+        revoked: true,
+      },
+    });
+    expect(registry.getGrant(rotatedModel.result.grant.grantId)?.status).toBe('revoked');
+
     authenticated.close();
   });
 });

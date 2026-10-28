@@ -280,12 +280,12 @@ export class GovernanceCredentialLeaseController implements GovernanceCredential
     }
     this.state = 'rotating';
     this.rotationAttempt += 1;
-    if (!this.cycleRequestId) {
-      const requestId = this.requestIdFactory();
-      tokenSafe(requestId, 'rotation requestId');
-      this.cycleRequestId = requestId;
-    }
     try {
+      if (!this.cycleRequestId) {
+        const requestId = this.requestIdFactory();
+        tokenSafe(requestId, 'rotation requestId');
+        this.cycleRequestId = requestId;
+      }
       const response = await this.client.request({
         protocolVersion: GOVERNANCE_SERVICE_PROTOCOL_VERSION,
         requestId: this.cycleRequestId,

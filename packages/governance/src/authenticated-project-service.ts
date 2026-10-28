@@ -475,9 +475,12 @@ export class AuthenticatedGovernanceProjectService {
       revoked = this.grants.revoke(request.grantId, reason, authentication.client.clientId);
       const attachedModelGrantId = this.#attachmentModelGrantByControlGrant.get(request.grantId);
       if (attachedModelGrantId !== undefined) {
-        if (revoked) {
-          this.grants.revoke(attachedModelGrantId, reason, authentication.client.clientId);
-        }
+        const modelRevoked = this.grants.revoke(
+          attachedModelGrantId,
+          reason,
+          authentication.client.clientId,
+        );
+        revoked = revoked || modelRevoked;
         this.#attachmentModelGrantByControlGrant.delete(request.grantId);
       }
     } catch {

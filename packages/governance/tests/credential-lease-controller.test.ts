@@ -366,4 +366,45 @@ describe('governance credential lease controller', () => {
     expect(snap.lastFailure).toContain('Credential rotation identity validation failed');
     expect(scheduler.delays()).toEqual([2_000]);
   });
+
+  it('transitions to retry_wait instead of wedging in rotating when requestIdFactory returns an invalid requestId (F779)', async () => {
+    const scheduler = new FakeScheduler();
+    let callCount = 0;
+    const controller = new GovernanceCredentialLeaseController({
+      projectRoot: 'C:/project',
+      projectId: 'project-1',
+      grantId: 'admin-1',
+      expiresAt: new Date(START + 30_000).toISOString(),
+      credential: credential(),
+      rotationTtlMs: 20_000,
+      renewBeforeMs: 5_000,
+      retryDelayMs: 1_000,
+      requestTimeoutMs: 1_000,
+      maxAttempts: 3,
+      now: () => START,
+      scheduler,
+      requestIdFactory: () => {
+        callCount += 1;
+        return callCount === 1 ? 'bad request id with spaces' : 'valid-req-id-2';
+      },
+      clientFactory: () => ({
+        async request(req) {
+          const requestId =
+            req && typeof req === 'object' && 'requestId' in req ? String(req.requestId) : '';
+          return rotatedResponse(requestId);
+        },
+      }),
+    });
+
+    controller.start();
+    const first = await controller.rotateNow();
+    expect(first.state).toBe('retry_wait');
+    expect(first.rotationAttempt).toBe(1);
+    expect(first.lastFailure).toContain('rotation requestId');
+
+    const second = await controller.rotateNow();
+    expect(second.state).toBe('scheduled');
+    expect(second.rotationAttempt).toBe(0);
+    controller.stop();
+  });
 });
