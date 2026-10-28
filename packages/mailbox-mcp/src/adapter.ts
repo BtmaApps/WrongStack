@@ -11,6 +11,7 @@ import {
   normalizeRecipient,
   queryMessagesForActor,
   type RemoteMailbox,
+  unreadCountForActor,
 } from '@wrongstack/coordination';
 import {
   MCPServer,
@@ -187,7 +188,10 @@ function toolDescriptor(
 }
 
 function normalizeTimeout(value: unknown): number {
-  if (typeof value !== 'number' || !Number.isFinite(value)) return WATCH_DEFAULT_TIMEOUT_MS;
+  if (value === undefined) return WATCH_DEFAULT_TIMEOUT_MS;
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    throw new Error('timeoutMs must be a finite number');
+  }
   return Math.min(WATCH_MAX_TIMEOUT_MS, Math.max(100, Math.trunc(value)));
 }
 
@@ -307,7 +311,7 @@ async function executeRead(
       };
     }
     case 'unread':
-      return { unread: await mailbox.unreadCount(identity.actor, identity.sessionId) };
+      return { unread: await unreadCountForActor(mailbox, scope) };
     case 'inbox': {
       const parsedQuery = queryFromArgs(args);
       const limit = parsedQuery.limit ?? 20;

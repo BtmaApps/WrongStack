@@ -617,5 +617,24 @@ describe('createKanbanMcpServer', () => {
     const bareToken = parseArgs(['--project-root', '/tmp/proj', '--token', '--writable']);
     expect(bareToken.tokenMissing).toBe(true);
     expect(bareToken.writable).toBe(true);
+
+    // F860: kanban_watch cleans up connection.subscribe listener if onDisconnect throws
+    let unsubscribed = false;
+    const throwingDisconnectHost = createKanbanMcpToolHost('C:/project', {
+      dependencies: {
+        executeKanban: vi.fn(),
+        getConnection: vi.fn().mockResolvedValue({
+          subscribe: () => () => {
+            unsubscribed = true;
+          },
+          onDisconnect: () => {
+            throw new Error('socket closed');
+          },
+        }),
+      },
+    });
+    const watchErr = await throwingDisconnectHost.callTool('kanban_watch', { timeoutMs: 500 });
+    expect(watchErr.isError).toBe(true);
+    expect(unsubscribed).toBe(true);
   });
 });

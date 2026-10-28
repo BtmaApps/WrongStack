@@ -45,6 +45,7 @@ export interface SageMcpPolicyOptions {
 }
 
 const PROPOSAL_ACTIONS = ['list', 'propose'] as const;
+const PROPOSAL_SCOPES = ['project', 'file', 'symbol', 'user'] as const;
 
 /**
  * `memory_candidates` with only `list` and `propose`. The schema enum is
@@ -59,6 +60,13 @@ export function proposalOnlyCandidatesTool(tool: Tool, origin?: string | undefin
     type: 'string',
     enum: [...PROPOSAL_ACTIONS],
   };
+  if (properties['scope']) {
+    properties['scope'] = {
+      ...properties['scope'],
+      type: 'string',
+      enum: [...PROPOSAL_SCOPES],
+    };
+  }
   const inner = tool as Tool<Record<string, unknown>, unknown>;
   const narrowed: Tool<Record<string, unknown>, unknown> = {
     ...inner,
@@ -67,8 +75,13 @@ export function proposalOnlyCandidatesTool(tool: Tool, origin?: string | undefin
     inputSchema: { ...tool.inputSchema, properties } as Tool['inputSchema'],
     validate(input) {
       const action = input['action'];
-      if (action !== undefined && !(PROPOSAL_ACTIONS as readonly unknown[]).includes(action)) {
+      if (!(PROPOSAL_ACTIONS as readonly unknown[]).includes(action)) {
         return [`action "${String(action)}" is not available over MCP; use list or propose.`];
+      }
+      if (input['scope'] === 'session') {
+        return [
+          'scope "session" is not available for MCP proposals; use project, file, symbol, or user.',
+        ];
       }
       return inner.validate ? inner.validate(input) : [];
     },

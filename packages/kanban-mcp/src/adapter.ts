@@ -219,26 +219,37 @@ async function watchForKanbanMutation(
       reject(signal.reason instanceof Error ? signal.reason : new Error('Kanban watch cancelled'));
     };
 
-    const eventOff = connection.subscribe((event) => {
-      if (typeof event.event !== 'string' || !event.event.startsWith('board.')) return;
-      const changedBoardId = eventBoardId(event);
-      if (boardId && changedBoardId !== boardId) return;
-      finish({ changed: true, event: event.event, data: event.data });
-    });
-    unsubscribeEvent = eventOff;
-    if (settled) eventOff();
-    const disconnectOff = connection.onDisconnect(() => {
-      finish({ changed: false, disconnected: true, reason: 'Kanban daemon disconnected' });
-    });
-    unsubscribeDisconnect = disconnectOff;
-    if (settled) disconnectOff();
-    if (signal.aborted) onAbort();
-    if (settled) return;
-    signal.addEventListener('abort', onAbort, { once: true });
-    timer = setTimeout(() => {
-      finish({ changed: false, timedOut: true, timeoutMs });
-    }, timeoutMs);
-    timer.unref?.();
+    try {
+      const eventOff = connection.subscribe((event) => {
+        if (typeof event.event !== 'string' || !event.event.startsWith('board.')) return;
+        const changedBoardId = eventBoardId(event);
+        if (boardId && changedBoardId !== boardId) return;
+        finish({ changed: true, event: event.event, data: event.data });
+      });
+      unsubscribeEvent = eventOff;
+      if (settled) {
+        eventOff();
+        return;
+      }
+      const disconnectOff = connection.onDisconnect(() => {
+        finish({ changed: false, disconnected: true, reason: 'Kanban daemon disconnected' });
+      });
+      unsubscribeDisconnect = disconnectOff;
+      if (settled) {
+        disconnectOff();
+        return;
+      }
+      if (signal.aborted) onAbort();
+      if (settled) return;
+      signal.addEventListener('abort', onAbort, { once: true });
+      timer = setTimeout(() => {
+        finish({ changed: false, timedOut: true, timeoutMs });
+      }, timeoutMs);
+      timer.unref?.();
+    } catch (error) {
+      cleanup();
+      reject(error);
+    }
   });
 }
 

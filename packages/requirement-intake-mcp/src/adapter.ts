@@ -281,10 +281,10 @@ export function createRequirementIntakeMcpToolHost(
         };
       }
     }
+    const statuses = filterStatuses(args['statuses']);
     const projectId = await resolveProjectId(false);
     throwIfAborted(signal);
     const ctx = intakeContext(projectId, actor);
-    const statuses = filterStatuses(args['statuses']);
     const records = await service.listIntakes(
       projectId,
       ctx,

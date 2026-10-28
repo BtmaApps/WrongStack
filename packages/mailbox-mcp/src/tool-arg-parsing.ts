@@ -32,12 +32,20 @@ export function requiredString(args: Record<string, unknown>, key: string, trim 
 
 export function optionalString(args: Record<string, unknown>, key: string): string | undefined {
   const value = args[key];
-  return typeof value === 'string' ? value : undefined;
+  if (value === undefined) return undefined;
+  if (typeof value !== 'string') {
+    throw new Error(`${key} must be a string`);
+  }
+  return value;
 }
 
 function optionalNumber(args: Record<string, unknown>, key: string): number | undefined {
   const value = args[key];
-  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+  if (value === undefined) return undefined;
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    throw new Error(`${key} must be a finite number`);
+  }
+  return value;
 }
 
 export function optionalNonNegativeInteger(

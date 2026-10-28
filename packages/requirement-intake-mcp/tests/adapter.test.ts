@@ -590,5 +590,16 @@ describe('createRequirementIntakeMcpServer', () => {
     const bareToken = parseArgs(['--project-root', '/tmp/proj', '--token', '--writable']);
     expect(bareToken.tokenMissing).toBe(true);
     expect(bareToken.writable).toBe(true);
+
+    // F859: requirement_intake_list validates statuses before calling resolveProjectId
+    const spyResolve = vi.fn(async () => 'proj_alpha');
+    const preflightHost = createRequirementIntakeMcpToolHost('C:/project', {
+      dependencies: { resolveProjectId: spyResolve },
+    });
+    const badStatuses = await preflightHost.callTool('requirement_intake_list', {
+      statuses: 'not-an-array',
+    });
+    expect(badStatuses.isError).toBe(true);
+    expect(spyResolve).not.toHaveBeenCalled();
   });
 });

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-28T17:25:54.128Z",
+  "generatedAt": "2026-10-28T17:26:31.310Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 45,
     "sourceFiles": 5251,
-    "testFiles": 4606,
-    "sourceLines": 1156295,
+    "testFiles": 4611,
+    "sourceLines": 1156390,
     "workspaceEdges": 221,
     "moduleEdges": 15741,
     "nonCommandSlashImports": 0,
@@ -291,7 +291,7 @@
       "name": "@wrongstack/codebase-index-mcp",
       "dir": "packages/codebase-index-mcp",
       "sourceFiles": 6,
-      "testFiles": 5,
+      "testFiles": 6,
       "workspaceDependencies": [
         "@wrongstack/contracts",
         "@wrongstack/core",
@@ -307,7 +307,7 @@
         {
           "path": "packages/codebase-index-mcp/tsconfig.test.json",
           "error": null,
-          "testFiles": 5
+          "testFiles": 6
         }
       ]
     },
@@ -497,7 +497,7 @@
       "name": "@wrongstack/kanban-mcp",
       "dir": "packages/kanban-mcp",
       "sourceFiles": 6,
-      "testFiles": 5,
+      "testFiles": 6,
       "workspaceDependencies": [
         "@wrongstack/contracts",
         "@wrongstack/core",
@@ -515,7 +515,7 @@
         {
           "path": "packages/kanban-mcp/tsconfig.test.json",
           "error": null,
-          "testFiles": 5
+          "testFiles": 6
         }
       ]
     },
@@ -523,7 +523,7 @@
       "name": "@wrongstack/mailbox-mcp",
       "dir": "packages/mailbox-mcp",
       "sourceFiles": 7,
-      "testFiles": 10,
+      "testFiles": 11,
       "workspaceDependencies": [
         "@wrongstack/coordination",
         "@wrongstack/core",
@@ -538,7 +538,7 @@
         {
           "path": "packages/mailbox-mcp/tsconfig.test.json",
           "error": null,
-          "testFiles": 10
+          "testFiles": 11
         }
       ]
     },
@@ -721,7 +721,7 @@
       "name": "@wrongstack/requirement-intake-mcp",
       "dir": "packages/requirement-intake-mcp",
       "sourceFiles": 6,
-      "testFiles": 3,
+      "testFiles": 4,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/mcp",
@@ -736,7 +736,7 @@
         {
           "path": "packages/requirement-intake-mcp/tsconfig.test.json",
           "error": null,
-          "testFiles": 3
+          "testFiles": 4
         }
       ]
     },
@@ -803,7 +803,7 @@
       "name": "@wrongstack/sage-mcp",
       "dir": "packages/sage-mcp",
       "sourceFiles": 7,
-      "testFiles": 6,
+      "testFiles": 7,
       "workspaceDependencies": [
         "@wrongstack/contracts",
         "@wrongstack/core",
@@ -819,7 +819,7 @@
         {
           "path": "packages/sage-mcp/tsconfig.test.json",
           "error": null,
-          "testFiles": 6
+          "testFiles": 7
         }
       ]
     },
@@ -6798,6 +6798,12 @@
         ]
       },
       {
+        "file": "packages/codebase-index-mcp/tests/cli-switch-values.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/codebase-index-mcp/tests/cli.test.ts",
         "projects": [
           "root-node"
@@ -12618,6 +12624,12 @@
         ]
       },
       {
+        "file": "packages/kanban-mcp/tests/cli-switch-values.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/kanban-mcp/tests/cli.test.ts",
         "projects": [
           "root-node"
@@ -13171,6 +13183,12 @@
       },
       {
         "file": "packages/mailbox-mcp/tests/cli-lifecycle.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/mailbox-mcp/tests/cli-switch-values.test.ts",
         "projects": [
           "root-node"
         ]
@@ -15960,6 +15978,12 @@
         ]
       },
       {
+        "file": "packages/requirement-intake-mcp/tests/cli-switch-values.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/requirement-intake-mcp/tests/cli.test.ts",
         "projects": [
           "root-node"
@@ -16309,6 +16333,12 @@
       },
       {
         "file": "packages/sage-mcp/tests/cli-lifecycle.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/sage-mcp/tests/cli-switch-values.test.ts",
         "projects": [
           "root-node"
         ]
@@ -29567,7 +29597,7 @@
     },
     {
       "file": "packages/mailbox-mcp/src/adapter.ts",
-      "lines": 703,
+      "lines": 707,
       "relativeImports": 3
     },
     {
@@ -29798,6 +29828,11 @@
       "relativeImports": 23
     },
     {
+      "file": "packages/mailbox-mcp/src/adapter.ts",
+      "lines": 707,
+      "relativeImports": 3
+    },
+    {
       "file": "packages/chronicle/src/project-server.ts",
       "lines": 706,
       "relativeImports": 17
@@ -29811,11 +29846,6 @@
       "file": "packages/core/src/execution/auto-compaction-middleware.ts",
       "lines": 703,
       "relativeImports": 18
-    },
-    {
-      "file": "packages/mailbox-mcp/src/adapter.ts",
-      "lines": 703,
-      "relativeImports": 3
     },
     {
       "file": "packages/tools/src/codebase-index/ast-symbol-mutator.ts",

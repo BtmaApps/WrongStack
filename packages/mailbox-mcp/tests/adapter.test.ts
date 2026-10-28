@@ -753,5 +753,16 @@ describe('createMailboxMcpServer', () => {
     expect(() => optionalBoolean({ incompleteOnly: 'true' }, 'incompleteOnly')).toThrow(
       'incompleteOnly must be a boolean',
     );
+
+    // F857: unread action uses actorReadScope / unreadCountForActor (including base alias)
+    const unreadRes = await host.callTool('mailbox_read', { action: 'unread' });
+    expect(unreadRes.isError).toBe(false);
+    expect(unreadRes.content).toEqual({ unread: 1 });
+
+    // F858: non-string / non-finite-number optional arguments are rejected
+    const badSince = await host.callTool('mailbox_read', { action: 'query', since: 12345 });
+    expect(badSince.isError).toBe(true);
+    const badLimit = await host.callTool('mailbox_read', { action: 'query', limit: '5' });
+    expect(badLimit.isError).toBe(true);
   });
 });

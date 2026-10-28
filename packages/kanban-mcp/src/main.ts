@@ -130,6 +130,17 @@ export function parseArgs(
       }
       return trimmed;
     };
+    // A switch takes no value, but `--writable=false` used to GRANT the tier it
+    // was written to deny. `true`/`1` keep the switch; any other value leaves it off.
+    const switchOn = (): boolean => {
+      if (inlineValue === undefined) return true;
+      const flag = inlineValue.trim().toLowerCase();
+      if (flag === 'true' || flag === '1') return true;
+      if (flag !== 'false' && flag !== '0') {
+        warn('mcp_cli_flag_invalid_switch', `${arg} takes no value; ignoring it.`);
+      }
+      return false;
+    };
     switch (arg) {
       case '--project-root': {
         const next = value();
@@ -171,11 +182,13 @@ export function parseArgs(
         break;
       }
       case '--writable':
-        parsed.writable = true;
+        if (switchOn()) parsed.writable = true;
         break;
       case '--destructive':
-        parsed.destructive = true;
-        parsed.writable = true;
+        if (switchOn()) {
+          parsed.destructive = true;
+          parsed.writable = true;
+        }
         break;
       case '-h':
       case '--help':

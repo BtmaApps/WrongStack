@@ -155,4 +155,27 @@ describe('proposalOnlyCandidatesTool', () => {
       undefined,
     );
   });
+
+  it('rejects session-scoped proposals and missing action in proposalOnlyCandidatesTool (F861)', async () => {
+    const withScope = makeTool({
+      name: 'memory_candidates',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          action: { type: 'string', enum: ['list', 'propose', 'accept'] },
+          scope: { type: 'string', enum: ['project', 'file', 'symbol', 'session', 'user'] },
+        },
+      },
+      validate: () => [],
+      execute: execute as never,
+    });
+    const tool = proposalOnlyCandidatesTool(withScope, 'codex');
+    const schemaScopes = (tool.inputSchema as { properties: Record<string, { enum: string[] }> })
+      .properties['scope']!.enum;
+    expect(schemaScopes).toEqual(['project', 'file', 'symbol', 'user']);
+    expect(await tool.validate!({ action: 'propose', scope: 'session' } as never)).toEqual([
+      'scope "session" is not available for MCP proposals; use project, file, symbol, or user.',
+    ]);
+    expect((await tool.validate!({} as never)).length).toBeGreaterThan(0);
+  });
 });
