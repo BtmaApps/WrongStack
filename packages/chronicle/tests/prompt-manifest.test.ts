@@ -46,3 +46,25 @@ describe('prompt composition manifest', () => {
     expect(serialized).not.toContain('secret.ts');
   });
 });
+
+describe('prompt manifest system blocks', () => {
+  it('records each system block by layer, size and hash, never its text', () => {
+    const identity = { type: 'text' as const, text: 'identity text' };
+    const skills = { type: 'text' as const, text: 'skills text that is longer' };
+    const labels = new Map<object, string>([[identity, 'identity']]);
+    const manifest = createChroniclePromptManifest(
+      { model: 'm', system: [identity, skills], messages: [] },
+      (block) => labels.get(block),
+    );
+    expect(manifest.system.blocks?.map((b) => [b.source, b.bytes])).toEqual([
+      ['identity', 13],
+      ['untagged', 26],
+    ]);
+    expect(JSON.stringify(manifest)).not.toContain('identity text');
+    // The id is unchanged by labels: they describe the prompt, not compose it.
+    expect(manifest.manifestId).toBe(
+      createChroniclePromptManifest({ model: 'm', system: [identity, skills], messages: [] })
+        .manifestId,
+    );
+  });
+});

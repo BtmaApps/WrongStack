@@ -27,6 +27,7 @@ import { chronicleEventHash, GENESIS_HASH } from './event-hash.js';
 import { collectPartitions, readRetentionCheckpoint, streamEntriesStrict } from './journal.js';
 import { PARTITION_FILE_PATTERN } from './partition-filename.js';
 import type { ChronicleQuarantinedFamily, ChronicleSqliteJournal } from './sqlite-journal.js';
+import type { ChronicleEvent } from './types.js';
 
 export interface ChronicleLegacyImportResult {
   /** True when the marker was already set and nothing was read. */
@@ -126,8 +127,10 @@ export async function importLegacyChronicleJournal(
         const checkpoint = checkpointResult.checkpoint;
         if (checkpoint) sink.checkpoint(day, checkpoint.sequence, checkpoint.hash);
 
-        let expectedSequence = (checkpoint?.sequence ?? 0) + 1;
+        const checkpointSequence = checkpoint?.sequence ?? 0;
+        let expectedSequence = checkpointSequence + 1;
         let previousHash = checkpoint?.hash ?? GENESIS_HASH;
+        let coveredPrevious: ChronicleEvent | undefined;
 
         for (const partition of await collectPartitions(basePath)) {
           // Per-file boundary: the metrics ingester folds only post-migration
@@ -137,6 +140,38 @@ export async function importLegacyChronicleJournal(
             await fs.stat(partition)
           ).size;
           for await (const event of streamEntriesStrict(partition)) {
+            if (event.sequence <= checkpointSequence) {
+              if (chronicleEventHash(event) !== event.hash) {
+                throw new ChronicleImportError(
+                  `entry hash mismatch in ${day} at sequence ${event.sequence}`,
+                  day,
+                  event.sequence,
+                );
+              }
+              if (coveredPrevious && event.sequence !== coveredPrevious.sequence + 1) {
+                throw new ChronicleImportError(
+                  `sequence gap in ${day}: expected ${coveredPrevious.sequence + 1}, found ${event.sequence}`,
+                  day,
+                  event.sequence,
+                );
+              }
+              if (coveredPrevious && event.previousHash !== coveredPrevious.hash) {
+                throw new ChronicleImportError(
+                  `previous hash mismatch in ${day} at sequence ${event.sequence}`,
+                  day,
+                  event.sequence,
+                );
+              }
+              if (event.sequence === checkpointSequence && event.hash !== checkpoint?.hash) {
+                throw new ChronicleImportError(
+                  `retention checkpoint hash mismatch in ${day} at sequence ${event.sequence}`,
+                  day,
+                  event.sequence,
+                );
+              }
+              coveredPrevious = event;
+              continue;
+            }
             if (event.sequence !== expectedSequence) {
               throw new ChronicleImportError(
                 `sequence gap in ${day}: expected ${expectedSequence}, found ${event.sequence}`,

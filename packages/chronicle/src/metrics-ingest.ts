@@ -96,7 +96,11 @@ export class ChronicleMetricsIngester {
             } else if (boundary?.has(key)) {
               // Migrated file: bytes up to its import boundary are in SQLite —
               // fold only post-migration appends (the jsonl-store fallback).
-              base = Math.max(offsets.get(key) ?? 0, boundary.get(key)!);
+              // After a rebuild the aggregates were wiped, so re-fold from the
+              // import boundary rather than the pre-wipe offset.
+              base = rebuilt
+                ? boundary.get(key)!
+                : Math.max(offsets.get(key) ?? 0, boundary.get(key)!);
             } else {
               // Quarantined or post-migration file — its events live only in
               // JSONL. After a rebuild the aggregates were wiped, so re-fold

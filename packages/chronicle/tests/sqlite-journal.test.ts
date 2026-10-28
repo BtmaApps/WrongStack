@@ -598,6 +598,27 @@ describe('ChronicleSqliteJournal', () => {
     journal = new ChronicleSqliteJournal({ directory: dir });
     expect(journal.hasImportedLegacyJournal()).toBe(true);
   });
+
+  it('does not re-cache a stale day anchor after enforceEventLimitWithinTransaction evicts that day (F840)', async () => {
+    journal.close();
+    const trimDir = await fs.mkdtemp(path.join(os.tmpdir(), 'chronicle-sqlite-anchor-evict-'));
+    let currentNow = new Date('2026-03-02T00:00:01.000Z');
+    journal = new ChronicleSqliteJournal({
+      directory: trimDir,
+      maxEvents: 50,
+      now: () => currentNow,
+    });
+
+    await journal.appendBatch(Array.from({ length: 51 }, () => input()));
+    currentNow = new Date('2026-03-01T23:59:59.000Z');
+    await journal.append(input());
+    await journal.append(input());
+
+    await expect(journal.verify()).resolves.toMatchObject({ ok: true });
+    journal.close();
+    await fs.rm(trimDir, { recursive: true, force: true });
+    journal = new ChronicleSqliteJournal({ directory: dir });
+  });
 });
 
 /** Direct handle used only to simulate tampering the journal API forbids. */

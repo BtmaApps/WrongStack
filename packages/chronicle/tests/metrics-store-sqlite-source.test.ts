@@ -14,12 +14,11 @@ import { mkdtemp, writeFile } from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { removeProjectFixtureDirectory } from '../../core/tests/helpers/project-server-harness.js';
 import { ChronicleMetricsStore, isChronicleMetricsAvailable } from '../src/index.js';
 import { loadDatabaseSync } from '../src/metrics-schema.js';
 import { ChronicleSqliteJournal, LEGACY_JSONL_BOUNDARY_KEY } from '../src/sqlite-journal.js';
 import type { ChronicleEventInput } from '../src/types.js';
-
-import { removeProjectFixtureDirectory } from '../../core/tests/helpers/project-server-harness.js';
 
 const dirs: string[] = [];
 afterEach(async () =>
@@ -445,5 +444,40 @@ describe.skipIf(!isChronicleMetricsAvailable())('metrics store over the SQLite j
     expect(result.ingestedEvents).toBe(0);
     expect(store.providerDaily()).toHaveLength(0);
     store.close();
+  });
+
+  it('re-folds post-boundary JSONL fallback bytes from boundary when rebuild wipes aggregates (F838)', async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), 'chronicle-metrics-rebuild-fallback-'));
+    dirs.push(dir);
+    const today = new Date().toISOString().slice(0, 10);
+    const jsonlFile = `${today}.events.jsonl`;
+
+    const migratedLines = attempt()
+      .map((event) => `${JSON.stringify({ ...event, occurredAt: `${today}T10:00:00.000Z` })}\n`)
+      .join('');
+    const fallbackLines = attempt()
+      .map((event) => `${JSON.stringify({ ...event, occurredAt: `${today}T11:00:00.000Z` })}\n`)
+      .join('');
+
+    const journal = new ChronicleSqliteJournal({ directory: dir });
+    await journal.appendBatch(attempt());
+    journal.markLegacyJournalImported();
+    journal.recordLegacyJsonlBoundary({
+      [jsonlFile]: Buffer.byteLength(migratedLines, 'utf8'),
+    });
+    await writeFile(path.join(dir, jsonlFile), migratedLines + fallbackLines, 'utf8');
+
+    const store = ChronicleMetricsStore.open(dir);
+    const db = new (loadDatabaseSync())(path.join(dir, 'metrics.db'));
+    db.prepare('INSERT INTO ingest_state (file, bytes) VALUES (?, ?)').run(
+      jsonlFile,
+      Buffer.byteLength(migratedLines + fallbackLines, 'utf8'),
+    );
+    db.close();
+
+    await store.refresh();
+    expect(store.providerDaily()[0]).toMatchObject({ attempts: 2, completed: 2 });
+    store.close();
+    journal.close();
   });
 });

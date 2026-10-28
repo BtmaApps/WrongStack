@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-28T17:19:53.447Z
+**Generated:** 2026-10-28T17:20:34.701Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,10 +9,10 @@
 |---|---:|
 | Workspace packages | 45 |
 | Production source files | 5251 |
-| Production source lines | 1155954 |
+| Production source lines | 1156010 |
 | Test files | 4604 |
 | Workspace dependency edges | 221 |
-| Relative module edges | 15740 |
+| Relative module edges | 15741 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 5 |
@@ -116,12 +116,12 @@ None.
 | 715 | `packages/plugins/src/audit/index.ts` |
 | 709 | `packages/vibeui/src/components/memory-browser.tsx` |
 | 707 | `packages/acp/src/client/acp-session.ts` |
+| 706 | `packages/chronicle/src/project-server.ts` |
 | 705 | `packages/chronicle/src/project-server-client.ts` |
 | 703 | `packages/core/src/execution/auto-compaction-middleware.ts` |
 | 703 | `packages/mailbox-mcp/src/adapter.ts` |
 | 703 | `packages/tools/src/codebase-index/ast-symbol-mutator.ts` |
 | 701 | `packages/coordination/src/provider-status-tracker.ts` |
-| 700 | `packages/chronicle/src/project-server.ts` |
 | 699 | `packages/coordination/src/subagent-budget.ts` |
 | 699 | `packages/governance/src/runtime-compatibility.ts` |
 | 699 | `packages/sage/src/types.ts` |

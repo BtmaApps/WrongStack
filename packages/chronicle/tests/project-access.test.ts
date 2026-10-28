@@ -180,4 +180,16 @@ describe('storage cut-over', () => {
     expect(files.some((name) => name.endsWith('.events.jsonl'))).toBe(true);
     expect(files).not.toContain('chronicle.sqlite');
   });
+
+  it('reports SQLite journal stats and quarantined families on ping when SQLite store is active (F778)', async () => {
+    const access = accessFor();
+    await access.call('append', { inputs: [event, event] });
+    const health = await access.call('ping', {});
+    await access.close();
+
+    expect(health.journal.acceptedEvents).toBe(2);
+    expect(health.journal.persistedEvents).toBe(2);
+    expect(health.journal.batches).toBeGreaterThanOrEqual(1);
+    expect(health.quarantinedFamilies).toBeUndefined();
+  });
 });

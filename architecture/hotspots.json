@@ -10,6 +10,10 @@
       "lines": 705,
       "relativeImports": 5
     },
+    "packages/chronicle/src/project-server.ts": {
+      "lines": 706,
+      "relativeImports": 17
+    },
     "packages/cli/src/fleet/host-skill-companion.ts": {
       "lines": 753,
       "relativeImports": 3

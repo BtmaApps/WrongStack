@@ -4,10 +4,8 @@ import * as path from 'node:path';
 import { resolveWstackPaths } from '@wrongstack/core/utils';
 import { type ChronicleRuntimeLocation, resolveChronicleRuntimeLocation } from './identity.js';
 import { ChronicleJournal, type ChronicleJournalStats } from './journal.js';
-import { ChronicleMetricsStore } from './metrics-store.js';
 import { importLegacyChronicleJournal } from './legacy-journal-import.js';
-import { ChronicleSqliteJournal, type ChronicleSqliteJournalOptions } from './sqlite-journal.js';
-import type { ChronicleSqliteQueryEngine } from './sqlite-query.js';
+import { ChronicleMetricsStore } from './metrics-store.js';
 import {
   type ChronicleProjectServerCallOptions,
   ChronicleProjectServerClient,
@@ -24,6 +22,8 @@ import type {
 import { CHRONICLE_PROJECT_SERVER_PROTOCOL_VERSION } from './project-server-protocol.js';
 import { ChronicleQueryEngine } from './query.js';
 import type { ChronicleEventSink } from './sink.js';
+import { ChronicleSqliteJournal, type ChronicleSqliteJournalOptions } from './sqlite-journal.js';
+import type { ChronicleSqliteQueryEngine } from './sqlite-query.js';
 import type { ChronicleEvent, ChronicleEventInput } from './types.js';
 
 export interface ChronicleProjectAccessOptions {
@@ -345,7 +345,7 @@ class InlineChronicleProjectAccess implements ChronicleProjectAccess {
   ): Promise<ChronicleServerOperations[O]['result']> {
     switch (op) {
       case 'ping':
-        return this.health() as ChronicleServerOperations[O]['result'];
+        return (await this.health()) as ChronicleServerOperations[O]['result'];
       case 'append': {
         const args = rawArgs as ChronicleServerOperations['append']['args'];
         if (useSqliteStore()) {
@@ -506,8 +506,18 @@ class InlineChronicleProjectAccess implements ChronicleProjectAccess {
     await Promise.all([...this.journals.values()].map((journal) => journal.flush()));
   }
 
-  private health(): ChronicleProjectServerHealth {
+  private async health(): Promise<ChronicleProjectServerHealth> {
     const memory = process.memoryUsage();
+    await this.flush();
+    let journal = EMPTY_JOURNAL_STATS;
+    let quarantinedFamilies: ChronicleProjectServerHealth['quarantinedFamilies'];
+    if (useSqliteStore()) {
+      const sqlite = await this.store();
+      journal = sqlite.stats();
+      quarantinedFamilies = sqlite.quarantinedFamilies();
+    } else {
+      journal = this.journalForToday().stats();
+    }
     return {
       protocolVersion: CHRONICLE_PROJECT_SERVER_PROTOCOL_VERSION,
       pid: process.pid,
@@ -520,7 +530,8 @@ class InlineChronicleProjectAccess implements ChronicleProjectAccess {
       uptimeMs: Math.round(process.uptime() * 1_000),
       clients: 1,
       activeRequests: 0,
-      journal: this.journalForToday().stats(),
+      journal,
+      ...(quarantinedFamilies && quarantinedFamilies.length > 0 ? { quarantinedFamilies } : {}),
       watcher: { active: false, watchedFiles: 0 },
       memory: {
         rss: memory.rss,

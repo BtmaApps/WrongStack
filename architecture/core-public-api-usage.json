@@ -171,7 +171,7 @@
     "@wrongstack/core/utils": {
       "files": 926,
       "typeOnly": 69,
-      "runtimeOrMixed": 895
+      "runtimeOrMixed": 893
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -10650,7 +10650,7 @@
       "specifier": "@wrongstack/core/utils",
       "file": "packages/chronicle/src/project-server.ts",
       "typeOnly": 0,
-      "runtimeOrMixed": 3
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/utils",

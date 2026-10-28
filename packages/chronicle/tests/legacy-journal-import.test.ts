@@ -309,4 +309,19 @@ describe('importLegacyChronicleJournal', () => {
     expect(journal.hasImportedLegacyJournal()).toBe(true);
     journal.close();
   });
+
+  it('verifies and skips checkpoint-covered entries still present in a retained partition (F839)', async () => {
+    const events = await writeLegacyDay('2026-03-02', 3);
+    await fs.writeFile(
+      path.join(dir, '2026-03-02.events.jsonl.retention.json'),
+      JSON.stringify({ version: 1, sequence: events[0]?.sequence, hash: events[0]?.hash }),
+      'utf8',
+    );
+
+    const journal = new ChronicleSqliteJournal({ directory: dir });
+    const result = await importLegacyChronicleJournal(journal, dir);
+    expect(result).toMatchObject({ families: 1, events: 2, quarantined: [] });
+    expect(await journal.verify()).toMatchObject({ ok: true, entries: 2, lastSequence: 3 });
+    journal.close();
+  });
 });

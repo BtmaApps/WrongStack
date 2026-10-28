@@ -10,12 +10,14 @@ import { randomBytes } from 'node:crypto';
 import * as fsp from 'node:fs/promises';
 import * as net from 'node:net';
 import * as path from 'node:path';
+import { restrictFilePermissions } from '@wrongstack/core/security';
+import {
+  atomicWrite,
+  startSharedHeapWatchdog,
+  useDaemonPerfDefaults,
+} from '@wrongstack/core/utils';
 import { bindProjectEndpoint, createProjectMetadataReasserter } from '@wrongstack/persistence';
 import { timingSafeTokenEqual, WRONGSTACK_RUNTIME_VERSION } from '@wrongstack/primitives';
-import { restrictFilePermissions } from '@wrongstack/core/security';
-import { atomicWrite } from '@wrongstack/core/utils';
-import { startSharedHeapWatchdog } from '@wrongstack/core/utils';
-import { useDaemonPerfDefaults } from '@wrongstack/core/utils';
 import { type ChronicleContext, createChronicleContext } from './context.js';
 import { type ChronicleFileObserver, startChronicleFileObserver } from './file-observer.js';
 import { resolveChronicleRuntimeLocation } from './identity.js';
@@ -326,10 +328,14 @@ async function serverHealth(): Promise<ChronicleProjectServerHealth> {
   // `ping` is the one call a health probe makes, so it has to open the store:
   // a daemon that answers "healthy" without ever touching its own journal is
   // exactly what let a broken import go unnoticed while nothing was recorded.
+  let journalStats: ChronicleJournalStats;
   if (useSqliteStore()) {
-    quarantinedFamilies = (await store()).quarantinedFamilies();
+    const sqlite = await store();
+    quarantinedFamilies = sqlite.quarantinedFamilies();
+    journalStats = sqlite.stats();
+  } else {
+    journalStats = journalForToday().stats();
   }
-  const journalStats: ChronicleJournalStats = journalForToday().stats();
   return {
     ...serverInfo,
     checkedAt: Date.now(),

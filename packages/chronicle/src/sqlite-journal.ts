@@ -108,6 +108,7 @@ export class ChronicleSqliteJournal extends ChronicleSqliteJournalCore {
       for (const [index, event] of events.entries()) {
         this.insertEventRow(insert, day, event, payloads[index] as StoredChroniclePayload);
       }
+      this.anchors.set(day, previous);
       retainedCountAfterCommit = this.enforceEventLimitWithinTransaction(
         this.retainedEventCount + events.length,
       );
@@ -126,7 +127,6 @@ export class ChronicleSqliteJournal extends ChronicleSqliteJournalCore {
       throw this.quotaManager.normalizeQuotaError(error);
     }
 
-    this.anchors.set(day, previous);
     this.counters.persistedEvents += events.length;
     const trimmed = retainedCountAfterCommit < this.retainedEventCount + events.length;
     this.retainedEventCount = retainedCountAfterCommit;
