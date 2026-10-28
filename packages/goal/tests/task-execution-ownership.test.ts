@@ -1,6 +1,8 @@
+import type { TaskNode } from '@wrongstack/contracts/types/task-graph';
 import { afterEach, expect, it, vi } from 'vitest';
 import { PhaseGraphBuilder } from '../src/phase-graph-builder.js';
 import { PhaseOrchestrator } from '../src/phase-orchestrator.js';
+import { GoalTaskExecutionOwnership } from '../src/task-execution-ownership.js';
 
 function deferred() {
   let resolve!: () => void;
@@ -95,4 +97,52 @@ it('keeps stop pending until the worker settles without merging or starting anot
   await run;
   expect(saved.completedAt).toBeUndefined();
   expect([...saved.phases.values()][0]!.status).toBe('paused');
+});
+
+it('rejects aborted queued waiters immediately and drains tasks enqueued while drain() is awaiting (F765)', async () => {
+  const makeTask = (id: string): TaskNode => ({
+    id,
+    title: id,
+    description: '',
+    type: 'chore',
+    priority: 'high',
+    status: 'pending',
+    createdAt: 1,
+    updatedAt: 1,
+  });
+
+  const t1Entered = deferred();
+  const t1Release = deferred();
+  const t2Release = deferred();
+  let t2Settled = false;
+
+  const ownership = new GoalTaskExecutionOwnership(async (t) => {
+    if (t.id === 't1') {
+      t1Entered.resolve();
+      await t1Release.promise;
+    } else if (t.id === 't3') {
+      await t2Release.promise;
+      t2Settled = true;
+    }
+    return t.id;
+  }, 1);
+
+  const p1 = ownership.execute(makeTask('t1'), 'p1');
+  await t1Entered.promise;
+
+  const abortCtrl = new AbortController();
+  const p2 = ownership.execute(makeTask('t2'), 'p1', undefined, abortCtrl.signal);
+  await Promise.resolve();
+  abortCtrl.abort(new Error('queued waiter aborted'));
+  await expect(p2).rejects.toThrow('queued waiter aborted');
+
+  const drainPromise = ownership.drain('p1');
+  const p3 = ownership.execute(makeTask('t3'), 'p1');
+  t1Release.resolve();
+  await p1;
+  expect(t2Settled).toBe(false);
+
+  t2Release.resolve();
+  await Promise.all([p3, drainPromise]);
+  expect(t2Settled).toBe(true);
 });

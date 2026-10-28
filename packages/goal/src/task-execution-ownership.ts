@@ -19,7 +19,7 @@ export class GoalTaskExecutionOwnership {
     const execution = (async () => {
       await previous;
       signal?.throwIfAborted();
-      const release = await this.acquireSlot(phaseId);
+      const release = await this.acquireSlot(phaseId, signal);
       try {
         signal?.throwIfAborted();
         return await this.executeTask(task, phaseId, env, signal);
@@ -42,24 +42,46 @@ export class GoalTaskExecutionOwnership {
   };
 
   async drain(phaseId?: string): Promise<void> {
-    await Promise.all(
-      [...this.pending]
-        .filter((owner) => !phaseId || owner.phaseId === phaseId)
-        .map((owner) => owner.promise),
-    );
+    for (;;) {
+      const current = [...this.pending].filter((owner) => !phaseId || owner.phaseId === phaseId);
+      if (current.length === 0) return;
+      await Promise.all(current.map((owner) => owner.promise));
+    }
   }
 
-  private async acquireSlot(phaseId: string): Promise<() => void> {
+  private async acquireSlot(phaseId: string, signal?: AbortSignal): Promise<() => void> {
+    signal?.throwIfAborted();
     let slots = this.slots.get(phaseId);
     if (!slots) {
       slots = { active: 0, waiting: [] };
       this.slots.set(phaseId, slots);
     }
     const ownedSlots = slots;
-    if (ownedSlots.active >= this.concurrency)
-      await new Promise<void>((resolve) => ownedSlots.waiting.push(resolve));
-    else ownedSlots.active++;
+    const limit = Math.max(1, this.concurrency);
+    if (ownedSlots.active >= limit) {
+      await new Promise<void>((resolve, reject) => {
+        const waiter = () => {
+          signal?.removeEventListener('abort', onAbort);
+          resolve();
+        };
+        const onAbort = () => {
+          const idx = ownedSlots.waiting.indexOf(waiter);
+          if (idx !== -1) ownedSlots.waiting.splice(idx, 1);
+          if (ownedSlots.active === 0 && ownedSlots.waiting.length === 0) {
+            this.slots.delete(phaseId);
+          }
+          reject(signal?.reason ?? new DOMException('The operation was aborted', 'AbortError'));
+        };
+        ownedSlots.waiting.push(waiter);
+        signal?.addEventListener('abort', onAbort, { once: true });
+      });
+    } else {
+      ownedSlots.active++;
+    }
+    let released = false;
     return () => {
+      if (released) return;
+      released = true;
       const next = ownedSlots.waiting.shift();
       if (next) next();
       else {

@@ -75,3 +75,71 @@ it('parks an unresolved merge conflict for review instead of failing the phase',
   expect(meta?.integrationStatus).toBe('needs_review');
   expect(meta?.integrationError).toBeUndefined();
 });
+
+it('awaits upstream phase merge completion before starting dependent phases and halts on upstream merge failure', async () => {
+  const { PhaseOrchestrator } = await import('../src/phase-orchestrator.js');
+  const graph = await new PhaseGraphBuilder({
+    title: 'Ordered Merge',
+    phases: [
+      {
+        name: 'PhaseA',
+        description: '',
+        priority: 'high',
+        estimateHours: 1,
+        parallelizable: false,
+        taskTemplates: [
+          { title: 'task-a', description: '', type: 'feature', priority: 'high', estimateHours: 1 },
+        ],
+      },
+      {
+        name: 'PhaseB',
+        description: '',
+        priority: 'high',
+        estimateHours: 1,
+        parallelizable: false,
+        taskTemplates: [
+          { title: 'task-b', description: '', type: 'feature', priority: 'high', estimateHours: 1 },
+        ],
+      },
+    ],
+  }).build();
+  const [phaseA, phaseB] = [...graph.phases.values()];
+  const executed: string[] = [];
+  const worktrees: any = {
+    allocate: async (ownerId: string) => ({
+      id: ownerId,
+      ownerId,
+      ownerLabel: ownerId,
+      slug: ownerId,
+      dir: `/wt/${ownerId}`,
+      branch: `wstack/ap/${ownerId}`,
+      baseBranch: 'main',
+      status: 'active',
+    }),
+    commitAll: async () => ({ committed: true }),
+    merge: async (handle: { id: string }) => {
+      for (let i = 0; i < 5; i++) await Promise.resolve();
+      if (handle.id === phaseA!.id) {
+        return { ok: false, stderr: 'commit refused' };
+      }
+      return { ok: true };
+    },
+    release: async () => {},
+    list: () => [],
+  };
+  const orch = new PhaseOrchestrator({
+    graph,
+    ctx: {
+      executeTask: async (t) => {
+        executed.push(t.title);
+      },
+    },
+    worktrees,
+    autonomous: false,
+    stopOnFailure: true,
+  });
+  await orch.start();
+  expect(phaseA!.status).toBe('failed');
+  expect(phaseB!.status).toBe('pending');
+  expect(executed).toEqual(['task-a']);
+});

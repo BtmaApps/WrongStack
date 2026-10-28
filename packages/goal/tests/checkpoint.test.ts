@@ -336,4 +336,65 @@ describe('CheckpointManager', () => {
     expect(runnerPhase.taskGraph.edges).toHaveLength(1);
     expect(runnerPhase.taskGraph.edges[0]?.type).toBe('depends_on');
   });
+
+  it('lazy-loads on-disk checkpoints during save/delete and removes post-checkpoint tasks on restore (F766)', async () => {
+    const graph = await new PhaseGraphBuilder({
+      title: 'F766 Regression',
+      phases: [
+        {
+          name: 'Phase A',
+          description: 'A',
+          priority: 'high',
+          estimateHours: 1,
+          parallelizable: false,
+          taskTemplates: [
+            {
+              title: 'Original Task',
+              description: 'T1',
+              type: 'feature',
+              priority: 'high',
+              estimateHours: 1,
+            },
+          ],
+        },
+      ],
+    }).build();
+
+    const firstManager = new CheckpointManager({ store, maxCheckpoints: 2 });
+    const cp1 = await firstManager.saveCheckpoint(graph, 'cp-1');
+    const cp2 = await firstManager.saveCheckpoint(graph, 'cp-2');
+
+    // Fresh manager without explicit initialize() must delete and prune existing on-disk checkpoints
+    const secondManager = new CheckpointManager({ store, maxCheckpoints: 2 });
+    expect(await secondManager.deleteCheckpoint(cp1.id)).toBe(true);
+    await secondManager.saveCheckpoint(graph, 'cp-3');
+    const cp4 = await secondManager.saveCheckpoint(graph, 'cp-4');
+
+    const verifier = new CheckpointManager({ store, maxCheckpoints: 2 });
+    await verifier.initialize();
+    expect(verifier.listCheckpoints(graph.id).map((c) => c.label)).toEqual(['cp-4', 'cp-3']);
+    expect(await verifier.restoreCheckpoint(cp2.id)).toBeNull();
+
+    const phase = graph.phases.get(graph.rootPhaseIds[0]!)!;
+    phase.status = 'running';
+    phase.startedAt = 99_999;
+    phase.taskGraph.nodes.set('added-after', {
+      id: 'added-after',
+      title: 'Added After',
+      description: '',
+      type: 'chore',
+      priority: 'low',
+      status: 'completed',
+      createdAt: 1,
+      updatedAt: 1,
+    });
+    phase.taskGraph.rootNodes.push('added-after');
+    await store.save(graph);
+
+    const restored = await verifier.restoreCheckpoint(cp4.id);
+    const restoredPhase = restored?.phases.get(phase.id);
+    expect(restoredPhase?.status).toBe('pending');
+    expect(restoredPhase?.startedAt).toBeUndefined();
+    expect(restoredPhase?.taskGraph.nodes.has('added-after')).toBe(false);
+  });
 });

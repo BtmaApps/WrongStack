@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { GoalRunner } from '../src/goal-runner.js';
+import { summarizeGoal } from '../src/goal-summary.js';
 import { PhaseGraphBuilder } from '../src/phase-graph-builder.js';
 import { PhaseOrchestrator } from '../src/phase-orchestrator.js';
 
@@ -184,4 +186,69 @@ describe('Goal timed-out worker ownership', () => {
       expect(orchestrator.getProgress().completedTasks).toBe(1);
     });
   }
+
+  it('clears stale terminal graph/phase fields on requeueTask and invokes GoalRunner.onFail on graph-level failure (F767)', async () => {
+    const saved = await graph(1);
+    const orchestrator = new PhaseOrchestrator({
+      graph: saved,
+      ctx: {
+        executeTask: async () => {},
+        verifyGoal: async () => ({ ok: false, output: 'final check failed' }),
+      },
+    });
+    await orchestrator.start();
+
+    const phase = [...saved.phases.values()][0]!;
+    const task = [...phase.taskGraph.nodes.values()][0]!;
+    saved.runState = 'failed';
+    saved.runError = 'Final verification failed: final check failed';
+
+    expect(orchestrator.requeueTask(task.id)).toBe(true);
+    expect(phase.completedAt).toBeUndefined();
+    expect(saved.completedAt).toBeUndefined();
+    expect(saved.finalVerification).toBeUndefined();
+    expect(saved.runError).toBeUndefined();
+    expect(saved.runState).toBeUndefined();
+    expect(summarizeGoal(saved).status).toBe('stopped');
+    expect(summarizeGoal(saved).blockers).toEqual([]);
+
+    const listeners = new Map<string, Set<(p: unknown) => void>>();
+    const bus = {
+      emit(ev: string, p: unknown) {
+        for (const h of listeners.get(ev) ?? []) h(p);
+      },
+      on(ev: string, h: (p: unknown) => void) {
+        if (!listeners.has(ev)) listeners.set(ev, new Set());
+        listeners.get(ev)!.add(h);
+        return () => listeners.get(ev)!.delete(h);
+      },
+    };
+    const onFail = vi.fn();
+    const runner = new GoalRunner({
+      title: 'Runner Graph Fail',
+      events: bus as never,
+      phases: [
+        {
+          name: 'P1',
+          description: '',
+          priority: 'high',
+          estimateHours: 1,
+          parallelizable: false,
+          taskTemplates: [
+            { title: 'T1', description: '', type: 'chore', priority: 'high', estimateHours: 1 },
+          ],
+        },
+      ],
+      executeTask: async () => {
+        bus.emit('graph.failed', {
+          graphId: runner.getGraph()!.id,
+          failedPhaseId: '',
+          error: 'graph-level failure',
+        });
+      },
+      onFail,
+    });
+    await runner.start();
+    expect(onFail).toHaveBeenCalledTimes(1);
+  });
 });

@@ -115,22 +115,22 @@ export async function commitAndEnqueueMerge(
   const merged = (async () => {
     await Promise.allSettled(depPromises); // dependency-ordered
     // Chain onto the global queue so only one merge touches base at a time.
-    int.setMergeQueue(
-      int
-        .getMergeQueue()
-        .then(() => mergeOne(int, phase, handle))
-        .catch((err) => {
-          // Defensive backstop: mergeOne handles its own errors, so this only
-          // fires if it throws unexpectedly. Keep the queue alive (a failed
-          // merge must not poison the chain) and correct the graph state.
-          const msg = toErrorMessage(err);
-          int.logger.error(msg, { event: 'orchestrator.merge_failed', phaseId: phase.id });
-          markPhaseMergeFailed(int, phase, msg);
-        }),
-    );
-    await int.getMergeQueue();
+    const nextQueue = int
+      .getMergeQueue()
+      .then(() => mergeOne(int, phase, handle))
+      .catch((err) => {
+        // Defensive backstop: mergeOne handles its own errors, so this only
+        // fires if it throws unexpectedly. Keep the queue alive (a failed
+        // merge must not poison the chain) and correct the graph state.
+        const msg = toErrorMessage(err);
+        int.logger.error(msg, { event: 'orchestrator.merge_failed', phaseId: phase.id });
+        markPhaseMergeFailed(int, phase, msg);
+      });
+    int.setMergeQueue(nextQueue);
+    await nextQueue;
   })();
   int.phaseMergePromise.set(phase.id, merged);
+  await merged;
 }
 
 /**

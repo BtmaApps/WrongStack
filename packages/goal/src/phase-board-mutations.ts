@@ -159,7 +159,20 @@ export function requeuePhaseTask(ctx: PhaseBoardMutationContext, taskId: string)
     ctx.graph.completedPhaseIds = ctx.graph.completedPhaseIds.filter((id) => id !== phase.id);
     ctx.graph.activePhaseIds = ctx.graph.activePhaseIds.filter((id) => id !== phase.id);
     ctx.phaseWorktrees.delete(phase.id);
+    phase.completedAt = undefined;
+    phase.actualDurationMs = undefined;
     ctx.updatePhaseStatus(phase, 'pending');
+  }
+  ctx.graph.completedAt = undefined;
+  ctx.graph.finalVerification = undefined;
+  const anyFailedPhase =
+    ctx.graph.failedPhaseIds.length > 0 ||
+    Array.from(ctx.graph.phases.values()).some((p) => p.status === 'failed');
+  if (!anyFailedPhase) {
+    ctx.graph.runError = undefined;
+    if (ctx.graph.runState === 'failed') {
+      ctx.graph.runState = undefined;
+    }
   }
   ctx.graph.updatedAt = Date.now();
   return true;

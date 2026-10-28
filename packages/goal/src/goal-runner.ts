@@ -73,7 +73,11 @@ export class GoalRunner {
   private readonly graphFailedHandler = (payload: unknown) => {
     const p = payload as { graphId: string; failedPhaseId: string; error: string };
     if (this.graph && p.graphId === this.graph.id) {
-      const failedPhase = this.graph.phases.get(p.failedPhaseId);
+      const phases = Array.from(this.graph.phases.values());
+      const failedPhase =
+        this.graph.phases.get(p.failedPhaseId) ??
+        phases.find((ph) => ph.status === 'failed') ??
+        phases[phases.length - 1];
       if (failedPhase) {
         this.opts.onFail?.(this.graph, failedPhase, new Error(p.error));
       }

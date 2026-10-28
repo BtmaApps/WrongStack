@@ -47,6 +47,7 @@ export class CheckpointManager {
   private maxCheckpointAgeMs: number;
   private checkpoints = new Map<string, Checkpoint>();
   private baseDir: string;
+  private loadedFromDisk = false;
 
   constructor(opts: CheckpointManagerOptions) {
     this.store = opts.store;
@@ -62,6 +63,9 @@ export class CheckpointManager {
   }
 
   async saveCheckpoint(graph: PhaseGraph, label?: string): Promise<Checkpoint> {
+    if (!this.loadedFromDisk) {
+      await this.loadFromDisk();
+    }
     // Save the graph first.
     await this.store.save(graph);
 
@@ -121,6 +125,22 @@ export class CheckpointManager {
       if (checkpoint.phaseStatus !== 'completed' && checkpoint.phaseStatus !== 'failed') {
         phase.completedAt = undefined;
       }
+      if (checkpoint.phaseStatus === 'pending') {
+        phase.startedAt = undefined;
+        phase.actualDurationMs = undefined;
+      }
+
+      // Remove tasks added to this phase after the checkpoint was captured.
+      const allowedTaskIds = new Set(checkpoint.taskStatuses.map((ts) => ts.taskId));
+      for (const existingTaskId of [...phase.taskGraph.nodes.keys()]) {
+        if (!allowedTaskIds.has(existingTaskId)) {
+          phase.taskGraph.nodes.delete(existingTaskId);
+        }
+      }
+      phase.taskGraph.rootNodes = phase.taskGraph.rootNodes.filter((id) => allowedTaskIds.has(id));
+      phase.taskGraph.edges = phase.taskGraph.edges.filter(
+        (e) => allowedTaskIds.has(e.from) && allowedTaskIds.has(e.to),
+      );
 
       // Restore task statuses.
       for (const ts of checkpoint.taskStatuses) {
@@ -130,6 +150,9 @@ export class CheckpointManager {
           task.updatedAt = now;
           if (task.status !== 'completed' && task.status !== 'failed') {
             task.completedAt = undefined;
+          }
+          if (task.status === 'pending') {
+            task.startedAt = undefined;
           }
         }
       }
@@ -167,6 +190,9 @@ export class CheckpointManager {
   }
 
   async deleteCheckpoint(checkpointId: string): Promise<boolean> {
+    if (!this.checkpoints.has(checkpointId) && !this.loadedFromDisk) {
+      await this.loadFromDisk();
+    }
     const checkpoint = this.checkpoints.get(checkpointId);
     if (!checkpoint) return false;
 
@@ -236,6 +262,7 @@ export class CheckpointManager {
   }
 
   private async loadFromDisk(): Promise<void> {
+    this.loadedFromDisk = true;
     let entries: string[];
     try {
       entries = await fsp.readdir(this.baseDir);
