@@ -1711,3 +1711,844 @@ The separate process scope also passed this portable; MCP content/task scopes pa
 `c86...` portable as recorded above. This is focused local native acceptance and a broader local
 standard-host baseline, not complete WebUI parity, a fresh companion-host certification, full
 coverage, hosted CI, external-service proof or release/signing certification.
+
+## Project Live fleet (2026-10-28)
+
+Portable `934a8f4e5bae-9c37a37d752f` passed the initial dedicated native `--fleet` scope.
+Portable `39c20763ea1b-9c37a37d752f` passed expanded acceptance with verified native session names,
+recent activity reading, subject/priority controls, and themed graph controls. The actual bundled
+engine and portable checksums were verified. Before any human conversation existed, opening Live
+fleet showed no conversation runtimes and created no conversation or worker. Three actual native
+conversations in two projects then proved exact project filtering and private project-service
+carrier exclusion. A real model turn supplied recorded leader activity; no fake registry entries
+or fabricated agent relationships were inserted.
+
+The list and React Flow graph showed real session membership. Native labels came from matching
+live host identities to desktop session titles. The inspector read process/heartbeat and agent
+counters, explicitly fetched the selected session's actual journal, and rendered its user and
+assistant messages. Tool arguments/output have structured, expandable presentation; recent
+activity is a bounded read rather than a claim of complete agent-scoped history. Selecting an
+agent still labels the journal and mailbox controls as session-level operations.
+The native journal fixture contains text messages; richer tool-event expansion needs separate
+native acceptance beyond the reused structured viewer's existing coverage.
+
+Keeping an instruction review closed sent no message and retained the session-owned draft.
+Explicit confirmation produced one actual mailbox note with the reviewed subject and normal
+priority; another session's mailbox contained no copy. A separately reviewed cooperative interrupt
+produced its canonical control message. The UI verifies the hashed leader recipient and records
+delivery receipts; these tests establish mailbox delivery, not execution, read acknowledgement or
+successful interruption. Runtime identity is preflight checked, not atomically bound by this API.
+Light/dark and 800 px screenshots were captured and inspected. The final test cleanup succeeded.
+
+Desktop tests passed 265 across 62 files and typecheck passed 192 source files. Targeted Biome
+checks and documentation links passed. Projection tests cover project path normalization, carrier
+exclusion, disjoint graph IDs, canonical mailbox tags, malformed records, duplicate identities
+and invalid counters; the duplicate/malformed case was observed failing before the guard.
+The map explicitly caps rendered runtimes/agents and retains the complete loaded list. Large-fleet
+performance, delegated-worker ancestry, agent-specific controls, council, side effects, restart
+durability of operator drafts, interrupted-run outcome verification and a fresh full release matrix
+remain open. No WebUI frontend was opened or imported.
+
+## Session side-effect audit (2026-10-28)
+
+Native bundled identity `628fa33912ab-5ab6516e4f88` passed the processes scope,
+including the dedicated Side effects view under conversation Tools. Portable checksums were
+verified. This is an isolated native QA artifact, not an installed application update or release.
+
+A real approved background bash command produced its actual shell audit record. The inspector
+showed recorded input and launch outcome; kind/search/sort controls, an empty second session,
+and switching back to the owner were exercised. Clipboard instrumentation delegated to the real
+clipboard API; the CSV success notice and written content were checked. The download test read
+the actual newly created CSV file. Desktop and 800 px screenshots were inspected, including dark
+mode; panel-width assertions cover long recorded input without horizontal overflow. The owned
+fixture process was terminated and its OS PID was observed gone. No WebUI frontend was opened.
+
+The new regression first failed on the real streaming executor path: background bash returned
+its valid PID but never called the audit recorder. The executor closes the iterator on its final
+event, so recording after that yield was unreachable. Moving the launch record before the final
+yield made the same test pass; all 38 bash-spawn tests passed. The per-session introspection
+regression also first failed on missing request correlation. The response now preserves the
+request ID and reports retained-runtime totals plus explicit truncation for the latest 50 rows.
+Both introspection suites passed all 16 tests, including ownership and count controls.
+
+Desktop tests passed 267 tests across 63 files. Typecheck passed desktop 194, tools 372 and
+webui-server 314 source files. Targeted Biome checks passed. The engine dependency build and
+native Tauri build passed. Full repository certification and hosted CI were not run for this
+increment. Counts describe retained runtime memory, not complete persisted journal coverage;
+project-wide aggregation, persisted audit paging and richer outcome updates remain open.
+
+The preceding Live fleet source was committed separately as `49887b138` (eight files). At the
+user's explicit request, only that commit skipped the shared architecture report writer/staging
+block; other applicable hook guards ran. The temporary hook was removed and `.githooks` restored.
+The subsequent audit-screen increment remains uncommitted alongside preserved desktop work.
+
+## Collapsible Code Atlas boundaries (2026-10-28)
+
+Bundled native identity `a2087fc689cb-5ab6516e4f88` passed the focused `--atlas` scope.
+Portable checksums were verified and native renderer errors were empty. The test indexed actual
+fixture project files through the visible Index project control, without creating a desktop
+conversation. The Subsystems view collapsed and expanded indexed groups, selected a real member
+into the existing node inspector, and displayed the actual directed alpha-to-beta reference.
+Search-to-empty and recovery, collapse-all, dark mode and an 800 px layout were exercised.
+Desktop and compact screenshots were inspected. A group with more than 160 indexed files was
+expanded under Smart scope, switched to All nodes to verify every canonical file was rendered,
+and collapsed back to one container. This establishes the tested fixture, not large-codebase
+performance certification.
+
+Projection tests distinguish reverse references and relation kinds, count underlying records
+separately from summed weights, exclude unavailable endpoints, recover internal references on
+expansion and protect original/container identities from collisions. Current Atlas filters apply
+before projection. Grouping uses indexed group labels; inferred communities and cross-scope paths
+remain open. New arrow markers are opt-in, preserving other graph consumers' default rendering.
+
+Desktop tests passed 269 tests across 64 files; typecheck passed 196 source files. Targeted Biome
+checks and the Tauri release build passed. The attempted broad native standard run was interrupted
+when its shared `.temp_files/desktop-v2-native` evidence folder disappeared. Its full result is
+NOT VERIFIED; the successful focused run above was executed after recreating that folder. The
+cause of the folder removal was not established. No full repository release check or hosted CI
+was run, and the portable QA build does not update the installed application.
+
+## Fleet and companion profile policy (2026-10-28)
+
+Bundled native identity `666df9b61fde-5ab6516e4f88` passed `--fleet-policy` with verified
+portable checksums and no native renderer errors. The seven controls cover concurrent agents,
+shared fleet-chat detail, next-step prediction, nextsteps tool availability and the three
+Memory/Explore/Skill Companion eligibility switches. The native settings workflow ran while the
+registry contained zero projects and zero conversations; the general harness registered its
+unrelated project fixtures only afterwards. No companion execution is inferred from these settings.
+
+The real profile API and on-disk config agreed after explicit Save. The test verified a concurrency
+of 64, five independent boolean edits, chat detail, draft retention across section navigation,
+invalid fractional input refusal, draft discard, and reload persistence. A competing update to
+concurrency 96 caused a stale editor's proposed 128 to be refused; the reload action recovered the
+actual saved value. Companion toggles retained the seeded Explore probe ceiling of 600000 calls,
+18000000 ms deadline and per-signal configuration, Skill enforce/candidate settings and unrelated
+fleet lifecycle configuration. No UI cap of 50 was introduced.
+
+Desktop tests passed 271 tests across 65 files; typecheck passed 198 source files. Targeted Biome
+checks and the Tauri release build passed. Light/dark screenshots were inspected; the 800 px case
+also asserted no document-level horizontal overflow. The profile read-before-write guard is not
+an atomic cross-process transaction. Drafts still follow the existing in-process settings lifetime.
+Advanced lifecycle/dispatch/probe editing, Brain, Shadow and remaining security/display policies
+stay open. Full repository certification and hosted CI were not run for this increment. The
+portable QA artifact does not update the installed application.
+
+## Brain policy workspace (2026-10-28)
+
+Bundled identity `b7551c8d266d-ca81789562d6` passed the focused `--brain-policy` native
+scope. Portable checksums were verified and renderer errors were empty. The settings workflow
+ran with zero registered projects and zero desktop conversations; unrelated general-harness
+project fixtures were registered only afterwards. Brain configuration belongs to the profile
+runtime used by this settings screen. No cross-runtime hot update or session decision history
+is implied.
+
+The form exposes risk/escalation, deterministic heuristics, single-model quality, decision cache,
+monitor response, council thresholds and ledger/replay policy. Read-only evidence shows configured
+model references/voters, resolved pool/seats/judge, rule conditions/actions and evidence paths.
+Configured council enablement remains distinct from its effective state. Decision-cache counters
+are runtime evidence and are excluded from draft conflict checks. Profile search finds Brain by
+decision-cache terminology. Model-pool/voter/judge editing, richer monitor/trace controls and
+origin-owned decision histories remain open.
+
+The native test changed risk, cache enablement/lifetime/capacity, a heuristic, confidence,
+monitor policy, council diversity, failure-denial threshold and replay content, then checked
+canonical readback and on-disk configuration. Clearing the optional model timeout removed its
+stored override. Existing monitor cooldown and deterministic rules survived the partial patch.
+Drafts survived settings-section navigation. A competing risk change was refused by the stale
+editor, explicit reload recovered it, and a page reload retained the stored values. Light/dark
+and 800 px screenshots were inspected; the compact case checked document horizontal overflow.
+These are configuration/persistence tests, not real-model council-quality or decision execution
+acceptance. The read-before-write conflict check is not an atomic cross-process transaction;
+drafts remain in-process rather than restart-durable.
+
+A production-route regression first failed because Brain config responses omitted the request
+ID. Per-request transport decoration now correlates get/set responses and invalid set payloads,
+while retaining legacy untagged reads. The regression uses the actual BrainRuntime and observes
+its persistence call. Four Brain server suites passed 34 tests. Desktop tests passed 273 tests
+across 66 files. Typecheck passed desktop 201 and webui-server 314 source files. Targeted Biome,
+engine dependency/compiled-engine build and Tauri release build passed. Full repository release
+certification and hosted CI were not run. The portable QA build does not update the installed app.
+
+## Brain model pool, council voters and judge (2026-10-28)
+
+Bundled identity `e6f3a97e038b-30bac16cfbcb` passed the expanded `--brain-policy` scope
+with verified portable checksums and no renderer errors. The profile-only workflow still ran
+before any project or desktop conversation was registered. A real isolated loopback provider
+supplied the saved model catalog; the test observed no additional completion requests while
+editing settings. This proves configuration behavior, not council voting quality or execution.
+
+The native editor selected a catalog model, entered a custom namespaced model, reordered the
+pool and saved round-robin strategy. It configured a security-lens voter with weight 2.5 and
+explicit false veto, a second voter with inherited provider/lens/weight/veto, and an explicit
+judge. A simultaneous quorum edit survived the same council patch. Canonical replies and raw
+on-disk values matched, and a UI reload retained explicit versus inherited veto. A competing
+model-pool change was refused by the stale editor; reload recovered it. Clearing pool, voters
+and judge returned them to runtime/pool inheritance. A blank new voter could not be saved.
+Desktop/800 px screenshots were inspected and a dark capture was taken. Target arrays use an
+ordered, indivisible read-before-write conflict boundary; this is not an atomic cross-process
+compare-and-swap. In-process draft retention and restart-durable drafts remain separate.
+
+The first native disk assertion exposed compact string storage for unambiguous references.
+Inspection then found a real ambiguity: an inherited-provider model named `org/model` was also
+compacted to a string and became provider `org`, model `model` after a new runtime boot. A
+permanent regression reproduced this on the actual BrainRuntime persistence/restart path while
+an ordinary qualified-reference control passed. The serializer now uses compact strings only
+when parsing them returns the identical provider/model pair; ambiguous entries remain objects.
+The unchanged reproduction passed after the fix, including pool, voter and judge identities.
+Unambiguous persisted references retain their existing string format.
+
+Desktop tests passed 276 tests across 67 files. Two focused core suites passed 40 tests.
+Typecheck passed desktop 203 and core 633 source files. Targeted Biome, engine dependency and
+compiled-engine build, and Tauri release build passed. Full repository release certification
+and hosted CI were not run. The portable QA artifact does not update the installed application.
+Advanced derived-seat overrides, monitor/trace controls, origin-owned decision inspection and
+real provider/council outcome acceptance remain open.
+
+## Brain monitor and replay-trace configuration (2026-10-28)
+
+Bundled identity `2a8df69f7224-12f87dc13cdd` passed the expanded `--brain-policy` native
+scope, including prior model/council workflows. Portable checksums were verified and renderer
+errors were empty. The profile settings tests ran before project/conversation registration.
+No additional model completions were recorded during monitor/trace configuration.
+
+Controls cover each of the four monitor signals, eight failure/storm/stall/churn/cooldown
+thresholds or windows, and a newline-based replacement list of file-edit tool names. The patch
+builder now handles nested field paths. Because the canonical monitor API replaces its signals
+field, the UI preserves the complete latest signal map before applying reviewed edits. Unit
+coverage retains an unrecognized signal and an independent concurrent signal edit. The native
+case changed two signals while preserving the other saved/independently updated switches.
+A competing edit to the same failure threshold was refused and explicit reload recovered it.
+
+Replay configuration now exposes JSONL destination and actual open-record capacity. The runtime
+snapshot publishes maxOpenRecords additively, allowing a preconfigured capacity of 777 to appear
+without a guessed UI default. The native case saved capacity 512 and an owned test destination,
+verified canonical/on-disk readback and UI reload, and cleared the destination back to automatic
+selection. Clearing the edit-tool list persisted an explicit empty list; it does not mean inherit.
+An invalid zero trace capacity did not persist. Edited monitor numbers remain explicit overrides;
+individual inherited-default reset controls remain open rather than sending unsupported nulls.
+
+Brain group shortcuts were exercised by jumping to the Runtime monitor heading, and global
+settings search found Brain via stall terminology. Desktop/800 px screenshots were inspected;
+dark mode was also captured. These tests establish configuration and persistence, not actual
+monitor intervention outcomes, trace-file output/permission handling or real-model council
+quality. Read-before-write checks are not atomic cross-process transactions.
+
+Desktop tests passed 279 tests across 67 files; two focused core suites passed 41 tests.
+Typecheck passed desktop 204 and core 633 source files. Targeted Biome, compiled engine/dependency
+build and Tauri release build passed. Full repository release certification and hosted CI were
+not run. The isolated portable QA artifact does not update the installed application.
+
+## Execution confirmation policy (2026-10-28)
+
+Bundled native identity `d92d0707aef0-12f87dc13cdd` passed `--execution-policy` with
+verified portable checksums and no renderer errors. The isolated profile settings workflow ran
+with zero projects and zero desktop conversations; unrelated harness fixtures were registered
+later. No destructive operations or model completions were invoked by this settings test.
+
+Standard, YOLO and YOLO+ are one explicit mode choice backed by the two canonical flags. The
+nine destructive-operation preferences match core's category list; tests also match the locked
+trusted-state and credential categories. Locked toggles remain enabled/read-only under normal
+YOLO. YOLO+ text explicitly identifies that its bypass includes those categories; the stored
+normal-YOLO map is retained rather than falsely shown as active protection. Standard mode follows
+configured permission rules rather than claiming every tool always prompts.
+
+The real native test saved and read back all three modes, checked raw profile config, reloaded
+YOLO+, and confirmed that returning to Standard cleared both mode flags. A local publish-category
+edit preserved an independent Git-history-category update and the existing bulk-delete choice.
+A competing mode-pair update caused a stale YOLO+ editor to refuse its write; reload recovered
+the live YOLO state. Unsaved category edits survived section navigation and could be discarded.
+Light/dark and 800 px screenshots were captured and inspected. Runtime enforcement of dangerous
+commands was deliberately not exercised; these cases prove configuration, persistence and UI
+semantics rather than operational permission-policy certification.
+
+Desktop tests passed 283 tests across 68 files; typecheck passed 206 source files. Targeted Biome
+and the Tauri release build passed. A canonical parity test prevents the category and locked-kind
+lists from drifting. Mode preflight treats the two flags as an indivisible choice, while the
+existing three-way merge preserves independent category edits. The check is read-before-write,
+not an atomic cross-process compare-and-swap. Full repository release checks and hosted CI were
+not run, and the portable QA artifact does not update the installed application.
+
+## Prompt refinement profile settings (2026-10-28)
+
+Final bundled identity `fba85b5b819c-12f87dc13cdd` passed `--refinement-policy` with verified
+portable checksums and no renderer errors. The settings phase ran before project/session
+registration; the harness subsequently exercised a separate project-owned prompt library.
+
+Dedicated settings expose review-on-submit, preferred language, saved model catalogs,
+independent provider/model inheritance and a named refiner profile. The named profile takes
+precedence according to the existing backend contract. The sample preview explicitly calls
+the saved route and displays the returned actual provider/model and both language variants.
+Saving preferences never invokes a model completion. Preview does not submit chat or create
+a desktop conversation. Referenced profiles cannot be removed from the fallback editor.
+
+Route preflight treats provider, model and profile as one logical choice and refuses stale
+mixed routes. It checks that the selected profile chain still matches the reviewed draft and
+rejects missing or emptied selected profiles. Semantically unchanged whitespace-only route
+edits are omitted; an empty resulting patch reloads the latest saved values without writing.
+This remains read-before-write protection, not an atomic cross-process transaction.
+Catalog and preview replies use ownership generations; changing the connection or saved route
+clears transient previews. Broader reconnect/concurrent-window acceptance remains open.
+
+The focused bundled native test covers catalog selection, explicit route/profile persistence,
+profile-removal protection, real local-provider routing precedence, actual-model preview,
+stale route refusal and reload, independent inheritance, language/enhance persistence and
+zero desktop projects/conversations during settings testing. Light/dark and 800 px captures
+are retained under `.temp_files/desktop-v2-native/refinement-policy`. A first attempt reached
+the correct profile model but received HTTP 400 from the fixture's single-model assertion;
+the fixture now accepts an explicit model list only for this scope, retaining its strict default.
+An intermediate staging attempt was refused by checksum validation because its manifest used
+CRLF line endings; the manifest was rewritten with LF before native execution.
+
+The full composer native suite passed on bundled identity `dc26a4ae5b3a-12f87dc13cdd`.
+It verifies the English preference as the initial selected variant, explicit original-language
+selection and approval, BTW/queue/stop-and-steer, attachments, prompt sources and approvals,
+plus existing draft recovery and paired-theme cases. Later settings-only lifecycle, no-op
+save and explanatory-copy changes do not alter the composer dialog; its full suite was not
+repeated on the final settings artifact. The companion host was not compatible with that
+suite and companion-host behavior was not verified.
+
+Desktop tests passed 286 tests across 69 files; typecheck passed 208 source files and targeted
+Biome passed 11 files. Tauri release builds passed. These tests use an isolated loopback
+provider; external-model refinement quality, automatic submission/countdown policy and a
+searchable per-request refiner picker remain open. Full repository release checks, coverage,
+hosted CI and installed-application replacement were not performed.
+
+## Per-request refiner selection and recovery (2026-10-28)
+
+Final bundled identity `3f55bd6ab91b-ba12177e221c` passed the complete `--composer` native
+scope with verified portable checksums and no renderer errors. It covers searched request-only
+selection, no selection-time completion/profile-default/chat-model changes, real explicit
+fallback completion, configured-route reset and unchanged original draft. Desktop and 800 px
+picker/review captures were inspected. The same run passed the previously failing image/PDF
+submission after custom-model changes, including actual image bytes, PDF extraction, >1 MB
+native transport, queued media and reload; it also passed prompt resources, approvals, queue,
+BTW, steer, next steps, two-window draft recovery, agent model plans, topic boundaries and
+all 13 paired palettes. Companion-host compatibility was false and that host was not tested.
+
+The review dialog now opens the native current-profile model picker for a request-only
+refiner target. Search, favorites, exclusions and fresh selection preflight use the same
+profile model policy as the session picker. Selection only changes the pending retry target;
+it does not switch the conversation model, persist refiner defaults or invoke a completion.
+Custom provider/model IDs and an explicit return to configured routing remain available.
+Recovery explains timeout, unusable-output and provider failures before showing expandable
+technical details. Suggested fallback and longer-window retries require explicit clicks.
+The returned actual provider/model remains the provenance for the last successful rewrite.
+
+The operation layer previously discarded every structured error field when rejecting a
+correlated engine reply. A durable test failed because timeout, retryTimeoutMs and fallbackRef
+were missing, then passed with EngineReplyError retaining the reply details. Recovery tests
+cover nested model IDs, malformed routes, plain transport failures, unusable output and timer
+overflow bounds. Timeout/empty guidance is unit-tested; actual timeout/empty native failure
+injection and external-provider quality remain open.
+
+An initial picker test could not find its alternate model: accepting a model at the loopback
+provider does not register it in the saved profile catalog. The test now explicitly registers
+and later removes its owned custom definition. The expanded native flow then passed refiner
+selection and explicit fallback, but the later existing image/PDF case failed before provider
+submission. The recorded profile still advertised vision=true. Investigation found that config
+hot-reload rebuilt the active provider using wire-family defaults after the custom definition
+changed, losing the active model's vision and output-limit overrides.
+
+The credential watcher now reapplies canonical catalog/custom capabilities for the active
+model before attaching the rebuilt provider. A production-watcher regression with the real
+provider constructor and capability resolver failed on vision=false before the fix and passed
+afterward; its family-baseline control remains false, while a properly resolved active model
+retains vision=true and maxOutput=8192 across the rebuild. The watcher, provider fan-out and
+model-operation suites passed 17 tests. Backend typecheck passed 314 source files. This narrow
+fix does not certify simultaneous credential/model switches across independently switched tabs.
+
+Desktop tests passed 289 tests across 70 files; desktop typecheck passed 209 source files.
+Targeted Biome passed nine desktop and two backend files. Backend dependency closure, compiled
+engine/asset pack and Tauri release builds passed. The first engine-build attempt could not
+spawn Bun from its child PATH; rerunning with the pinned Bun directory on PATH completed.
+Full repository release certification, coverage, hosted CI and installed-app replacement were
+not performed. Owned QA logs/screenshots remain in `.temp_files/desktop-v2-native`.
+
+## Selective Git staging and persistent review notes (2026-10-28)
+
+Bundled native identity `1173e717c005-09ce8d6e111a` passed `--files` with verified portable
+checksums and no renderer errors. The actual native UI staged one of two distant hunks,
+verified the real index while preserving disk bytes, refused a stale review after an external
+edit, and unstaged the selected indexed hunk. Light/dark and 800 px captures were inspected.
+Review notes survived renderer reload and direct native SQLite readback; a peer revision
+prevented a stale deletion and explicit reload showed the peer note. The scope also passed
+the existing file/draft/search/edit/conflict/move/delete/diff flows and created zero desktop
+conversation sessions. An intermediate stale-diff test edited the file while the post-stage
+refresh was still pending, so the newer text was correctly included in the newly loaded review.
+The test now waits for the acknowledged refreshed hunk list before introducing its external
+edit; production assertions and stale-review protection were retained.
+
+The native Changes workspace now opens a focused hunk review with separate index-to-worktree
+and HEAD-to-index layers. New `git.hunks` and `git.hunk.apply` messages use the canonical
+standalone and embedded Git routers with request correlation. The server regenerates the
+Git diff, checks its reviewed SHA-256 identity and applies only the selected canonical hunk
+to the index. Clients cannot submit arbitrary patch text. Working-tree bytes are not rewritten.
+Project containment, literal pathspecs, isolated Git configuration, process/output limits and
+strict UTF-8 decoding apply. Hunk support currently covers modified regular text files;
+whole-file controls remain necessary for additions/deletions, binaries, mode changes and
+conflicts. Per-line selection and merge-conflict resolution remain open.
+
+The real-Git integration exercises two distant hunks, selected-hunk staging and reverse
+unstaging, unchanged working files, stale-diff refusal, request correlation, invalid layer and
+path rejection, subproject containment, invalid UTF-8 refusal and untracked-file behavior.
+Three focused backend suites passed 56 tests; after strict UTF-8 handling and boundary cases
+were added, the hunk integration was rerun and passed. Backend typecheck passed 315 files.
+The protocol suite passed 260 tests in 15 files and typecheck passed 29 source files.
+
+Review notes now use a dedicated allowlisted native project form in SQLite. They are separate
+from conversation drafts. Saves acknowledge the database revision before replacing the shown
+collection. A stale window cannot remove or replace newer notes; explicit saved-note reload
+recovers it. Existing in-window notes migrate only into an absent saved collection using the
+same revision guard. Notes remain bounded to 500 records and the native form payload budget.
+Path/line anchors are not automatically rebased when file content changes. Thread replies,
+resolution state and version-aware reanchoring remain open.
+
+Desktop tests passed 292 tests across 71 files, including persistence/restart, peer revision
+conflicts, malformed data, storage failure and existing-note migration. Desktop typecheck
+passed 212 files. The full no-default-features native Rust suite passed 19 tests; its project
+form test additionally covers review-note isolation, revision checks and database reopen and
+was rerun after the final reopen assertion. Targeted Biome and engine/dependency/asset-pack
+builds passed. Tauri release builds passed. An initial native UI run reached the new review
+but failed the 800 px overflow assertion; the hunk dialog now sizes its outer container and
+keeps its content within that container. Full repository coverage/release checks, hosted CI,
+installed-app replacement and unrelated working-tree changes were outside this increment.
+
+## Three-way text conflict resolution (2026-10-28)
+
+Bundled identity `211273172880-678c0b40014d` passed the expanded `--files` native scope,
+including the preceding hunk/persistent-note workflows, with verified portable checksums and
+no renderer errors. The isolated fixture created a real two-branch conflict. The native editor
+showed the common base and actual index stages 2/3, kept marker-containing output unsavable,
+required explicit dirty-close review, refused a changed working file while retaining the local
+merge draft, explicitly reloaded the new snapshot and saved/staged a reviewed merged result.
+Disk content, stage-0 blob and removal of unmerged index entries were checked through real Git.
+MERGE_HEAD remained, proving that resolving the file did not create a merge commit. Desktop and
+800 px conflict captures were inspected. The entire scope created zero conversation sessions.
+
+The new `git.conflict` and `git.conflict.resolve` operations share request-correlated canonical
+standalone/embedded routing and the existing contained, isolated Git review process helper.
+They require a regular UTF-8 modify/modify conflict with all three index stages. The reviewed
+revision covers those index entries and exact working bytes. Resolution rejects stale revisions,
+NUL/oversized text and standard conflict markers. A failure after writing but before staging is
+reported as a partial outcome, rather than claiming the disk remained unchanged. No merge commit
+is issued. The check is read-before-write; atomic file/index transactions and simultaneous external
+writes remain outside this evidence. Merge editor drafts remain window-local, with an explicit
+discard guard; restart-persistent unsaved merge drafts remain open.
+
+Combined previews are limited to 1 MiB across the three sides and working file; merged output is
+limited to 2 MiB. A real-index boundary case builds three valid blob stages plus a working file
+exceeding the preview budget and verifies refusal without altering the index. Add/delete, rename,
+binary and larger conflicts remain explicit limitations rather than fabricated empty-side views.
+
+The conflict and hunk integration suites passed together after the shared process/path helper was
+extracted. The conflict suite was rerun after adding the final combined-preview boundary case
+and passed. Desktop tests passed 292 tests in 71 files; typecheck passed desktop 213, backend 316
+and protocol 29 source files. The protocol suite passed 260 tests in 15 files. Targeted Biome,
+backend dependency/engine builds and Tauri release build passed. An initial dependency build
+encountered a temporarily missing ChronicleEvent type import in concurrent Chronicle work;
+that source was already corrected on reread, without a change by this desktop increment, and
+the subsequent build completed. Full repository release/coverage, hosted CI, installed-app
+replacement and comprehensive conflict-type/concurrency acceptance were not performed.
+
+## Missing-side, binary and rename conflict choices (2026-10-28)
+
+Bundled native identity `2f8eedf96a89-e0869c855f69` passed the expanded `--files` scope with
+verified portable checksums and no renderer errors. Native UI cases cover add/add with an
+explicitly absent base, modify/delete with a disabled missing-side action and explicit deletion,
+opaque binary side selection with no text editor, and rename/rename resolution across the
+three actual unmerged paths. Choosing a side alone does not save. Binary working bytes and
+the indexed blob were compared byte-for-byte. Resolving one rename path left both sibling
+index entries and the unselected destination's actual bytes intact until separately reviewed.
+The final file resolution left MERGE_HEAD in place; fixture-only commits between scenarios
+were explicit test setup, not a resolver action. The complete scope created zero conversations.
+Light/dark, 800 px binary and rename-path evidence captures were inspected.
+
+Git review now permits an absent working file through a verified existing ancestor, including
+missing parent directories, while refusing symbolic-link file/parent targets and paths outside
+the project. The stage-presence map distinguishes absence from an empty file. Binary/non-UTF-8
+blobs stay opaque; only a reviewed server-side blob can supply binary replacement bytes.
+Explicit deletion uses the exact reviewed path. Selected side executable index mode is retained.
+The snapshot revision includes the project's actual unmerged index paths as well as the selected
+file/stages, so resolving a sibling makes an older rename-context review stale. Related path
+metadata is bounded to 200 and the UI explicitly shows at most 50 with the recorded total;
+no rename relationship is guessed from a missing side.
+
+Independent base/ours/theirs blob reads run in parallel. Process execution, isolation and size
+guards remain in place. Combined text previews retain the 1 MiB budget; blob and working-file
+reads retain the 2 MiB budget. Larger files, symlink/submodule conflicts, automatic rename grouping,
+cross-process atomic file/index mutation and restart-persistent unsaved merge drafts remain open.
+Changes can now review deleted/conflicted paths without first fabricating a source document;
+their virtual review tab is separate from cached editor text. Returning to Files loads actual
+content and duplicate in-flight reads are suppressed. Binary/error diff states retain access to
+the conflict resolver.
+
+Three focused Git suites passed six tests after the shared byte/path and parallel-read changes.
+The expanded variant suite then passed five tests, adding restoration through missing working
+directories with explicit executable stage mode preservation. Existing stale-file, marker,
+containment, UTF-8 and combined-preview-budget checks remain in the production-path integration.
+Desktop tests passed 292 tests in 71 files. Desktop/backend typecheck passed 213/316 source files;
+targeted Biome and compiled engine/dependency/Tauri builds passed. No dependencies changed.
+
+An initial native wait used the general 20-second locator deadline while the acknowledged Git
+operation permits 45 seconds; the dialog had closed by failure capture. Native completion waits
+now allow the existing command deadline and UI processing to finish, still bounded at 60 seconds.
+Another native fixture expected LF in an unselected rename target that Git had checked out as
+CRLF. Its assertion now compares exact pre/post working bytes, preserving the intended no-change
+contract without normalizing content or weakening the indexed-blob checks. Full repository
+coverage/release checks, hosted CI and installed-application replacement were not performed.
+
+History follow-up inspection confirmed two distinct current bounds: desktop content search caps
+its window at 500, and the canonical session catalog caps a list RPC at 1000. Deeper history needs
+a real continuation contract and native evidence; merely increasing a selector cannot certify it.
+
+### Project history catalog continuation and full-catalog search (2026-10-28)
+
+The additive `page_catalog` operation leaves the legacy list contract unchanged. Canonical SQLite
+pages read an ordered identity snapshot and at most 200 full summaries inside one transaction.
+Continuation revisions bind membership, ordering and the excluded project carrier; metadata-only
+renames do not invalidate otherwise stable pages. Exact-ID anchors locate an older record's real
+page. Membership/order drift rejects continuation until an explicit refresh. The file-store
+fallback has a conservative 10,000-record budget and reports truncation rather than complete coverage.
+
+The native library exposes 50/100/200-summary pages with range/count and previous/next controls.
+Summary filters apply to the visible page. Cross-session retained-text search independently scans
+the project catalog in five-record batches with query/role and catalog revision checks. A result
+opens its actual page and retains the existing transcript revision guard. Rename preflight and
+verified readback work on older pages. Runtimes without the additive paging contract fail explicitly.
+
+Focused production-path checks passed: 22 core catalog/storage cases across two suites, three
+authenticated catalog IPC cases, and six backend search/content-state cases across two suites.
+The SQLite fixture contains 1106 records and verifies all 1105 eligible identities without
+duplicates beyond the unchanged legacy 1000-record limit. The content-search fixture finds a
+retained message beyond 500 newer records and rejects changed queries, missing continuation
+tokens and catalog drift. Desktop tests passed 294 cases in 72 files. Contracts/core/backend/
+desktop typechecks passed 126/634/316/214 source files. Targeted formatting and compiled engine/
+dependency/Tauri builds passed. No dependencies changed.
+
+Bundled native identity `ec241cf89238-e1b7d79bd098` passed
+`bun apps/desktop-v2/tests/native-smoke.mjs --release --bundled --history` (exit 0).
+The real project fixture seeded 1105 closed records; the visible catalog reached 1117 eligible
+records before the additional membership-change fixture. All canonical pages were traversed
+without duplicate identities. The native UI opened and renamed the selected record on the page
+starting at offset 1000, rejected stale continuation after a new record, refreshed explicitly,
+searched the full catalog and navigated the matching retained message back to its actual page.
+Read/search operations and closed fixtures created no desktop conversations. Existing transcript,
+project-isolation, preserved-draft reuse, native fork/resume and duplicate-writer checks also passed.
+An 800 px screenshot and overflow assertion passed. Evidence is retained under
+`.temp_files/desktop-v2-native/history/`, including `native-history-beyond-1000.png`,
+`native-history-paging-compact.png` and `native-history-full-catalog-search.png`.
+
+The first native run stopped before bulk seeding because its new test helper used an absent
+registry root field. It now takes the project root verified by the engine; the same packaged
+application then passed the complete scenario. No production fallback or acceptance assertion
+was weakened. This increment did not rerun companion-host acceptance, full repository coverage/
+release checks or hosted CI, and did not replace the installed application. Compressed/large
+transcript acceptance, durable catalog selection/filter state and broader performance remain open.
+
+### Structured advanced model definitions and saved reasoning propagation (2026-10-28)
+
+Model definitions now expose grouped advanced controls instead of requiring raw JSON: effort
+levels, toggle and bounded token-budget controls, interleaved replay fields, lifecycle/experimental
+status and per-model SDK/API metadata. Extended numeric prices cover cache write durations,
+long context, reasoning and audio. Blank overrides inherit the catalog/provider; unedited unknown
+fields, reasoning policies and price tiers survive round trips. The inspector renders saved
+behavior as labelled text. Explicit runtime reasoning policy takes precedence, so edits to
+catalog reasoning controls require an explicit switch that removes that saved override.
+
+The production models.dev schema accepts authored payloads. Invalid integer token bounds,
+reversed ranges, duplicate control types, unsupported effort names and malformed/credentialed
+endpoints fail before writing. Desktop tests passed 308 cases in 73 files and typecheck passed
+216 source files. No dependency versions changed; the live test-runner registry still reports
+the installed Vitest 5.0.5.
+
+Native acceptance first exposed a false-negative saved-value check: arrays of equivalent objects
+were compared with serialized key order. A durable regression failed before the fix. Structural
+comparison now verifies nested values, array lengths and element order while accepting object
+key reordering. The first corrected native model-management flow passed, including actual disk
+readback, stale-definition refusal, unrelated price-tier preservation, definition removal and
+existing key/quota/visibility/OAuth-startup cases.
+
+An added effective-catalog assertion then exposed a separate propagation gap: configured custom
+model reasoning options were saved but absent from both `provider.models` and metadata resolution.
+Two real backend-path regressions failed before the fix. These paths now use the core registry's
+canonical reasoning normalizer for saved controls, preserve unrelated upstream reasoning/replay
+policy and respect explicit runtime policy and explicitly empty controls. Three focused backend
+suites passed 71 cases; backend typecheck passed 316 source files. These checks do not establish
+live external OAuth completion, provider execution of every declared reasoning control, full
+repository release/coverage certification, hosted CI or replacement of the installed application.
+
+Final bundled identity `33f5953d41f2-ab32e9424fe1` passed
+`bun apps/desktop-v2/tests/native-smoke.mjs --release --bundled --models` (exit 0), with checksum
+verification. The unchanged effective-catalog assertion now observes `low/high` and
+`effortSupported: true` from the real `provider.models` reply after native authoring. The same run
+checks rejection without storage mutation for reversed token bounds, valid structured controls,
+replay/lifecycle/SDK/API/cache metadata on disk, editor reopen, stale-definition refusal,
+unrelated price-tier preservation and the existing definition/key/quota/visibility/OAuth-startup
+flows. Desktop tests remain 308/73 and desktop/core/backend typechecks passed 216/634/316 source
+files. Targeted Biome, compiled engine/dependency builds and the Tauri release build passed.
+Native screenshots and logs remain under `.temp_files/desktop-v2-native/models/`; the final
+command log is `.temp_files/desktop-v2-native/model-advanced-native.log`. The installed app was
+not replaced. Explicit runtime-policy and price-tier authoring, durable editor drafts and atomic
+cross-window custom-model writes remain open.
+
+The follow-up editor also authors explicit runtime reasoning policy: enabled/disabled/adaptive/
+always-on defaults, disable support, documented/unsupported/undocumented effort support and
+levels, and thinking retention. Unknown policy metadata survives edits. Validation rejects
+contradictory always-on/disable support, missing documented levels, unknown enums and levels
+declared under undocumented/unsupported effort. Explicitly returning to catalog controls removes
+the runtime override while retaining the catalog options. Canonical normalization tests verify
+both the authored policy and restored catalog effort vocabulary. Focused model suites passed
+33 cases; the complete desktop suite passed 313 cases in 73 files with 216-file typecheck.
+
+Bundled identity `49187302a95f-ab32e9424fe1` passed the complete native `--models` scope (exit 0).
+The added policy flow authors adaptive reasoning with disable support, documented `xhigh` effort
+and optional thinking retention, verifies the exact policy on disk and the `xhigh` vocabulary
+from the real model catalog, reopens the editor and observes the saved values, then returns to
+catalog controls. Saved policy removal and restored `low/high` catalog vocabulary are both
+asserted. Existing custom-definition/schema preservation, stale-edit, key, visibility, quota and
+OAuth-startup cases pass in the same run. No conversations were created by model management.
+The new screenshot is `native-model-explicit-runtime-policy.png`; final command output is
+`.temp_files/desktop-v2-native/model-runtime-native.log`. Targeted Biome, diff whitespace checks
+and the Tauri release build passed. Price-tier authoring, durable editor drafts and atomic
+cross-window writes remain open; the earlier external-service and release limitations still apply.
+
+### Native persistent Chimera note drafts (2026-10-28)
+
+Unsent review notes now autosave through the native project-form store, keyed by project and
+SHA-256 report identity. The typed payload also verifies the original report identity on load.
+The existing SQLite compare-and-swap revision check protects competing writers. Invalid/cross-
+report payloads are refused. Pending edits are coalesced in order; write failures retain local
+text and block posting until explicit review. Notes are limited to 100,000 characters and retain
+the existing 2 MiB native form-row limit. No session is needed for draft reads or writes.
+
+The journal form shows saving/saved/unsaved state and explicit local/saved comparisons, with
+fresh revision checks before choosing either version. A version that changes again requires a
+new review. Choosing a draft does not post a report note. Posting flushes pending saves and
+checks the saved revision before invoking the canonical engine operation. Duplicate in-process
+submissions are refused; failed submissions preserve the draft. Only acknowledged submission
+clears it, and a competing newer draft is protected from that clear by the same native revision.
+This does not establish an atomic transaction spanning the engine journal and desktop SQLite.
+
+The complete desktop suite passed 319 cases in 74 files; desktop typecheck passed 217 source
+files. Seven draft-controller cases cover reopen, ordered saves, submission failure/clear,
+competing writers, second changes during review, clear-vs-newer-note and malformed ownership.
+Three focused Rust registry cases passed, including actual SQLite reopening, report/project
+isolation, unsupported keys and stale writes. Targeted Biome, Rust format and Tauri release
+build passed. Existing shared-checkout changes were preserved and no dependencies changed.
+
+Bundled native identity `3f307975d336-ab32e9424fe1` passed
+`bun apps/desktop-v2/tests/native-smoke.mjs --release --bundled --chimera` (exit 0, checksums
+verified). The real UI autosaves an unsent note through Tauri IPC, isolates it from another
+project/report, recovers it after a renderer reload, refuses a competing native writer and
+rechecks a second competing revision before permitting the reviewed local overwrite. It also
+adopts the reviewed saved version without posting any report note. A final explicit post produces
+one journal note, clears the native draft and remains cleared after another renderer reload.
+Existing report/finding lifecycle, profile review policy, follow-up draft and no-conversation
+reading checks pass in the same run. The competing writer uses the real Tauri/SQLite path;
+this is not a simultaneous two-WebView stress test. Registry reopening is separately covered
+by Rust tests; a complete host restart was not exercised in this increment.
+
+Screenshots `native-chimera-note-conflict.png` and `native-chimera-note-conflict-compact.png`
+capture the compared versions; the 800 px overflow assertion passes. The final command log is
+`.temp_files/desktop-v2-native/chimera-draft-native.log`. The initial harness used a test socket
+that does not expose form operations; it was corrected to call the application's actual Tauri
+IPC, without changing the application or weakening assertions. Full repository coverage/release
+checks, hosted CI, external provider acceptance and installed-application replacement were not run.
+
+### Persistent project history view (2026-10-28)
+
+History summary query, provider/outcome filters, empty-journal visibility, page size, selected
+record and unselected-page first-row anchor now persist under the native `history-view` project
+form. The renderer restores exact identities through the real catalog paging contract; saved
+offsets and catalog revisions are not reused. A missing remembered identity produces a notice
+and a fresh first page. A remembered provider absent from the loaded page remains a labelled
+filter option. Restoring selection only reads the transcript; agent resume/fork stays explicit.
+
+Preference updates serialize/coalesce local edits, read the latest native value and merge only
+explicitly supplied fields, with at most three compare-and-swap retries. Independent fields from
+other windows survive. Explicit selection clears remain writes even when that window already
+has an empty local selection; a durable regression failed before correcting that case. These
+are view preferences, with last successful explicit intent winning for the same field. They do
+not silently resolve competing user-authored note or document drafts. Malformed storage is not
+overwritten; browsing can continue with defaults and an explicit storage retry.
+
+Eleven view-store cases and two catalog-page validation cases passed. The complete desktop suite
+passed 330 cases in 75 files; desktop typecheck passed 219 source files. Three focused Rust
+registry cases passed with real SQLite reopening, project isolation and stale-write refusal for
+the new key. Targeted Biome, Rust formatting and the Tauri release build passed. No dependency
+versions changed; the live Vitest registry still reports the installed 5.0.5. Shared-checkout work
+was preserved. Native acceptance for this package is recorded below after execution.
+
+Bundled identity `3c1cfdefb7b5-ab32e9424fe1` passed
+`bun apps/desktop-v2/tests/native-smoke.mjs --release --bundled --history` (exit 0, portable
+checksums verified). The fixture seeds 1105 closed records; after the additional membership
+fixtures the visible catalog contains 1119 eligible records. The native UI saves all summary
+filters, page size and a selected record beyond offset 1000 through actual Tauri IPC/SQLite,
+adds another catalog member, reloads the renderer and restores the exact record's current page
+and read-only transcript. Another project's controls remain independent. A remembered missing
+record falls back to a fresh first page with a notice; an unavailable provider remains a labelled
+option. A second page without any selection is also saved and recovered through its first-row
+identity. Reads and preference recovery create no desktop conversations.
+
+Existing native history transcript/search/rename, full-catalog search, stale continuation,
+fork/resume, duplicate-writer and preserved-composer-draft checks pass in the same run. Screenshots
+`native-history-restored-view.png` and `native-history-restored-view-compact.png` are retained
+under `.temp_files/desktop-v2-native/history/`; the 800 px overflow assertion passes. Command
+output is `.temp_files/desktop-v2-native/history-view-native.log`. Actual full host restart,
+simultaneous two-WebView stress, companion-host acceptance for this increment, compressed/large
+transcript certification, full repository release/coverage, hosted CI and installed-application
+replacement were not performed.
+
+### SAGE applicability authoring and current-source evidence (2026-10-28)
+
+The native SAGE editor now authors and removes an applicability statement and up to four
+`source_contains` checks with project-relative paths and exact literals. Form validation follows
+the canonical 1,000-character statement, 500-character path and 400-character literal bounds;
+checks require a statement. Invalid/absolute/traversing paths are refused before writing.
+Create/update acknowledgements with applicability changes are followed by an actual record read;
+missing/different stored conditions retain the editor and show a verification error. Existing
+structured anchors and retention/audience/lifecycle controls remain separate.
+
+An explicit Source evidence card requests the additive `reviewValidity` option on
+`memory.sage.get`, with the selected revision. Both host routers supply their own project root.
+The handler uses SAGE's canonical normalization and injection-validity checker, including its
+250 ms budget, project containment and at most four 64 KiB source reads. Only stored check text,
+status, observed revision, time and source hashes return; source file bodies do not. Ordinary
+record reads do not inspect files. Missing, oversized, outside-project or unavailable sources
+remain unknown; literal absence is distinct from unknown. Overall applicability remains unknown
+and human-reviewed even when a literal is found. Review never mutates memory lifecycle/counters.
+Old hosts without review metadata refuse the UI check; stale record revisions fail explicitly.
+Evidence is transient and clears on record/revision/runtime changes or UI reload. This is a
+current-source review, separate from a live injection/context trace and vector retrieval.
+
+The complete desktop suite passed 343 cases in 76 files; desktop typecheck passed 221 source
+files. Three focused backend suites passed 70 cases and backend typecheck passed 316 files.
+Three canonical SAGE validity/injection suites passed 14 cases; SAGE typecheck passed 162 files.
+Real SQLite/filesystem route checks cover CRLF-normalized matching, literal absence, missing and
+oversized sources, unchanged stored records, no source-body disclosure, outside-project junction
+containment, ignored client-supplied roots, stale/missing revisions and statement-only conditions.
+Targeted Biome, compiled dependency/engine builds and Tauri release build passed. No dependencies
+changed; the live Vitest registry still reported the installed 5.0.5.
+
+Bundled identity `5c75e2ab9510-c2030f74b927` passed
+`bun apps/desktop-v2/tests/native-smoke.mjs --release --bundled --sage` (exit 0, portable checksums
+verified). The UI creates four source checks, refuses invalid paths without creating a record,
+observes found/missing/unknown results, detects a real source edit, refuses stale memory revision
+and another project's record, cancels edits without a write, explicitly clears and re-adds
+conditions, verifies updated readback and reopens after renderer reload without replaying old
+source evidence. The same flow works while Vector Memory is disabled and creates no desktop
+conversations. The 800 px overflow assertion passes. Screenshots and result are retained under
+`.temp_files/desktop-v2-native/sage-validity/`; command output is
+`.temp_files/desktop-v2-native/sage-validity-native.log`.
+
+This focused scope does not replace the full native suite, live SAGE injector trace acceptance,
+every lifecycle/repair/concurrent-write case, full repository release/coverage gates, hosted CI
+or installed-application replacement. No external provider calls were needed.
+
+### Conversation usage and cost workspace (2026-10-28)
+
+Tools now opens a dedicated session-owned Usage & cost workspace while the resting chat keeps
+its compact footer. The workspace separates accumulated disjoint input/output/cache token
+traffic, the last provider-reported request and the current context snapshot. The latter may
+change after compaction without a new provider response. Cumulative and last-request cache
+ratios, routed-provider counters, optional TTL splits, qualified gross cache-read discount and
+live/manual refresh have explicit labels. Read failures retain the last successful snapshot;
+responses for another session are refused. Unsubmitted chat drafts survive navigation.
+
+The additive `stats.get.pricing` detail preserves the legacy `cost` field for existing clients.
+It reports known/partial/unavailable aggregate rates, explicit input-rate cache fallback, saved
+model price overrides, per-category estimates and the known-priced subtotal. Missing rates are
+not converted into a free-price claim. Explicit zero rates remain valid. The resting-chat chip
+uses the new availability distinction and hides ambiguous legacy zero prices. This is current
+model aggregate-rate estimation; historical model routing, tiers, TTL-specific cache-write
+pricing, auxiliary-worker aggregation and invoices are not reconstructed by this scope.
+
+The complete desktop suite passed 349 cases in 77 files; desktop typecheck passed 223 source
+files. Three focused backend pricing/introspection suites passed 33 cases, with 317-file backend
+typecheck. Real counter tests account cold/warm responses and separately change the context
+snapshot, proving that the last provider request remains distinct. Other tests cover unknown,
+partial and explicit-zero prices, saved overrides, arithmetic/category validation, session
+ownership and the resting-chat chip. Targeted Biome and compiled dependency/engine/Tauri builds
+passed. No dependencies changed; the live Vitest registry reported installed version 5.0.5.
+
+Bundled identity `3edad3321000-fbb0c8a21f7a` passed
+`bun apps/desktop-v2/tests/native-smoke.mjs --release --bundled --usage` (exit 0, portable checksums
+verified). Two real loopback provider responses produce 725 accumulated tokens, 80% cache hit
+for the latest provider request and approximately 68.6% cumulatively. The configured current-rate
+estimate is verified against the engine response. The UI exercises live/manual refresh,
+preserved composer text, an isolated second session with zero usage and an unpriced model,
+and return to the original session's counters. The 800 px overflow assertion passes.
+Screenshots/results remain under `.temp_files/desktop-v2-native/session-usage/`; command output
+is `.temp_files/desktop-v2-native/session-usage-native.log`.
+
+This focused local scope does not complete project/profile usage aggregation, historical cost
+attribution, broader reconnect/restart stress, companion-host certification, full release/coverage
+gates, hosted CI, external-provider billing acceptance or installed-application replacement.
+## Council seat-default rotation (2026-10-28)
+
+- Added a separate ordered `brain.council.seats` editor to native Brain policy settings. Catalog
+  and custom decision lenses, inherited/enabled/disabled veto, reorder/remove, and built-in reset
+  remain independent of explicit voter model references, weights and judge selection.
+- Labels follow actual engine precedence: explicit voter preferences override rotation values;
+  missing preferences use the rotation. Pool-derived voters are limited by rotation length.
+  An empty configured rotation restores executor, skeptic (veto enabled), auditor.
+- Read-before-write conflict refusal treats the rotation as an ordered atomic value. Saved
+  readback is verified; explicit `false` survives disk/reload, omitted veto remains inherited,
+  and reset removes the configured override. Empty lens rows are rejected before a write.
+- Desktop suite: **350 tests / 77 files PASS**. Desktop typecheck: **223 files PASS**.
+  Focused Biome checks: **6 files PASS**. Tauri release build: **PASS**.
+- Bundled native acceptance: `bun apps/desktop-v2/tests/native-smoke.mjs --release --bundled
+  --brain-policy`, **exit 0 / PASS**, portable identity `1204ca39a10d-fbb0c8a21f7a`, checksums
+  verified. Exercised add/reorder/remove, three veto states, combined policy/target save,
+  actual profile disk/readback, reload, independent stale-seat refusal with draft preservation,
+  built-in reset and empty-row rejection. Existing model-pool, monitor and trace acceptance
+  also passed. No model completion requests were made by settings acceptance.
+- Inspected the 800px native seat-default screenshot; no horizontal document overflow.
+  Artifacts: `.temp_files/desktop-v2-native/brain-policy/native-brain-seat-defaults.png`,
+  `native-brain-seat-defaults-compact.png`, and `native-result.json` in the same directory.
+  Logs: `.temp_files/desktop-v2-native/brain-seats-native.log` and `.err`.
+- This verifies configuration behavior in the native application. Real council deliberation,
+  external-provider quality/billing, hosted CI, full repository certification and installed
+  application replacement were not performed in this increment.
+## Desktop implementation commit series (2026-10-28)
+
+The pending desktop implementation was separated from unrelated shared-checkout work into:
+
+| Commit | Scope |
+| --- | --- |
+| `c7eeb5211` | Revision-aware retained conversation catalog paging |
+| `25c9f1a21` | Engine APIs, request correlation, structured policies, history/recovery, Git review and source evidence support |
+| `e22d3362c` | Native registry/drafts, recorded conversation restoration and host contracts |
+| `aa195a088` | Structured provider, model, Brain, fleet and execution/refinement/review settings |
+| `4f3b5d4c3` | Project knowledge, engineering tools, history and persistent secondary drafts |
+| `b089b1334` | Session tools, chat/composer integration and native acceptance coverage |
+| `e9906c6a6` | Shared error scrubbing for Git hunk and conflict handler failures |
+
+Verification on the shared working snapshot:
+
+- Desktop: **350 tests / 77 files PASS**; **223 source files typecheck PASS**.
+- Backend final full package run: **3335 tests / 340 files PASS**, exit 0, using
+  `WRONGSTACK_VITEST_MAX_WORKERS=4 bun run test` from `packages/webui-server`.
+  Log: `.temp_files/desktop-v2-server-precommit-certified.log`.
+- Backend source typecheck: **317 files PASS**.
+- Core focused history/catalog/Brain round-trip checks: **8 tests / 3 files PASS**.
+- Native Rust tests: **19 PASS**; binary/doc-test targets contain zero additional tests.
+- Before the final green backend run, protocol totals were updated for four new client Git
+  messages and two snapshot replies. The older-than-500 search fixture now seeds real writer-format
+  transcript files rather than performing hundreds of unrelated create/close durability cycles;
+  its search/revision assertions are unchanged. Git review handlers now use the shared credential
+  scrubbing error helper, satisfying the existing architecture regression guard.
+- Every commit ran corruption, logging and relative-import guards. The repository's existing
+  total-dirty-file guard ceiling was explicitly raised to 800 for this known 773-file shared
+  snapshot; staged files remained limited to each reviewed group. Newly introduced relative
+  dependencies were included with their first consumer.
+- The user authorized skipping **only generated Core API snapshots and architecture report
+  production for this commit series**, because shared unstaged/untracked inputs would mix unrelated
+  work into generated artifacts. The temporary per-command hook retained all other hook steps;
+  the repository's configured `.githooks` path and original hook were not changed.
+- Committed paths were checked against the reviewed desktop plan. Unrelated bench, prompt,
+  security/fix work and agent learning files remain outside these commits. Mixed preference files
+  include only companion-policy hunks; their unrelated prompt-toggle edits remain uncommitted.
+- Prior native acceptance evidence in this document remains tied to its recorded portable hashes.
+  This commit checkpoint does not certify a fresh clean checkout, full repository release gate,
+  hosted CI or installed application replacement.
