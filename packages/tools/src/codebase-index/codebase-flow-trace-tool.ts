@@ -13,6 +13,8 @@ import * as path from 'node:path';
 import type { Tool } from '@wrongstack/contracts/types';
 import { ensureAtlasDir, writeAtlasFile } from './atlas-projection.js';
 import { isTestFilePath } from './codebase-impact-analysis-tool.js';
+import { flowTraceNote, withNextStepNote } from './next-step-notes.js';
+import { MODULE_OWNER_NAME } from './schema.js';
 import {
   codebaseIndexDirOverride,
   type IndexStore,
@@ -84,6 +86,8 @@ export interface CodebaseFlowTraceOutput {
   entryPoints: DiscoveredEntryPoint[];
   flows: ExecutionFlow[];
   persistedPaths?: { jsonPath: string; markdownPath: string } | undefined;
+  /** Next-step guidance: which tool answers the follow-up, or why the result is empty. */
+  note?: string | undefined;
 }
 
 export const ATLAS_FLOWS_JSON = '.wrongstack/atlas/flows.json';
@@ -188,7 +192,14 @@ export function discoverEntryPoints(
   }
 
   const candidates: DiscoveredEntryPoint[] = [];
-  for (const sym of store.getAllSymbols()) {
+  const allSymbols = store.getAllSymbols();
+  // A declaring file's `<module>` only owns its imports; its declarations are
+  // the entry candidates. A symbol-less script keeps `<module>` as its entry.
+  const declaringFiles = new Set(
+    allSymbols.filter((s) => s.name !== MODULE_OWNER_NAME).map((s) => s.file),
+  );
+  for (const sym of allSymbols) {
+    if (sym.name === MODULE_OWNER_NAME && declaringFiles.has(sym.file)) continue;
     const relFile = posixIndexPath(path.relative(projectRoot, sym.file));
     if (relFile.startsWith('..')) continue;
     if (fileFilter && !relFile.includes(fileFilter)) continue;
@@ -393,7 +404,10 @@ export async function writeExecutionFlowsAtlas(
   };
 }
 
-export const codebaseFlowTraceTool: Tool<CodebaseFlowTraceInput, CodebaseFlowTraceOutput> = {
+/** Data/markup languages whose symbols are keys or headings, never call-graph nodes. */
+const NON_CODE_LANGS = new Set<string>(['json', 'yaml', 'toml', 'md', 'css', 'html', 'data']);
+
+const codebaseFlowTraceToolBase: Tool<CodebaseFlowTraceInput, CodebaseFlowTraceOutput> = {
   name: 'codebase-flow-trace',
   category: 'Project',
   icon: 'index',
@@ -464,7 +478,11 @@ export const codebaseFlowTraceTool: Tool<CodebaseFlowTraceInput, CodebaseFlowTra
           ...(input.file ? { file: input.file } : {}),
         });
         const exact = matches.filter((m) => m.name === targetName);
-        const chosen = exact.length > 0 ? exact : matches;
+        const named = exact.length > 0 ? exact : matches;
+        // A config key (`"main"` in package.json, a YAML field) shares the name
+        // but has no call graph: its "flow" was the key alone. Prefer code.
+        const code = named.filter((m) => !NON_CODE_LANGS.has(m.lang));
+        const chosen = code.length > 0 ? code : named;
         const packages = store.getFilePackages();
 
         for (const m of chosen.slice(0, maxFlows)) {
@@ -516,3 +534,5 @@ export const codebaseFlowTraceTool: Tool<CodebaseFlowTraceInput, CodebaseFlowTra
     }
   },
 };
+
+export const codebaseFlowTraceTool = withNextStepNote(codebaseFlowTraceToolBase, flowTraceNote);

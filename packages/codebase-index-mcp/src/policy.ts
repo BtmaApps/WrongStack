@@ -63,3 +63,19 @@ export function codebaseIndexMcpWriteVariant(
   const variant = READ_TOOL_WRITE_VARIANTS[name as CodebaseIndexMcpReadToolName]?.(args);
   return variant ? `${name} ${variant} writes files; start the server with --writable` : null;
 }
+
+/**
+ * The built-in tools' next-step `note` names in-process tools
+ * (`codebase-read-symbol`). Over MCP they are `codebase_read_symbol`, and the
+ * write tools exist only with `--writable` — a note must not send the client
+ * to a name it cannot call.
+ */
+export function mcpToolNote(note: string, opts: CodebaseIndexMcpPolicyOptions = {}): string {
+  const exposed = new Set<string>(selectCodebaseIndexMcpTools(opts));
+  const write = new Set<string>(CODEBASE_INDEX_WRITE_TOOLS);
+  return note.replace(/\bcodebase-[a-z]+(?:-[a-z]+)*/g, (name) => {
+    const mcp = name.replace(/-/g, '_');
+    if (exposed.has(mcp)) return mcp;
+    return write.has(mcp) ? `${mcp} (needs --writable)` : name;
+  });
+}

@@ -116,6 +116,7 @@ export function getAllResolvedRefs(this: WriterSymbolQueriesHost): Array<{
 export function getSymbolGraphFacts(this: WriterSymbolQueriesHost): {
   fileOf: Map<number, string>;
   candidates: Map<number, number>;
+  shadowedModules: Set<number>;
 } {
   return getSymbolGraphFactsWithStatement((sql) => this.stmt(sql));
 }

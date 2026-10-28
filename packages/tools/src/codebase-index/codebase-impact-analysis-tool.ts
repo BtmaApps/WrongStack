@@ -20,6 +20,7 @@ import {
   findAnchoredSageMemories,
   findFileHealthAlerts,
 } from './ecosystem-bridge.js';
+import { impactNote, withNextStepNote } from './next-step-notes.js';
 import type { CallSite } from './schema.js';
 import { codebaseIndexDirOverride } from './writer.js';
 
@@ -63,6 +64,8 @@ export interface ImpactAnalysisOutput {
   relatedMemories?: AnchoredSageInsight[] | undefined;
   /** WrongTrace file fragility / thrashing / lock alerts for affected files. */
   fileHealthAlerts?: AnchoredFileHealth[] | undefined;
+  /** Next-step guidance: which tool answers the follow-up, or why the result is empty. */
+  note?: string | undefined;
 }
 
 export type CodebaseImpactAnalysisOutput = ImpactAnalysisOutput;
@@ -80,6 +83,20 @@ const TEST_FILE_REGEX =
 /** Whether a project-relative path looks like a test, fixture, mock, or bench file. */
 export function isTestFilePath(relPath: string): boolean {
   return TEST_FILE_REGEX.test(relPath);
+}
+
+/**
+ * A test-like path a runner can execute as a suite: `*.test.*` / `*.spec.*`,
+ * `foo_test.go`, `test_foo.py` / `foo_test.py`, or a code file in
+ * `__tests__/`. {@link isTestFilePath} also matches fixtures, mocks, benches and
+ * `test-flake-detector/` — not production, but not suites either; handing them
+ * to codebase-targeted-test ran a bench manifest as a test file.
+ */
+const RUNNABLE_TEST_REGEX =
+  /(?:\.(?:test|spec)\.[cm]?[jt]sx?|_test\.(?:go|py)|(?:^|\/)test_[^/]*\.py|\/__tests__\/[^/]+\.[cm]?[jt]sx?)$/i;
+
+export function isRunnableTestFile(relPath: string): boolean {
+  return RUNNABLE_TEST_REGEX.test(relPath.replace(/\\/g, '/'));
 }
 
 /**
@@ -126,7 +143,7 @@ export function discoverConventionTestFiles(
   return [...discovered];
 }
 
-export const codebaseImpactAnalysisTool: Tool<ImpactAnalysisInput, ImpactAnalysisOutput> = {
+const codebaseImpactAnalysisToolBase: Tool<ImpactAnalysisInput, ImpactAnalysisOutput> = {
   name: 'codebase-impact-analysis',
   category: 'Project',
   icon: 'index',
@@ -272,7 +289,7 @@ export const codebaseImpactAnalysisTool: Tool<ImpactAnalysisInput, ImpactAnalysi
       const indirect = !site.callType;
 
       if (isTest) {
-        testFilesSet.add(relPath);
+        if (isRunnableTestFile(relPath)) testFilesSet.add(relPath);
       } else {
         prodFilesSet.add(relPath);
         (indirect ? indirectProdFilesSet : directProdFilesSet).add(relPath);
@@ -402,3 +419,8 @@ export const codebaseImpactAnalysisTool: Tool<ImpactAnalysisInput, ImpactAnalysi
     };
   },
 };
+
+export const codebaseImpactAnalysisTool = withNextStepNote(
+  codebaseImpactAnalysisToolBase,
+  impactNote,
+);

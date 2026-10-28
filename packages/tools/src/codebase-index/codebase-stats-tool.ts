@@ -10,6 +10,7 @@ import type { Tool } from '@wrongstack/contracts/types';
 import { toErrorMessage } from '@wrongstack/core/utils';
 import { codebaseIndexStats, getIndexState } from './background-indexer.js';
 import { IndexTimeoutError } from './circuit-breaker.js';
+import { statsNote, withNextStepNote } from './next-step-notes.js';
 import { SCHEMA_VERSION } from './schema.js';
 import { codebaseIndexDirOverride, resolveIndexDir } from './writer.js';
 
@@ -21,7 +22,7 @@ import { codebaseIndexDirOverride, resolveIndexDir } from './writer.js';
  */
 export type CodebaseStatsInput = Record<string, never>;
 
-export const codebaseStatsTool: Tool<CodebaseStatsInput, CodebaseStatsOutput> = {
+const codebaseStatsToolBase: Tool<CodebaseStatsInput, CodebaseStatsOutput> = {
   name: 'codebase-stats',
   category: 'Project',
   icon: 'index',
@@ -131,6 +132,8 @@ export const codebaseStatsTool: Tool<CodebaseStatsInput, CodebaseStatsOutput> = 
   },
 };
 
+export const codebaseStatsTool = withNextStepNote(codebaseStatsToolBase, statsNote);
+
 export interface CodebaseStatsOutput {
   totalSymbols: number;
   totalFiles: number;
@@ -151,4 +154,6 @@ export interface CodebaseStatsOutput {
     | undefined;
   /** Non-empty when the index is not ready or is still building. */
   indexStatus?: string | undefined;
+  /** Next-step guidance: which tool answers the follow-up, or why the result is empty. */
+  note?: string | undefined;
 }

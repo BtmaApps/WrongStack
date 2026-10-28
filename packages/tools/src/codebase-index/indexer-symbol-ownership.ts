@@ -55,28 +55,16 @@ export function moduleOwnerSymbol(file: string, lang: SymbolLang): IndexSymbol {
   };
 }
 
-export function assignRefsToSymbols(refs: Ref[], symbols: IndexSymbol[]): Ref[] {
-  if (refs.length === 0 || symbols.length === 0) return [];
-  const ordered = [...symbols].sort((a, b) => a.line - b.line || a.col - b.col || a.id - b.id);
-  const seen = new Set<string>();
-  const assigned: Ref[] = [];
-  for (const ref of refs) {
-    let owner: IndexSymbol | undefined;
-    for (const symbol of ordered) {
-      if (symbol.line > ref.line) break;
-      owner = symbol;
-    }
-    // Imports usually appear before the first declaration. Attach them to the
-    // first real symbol so file/package dependency graphs retain the module
-    // edge without inventing an invalid owner id 0.
-    if (!owner && ref.callType === 'import') owner = ordered[0];
-    if (!owner || owner.id <= 0) continue;
-    // The module is part of the identity: same-name imports from different
-    // modules are distinct dependencies (mirrors ts-parser's deduplicateRefs).
-    const key = `${owner.id}:${ref.toName}:${ref.callType}:${ref.module ?? ''}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    assigned.push({ ...ref, fromId: owner.id });
-  }
-  return assigned;
+/**
+ * A file needs a `<module>` owner when it declares nothing, or when it has
+ * imports or top-level refs before its first declaration. Without one, imports
+ * were pinned on the first declaration: `import { x }` read as "interface Foo
+ * calls x", and the transitive tree walked on from Foo's real callers.
+ */
+export function needsModuleOwner(symbols: readonly IndexSymbol[], refs: readonly Ref[]): boolean {
+  if (symbols.length === 0) return true;
+  const first = Math.min(...symbols.map((s) => s.line));
+  return refs.some((ref) => ref.callType === 'import' || ref.line < first);
 }
+
+export { assignRefsToSymbols } from './writer-helpers.js';

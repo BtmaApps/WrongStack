@@ -21,8 +21,10 @@ import { ToolValidationError } from '@wrongstack/contracts/types';
 import { toErrorMessage } from '@wrongstack/core/utils';
 import { codebaseIndexStats, getIndexState, searchCodebaseIndex } from './background-indexer.js';
 import { EXT_TO_LANG } from './languages.js';
+import { searchNote, withNextStepNote } from './next-step-notes.js';
 import type { SearchResult, SymbolLang } from './schema.js';
 import { codebaseIndexDirOverride } from './writer.js';
+import { displayIndexPath } from './writer-helpers.js';
 
 /**
  * Language ids the index understands — DERIVED from `EXT_TO_LANG`
@@ -35,7 +37,7 @@ import { codebaseIndexDirOverride } from './writer.js';
 export const INDEXABLE_LANG_IDS: readonly SymbolLang[] = [
   ...new Set(Object.values(EXT_TO_LANG)),
 ].sort();
-export const codebaseSearchTool: Tool<CodebaseSearchInput, CodebaseSearchOutput> = {
+const codebaseSearchToolBase: Tool<CodebaseSearchInput, CodebaseSearchOutput> = {
   name: 'codebase-search',
   category: 'Project',
   icon: 'index',
@@ -220,7 +222,8 @@ export const codebaseSearchTool: Tool<CodebaseSearchInput, CodebaseSearchOutput>
       );
     }
     return {
-      results,
+      // Project-relative like every other codebase-* tool (the index stores absolute paths).
+      results: results.map((r) => ({ ...r, file: displayIndexPath(ctx.projectRoot, r.file) })),
       total,
       query: input.query,
       ...(stale
@@ -232,6 +235,8 @@ export const codebaseSearchTool: Tool<CodebaseSearchInput, CodebaseSearchOutput>
     };
   },
 };
+
+export const codebaseSearchTool = withNextStepNote(codebaseSearchToolBase, searchNote);
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -261,4 +266,6 @@ export interface CodebaseSearchOutput {
   stale?: boolean | undefined;
   /** Advisory note when a stale previous-generation answer was served. */
   indexStatus?: string | undefined;
+  /** Next-step guidance: which tool answers the follow-up, or why the result is empty. */
+  note?: string | undefined;
 }

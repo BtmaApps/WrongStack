@@ -23,6 +23,7 @@ import { codebaseContext, codebaseVectorSearch } from './background-indexer.js';
 import type { ContextEntry } from './context-retrieval.js';
 import { type AnchoredSageInsight, findAnchoredSageMemories } from './ecosystem-bridge.js';
 import type { EmbeddingPort } from './embedding-pass.js';
+import { contextNote, withNextStepNote } from './next-step-notes.js';
 import { codebaseIndexDirOverride } from './writer.js';
 
 export interface CodebaseContextInput {
@@ -55,6 +56,8 @@ export interface CodebaseContextOutput {
   stale?: boolean | undefined;
   /** Active SAGE memories anchored to the retrieved files or declarations. */
   relatedMemories?: AnchoredSageInsight[] | undefined;
+  /** Next-step guidance: which tool answers the follow-up, or why the result is empty. */
+  note?: string | undefined;
 }
 
 /** The host watchdog cancels at 30s; ask for slightly more so it wins. */
@@ -118,7 +121,7 @@ async function semanticSeeds(
   }
 }
 
-export const codebaseContextTool: Tool<CodebaseContextInput, CodebaseContextOutput> = {
+const codebaseContextToolBase: Tool<CodebaseContextInput, CodebaseContextOutput> = {
   name: 'codebase-context',
   category: 'Project',
   icon: 'index',
@@ -235,3 +238,5 @@ export const codebaseContextTool: Tool<CodebaseContextInput, CodebaseContextOutp
     };
   },
 };
+
+export const codebaseContextTool = withNextStepNote(codebaseContextToolBase, contextNote);

@@ -34,7 +34,117 @@ export interface MutateSymbolResult {
   originalRange: { startLine: number; endLine: number };
   newRange: { startLine: number; endLine: number };
   updatedContent: string;
+  previousContent?: string | undefined;
   violations?: InvariantViolation[] | undefined;
+  /** Mode actually applied — `body` is promoted to `full` for a complete declaration. */
+  appliedTarget?: 'body' | 'full' | undefined;
+}
+
+/**
+ * True when a `body`-mode `newBody` is really the complete declaration of the
+ * matched symbol (`export function f() {…}`, `size(): number {…}`). Spliced
+ * into the body it nested the declaration inside itself — a file the invariant
+ * engine passed and the next build rejected.
+ */
+function isFullTsDeclaration(
+  ts: TsModule,
+  match: TsMatch,
+  newBody: string,
+  scriptKind: TS.ScriptKind,
+): boolean {
+  const leaf = match.qualified.split('.').pop() ?? '';
+  const isMember =
+    ts.isMethodDeclaration(match.node) ||
+    ts.isGetAccessor(match.node) ||
+    ts.isSetAccessor(match.node) ||
+    ts.isConstructorDeclaration(match.node) ||
+    ts.isPropertyDeclaration(match.node);
+  const text = isMember ? `class __WsProbe__ {\n${newBody}\n}` : newBody;
+  const probe = ts.createSourceFile('probe.ts', text, ts.ScriptTarget.Latest, true, scriptKind);
+  if (((probe as unknown as { parseDiagnostics?: unknown[] }).parseDiagnostics?.length ?? 0) > 0) {
+    return false;
+  }
+  if (probe.statements.length !== 1) return false;
+  const stmt = probe.statements[0] as TS.Statement;
+  const named = (node: TS.Node): string | undefined => {
+    const n = (node as { name?: TS.Node }).name;
+    return n && (ts.isIdentifier(n) || ts.isPrivateIdentifier(n) || ts.isStringLiteral(n))
+      ? n.text
+      : undefined;
+  };
+  if (isMember) {
+    if (!ts.isClassDeclaration(stmt) || stmt.members.length !== 1) return false;
+    const member = stmt.members[0] as TS.ClassElement;
+    if (ts.isConstructorDeclaration(member)) return leaf === 'constructor';
+    return member.kind === match.node.kind && named(member) === leaf;
+  }
+  if (ts.isFunctionDeclaration(stmt)) return named(stmt) === leaf;
+  if (ts.isVariableStatement(stmt)) {
+    const decls = stmt.declarationList.declarations;
+    return decls.length === 1 && named(decls[0] as TS.Node) === leaf;
+  }
+  return false;
+}
+
+/** First syntax error the edit INTRODUCED, or null (pre-existing errors are not ours). */
+async function introducedSyntaxError(
+  lang: SymbolLang,
+  before: string,
+  after: string,
+): Promise<string | null> {
+  if (['ts', 'tsx', 'js', 'jsx'].includes(lang)) {
+    const ts = await loadTs();
+    const kind =
+      lang === 'tsx'
+        ? ts.ScriptKind.TSX
+        : lang === 'jsx'
+          ? ts.ScriptKind.JSX
+          : lang === 'js'
+            ? ts.ScriptKind.JS
+            : ts.ScriptKind.TS;
+    const diags = (text: string) => {
+      const sf = ts.createSourceFile(`x.${lang}`, text, ts.ScriptTarget.Latest, true, kind);
+      return {
+        sf,
+        list:
+          (sf as unknown as { parseDiagnostics?: TS.DiagnosticWithLocation[] }).parseDiagnostics ??
+          [],
+      };
+    };
+    if (diags(before).list.length > 0) return null;
+    const { sf, list } = diags(after);
+    const first = list[0];
+    if (!first) return null;
+    const line = sf.getLineAndCharacterOfPosition(first.start).line + 1;
+    return `L${line}: ${ts.flattenDiagnosticMessageText(first.messageText, ' ')}`;
+  }
+  const hasError = async (text: string): Promise<{ error: boolean; line?: number } | null> => {
+    const parsed = await parseTreeSitterAst({ content: text, lang });
+    if (!parsed) return null;
+    try {
+      const root = parsed.tree.rootNode;
+      if (!root.hasError) return { error: false };
+      // Descend through error-carrying children to the first ERROR/MISSING node.
+      let node: typeof root | null = root;
+      while (node && !node.isError && !node.isMissing) {
+        let next: typeof root | null = null;
+        for (let i = 0; i < node.childCount && !next; i++) {
+          const child = node.child(i);
+          if (child && (child.hasError || child.isError || child.isMissing)) next = child;
+        }
+        node = next;
+      }
+      return { error: true, ...(node ? { line: node.startPosition.row + 1 } : {}) };
+    } finally {
+      parsed.tree.delete();
+      parsed.parser.delete();
+    }
+  };
+  const was = await hasError(before);
+  if (!was || was.error) return null;
+  const now = await hasError(after);
+  if (!now?.error) return null;
+  return `${now.line !== undefined ? `L${now.line}: ` : ''}${lang} parse error`;
 }
 
 interface TsMatch {
@@ -60,6 +170,25 @@ function reindent(text: string, indent: string): string {
   const widths = lines.filter((l) => l.trim()).map((l) => /^[ \t]*/.exec(l)?.[0].length ?? 0);
   const common = widths.length > 0 ? Math.min(...widths) : 0;
   return lines.map((l) => (l.trim() ? `${indent}${l.slice(common)}` : '')).join('\n');
+}
+
+/**
+ * Indent a `full` replacement to its declaration's column. The first line
+ * lands after the existing indent; later lines arrived at column 0 (a model
+ * writes the declaration unindented), so a class method came back with its
+ * body and closing brace flush left. Text already written at the file's
+ * column is left as given: brace languages close at the declaration's indent,
+ * indentation-scoped bodies (Python) must sit deeper than it.
+ */
+function indentFullReplacement(text: string, indent: string, lang: SymbolLang): string {
+  if (!indent) return text;
+  const lines = text.split('\n');
+  const rest = lines.slice(1).filter((l) => l.trim());
+  if (rest.length === 0) return text;
+  const min = Math.min(...rest.map((l) => /^[ \t]*/.exec(l)?.[0].length ?? 0));
+  const placed = lang === 'py' ? min > indent.length : min >= indent.length;
+  if (placed) return text;
+  return lines.map((l, i) => (i === 0 || !l.trim() ? l : `${indent}${l}`)).join('\n');
 }
 
 /**
@@ -189,6 +318,10 @@ async function mutateTsSymbol(
 
   const match = candidates[0] as TsMatch;
 
+  if (target === 'body' && isFullTsDeclaration(ts, match, newBody.trim(), scriptKind)) {
+    target = 'full';
+  }
+
   // A body-less declaration (class, interface, enum, namespace, abstract
   // method, `const x = 5`) used to fall through to a FULL replacement in body
   // mode: `newBody: "foo() {}"` overwrote `export class Cart {…}` wholesale.
@@ -246,6 +379,12 @@ async function mutateTsSymbol(
     // syntax error, so promote the body to a block.
     const baseIndent = indentAt(content, fullNode.getStart(sourceFile));
     formattedReplacement = `{\n${reindent(newBody, `${baseIndent}  `)}\n${baseIndent}}`;
+  } else if (target === 'full') {
+    formattedReplacement = indentFullReplacement(
+      formattedReplacement,
+      indentAt(content, startPos),
+      lang,
+    );
   }
 
   const updatedContent = content.slice(0, startPos) + formattedReplacement + content.slice(endPos);
@@ -257,6 +396,7 @@ async function mutateTsSymbol(
     originalRange: { startLine, endLine },
     newRange: { startLine, endLine: newEndLine },
     updatedContent,
+    appliedTarget: target,
   };
 }
 
@@ -425,6 +565,12 @@ async function mutateTreeSitterSymbol(
         // Body shares the header line (`def f(): pass`): move it onto its own lines.
         formattedReplacement = `\n${reindent(newBody, `${declIndent}    `)}`;
       }
+    } else {
+      formattedReplacement = indentFullReplacement(
+        formattedReplacement,
+        indentAt(content, startPos),
+        lang,
+      );
     }
 
     const updatedContent =
@@ -437,6 +583,7 @@ async function mutateTreeSitterSymbol(
       originalRange: { startLine, endLine },
       newRange: { startLine, endLine: newEndLine },
       updatedContent,
+      appliedTarget: target,
     };
   } finally {
     tree.delete();
@@ -511,6 +658,20 @@ export async function replaceSymbolInFile(
   }
 
   result.file = resolved;
+  result.previousContent = content;
+
+  // Nothing is written when the splice breaks the file's syntax (a body given
+  // its own declaration header, unbalanced braces, a stray `return` in an
+  // expression slot): the invariant engine compares exports, not parses.
+  const syntaxError = await introducedSyntaxError(lang, content, result.updatedContent);
+  if (syntaxError) {
+    const applied = result.appliedTarget ?? opts.target ?? 'body';
+    throw new Error(
+      `codebase-ast-replace: replacing '${opts.symbol}' would leave '${path.relative(projectRoot, resolved).replace(/\\/g, '/')}' unparseable (${syntaxError}); nothing was written. ` +
+        `With target "${applied}", newBody must be ${applied === 'full' ? 'the complete declaration' : 'only the body statements (no declaration header)'}. ` +
+        'Read the current code with codebase-read-symbol and retry.',
+    );
+  }
 
   if (opts.checkInvariants !== false) {
     const inv = await polyglotInvariantEngine.evaluate({

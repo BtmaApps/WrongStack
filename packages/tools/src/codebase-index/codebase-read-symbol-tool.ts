@@ -13,6 +13,7 @@ import { type Tool, ToolValidationError } from '@wrongstack/contracts/types';
 import { safeResolveProjectPath } from '../_util.js';
 import { readSymbolInFile } from './ast-symbol-reader.js';
 import { type AnchoredSageInsight, findAnchoredSageMemories } from './ecosystem-bridge.js';
+import { readSymbolNote, withNextStepNote } from './next-step-notes.js';
 
 export interface CodebaseReadSymbolInput {
   /** Target file path (relative to project root or absolute within project). */
@@ -39,9 +40,11 @@ export interface CodebaseReadSymbolOutput {
   text: string;
   /** Active SAGE memories anchored to this symbol or file, when present. */
   relatedMemories?: AnchoredSageInsight[] | undefined;
+  /** Next-step guidance: which tool answers the follow-up, or why the result is empty. */
+  note?: string | undefined;
 }
 
-export const codebaseReadSymbolTool: Tool<CodebaseReadSymbolInput, CodebaseReadSymbolOutput> = {
+const codebaseReadSymbolToolBase: Tool<CodebaseReadSymbolInput, CodebaseReadSymbolOutput> = {
   name: 'codebase-read-symbol',
   category: 'Filesystem',
   icon: 'file',
@@ -156,3 +159,5 @@ export const codebaseReadSymbolTool: Tool<CodebaseReadSymbolInput, CodebaseReadS
     };
   },
 };
+
+export const codebaseReadSymbolTool = withNextStepNote(codebaseReadSymbolToolBase, readSymbolNote);

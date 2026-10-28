@@ -13,8 +13,12 @@ import type { FileMeta } from './schema.js';
  */
 export const GRAPH_STAMP_KEY = 'graph_stamp';
 
-/** Bump to re-parse every symbol-less file once (they may now own refs). */
-export const MODULE_OWNER_VERSION = '1';
+/**
+ * Bump to re-parse every file once so its refs get the current owners.
+ * 1: symbol-less files own their refs. 2: imports are owned by `<module>`,
+ * not by the file's first declaration.
+ */
+export const MODULE_OWNER_VERSION = '2';
 export const MODULE_OWNER_VERSION_KEY = 'module_owner_version';
 
 /**

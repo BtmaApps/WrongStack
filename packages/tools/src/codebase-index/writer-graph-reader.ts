@@ -1,4 +1,10 @@
-import type { CallSite, Ref, SymbolKind, SymbolLang } from './schema.js';
+import {
+  type CallSite,
+  MODULE_OWNER_NAME,
+  type Ref,
+  type SymbolKind,
+  type SymbolLang,
+} from './schema.js';
 import type { PrepareStatement } from './writer-graph-queries.js';
 import { chunkedIdQuery, MAX_SQL_VARS, resolveIndexedFiles } from './writer-graph-queries.js';
 import { inListChunks, padToInBucket, placeholders } from './writer-helpers.js';
@@ -24,8 +30,13 @@ export function getFileSymbolsWithStatement(
   signature: string;
 }> {
   if (limit <= 0) return [];
+  // `<module>` only owns imports; it is listed only for a file that declares
+  // nothing else, where it is the file's sole entry.
   const rows = stmt(
-    'SELECT id, name, kind, line, end_line, is_exported, signature FROM symbols WHERE file = ? ORDER BY line ASC, name ASC LIMIT ?',
+    `SELECT id, name, kind, line, end_line, is_exported, signature FROM symbols s
+     WHERE file = ? AND NOT (name = '${MODULE_OWNER_NAME}' AND EXISTS (
+       SELECT 1 FROM symbols o WHERE o.file = s.file AND o.name <> '${MODULE_OWNER_NAME}'))
+     ORDER BY line ASC, name ASC LIMIT ?`,
   ).all(file, limit) as unknown as Array<{
     id: number;
     name: string;
@@ -77,6 +88,8 @@ type CallSiteRow = {
   sym_signature: string;
   call_type: string;
   ref_line: number;
+  /** Hop distance from the seeds (1 = direct); transitive trees only. */
+  depth?: number;
 };
 
 function mapCallSiteRow(row: CallSiteRow): CallSite {
@@ -216,6 +229,19 @@ function directIncomingRows(
 }
 
 /**
+ * Drop a file's `<module>` import row (direct, or a deeper hop with no edge
+ * metadata) when a declaration in the same file is also listed: that row
+ * already names the file. Import-only files (barrels, re-exports) keep it —
+ * it is their only edge.
+ */
+function dropRedundantModuleImports(rows: CallSiteRow[]): CallSiteRow[] {
+  const isModuleImport = (r: CallSiteRow) =>
+    r.sym_name === MODULE_OWNER_NAME && (r.call_type === 'import' || r.call_type === '');
+  const used = new Set(rows.filter((r) => !isModuleImport(r)).map((r) => r.sym_file));
+  return rows.filter((r) => !isModuleImport(r) || !used.has(r.sym_file));
+}
+
+/**
  * Find all symbols that CALL/USE the named target symbol (incoming callers).
  *
  * Returns one `CallSite` per ref edge, with the caller's full metadata so the
@@ -289,11 +315,11 @@ export function findIncomingCallsByName(
   // Global sort after merge — each chunk sorts independently, so the merged
   // array is not globally ordered. The main query (to_id IN) and fallback
   // (to_id IS NULL) are mutually exclusive, so no dedup is needed.
-  rows.sort(compareCallSiteRows);
+  const kept = dropRedundantModuleImports(rows).sort(compareCallSiteRows);
 
   const safeLimit =
     typeof limit === 'number' && Number.isFinite(limit) && limit >= 0 ? Math.trunc(limit) : 100;
-  const allCalls = rows.map(mapCallSiteRow);
+  const allCalls = kept.map(mapCallSiteRow);
   return {
     calls: allCalls.slice(0, safeLimit),
     symbolFound: true,
@@ -369,6 +395,22 @@ export function findOutgoingCallsByName(
 // rows rather than looping forever.
 //
 // They add depth-aware variants to the existing single-level call queries.
+
+/**
+ * Hop bound for transitive trees. Unbounded, the closure walked through barrel
+ * `<module>` re-exports to the whole repository: on the WrongStack index every
+ * symbol had the same 34k "transitive callers".
+ */
+const MAX_TRANSITIVE_DEPTH = 3;
+
+/**
+ * Nearest first: direct edges, then by hop, then by location. The limit is
+ * applied after this order, so it can never cut a direct call site — sorting
+ * by `ref_line` first put every depth>1 row (line 0) ahead of them.
+ */
+function compareTreeRows(a: CallSiteRow, b: CallSiteRow): number {
+  return (a.depth ?? 1) - (b.depth ?? 1) || compareCallSiteRows(a, b);
+}
 
 /**
  * Run a recursive CTE over a potentially large seed-ID set.
@@ -478,11 +520,10 @@ export function findTransitiveIncomingCallsByName(
     }
   }
 
-  // Recursive CTE: `UNION` (not `UNION ALL`) deduplicates by `from_id` only,
-  // breaking dependency cycles automatically (A→B→C→A terminates after 3 rows).
-  // We intentionally do NOT track depth in the CTE columns — including depth
-  // breaks UNION deduplication because (node, 2) ≠ (node, 3), so cyclic nodes
-  // recur at every depth. The caller-side ref metadata is also omitted: a
+  // Recursive CTE carrying the hop depth. (node, 2) ≠ (node, 3) defeats UNION
+  // deduplication, so cycles are terminated by the MAX_TRANSITIVE_DEPTH bound
+  // instead; each node appears at most once per depth and MIN(depth) keeps its
+  // nearest hop. The caller-side ref metadata is omitted: a
   // transitive caller's "call_type" is semantically meaningless (the edge that
   // reached it is different from the edge that reached its callee).
   //
@@ -497,20 +538,21 @@ export function findTransitiveIncomingCallsByName(
     ? [...new Set(directIncomingRows(stmt, matchIds, targetIds).map((row) => row.sym_id))]
     : null;
   const cteSql = (seedSource: string) =>
-    `WITH RECURSIVE incoming_tree(from_id) AS (
+    `WITH RECURSIVE incoming_tree(from_id, depth) AS (
        ${
          anchorCallerIds === null
-           ? `SELECT r.from_id
+           ? `SELECT r.from_id, 1
        FROM refs r
        WHERE r.to_id IN (${seedSource})`
-           : `SELECT s0.id FROM symbols s0 WHERE s0.id IN (${seedSource})`
+           : `SELECT s0.id, 1 FROM symbols s0 WHERE s0.id IN (${seedSource})`
 }
 
        UNION
 
-       SELECT r.from_id
+       SELECT r.from_id, it.depth + 1
        FROM refs r
        JOIN incoming_tree it ON r.to_id = it.from_id
+       WHERE it.depth < ${MAX_TRANSITIVE_DEPTH}
      )
      SELECT
        s.id   AS sym_id,
@@ -521,7 +563,8 @@ export function findTransitiveIncomingCallsByName(
        s.line AS sym_line,
        s.signature AS sym_signature,
        '' AS call_type,
-       0 AS ref_line
+       0 AS ref_line,
+       MIN(it.depth) AS depth
      FROM incoming_tree it
      JOIN symbols s ON s.id = it.from_id
      GROUP BY s.id
@@ -555,10 +598,10 @@ export function findTransitiveIncomingCallsByName(
     rows.push(...fallbackRows);
   }
 
-  rows.sort(compareCallSiteRows);
+  const kept = dropRedundantModuleImports(rows).sort(compareTreeRows);
   const safeLimit =
     typeof limit === 'number' && Number.isFinite(limit) && limit >= 0 ? Math.trunc(limit) : 100;
-  const allCalls = rows.map(mapCallSiteRow);
+  const allCalls = kept.map(mapCallSiteRow);
   return {
     calls: allCalls.slice(0, safeLimit),
     symbolFound: true,
@@ -591,17 +634,17 @@ export function findTransitiveOutgoingCallsByName(
 
   // Same temp-table seed handling as findTransitiveIncomingCallsByName.
   const cteSql = (seedSource: string) =>
-    `WITH RECURSIVE outgoing_tree(to_id) AS (
-       SELECT r.to_id
+    `WITH RECURSIVE outgoing_tree(to_id, depth) AS (
+       SELECT r.to_id, 1
        FROM refs r
        WHERE r.from_id IN (${seedSource}) AND r.to_id IS NOT NULL
 
        UNION
 
-       SELECT r.to_id
+       SELECT r.to_id, ot.depth + 1
        FROM refs r
        JOIN outgoing_tree ot ON r.from_id = ot.to_id
-       WHERE r.to_id IS NOT NULL
+       WHERE r.to_id IS NOT NULL AND ot.depth < ${MAX_TRANSITIVE_DEPTH}
      )
      SELECT
        s.id   AS sym_id,
@@ -612,7 +655,8 @@ export function findTransitiveOutgoingCallsByName(
        s.line AS sym_line,
        s.signature AS sym_signature,
        '' AS call_type,
-       0 AS ref_line
+       0 AS ref_line,
+       MIN(ot.depth) AS depth
      FROM outgoing_tree ot
      JOIN symbols s ON s.id = ot.to_id
      GROUP BY s.id
@@ -620,6 +664,7 @@ export function findTransitiveOutgoingCallsByName(
 
   const rows = runCteWithSeeds(stmt, sourceIds, cteSql) as CallSiteRow[];
   annotateDirectEdges(stmt, rows, sourceIds, 'from_id', 'to_id');
+  rows.sort(compareTreeRows);
 
   const safeOutgoingLimit =
     typeof limit === 'number' && Number.isFinite(limit) && limit >= 0 ? Math.trunc(limit) : 100;

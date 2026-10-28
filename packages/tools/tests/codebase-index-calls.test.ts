@@ -164,7 +164,8 @@ describe('codebase-incoming-calls tool', () => {
       { signal: newSignal() },
     );
 
-    expect(result.note).toBeUndefined();
+    // Only next-step guidance — no ambiguity advisory.
+    expect(result.note).not.toMatch(/multiple files/);
     expect(result.total).toBeGreaterThanOrEqual(1);
   });
 
@@ -439,7 +440,7 @@ describe('ambiguous flag', () => {
 
     expect(result.total).toBeGreaterThanOrEqual(1);
     // No ambiguity note — name is unique
-    expect(result.note).toBeUndefined();
+    expect(result.note).not.toMatch(/multiple files/);
   });
 
   it('does not set ambiguous note when file is not specified', async () => {
@@ -457,6 +458,6 @@ describe('ambiguous flag', () => {
 
     expect(result.total).toBeGreaterThanOrEqual(1);
     // No ambiguity note — no file scope requested
-    expect(result.note).toBeUndefined();
+    expect(result.note).not.toMatch(/multiple files/);
   });
 });

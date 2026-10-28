@@ -21,6 +21,7 @@ import {
 import { isTestFilePath } from './codebase-impact-analysis-tool.js';
 import { type AnchoredSageInsight, findAnchoredSageMemories } from './ecosystem-bridge.js';
 import { detectStoreFileCommunities, type FileCommunity } from './louvain.js';
+import { onboardNote, withNextStepNote } from './next-step-notes.js';
 import {
   codebaseIndexDirOverride,
   type IndexStore,
@@ -75,6 +76,8 @@ export interface CodebaseOnboardOutput {
   steps: TourStep[];
   flows: ExecutionFlow[];
   markdown: string;
+  /** Next-step guidance: which tool answers the follow-up, or why the result is empty. */
+  note?: string | undefined;
 }
 
 /**
@@ -359,7 +362,7 @@ export async function writeOnboardingAtlas(
   };
 }
 
-export const codebaseOnboardTool: Tool<CodebaseOnboardInput, CodebaseOnboardOutput> = {
+const codebaseOnboardToolBase: Tool<CodebaseOnboardInput, CodebaseOnboardOutput> = {
   name: 'codebase-onboard',
   category: 'Project',
   icon: 'index',
@@ -422,3 +425,5 @@ export const codebaseOnboardTool: Tool<CodebaseOnboardInput, CodebaseOnboardOutp
     }
   },
 };
+
+export const codebaseOnboardTool = withNextStepNote(codebaseOnboardToolBase, onboardNote);

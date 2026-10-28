@@ -16,7 +16,8 @@ import { toErrorMessage } from '@wrongstack/core/utils';
 import { spawnStream } from '../_spawn-stream.js';
 import { normalizeCommandOutput, safeResolveProjectPath } from '../_util.js';
 import { incomingCallsService } from './background-indexer.js';
-import { isTestFilePath } from './codebase-impact-analysis-tool.js';
+import { isRunnableTestFile } from './codebase-impact-analysis-tool.js';
+import { targetedTestNote, withNextStepNote } from './next-step-notes.js';
 import { codebaseIndexDirOverride } from './writer.js';
 
 export interface TargetedTestInput {
@@ -38,6 +39,8 @@ export interface TargetedTestOutput {
   failed: number;
   durationMs: number;
   output: string;
+  /** Next-step guidance: which tool answers the follow-up, or why the result is empty. */
+  note?: string | undefined;
 }
 
 export type CodebaseTargetedTestOutput = TargetedTestOutput;
@@ -64,6 +67,9 @@ export function parseTestCounts(output: string): { passed: number; failed: numbe
     }
   }
   if (!scope) return null;
+  // `Tests  no tests`: every suite failed to load (import/syntax error). That
+  // is zero tests run — the old fallback counted it as one failed test.
+  if (vitestLine && /^no tests\b/i.test(vitestLine.trim())) return { passed: 0, failed: 0 };
   const last = (re: RegExp): number | undefined => {
     let value: number | undefined;
     for (const m of scope.matchAll(re)) value = Number(m[1]);
@@ -183,7 +189,7 @@ async function jsRunnerArgs(projectRoot: string): Promise<string[]> {
   return ['vitest', 'run'];
 }
 
-export const codebaseTargetedTestTool: Tool<TargetedTestInput, TargetedTestOutput> = {
+const codebaseTargetedTestToolBase: Tool<TargetedTestInput, TargetedTestOutput> = {
   name: 'codebase-targeted-test',
   category: 'Code Quality',
   icon: 'test',
@@ -284,7 +290,7 @@ export const codebaseTargetedTestTool: Tool<TargetedTestInput, TargetedTestOutpu
             const relPath = path.relative(projectRoot, site.symbol.file).replace(/\\/g, '/');
             // Never hand a path outside the project to the runner.
             if (relPath.startsWith('../') || path.isAbsolute(relPath)) continue;
-            if (isTestFilePath(relPath)) {
+            if (isRunnableTestFile(relPath)) {
               suitesSet.add(relPath);
             }
           }
@@ -379,3 +385,8 @@ export const codebaseTargetedTestTool: Tool<TargetedTestInput, TargetedTestOutpu
     }
   },
 };
+
+export const codebaseTargetedTestTool = withNextStepNote(
+  codebaseTargetedTestToolBase,
+  targetedTestNote,
+);

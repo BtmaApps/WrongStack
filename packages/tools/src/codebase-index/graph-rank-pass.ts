@@ -101,16 +101,20 @@ export function loadWiringGraph(store: IndexStore): {
   graph: WiringGraph;
   fileOf: Map<number, string>;
 } {
-  const { fileOf, candidates } = store.getSymbolGraphFacts();
+  const { fileOf, candidates, shadowedModules } = store.getSymbolGraphFacts();
   // Both weights exist to contain the same defect: ref resolution matches on
   // name alone, so an unguarded walk ranks the Italian locale catalogue above
   // the container. See the module header.
-  const graph = buildWiringGraph(store.getAllResolvedRefs(), {
-    candidates,
-    fileOf,
-    importsOf: store.getImportVisibility(),
-    implicitlyVisible: createImplicitVisibility(),
-  });
+  const refs = store.getAllResolvedRefs();
+  const graph = buildWiringGraph(
+    shadowedModules.size > 0 ? refs.filter((ref) => !shadowedModules.has(ref.fromId)) : refs,
+    {
+      candidates,
+      fileOf,
+      importsOf: store.getImportVisibility(),
+      implicitlyVisible: createImplicitVisibility(),
+    },
+  );
   return { graph, fileOf };
 }
 

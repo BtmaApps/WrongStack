@@ -121,14 +121,14 @@ async function runIndexerAtomic(store: IndexStore, opts: IndexerOptions): Promis
   const existingMeta: Map<string, FileMeta> = new Map();
   const previousMetas = opts.files ? store.getFileMetas(files) : store.getAllFileMetas();
   for (const meta of previousMetas) existingMeta.set(meta.file, meta);
-  // Symbol-less files indexed before they could own refs: forget their
-  // content stamps so this run re-parses them (see moduleOwnerSymbol).
+  // Files indexed under an older ref-ownership rule: forget their content
+  // stamps so this run re-parses them (see moduleOwnerSymbol). Only a full run
+  // records the new version, so a targeted run cannot strand the upgrade.
   const moduleOwnersStale =
     !clearedAll && store.getMetadata(MODULE_OWNER_VERSION_KEY) !== MODULE_OWNER_VERSION;
   if (moduleOwnersStale) {
     for (const meta of previousMetas) {
-      if (meta.symbolCount === 0)
-        existingMeta.set(meta.file, { ...meta, contentHash: '', gitBlob: '' });
+      existingMeta.set(meta.file, { ...meta, contentHash: '', gitBlob: '' });
     }
   }
   const healSageAnchors =

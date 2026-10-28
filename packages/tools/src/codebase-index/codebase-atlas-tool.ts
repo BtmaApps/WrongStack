@@ -22,6 +22,7 @@ import {
   writeAtlas,
 } from './atlas-projection.js';
 import { detectStoreFileCommunities, type FileCommunity } from './louvain.js';
+import { atlasNote, withNextStepNote } from './next-step-notes.js';
 import { codebaseIndexDirOverride, indexStorePool, resolveIndexDir } from './writer.js';
 import type { ConceptCoverage, ConceptEdge, Subsystem } from './writer-concepts.js';
 import { posixIndexPath } from './writer-helpers.js';
@@ -61,9 +62,11 @@ export interface CodebaseAtlasOutput {
   subsystems?: Subsystem[] | undefined;
   conceptEdges?: ConceptEdge[] | undefined;
   written?: WrittenAtlas | undefined;
+  /** Next-step guidance: which tool answers the follow-up, or why the result is empty. */
+  note?: string | undefined;
 }
 
-export const codebaseAtlasTool: Tool<CodebaseAtlasInput, CodebaseAtlasOutput> = {
+const codebaseAtlasToolBase: Tool<CodebaseAtlasInput, CodebaseAtlasOutput> = {
   name: 'codebase-atlas',
   category: 'Project',
   icon: 'index',
@@ -205,3 +208,5 @@ export const codebaseAtlasTool: Tool<CodebaseAtlasInput, CodebaseAtlasOutput> = 
     }
   },
 };
+
+export const codebaseAtlasTool = withNextStepNote(codebaseAtlasToolBase, atlasNote);

@@ -11,6 +11,7 @@
 import type { DatabaseSync } from 'node:sqlite';
 import type { FileRankRow, SymbolRankRow } from './graph-rank.js';
 import { LANG_FAMILY_ENTRIES } from './languages.js';
+import { MODULE_OWNER_NAME } from './schema.js';
 import { allRowsAsArrays } from './sqlite-runtime.js';
 import { ladderChunkSizes } from './writer-helpers.js';
 import { LANG_FAMILY_WILDCARD } from './writer-schema.js';
@@ -194,14 +195,19 @@ const FAMILY_BY_LANG: ReadonlyMap<string, string> = new Map<string, string>([
 export function getSymbolGraphFactsWithStatement(stmt: PrepareStatement): {
   fileOf: Map<number, string>;
   candidates: Map<number, number>;
+  shadowedModules: Set<number>;
 } {
   const rows = allRowsAsArrays(stmt('SELECT id, file, name, lang FROM symbols')) as Array<
     [number, string, string, string]
   >;
   const fileOf = new Map<number, string>();
   const groups = new Map<string, number[]>();
+  const moduleOf = new Map<string, number>();
+  const declaring = new Set<string>();
   for (const [id, file, name, lang] of rows) {
     fileOf.set(id, file);
+    if (name === MODULE_OWNER_NAME) moduleOf.set(file, id);
+    else declaring.add(file);
     // The SQL form inner-joins lang_family: an unmapped language takes no part.
     const family = FAMILY_BY_LANG.get(lang);
     if (family === undefined) continue;
@@ -215,7 +221,12 @@ export function getSymbolGraphFactsWithStatement(stmt: PrepareStatement): {
     if (ids.length < 2) continue;
     for (const id of ids) candidates.set(id, ids.length);
   }
-  return { fileOf, candidates };
+  // A file that declares symbols also owns its imports through `<module>`;
+  // as a rank node it would split the file's mass across an extra symbol and
+  // double-count each import its declarations already use.
+  const shadowedModules = new Set<number>();
+  for (const [file, id] of moduleOf) if (declaring.has(file)) shadowedModules.add(id);
+  return { fileOf, candidates, shadowedModules };
 }
 
 /**

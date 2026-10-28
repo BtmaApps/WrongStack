@@ -19,10 +19,12 @@ import { ToolValidationError } from '@wrongstack/contracts/types';
 import { toErrorMessage } from '@wrongstack/core/utils';
 import { codebaseIndexStats, getIndexState, outgoingCallsService } from './background-indexer.js';
 import { serializeCallSites } from './call-site-serializer.js';
+import { outgoingCallsNote, withNextStepNote } from './next-step-notes.js';
 import type { CallSite } from './schema.js';
 import { codebaseIndexDirOverride } from './writer.js';
+import { displayIndexPath } from './writer-helpers.js';
 
-export const codebaseOutgoingCallsTool: Tool<OutgoingCallsInput, OutgoingCallsOutput> = {
+const codebaseOutgoingCallsToolBase: Tool<OutgoingCallsInput, OutgoingCallsOutput> = {
   name: 'codebase-outgoing-calls',
   serialize: serializeCallSites,
   category: 'Project',
@@ -173,13 +175,23 @@ export const codebaseOutgoingCallsTool: Tool<OutgoingCallsInput, OutgoingCallsOu
 
     return {
       symbol: input.symbol,
-      calls,
+      // Project-relative like every other codebase-* tool (the index stores
+      // absolute paths; each repeated root cost tokens and broke copy-paste).
+      calls: calls.map((c) => ({
+        ...c,
+        symbol: { ...c.symbol, file: displayIndexPath(ctx.projectRoot, c.symbol.file) },
+      })),
       total: calls.length,
       ...(stale ? { stale: true } : {}),
       ...(notes.length > 0 ? { note: notes.join(' ') } : {}),
     };
   },
 };
+
+export const codebaseOutgoingCallsTool = withNextStepNote(
+  codebaseOutgoingCallsToolBase,
+  outgoingCallsNote,
+);
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 

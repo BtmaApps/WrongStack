@@ -306,7 +306,11 @@ export abstract class IndexStoreDerivedLayers extends IndexStoreBase {
   }
 
   /** Declaring file and homonym count per symbol, from one scan. */
-  getSymbolGraphFacts(): { fileOf: Map<number, string>; candidates: Map<number, number> } {
+  getSymbolGraphFacts(): {
+    fileOf: Map<number, string>;
+    candidates: Map<number, number>;
+    shadowedModules: Set<number>;
+  } {
     return writerSymbolQueries.getSymbolGraphFacts.call(this.writerSymbolQueriesHost());
   }
 

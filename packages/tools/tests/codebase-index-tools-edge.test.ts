@@ -479,8 +479,9 @@ describe('codebase call-graph tool gates', () => {
     const outgoing = await codebaseOutgoingCallsTool.execute({ symbol: 'Target' }, ctx(), opts());
     expect(incoming.stale).toBeUndefined();
     expect(outgoing.stale).toBeUndefined();
-    expect(incoming.note).toBeUndefined();
-    expect(outgoing.note).toBeUndefined();
+    // Guidance may be present; the stale advisory must not be.
+    expect(incoming.note ?? '').not.toMatch(/refresh in progress/);
+    expect(outgoing.note ?? '').not.toMatch(/refresh in progress/);
   });
 
   it('codebaseSearchTool honors ctx.signal when execOpts is omitted and ctx.signal is aborted', async () => {

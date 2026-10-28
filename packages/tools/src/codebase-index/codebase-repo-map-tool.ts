@@ -11,6 +11,7 @@ import * as path from 'node:path';
 import type { Tool } from '@wrongstack/contracts/types';
 import { ToolValidationError } from '@wrongstack/contracts/types';
 import { safeResolveProjectPath } from '../_util.js';
+import { repoMapNote, withNextStepNote } from './next-step-notes.js';
 import { generateRepoMap, type RepoMapResult } from './repo-map.js';
 import { codebaseIndexDirOverride } from './writer.js';
 
@@ -26,9 +27,11 @@ const MAX_MAP_TOKENS = 20_000;
 
 export interface CodebaseRepoMapOutput extends RepoMapResult {
   status: 'ok';
+  /** Next-step guidance: which tool answers the follow-up, or why the result is empty. */
+  note?: string | undefined;
 }
 
-export const codebaseRepoMapTool: Tool<CodebaseRepoMapInput, CodebaseRepoMapOutput> = {
+const codebaseRepoMapToolBase: Tool<CodebaseRepoMapInput, CodebaseRepoMapOutput> = {
   name: 'codebase-repo-map',
   category: 'Project',
   icon: 'index',
@@ -113,3 +116,5 @@ export const codebaseRepoMapTool: Tool<CodebaseRepoMapInput, CodebaseRepoMapOutp
     };
   },
 };
+
+export const codebaseRepoMapTool = withNextStepNote(codebaseRepoMapToolBase, repoMapNote);

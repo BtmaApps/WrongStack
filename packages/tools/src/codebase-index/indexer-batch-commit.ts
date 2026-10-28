@@ -3,7 +3,11 @@
 import { expectDefined } from '@wrongstack/core/utils';
 import type { BatchFileRead } from './indexer-batch-read.js';
 import { type IndexRunState, isAbortError, noteRewritten } from './indexer-run-state.js';
-import { assignRefsToSymbols, moduleOwnerSymbol } from './indexer-symbol-ownership.js';
+import {
+  assignRefsToSymbols,
+  moduleOwnerSymbol,
+  needsModuleOwner,
+} from './indexer-symbol-ownership.js';
 import type { FileMeta, Symbol as IndexSymbol, Ref, SymbolLang } from './schema.js';
 import type { IndexStore } from './writer.js';
 
@@ -141,8 +145,9 @@ export function commitBatchResults(
       continue;
     }
 
-    const symbols =
-      parsed.symbols.length > 0 ? parsed.symbols : [moduleOwnerSymbol(file, lang as SymbolLang)];
+    const symbols = needsModuleOwner(parsed.symbols, parsedRefs)
+      ? [moduleOwnerSymbol(file, lang as SymbolLang), ...parsed.symbols]
+      : parsed.symbols;
     batchEntries.push({
       file,
       lang: lang as SymbolLang,

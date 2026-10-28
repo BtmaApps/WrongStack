@@ -1,5 +1,6 @@
+import * as path from 'node:path';
 import { resolveWstackPaths } from '@wrongstack/core/utils';
-import type { Symbol as IndexSymbol, Ref } from './schema.js';
+import { type Symbol as IndexSymbol, MODULE_OWNER_NAME, type Ref } from './schema.js';
 
 export function escapeLike(value: string): string {
   return /[\\%_]/.test(value) ? value.replace(/[\\%_]/g, (char) => `\\${char}`) : value;
@@ -105,6 +106,27 @@ export function posixIndexPath(file: string): string {
 }
 
 /**
+ * Project-relative posix form of an indexed (absolute) path for tool output.
+ * A path outside the root (a stale entry from another checkout) keeps its
+ * stored form instead of becoming a `../..` chain. Canonical escape test
+ * (paths.ts escapesRoot): an in-root first segment like `..configs` is not a
+ * traversal.
+ */
+export function displayIndexPath(projectRoot: string | undefined, file: string): string {
+  if (!projectRoot || !path.isAbsolute(file)) return posixIndexPath(file);
+  const relative = path.relative(projectRoot, file);
+  if (
+    !relative ||
+    relative === '..' ||
+    relative.startsWith(`..${path.sep}`) ||
+    path.isAbsolute(relative)
+  ) {
+    return posixIndexPath(file);
+  }
+  return posixIndexPath(relative);
+}
+
+/**
  * SQL predicate that matches a stored `file` column against a user-supplied
  * path. Agents pass project-relative paths (`src/calc.ts`); the index stores
  * absolute OS paths. Exact, slash-normalized, and suffix matches are accepted.
@@ -143,14 +165,23 @@ export function matchesIndexedPackageFilter(
 export function assignRefsToSymbols(refs: Ref[], symbols: IndexSymbol[]): Ref[] {
   if (refs.length === 0 || symbols.length === 0) return [];
   const ordered = [...symbols].sort((a, b) => a.line - b.line || a.col - b.col || a.id - b.id);
+  const moduleOwner = ordered.find((s) => s.kind === 'mod' && s.name === MODULE_OWNER_NAME);
   const seen = new Set<string>();
   const assigned: Ref[] = [];
   for (const ref of refs) {
     let owner: IndexSymbol | undefined;
-    for (const symbol of ordered) {
-      if (symbol.line > ref.line) break;
-      owner = symbol;
+    // An import binds the module, wherever it sits (Python imports inside the
+    // file body too); file/package graphs keep the edge either way.
+    if (ref.callType === 'import' && moduleOwner) {
+      owner = moduleOwner;
+    } else {
+      for (const symbol of ordered) {
+        if (symbol.line > ref.line) break;
+        owner = symbol;
+      }
     }
+    // Index rows written without a module owner: keep the edge on the first
+    // declaration rather than inventing an invalid owner id 0.
     if (!owner && ref.callType === 'import') owner = ordered[0];
     if (!owner || owner.id <= 0) continue;
     // The module is part of the identity: same-name imports from different

@@ -31,7 +31,14 @@ export function formatCodebaseLspResults(output: CodebaseLspSearchOutput, cwd: s
     const sources: string[] = [];
     if (usedIndex) sources.push(`index(${totalIndex})`);
     if (usedLsp) sources.push(`lsp(${totalLsp})`);
-    return `No symbols matching "${query}". Searched: ${sources.join(', ') || 'none'}.`;
+    // Next-step guidance, matching the codebase-* tools' `note`.
+    const retry = usedLsp
+      ? 'Try fewer or different words (symbol names, not sentences)'
+      : 'Retry with preferLsp: true for live server symbols, or use fewer words';
+    return (
+      `No symbols matching "${query}". Searched: ${sources.join(', ') || 'none'}.\n` +
+      `${retry}; codebase-context for a concept-level query; grep for exact text.`
+    );
   }
 
   const lines: string[] = [];
@@ -48,6 +55,15 @@ export function formatCodebaseLspResults(output: CodebaseLspSearchOutput, cwd: s
     } else {
       lines.push(`  ${sourceTag} ${r.kind} ${r.name} ${location}${scoreTag}`);
     }
+  }
+
+  const top = results[0];
+  if (top) {
+    const file = JSON.stringify(displayPath(top.file, cwd).replace(/\\/g, '/'));
+    lines.push(
+      `Next: codebase-read-symbol({ file: ${file}, symbol: ${JSON.stringify(top.name)} }) reads its code; ` +
+        `lsp_references({ path: ${file}, line: ${top.line}, character }) lists live usages.`,
+    );
   }
 
   return lines.join('\n');

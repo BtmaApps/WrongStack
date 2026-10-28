@@ -3,12 +3,13 @@ import { ToolValidationError } from '@wrongstack/contracts/types';
 import { isIndexing, runStartupIndex } from './background-indexer.js';
 import { indexCircuitBreaker } from './circuit-breaker.js';
 import { INDEXABLE_LANG_IDS } from './codebase-search-tool.js';
+import { indexNote, withNextStepNote } from './next-step-notes.js';
 import { codebaseIndexDirOverride } from './writer.js';
 
 /** Cap the surfaced per-file error list so a broken tree can't flood output. */
 const MAX_REPORTED_ERRORS = 20;
 
-export const codebaseIndexTool: Tool<CodebaseIndexInput, CodebaseIndexOutput> = {
+const codebaseIndexToolBase: Tool<CodebaseIndexInput, CodebaseIndexOutput> = {
   name: 'codebase-index',
   category: 'Project',
   icon: 'index',
@@ -121,6 +122,8 @@ export const codebaseIndexTool: Tool<CodebaseIndexInput, CodebaseIndexOutput> = 
   },
 };
 
+export const codebaseIndexTool = withNextStepNote(codebaseIndexToolBase, indexNote);
+
 // ─── Types for tool I/O ────────────────────────────────────────────────────────
 
 export interface CodebaseIndexInput {
@@ -142,4 +145,6 @@ export interface CodebaseIndexOutput {
   langStats: Record<string, number>;
   durationMs: number;
   errors: string[];
+  /** Next-step guidance: which tool answers the follow-up, or why the result is empty. */
+  note?: string | undefined;
 }

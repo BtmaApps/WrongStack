@@ -16,6 +16,7 @@ import { ensureAtlasDir, writeAtlasFile } from './atlas-projection.js';
 import {
   discoverConventionTestFiles,
   type ImpactCallSite,
+  isRunnableTestFile,
   isTestFilePath,
 } from './codebase-impact-analysis-tool.js';
 import {
@@ -25,6 +26,7 @@ import {
   findFileHealthAlerts,
 } from './ecosystem-bridge.js';
 import type { StructuralChangeKind } from './fingerprint.js';
+import { diffImpactNote, withNextStepNote } from './next-step-notes.js';
 import { codebaseIndexDirOverride, indexStorePool, resolveIndexDir } from './writer.js';
 import { posixIndexPath } from './writer-helpers.js';
 
@@ -93,6 +95,8 @@ export interface CodebaseDiffImpactOutput {
   relatedMemories?: AnchoredSageInsight[] | undefined;
   fileHealthAlerts?: AnchoredFileHealth[] | undefined;
   persistedOverlayPath?: string | undefined;
+  /** Next-step guidance: which tool answers the follow-up, or why the result is empty. */
+  note?: string | undefined;
 }
 
 /**
@@ -332,7 +336,7 @@ function extractBaseCommitRef(baseRef: string): string {
 
 const MAX_ANALYZED_SYMBOLS = 25;
 
-export const codebaseDiffImpactTool: Tool<CodebaseDiffImpactInput, CodebaseDiffImpactOutput> = {
+const codebaseDiffImpactToolBase: Tool<CodebaseDiffImpactInput, CodebaseDiffImpactOutput> = {
   name: 'codebase-diff-impact',
   category: 'Project',
   icon: 'index',
@@ -453,7 +457,7 @@ export const codebaseDiffImpactTool: Tool<CodebaseDiffImpactInput, CodebaseDiffI
 
     // Any test files directly modified in the diff should also be in affectedTestFiles
     for (const df of parsedFiles) {
-      if (isTestFilePath(df.file)) testFilesSet.add(df.file);
+      if (isRunnableTestFile(df.file)) testFilesSet.add(df.file);
     }
 
     try {
@@ -534,7 +538,7 @@ export const codebaseDiffImpactTool: Tool<CodebaseDiffImpactInput, CodebaseDiffI
             else directCount++;
 
             if (isTest) {
-              testFilesSet.add(relPath);
+              if (isRunnableTestFile(relPath)) testFilesSet.add(relPath);
             } else {
               prodFilesSet.add(relPath);
               if (!indirect) directProdFilesSet.add(relPath);
@@ -675,3 +679,5 @@ export const codebaseDiffImpactTool: Tool<CodebaseDiffImpactInput, CodebaseDiffI
     return output;
   },
 };
+
+export const codebaseDiffImpactTool = withNextStepNote(codebaseDiffImpactToolBase, diffImpactNote);

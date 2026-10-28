@@ -48,6 +48,19 @@ describe('formatCodebaseLspResults', () => {
     expect(output).toContain('score=0.95');
     // cwd-relative path
     expect(output).toContain('src/index.ts:42');
+    // Next-step guidance names the top hit with a project-relative path.
+    expect(output).toContain(
+      'Next: codebase-read-symbol({ file: "src/index.ts", symbol: "myFunc" })',
+    );
+    expect(output).toContain('lsp_references({ path: "src/index.ts", line: 42, character })');
+  });
+
+  it('suggests preferLsp when an index-only search found nothing', () => {
+    const output = formatCodebaseLspResults(
+      { results: [], totalIndex: 0, totalLsp: 0, query: 'foo', usedIndex: true, usedLsp: false },
+      '/proj',
+    );
+    expect(output).toContain('Retry with preferLsp: true');
   });
 
   it('formats results with lsp source and snippet', () => {

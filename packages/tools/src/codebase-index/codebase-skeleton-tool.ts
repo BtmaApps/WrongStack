@@ -20,6 +20,7 @@ import type { Tool } from '@wrongstack/contracts/types';
 import { toErrorMessage } from '@wrongstack/core/utils';
 import { safeResolveProjectPath } from '../_util.js';
 import { extractDirectorySkeleton } from './directory-skeleton.js';
+import { skeletonNote, withNextStepNote } from './next-step-notes.js';
 import {
   extractFileSkeleton,
   type FileSkeletonResult,
@@ -56,6 +57,8 @@ export interface CodebaseSkeletonOutput {
   moreFiles?: boolean;
   maxFiles?: number;
   maxChars?: number;
+  /** Next-step guidance: which tool answers the follow-up, or why the result is empty. */
+  note?: string | undefined;
 }
 
 const DEFAULT_MAX_CHARS = 60_000;
@@ -101,7 +104,7 @@ function renderSkeleton(output: CodebaseSkeletonOutput): string {
   return [summary, ...notes, '', output.skeleton].join('\n');
 }
 
-export const codebaseSkeletonTool: Tool<CodebaseSkeletonInput, CodebaseSkeletonOutput> = {
+const codebaseSkeletonToolBase: Tool<CodebaseSkeletonInput, CodebaseSkeletonOutput> = {
   name: 'codebase-skeleton',
   category: 'Project',
   icon: 'index',
@@ -245,3 +248,5 @@ export const codebaseSkeletonTool: Tool<CodebaseSkeletonInput, CodebaseSkeletonO
     };
   },
 };
+
+export const codebaseSkeletonTool = withNextStepNote(codebaseSkeletonToolBase, skeletonNote);

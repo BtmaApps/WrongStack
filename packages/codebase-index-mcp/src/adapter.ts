@@ -33,6 +33,7 @@ import {
   type CodebaseIndexMcpPolicyOptions,
   type CodebaseIndexMcpToolName,
   codebaseIndexMcpWriteVariant,
+  mcpToolNote,
   selectCodebaseIndexMcpTools,
 } from './policy.js';
 import { SERVER_INFO } from './version.js';
@@ -354,6 +355,14 @@ export function createCodebaseIndexMcpToolHost(
           // Without it codebase_skeleton went out as one-line JSON carrying
           // every file's skeleton twice.
           const serialize = builtin.serialize;
+          if (
+            content &&
+            typeof content === 'object' &&
+            typeof (content as { note?: unknown }).note === 'string'
+          ) {
+            const record = content as { note: string };
+            record.note = mcpToolNote(record.note, opts);
+          }
           return {
             content: typeof serialize === 'function' ? serialize(content, args) : content,
             isError: false,

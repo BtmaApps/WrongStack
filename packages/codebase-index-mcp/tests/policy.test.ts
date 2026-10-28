@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   CODEBASE_INDEX_READ_TOOLS,
   CODEBASE_INDEX_WRITE_TOOLS,
+  mcpToolNote,
   selectCodebaseIndexMcpTools,
 } from '../src/policy.js';
 
@@ -18,5 +19,16 @@ describe('Codebase Index MCP policy', () => {
       ...CODEBASE_INDEX_READ_TOOLS,
       ...CODEBASE_INDEX_WRITE_TOOLS,
     ]);
+  });
+
+  it('rewrites next-step notes to MCP tool names the client can call', () => {
+    const note =
+      'Next: codebase-read-symbol({ file: "a.ts", symbol: "f" }); then codebase-targeted-test({ file: "a.ts" }).';
+    expect(mcpToolNote(note)).toBe(
+      'Next: codebase_read_symbol({ file: "a.ts", symbol: "f" }); then codebase_targeted_test (needs --writable)({ file: "a.ts" }).',
+    );
+    expect(mcpToolNote(note, { writable: true })).toContain('codebase_targeted_test({ file');
+    // Not an MCP tool: left as written.
+    expect(mcpToolNote('see codebase-lsp-search')).toBe('see codebase-lsp-search');
   });
 });

@@ -13,6 +13,7 @@ import * as path from 'node:path';
 import { type Tool, ToolValidationError } from '@wrongstack/contracts/types';
 import { safeResolveProjectPath } from '../_util.js';
 import { type MutateSymbolOptions, replaceSymbolInFile } from './ast-symbol-mutator.js';
+import { astReplaceNote, withNextStepNote } from './next-step-notes.js';
 
 export interface CodebaseAstReplaceInput extends MutateSymbolOptions {}
 
@@ -23,9 +24,13 @@ export interface CodebaseAstReplaceOutput {
   originalRange: { startLine: number; endLine: number };
   newRange: { startLine: number; endLine: number };
   violations?: string[] | undefined;
+  /** Mode actually applied: a complete declaration given as `body` is promoted to `full`. */
+  appliedTarget?: 'body' | 'full' | undefined;
+  /** Next-step guidance: which tool answers the follow-up, or why the result is empty. */
+  note?: string | undefined;
 }
 
-export const codebaseAstReplaceTool: Tool<CodebaseAstReplaceInput, CodebaseAstReplaceOutput> = {
+const codebaseAstReplaceToolBase: Tool<CodebaseAstReplaceInput, CodebaseAstReplaceOutput> = {
   name: 'codebase-ast-replace',
   category: 'Edit',
   icon: 'edit',
@@ -121,6 +126,9 @@ export const codebaseAstReplaceTool: Tool<CodebaseAstReplaceInput, CodebaseAstRe
       originalRange: result.originalRange,
       newRange: result.newRange,
       violations: result.violations?.map((v) => `[${v.ruleId}] ${v.message}`),
+      appliedTarget: result.appliedTarget,
     };
   },
 };
+
+export const codebaseAstReplaceTool = withNextStepNote(codebaseAstReplaceToolBase, astReplaceNote);
