@@ -9,6 +9,22 @@ import {
 import { createProviderServiceContext } from '../src/server/provider/mutations.js';
 import { handleProviderRoute, type ProviderRouteHandlers } from '../src/server/provider-routes.js';
 
+it('correlates a provider catalog read with the requesting model picker', async () => {
+  const ws = mockWs();
+  const handlers = routes();
+  handlers.listProviders = async (socket) =>
+    socket.send(JSON.stringify({ type: 'provider.catalog', payload: { providers: [] } }));
+  await handleProviderRoute(
+    ws,
+    { type: 'providers.list', payload: { requestId: 'catalog-read' } } as never,
+    handlers,
+  );
+  expect(sentMessages(ws)[0]).toMatchObject({
+    type: 'provider.catalog',
+    payload: { requestId: 'catalog-read', providers: [] },
+  });
+});
+
 it('echoes the request identity on provider mutation and validation results', async () => {
   const ws = mockWs();
   const service = createProviderServiceContext({

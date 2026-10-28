@@ -1,3 +1,4 @@
+import { handleGitConflict } from './git-conflict.js';
 import {
   handleGitChanges,
   handleGitCommit,
@@ -10,6 +11,7 @@ import {
   handleGitStage,
   handleGitUnstage,
 } from './git-handlers.js';
+import { handleGitHunks } from './git-hunks.js';
 import { authorizeWebUIAction } from './privileged-actions.js';
 import type { WebuiDeps, WebuiMutableState } from './route-contracts.js';
 import type { ShellGitRouteHandlers } from './shell-git-routes.js';
@@ -38,6 +40,15 @@ export function createShellGitRoutes(
   deps: WebuiDeps,
 ): ShellGitRouteHandlers {
   return {
+    gitConflict: (ws, msg) =>
+      handleGitConflict(
+        ws,
+        state.getProjectRoot(),
+        msg.payload,
+        msg.type === 'git.conflict.resolve',
+      ),
+    gitHunks: (ws, msg) =>
+      handleGitHunks(ws, state.getProjectRoot(), msg.payload, msg.type === 'git.hunk.apply'),
     gitInfo: async (ws) => {
       await handleGitInfo(ws, state.getProjectRoot());
     },

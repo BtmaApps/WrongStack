@@ -121,6 +121,7 @@ function buildStandalone(): void {
     {
       context: { meta: {}, session: { id: 'sess-1' }, runModelTransition: vi.fn() },
       pendingConfirms: new Map(),
+      container: { safeResolve: vi.fn(() => undefined) },
       wpaths: { globalRoot: '/global', projectSessions: '/sessions' },
       providerRegistry: { has: vi.fn(() => false), create: vi.fn() },
       logger: { warn: vi.fn(), level: 'info' },

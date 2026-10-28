@@ -475,6 +475,43 @@ export async function handlePrefsUpdate(
       },
     });
   }
+  if (
+    (typeof payload['memoryCompanionEnabled'] === 'boolean' ||
+      typeof payload['exploreCompanionEnabled'] === 'boolean' ||
+      typeof payload['skillCompanionEnabled'] === 'boolean') &&
+    ctx.configStore
+  ) {
+    const currentFleet = ctx.configStore.get().fleet;
+    ctx.configStore.update({
+      fleet: {
+        ...currentFleet,
+        ...(typeof payload['memoryCompanionEnabled'] === 'boolean'
+          ? {
+              memoryCompanion: {
+                ...currentFleet?.memoryCompanion,
+                enabled: payload['memoryCompanionEnabled'],
+              },
+            }
+          : {}),
+        ...(typeof payload['exploreCompanionEnabled'] === 'boolean'
+          ? {
+              exploreCompanion: {
+                ...currentFleet?.exploreCompanion,
+                enabled: payload['exploreCompanionEnabled'],
+              },
+            }
+          : {}),
+        ...(typeof payload['skillCompanionEnabled'] === 'boolean'
+          ? {
+              skillCompanion: {
+                ...currentFleet?.skillCompanion,
+                enabled: payload['skillCompanionEnabled'],
+              },
+            }
+          : {}),
+      },
+    });
+  }
   const patch = routingPatch(payload);
   if (ctx.configStore && Object.keys(patch).length > 0) ctx.configStore.update(patch as never);
 

@@ -34,6 +34,52 @@ describe('AgentRosterWSHandler', () => {
     expect(payload.catalog).toHaveLength(payload.roles.length);
   });
 
+  it('reports the resolved runtime catalog instead of raw overrides for protected and inherited roles', async () => {
+    const list = async () =>
+      (await handler.handleMessage(ws, 'agent-roster.list', {})).payload as {
+        catalog: Array<{
+          role: string;
+          tools: number;
+          systemProtected: boolean;
+          budget: Record<string, number>;
+          effective?: Record<string, unknown>;
+        }>;
+      };
+    const before = await list();
+    const protectedRole = before.catalog.find((entry) => entry.systemProtected && entry.tools > 0)!;
+    expect(protectedRole.tools).toBeGreaterThan(0);
+    await handler.handleMessage(ws, 'agent-roster.update-config', {
+      role: protectedRole.role,
+      config: { tools: [], budget: { maxToolCalls: 0 } },
+    });
+    const after = (await list()).catalog.find((entry) => entry.role === protectedRole.role)!;
+    expect(after.tools).toBe(protectedRole.tools);
+    expect(after.budget['maxToolCalls']).toBeGreaterThan(0);
+    expect(after.effective?.['tools']).toHaveLength(protectedRole.tools);
+    await handler.handleMessage(ws, 'agent-roster.create', {
+      role: 'native-base',
+      name: 'Native base',
+      baseRole: 'generic',
+      purpose: 'A custom base role for runtime inventory.',
+      taskTypes: ['review'],
+    });
+    await handler.handleMessage(ws, 'agent-roster.update-config', {
+      role: 'native-base',
+      config: { tools: ['read'], budget: { maxToolCalls: 456 } },
+    });
+    await handler.handleMessage(ws, 'agent-roster.create', {
+      role: 'native-child',
+      name: 'Native child',
+      baseRole: 'native-base',
+      purpose: 'Inherit the custom base runtime.',
+      taskTypes: ['review'],
+    });
+    const child = (await list()).catalog.find((entry) => entry.role === 'native-child')!;
+    expect(child.tools).toBe(1);
+    expect(child.budget['maxToolCalls']).toBe(456);
+    expect(child.effective?.['tools']).toEqual(['read']);
+  });
+
   it('reports an unloadable skill as blocked and keeps it out of the eager cut', async () => {
     // A block is what a spawn records when the role lacks the tools a skill
     // needs. This surface used to show such a skill as loaded — the ranking it
@@ -58,6 +104,34 @@ describe('AgentRosterWSHandler', () => {
     expect(payload.skills.filter((entry) => entry.eager)).toHaveLength(payload.eagerLimit);
   });
 
+  it('offers metadata-only reads and identifies an unreadable stored runtime without replacing it', async () => {
+    await handler.handleMessage(ws, 'agent-roster.update-identity', {
+      role: 'executor',
+      content: '# Local identity\nRead only when requested.',
+    });
+    const metadata = (
+      await handler.handleMessage(ws, 'agent-roster.read-customization', {
+        role: 'executor',
+        includeDocuments: false,
+      })
+    ).payload as Record<string, unknown>;
+    expect(metadata).not.toHaveProperty('identity');
+    expect(metadata).not.toHaveProperty('learned');
+    expect(metadata['configState']).toBe('inherited');
+    const location = path.join(projectRoot, '.wrongstack/agents/executor/config.json');
+    fs.writeFileSync(location, '{broken', 'utf8');
+    const bad = (
+      await handler.handleMessage(ws, 'agent-roster.read-customization', {
+        role: 'executor',
+        documents: ['identity'],
+      })
+    ).payload as Record<string, unknown>;
+    expect(bad['configState']).toBe('unreadable');
+    expect(bad['identity']).toContain('Local identity');
+    expect(bad).not.toHaveProperty('learned');
+    expect(fs.readFileSync(location, 'utf8')).toBe('{broken');
+  });
+
   it('pauses learning without deleting the role knowledge', async () => {
     await handler.handleMessage(ws, 'agent-roster.append-learned', {
       role: 'executor',
@@ -77,6 +151,23 @@ describe('AgentRosterWSHandler', () => {
     expect(
       fs.existsSync(path.join(projectRoot, '.wrongstack', 'agents', 'executor', 'learned.md')),
     ).toBe(true);
+  });
+
+  it('counts structured directives rather than Markdown document chunks when reading learning', async () => {
+    for (const content of [
+      'Run bun run format before reviewing TypeScript source changes.',
+      'Use SQL parameter binding when updating the SQLite task store.',
+      'Keep project identity overrides under .wrongstack/agents/ and preserve unrelated files.',
+    ])
+      await handler.handleMessage(ws, 'agent-roster.append-learned', { role: 'executor', content });
+    const stats = (await handler.handleMessage(ws, 'agent-roster.stats', { role: 'executor' }))
+      .payload as { entryCount: number };
+    expect(stats.entryCount).toBeGreaterThan(1);
+    const data = (
+      await handler.handleMessage(ws, 'agent-roster.read-learned', { role: 'executor' })
+    ).payload as { entryCount: number; directives?: unknown[] };
+    expect(data.entryCount).toBe(stats.entryCount);
+    expect(data.directives).toHaveLength(stats.entryCount);
   });
 
   it('rejects traversal role ids', async () => {

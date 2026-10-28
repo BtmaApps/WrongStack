@@ -68,7 +68,12 @@ export interface BrainConfigSnapshot {
     denyIsTerminal: 'never' | 'when-decided' | 'always';
   };
   /** Effective replay-trace settings. */
-  trace: { enabled: boolean; content: 'none' | 'redacted' | 'full'; path: string | undefined };
+  trace: {
+    enabled: boolean;
+    content: 'none' | 'redacted' | 'full';
+    path: string | undefined;
+    maxOpenRecords?: number | undefined;
+  };
   /** Configured monitor overrides (defaults are applied by BrainMonitor itself). */
   monitor: NonNullable<BrainConfig['monitor']>;
   /** Effective headless escalation variant. */

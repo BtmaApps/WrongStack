@@ -8,13 +8,13 @@ import { handleMcpRoute } from '../src/server/mcp-routes.js';
 import { createMcpTaskHandlers, resolveMcpTaskContext } from '../src/server/mcp-task-handlers.js';
 
 const context = (id: string) => ({ session: { id }, agentId: 'leader' }) as Context;
-function fixture() {
+function fixture(ownerId = 'tab-b') {
   const frames: Array<{ type: string; payload: Record<string, unknown> }> = [];
   const ws = {
     readyState: 1,
     send: (data: string) => frames.push(JSON.parse(data)),
   } as unknown as WebSocket;
-  const owner = Object.assign(context('tab-b'), { eventSessionId: (): string => 'tab-b' });
+  const owner = Object.assign(context(ownerId), { eventSessionId: (): string => ownerId });
   const registry = {
     listTasks: vi.fn().mockResolvedValue([
       {
@@ -36,7 +36,7 @@ function fixture() {
   };
   const deps = {
     registry: registry as unknown as MCPRegistry,
-    context: (id: string) => (id === 'tab-b' ? owner : undefined),
+    context: (id: string) => (id === ownerId ? owner : undefined),
   };
   const route = async (type: string, payload: unknown) =>
     handleMcpRoute(ws, { type, payload }, createMcpTaskHandlers(deps) as never);
@@ -44,6 +44,29 @@ function fixture() {
 }
 const payload = { sessionId: 'tab-b', requestId: 'req', id: 'receipt' };
 describe('session-scoped MCP task routes', () => {
+  it.each(['../tab-b', 'tab-b/..', 'a/b/c', 'a\\b', 'a%2fb'])(
+    'refuses a malformed session identity %s even if a resolver matches it',
+    async (sessionId) => {
+      const f = fixture(sessionId);
+      await f.route('mcp.tasks.list', { sessionId, requestId: 'invalid-control' });
+      expect(f.registry.listTasks).not.toHaveBeenCalled();
+      expect(f.frames[0]?.payload.success).toBe(false);
+    },
+  );
+  it('accepts the real dated root session identity for listing and task actions', async () => {
+    const sessionId = '2026-10-27/sess_01M5ZJRRB69QSY3QH2VK9WDH7B';
+    const f = fixture(sessionId);
+    await f.route('mcp.tasks.list', { sessionId, requestId: 'root-list' });
+    expect(f.registry.listTasks).toHaveBeenCalledWith(f.owner);
+    expect(f.frames[0]).toMatchObject({
+      type: 'mcp.tasks.list',
+      payload: { sessionId, requestId: 'root-list' },
+    });
+    await f.route('mcp.tasks.cancel', { sessionId, requestId: 'root-cancel', id: 'receipt' });
+    expect(f.registry.cancelTask).toHaveBeenCalledWith(f.owner, 'receipt');
+    await f.route('mcp.tasks.retry', { sessionId, requestId: 'root-retry', id: 'receipt' });
+    expect(f.registry.retryTask).toHaveBeenCalledWith(f.owner, 'receipt');
+  });
   it.each(['standalone', 'embedded'])(
     'binds the named session through the %s host route table',
     async (host) => {

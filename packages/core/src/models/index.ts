@@ -85,6 +85,7 @@ export {
   type DefaultModelsRegistryOptions,
   type RuntimeModelsOverlayOptions,
 } from './models-registry.js';
+export { normalizeModelsDevModel } from './models-registry-normalization.js';
 export {
   hasProviderCredential,
   hasProviderKeyInConfig,

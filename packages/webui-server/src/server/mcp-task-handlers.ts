@@ -2,6 +2,7 @@ import type { Agent, Context } from '@wrongstack/core/agent';
 import type { TrustBoundary } from '@wrongstack/core/security';
 import type { MCPRegistry } from '@wrongstack/mcp';
 import type { McpRouteHandlers } from './mcp-routes.js';
+import { isMcpTaskIdentifier, isMcpTaskSessionId } from './mcp-task-identifiers.js';
 import { createTaskSubscriptions } from './mcp-task-subscriptions.js';
 import { taskViews } from './mcp-task-view.js';
 import { authorizeWebUIAction } from './privileged-actions.js';
@@ -29,13 +30,15 @@ export function createMcpTaskHandlers(deps: {
 > {
   const handle: McpRouteHandlers['list'] = async (ws, msg) => {
     const p = msg.payload as Record<string, unknown> | undefined;
-    const valid = (v: unknown): v is string =>
-      typeof v === 'string' && /^[A-Za-z0-9._:-]{1,128}$/.test(v);
-    const sessionId = valid(p?.sessionId) ? p.sessionId : '';
-    const requestId = valid(p?.requestId) ? p.requestId : '';
+    const sessionId = isMcpTaskSessionId(p?.sessionId) ? p.sessionId : '';
+    const requestId = isMcpTaskIdentifier(p?.requestId) ? p.requestId : '';
     const result = (success: boolean, message: string) =>
       send(ws, { type: 'mcp.tasks.result', payload: { sessionId, requestId, success, message } });
-    if (!sessionId || !requestId || (msg.type !== 'mcp.tasks.list' && !valid(p?.id))) {
+    if (
+      !sessionId ||
+      !requestId ||
+      (msg.type !== 'mcp.tasks.list' && !isMcpTaskIdentifier(p?.id))
+    ) {
       result(false, 'Invalid MCP task request.');
       return;
     }

@@ -79,6 +79,9 @@ export function seedContextMeta(config: Config, context: { meta: Record<string, 
   meta['featureSkills'] = config.features?.skills !== false;
   meta['featureModelsRegistry'] = config.features?.modelsRegistry !== false;
   meta['featureToolCoach'] = config.features?.toolCoach !== false;
+  meta['memoryCompanionEnabled'] = config.fleet?.memoryCompanion?.enabled !== false;
+  meta['exploreCompanionEnabled'] = config.fleet?.exploreCompanion?.enabled !== false;
+  meta['skillCompanionEnabled'] = config.fleet?.skillCompanion?.enabled !== false;
   meta['indexOnStart'] = config.indexing?.onSessionStart !== false;
   meta['contextAutoCompact'] = config.context?.autoCompact !== false;
   meta['contextStrategy'] = config.context?.strategy ?? 'hybrid';

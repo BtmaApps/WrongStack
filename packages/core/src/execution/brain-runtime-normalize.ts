@@ -57,8 +57,13 @@ export function requirePositiveMs(value: number, label: string): number {
 }
 
 /** Compact a normalized entry to the friendliest lossless config form. */
-function compactEntry(entry: BrainModelEntry): string {
-  return entry.provider ? `${entry.provider}/${entry.model}` : entry.model;
+function compactEntry(entry: BrainModelEntry): string | BrainModelEntry {
+  const compact = entry.provider ? `${entry.provider}/${entry.model}` : entry.model;
+  const parsed = parseModelRef(compact);
+  // Bare namespaced model IDs would otherwise become provider-qualified on the next boot.
+  return parsed.provider === entry.provider && parsed.model === entry.model
+    ? compact
+    : { ...entry };
 }
 
 function compactVoter(voter: BrainCouncilVoterConfig): string | BrainCouncilVoterConfig {

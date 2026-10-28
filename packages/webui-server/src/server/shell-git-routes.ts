@@ -9,6 +9,8 @@ export interface ShellGitRouteHandlers {
   gitCommitFileDiff: (ws: WebSocket, msg: WSClientMessage) => Promise<void>;
   gitChanges: (ws: WebSocket) => Promise<void>;
   gitDiff: (ws: WebSocket, msg: WSClientMessage) => Promise<void>;
+  gitHunks?: ((ws: WebSocket, msg: WSClientMessage) => Promise<void>) | undefined;
+  gitConflict?: ((ws: WebSocket, msg: WSClientMessage) => Promise<void>) | undefined;
   gitStage?: ((ws: WebSocket, msg: WSClientMessage) => Promise<void>) | undefined;
   gitUnstage?: ((ws: WebSocket, msg: WSClientMessage) => Promise<void>) | undefined;
   gitDiscard?: ((ws: WebSocket, msg: WSClientMessage) => Promise<void>) | undefined;
@@ -41,6 +43,14 @@ export async function handleShellGitRoute(
       return true;
     case 'git.diff':
       await handlers.gitDiff(ws, msg);
+      return true;
+    case 'git.hunks':
+    case 'git.hunk.apply':
+      if (handlers.gitHunks) await handlers.gitHunks(ws, msg);
+      return true;
+    case 'git.conflict':
+    case 'git.conflict.resolve':
+      if (handlers.gitConflict) await handlers.gitConflict(ws, msg);
       return true;
     case 'git.stage':
       if (handlers.gitStage) await handlers.gitStage(ws, msg);

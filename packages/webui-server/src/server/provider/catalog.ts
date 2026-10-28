@@ -7,6 +7,7 @@ import {
 } from '@wrongstack/core/models';
 import type { WebSocket } from 'ws';
 import {
+  configuredModelReasoning,
   resolveProviderCatalogForModels,
   resolveProviderModelMetadata,
   SIBLING_CATALOG,
@@ -67,7 +68,7 @@ async function resolveEnrichedModels(
   );
   const enriched = await Promise.all(
     models.map(async (model) => {
-      const rc = reasoningByModelId.get(model.id);
+      const rc = configuredModelReasoning(config, model.id, reasoningByModelId.get(model.id));
       const reasoningEffortLevels =
         rc?.effortSupported && rc.effortLevels?.length ? [...rc.effortLevels] : undefined;
       // Tri-state companion to the levels: undefined = undocumented, false
@@ -220,7 +221,12 @@ export function createCatalogHandlers(ctx: ProviderServiceContext) {
       if (hosted) {
         ctx.sendMessage(ws, {
           type: 'provider.models',
-          payload: { provider: providerId, models: hosted },
+          payload: {
+            provider: providerId,
+            models: options.includeDisabled
+              ? hosted
+              : hosted.filter((model) => !isDisabled(providerId, model.id)),
+          },
         });
         return;
       }

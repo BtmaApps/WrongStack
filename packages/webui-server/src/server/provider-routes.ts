@@ -74,9 +74,19 @@ export interface ProviderMutationHandlers {
     },
   ) => Promise<void>;
   handleProviderModelTestCancel: (requestId: string) => void;
-  handleOAuthStart: (ws: WebSocket, kind: string, providerId?: string | undefined) => Promise<void>;
-  handleOAuthCode: (ws: WebSocket, kind: string, input: string) => Promise<void>;
-  handleOAuthCancel: (ws: WebSocket, kind: string) => void;
+  handleOAuthStart: (
+    ws: WebSocket,
+    kind: string,
+    providerId?: string | undefined,
+    attemptId?: string,
+  ) => Promise<void>;
+  handleOAuthCode: (
+    ws: WebSocket,
+    kind: string,
+    input: string,
+    attemptId?: string,
+  ) => Promise<void>;
+  handleOAuthCancel: (ws: WebSocket, kind: string, attemptId?: string) => void;
   handleOAuthList: (ws: WebSocket) => void;
   resolveOAuthStrategyId: (input: string) => string | undefined;
 }
@@ -97,7 +107,18 @@ export interface ProviderRouteHandlers {
   providerHandlers: ProviderMutationHandlers;
   /** Live provider/model health tracker (the "waiting room"). Undefined when
    * the host is not wired with a tracker (e.g. test harnesses). */
-  statusTracker?: ProviderModelStatusTracker | undefined;
+  statusTracker?:
+    | Pick<ProviderModelStatusTracker, 'getSnapshot' | 'getStatus' | 'retryNow' | 'clear'>
+    | undefined;
+  prepareProviderStatus?: (() => Promise<void>) | undefined;
+  persistProviderStatusControl?:
+    | ((
+        providerId: string,
+        model: string,
+        before: ReturnType<ProviderModelStatusTracker['getStatus']>,
+        reason: string,
+      ) => Promise<void>)
+    | undefined;
   /** Durable block/open audit trail (JSONL) next to the profile config.
    * Undefined when the host did not provide a profile path (test harnesses). */
   providerAuditFile?: string | undefined;
@@ -273,8 +294,33 @@ export async function handleProviderRoute(
   msg: WSClientMessage,
   routes: ProviderRouteHandlers,
 ): Promise<boolean> {
-  if (msg.type === 'providers.saved' || msg.type === 'provider.models')
+  if (msg.type === 'providers.list')
+    ws = correlatedReply(ws, msg.payload, ['provider.catalog', 'key.operation_result']).socket;
+  else if (msg.type === 'providers.saved' || msg.type === 'provider.models')
     ws = correlatedReply(ws, msg.payload, [msg.type, 'key.operation_result']).socket;
+  else if (msg.type.startsWith('auth.oauth.'))
+    ws = correlatedReply(ws, msg.payload, [
+      'auth.oauth.providers',
+      'auth.oauth.status',
+      'key.operation_result',
+    ]).socket;
+  else if (msg.type === 'provider.models.search')
+    ws = correlatedReply(ws, msg.payload, [
+      'provider.models.search_result',
+      'key.operation_result',
+    ]).socket;
+  else if (msg.type === 'provider.quota.get' || msg.type === 'provider.quota.refresh')
+    ws = correlatedReply(ws, msg.payload, ['provider.quota', 'key.operation_result']).socket;
+  else if (msg.type === 'provider.status.get')
+    ws = correlatedReply(ws, msg.payload, [
+      'provider.status.snapshot',
+      'key.operation_result',
+    ]).socket;
+  else if (msg.type === 'provider.audit.get')
+    ws = correlatedReply(ws, msg.payload, [
+      'provider.audit.history',
+      'key.operation_result',
+    ]).socket;
   const payload = asPayloadRecord(msg);
   const requestId = typeof payload?.['requestId'] === 'string' ? payload['requestId'] : undefined;
   return runWithOperationRequest(requestId, () => dispatchProviderRoute(ws, msg, routes));
@@ -567,6 +613,12 @@ async function dispatchProviderRoute(
       const kind = oauthKind(payload);
       const providerId = payload?.['providerId'];
       const strategyId = kind ? routes.providerHandlers.resolveOAuthStrategyId(kind) : undefined;
+      const attemptId = payload?.['attemptId'];
+      if (
+        attemptId !== undefined &&
+        (typeof attemptId !== 'string' || !/^[a-zA-Z0-9_-]{1,128}$/.test(attemptId))
+      )
+        return invalidPayload(ws, msg.type);
       if (!strategyId) return invalidPayload(ws, msg.type);
       if (
         providerId !== undefined &&
@@ -574,7 +626,9 @@ async function dispatchProviderRoute(
       ) {
         return invalidPayload(ws, msg.type);
       }
-      await routes.providerHandlers.handleOAuthStart(ws, strategyId, providerId);
+      if (typeof attemptId === 'string')
+        await routes.providerHandlers.handleOAuthStart(ws, strategyId, providerId, attemptId);
+      else await routes.providerHandlers.handleOAuthStart(ws, strategyId, providerId);
       return true;
     }
 
@@ -583,16 +637,32 @@ async function dispatchProviderRoute(
       const kind = oauthKind(payload);
       const input = payload ? requiredString(payload, 'input') : null;
       const strategyId = kind ? routes.providerHandlers.resolveOAuthStrategyId(kind) : undefined;
+      const attemptId = payload?.['attemptId'];
+      if (
+        attemptId !== undefined &&
+        (typeof attemptId !== 'string' || !/^[a-zA-Z0-9_-]{1,128}$/.test(attemptId))
+      )
+        return invalidPayload(ws, msg.type);
       if (!strategyId || !input) return invalidPayload(ws, msg.type);
-      await routes.providerHandlers.handleOAuthCode(ws, strategyId, input);
+      if (typeof attemptId === 'string')
+        await routes.providerHandlers.handleOAuthCode(ws, strategyId, input, attemptId);
+      else await routes.providerHandlers.handleOAuthCode(ws, strategyId, input);
       return true;
     }
 
     case 'auth.oauth.cancel': {
       const kind = oauthKind(asPayloadRecord(msg));
       const strategyId = kind ? routes.providerHandlers.resolveOAuthStrategyId(kind) : undefined;
+      const attemptId = asPayloadRecord(msg)?.['attemptId'];
+      if (
+        attemptId !== undefined &&
+        (typeof attemptId !== 'string' || !/^[a-zA-Z0-9_-]{1,128}$/.test(attemptId))
+      )
+        return invalidPayload(ws, msg.type);
       if (!strategyId) return invalidPayload(ws, msg.type);
-      routes.providerHandlers.handleOAuthCancel(ws, strategyId);
+      if (typeof attemptId === 'string')
+        routes.providerHandlers.handleOAuthCancel(ws, strategyId, attemptId);
+      else routes.providerHandlers.handleOAuthCancel(ws, strategyId);
       return true;
     }
 
@@ -618,6 +688,7 @@ async function dispatchProviderRoute(
     }
 
     case 'provider.status.get': {
+      await routes.prepareProviderStatus?.();
       if (!routes.statusTracker) {
         send(ws, { type: 'provider.status.snapshot', payload: { error: 'not_available' } });
         return true;
@@ -646,6 +717,7 @@ async function dispatchProviderRoute(
     }
 
     case 'provider.status.retry': {
+      await routes.prepareProviderStatus?.();
       if (!routes.statusTracker) {
         sendResult(ws, false, 'provider.status.retry: tracker not available');
         return true;
@@ -655,7 +727,10 @@ async function dispatchProviderRoute(
       const model = payload ? requiredString(payload, 'model') : null;
       if (!providerId || !SAFE_CONFIG_KEY.test(providerId) || !model)
         return invalidPayload(ws, msg.type);
+      const before = routes.statusTracker.getStatus(providerId, model);
       const released = routes.statusTracker.retryNow(providerId, model);
+      if (released)
+        await routes.persistProviderStatusControl?.(providerId, model, before, 'manual_retry');
       sendResult(
         ws,
         true,
@@ -667,6 +742,7 @@ async function dispatchProviderRoute(
     }
 
     case 'provider.status.clear': {
+      await routes.prepareProviderStatus?.();
       if (!routes.statusTracker) {
         sendResult(ws, false, 'provider.status.clear: tracker not available');
         return true;
@@ -676,7 +752,9 @@ async function dispatchProviderRoute(
       const model = payload ? requiredString(payload, 'model') : null;
       if (!providerId || !SAFE_CONFIG_KEY.test(providerId) || !model)
         return invalidPayload(ws, msg.type);
+      const before = routes.statusTracker.getStatus(providerId, model);
       routes.statusTracker.clear(providerId, model);
+      await routes.persistProviderStatusControl?.(providerId, model, before, 'manual_clear');
       sendResult(ws, true, `Cleared tracking for ${providerId}/${model}.`);
       return true;
     }

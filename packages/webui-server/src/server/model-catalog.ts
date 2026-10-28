@@ -2,9 +2,11 @@ import type {
   Capabilities,
   ModelsRegistry,
   ProviderConfig,
+  ReasoningConfig,
   ResolvedModel,
   ResolvedProvider,
 } from '@wrongstack/contracts/types';
+import { normalizeModelsDevModel } from '@wrongstack/core/models';
 import { capabilitiesFor } from '@wrongstack/providers';
 
 export const SIBLING_CATALOG: Record<string, string> = {
@@ -12,6 +14,33 @@ export const SIBLING_CATALOG: Record<string, string> = {
   'openai-codex': 'openai',
   'github-copilot': 'openai',
 };
+
+/** Saved reasoning controls take precedence over the upstream catalog without copying its policy logic. */
+export function configuredModelReasoning(
+  cfg: Pick<ProviderConfig, 'customModels'> | undefined,
+  modelId: string,
+  fallback?: ReasoningConfig,
+): ReasoningConfig | undefined {
+  const custom = cfg?.customModels?.[modelId]?.modelsDev;
+  if (!custom) return fallback;
+  const name = typeof custom.name === 'string' ? custom.name : modelId;
+  if (custom.reasoning_options !== undefined || custom.reasoningConfig !== undefined) {
+    const normalized = normalizeModelsDevModel({
+      ...custom,
+      id: modelId,
+      name,
+      ...(custom.reasoning === undefined && fallback ? { reasoning: true } : {}),
+    }).reasoningConfig;
+    return normalized &&
+      custom.reasoningConfig === undefined &&
+      custom.interleaved === undefined &&
+      fallback
+      ? { ...normalized, preserveThinking: fallback.preserveThinking }
+      : normalized;
+  }
+  if (custom.reasoning === false) return undefined;
+  return fallback ?? normalizeModelsDevModel({ ...custom, id: modelId, name }).reasoningConfig;
+}
 
 /**
  * Resolve the catalog entry to use for a saved provider's WebUI model list.
@@ -137,6 +166,7 @@ function syntheticModel(
         false,
       maxContext,
       maxOutput: custom?.maxOutput ?? customCaps?.maxOutput ?? capabilities?.maxOutput,
+      reasoningConfig: configuredModelReasoning(cfg, modelId),
     },
     cost: undefined,
   };
@@ -149,7 +179,8 @@ function overlayConfiguredCapabilities(
   const custom = cfg?.customModels?.[model.modelId];
   const configuredMax = positiveNumber(readConfiguredMaxContext(cfg));
   const customCaps = custom?.capabilities;
-  if (!configuredMax && !customCaps && custom?.maxOutput === undefined) return model;
+  if (!configuredMax && !customCaps && custom?.maxOutput === undefined && !custom?.modelsDev)
+    return model;
   return {
     ...model,
     capabilities: {
@@ -157,6 +188,11 @@ function overlayConfiguredCapabilities(
       ...customCaps,
       maxContext: customCaps?.maxContext ?? configuredMax ?? model.capabilities.maxContext,
       maxOutput: custom?.maxOutput ?? customCaps?.maxOutput ?? model.capabilities.maxOutput,
+      reasoningConfig: configuredModelReasoning(
+        cfg,
+        model.modelId,
+        model.capabilities.reasoningConfig,
+      ),
     },
   };
 }

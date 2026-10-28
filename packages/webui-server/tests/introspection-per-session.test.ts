@@ -93,6 +93,36 @@ describe('introspection answers about the asking session', () => {
     expect(p.sideEffects).toHaveLength(7);
   });
 
+  it('correlates side-effect reads without changing the requested session', async () => {
+    const { ctx, sent } = makeContext();
+    await handleIntrospectionRoute(ctx, ws, {
+      type: 'side_effects.list',
+      payload: { sessionId: 'tab-2', requestId: 'effects-read' },
+    } as never);
+    expect(sent[0]?.payload).toMatchObject({ sessionId: 'tab-2', requestId: 'effects-read' });
+  });
+
+  it('reports the retained runtime count separately from its latest fifty-record window', async () => {
+    const { ctx, sent } = makeContext();
+    const target = ctx.getAgent?.('tab-2');
+    if (!target) throw Error('Missing fixture agent');
+    target.ctx.sideEffects = Array.from({ length: 60 }, (_, index) => ({
+      toolUseId: `effect-${index}`,
+      toolName: 'bash',
+      ts: '2026-10-28T00:00:00Z',
+      input: {},
+      risk: 'shell' as const,
+    }));
+    await handleIntrospectionRoute(ctx, ws, {
+      type: 'side_effects.list',
+      payload: { sessionId: 'tab-2' },
+    } as never);
+    const payload = sent[0]?.payload as Record<string, unknown>;
+    expect(payload).toMatchObject({ total: 60, truncated: true });
+    expect(payload['sideEffects'] as { toolUseId: string }[]).toHaveLength(50);
+    expect((payload['sideEffects'] as { toolUseId: string }[])[0]?.toolUseId).toBe('effect-10');
+  });
+
   it('diag.get describes the asking tab’s provider and model', async () => {
     const { ctx, sent } = makeContext();
     await handleIntrospectionRoute(ctx, ws, {

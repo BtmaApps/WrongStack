@@ -43,6 +43,9 @@ const SYSTEM_PROMPT_VARIANT_VALUES = new Set(['lite', 'default', 'pro', 'scout']
 const BOOLEAN_PREF_KEYS = new Set([
   'subagentsAllowed',
   'subagentCompanionsAllowed',
+  'memoryCompanionEnabled',
+  'exploreCompanionEnabled',
+  'skillCompanionEnabled',
   'yolo',
   'yoloPlus',
   'chime',

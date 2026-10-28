@@ -1,4 +1,5 @@
 import type { EmbeddedMessageRouterDeps } from './embedded-message-router-types.js';
+import { handleGitConflict } from './git-conflict.js';
 import {
   handleGitChanges,
   handleGitCommit,
@@ -11,6 +12,7 @@ import {
   handleGitStage,
   handleGitUnstage,
 } from './git-handlers.js';
+import { handleGitHunks } from './git-hunks.js';
 import { authorizeWebUIAction } from './privileged-actions.js';
 import type { ShellGitRouteHandlers } from './shell-git-routes.js';
 import { handleShellOpen, normalizeShellOpenTarget, type ShellOpenTarget } from './shell-open.js';
@@ -22,6 +24,10 @@ export function createEmbeddedShellGitRoutes(
   const { sendResult } = deps;
 
   const shellGit: ShellGitRouteHandlers = {
+    gitConflict: (ws, msg) =>
+      handleGitConflict(ws, projectRoot(), msg.payload, msg.type === 'git.conflict.resolve'),
+    gitHunks: (ws, msg) =>
+      handleGitHunks(ws, projectRoot(), msg.payload, msg.type === 'git.hunk.apply'),
     gitInfo: (ws) => handleGitInfo(ws, projectRoot()),
     gitChanges: (ws) => handleGitChanges(ws, projectRoot()),
     gitHistory: (ws, msg) => {

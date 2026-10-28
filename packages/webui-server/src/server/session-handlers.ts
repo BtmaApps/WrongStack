@@ -10,6 +10,7 @@ import {
 } from '@wrongstack/coordination';
 import { restoreSessionPermissionOverrides } from '@wrongstack/core/security';
 import { clearLeaderEffortOverride } from '@wrongstack/core/utils';
+import { searchProjectHistory } from './project-history-search.js';
 import { createSessionCheckpointHandlers } from './session-checkpoint-handlers.js';
 import { createSessionContextHandlers } from './session-context-handlers.js';
 import { deleteWebUISession } from './session-deletion.js';
@@ -24,6 +25,7 @@ import {
   waitForRunToStop,
 } from './session-handler-helpers.js';
 import { toSessionHistoryEntries } from './session-history.js';
+import { withSessionContentState } from './session-history-content.js';
 import { createSessionModeHandlers } from './session-mode-handlers.js';
 import { createSessionResumeHandler } from './session-resume-handler.js';
 import type { SessionRouteHandlers } from './session-routes.js';
@@ -220,12 +222,57 @@ export function createSessionHandlers(ctx: SessionHandlersContext): SessionRoute
       // on and offered three live tabs' fresh sessions up for deletion.
       const askingSessionId = actingSessionId(msg);
       try {
-        const list = await ctx.getSessionStore().list(limit);
+        const store = ctx.getSessionStore();
+        const search = (msg.payload as { contentSearch?: unknown } | undefined)?.contentSearch;
+        if (search !== undefined) {
+          const contentSearch = await searchProjectHistory(store, search, askingSessionId);
+          sendTo(ws, {
+            type: 'sessions.list',
+            payload: { sessionId: askingSessionId, sessions: [], contentSearch },
+          });
+          return;
+        }
+        const rawPage = (msg.payload as { catalogPage?: unknown } | undefined)?.catalogPage;
+        if (rawPage !== undefined) {
+          if (
+            !rawPage ||
+            typeof rawPage !== 'object' ||
+            Array.isArray(rawPage) ||
+            Object.keys(rawPage).some(
+              (key) => !['limit', 'offset', 'expectedRevision', 'anchorId'].includes(key),
+            )
+          )
+            throw Error('Invalid history catalog page.');
+          if (!store.listPage)
+            throw Error('Update the project runtime to use paged conversation history.');
+          const options =
+            rawPage as import('@wrongstack/contracts/types/session').SessionHistoryPageOptions;
+          const page = await store.listPage({ ...options, excludeId: askingSessionId });
+          const { sessions, ...catalogPage } = page;
+          const rows = toSessionHistoryEntries(sessions, askingSessionId);
+          sendTo(ws, {
+            type: 'sessions.list',
+            payload: {
+              sessionId: askingSessionId,
+              catalogPage,
+              sessions:
+                (msg.payload as { includeContentState?: unknown })?.includeContentState === true
+                  ? await withSessionContentState(rows, store)
+                  : rows,
+            },
+          });
+          return;
+        }
+        const list = await store.list(limit);
+        const rows = toSessionHistoryEntries(list, askingSessionId);
+        const includeContentState =
+          (msg.payload as { includeContentState?: unknown } | undefined)?.includeContentState ===
+          true;
         sendTo(ws, {
           type: 'sessions.list',
           payload: {
             sessionId: askingSessionId,
-            sessions: toSessionHistoryEntries(list, askingSessionId),
+            sessions: includeContentState ? await withSessionContentState(rows, store) : rows,
           },
         });
       } catch (err) {

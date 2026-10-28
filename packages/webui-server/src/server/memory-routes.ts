@@ -20,6 +20,7 @@ import {
 import type { WSClientMessage, WSServerMessage } from './types.js';
 
 export interface MemoryRouteContext {
+  getProjectRoot?: (() => string) | undefined;
   getMemoryStore: () => MemoryPort | undefined;
   /** Live config, when the host has it — feeds the doctor `hygiene` repair. */
   getConfig?: (() => Config | undefined) | undefined;
@@ -65,7 +66,7 @@ export async function handleMemoryRoute(
       await handleSageListPage(ws, message, store);
       return true;
     case 'memory.sage.get':
-      await handleSageGet(ws, message, store);
+      await handleSageGet(ws, message, store, ctx.getProjectRoot?.());
       return true;
     case 'memory.sage.graph':
       await handleSageGraph(ws, message, store);

@@ -20,6 +20,7 @@ export function createOauthHandlers(ctx: ProviderServiceContext) {
   const oauthSessions = new Map<string, ProviderAuthSession>();
   const customProviderIds = new Map<string, string>();
   const attempts = new Map<string, AbortController>();
+  const attemptIds = new Map<string, string>();
   const completed = new WeakSet<ProviderAuthSession>();
 
   function sendOAuthStatus(
@@ -34,7 +35,15 @@ export function createOauthHandlers(ctx: ProviderServiceContext) {
       | 'error',
     extra: Record<string, unknown> = {},
   ): void {
-    ctx.sendMessage(ws, { type: 'auth.oauth.status', payload: { kind, phase, ...extra } });
+    ctx.sendMessage(ws, {
+      type: 'auth.oauth.status',
+      payload: {
+        kind,
+        phase,
+        ...(attemptIds.has(kind) ? { attemptId: attemptIds.get(kind) } : {}),
+        ...extra,
+      },
+    });
   }
 
   /** Persist a successful login by upserting the OAuth credential. */
@@ -80,10 +89,13 @@ export function createOauthHandlers(ctx: ProviderServiceContext) {
     ws: WebSocket,
     kind: string,
     customProviderId?: string,
+    attemptId?: string,
   ): Promise<void> {
     attempts.get(kind)?.abort();
     const attempt = new AbortController();
     attempts.set(kind, attempt);
+    if (attemptId) attemptIds.set(kind, attemptId);
+    else attemptIds.delete(kind);
     try {
       oauthSessions.get(kind)?.close();
       oauthSessions.delete(kind);
@@ -148,6 +160,7 @@ export function createOauthHandlers(ctx: ProviderServiceContext) {
               oauthSessions.delete(kind);
               customProviderIds.delete(kind);
               attempts.delete(kind);
+              attemptIds.delete(kind);
             }
           }
         })();
@@ -156,11 +169,24 @@ export function createOauthHandlers(ctx: ProviderServiceContext) {
       if (attempts.get(kind) === attempt) {
         attempts.delete(kind);
         sendOAuthStatus(ws, kind, 'error', { message: errMessage(err) });
+        attemptIds.delete(kind);
       }
     }
   }
 
-  async function handleOAuthCode(ws: WebSocket, kind: string, input: string): Promise<void> {
+  async function handleOAuthCode(
+    ws: WebSocket,
+    kind: string,
+    input: string,
+    expectedAttemptId?: string,
+  ): Promise<void> {
+    if (expectedAttemptId && attemptIds.get(kind) !== expectedAttemptId) {
+      sendOAuthStatus(ws, kind, 'error', {
+        attemptId: expectedAttemptId,
+        message: 'This sign-in was replaced or ended. Start a new sign-in.',
+      });
+      return;
+    }
     const session = oauthSessions.get(kind);
     if (!session) {
       sendOAuthStatus(ws, kind, 'error', {
@@ -187,17 +213,30 @@ export function createOauthHandlers(ctx: ProviderServiceContext) {
         oauthSessions.delete(kind);
         customProviderIds.delete(kind);
         attempts.delete(kind);
+        attemptIds.delete(kind);
       }
     }
   }
 
-  function handleOAuthCancel(ws: WebSocket, kind: string): void {
+  function handleOAuthCancel(ws: WebSocket, kind: string, expectedAttemptId?: string): void {
+    if (expectedAttemptId && attemptIds.get(kind) !== expectedAttemptId) {
+      sendOAuthStatus(ws, kind, 'error', {
+        attemptId: expectedAttemptId,
+        message: 'This sign-in was replaced or ended. The current sign-in was kept.',
+      });
+      return;
+    }
+    const attemptId = attemptIds.get(kind);
     attempts.get(kind)?.abort();
     attempts.delete(kind);
     oauthSessions.get(kind)?.close();
     oauthSessions.delete(kind);
     customProviderIds.delete(kind);
-    sendOAuthStatus(ws, kind, 'error', { message: 'Sign-in cancelled.' });
+    sendOAuthStatus(ws, kind, 'error', {
+      ...(attemptId ? { attemptId } : {}),
+      message: 'Sign-in cancelled.',
+    });
+    attemptIds.delete(kind);
   }
 
   function handleOAuthList(ws: WebSocket): void {

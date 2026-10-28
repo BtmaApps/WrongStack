@@ -899,6 +899,7 @@
       "name": "@wrongstack/webui-server",
       "version": "1.2.2",
       "dependencies": {
+        "@wrongstack/agent-catalog": "workspace:*",
         "@wrongstack/builtin-plugins": "workspace:*",
         "@wrongstack/chronicle": "workspace:*",
         "@wrongstack/contracts": "workspace:*",
@@ -925,7 +926,6 @@
       "devDependencies": {
         "@types/node": "^26.6.5",
         "@types/ws": "^8.18.1",
-        "@wrongstack/agent-catalog": "workspace:*",
         "typescript": "^7.0.2",
       },
     },

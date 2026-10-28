@@ -17,6 +17,7 @@ import { randomUUID } from 'node:crypto';
 import type * as http from 'node:http';
 import type { Provider } from '@wrongstack/contracts/types';
 import { sanitizeApiError } from '@wrongstack/core/security';
+import { isSetupProvider } from '@wrongstack/providers';
 import type {
   AnalyzeDepth,
   PackageOperation,
@@ -173,9 +174,16 @@ async function buildResearcher(
   const { createProviderLlm, createResearcher, createToolSearch } = await import(
     '@wrongstack/techstack'
   );
-  const llm = createProviderLlm(deps.getLlm);
+  const llm = createProviderLlm(() => researchLlm(deps));
   if (!llm) return undefined;
   return createResearcher({ llm, search: createToolSearch() });
+}
+
+function researchLlm(deps: TechStackHandlerDeps) {
+  const llm = deps.getLlm?.();
+  return llm && !isSetupProvider(llm.provider.id) && llm.provider.id !== 'unconfigured'
+    ? llm
+    : undefined;
 }
 
 export type TechStackEvent =
@@ -379,7 +387,7 @@ export async function handleTechStackAnalyze(
  * can disable the picker without falling back to a default.
  */
 export function handleTechStackModels(res: http.ServerResponse, deps: TechStackHandlerDeps): void {
-  const llm = deps.getLlm?.();
+  const llm = researchLlm(deps);
   if (!llm) {
     sendJson(res, 200, { available: false, provider: null, model: null, candidates: [] });
     return;
@@ -578,13 +586,21 @@ export async function handleTechStackRemediationApply(
     return;
   }
   let approvedItems: string[];
+  let expectedSnapshotId: unknown;
+  let expectedItems: unknown;
   try {
     let raw = '';
     for await (const chunk of req) {
       raw += Buffer.isBuffer(chunk) ? chunk.toString('utf8') : String(chunk);
       if (Buffer.byteLength(raw) > 64 * 1024) throw new Error('Request body is too large');
     }
-    const body = JSON.parse(raw || '{}') as { approvedItems?: unknown };
+    const body = JSON.parse(raw || '{}') as {
+      approvedItems?: unknown;
+      expectedSnapshotId?: unknown;
+      expectedItems?: unknown;
+    };
+    expectedSnapshotId = body.expectedSnapshotId;
+    expectedItems = body.expectedItems;
     approvedItems = Array.isArray(body.approvedItems)
       ? body.approvedItems.filter((value): value is string => typeof value === 'string')
       : [];
@@ -605,6 +621,40 @@ export async function handleTechStackRemediationApply(
   const executePackageOperation = deps.executePackageOperation;
   const { applyPlan, generateUpgradePlan } = await import('@wrongstack/techstack');
   const plan = generateUpgradePlan(snapshot);
+  // Native clients can bind approval to the exact targets they reviewed.
+  // Validate at the execution boundary, not only in a preceding GET request.
+  if (expectedSnapshotId !== undefined || expectedItems !== undefined) {
+    const fields = [
+      'currentVersion',
+      'targetVersion',
+      'rationale',
+      'breakingRisk',
+      'severity',
+    ] as const;
+    const key = (item: {
+      workspaceId?: unknown;
+      ecosystem?: unknown;
+      dependencyName?: unknown;
+      action?: unknown;
+    }) => `${item.workspaceId}:${item.ecosystem}:${item.dependencyName}:${item.action}`;
+    const reviewed = Array.isArray(expectedItems) ? expectedItems : [];
+    const valid =
+      expectedSnapshotId === plan.snapshotId &&
+      reviewed.length === approved.size &&
+      [...approved].every((id) => {
+        const current = plan.items.find((item) => key(item) === id);
+        const previous = reviewed.find(
+          (item) => item && typeof item === 'object' && key(item) === id,
+        );
+        return current && previous && fields.every((field) => current[field] === previous[field]);
+      });
+    if (!valid) {
+      sendJson(res, 409, {
+        error: 'The remediation plan changed. Review current targets before executing.',
+      });
+      return;
+    }
+  }
   const result = await applyPlan(plan, {
     dryRun: false,
     approve: (item) =>

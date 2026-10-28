@@ -234,6 +234,7 @@ export function createBrainRuntime(opts: BrainRuntimeOptions): BrainRuntime {
         enabled: cfg.trace?.enabled === true,
         content: cfg.trace?.content ?? 'full',
         path: cfg.trace?.path,
+        maxOpenRecords: cfg.trace?.maxOpenRecords ?? 200,
       },
       monitor: { ...(cfg.monitor ?? {}) },
       terminalPolicy: cfg.terminalPolicy ?? 'conservative',

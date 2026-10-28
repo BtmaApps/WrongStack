@@ -1,5 +1,6 @@
 import type { EventBus } from '@wrongstack/contracts/kernel';
 import type { WebSocket } from 'ws';
+import { correlatedReply } from './correlated-reply.js';
 import {
   handleMailboxAction,
   handleMailboxAgents,
@@ -18,7 +19,7 @@ import {
   validateMailboxPurgePayload,
   validateMailboxSendPayload,
 } from './ws-payload-validation.js';
-import { send, sendResult } from './ws-utils.js';
+import { runWithOperationRequest, send, sendResult } from './ws-utils.js';
 
 export interface MailboxRouteHandlers {
   action: (ws: WebSocket, msg: WSClientMessage) => Promise<void> | void;
@@ -116,29 +117,44 @@ export async function handleMailboxRoute(
   msg: WSClientMessage,
   handlers: MailboxRouteHandlers,
 ): Promise<boolean> {
-  switch (msg.type) {
-    case 'mailbox.action':
-      await handlers.action(ws, msg);
-      return true;
-    case 'mailbox.send':
-      await handlers.send(ws, msg);
-      return true;
-    case 'mailbox.messages':
-      await handlers.messages(ws, msg);
-      return true;
-    case 'mailbox.agents':
-      await handlers.agents(ws, msg);
-      return true;
-    case 'mailbox.clear':
-      await handlers.clear(ws, msg);
-      return true;
-    case 'mailbox.purge':
-      await handlers.purge(ws, msg);
-      return true;
-    case 'mailbox.compact':
-      await handlers.compact(ws, msg);
-      return true;
-    default:
-      return false;
-  }
+  const replies: Record<string, string> = {
+    'mailbox.messages': 'mailbox.messages',
+    'mailbox.agents': 'mailbox.agents',
+    'mailbox.clear': 'mailbox.cleared',
+    'mailbox.purge': 'mailbox.purged',
+    'mailbox.compact': 'mailbox.compacted',
+  };
+  const response = replies[msg.type];
+  if (response) ws = correlatedReply(ws, msg.payload, [response, 'key.operation_result']).socket;
+  const payload = msg.payload as { requestId?: unknown } | undefined;
+  return runWithOperationRequest(
+    typeof payload?.requestId === 'string' ? payload.requestId : undefined,
+    async () => {
+      switch (msg.type) {
+        case 'mailbox.action':
+          await handlers.action(ws, msg);
+          return true;
+        case 'mailbox.send':
+          await handlers.send(ws, msg);
+          return true;
+        case 'mailbox.messages':
+          await handlers.messages(ws, msg);
+          return true;
+        case 'mailbox.agents':
+          await handlers.agents(ws, msg);
+          return true;
+        case 'mailbox.clear':
+          await handlers.clear(ws, msg);
+          return true;
+        case 'mailbox.purge':
+          await handlers.purge(ws, msg);
+          return true;
+        case 'mailbox.compact':
+          await handlers.compact(ws, msg);
+          return true;
+        default:
+          return false;
+      }
+    },
+  );
 }

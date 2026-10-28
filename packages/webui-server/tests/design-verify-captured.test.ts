@@ -1,13 +1,13 @@
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { saveCapturedTokens } from '@wrongstack/core/design';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type WebSocket from 'ws';
-import { saveCapturedTokens } from '@wrongstack/core/design';
 import {
+  type DesignContext,
   handleDesignUse,
   handleDesignVerify,
-  type DesignContext,
 } from '../src/server/design-handlers.js';
 
 /**
@@ -79,6 +79,20 @@ describe('handleDesignVerify — captured tokens basis', () => {
     expect(reply?.payload.source).toBe('kit');
     expect(reply?.payload.kit).toBe('minimal-clarity');
     expect(reply?.payload.capturedFrom).toBeNull();
+  });
+  it('reports files without matching design signals instead of implying full visual coverage', async () => {
+    await saveCapturedTokens(tmp, CAPTURE);
+    await fs.writeFile(
+      path.join(tmp, 'plain.tsx'),
+      'export function Plain() { return <main>Hello</main>; }',
+    );
+    const { ws, sent } = capturingWs();
+    await handleDesignVerify(ws, ctx());
+    expect(sent.find((item) => item.type === 'design.verify')?.payload).toMatchObject({
+      ok: true,
+      filesScanned: 1,
+      filesWithNoSignal: 1,
+    });
   });
 
   it('errors with actionable guidance when neither kit nor capture exists', async () => {

@@ -1,7 +1,10 @@
 import { Readable } from 'node:stream';
+import { createSetupProviderFactory } from '@wrongstack/providers';
 import type { Snapshot, TechStackStore } from '@wrongstack/techstack';
 import { describe, expect, it, vi } from 'vitest';
 import {
+  handleTechStackDependencyResearch,
+  handleTechStackModels,
   handleTechStackRemediationApply,
   handleTechStackRemediationPlan,
   handleTechStackTrends,
@@ -86,6 +89,20 @@ function deps(
 }
 
 describe('TechStack remediation and trend handlers', () => {
+  it('does not advertise setup-mode onboarding as a research model', async () => {
+    const provider = createSetupProviderFactory().create({ type: 'wrongstack-setup' });
+    const input = { ...deps(), getLlm: () => ({ provider, model: 'no-api-key' }) };
+    const res = response();
+    handleTechStackModels(res.value, input);
+    expect(JSON.parse(res.result.body)).toMatchObject({ available: false, candidates: [] });
+    const research = response();
+    await handleTechStackDependencyResearch(
+      research.value,
+      { ...input, store: { getSnapshot: () => snapshot, getCachedResearch: () => null } as never },
+      'dependency-1',
+    );
+    expect(research.result.status).toBe(503);
+  });
   it('returns a dry-run remediation preview and trend report', async () => {
     const planResponse = response();
     await handleTechStackRemediationPlan(planResponse.value, deps());
@@ -124,5 +141,54 @@ describe('TechStack remediation and trend handlers', () => {
     await handleTechStackRemediationApply(request({ approvedItems: [] }), res.value, deps(execute));
     expect(res.result.status).toBe(400);
     expect(execute).not.toHaveBeenCalled();
+  });
+  it('executes only the exact snapshot and targets reviewed by the native client', async () => {
+    const execute = vi.fn().mockResolvedValue({ detail: 'updated' });
+    const read = response();
+    await handleTechStackRemediationPlan(read.value, deps());
+    const plan = JSON.parse(read.result.body).plan;
+    const res = response();
+    await handleTechStackRemediationApply(
+      request({
+        approvedItems: ['workspace-1:npm:react:upgrade_major'],
+        expectedSnapshotId: plan.snapshotId,
+        expectedItems: plan.items,
+      }),
+      res.value,
+      deps(execute),
+    );
+    expect(res.result.status).toBe(200);
+    expect(execute).toHaveBeenCalledWith(
+      expect.objectContaining({ targetVersion: '19.0.0' }),
+      'packages/app',
+    );
+  });
+  it('refuses stale versions, snapshot identity and malformed reviewed items before execution', async () => {
+    const read = response();
+    await handleTechStackRemediationPlan(read.value, deps());
+    const plan = JSON.parse(read.result.body).plan;
+    for (const options of [
+      { expectedSnapshotId: 'older', expectedItems: plan.items },
+      {
+        expectedSnapshotId: plan.snapshotId,
+        expectedItems: [{ ...plan.items[0], targetVersion: '18.9.0' }],
+      },
+      { expectedSnapshotId: plan.snapshotId, expectedItems: null },
+      { expectedSnapshotId: plan.snapshotId, expectedItems: [null] },
+      {
+        expectedSnapshotId: plan.snapshotId,
+        expectedItems: [{ ...plan.items[0], rationale: 'Earlier advice' }],
+      },
+    ]) {
+      const execute = vi.fn();
+      const res = response();
+      await handleTechStackRemediationApply(
+        request({ approvedItems: ['workspace-1:npm:react:upgrade_major'], ...options }),
+        res.value,
+        deps(execute),
+      );
+      expect(res.result.status).toBe(409);
+      expect(execute).not.toHaveBeenCalled();
+    }
   });
 });

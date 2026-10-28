@@ -6,13 +6,13 @@
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { ensureProjectIdentity } from '@wrongstack/core/utils';
 import {
   AllowAllIntakeAuthorizer,
   RequirementIntakeService,
   RequirementIntakeStore,
 } from '@wrongstack/requirement-intake';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createHttpServer } from '../src/index.js';
 
 // Security scan 2026-08-04, finding H3: the HTTP API now requires a token on
@@ -29,6 +29,7 @@ let distDir: string;
 let storeDir: string;
 let projectRoot: string;
 let expectedProjectId: string;
+let suggestionProducer: RequirementIntakeService;
 let server: import('node:http').Server;
 let baseUrl: string;
 
@@ -54,6 +55,16 @@ beforeAll(async () => {
   const service = new RequirementIntakeService({
     store: new RequirementIntakeStore({ baseDir: storeDir }),
     authorizer: new AllowAllIntakeAuthorizer(),
+  });
+  suggestionProducer = new RequirementIntakeService({
+    store: new RequirementIntakeStore({ baseDir: storeDir }),
+    authorizer: new AllowAllIntakeAuthorizer(),
+    generator: {
+      generate: async () => ({
+        suggested_title: 'Suggested project title',
+        suggested_outcome: 'Suggested project outcome',
+      }),
+    },
   });
 
   server = createHttpServer({
@@ -107,6 +118,122 @@ async function postJson(url: string, body: unknown): Promise<{ status: number; j
 }
 
 describe('requirement-intake REST API', () => {
+  it('refuses an answer draft made against an older record version', async () => {
+    const created = await postJson(
+      `${baseUrl}/api/projects/proj_alpha/requirement-intakes`,
+      REQUEST,
+    );
+    const current = (created.json as { record: { id: string; version: number } }).record;
+    const changed = await authFetch(`${baseUrl}/api/requirement-intakes/${current.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ priority: 'high', expectedVersion: current.version }),
+    });
+    const latest = (await changed.json()) as { version: number };
+    const url = `${baseUrl}/api/requirement-intakes/${current.id}/answers`;
+    const stale = await postJson(url, {
+      field: 'business_goal',
+      answer: 'Old answer draft',
+      expectedVersion: current.version,
+    });
+    expect(stale.status).toBe(409);
+    const accepted = await postJson(url, {
+      field: 'business_goal',
+      answer: 'Reviewed answer',
+      expectedVersion: latest.version,
+    });
+    expect(accepted.status).toBe(200);
+    expect(accepted.json).toMatchObject({
+      businessGoal: 'Reviewed answer',
+      originalRequest: REQUEST.originalRequest,
+    });
+  });
+  it('adds resources with a required version and refuses stale writes', async () => {
+    const created = await postJson(
+      `${baseUrl}/api/projects/proj_alpha/requirement-intakes`,
+      REQUEST,
+    );
+    const current = (created.json as { record: { id: string; version: number } }).record;
+    const url = `${baseUrl}/api/requirement-intakes/${current.id}/resources`;
+    const added = await postJson(url, {
+      attachment: { name: 'Design', kind: 'file', path: 'docs/design.md' },
+      expectedVersion: current.version,
+    });
+    expect(added.status).toBe(200);
+    expect(added.json).toMatchObject({
+      originalRequest: REQUEST.originalRequest,
+      attachments: [{ name: 'Design', path: 'docs/design.md' }],
+    });
+    expect(
+      (
+        await postJson(url, {
+          relatedResource: { kind: 'issue', reference: '#42' },
+          expectedVersion: current.version,
+        })
+      ).status,
+    ).toBe(409);
+    expect(
+      (
+        await postJson(url, {
+          attachment: { name: 'Missing version', kind: 'file', path: 'file.txt' },
+        })
+      ).status,
+    ).toBe(400);
+    expect(
+      (
+        await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: '{}',
+        })
+      ).status,
+    ).toBe(401);
+    const submitted = await postJson(`${baseUrl}/api/requirement-intakes/${current.id}/submit`, {});
+    const lockedVersion = (submitted.json as { record: { version: number } }).record.version;
+    expect(
+      (
+        await postJson(url, {
+          relatedResource: { kind: 'issue', reference: '#43' },
+          expectedVersion: lockedVersion,
+        })
+      ).status,
+    ).toBe(409);
+  });
+
+  it('accepts and rejects persisted suggestions without changing the original request', async () => {
+    const created = await postJson(
+      `${baseUrl}/api/projects/proj_alpha/requirement-intakes`,
+      REQUEST,
+    );
+    const id = (created.json as { record: { id: string } }).record.id;
+    const proposals = await suggestionProducer.generateSuggestions(id, {
+      id: 'fixture-model',
+      type: 'agent',
+      projectId: 'proj_alpha',
+    });
+    const current = (await (
+      await authFetch(`${baseUrl}/api/requirement-intakes/${id}`)
+    ).json()) as { version: number };
+    const accepted = await postJson(
+      `${baseUrl}/api/requirement-intakes/${id}/suggestions/${proposals[0]!.id}/accept`,
+      { expectedVersion: current.version },
+    );
+    expect(accepted.status).toBe(200);
+    expect(accepted.json).toMatchObject({
+      title: 'Suggested project title',
+      originalRequest: REQUEST.originalRequest,
+      fieldSources: { title: 'llm' },
+    });
+    const rejectUrl = `${baseUrl}/api/requirement-intakes/${id}/suggestions/${proposals[1]!.id}/reject`;
+    expect((await postJson(rejectUrl, { expectedVersion: current.version })).status).toBe(409);
+    const version = (accepted.json as { version: number }).version;
+    const rejected = await postJson(rejectUrl, { expectedVersion: version });
+    expect(rejected.status).toBe(200);
+    expect(rejected.json).toMatchObject({
+      originalRequest: REQUEST.originalRequest,
+      llmSuggestions: [{ status: 'accepted' }, { status: 'rejected' }],
+    });
+  });
   it('creates an intake record and preserves the original request', async () => {
     const { status, json } = await postJson(
       `${baseUrl}/api/projects/proj_alpha/requirement-intakes`,

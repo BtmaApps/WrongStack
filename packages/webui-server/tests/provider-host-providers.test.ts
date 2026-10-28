@@ -15,7 +15,10 @@ const ACP = {
   models: [{ id: 'claude-code', name: 'Claude Code', contextWindow: 1_000_000 }],
 };
 
-function operations(saved: Record<string, ProviderConfig>) {
+function operations(
+  saved: Record<string, ProviderConfig>,
+  policy: { getDisabledProviders?: () => string[]; getDisabledModels?: () => string[] } = {},
+) {
   const sent: Array<{ type: string; payload: unknown }> = [];
   const broadcast = vi.fn();
   const ops = createProviderOperations({
@@ -23,6 +26,7 @@ function operations(saved: Record<string, ProviderConfig>) {
     broadcast,
     send: (_ws, message) => sent.push(message as never),
     hostProviders: () => [ACP],
+    ...policy,
   });
   return { ops, sent, broadcast };
 }
@@ -30,6 +34,32 @@ function operations(saved: Record<string, ProviderConfig>) {
 const WS = {} as WebSocket;
 
 describe('host providers in the WebUI pickers', () => {
+  it('applies provider/model exclusions to hosted catalogs while keeping administrative reads complete', async () => {
+    let disabledProviders: string[] = [],
+      disabledModels: string[] = [];
+    const { ops, sent } = operations(
+      {},
+      { getDisabledProviders: () => disabledProviders, getDisabledModels: () => disabledModels },
+    );
+    const models = () => {
+      const frame = sent.at(-1);
+      if (!frame) throw Error('Missing provider response');
+      return (frame.payload as { models: unknown[] }).models;
+    };
+    await ops.handleProviderModels(WS, 'acp');
+    expect(models()).toHaveLength(1);
+    disabledProviders = [' ACP '];
+    await ops.handleProviderModels(WS, 'acp');
+    expect(models()).toEqual([]);
+    await ops.handleProviderModels(WS, 'acp', { includeDisabled: true });
+    expect(models()).toHaveLength(1);
+    disabledProviders = [];
+    disabledModels = ['acp claude-code'];
+    await ops.handleProviderModels(WS, 'acp');
+    expect(models()).toEqual([]);
+    await ops.handleProviderModels(WS, 'acp', { includeDisabled: true });
+    expect(models()).toHaveLength(1);
+  });
   it('lists acp with its agents after the saved providers', async () => {
     const { ops, sent } = operations({ zai: { type: 'zai', models: ['glm-5'] } as ProviderConfig });
     await ops.handleProvidersSaved(WS);

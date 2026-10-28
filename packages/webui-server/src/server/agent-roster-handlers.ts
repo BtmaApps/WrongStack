@@ -18,13 +18,14 @@
  *   agent-roster.clear-consolidated { role } → cleared
  */
 
+import { parseStructuredLearnedEntries } from '@wrongstack/agent-catalog';
 import type { Provider } from '@wrongstack/contracts/types';
 import {
-  applyProjectAgentConfig,
   captureLearnedFromAgentOutputDetailed,
   clearProjectAgentConsolidated,
   clearProjectSkillAugmentation,
   createProjectAgent,
+  createProjectAgentRoster,
   DEFAULT_EAGER_SKILL_LIMIT,
   detectLearnedConflicts,
   eagerRoleSkills,
@@ -123,17 +124,18 @@ export class AgentRosterWSHandler {
           ...new Set([...Object.keys(FLEET_ROSTER), ...listProjectAgentRoles(projectRoot)]),
         ].sort((a, b) => a.localeCompare(b));
         const stats = roles.map((r) => getProjectAgentLearnStats(r, projectRoot));
+        const resolvedRoster = createProjectAgentRoster(FLEET_ROSTER, projectRoot);
         const catalog = roles.map((catalogRole) => {
           const profile = loadProjectAgentProfile(catalogRole, projectRoot);
-          const baseConfig =
-            FLEET_ROSTER[catalogRole] ??
-            (profile ? FLEET_ROSTER[profile.baseRole] : FLEET_ROSTER['generic']);
-          const projectConfig = loadProjectAgentConfig(catalogRole, projectRoot);
-          const config = baseConfig
-            ? applyProjectAgentConfig(baseConfig, projectConfig, {
-                protectSystemRole: !profile && Boolean(FLEET_ROSTER[catalogRole]),
-              })
-            : undefined;
+          const config = resolvedRoster[catalogRole];
+          const budget = {
+            timeoutMs: config?.timeoutMs,
+            idleTimeoutMs: config?.idleTimeoutMs,
+            maxIterations: config?.maxIterations,
+            maxToolCalls: config?.maxToolCalls,
+            maxTokens: config?.maxTokens,
+            maxCostUsd: config?.maxCostUsd,
+          };
           return {
             role: catalogRole,
             name: profile?.name ?? config?.name ?? catalogRole,
@@ -144,16 +146,28 @@ export class AgentRosterWSHandler {
                 .find((line) => line.trim().length > 20)
                 ?.trim() ??
               '',
-            tools: projectConfig?.tools?.length ?? config?.tools?.length ?? 0,
+            tools: config?.tools?.length ?? 0,
             custom: Boolean(profile),
             systemProtected: !profile && Boolean(FLEET_ROSTER[catalogRole]),
             baseRole: profile?.baseRole,
             taskTypes: profile?.taskTypes ?? [],
-            budget: {
-              timeoutMs: projectConfig?.budget?.timeoutMs ?? config?.timeoutMs,
-              maxIterations: projectConfig?.budget?.maxIterations ?? config?.maxIterations,
-              maxToolCalls: projectConfig?.budget?.maxToolCalls ?? config?.maxToolCalls,
-            },
+            budget,
+            effective: config
+              ? {
+                  tools: config.tools ?? null,
+                  skillNames: config.skillNames ?? [],
+                  capabilities: config.capabilities ?? null,
+                  allowedCapabilities: config.allowedCapabilities ?? null,
+                  provider: config.provider ?? null,
+                  model: config.model ?? null,
+                  fallbackProfile: config.fallbackProfile ?? null,
+                  modelPolicy: config.modelPolicy ?? null,
+                  cwd: config.cwd ?? null,
+                  worktree: config.worktree ?? null,
+                  availability: config.availability ?? null,
+                  budget,
+                }
+              : null,
           };
         });
         return { type: 'agent-roster.list', payload: { roles, stats, catalog } };
@@ -210,19 +224,36 @@ export class AgentRosterWSHandler {
         if (!role) return { type, payload: { error: 'role required' } };
         const content = loadProjectAgentLearned(role, projectRoot) ?? '';
         const entries = listProjectAgentLearnedEntries(role, projectRoot);
-        return { type, payload: { role, content, entries, entryCount: entries.length } };
+        const directives = parseStructuredLearnedEntries(role, projectRoot);
+        return {
+          type,
+          payload: { role, content, entries, directives, entryCount: directives.length },
+        };
       }
 
       case 'agent-roster.read-customization': {
         if (!role) return { type, payload: { error: 'role required' } };
         const profile = loadProjectAgentProfile(role, projectRoot);
+        const config = loadProjectAgentConfig(role, projectRoot);
+        const hasConfig = getProjectAgentLearnStats(role, projectRoot).hasConfig;
+        const documents =
+          p.includeDocuments === false
+            ? new Set<string>()
+            : Array.isArray(p.documents)
+              ? new Set(p.documents.filter((value): value is string => typeof value === 'string'))
+              : new Set(['identity', 'learned']);
         return {
           type,
           payload: {
             role,
-            identity: loadProjectAgentIdentity(role, projectRoot),
-            learned: loadProjectAgentLearned(role, projectRoot),
-            config: loadProjectAgentConfig(role, projectRoot) ?? {},
+            ...(documents.has('identity')
+              ? { identity: loadProjectAgentIdentity(role, projectRoot) }
+              : {}),
+            ...(documents.has('learned')
+              ? { learned: loadProjectAgentLearned(role, projectRoot) }
+              : {}),
+            config: config ?? {},
+            configState: hasConfig ? (config ? 'valid' : 'unreadable') : 'inherited',
             profile,
             systemProtected: !profile && Boolean(FLEET_ROSTER[role]),
           },

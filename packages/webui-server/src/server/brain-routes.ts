@@ -13,7 +13,7 @@ import {
   validateBrainConfigSetPayload,
   validateBrainRiskPayload,
 } from './ws-payload-validation.js';
-import { messageSessionId, sendResult } from './ws-utils.js';
+import { messageSessionId, sendResult, withRequestId } from './ws-utils.js';
 
 export interface BrainRouteHandlers {
   jev?: ((ws: WebSocket, msg: WSClientMessage) => Promise<boolean>) | undefined;
@@ -44,6 +44,17 @@ export interface BrainRouteHandlers {
  * See docs/archive/local/audit/webui-full-review-2026-09-03.md B-08.
  */
 export function createBrainRouteHandlers(ctx: BrainHandlerContext): BrainRouteHandlers {
+  const configContext = (msg: WSClientMessage): BrainHandlerContext => ({
+    ...ctx,
+    send: (ws, message) =>
+      ctx.send(ws, {
+        ...message,
+        payload:
+          message.payload && typeof message.payload === 'object' && !Array.isArray(message.payload)
+            ? withRequestId(msg.payload, message.payload as Record<string, unknown>)
+            : message.payload,
+      } as typeof message),
+  });
   return {
     status: (ws, msg) => handleBrainStatus(ctx, ws, messageSessionId(msg)),
     risk: (ws, msg) => {
@@ -78,14 +89,18 @@ export function createBrainRouteHandlers(ctx: BrainHandlerContext): BrainRouteHa
         parsed.value.requestId,
       );
     },
-    configGet: (ws) => handleBrainConfigGet(ctx, ws),
+    configGet: (ws, msg) => handleBrainConfigGet(configContext(msg), ws),
     configSet: (ws, msg) => {
+      const scoped = configContext(msg);
       const parsed = validateBrainConfigSetPayload(msg.payload);
       if (!parsed.ok) {
-        sendResult(ws, false, parsed.message);
+        scoped.send(ws, {
+          type: 'key.operation_result',
+          payload: { success: false, message: parsed.message },
+        });
         return;
       }
-      return handleBrainConfigSet(ctx, ws, { patch: parsed.value.patch }, messageSessionId(msg));
+      return handleBrainConfigSet(scoped, ws, { patch: parsed.value.patch }, messageSessionId(msg));
     },
   };
 }

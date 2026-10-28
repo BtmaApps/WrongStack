@@ -22,7 +22,9 @@ import {
   handleRequirementIntakeGet,
   handleRequirementIntakeList,
   handleRequirementIntakeListForServer,
+  handleRequirementIntakeResource,
   handleRequirementIntakeSubmit,
+  handleRequirementIntakeSuggestionDecision,
   handleRequirementIntakeSuggestions,
   handleRequirementIntakeUpdate,
 } from '../requirement-intake-handlers.js';
@@ -290,8 +292,27 @@ export async function handleApiRoutes(
     return true;
   }
 
+  const intakeDecisionMatch = url.pathname.match(
+    /^\/api\/requirement-intakes\/([^/]+)\/suggestions\/([^/]+)\/(accept|reject)$/,
+  );
+  if (intakeDecisionMatch && req.method === 'POST') {
+    if (requireAccessToken && !accessTokenOk) return unauthorized(res);
+    const intakeId = strictDecodeParam(intakeDecisionMatch[1]!, res);
+    const suggestionId = strictDecodeParam(intakeDecisionMatch[2]!, res);
+    if (intakeId === null || suggestionId === null) return true;
+    await handleRequirementIntakeSuggestionDecision(
+      res,
+      req,
+      deps.intakeService,
+      intakeId,
+      suggestionId,
+      intakeDecisionMatch[3] as 'accept' | 'reject',
+    );
+    return true;
+  }
+
   const intakeActionMatch = url.pathname.match(
-    /^\/api\/requirement-intakes\/([^/]+)\/(answers|suggestions|submit|cancel|archive)$/,
+    /^\/api\/requirement-intakes\/([^/]+)\/(answers|suggestions|resources|submit|cancel|archive)$/,
   );
   if (intakeActionMatch && req.method === 'POST') {
     if (requireAccessToken && !accessTokenOk) return unauthorized(res);
@@ -301,6 +322,10 @@ export async function handleApiRoutes(
       await handleRequirementIntakeAnswers(res, req, deps.intakeService, intakeId);
     } else if (action === 'suggestions') {
       await handleRequirementIntakeSuggestions(res, req, deps.intakeService, intakeId);
+    } else if (action === 'resources') {
+      const decodedId = strictDecodeParam(intakeId, res);
+      if (decodedId !== null)
+        await handleRequirementIntakeResource(res, req, deps.intakeService, decodedId);
     } else if (action === 'submit') {
       await handleRequirementIntakeSubmit(res, deps.intakeService, intakeId);
     } else if (action === 'cancel') {

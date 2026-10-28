@@ -22,6 +22,7 @@ import { handleJevRoute } from './jev-routes.js';
  */
 
 import path from 'node:path';
+import { TOKENS } from '@wrongstack/contracts/kernel';
 import { resolveWstackPaths } from '@wrongstack/core/utils';
 import { makeProviderFromConfig } from '@wrongstack/providers';
 import { patchConfig } from './boot.js';
@@ -48,6 +49,7 @@ import { createProjectHandlers } from './project-handlers.js';
 import type { ProjectRouteHandlers } from './project-routes.js';
 import { createProviderHandlers } from './provider-handlers.js';
 import type { ProviderRouteHandlers } from './provider-routes.js';
+import { createProviderStatusPersistence } from './provider-status-persistence.js';
 import type { AllRoutes, WebuiCallbacks, WebuiDeps, WebuiMutableState } from './route-contracts.js';
 import type { SddBoardRouteHandlers } from './sdd-board-routes.js';
 import type { SddWizardRouteHandlers } from './sdd-wizard-routes.js';
@@ -114,7 +116,19 @@ export function buildRoutes(
     log: (message) => console.warn(message),
   });
 
+  const statusTracker = deps.container.safeResolve(TOKENS.ProviderModelStatusTracker);
+  const statusPersistence = statusTracker
+    ? createProviderStatusPersistence(statusTracker, deps.profileConfigPath)
+    : undefined;
   const providerRoutes: ProviderRouteHandlers = {
+    statusTracker,
+    ...(statusPersistence
+      ? {
+          prepareProviderStatus: statusPersistence.prepare,
+          persistProviderStatusControl: statusPersistence.persistControl,
+          providerAuditFile: statusPersistence.auditFile,
+        }
+      : {}),
     providerHandlers,
     listProviders: (ws) => providerHandlers.handleProvidersList(ws),
     listSavedProviders: (ws) => providerHandlers.handleProvidersSaved(ws),

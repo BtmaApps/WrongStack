@@ -534,4 +534,27 @@ describe('seedContextMeta — per-plugin effective state', () => {
     expect(context.meta['wrongProxyUrl']).toBe('http://p:1');
     expect(context.meta['maxIterations']).toBe(80);
   });
+
+  it('seeds companion agent toggles defaulting to true and honoring explicit false', () => {
+    const defaultsCtx: { meta: Record<string, unknown> } = { meta: {} };
+    seedContextMeta(makeConfig(), defaultsCtx);
+    expect(defaultsCtx.meta['memoryCompanionEnabled']).toBe(true);
+    expect(defaultsCtx.meta['exploreCompanionEnabled']).toBe(true);
+    expect(defaultsCtx.meta['skillCompanionEnabled']).toBe(true);
+
+    const disabledCtx: { meta: Record<string, unknown> } = { meta: {} };
+    seedContextMeta(
+      makeConfig({
+        fleet: {
+          memoryCompanion: { enabled: false },
+          exploreCompanion: { enabled: false },
+          skillCompanion: { enabled: false },
+        },
+      }),
+      disabledCtx,
+    );
+    expect(disabledCtx.meta['memoryCompanionEnabled']).toBe(false);
+    expect(disabledCtx.meta['exploreCompanionEnabled']).toBe(false);
+    expect(disabledCtx.meta['skillCompanionEnabled']).toBe(false);
+  });
 });

@@ -84,6 +84,24 @@ describe('computeConfigPrefUpdates', () => {
     expect(computeConfigPrefUpdates(frozenConfig(), { featureToolCoach: 'off' })).toEqual({});
   });
 
+  it('applies companion agent switches to fleet config without replacing sibling fleet settings', () => {
+    const base = Object.freeze({
+      ...frozenConfig(),
+      fleet: Object.freeze({
+        exploreCompanion: Object.freeze({ enabled: true, cooldownMs: 90_000 }),
+        skillCompanion: Object.freeze({ enabled: true, enforce: 'speed-bump' as const }),
+      }),
+    }) as unknown as Config;
+    const updates = computeConfigPrefUpdates(base, {
+      memoryCompanionEnabled: false,
+      exploreCompanionEnabled: false,
+      skillCompanionEnabled: true,
+    });
+    expect(updates.fleet?.memoryCompanion).toEqual({ enabled: false });
+    expect(updates.fleet?.exploreCompanion).toEqual({ enabled: false, cooldownMs: 90_000 });
+    expect(updates.fleet?.skillCompanion).toEqual({ enabled: true, enforce: 'speed-bump' });
+  });
+
   it('carries every non-feature key the settings pane can send', () => {
     const updates = computeConfigPrefUpdates(frozenConfig(), {
       fallbackModels: ['a', 'b'],

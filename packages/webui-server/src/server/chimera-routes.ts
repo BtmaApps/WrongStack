@@ -30,6 +30,7 @@ import {
 } from '@wrongstack/builtin-plugins';
 import { toErrorMessage } from '@wrongstack/core/utils';
 import type { WebSocket } from 'ws';
+import { correlatedReply } from './correlated-reply.js';
 import type { WSClientMessage } from './types.js';
 
 export interface ChimeraRouteHandlers {
@@ -45,6 +46,16 @@ export async function handleChimeraRoute(
   msg: WSClientMessage,
   handlers: ChimeraRouteHandlers,
 ): Promise<boolean> {
+  const replies = new Map([
+    ['chimera.reports.list', 'chimera.reports'],
+    ['chimera.reports.query', 'chimera.reports'],
+    ['chimera.report.get', 'chimera.report.detail'],
+    ['chimera.report.transition', 'chimera.report.updated'],
+    ['chimera.report.add_note', 'chimera.report.note_added'],
+    ['chimera.finding.transition', 'chimera.finding.updated'],
+  ]);
+  const response = replies.get(msg.type);
+  if (response) ws = correlatedReply(ws, msg.payload, [response]).socket;
   if (msg.type === 'chimera.reports.list' || msg.type === 'chimera.reports.query') {
     await handlers.listReports(ws, msg);
     return true;
@@ -211,12 +222,16 @@ export function createChimeraRouteHandlers(deps: {
       const payload = (msg.payload ?? {}) as {
         sessionId?: unknown;
         all?: unknown;
+        projectWide?: unknown;
         lifecycle?: unknown;
         limit?: unknown;
       };
       const rawSessionId = typeof payload.sessionId === 'string' ? payload.sessionId : '';
       const isAllQuery =
-        payload.all === true || msg.type === 'chimera.reports.query' || payload.lifecycle != null;
+        payload.all === true ||
+        payload.projectWide === true ||
+        msg.type === 'chimera.reports.query' ||
+        payload.lifecycle != null;
       const limit = typeof payload.limit === 'number' ? payload.limit : 50;
 
       if (!rawSessionId && !isAllQuery) return; // untagged single-tab request names no tab
@@ -224,7 +239,7 @@ export function createChimeraRouteHandlers(deps: {
       try {
         if (isAllQuery) {
           const reports = await queryAllChimeraReports(deps.projectDir(), {
-            sessionId: rawSessionId || undefined,
+            sessionId: payload.projectWide === true ? undefined : rawSessionId || undefined,
             lifecycle: typeof payload.lifecycle === 'string' ? payload.lifecycle : undefined,
             limit,
           });
@@ -244,7 +259,11 @@ export function createChimeraRouteHandlers(deps: {
         deps.log?.(`chimera.reports.list failed: ${toErrorMessage(err)}`);
         deps.send(ws, {
           type: 'chimera.reports',
-          payload: { sessionId: rawSessionId, reports: [] },
+          payload: {
+            sessionId: rawSessionId,
+            reports: [],
+            error: 'Project review reports could not be read. Try refreshing.',
+          },
         });
       }
     },

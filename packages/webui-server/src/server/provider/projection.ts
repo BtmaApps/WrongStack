@@ -27,6 +27,8 @@ export interface SavedProviderView {
     maskedKey: string;
     isActive: boolean;
     createdAt: string;
+    authMethod?: 'api_key' | 'oauth' | 'session_token' | undefined;
+    expiresAt?: string | undefined;
   }>;
 }
 
@@ -58,6 +60,8 @@ export function projectSavedProviders(
         maskedKey: maskedKey(k.apiKey),
         isActive: k.label === active?.label,
         createdAt: k.createdAt,
+        ...(k.authMethod ? { authMethod: k.authMethod } : {}),
+        ...(k.expiresAt ? { expiresAt: k.expiresAt } : {}),
       })),
     };
     const picked = models && models.length > 0 ? models[0] : undefined;

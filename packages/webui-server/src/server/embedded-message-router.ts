@@ -485,6 +485,7 @@ export function createEmbeddedMessageRouter(
       },
     },
     memory: {
+      getProjectRoot: projectRoot,
       getMemoryStore: () => opts.memoryStore,
       getConfig: () => deps.agentConfigCtx.getConfig?.() ?? deps.prefsCtx.configStore?.get(),
       send,

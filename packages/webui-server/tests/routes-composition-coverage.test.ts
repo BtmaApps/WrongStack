@@ -69,6 +69,7 @@ describe('buildRoutes composition', () => {
     const deps = new Proxy(
       {
         context,
+        container: { safeResolve: vi.fn() },
         wpaths: {
           globalRoot: 'D:\\global',
           projectSessions: 'D:\\repo\\.wstack\\sessions',
@@ -194,6 +195,7 @@ describe('buildRoutes composition', () => {
     const deps = new Proxy(
       {
         pendingConfirms,
+        container: { safeResolve: vi.fn() },
         context: { meta: {}, session: { id: 'session-1' } },
         wpaths: { globalRoot: 'D:\\global', projectSessions: 'D:\\sessions' },
         providerRegistry: { has: vi.fn(() => false), create: vi.fn() },
@@ -248,6 +250,7 @@ describe('buildRoutes composition', () => {
     const deps = new Proxy(
       {
         context,
+        container: { safeResolve: vi.fn() },
         wpaths: { globalRoot: 'D:\\global', projectSessions: 'D:\\sessions' },
         providerRegistry: { has: vi.fn(() => true), create: vi.fn(() => provider) },
         configStore: { update: vi.fn() },

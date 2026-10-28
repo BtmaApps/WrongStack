@@ -44,7 +44,10 @@ describe('surface protocol contract', () => {
     // +1: memory.sage.doctor (SAGE Doctor / Health tab).
     // +1: browser.live.pick (explicit element-context capture).
     // +3: session-scoped MCP task list, retry and cooperative cancellation.
-    expect(new Set(CLIENT_MESSAGE_TYPES).size).toBe(298);
+    // +1: desktop-owned project content search.
+    // +4: native Git hunks/apply and merge-conflict read/resolve.
+    expect(new Set(CLIENT_MESSAGE_TYPES).size).toBe(303);
+    expect(CLIENT_MESSAGE_TYPES).toContain('files.search');
     expect(CLIENT_MESSAGE_TYPES).toEqual(
       expect.arrayContaining([
         'mcp.tasks.list',
@@ -60,8 +63,11 @@ describe('surface protocol contract', () => {
     // +1: browser.policy.result (its reply).
     // +1: memory.sage.doctor (the doctor report reply).
     // +1: browser.live.selection (correlated capture result).
-    // +2: correlated MCP task list and operation result.
-    expect(new Set(SERVER_MESSAGE_TYPES).size).toBe(308);
+    // +3: correlated MCP task list, operation result and task-change notification.
+    // +1: correlated content-search reply.
+    // +2: native Git hunk and merge-conflict snapshots.
+    expect(new Set(SERVER_MESSAGE_TYPES).size).toBe(312);
+    expect(SERVER_MESSAGE_TYPES).toContain('files.search');
     expect(SERVER_MESSAGE_TYPES).toEqual(
       expect.arrayContaining(['mcp.tasks.list', 'mcp.tasks.result', 'mcp.tasks.changed']),
     );

@@ -5,6 +5,7 @@ import type { WebSocket } from 'ws';
 import { resolveProviderModelMetadata } from './model-catalog.js';
 import type { WSClientMessage, WSServerMessage } from './types.js';
 import { computeUsageCost, getCostRates } from './usage-cost.js';
+import { usagePricing } from './usage-pricing.js';
 import { errMessage, messageSessionId, withRequestId } from './ws-utils.js';
 
 export interface IntrospectionRouteContext {
@@ -213,6 +214,11 @@ export async function handleIntrospectionRoute(
           // is the cached prefix of the most recent request only.
           currentRequest,
           cost: metadata ? computeUsageCost(usage, getCostRates(metadata)) : null,
+          pricing: usagePricing(
+            usage,
+            metadata,
+            config.providers?.[actx.provider.id]?.customModels?.[actx.model]?.modelsDev,
+          ),
           messages: actx.messages.length,
           readFiles: actx.readFiles.size,
           tools: agent.tools.list().length,
@@ -226,8 +232,10 @@ export async function handleIntrospectionRoute(
       if (!sessionAllowed(ctx, ws, message)) return true;
       ctx.send(ws, {
         type: 'side_effects',
-        payload: {
+        payload: withRequestId(message.payload, {
           sessionId: askingSessionId(),
+          total: actx.sideEffects?.length ?? 0,
+          truncated: (actx.sideEffects?.length ?? 0) > 50,
           sideEffects: (actx.sideEffects ?? []).slice(-50).map((effect) => ({
             toolUseId: effect.toolUseId,
             toolName: effect.toolName,
@@ -236,7 +244,7 @@ export async function handleIntrospectionRoute(
             outcome: effect.outcome,
             risk: effect.risk,
           })),
-        },
+        }),
       });
       return true;
     }

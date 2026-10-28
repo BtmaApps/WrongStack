@@ -22,7 +22,12 @@ export {
  */
 
 import type { MemoryPort } from '@wrongstack/contracts/types';
-import { getSageSurface, type SageStatus } from '@wrongstack/sage';
+import {
+  checkInjectionValidity,
+  getSageSurface,
+  normalizeValidity,
+  type SageStatus,
+} from '@wrongstack/sage';
 import type { WebSocket } from 'ws';
 import type { WSClientMessage } from './types.js';
 import { errMessage, send, withRequestId } from './ws-utils.js';
@@ -317,13 +322,15 @@ export async function handleSageSearchBreakdown(
 
 /**
  * Get a single Sage entry by ID.
- * Request:  { type: 'memory.sage.get', payload: { id } }
- * Response: { type: 'memory.sage.get', payload: { memory } }
+ * Request:  { type: 'memory.sage.get', payload: { id, reviewValidity?, expectedRevision? } }
+ * Response: { type: 'memory.sage.get', payload: { memory, validityReview? } }
+ * Source inspection is explicit, uses the host project root, and never mutates the record.
  */
 export async function handleSageGet(
   ws: WebSocket,
   msg: unknown,
   memoryStore: MemoryPort,
+  projectRoot?: string,
 ): Promise<void> {
   const Sage = getSageSurface(memoryStore);
   if (!Sage) {
@@ -353,6 +360,29 @@ export async function handleSageGet(
       send(ws, {
         type: 'memory.sage.get',
         payload: withRequestId(msg, { error: `Memory "${id}" not found.` }),
+      });
+      return;
+    }
+    const options = (msg as { payload?: { reviewValidity?: unknown; expectedRevision?: unknown } })
+      .payload;
+    if (options?.reviewValidity !== undefined && typeof options.reviewValidity !== 'boolean')
+      throw Error('reviewValidity must be a boolean.');
+    if (options?.reviewValidity === true) {
+      if (!Number.isSafeInteger(options.expectedRevision) || Number(options.expectedRevision) < 0)
+        throw Error('Source evidence review requires the observed memory revision.');
+      if (memory.revision !== options.expectedRevision)
+        throw Error(
+          'This memory changed. Refresh the record before reviewing its source evidence.',
+        );
+      if (!projectRoot) throw Error('Project root is unavailable for source evidence review.');
+      const validity = normalizeValidity(memory.validity);
+      if (!validity) throw Error('This memory has no applicability conditions to review.');
+      const validityReview = (
+        await checkInjectionValidity([{ ...memory, validity }], projectRoot)
+      ).get(memory.id);
+      send(ws, {
+        type: 'memory.sage.get',
+        payload: withRequestId(msg, { memory, validityReview }),
       });
       return;
     }

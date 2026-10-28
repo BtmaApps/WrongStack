@@ -140,6 +140,9 @@ export const PREF_KEYS = [
   'subagentsAllowed',
   'subagentCompanionsAllowed',
   'subagentsPolicyLocked',
+  'memoryCompanionEnabled',
+  'exploreCompanionEnabled',
+  'skillCompanionEnabled',
   // Session-scoped subagent model lanes. Never persisted to config.json: the
   // plan belongs to one conversation and is journaled with its session.
   'subagentModelPlan',
@@ -662,6 +665,33 @@ export async function persistPrefsToConfig(
         }
         ext['wstack-auto-review'] = ar;
         decrypted.extensions = ext;
+      }
+
+      const companionsTouched =
+        typeof payload['memoryCompanionEnabled'] === 'boolean' ||
+        typeof payload['exploreCompanionEnabled'] === 'boolean' ||
+        typeof payload['skillCompanionEnabled'] === 'boolean';
+      if (companionsTouched) {
+        const fleet = (decrypted.fleet as Record<string, unknown>) ?? {};
+        if (typeof payload['memoryCompanionEnabled'] === 'boolean') {
+          fleet['memoryCompanion'] = {
+            ...((fleet['memoryCompanion'] as Record<string, unknown>) ?? {}),
+            enabled: payload['memoryCompanionEnabled'],
+          };
+        }
+        if (typeof payload['exploreCompanionEnabled'] === 'boolean') {
+          fleet['exploreCompanion'] = {
+            ...((fleet['exploreCompanion'] as Record<string, unknown>) ?? {}),
+            enabled: payload['exploreCompanionEnabled'],
+          };
+        }
+        if (typeof payload['skillCompanionEnabled'] === 'boolean') {
+          fleet['skillCompanion'] = {
+            ...((fleet['skillCompanion'] as Record<string, unknown>) ?? {}),
+            enabled: payload['skillCompanionEnabled'],
+          };
+        }
+        decrypted.fleet = fleet;
       }
     },
     'prefs',

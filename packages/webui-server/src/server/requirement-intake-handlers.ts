@@ -8,6 +8,9 @@
  *   PATCH  /api/requirement-intakes/:intakeId
  *   POST   /api/requirement-intakes/:intakeId/answers
  *   POST   /api/requirement-intakes/:intakeId/suggestions
+ *   POST   /api/requirement-intakes/:intakeId/resources
+ *   POST   /api/requirement-intakes/:intakeId/suggestions/:suggestionId/accept
+ *   POST   /api/requirement-intakes/:intakeId/suggestions/:suggestionId/reject
  *   POST   /api/requirement-intakes/:intakeId/submit
  *   POST   /api/requirement-intakes/:intakeId/cancel
  *   POST   /api/requirement-intakes/:intakeId/archive
@@ -290,13 +293,20 @@ export async function handleRequirementIntakeAnswers(
   if (!serviceOr503(res, service)) return;
   const body = await readJsonBody(res, req);
   if (body === null) return;
+  const expectedVersion = Object.hasOwn(body, 'expectedVersion')
+    ? requiredVersion(res, body)
+    : undefined;
+  if (expectedVersion === null) return;
+  const { expectedVersion: _version, ...input } = body;
+  void _version;
   try {
     const record = await discoverIntake(res, service, intakeId);
     if (!record) return;
     const updated = await service.addAnswer(
       intakeId,
-      body as never,
+      input as never,
       intakeContext(record.projectId),
+      expectedVersion,
     );
     sendJson(res, 200, updated);
   } catch (error) {
@@ -323,6 +333,84 @@ export async function handleRequirementIntakeSuggestions(
       focus,
     );
     sendJson(res, 200, { suggestions });
+  } catch (error) {
+    sendIntakeError(res, error);
+  }
+}
+
+function requiredVersion(res: http.ServerResponse, body: Record<string, unknown>): number | null {
+  const version = body['expectedVersion'];
+  if (typeof version === 'number' && Number.isSafeInteger(version) && version >= 0) return version;
+  sendJson(res, 400, {
+    error: {
+      code: 'INVALID_VERSION',
+      message: 'A non-negative integer expectedVersion is required.',
+    },
+  });
+  return null;
+}
+
+/** Add evidence to a mutable record with the same version guard as information edits. */
+export async function handleRequirementIntakeResource(
+  res: http.ServerResponse,
+  req: http.IncomingMessage,
+  service: RequirementIntakeService | undefined,
+  intakeId: string,
+): Promise<void> {
+  if (!serviceOr503(res, service)) return;
+  const body = await readJsonBody(res, req);
+  if (body === null) return;
+  const expectedVersion = requiredVersion(res, body);
+  if (expectedVersion === null) return;
+  try {
+    const current = await discoverIntake(res, service, intakeId);
+    if (!current) return;
+    const { expectedVersion: _version, ...input } = body;
+    void _version;
+    const updated = await service.attachResource(
+      intakeId,
+      input as never,
+      intakeContext(current.projectId),
+      expectedVersion,
+    );
+    sendJson(res, 200, updated);
+  } catch (error) {
+    sendIntakeError(res, error);
+  }
+}
+
+/** Proposals remain non-authoritative until an explicit, versioned decision. */
+export async function handleRequirementIntakeSuggestionDecision(
+  res: http.ServerResponse,
+  req: http.IncomingMessage,
+  service: RequirementIntakeService | undefined,
+  intakeId: string,
+  suggestionId: string,
+  decision: 'accept' | 'reject',
+): Promise<void> {
+  if (!serviceOr503(res, service)) return;
+  const body = await readJsonBody(res, req);
+  if (body === null) return;
+  const expectedVersion = requiredVersion(res, body);
+  if (expectedVersion === null) return;
+  try {
+    const current = await discoverIntake(res, service, intakeId);
+    if (!current) return;
+    const updated =
+      decision === 'accept'
+        ? await service.acceptSuggestion(
+            intakeId,
+            suggestionId,
+            intakeContext(current.projectId),
+            expectedVersion,
+          )
+        : await service.rejectSuggestion(
+            intakeId,
+            suggestionId,
+            intakeContext(current.projectId),
+            expectedVersion,
+          );
+    sendJson(res, 200, updated);
   } catch (error) {
     sendIntakeError(res, error);
   }

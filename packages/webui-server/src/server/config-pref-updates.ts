@@ -101,5 +101,39 @@ export function computeConfigPrefUpdates(
   }
   if (typeof payload['fallbackAuto'] === 'boolean') updates.fallbackAuto = payload['fallbackAuto'];
 
+  if (
+    typeof payload['memoryCompanionEnabled'] === 'boolean' ||
+    typeof payload['exploreCompanionEnabled'] === 'boolean' ||
+    typeof payload['skillCompanionEnabled'] === 'boolean'
+  ) {
+    updates.fleet = {
+      ...config.fleet,
+      ...(typeof payload['memoryCompanionEnabled'] === 'boolean'
+        ? {
+            memoryCompanion: {
+              ...config.fleet?.memoryCompanion,
+              enabled: payload['memoryCompanionEnabled'],
+            },
+          }
+        : {}),
+      ...(typeof payload['exploreCompanionEnabled'] === 'boolean'
+        ? {
+            exploreCompanion: {
+              ...config.fleet?.exploreCompanion,
+              enabled: payload['exploreCompanionEnabled'],
+            },
+          }
+        : {}),
+      ...(typeof payload['skillCompanionEnabled'] === 'boolean'
+        ? {
+            skillCompanion: {
+              ...config.fleet?.skillCompanion,
+              enabled: payload['skillCompanionEnabled'],
+            },
+          }
+        : {}),
+    };
+  }
+
   return updates;
 }

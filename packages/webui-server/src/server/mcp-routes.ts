@@ -82,6 +82,12 @@ export async function handleMcpRoute(
       'mcp.operation_result',
       'mcp.auth.pending',
       'mcp.auth.status',
+      ...(['mcp.resources', 'mcp.prompts', 'mcp.resource.read', 'mcp.prompt.get'].includes(msg.type)
+        ? ['mcp.content.error']
+        : []),
+      ...(['mcp.resource.read', 'mcp.prompt.get'].includes(msg.type)
+        ? ['mcp.content.selected']
+        : []),
     ]).socket;
   switch (msg.type) {
     case 'mcp.tasks.subscribe':

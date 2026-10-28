@@ -40,6 +40,11 @@ export async function handleSessionRoute(
       'context.repair',
       'context.clear',
       'context.editor.open',
+      'session.inspect',
+      'session.checkpoints',
+      'session.rewind',
+      'sessions.list',
+      'session.rename',
     ].includes(msg.type)
   )
     ws = correlatedReply(ws, msg.payload, [
@@ -48,6 +53,9 @@ export async function handleSessionRoute(
       'context.compacted',
       'context.repaired',
       'context.editor.snapshot',
+      'session.inspect',
+      'session.checkpoints',
+      'sessions.list',
       'error',
     ]).socket;
   switch (msg.type) {

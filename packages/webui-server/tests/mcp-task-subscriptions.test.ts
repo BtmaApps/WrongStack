@@ -3,15 +3,15 @@ import type { Context } from '@wrongstack/core/agent';
 import type { MCPRegistry } from '@wrongstack/mcp';
 import { afterEach, expect, it, vi } from 'vitest';
 import type { WebSocket } from 'ws';
-import { createMcpTaskHandlers } from '../src/server/mcp-task-handlers.js';
 import { handleMcpRoute } from '../src/server/mcp-routes.js';
+import { createMcpTaskHandlers } from '../src/server/mcp-task-handlers.js';
 
 const cleanup: Array<() => void> = [];
 afterEach(() => {
   for (const stop of cleanup.splice(0)) stop();
   vi.useRealTimers();
 });
-function fixture() {
+function fixture(ownerId = 'tab-a') {
   const frames: Array<{ type: string; payload: Record<string, unknown> }> = [];
   const ws = Object.assign(new EventEmitter(), {
     readyState: 1,
@@ -22,7 +22,7 @@ function fixture() {
     ws.readyState = 3;
     ws.emit('close');
   });
-  const context = { session: { id: 'tab-a' }, agentId: 'leader' } as Context;
+  const context = { session: { id: ownerId }, agentId: 'leader' } as Context;
   let current: Context | undefined = context;
   let changed = () => {},
     closed = () => {};
@@ -52,9 +52,9 @@ function fixture() {
   };
   const handlers = createMcpTaskHandlers({
     registry: registry as unknown as MCPRegistry,
-    context: (id) => (id === 'tab-a' ? current : undefined),
+    context: (id) => (id === ownerId ? current : undefined),
   });
-  const route = (type = 'mcp.tasks.subscribe', requestId = 'watch', sessionId = 'tab-a') =>
+  const route = (type = 'mcp.tasks.subscribe', requestId = 'watch', sessionId = ownerId) =>
     handleMcpRoute(
       ws as unknown as WebSocket,
       { type, payload: { sessionId, requestId } },
@@ -75,6 +75,17 @@ function fixture() {
     },
   };
 }
+it('observes and unsubscribes using the real dated root session identity', async () => {
+  const sessionId = '2026-10-27/sess_01M5ZJRRB69QSY3QH2VK9WDH7B';
+  const f = fixture(sessionId);
+  await f.route();
+  expect(f.frames[0]).toMatchObject({
+    type: 'mcp.tasks.changed',
+    payload: { sessionId, requestId: 'watch', revision: 1 },
+  });
+  await f.route('mcp.tasks.unsubscribe');
+  expect(f.off).toHaveBeenCalledTimes(1);
+});
 it('pushes scoped safe snapshots, deduplicates invalidations, and cleans up on socket close', async () => {
   const f = fixture();
   await f.route();

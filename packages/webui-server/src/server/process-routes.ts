@@ -1,4 +1,5 @@
 import type { WebSocket } from 'ws';
+import { correlatedReply } from './correlated-reply.js';
 import type { WSClientMessage } from './types.js';
 
 export interface ProcessRouteHandlers {
@@ -13,6 +14,12 @@ export async function handleProcessRoute(
   msg: WSClientMessage,
   handlers: ProcessRouteHandlers,
 ): Promise<boolean> {
+  if (msg.type.startsWith('process.'))
+    ws = correlatedReply(ws, msg.payload, [
+      'process.list',
+      'process.output',
+      'key.operation_result',
+    ]).socket;
   switch (msg.type) {
     case 'process.list':
       await handlers.list(ws, msg);

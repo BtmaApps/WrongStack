@@ -33,6 +33,24 @@ function payloadSessionId(payload: unknown): string | undefined {
   return typeof value === 'string' && value.length > 0 ? value : undefined;
 }
 
+/** Optional native review identity, checked at the operation rather than in a preceding read. */
+function reviewedProcessMatches(
+  payload: unknown,
+  proc: { startedAt: number } | undefined,
+): boolean {
+  const expected =
+    payload && typeof payload === 'object'
+      ? (payload as { expectedStartedAt?: unknown }).expectedStartedAt
+      : undefined;
+  return (
+    expected === undefined ||
+    (typeof expected === 'number' &&
+      Number.isSafeInteger(expected) &&
+      expected > 0 &&
+      proc?.startedAt === expected)
+  );
+}
+
 /** Broadcast the tracked-process list; an empty list on any registry failure. */
 export function handleProcessList(ws: WebSocket, msg?: { payload?: unknown }): void {
   const sessionId = payloadSessionId(msg?.payload);
@@ -85,6 +103,10 @@ export function handleProcessOutput(ws: WebSocket, payload: unknown): void {
       sendResult(ws, false, `Process ${pid} belongs to another session`);
       return;
     }
+    if (!reviewedProcessMatches(payload, proc)) {
+      sendResult(ws, false, `Process ${pid} changed or exited since it was selected`);
+      return;
+    }
     send(ws, {
       type: 'process.output',
       payload: {
@@ -134,6 +156,10 @@ export async function handleProcessKill(
     const requestedSession = payloadSessionId(payload);
     if (requestedSession && proc?.sessionId && proc.sessionId !== requestedSession) {
       sendResult(ws, false, `Process ${pid} belongs to another session`);
+      return;
+    }
+    if (!reviewedProcessMatches(payload, proc)) {
+      sendResult(ws, false, `Process ${pid} changed or exited since it was reviewed`);
       return;
     }
     if (proc?.protected) {

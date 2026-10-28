@@ -17,6 +17,7 @@ import {
   handleDesignUse,
   handleDesignVerify,
 } from './design-handlers.js';
+import { handleFileContentSearch } from './file-content-search.js';
 import {
   handleFilesCreate,
   handleFilesDelete,
@@ -93,6 +94,8 @@ export async function handleContentRoute(
       'skills.edited',
       'skills.exported',
     ]).socket;
+  if (message.type.startsWith('design.'))
+    ws = correlatedReply(ws, message.payload, [message.type]).socket;
   /**
    * Design context for the asking tab, carrying its session id so every
    * response can be stamped and routed back to that tab's lane only. Without
@@ -106,6 +109,9 @@ export async function handleContentRoute(
   switch (message.type) {
     case 'files.list':
       await handleFilesList(ws, message, ctx.getProjectRoot());
+      return true;
+    case 'files.search':
+      await handleFileContentSearch(ws, message, ctx.getProjectRoot());
       return true;
     case 'files.tree':
       await handleFilesTree(ws, message, ctx.getProjectRoot());
