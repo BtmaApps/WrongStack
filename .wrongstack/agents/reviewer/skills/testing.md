@@ -1,27 +1,27 @@
+## TUI animation (`packages/tui/tests/`)
+- Treat `vi.waitFor(..., { timeout, interval })` with a `vi.spyOn(Date, 'now')` frozen clock as the established anti-flake pattern (`banner-formation.test.tsx`): the spy leaves real timers free to drive Ink repaints and polling, so fixed-ms `settle()` waits are the flaky construct. Judge frame determinism from the mocked clock value, not wall time; don't flag waitFor as a hang risk. [applied 2×, 2 ok]
+
 ## Browser smoke (`packages/vibeui/tests/browser-smoke.mjs`)
-- Check strict count assertions, such as the `.workspace-notes article` count or the skills listbox option count, against the `for (const client of clients)` broadcast loops. Broadcasts and strict counts only coexist when the page holds exactly one socket. Confirm this via `connections++` / `clients.add` in `wss.on('connection')`.
-- Accept a `page.clock.install()` without a matching uninstall only if every later step is server-push-driven or synchronous. Flag it if later steps rely on app-side real timers.
-- For theme-contrast audits that sample CSS custom properties through a 2D canvas, confirm the token names exist in `packages/vibeui/src/app/globals.css`. If `getPropertyValue` returns empty, the `ctx.fillStyle` assignment fails silently and reuses the previous color, so the assertion measures the wrong token.
-- Never assert `/transparent/.test(getComputedStyle(el).outlineColor)`. Chromium serializes transparency as `rgba(0, 0, 0, 0)`, so parse the alpha instead.
+- Check strict counts (`.workspace-notes article`, skills listbox options) against the `for (const client of clients)` broadcast loop; they hold only for a single socket, confirmed via `connections++`/`clients.add` in `wss.on('connection')`.
+- Accept `page.clock.install()` only when every later step is server-push-driven or synchronous; flag steps relying on app-side real timers.
+- Canvas theme-contrast audits: verify token names exist in `packages/vibeui/src/app/globals.css`; a missing token makes `ctx.fillStyle` fail silently and reuse the previous color.
+- Never assert `/transparent/` on `getComputedStyle(el).outlineColor`: Chromium serializes it as `rgba(0, 0, 0, 0)`; parse the alpha.
 
 ## Dead-code tests
-- Before crediting `packages/tools/tests/dead-code-engine.test.ts` cases that pass `verify: 'none'` plus `verifyCommand` to `applyDeadCodeFixes`, read the apply-time gate in `packages/tools/src/dead-code/fix.ts`. If mode `'none'` skips extra commands, `rolledBack` is untested, regardless of what the docs say.
+- Before crediting `packages/tools/tests/dead-code-engine.test.ts` cases passing `verify: 'none'` + `verifyCommand` to `applyDeadCodeFixes`, read the apply-time gate in `packages/tools/src/dead-code/fix.ts`; if `'none'` skips extra commands, `rolledBack` is untested regardless of docs.
 
-## Exec argument passing (Windows, `bun --bun vitest`)
-- Reject tests that use `node -e "<code>" -- <args>` (or `-p`) to observe arguments through `execTool`/`spawn`. Here `process.execPath` is Bun's `node.exe` shim, which drops the first positional argument. Require a `.cjs` script in the sandbox passed as `argv[1]`, asserting on `process.argv.slice(2)`, as in `packages/tools/tests/exec-autonomy.test.ts`.
+## Exec args (Windows, `bun --bun vitest`)
+- Reject `node -e "<code>" -- <args>` (or `-p`) argument observation via `execTool`/`spawn`: Bun's `node.exe` shim drops the first positional. Require a `.cjs` sandbox script as `argv[1]` asserting on `process.argv.slice(2)`, as in `packages/tools/tests/exec-autonomy.test.ts`.
 
 ## Vitest builtin mocks
-- Mock factories must match production imports. For example, `import { spawn } from 'node:child_process'` in `packages/cli/src/boot/tui-project-spawn.ts` needs a named export.
-- Stub the return-value members the code touches (`child.on`, `child.unref`) and emit any awaited events.
-- Verify that unmocked branches between the guard and the mock cannot throw or return early.
+- Match factories to production imports: `import { spawn } from 'node:child_process'` in `packages/cli/src/boot/tui-project-spawn.ts` needs a named export. Stub touched members (`child.on`, `child.unref`), emit awaited events, and confirm no unmocked branch between guard and mock can throw or return early.
 
 ## MCP server tests
-- Build `initialize` fixtures from `SUPPORTED_PROTOCOL_VERSIONS` (`packages/mcp/src/constants.ts`). Reserve `'2025-11-25'` for deliberate mismatch tests.
-- For refusals, confirm `packages/mcp/src/server-dispatch.ts` maps `InvalidToolArgumentsError` to `{ content: [{ type: 'text', text: err.message }], isError: true }`.
-- Assert substrings that respect the `${error.path}: ${error.message}` format and the `(+N more)` cap from `MAX_REPORTED_SCHEMA_ERRORS`.
-- Judge live fixtures, not review-bundle text. In `packages/mcp/tests/server.test.ts`, `arguments: [{ name: 'target', required: true }]` backs `toContain('target')`.
+- Build `initialize` fixtures from `SUPPORTED_PROTOCOL_VERSIONS` (`packages/mcp/src/constants.ts`); reserve `'2025-11-25'` for deliberate mismatch tests.
+- Confirm `packages/mcp/src/server-dispatch.ts` maps `InvalidToolArgumentsError` to `{ content: [{ type: 'text', text: err.message }], isError: true }`; assert substrings honoring `${error.path}: ${error.message}` and the `(+N more)` cap from `MAX_REPORTED_SCHEMA_ERRORS`.
+- Judge live fixtures, not review-bundle text: in `packages/mcp/tests/server.test.ts`, `arguments: [{ name: 'target', required: true }]` backs `toContain('target')`.
 
 ## In-project exports
-- Read the full `IN_PROJECT_DENIED_PATHS` table in `packages/core/src/storage/config-loader/in-project-policy.ts` rather than a `path:` grep.
-- Keep `listInProjectDeniedPaths()` in sync with `filterSafeForProject` in `packages/cli/src/settings-menu.ts`. Check wildcard entries against literal dotted paths.
-- Absence tests only prove stripping if the field's parent is in `PROJECT_SAFE_FIELDS`. Otherwise the field was simply never copied.
+- Read the full `IN_PROJECT_DENIED_PATHS` table (`packages/core/src/storage/config-loader/in-project-policy.ts`), not a `path:` grep; check wildcard entries against literal dotted paths.
+- Keep `listInProjectDeniedPaths()` in sync with `filterSafeForProject` (`packages/cli/src/settings-menu.ts`).
+- Absence tests prove stripping only when the field's parent is in `PROJECT_SAFE_FIELDS`; otherwise the field was never copied.
