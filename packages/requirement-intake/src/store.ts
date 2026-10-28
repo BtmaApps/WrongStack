@@ -422,7 +422,12 @@ export class RequirementIntakeStore {
       const key = record.idempotencyKey;
       if (typeof key !== 'string' || key.trim().length === 0) continue;
       const digest = hashIdempotencyKey(key.trim());
-      if (!Object.hasOwn(entries, digest)) {
+      const existing = entries[digest];
+      if (
+        !existing ||
+        record.createdAt > existing.createdAt ||
+        (record.createdAt === existing.createdAt && record.id > existing.intakeId)
+      ) {
         entries[digest] = { intakeId: record.id, createdAt: record.createdAt };
       }
     }

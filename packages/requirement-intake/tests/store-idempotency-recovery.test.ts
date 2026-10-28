@@ -231,4 +231,32 @@ describe('store idempotency recovery', () => {
     });
     await expect(store.findByIdempotencyKey('   ')).resolves.toBeNull();
   });
+
+  it('binds reused idempotency keys to the newest record during recovery so pruneIdempotency does not evict active keys (F772)', async () => {
+    const dir = await makeDir();
+    const store = new RequirementIntakeStore({ baseDir: dir, maxIdempotencyEntries: 2 });
+    await fsp.writeFile(
+      path.join(dir, 'reqi_001.json'),
+      JSON.stringify({ id: 'reqi_001', idempotencyKey: 'shared-key', createdAt: 100 }),
+      'utf8',
+    );
+    await fsp.writeFile(
+      path.join(dir, 'reqi_002.json'),
+      JSON.stringify({ id: 'reqi_002', idempotencyKey: 'other-key', createdAt: 200 }),
+      'utf8',
+    );
+    await fsp.writeFile(
+      path.join(dir, 'reqi_003.json'),
+      JSON.stringify({ id: 'reqi_003', idempotencyKey: 'shared-key', createdAt: 300 }),
+      'utf8',
+    );
+    await writeIdempotencyFile(dir, 'not-json');
+
+    await expect(store.findByIdempotencyKey('shared-key')).resolves.toMatchObject({
+      id: 'reqi_003',
+    });
+    await expect(store.findByIdempotencyKey('other-key')).resolves.toMatchObject({
+      id: 'reqi_002',
+    });
+  });
 });

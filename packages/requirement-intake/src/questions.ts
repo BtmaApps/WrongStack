@@ -26,7 +26,9 @@ const FIELD_TO_INPUT_PROPERTY: Readonly<Record<string, (input: CreateIntakeInput
   target_users: (input) => (input.targetUsers?.length ?? 0) > 0,
   expected_outcome: (input) =>
     input.expectedOutcome !== undefined && input.expectedOutcome.trim().length > 0,
+  scope_notes: (input) => input.scopeNotes !== undefined && input.scopeNotes.trim().length > 0,
   project_component: (input) => (input.providedContext?.length ?? 0) > 0,
+  provided_context: (input) => (input.providedContext?.length ?? 0) > 0,
   constraints: (input) => (input.constraints?.length ?? 0) > 0,
   related_resources: (input) => (input.relatedResources?.length ?? 0) > 0,
   priority: (input) => input.priority !== undefined && input.priority !== 'unspecified',

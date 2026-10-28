@@ -128,4 +128,19 @@ describe('upsertQuestion', () => {
     expect(added).toBe(false);
     expect(record.questions).toHaveLength(before);
   });
+
+  it('skips scope_notes and provided_context in buildInitialQuestions when scopeNotes and providedContext are populated on CreateIntakeInput', () => {
+    const questions = buildInitialQuestions(
+      {
+        rawRequest: 'Add SSO login',
+        scopeNotes: 'Web only',
+        providedContext: ['packages/auth'],
+      },
+      [
+        { field: 'scope_notes', question: 'What is in/out of scope?', required: false },
+        { field: 'provided_context', question: 'Which files apply?', required: false },
+      ],
+    );
+    expect(questions.map((q) => q.status)).toEqual(['skipped', 'skipped']);
+  });
 });
