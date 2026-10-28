@@ -61,6 +61,7 @@ const OPERATION_KEYS: Record<SessionCatalogOperationName, readonly string[]> = {
     'minTokens',
     'titleContains',
   ],
+  page_catalog: ['limit', 'offset', 'expectedRevision', 'excludeId', 'anchorId'],
   resolve_id: ['query'],
   get_summary: ['sessionId'],
   list_session_agents: ['sessionId'],

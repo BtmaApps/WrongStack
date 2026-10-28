@@ -86,6 +86,21 @@ describe('Session Catalog project server IPC', () => {
       });
 
       const now = new Date().toISOString();
+      client.socket.write(
+        `${JSON.stringify({ type: 'request', id: 22, op: 'page_catalog', args: { limit: 1, anchorId: '2026-08-08/sess_filter_ipc' }, authToken: metadata.authToken })}\n`,
+      );
+      expect(await client.nextFrame()).toMatchObject({
+        type: 'response',
+        id: 22,
+        ok: true,
+        result: {
+          total: 1,
+          offset: 0,
+          nextOffset: null,
+          truncated: false,
+          sessions: [expect.objectContaining({ id: '2026-08-08/sess_filter_ipc' })],
+        },
+      });
       const claim = {
         entry: {
           sessionId: '2026-08-08/sess_ipc',

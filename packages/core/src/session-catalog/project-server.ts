@@ -280,6 +280,10 @@ async function dispatch<O extends SessionCatalogOperationName>(
       const value = args as SessionCatalogOperations['list_catalog']['args'];
       return catalog.listCatalog(value) as SessionCatalogOperations[O]['result'];
     }
+    case 'page_catalog':
+      return catalog.pageCatalog(
+        args as SessionCatalogOperations['page_catalog']['args'],
+      ) as SessionCatalogOperations[O]['result'];
     case 'resolve_id':
       return catalog.resolveId(
         (args as SessionCatalogOperations['resolve_id']['args']).query,

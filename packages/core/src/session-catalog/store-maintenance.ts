@@ -2,10 +2,19 @@ import { randomUUID } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
-import type { SessionSummary } from '@wrongstack/contracts/types/session';
+import type {
+  SessionHistoryPageOptions,
+  SessionSummary,
+} from '@wrongstack/contracts/types/session';
 import { withSqliteTextIndex } from '@wrongstack/persistence';
 import { removePathSync } from '@wrongstack/primitives';
 import type { DefaultSecretScrubber } from '../security/secret-scrubber.js';
+import {
+  checkHistoryPageRevision,
+  historyPageOffset,
+  historyPageOptions,
+  historyPageRevision,
+} from '../storage/session-history-page.js';
 import {
   resolveSessionId as resolveAmongCandidates,
   sessionIdResolutionError,
@@ -106,6 +115,44 @@ function readCatalogRecords(
     )
     .all(...values, bounded);
   return (rows as unknown as CatalogRow[]).map((row) => catalogRecord(row));
+}
+
+export function pageCatalogRecords(
+  db: DatabaseSync,
+  raw: SessionHistoryPageOptions,
+  catalogRecord: (row: CatalogRow) => CatalogSessionRecord,
+) {
+  const options = historyPageOptions(raw);
+  const jsonText = (field: string) =>
+    `CASE WHEN json_valid(summary_json) THEN json_extract(summary_json,'$.${field}') END`;
+  const headers = db
+    .prepare(
+      `SELECT session_id FROM sessions WHERE session_id<>? ORDER BY COALESCE(${jsonText('lastActivityAt')},${jsonText('endedAt')},${jsonText('startedAt')}) DESC,${jsonText('startedAt')} DESC,session_id ASC`,
+    )
+    .all(options.excludeId) as unknown as Array<{ session_id: string }>;
+  const revision = historyPageRevision(
+    headers.map((row) => row.session_id),
+    options.excludeId,
+  );
+  const offset = historyPageOffset(
+    headers.map((row) => row.session_id),
+    options,
+  );
+  checkHistoryPageRevision(revision, options.expectedRevision, offset, headers.length);
+  const read = db.prepare('SELECT * FROM sessions WHERE session_id=?');
+  const sessions = headers
+    .slice(offset, offset + options.limit)
+    .map((row) => catalogRecord(read.get(row.session_id) as unknown as CatalogRow));
+  const end = offset + sessions.length;
+  return {
+    sessions,
+    offset,
+    limit: options.limit,
+    total: headers.length,
+    revision,
+    nextOffset: end < headers.length ? end : null,
+    truncated: false,
+  };
 }
 
 export function resolveSessionId(

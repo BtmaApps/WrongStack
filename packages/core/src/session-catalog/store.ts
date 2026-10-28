@@ -34,6 +34,7 @@ import {
   executeAcquireMaintenance,
   executeDeleteSession,
   listCatalogRecords,
+  pageCatalogRecords,
   renameSessionSummary,
   resolveSessionId,
 } from './store-maintenance.js';
@@ -303,6 +304,13 @@ export class SessionCatalogStore {
 
   listCatalog(criteria: SessionCatalogListArgs = {}): CatalogSessionRecord[] {
     return listCatalogRecords(this.db, criteria, (row) => this.catalogRecord(row));
+  }
+  pageCatalog(
+    options: import('@wrongstack/contracts/types/session').SessionHistoryPageOptions = {},
+  ) {
+    return this.transaction(() =>
+      pageCatalogRecords(this.db, options, (row) => this.catalogRecord(row)),
+    );
   }
 
   getSummary(sessionId: string): CatalogSessionRecord | null {

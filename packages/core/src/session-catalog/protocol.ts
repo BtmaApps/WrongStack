@@ -1,4 +1,8 @@
-import type { SessionSummary } from '@wrongstack/contracts/types/session';
+import type {
+  SessionHistoryPage,
+  SessionHistoryPageOptions,
+  SessionSummary,
+} from '@wrongstack/contracts/types/session';
 import type { SessionAgentRecord } from './session-agents.js';
 import type { SessionRegistryEntry } from './session-registry-types.js';
 
@@ -200,6 +204,7 @@ export interface SessionCatalogOperations {
     result: CatalogSessionRecord;
   };
   list_catalog: { args: SessionCatalogListArgs; result: CatalogSessionRecord[] };
+  page_catalog: { args: SessionHistoryPageOptions; result: SessionHistoryPage };
   resolve_id: { args: { query: string }; result: string };
   get_summary: { args: { sessionId: string }; result: CatalogSessionRecord | null };
   /**

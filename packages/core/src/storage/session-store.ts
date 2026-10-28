@@ -23,6 +23,7 @@ import {
   sweepCheckpointCas,
 } from './session-checkpoint-gc.js';
 import { captureCheckpoint, materializeCheckpoint } from './session-helpers.js';
+import { historyPageFromSummaries } from './session-history-page.js';
 import { type CreateSessionHost, executeCreateSession } from './session-store/create-session.js';
 import { assertSessionCanBeDeleted } from './session-store/delete-session-guards.js';
 import { forkSession } from './session-store/fork-session.js';
@@ -281,6 +282,15 @@ export class DefaultSessionStore extends SessionStoreCore implements SessionStor
 
   async list(limit = 20): Promise<SessionSummary[]> {
     return executeListSessions(this.asListSessionsHost(), limit);
+  }
+  async listPage(
+    options: import('@wrongstack/contracts/types/session').SessionHistoryPageOptions = {},
+  ) {
+    if (this.catalogClient) {
+      const page = await this.catalogClient.call('page_catalog', options);
+      return { ...page, sessions: this.scrubSummaries(page.sessions) };
+    }
+    return historyPageFromSummaries(await this.list(10002), options);
   }
 
   async listFiltered(criteria: {
