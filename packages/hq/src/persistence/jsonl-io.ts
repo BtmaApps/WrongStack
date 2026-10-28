@@ -169,7 +169,10 @@ export async function findTailStartOffset(
         if (seen >= target) return { offset: boundary, size };
       }
     }
-    // Fewer lines than requested: the whole file is already the tail.
+    if (size > maxBytes) {
+      return { offset: boundary < size ? boundary : 0, size };
+    }
+    // Fewer lines than requested and within the byte budget: the whole file is already the tail.
     return { offset: 0, size };
   } finally {
     await handle.close().catch(() => {});

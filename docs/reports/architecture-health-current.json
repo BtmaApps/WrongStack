@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-28T17:22:47.568Z",
+  "generatedAt": "2026-10-28T17:23:29.364Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -14,7 +14,7 @@
     "packages": 45,
     "sourceFiles": 5251,
     "testFiles": 4605,
-    "sourceLines": 1156094,
+    "sourceLines": 1156104,
     "workspaceEdges": 221,
     "moduleEdges": 15741,
     "nonCommandSlashImports": 0,
@@ -29902,6 +29902,11 @@
       "relativeImports": 13
     },
     {
+      "file": "packages/hq/src/publisher.ts",
+      "lines": 693,
+      "relativeImports": 11
+    },
+    {
       "file": "packages/tui/src/hooks/use-provider-event-bridge.ts",
       "lines": 693,
       "relativeImports": 11
@@ -29910,11 +29915,6 @@
       "file": "packages/vector-memory/src/store.ts",
       "lines": 693,
       "relativeImports": 8
-    },
-    {
-      "file": "packages/webui/src/components/MailboxPanel.tsx",
-      "lines": 693,
-      "relativeImports": 2
     }
   ],
   "testOnlyExports": [

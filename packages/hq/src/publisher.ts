@@ -102,7 +102,7 @@ export class HqPublisher {
   private stopped = false;
   private reconnectAttempt = 0;
   private connectWarningEmitted = false;
-  private lastAttempt: { url: string; hadToken: boolean } | null = null;
+  private lastAttempt: { url: string; hadToken: boolean; token?: string | undefined } | null = null;
   /** Removes the live socket's listeners. Held so a re-dial can detach the
    * outgoing socket BEFORE replacing it: a stale `close` handler would
    * otherwise stop the NEW connection's heartbeat and command polling. */
@@ -156,7 +156,7 @@ export class HqPublisher {
       url = endpoint.url;
       token = endpoint.token ?? token;
     }
-    this.lastAttempt = { url, hadToken: token !== undefined };
+    this.lastAttempt = { url, hadToken: token !== undefined, token };
 
     let socket: HqSocketLike;
     try {
@@ -170,6 +170,7 @@ export class HqPublisher {
     this.socket = socket;
 
     const onOpen = () => {
+      if (this.stopped || this.socket !== socket) return;
       this.reconnectAttempt = 0;
       this.connectWarningEmitted = false;
       warnIfShippingRawContentInClear(url, this.resolvedRedactionPolicy, this.logger);
@@ -250,6 +251,7 @@ export class HqPublisher {
     this.stopCommandPolling();
     this.stopHeartbeat();
     this.outboundQueue.clear();
+    this.detachSocket?.();
     const socket = this.socket;
     this.socket = null;
     this.detachSocket = null;
@@ -274,13 +276,21 @@ export class HqPublisher {
     if (this.stopped || this.options.resolveEndpoint === undefined) return;
     const endpoint = this.options.resolveEndpoint();
     if (endpoint === undefined) return;
+    const nextToken = endpoint.token ?? this.options.token;
+    const unchanged =
+      this.lastAttempt !== null &&
+      this.lastAttempt.url === endpoint.url &&
+      this.lastAttempt.token === nextToken;
     if (this.socket === null) {
-      // Dormant: `connect()` re-resolves on its own (and is a no-op while a
-      // retry/discovery poll is already scheduled).
+      if (!unchanged && this.reconnectTimer !== null) {
+        clearTimeout(this.reconnectTimer);
+        this.reconnectTimer = null;
+        this.reconnectAttempt = 0;
+      }
       this.connect();
       return;
     }
-    if (this.lastAttempt !== null && this.lastAttempt.url === endpoint.url) return;
+    if (unchanged) return;
     // Detach BEFORE closing so the outgoing socket's close handler cannot stop
     // the replacement's timers or schedule a competing reconnect.
     this.detachSocket?.();

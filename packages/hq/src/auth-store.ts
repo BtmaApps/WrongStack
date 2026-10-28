@@ -53,9 +53,7 @@ import {
   restrictFilePermissions,
   SECRET_FILE_MODE,
 } from '@wrongstack/core/security';
-import { atomicWrite } from '@wrongstack/core/utils';
-import { isPidAlive } from '@wrongstack/core/utils';
-import { wstackGlobalRoot } from '@wrongstack/core/utils';
+import { atomicWrite, isPidAlive, wstackGlobalRoot } from '@wrongstack/core/utils';
 import { logHqAuthAudit } from './auth-audit.js';
 import { hashHqPassword, mintHqCookieSecret, verifyHqPassword } from './auth-passwords.js';
 
@@ -605,9 +603,8 @@ export function watchHqAuthFile(
         (next) => {
           if (!closed) onChange(next);
         },
-        () => {
-          // readHqAuthFile never throws for routine I/O — this is a
-          // belt-and-braces guard.
+        (err) => {
+          opts.warn?.(`HQ auth read failed: ${(err as Error).message}`);
         },
       );
     }, debounceMs);

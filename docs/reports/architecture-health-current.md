@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-28T17:22:47.568Z
+**Generated:** 2026-10-28T17:23:29.364Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,7 +9,7 @@
 |---|---:|
 | Workspace packages | 45 |
 | Production source files | 5251 |
-| Production source lines | 1156094 |
+| Production source lines | 1156104 |
 | Test files | 4605 |
 | Workspace dependency edges | 221 |
 | Relative module edges | 15741 |
@@ -138,9 +138,9 @@ None.
 | 694 | `packages/requirement-intake/src/service.ts` |
 | 693 | `packages/core/src/core/agent-loop.ts` |
 | 693 | `packages/core/src/execution/eternal-autonomy.ts` |
+| 693 | `packages/hq/src/publisher.ts` |
 | 693 | `packages/tui/src/hooks/use-provider-event-bridge.ts` |
 | 693 | `packages/vector-memory/src/store.ts` |
-| 693 | `packages/webui/src/components/MailboxPanel.tsx` |
 
 ## Exports only tests reference
 

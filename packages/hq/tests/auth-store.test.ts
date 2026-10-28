@@ -2,14 +2,15 @@ import { randomBytes, scrypt } from 'node:crypto';
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { wstackGlobalRoot } from '@wrongstack/core/utils';
 import { describe, expect, it, vi } from 'vitest';
 import {
   defaultHqDataDir,
   emptyHqAuthFile,
   ensureHqFirstRunAuthFile,
-  hashHqPassword,
   HQ_AUTH_FILE_VERSION,
   type HqAuthFile,
+  hashHqPassword,
   hqAuthFilePath,
   hqPasswordNeedsUpgrade,
   hqRuntimeFilePath,
@@ -27,7 +28,6 @@ import {
   writeHqAuthFile,
   writeHqRuntimeFile,
 } from '../src/auth-store.js';
-import { wstackGlobalRoot } from '@wrongstack/core/utils';
 
 async function withTempDir<T>(fn: (dir: string) => Promise<T>): Promise<T> {
   const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'hq-auth-'));
@@ -664,5 +664,23 @@ describe('HQ password KDF versioning', () => {
     ]) {
       expect(await verifyHqPassword(PASSWORD, bad)).toBe(false);
     }
+  });
+
+  it('invokes opts.warn when watchHqAuthFile encounters a corrupt auth.json write', async () => {
+    const { watchHqAuthFile } = await import('../src/auth-store.js');
+    await withTempDir(async (dir) => {
+      await writeHqAuthFile(dir, { version: 1, updatedAt: 'x' });
+      const warn = vi.fn();
+      const onChange = vi.fn();
+      const watcher = watchHqAuthFile(dir, onChange, { warn, debounceMs: 10 });
+      try {
+        await fs.writeFile(hqAuthFilePath(dir), '{corrupt-json', 'utf8');
+        await new Promise((r) => setTimeout(r, 60));
+        expect(warn).toHaveBeenCalledWith(expect.stringContaining('not valid JSON'));
+        expect(onChange).not.toHaveBeenCalled();
+      } finally {
+        watcher.close();
+      }
+    });
   });
 });

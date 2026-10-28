@@ -262,4 +262,12 @@ describe('HQ persistence I/O batching', () => {
     // 3 lines, even without a trailing newline.
     expect((await log.recent(10)).map((entry) => entry.seq)).toEqual([2, 1, 0]);
   });
+
+  it('enforces maxBytes in findTailStartOffset even when total lines are fewer than keepLines', async () => {
+    const { findTailStartOffset } = await import('../src/persistence/jsonl-io.js');
+    const filePath = path.join(dataDir, 'two-line-byte-cap.jsonl');
+    await fs.writeFile(filePath, `${'a'.repeat(99)}\n${'b'.repeat(99)}\n`, 'utf8');
+    const tail = await findTailStartOffset(filePath, 10, 150);
+    expect(tail).toEqual({ offset: 100, size: 200 });
+  });
 });

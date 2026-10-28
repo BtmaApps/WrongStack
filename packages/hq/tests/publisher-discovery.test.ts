@@ -192,4 +192,49 @@ describe('HqPublisher — endpoint auto-discovery', () => {
 
     publisher.close();
   });
+
+  it('refreshEndpoint cancels pending backoff when endpoint changes and re-dials on same-URL token rotation (F759)', () => {
+    let endpoint: { url: string; token?: string } | undefined = {
+      url: 'http://127.0.0.1:4100',
+      token: 'tok-1',
+    };
+    const dialed: string[] = [];
+    const sockets: FakeSocket[] = [];
+    const publisher = new HqPublisher({
+      url: 'http://127.0.0.1:3499',
+      client,
+      project,
+      reconnectBaseMs: 60_000,
+      reconnectMaxMs: 60_000,
+      resolveEndpoint: () => endpoint,
+      socketFactory: (url) => {
+        dialed.push(url);
+        const s = new FakeSocket();
+        sockets.push(s);
+        return s;
+      },
+    });
+
+    publisher.connect();
+    expect(dialed).toEqual(['ws://127.0.0.1:4100/ws/client?token=tok-1']);
+    // Simulate connection failure so reconnectTimer is armed:
+    sockets[0]?.close();
+    endpoint = { url: 'http://127.0.0.1:4200', token: 'tok-2' };
+    publisher.refreshEndpoint();
+    expect(dialed).toEqual([
+      'ws://127.0.0.1:4100/ws/client?token=tok-1',
+      'ws://127.0.0.1:4200/ws/client?token=tok-2',
+    ]);
+
+    sockets[1]?.open();
+    endpoint = { url: 'http://127.0.0.1:4200', token: 'tok-3' };
+    publisher.refreshEndpoint();
+    expect(dialed).toEqual([
+      'ws://127.0.0.1:4100/ws/client?token=tok-1',
+      'ws://127.0.0.1:4200/ws/client?token=tok-2',
+      'ws://127.0.0.1:4200/ws/client?token=tok-3',
+    ]);
+
+    publisher.close();
+  });
 });
