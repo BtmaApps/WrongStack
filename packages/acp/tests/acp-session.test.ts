@@ -1420,10 +1420,21 @@ describe('ACPSession', () => {
     t.respond(closeReq.id!, 'session/close', {});
     await new Promise((r) => setImmediate(r));
     const resumeReq = t.sent.find((m) => m.method === 'session/resume')!;
+    t.emit({
+      jsonrpc: '2.0',
+      method: 'session/update',
+      params: {
+        sessionId: 'sess_resumed',
+        update: {
+          sessionUpdate: 'agent_message_chunk',
+          content: { type: 'text', text: 'resume-warning-chunk' },
+        },
+      },
+    } as never as ACPMessage);
     t.respond(resumeReq.id!, 'session/resume', { sessionId: 'sess_resumed' });
     await resumeP;
 
-    expect(internal.scratch.text).toBe('');
+    expect(internal.scratch.text).toBe('resume-warning-chunk');
     const closeP = session.close();
     await new Promise((r) => setImmediate(r));
     const finalCloseReq = t.sent.filter((m) => m.method === 'session/close').at(-1)!;

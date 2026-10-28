@@ -2369,5 +2369,49 @@ describe('ACPProtocolHandler', () => {
       expect(map(new Error('boom'))).toEqual({ code: -32603, message: 'boom' });
       expect(map('boom')).toEqual({ code: -32603, message: 'boom' });
     });
+
+    it('preserves $/cancel_request mapping when a duplicate session/prompt request ID is rejected', async () => {
+      let resolveTurnStarted!: () => void;
+      const turnStarted = new Promise<void>((res) => {
+        resolveTurnStarted = res;
+      });
+      const { handler, transport } = makeHandler({
+        runTurn: async (input) => {
+          resolveTurnStarted();
+          return new Promise<RunTurnResult>((resolve) => {
+            input.signal.addEventListener('abort', () => resolve({ stopReason: 'cancelled' }), {
+              once: true,
+            });
+          });
+        },
+      });
+
+      await handler.handleMessage({ id: 1, method: 'initialize', params: { protocolVersion: 1 } });
+      await handler.handleMessage({ id: 2, method: 'session/new', params: { cwd: CWD_X } });
+      const sessionId = (transport.sent.at(-1) as any).result?.sessionId;
+
+      const activePrompt = handler.handleMessage({
+        id: 77,
+        method: 'session/prompt',
+        params: { sessionId, prompt: [{ type: 'text', text: 'first' }] },
+      });
+      await turnStarted;
+
+      await handler.handleMessage({
+        id: 77,
+        method: 'session/prompt',
+        params: { sessionId, prompt: [{ type: 'text', text: 'duplicate-id' }] },
+      });
+      await handler.handleMessage({
+        method: '$/cancel_request',
+        params: { requestId: 77 },
+      });
+      await activePrompt;
+
+      const successResp = transport.sent.find(
+        (m) => (m as any).id === 77 && (m as any).result !== undefined,
+      ) as any;
+      expect(successResp?.result?.stopReason).toBe('cancelled');
+    });
   });
 });

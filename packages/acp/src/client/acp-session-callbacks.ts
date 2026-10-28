@@ -281,6 +281,7 @@ async function authorizeAcpCallback(
       },
       callbackOptions,
     );
+    if (outcome.outcome === 'cancelled') return 'cancelled';
     return outcome.outcome === 'selected' &&
       outcome.optionId !== 'reject' &&
       outcome.optionId !== 'reject_once' &&
@@ -320,6 +321,9 @@ async function runPermissionWithDeadline(
   }
 
   try {
+    if (controller.signal.aborted) {
+      return await rejectOnAbort(controller.signal);
+    }
     return await Promise.race([
       permissionPolicy({
         toolCall: call.toolCall,

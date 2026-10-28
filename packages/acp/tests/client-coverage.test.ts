@@ -1634,4 +1634,51 @@ describe('ACPSession message routing (handleMessage)', () => {
       ),
     ).rejects.toThrow('permissionPolicy and trustBoundary are mutually exclusive');
   });
+
+  it('returns -32800 when permission outcome is cancelled or signal is pre-aborted without invoking write (F777)', async () => {
+    const { handleAcpFsRequest } = await import('../src/client/acp-session-callbacks.js');
+    const mockFileServer = { readTextFile: vi.fn(), writeTextFile: vi.fn() };
+    const sender1 = { sendResult: vi.fn(), sendErrorResponse: vi.fn() };
+    await handleAcpFsRequest(
+      {
+        jsonrpc: '2.0',
+        id: 7771,
+        method: 'fs/write_text_file',
+        params: { sessionId: 'sess_cov', path: '/tmp/cancelled-write.txt', content: 'no-write' },
+      } as never,
+      mockFileServer as never,
+      vi.fn().mockResolvedValue({ outcome: 'cancelled' }),
+      sender1,
+    );
+    expect(sender1.sendErrorResponse).toHaveBeenCalledWith(
+      7771,
+      -32800,
+      'filesystem write permission request cancelled or timed out',
+    );
+    expect(mockFileServer.writeTextFile).not.toHaveBeenCalled();
+
+    const preAborted = new AbortController();
+    preAborted.abort();
+    const policySpy = vi.fn().mockResolvedValue({ outcome: 'selected', optionId: 'allow_once' });
+    const sender2 = { sendResult: vi.fn(), sendErrorResponse: vi.fn() };
+    await handleAcpFsRequest(
+      {
+        jsonrpc: '2.0',
+        id: 7772,
+        method: 'fs/write_text_file',
+        params: { sessionId: 'sess_cov', path: '/tmp/cancelled-write.txt', content: 'no-write' },
+      } as never,
+      mockFileServer as never,
+      policySpy,
+      sender2,
+      { signal: preAborted.signal },
+    );
+    expect(policySpy).not.toHaveBeenCalled();
+    expect(sender2.sendErrorResponse).toHaveBeenCalledWith(
+      7772,
+      -32800,
+      'filesystem write permission request cancelled or timed out',
+    );
+    expect(mockFileServer.writeTextFile).not.toHaveBeenCalled();
+  });
 });

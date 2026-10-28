@@ -286,13 +286,17 @@ export class ACPProtocolHandler {
           return await this.handleSessionDelete(id, params);
         case 'session/prompt': {
           const sessionId = (params as { sessionId?: unknown } | null)?.sessionId;
-          if (typeof sessionId === 'string' && !this.sessions.get(sessionId)?.prompting) {
+          const tracked =
+            typeof sessionId === 'string' &&
+            !this.sessions.get(sessionId)?.prompting &&
+            !this.promptRequests.has(id);
+          if (tracked) {
             this.promptRequests.set(id, sessionId);
           }
           try {
             return await handleSessionPromptOp(this.sessionContext(), id, params);
           } finally {
-            this.promptRequests.delete(id);
+            if (tracked) this.promptRequests.delete(id);
           }
         }
         case 'session/set_mode':
