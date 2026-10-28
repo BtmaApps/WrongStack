@@ -467,6 +467,10 @@ export class LSPServer {
     return result();
   }
 
+  hasOpenDocument(uri: string): boolean {
+    return this.documentRevisions.has(uriKey(uri));
+  }
+
   notifyDidOpen(doc: TextDocumentItem): void {
     this.documentRevisions.set(uriKey(doc.uri), { version: doc.version });
     this.diagnosticsFresh.delete(uriKey(doc.uri));

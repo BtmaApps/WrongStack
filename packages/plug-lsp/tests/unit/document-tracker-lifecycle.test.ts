@@ -122,4 +122,54 @@ describe('document tracker byte and lifetime limits', () => {
     expect(tracker.get('deleted.ts')).toBeNull();
     expect(notifyDidClose).toHaveBeenCalledTimes(2);
   });
+
+  it('sends didOpen instead of didChange when a server with the same name no longer has the document open (F758)', async () => {
+    const makeServer = () => {
+      const openUris = new Set<string>();
+      const events: string[] = [];
+      return {
+        openUris,
+        events,
+        server: {
+          name: 'ts',
+          state: 'ready' as const,
+          config: { languages: ['typescript'] },
+          hasOpenDocument: (uri: string) => openUris.has(uri),
+          notifyDidOpen: (doc: { uri: string; version: number; text: string }) => {
+            openUris.add(doc.uri);
+            events.push(`didOpen:${doc.version}:${doc.text}`);
+          },
+          notifyDidChange: (doc: { uri: string; version: number }, text: string) => {
+            events.push(`didChange:${doc.version}:${text}`);
+          },
+          notifyDidClose: (uri: string) => {
+            openUris.delete(uri);
+            events.push(`didClose:${uri}`);
+          },
+        },
+      };
+    };
+
+    const s1 = makeServer();
+    let active = [s1.server];
+    const tracker = new DocumentTracker(
+      () => ({ list: () => active as never }),
+      { debug: vi.fn() } as unknown as Logger,
+      process.cwd(),
+    );
+
+    expect(await tracker.open('reopened.ts', 'v1')).toBe(true);
+    expect(s1.events).toEqual(['didOpen:1:v1']);
+
+    const s2 = makeServer();
+    active = [s2.server];
+    files.readFile.mockResolvedValueOnce('v2');
+    await tracker.fileWritten('reopened.ts');
+    expect(s2.events).toEqual(['didOpen:2:v2']);
+
+    s2.openUris.clear();
+    s2.events.length = 0;
+    expect(await tracker.open('reopened.ts', 'v3')).toBe(true);
+    expect(s2.events).toEqual(['didOpen:3:v3']);
+  });
 });

@@ -50,7 +50,10 @@ export class LSPRegistry {
       await Promise.all(
         this.list()
           .filter((s) => s.config.languages.some((lang) => languages.has(lang)))
-          .map((s) => startServerSafely(s, this.ctx.log)),
+          .map(async (s) => {
+            await startServerSafely(s, this.ctx.log);
+            if (s.state === 'ready') await this.tracker.reopenForServer(s);
+          }),
       );
     }
   }

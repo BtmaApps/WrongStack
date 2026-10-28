@@ -16,6 +16,21 @@ export function summarizeWorkspaceEdit(edit: WorkspaceEdit, cwd: string): string
 
 export function editsByPath(edit: WorkspaceEdit): Map<string, TextEdit[]> {
   const out = new Map<string, TextEdit[]>();
+  if (edit.documentChanges?.length) {
+    for (const change of edit.documentChanges) {
+      if ('textDocument' in change && Array.isArray(change.edits)) {
+        const target = uriToPathOrUri(change.textDocument.uri);
+        const validEdits = change.edits.filter((e): e is TextEdit => 'newText' in e);
+        const existing = out.get(target);
+        if (existing) {
+          existing.push(...validEdits);
+        } else {
+          out.set(target, [...validEdits]);
+        }
+      }
+    }
+    return out;
+  }
   for (const [uri, edits] of Object.entries(edit.changes ?? {})) {
     const target = uriToPathOrUri(uri);
     const existing = out.get(target);
@@ -23,19 +38,6 @@ export function editsByPath(edit: WorkspaceEdit): Map<string, TextEdit[]> {
       existing.push(...edits);
     } else {
       out.set(target, [...edits]);
-    }
-  }
-  const seenInDocChanges = new Set<string>();
-  for (const change of edit.documentChanges ?? []) {
-    if ('textDocument' in change && Array.isArray(change.edits)) {
-      const target = uriToPathOrUri(change.textDocument.uri);
-      const validEdits = change.edits.filter((e): e is TextEdit => 'newText' in e);
-      if (seenInDocChanges.has(target)) {
-        out.get(target)?.push(...validEdits);
-      } else {
-        seenInDocChanges.add(target);
-        out.set(target, [...validEdits]);
-      }
     }
   }
   return out;
