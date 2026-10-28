@@ -307,3 +307,7 @@ ideas.md
 .kozmos/
 .crush/
 *.exe
+
+npmtrial/
+
+*/_knowledge_graph/*
