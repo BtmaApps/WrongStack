@@ -1,0 +1,241 @@
+.project-live-fleet {
+  padding: 28px;
+}
+.project-live-fleet > header,
+.live-fleet-toolbar,
+.live-fleet-list :where(article) > header,
+.live-fleet-inspector > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.project-live-fleet h2 {
+  margin: 8px 0;
+  font-size: 28px;
+}
+.project-live-fleet p {
+  color: var(--muted);
+  line-height: 1.8;
+}
+.live-fleet-metrics {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  flex-wrap: wrap;
+  margin: 24px 0;
+  padding: 20px 0;
+  border-block: 1px solid var(--border);
+}
+.live-fleet-metrics strong {
+  font-size: 25px;
+  margin-right: 7px;
+}
+.live-fleet-metrics small {
+  margin-left: auto;
+  color: var(--muted);
+}
+.live-fleet-toolbar {
+  margin-bottom: 16px;
+}
+.live-fleet-toolbar > label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 200px;
+  max-width: 540px;
+}
+.live-fleet-toolbar input {
+  width: 100%;
+}
+.live-fleet-toolbar input,
+.live-fleet-review input,
+.live-fleet-review textarea,
+.live-fleet-review select {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  background: var(--base);
+  color: var(--text);
+  font: inherit;
+  min-width: 0;
+}
+.live-fleet-toolbar [aria-pressed="true"] {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+}
+.live-fleet-map {
+  height: 460px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--base);
+}
+.live-fleet-map :where(.react-flow__node) strong,
+.live-fleet-map :where(.react-flow__node) small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.live-fleet-map :where(.react-flow__node) small {
+  font-size: 11px;
+  margin-top: 8px;
+}
+.live-fleet-caption {
+  font-size: 11px;
+}
+.live-fleet-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 350px), 1fr));
+  gap: 16px;
+}
+.live-fleet-list article {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--raised);
+  padding: 18px;
+  min-width: 0;
+}
+.live-fleet-list :where(article) > header {
+  margin-bottom: 16px;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+.live-fleet-list header .text-link {
+  display: grid;
+  gap: 6px;
+  text-align: left;
+  min-width: 0;
+}
+.live-fleet-list :where(header) :where(.text-link) small {
+  color: var(--muted);
+  font-size: 10px;
+  overflow-wrap: anywhere;
+}
+.live-fleet-map .react-flow__node.selected {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.live-fleet-map .react-flow__controls-button {
+  background: var(--raised);
+  color: var(--text);
+  fill: var(--text);
+  border-color: var(--border);
+}
+.live-fleet-map .react-flow__controls-button svg {
+  fill: currentColor;
+}
+.live-fleet-map .react-flow__attribution {
+  background: var(--raised);
+  color: var(--muted);
+}
+.live-fleet-map .react-flow__attribution a {
+  color: inherit;
+}
+.live-fleet-list article > button {
+  display: grid;
+  gap: 8px;
+  text-align: left;
+  width: 100%;
+  margin: 10px 0;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--base);
+  color: var(--text);
+}
+.live-fleet-list :where(article > button) span,
+.live-fleet-list :where(article > button) small {
+  color: var(--muted);
+}
+.live-fleet-inspector {
+  border: 1px solid var(--border);
+  background: var(--raised);
+  padding: 22px;
+  border-radius: 8px;
+  margin-top: 22px;
+}
+.live-fleet-inspector dl {
+  display: grid;
+  grid-template-columns: 145px minmax(0, 1fr);
+  gap: 12px;
+  font-size: 12px;
+}
+.live-fleet-inspector dt {
+  color: var(--muted);
+}
+.live-fleet-inspector dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.live-fleet-empty {
+  display: grid;
+  justify-items: center;
+  padding: 64px 20px;
+  text-align: center;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+}
+.live-fleet-review {
+  max-width: 650px;
+  padding: 12px;
+}
+.live-fleet-review label {
+  display: grid;
+  gap: 8px;
+  margin: 18px 0;
+}
+.live-fleet-review code {
+  overflow-wrap: anywhere;
+}
+.live-fleet-activity {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+.live-fleet-activity > header,
+.live-fleet-activity article > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.live-fleet-activity > div {
+  display: grid;
+  gap: 14px;
+  max-height: 580px;
+  overflow: auto;
+  margin-top: 16px;
+}
+.live-fleet-activity article {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--base);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.live-fleet-activity time,
+.live-fleet-activity small {
+  font-size: 11px;
+  color: var(--muted);
+}
+.live-fleet-activity details {
+  margin: 12px 0;
+}
+.live-fleet-activity dd {
+  white-space: pre-wrap;
+}
+@media (max-width: 900px) {
+  .project-live-fleet {
+    padding: 18px;
+  }
+  .live-fleet-metrics small {
+    margin-left: 0;
+  }
+  .live-fleet-inspector dl {
+    grid-template-columns: 1fr;
+  }
+}

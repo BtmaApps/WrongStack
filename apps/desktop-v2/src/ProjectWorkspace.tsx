@@ -11,7 +11,7 @@ import {
   Terminal,
   Workflow,
 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { AutomationWorkspace } from './AutomationWorkspace';
 import { CodeAtlas } from './CodeAtlas';
 import { projectHttp } from './engine-http';
@@ -26,6 +26,10 @@ import { RuntimeGate } from './RuntimeGate';
 import { SkillLibrary } from './SkillLibrary';
 import type { DesktopController } from './useDesktop';
 import { useProjectEngine } from './useEngine';
+
+const ProjectLiveFleet = lazy(() =>
+  import('./ProjectLiveFleet').then((module) => ({ default: module.ProjectLiveFleet })),
+);
 
 export function ProjectWorkspace({ project, vm }: { project: Project; vm: DesktopController }) {
   const [promptsOpen, setPromptsOpen] = useState(false);
@@ -94,6 +98,18 @@ function ProjectContent({ project, vm }: { project: Project; vm: DesktopControll
           mode={vm.projectPage}
           initialPath={fileTarget}
         />
+      ) : vm.projectPage === 'live-fleet' ? (
+        <Suspense fallback={<p role="status">Opening live project fleet…</p>}>
+          <ProjectLiveFleet
+            key={project.id}
+            http={http}
+            projectRoot={project.root}
+            carrierId={state.sessionId}
+            nativeSessions={vm.snapshot.sessions.filter(
+              (session) => session.projectId === project.id,
+            )}
+          />
+        </Suspense>
       ) : vm.projectPage === 'chronicle' ? (
         <ProjectChronicle
           command={command}
@@ -308,6 +324,18 @@ function ProjectOverview({
           <div>
             <strong>Skills</strong>
             <span>Discover, author, and maintain your project capabilities.</span>
+          </div>
+          <ArrowRight size={16} />
+        </button>
+        <button
+          type="button"
+          aria-label="Open project live fleet"
+          onClick={() => vm.setProjectPage('live-fleet')}
+        >
+          <Network size={21} />
+          <div>
+            <strong>Live fleet</strong>
+            <span>Registered sessions, agents, recent activity and reviewed controls.</span>
           </div>
           <ArrowRight size={16} />
         </button>

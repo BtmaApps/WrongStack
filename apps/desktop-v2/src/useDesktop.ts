@@ -17,6 +17,7 @@ export type ProjectPage =
   | 'atlas'
   | 'automations'
   | 'chronicle'
+  | 'live-fleet'
   | 'skills'
   | 'files'
   | 'changes';
@@ -186,6 +187,7 @@ export function useDesktop() {
                 'atlas',
                 'automations',
                 'chronicle',
+                'live-fleet',
                 'skills',
                 'files',
                 'changes',
