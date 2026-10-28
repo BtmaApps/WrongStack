@@ -97,7 +97,22 @@ function foldEntry(next: TranscriptState, src: HqTranscriptEntry, recordSeen: bo
     // No open card (history was truncated) — fall through and append.
   }
   const key = entryKey(e);
-  if (next.seen.has(key)) return;
+  if (next.seen.has(key)) {
+    if (e.toolUseId !== undefined && e.toolInput !== undefined && !isToolRunning(e)) {
+      const idx = next.openTools.get(e.toolUseId);
+      if (idx !== undefined && isToolRunning(next.entries[idx]!)) {
+        const tgt = { ...next.entries[idx]! };
+        tgt.text = e.text || '';
+        if (e.durationMs !== undefined) tgt.durationMs = e.durationMs;
+        if (e.isError) {
+          tgt.role = 'error';
+          tgt.isError = true;
+        }
+        next.entries[idx] = tgt;
+      }
+    }
+    return;
+  }
   if (recordSeen || !isStreamedText(e)) next.seen.add(key);
   if (
     (e.role === 'tool' || e.role === 'error') &&

@@ -193,6 +193,16 @@ describe('groupMailboxEvents', () => {
     expect(projects[0]?.messages[0]?.message.timestamp).toBe('2026-07-03T09:00:00.000Z');
   });
 
+  it('keeps the newest snapshot copy when a reconnect re-sends the snapshot (F900)', () => {
+    const open = messageSummary({ mailId: 'same', messageId: 'same', completed: false });
+    const done = messageSummary({ mailId: 'same', messageId: 'same', completed: true });
+    const older = mailboxSnapshot('demo', [open]);
+    const newer = { ...mailboxSnapshot('demo', [done]), id: 'snap-demo-2', seq: 2 };
+    const { projects } = groupMailboxEvents(null, [older, newer]);
+    expect(projects[0]?.messages[0]?.message.completed).toBe(true);
+    expect(projects[0]?.incompleteCount).toBe(0);
+  });
+
   it('keeps the latest event when the same mailId arrives twice via events', () => {
     const a = messageSummary({
       mailId: 'same',

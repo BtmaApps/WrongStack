@@ -20,4 +20,11 @@ describe('automation command authoring', () => {
   it('ignores leading, repeated and trailing whitespace without adding empty argv entries', () => {
     expect(parseAutomationCommands('  bun   run test  \n\t\n')).toEqual([['bun', 'run', 'test']]);
   });
+  it('round-trips JSON escape sequences (\\t, \\n, \\r, \\b, \\f, \\uXXXX) inside double quotes (F789)', () => {
+    const commands = [
+      ['printf', 'col1\tcol2\nrow2\r\n'],
+      ['node', '-e', 'bell:\b form:\f nul:\x00 esc:\x1b'],
+    ];
+    expect(parseAutomationCommands(formatAutomationCommands(commands))).toEqual(commands);
+  });
 });

@@ -429,26 +429,29 @@ export function buildFleetTopology(snapshot: HqSnapshot | null): FleetTopology {
 
     for (const agent of session.agents) {
       const aId = agentKey(session.sessionId, agent.id);
-      nodes.push({
-        id: aId,
-        kind: 'agent',
-        label: agent.name || agent.id,
-        sub: agent.currentTool ?? agent.partialText,
-        status: agent.status,
-        chips: [
-          agent.status,
-          `${agent.iterations} iter`,
-          `${agent.toolCalls} tools`,
-          ...(agent.model !== undefined ? [agent.model] : []),
-        ],
-        machineId,
-        projectId: session.projectId,
-        ...(session.clientId !== undefined ? { clientId: session.clientId } : {}),
-        sessionId: session.sessionId,
-        agentId: agent.id,
-        agent,
-        session,
-      });
+      if (!nodeIds.has(aId)) {
+        nodes.push({
+          id: aId,
+          kind: 'agent',
+          label: agent.name || agent.id,
+          sub: agent.currentTool ?? agent.partialText,
+          status: agent.status,
+          chips: [
+            agent.status,
+            `${agent.iterations} iter`,
+            `${agent.toolCalls} tools`,
+            ...(agent.model !== undefined ? [agent.model] : []),
+          ],
+          machineId,
+          projectId: session.projectId,
+          ...(session.clientId !== undefined ? { clientId: session.clientId } : {}),
+          sessionId: session.sessionId,
+          agentId: agent.id,
+          agent,
+          session,
+        });
+        nodeIds.add(aId);
+      }
       addEdge(edges, edgeIds, tId, aId);
     }
   }

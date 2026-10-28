@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-28T18:28:11.591Z",
+  "generatedAt": "2026-10-28T18:28:40.806Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 45,
-    "sourceFiles": 5384,
+    "sourceFiles": 5386,
     "testFiles": 4710,
-    "sourceLines": 1193657,
+    "sourceLines": 1193790,
     "workspaceEdges": 222,
-    "moduleEdges": 16183,
+    "moduleEdges": 16188,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -25,7 +25,9 @@
     "testOnlyExports": 969
   },
   "errors": [
-    "2 unexcepted module cycle(s)"
+    "2 unexcepted module cycle(s)",
+    "apps/desktop-v2/src/ModelCatalogSettings.tsx: hotspot grew from 772 to 775 lines; review and update the ratchet in the same change",
+    "apps/desktop-v2/src/ModelCatalogSettings.tsx: relative import fan-out increased from 9 to 10; review and update the ratchet in the same change"
   ],
   "packageCycles": [],
   "coreAreas": {
@@ -387,7 +389,7 @@
     {
       "name": "@wrongstack/desktop-v2",
       "dir": "apps/desktop-v2",
-      "sourceFiles": 216,
+      "sourceFiles": 218,
       "testFiles": 77,
       "workspaceDependencies": [
         "@wrongstack/contracts",
@@ -30803,8 +30805,8 @@
     },
     {
       "file": "apps/desktop-v2/src/ModelCatalogSettings.tsx",
-      "lines": 772,
-      "relativeImports": 9
+      "lines": 775,
+      "relativeImports": 10
     },
     {
       "file": "apps/desktop-v2/src/ProjectAgentRoster.tsx",
@@ -30950,8 +30952,8 @@
     },
     {
       "file": "apps/desktop-v2/src/ModelCatalogSettings.tsx",
-      "lines": 772,
-      "relativeImports": 9
+      "lines": 775,
+      "relativeImports": 10
     },
     {
       "file": "packages/webui-server/src/server/provider-routes.ts",

@@ -178,6 +178,41 @@ describe('applyLiveBatch', () => {
     expect(s.entries).toHaveLength(1);
     expect(s.entries[0]?.role).toBe('error');
   });
+
+  it('preserves completed live tool result when applyFetch resolves with an older running snapshot for the same toolUseId (F761)', () => {
+    let s = createTranscriptState();
+    s = applyLiveBatch(s, 1, [
+      e({
+        role: 'tool',
+        tool: 'bash',
+        toolUseId: 'tu_race_1',
+        toolInput: '{"cmd":"bun run test"}',
+        text: '',
+      }),
+    ]);
+    s = applyLiveBatch(s, 2, [
+      e({
+        role: 'tool',
+        tool: 'bash',
+        toolUseId: 'tu_race_1',
+        text: 'All tests passed',
+        durationMs: 185,
+      }),
+    ]);
+    s = applyFetch(s, [
+      e({
+        role: 'tool',
+        tool: 'bash',
+        toolUseId: 'tu_race_1',
+        toolInput: '{"cmd":"bun run test"}',
+        text: '',
+      }),
+    ]);
+    expect(s.entries).toHaveLength(1);
+    expect(isToolRunning(s.entries[0]!)).toBe(false);
+    expect(s.entries[0]?.text).toBe('All tests passed');
+    expect(s.entries[0]?.durationMs).toBe(185);
+  });
 });
 
 describe('entryKey', () => {

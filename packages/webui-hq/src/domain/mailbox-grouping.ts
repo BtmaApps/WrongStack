@@ -139,8 +139,9 @@ function dedupeByMailId(messages: FlatMessage[]): FlatMessage[] {
   for (const m of messages) {
     const prev = deduped.get(m.message.mailId);
     // Prefer the event copy when both snapshot + event exist for the same
-    // mailId — events carry a fresh timestamp + completion flag.
-    if (prev === undefined || m.source === 'event') {
+    // mailId — events carry a fresh timestamp + completion flag. Between two
+    // snapshots (one is re-sent on every reconnect) the later one is current.
+    if (prev === undefined || m.source === 'event' || prev.source === 'snapshot') {
       deduped.set(m.message.mailId, m);
     }
   }

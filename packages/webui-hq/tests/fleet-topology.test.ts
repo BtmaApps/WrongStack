@@ -340,6 +340,40 @@ describe('buildFleetTopology', () => {
     const terminals = topology.nodes.filter((n) => n.kind === 'terminal');
     expect(terminals.map((n) => n.sessionId)).toEqual(['sess-1']);
   });
+
+  it('deduplicates agent nodes when liveSessions contains duplicate session or agent entries (F850)', () => {
+    const session = {
+      sessionId: 'sess-1',
+      clientKind: 'tui' as const,
+      machineId: 'machine-1',
+      hostname: 'devbox',
+      pid: 4242,
+      projectId: 'proj-1',
+      projectName: 'WrongStack',
+      projectRoot: 'D:/Codebox/PROJECTS/WrongStack',
+      status: 'active' as const,
+      startedAt: '2026-07-09T00:00:00.000Z',
+      lastActivityAt: '2026-07-09T00:01:00.000Z',
+      agentCount: 1,
+      agents: [
+        {
+          id: 'agent-1',
+          name: 'Planner',
+          status: 'running' as const,
+          iterations: 2,
+          toolCalls: 3,
+        },
+      ],
+    };
+    const topology = buildFleetTopology(
+      baseSnapshot({
+        liveSessions: [session, session],
+      }),
+    );
+    const agentNodes = topology.nodes.filter((n) => n.kind === 'agent');
+    expect(agentNodes).toHaveLength(1);
+    expect(agentNodes[0]?.id).toBe('agent:sess-1:agent-1');
+  });
 });
 
 describe('layoutFleetTopology', () => {

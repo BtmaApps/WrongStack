@@ -23,6 +23,7 @@ type FailedRunResumePlan =
  */
 function planFailedRunResume(input: {
   payload: unknown;
+  envelopeSessionId?: unknown;
   sessionId: string;
   autonomy: unknown;
   ownedRequestId: string | undefined;
@@ -31,7 +32,8 @@ function planFailedRunResume(input: {
   baseDelayMs: number;
 }): FailedRunResumePlan {
   const p = record(input.payload);
-  if (typeof p.sessionId === 'string' && p.sessionId !== input.sessionId) return { kind: 'ignore' };
+  const frameSessionId = text(input.envelopeSessionId) || text(p.sessionId);
+  if (frameSessionId && frameSessionId !== input.sessionId) return { kind: 'ignore' };
   if (p.status === 'done') return { kind: 'reset' };
   const error = record(p.error);
   const resumable = isResumableRunFailure(text(p.status), {
@@ -98,6 +100,7 @@ export function useFailedRunResume(deps: {
       const s = current.current;
       const plan = planFailedRunResume({
         payload: frame.payload,
+        envelopeSessionId: record(frame).sessionId,
         sessionId: s.id,
         autonomy: s.prefs.autonomy,
         ownedRequestId: ownedRuns.current.get(s.id),
@@ -105,8 +108,14 @@ export function useFailedRunResume(deps: {
         resumesSoFar: resumes.get(s.id) ?? 0,
         baseDelayMs: Number(s.prefs.autonomyDelayMs) || 0,
       });
-      if (plan.kind === 'reset') resumes.delete(s.id);
-      if (plan.kind === 'paused') notice(plan.notice);
+      if (plan.kind === 'reset') {
+        clearTimeout(timer);
+        resumes.delete(s.id);
+      }
+      if (plan.kind === 'paused') {
+        clearTimeout(timer);
+        notice(plan.notice);
+      }
       if (plan.kind !== 'resume') return;
       resumes.set(s.id, plan.attempt);
       const owner = s.id;

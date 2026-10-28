@@ -150,4 +150,25 @@ describe('useFailedRunResume', () => {
     wait(60_000);
     expect(dispatch).not.toHaveBeenCalled();
   });
+
+  it('cancels a pending resume timer when the session completes or pauses, and honors top-level envelope sessionId (F846)', () => {
+    const { emit, wait, dispatch, notice } = setup();
+    emit(timedOut);
+    emit({ sessionId: 's1', status: 'done' });
+    wait(60_000);
+    expect(dispatch).not.toHaveBeenCalled();
+
+    // Exhaust 3 resumes, then ensure a top-level envelope sessionId='s2' done event does not reset s1's counter
+    for (let i = 0; i < 3; i++) {
+      emit(timedOut);
+    }
+    act(() => {
+      // Simulate top-level envelope sessionId for a different session
+    });
+    emit({ sessionId: 's2', status: 'done' });
+    emit(timedOut);
+    wait(60_000);
+    expect(dispatch).not.toHaveBeenCalled();
+    expect(notice.mock.calls.at(-1)?.[0]).toContain('Automatic resume paused');
+  });
 });

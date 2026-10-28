@@ -12,7 +12,22 @@ export function parseAutomationCommands(text: string): string[][] {
         const char = line[i]!;
         if (char === '\\' && quote !== "'") {
           if (++i >= line.length) throw new Error('A command ends with an unfinished escape');
-          word += line[i];
+          const esc = line[i]!;
+          if (quote === '"') {
+            if (esc === 'n') word += '\n';
+            else if (esc === 'r') word += '\r';
+            else if (esc === 't') word += '\t';
+            else if (esc === 'b') word += '\b';
+            else if (esc === 'f') word += '\f';
+            else if (esc === 'u' && /^[0-9a-fA-F]{4}$/.test(line.slice(i + 1, i + 5))) {
+              word += String.fromCharCode(Number.parseInt(line.slice(i + 1, i + 5), 16));
+              i += 4;
+            } else {
+              word += esc;
+            }
+          } else {
+            word += esc;
+          }
           started = true;
         } else if (quote) {
           if (char === quote) quote = '';

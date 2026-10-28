@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-28T18:28:11.591Z
+**Generated:** 2026-10-28T18:28:40.806Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -8,11 +8,11 @@
 | Measure | Value |
 |---|---:|
 | Workspace packages | 45 |
-| Production source files | 5384 |
-| Production source lines | 1193657 |
+| Production source files | 5386 |
+| Production source lines | 1193790 |
 | Test files | 4710 |
 | Workspace dependency edges | 222 |
-| Relative module edges | 16183 |
+| Relative module edges | 16188 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 5 |
@@ -22,6 +22,8 @@
 ## Verification result
 
 - 2 unexcepted module cycle(s)
+- apps/desktop-v2/src/ModelCatalogSettings.tsx: hotspot grew from 772 to 775 lines; review and update the ratchet in the same change
+- apps/desktop-v2/src/ModelCatalogSettings.tsx: relative import fan-out increased from 9 to 10; review and update the ratchet in the same change
 
 ## Workspace packages
 
@@ -38,7 +40,7 @@
 | @wrongstack/contracts | 126 | 4 | @wrongstack/kanban, @wrongstack/primitives |
 | @wrongstack/coordination | 190 | 183 | @wrongstack/agent-catalog, @wrongstack/contracts, @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/core | 635 | 686 | @wrongstack/agent-catalog, @wrongstack/contracts, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
-| @wrongstack/desktop-v2 | 216 | 77 | @wrongstack/contracts, @wrongstack/core, @wrongstack/webui-protocol, @wrongstack/webui-server |
+| @wrongstack/desktop-v2 | 218 | 77 | @wrongstack/contracts, @wrongstack/core, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/goal | 22 | 22 | @wrongstack/contracts, @wrongstack/core, @wrongstack/worktree |
 | @wrongstack/governance | 45 | 37 | @wrongstack/persistence |
 | @wrongstack/hq | 62 | 42 | @wrongstack/contracts, @wrongstack/core, @wrongstack/persistence, @wrongstack/primitives |
@@ -107,7 +109,7 @@ None.
 | 800 | `packages/vibeui/src/components/resource-hub.tsx` |
 | 778 | `apps/desktop-v2/src/ProjectChimera.tsx` |
 | 777 | `packages/webui-server/src/server/memory-handlers.ts` |
-| 772 | `apps/desktop-v2/src/ModelCatalogSettings.tsx` |
+| 775 | `apps/desktop-v2/src/ModelCatalogSettings.tsx` |
 | 766 | `packages/webui-server/src/server/provider-routes.ts` |
 | 762 | `apps/desktop-v2/src/ProjectSdd.tsx` |
 | 756 | `packages/cli/src/fleet/host-skill-companion.ts` |

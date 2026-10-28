@@ -380,6 +380,21 @@ describe('subagent observability', () => {
     expect(result).toEqual({ text: example, steps: [] });
   });
 
+  it('preserves text after <nextsteps-complete/> and hides a trailing unclosed <nextsteps> after an earlier closed empty block (F787)', () => {
+    expect(assistantProjection('<nextsteps-complete/>\nAll requested tasks are complete.')).toEqual(
+      {
+        text: 'All requested tasks are complete.',
+        steps: [],
+      },
+    );
+    expect(
+      assistantProjection('Intro.\n<nextsteps></nextsteps>\n<nextsteps>\n1. Streaming step'),
+    ).toEqual({
+      text: 'Intro.',
+      steps: [],
+    });
+  });
+
   it('finalizes streaming thinking entries on provider.response and appends run.result finalText after a tool-use assistant message (F662)', () => {
     let state = reduceFrame(start(), {
       type: 'provider.thinking_delta',
