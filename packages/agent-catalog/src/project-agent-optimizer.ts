@@ -103,6 +103,11 @@ async function complete(
     ...(options.maxTokens !== undefined ? { maxTokens: options.maxTokens } : {}),
   };
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  if (options.signal?.aborted) {
+    throw options.signal.reason instanceof Error
+      ? options.signal.reason
+      : new Error('optimization aborted');
+  }
   const controller = new AbortController();
   let timedOut = false;
   const timer = setTimeout(() => {
@@ -204,7 +209,15 @@ export async function optimizeProjectAgentLearning(
           options,
         );
         if (synthesized) body = synthesized;
-      } catch {
+      } catch (err) {
+        if (options.signal?.aborted) {
+          return {
+            ...base,
+            status: 'failed',
+            skills: refreshed,
+            error: err instanceof Error ? err.message : 'optimization aborted',
+          };
+        }
         // Fall back to the merged rendering: an un-distilled addendum is still
         // the project's practice for that skill.
       }

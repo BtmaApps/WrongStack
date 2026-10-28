@@ -253,4 +253,32 @@ describe('dispatch outcomes', () => {
     const line = JSON.parse(readFileSync(dispatchLogPath(root), 'utf8').trim());
     expect(line.subagentId).toBe('w9');
   });
+
+  it('ignores prototype keys in source/method and counts model="toString" numerically (F760)', () => {
+    const root = newRoot();
+    recordDispatch(
+      entry({
+        role: 'explorer',
+        source: 'toString' as never,
+        method: 'valueOf' as never,
+        subagentId: 'w-proto',
+      }),
+      root,
+    );
+    recordDispatchOutcome(
+      {
+        at: '2026-10-20T10:00:00.000Z',
+        subagentId: 'w-proto',
+        role: 'explorer',
+        status: 'success',
+        model: 'toString',
+      },
+      root,
+    );
+    const summary = summarizeDispatchLog(root);
+    const explorer = summary.roles.find((r) => r.role === 'explorer');
+    expect(explorer?.models['toString']).toBe(1);
+    expect(Object.hasOwn(summary.totals.bySource, 'toString')).toBe(false);
+    expect(Object.hasOwn(summary.totals.byMethod, 'valueOf')).toBe(false);
+  });
 });

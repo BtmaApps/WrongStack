@@ -367,11 +367,11 @@ export function summarizeDispatchLog(projectRoot?: string): DispatchSummary {
     if (typeof entry.at === 'string' && (!row.lastAt || entry.at > row.lastAt)) {
       row.lastAt = entry.at;
     }
-    if (entry.source in row.bySource) {
+    if (Object.hasOwn(row.bySource, entry.source)) {
       row.bySource[entry.source] += 1;
       summary.totals.bySource[entry.source] += 1;
     }
-    if (entry.method && entry.method in row.byMethod) {
+    if (entry.method && Object.hasOwn(row.byMethod, entry.method)) {
       row.byMethod[entry.method] += 1;
       summary.totals.byMethod[entry.method] += 1;
     }
@@ -400,12 +400,12 @@ export function summarizeDispatchLog(projectRoot?: string): DispatchSummary {
     if (typeof outcome.costUsd === 'number') row.costUsd += outcome.costUsd;
     if (outcome.model) {
       const label = outcome.provider ? `${outcome.provider}/${outcome.model}` : outcome.model;
-      row.models[label] = (row.models[label] ?? 0) + 1;
+      row.models[label] = (Object.hasOwn(row.models, label) ? row.models[label]! : 0) + 1;
     }
-    if (spawn && spawn.source in summary.totals.outcomesBySource) {
+    if (spawn && Object.hasOwn(summary.totals.outcomesBySource, spawn.source)) {
       summary.totals.outcomesBySource[spawn.source][outcome.status] += 1;
     }
-    if (spawn?.method && spawn.method in summary.totals.outcomesByMethod) {
+    if (spawn?.method && Object.hasOwn(summary.totals.outcomesByMethod, spawn.method)) {
       summary.totals.outcomesByMethod[spawn.method][outcome.status] += 1;
     }
   }

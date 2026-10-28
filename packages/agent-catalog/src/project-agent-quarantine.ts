@@ -197,8 +197,8 @@ export function hasDirectiveContent(text: string): boolean {
     const trimmed = line.trimStart();
     if (!trimmed || trimmed.startsWith('#') || trimmed.startsWith('>')) return false;
     if (/^-{3,}\s*$/.test(trimmed)) return false;
-    // The `*Distilled … · N directives*` footer is a stamp, not a directive.
-    if (/^\*[^*].*\*$/.test(trimmed)) return false;
+    // The `*Distilled … · N directives*` or `_(truncated at …)_` footer is a stamp, not a directive.
+    if (/^(?:\*[^*].*\*|_[^_].*_)$/.test(trimmed.trimEnd())) return false;
     return bareClaim(line).length >= MIN_INSTRUCTIVE_LENGTH;
   });
 }

@@ -28,6 +28,8 @@ import {
   updateProjectAgentLearningPolicy,
   validateProjectAgentConfig,
 } from '../src/project-agent-identity.js';
+import { optimizeProjectAgentLearning } from '../src/project-agent-optimizer.js';
+import { hasDirectiveContent } from '../src/project-agent-quarantine.js';
 
 describe('project agent self-learning lifecycle', () => {
   let projectRoot = '';
@@ -945,5 +947,36 @@ describe('non-Latin directives', () => {
       },
     );
     expect(merged).toHaveLength(2);
+  });
+
+  it('honors pre-aborted signals in optimizeProjectAgentLearning and ignores underscore truncation footers in hasDirectiveContent (F844)', async () => {
+    expect(
+      hasDirectiveContent(
+        '# Consolidated Role\n\n> Standing header\n\n_(truncated at 1048576 bytes; run again to re-distill)_\n',
+      ),
+    ).toBe(false);
+
+    captureLearnedFromAgentOutputDetailed(
+      'Done.\n\n## LEARNED\n- [skill:testing] Always validate input parameters before querying SQLite.\n- [skill:debugging] Always close temporary database handles in a finally block.',
+      'executor',
+      projectRoot,
+    );
+    const controller = new AbortController();
+    controller.abort(new Error('cancelled'));
+    let llmCalls = 0;
+    const res = await optimizeProjectAgentLearning('executor', projectRoot, {
+      signal: controller.signal,
+      llm: {
+        model: 'test-model',
+        provider: {
+          complete: async () => {
+            llmCalls++;
+            return { content: [{ type: 'text', text: '# Distilled\n- Valid directive.' }] };
+          },
+        } as never,
+      },
+    });
+    expect(llmCalls).toBe(0);
+    expect(res.status).toBe('failed');
   });
 });
