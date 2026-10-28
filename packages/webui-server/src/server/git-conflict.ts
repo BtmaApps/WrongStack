@@ -3,7 +3,7 @@ import { chmod, mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import type { WebSocket } from 'ws';
 import { gitReviewBytes, gitReviewCommand, gitReviewTarget } from './git-hunks.js';
-import { send } from './ws-utils.js';
+import { errMessage, send } from './ws-utils.js';
 
 type Side = { mode: string; oid: string; bytes: Buffer; text: string | null };
 function decode(bytes: Buffer): string | null {
@@ -196,7 +196,7 @@ export async function handleGitConflict(
       type,
       payload: {
         ok: false,
-        error: prefix + (error instanceof Error ? error.message : String(error)),
+        error: prefix + errMessage(error),
       },
     });
   }

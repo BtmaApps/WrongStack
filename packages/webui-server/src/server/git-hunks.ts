@@ -6,7 +6,7 @@ import { gitIsolationEnv } from '@wrongstack/primitives';
 import type { WebSocket } from 'ws';
 import { isUnsafeRelativePath, repoRelativePrefix } from './git-paths.js';
 import { isPathInside } from './path-containment.js';
-import { send } from './ws-utils.js';
+import { errMessage, send } from './ws-utils.js';
 
 export async function gitReviewBytes(cwd: string, args: string[], input?: string) {
   const isolation = await gitIsolationEnv(cwd, { timeoutMs: 3000 });
@@ -174,7 +174,7 @@ export async function handleGitHunks(
   } catch (error) {
     send(ws, {
       type,
-      payload: { ok: false, error: error instanceof Error ? error.message : String(error) },
+      payload: { ok: false, error: errMessage(error) },
     });
   }
 }
