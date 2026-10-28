@@ -107,6 +107,9 @@ explicit engine executable. There is no fallback to `wstack --webui`.
   cooldown and custom file-edit tool matching. Replay trace exposes its destination and actual
   open-record capacity, including automatic destination reset. Signal writes retain other live
   switches. Brain section shortcuts and settings-search terms reduce navigation through the form.
+  Monitor inheritance has a reviewed reset with default preview and undo before Save. Reset removes
+  the whole monitor override group, rejects intervening monitor changes and preserves other Brain
+  policies and independent trace edits; saved readback confirms that overrides were removed.
 - Fleet & companions profile settings: concurrent-agent capacity without an arbitrary desktop
   ceiling, shared fleet-chat detail, Memory/Explore/Skill Companion eligibility and next-step
   prediction/tool availability. Explicit save/readback, draft discard and stale-field conflict

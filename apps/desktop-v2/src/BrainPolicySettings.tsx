@@ -6,6 +6,7 @@ import {
   type BrainDraft,
   brainDraft,
   brainGroups,
+  brainMonitorResetPatch,
   brainPatch,
   brainSnapshot,
   brainValue,
@@ -32,6 +33,7 @@ export function BrainPolicySettings({ command }: { command: EngineCommand }) {
   const [busy, setBusy] = useState(false),
     [error, setError] = useState(''),
     [notice, setNotice] = useState('');
+  const [resetMonitor, setResetMonitor] = useState(false);
   const generation = useRef(0),
     saving = useRef(false);
   const read = useCallback(
@@ -42,6 +44,7 @@ export function BrainPolicySettings({ command }: { command: EngineCommand }) {
     [command],
   );
   const accept = (config: Record<string, unknown>) => {
+    setResetMonitor(false);
     setSnapshot(config);
     const values = brainDraft(config);
     setBase(values);
@@ -72,6 +75,7 @@ export function BrainPolicySettings({ command }: { command: EngineCommand }) {
     };
   }, [reload]);
   const dirty = [
+    ...(resetMonitor ? ['monitor reset'] : []),
     ...Object.keys(draft).filter((key) => !sameSetting(draft[key], base[key])),
     ...(['pool', 'strategy', 'voters', 'seats', 'judge'] as const).filter(
       (key) => !sameSetting(targets[key], targetBase[key]),
@@ -90,8 +94,19 @@ export function BrainPolicySettings({ command }: { command: EngineCommand }) {
     setNotice('');
     try {
       const live = await read();
+      const policyDraft = resetMonitor
+        ? {
+            ...draft,
+            ...Object.fromEntries(
+              Object.entries(base).filter(([key]) => key.startsWith('monitor.')),
+            ),
+          }
+        : draft;
       const patch = mergeBrainPatches(
-        brainPatch(base, draft, brainDraft(live), live),
+        {
+          ...brainPatch(base, policyDraft, brainDraft(live), live),
+          ...(resetMonitor ? brainMonitorResetPatch(snapshot ?? {}, live) : {}),
+        },
         brainTargetsPatch(targetBase, targets, brainTargetsDraft(live)),
       );
       if (!Object.keys(patch).length) {
@@ -110,6 +125,10 @@ export function BrainPolicySettings({ command }: { command: EngineCommand }) {
           'The Brain policy was not confirmed on disk. Reload its live configuration before retrying.',
         );
       const saved = await read();
+      if (resetMonitor && Object.keys(record(saved['monitor'])).length)
+        throw Error(
+          'Monitor overrides were not cleared. Reload saved Brain values before retrying.',
+        );
       verifyBrainTargets(patch, saved);
       for (const field of brainGroups.flatMap((group) => group.fields)) {
         const desired = brainValue(patch, field.key);
@@ -243,6 +262,45 @@ export function BrainPolicySettings({ command }: { command: EngineCommand }) {
                     <h3>{group.title}</h3>
                     <p>{group.description}</p>
                   </header>
+                  {group.title === 'Runtime monitor' && (
+                    <div className="brain-monitor-reset">
+                      <p>
+                        {resetMonitor
+                          ? 'Engine defaults are previewed below. Save Brain policy to remove every monitor override, including custom tool matching and additional signal settings.'
+                          : Object.keys(record(snapshot['monitor'])).length
+                            ? 'This profile has saved monitor overrides. Resetting removes the entire monitor override group; other Brain settings are kept.'
+                            : 'This profile inherits the engine monitor defaults.'}
+                      </p>
+                      <button
+                        type="button"
+                        className="button secondary small"
+                        disabled={
+                          !resetMonitor &&
+                          !Object.keys(record(snapshot['monitor'])).length &&
+                          !Object.keys(draft).some(
+                            (key) =>
+                              key.startsWith('monitor.') && !sameSetting(draft[key], base[key]),
+                          )
+                        }
+                        onClick={() => {
+                          const monitor = resetMonitor ? base : brainDraft({ monitor: {} });
+                          setDraft((current) => ({
+                            ...current,
+                            ...Object.fromEntries(
+                              Object.entries(monitor).filter(([key]) => key.startsWith('monitor.')),
+                            ),
+                          }));
+                          setResetMonitor(!resetMonitor);
+                          setError('');
+                          setNotice('');
+                        }}
+                      >
+                        {resetMonitor
+                          ? 'Keep saved monitor overrides'
+                          : 'Use inherited monitor defaults'}
+                      </button>
+                    </div>
+                  )}
                   <div className="brain-field-grid">
                     {group.fields.map((field) => (
                       <label
@@ -259,6 +317,7 @@ export function BrainPolicySettings({ command }: { command: EngineCommand }) {
                             id={`brain-${field.key}`}
                             type="checkbox"
                             aria-label={field.label}
+                            disabled={resetMonitor && field.key.startsWith('monitor.')}
                             checked={draft[field.key] === true}
                             onChange={(event) => change(field.key, event.target.checked)}
                           />
@@ -266,6 +325,7 @@ export function BrainPolicySettings({ command }: { command: EngineCommand }) {
                           <select
                             id={`brain-${field.key}`}
                             aria-label={field.label}
+                            disabled={resetMonitor && field.key.startsWith('monitor.')}
                             required={!field.optional}
                             value={String(draft[field.key] ?? '')}
                             onChange={(event) => change(field.key, event.target.value)}
@@ -285,6 +345,7 @@ export function BrainPolicySettings({ command }: { command: EngineCommand }) {
                           <textarea
                             id={`brain-${field.key}`}
                             aria-label={field.label}
+                            disabled={resetMonitor && field.key.startsWith('monitor.')}
                             rows={5}
                             value={String(draft[field.key] ?? '')}
                             onChange={(event) => change(field.key, event.target.value)}
@@ -294,6 +355,7 @@ export function BrainPolicySettings({ command }: { command: EngineCommand }) {
                             id={`brain-${field.key}`}
                             type={field.kind === 'text' ? 'text' : 'number'}
                             aria-label={field.label}
+                            disabled={resetMonitor && field.key.startsWith('monitor.')}
                             min={field.min}
                             max={field.max}
                             step={field.step ?? 1}
@@ -321,6 +383,7 @@ export function BrainPolicySettings({ command }: { command: EngineCommand }) {
                 disabled={busy || !dirty.length}
                 onClick={() => {
                   setDraft(base);
+                  setResetMonitor(false);
                   setTargets(targetBase);
                   setError('');
                   setNotice('');

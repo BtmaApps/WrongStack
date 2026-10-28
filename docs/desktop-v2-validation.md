@@ -2552,3 +2552,26 @@ Verification on the shared working snapshot:
 - Prior native acceptance evidence in this document remains tied to its recorded portable hashes.
   This commit checkpoint does not certify a fresh clean checkout, full repository release gate,
   hosted CI or installed application replacement.
+## Monitor override inheritance reset (2026-10-28)
+
+- Native Brain policy now distinguishes saved monitor overrides from inherited engine defaults.
+  The reset button previews defaults without writing. The operator can keep saved overrides or
+  explicitly save the reset. Preview fields are disabled to avoid mixing overrides with a reset.
+- Reset uses the existing `monitor: null` engine contract, removing the entire override group,
+  including custom file-edit matching and additional signal settings. It does not pin today's
+  defaults as explicit values. A changed monitor group is rejected before writing; an already
+  cleared live monitor is accepted. Independent Brain and trace edits remain separate.
+- Saved readback verifies that no monitor overrides remain. Discard/reload clear pending reset
+  intent. Native acceptance verifies preview/undo, no early write, stale-reset refusal, combined
+  trace-capacity edit, actual config-file removal, other council/risk preservation and inherited
+  values after renderer reload. No model completion requests were made.
+- Desktop: **351 tests / 77 files PASS**, **223 source files typecheck PASS**. Focused Biome:
+  **4 files PASS**, without warnings. Fresh engine build and Tauri release build: **PASS**.
+- Bundled native `--brain-policy`: **exit 0 / PASS**; portable identity
+  `85b23f01e9bc-a06bfc7bb563`, engine bundled and checksums verified. Existing seat, monitor,
+  trace, theme and compact-layout acceptance also passed. Inspected
+  `.temp_files/desktop-v2-native/brain-policy/native-brain-monitor-inherited.png`.
+  Logs: `.temp_files/desktop-v2-native/brain-monitor-reset-native.log` and `.err`;
+  acceptance result: `.temp_files/desktop-v2-native/brain-policy/native-result.json`.
+- The native application still requires separate real council execution/quality acceptance,
+  cross-runtime policy refresh and broader release certification. No installed binary was replaced.

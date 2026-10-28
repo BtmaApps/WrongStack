@@ -329,6 +329,16 @@ export const brainGroups: { title: string; description: string; fields: BrainFie
   },
 ];
 export type BrainDraft = Record<string, string | boolean>;
+/** Reset the whole configured monitor, including unknown future overrides, without erasing peers. */
+export function brainMonitorResetPatch(
+  baseline: Record<string, unknown>,
+  live: Record<string, unknown>,
+): Record<string, unknown> {
+  const current = record(live['monitor']);
+  if (Object.keys(current).length && !sameSetting(record(baseline['monitor']), current))
+    throw Error('Monitor overrides changed elsewhere. Reload saved Brain values before resetting.');
+  return { monitor: null };
+}
 export const brainValue = (config: Record<string, unknown>, path: string): unknown =>
   path.split('.').reduce<unknown>((value, key) => record(value)[key], config);
 export function brainSnapshot(reply: Record<string, unknown>): Record<string, unknown> {

@@ -138,12 +138,85 @@ export async function exerciseNativeBrainMonitor({
   await panel.getByRole('button', { name: 'Save Brain policy', exact: true }).click();
   assert.equal((await call('brain.config.get')).config.trace.maxOpenRecords, 512);
   await panel.getByRole('button', { name: 'Discard Brain changes', exact: true }).click();
+  const reset = () =>
+    panel.getByRole('button', { name: 'Use inherited monitor defaults', exact: true });
+  await reset().click();
+  assert.equal(
+    await panel.getByLabel('Consecutive tool failures', { exact: true }).inputValue(),
+    '3',
+  );
+  assert.equal(
+    await panel.getByLabel('Consecutive tool failures', { exact: true }).isDisabled(),
+    true,
+  );
+  assert.equal(
+    (await call('brain.config.get')).config.monitor.toolFailureStreak,
+    10,
+    'Reset is only a draft until explicit save',
+  );
+  await panel.getByRole('button', { name: 'Keep saved monitor overrides', exact: true }).click();
+  assert.equal(
+    await panel.getByLabel('Consecutive tool failures', { exact: true }).inputValue(),
+    '10',
+  );
+  await reset().click();
+  await call('brain.config.set', { patch: { monitor: { cooldownMs: 555 } } });
+  await panel.getByRole('button', { name: 'Save Brain policy', exact: true }).click();
+  await panel
+    .getByRole('alert')
+    .filter({ hasText: 'Monitor overrides changed elsewhere' })
+    .waitFor();
+  assert.equal((await call('brain.config.get')).config.monitor.cooldownMs, 555);
+  await panel
+    .getByRole('button', { name: 'Reload saved Brain values (discard drafts)', exact: true })
+    .click();
+  await waitFor(
+    async () =>
+      (await panel.getByLabel('Monitor signal cooldown', { exact: true }).inputValue()) === '555',
+    'Monitor reset conflict reload',
+  );
+  const beforeReset = (await call('brain.config.get')).config;
+  await reset().click();
+  await panel.getByLabel('Open trace record limit', { exact: true }).fill('513');
+  await save();
+  const inherited = (await call('brain.config.get')).config;
+  assert.deepEqual(inherited.monitor, {});
+  assert.deepEqual(inherited.council, beforeReset.council);
+  assert.equal(inherited.maxAutoRisk, beforeReset.maxAutoRisk);
+  assert.equal(
+    inherited.trace.maxOpenRecords,
+    513,
+    'Monitor reset merges an independent trace edit',
+  );
+  const inheritedDisk = JSON.parse(await readFile(configPath, 'utf8'));
+  assert.equal(
+    Object.hasOwn(inheritedDisk.brain, 'monitor'),
+    false,
+    'Reset removes overrides rather than pinning current defaults',
+  );
+  await page.reload();
+  await open();
+  await panel
+    .getByText('This profile inherits the engine monitor defaults.', { exact: true })
+    .waitFor();
+  assert.equal(
+    await panel.getByLabel('Consecutive tool failures', { exact: true }).inputValue(),
+    '3',
+  );
+  assert.equal(await reset().isDisabled(), true);
+  await panel
+    .getByRole('heading', { name: 'Runtime monitor', exact: true })
+    .scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: join(artifactDir, 'native-brain-monitor-inherited.png'),
+    fullPage: true,
+  });
   assert.equal(
     providerFixture.calls.length,
     completions,
     'Monitor/trace configuration invokes no model completions',
   );
   console.log(
-    'PASS: four monitor signal policies, eight thresholds/windows, independent signal preservation, custom/empty edit-tool matching, trace path/capacity, saved disk/reload, stale-threshold refusal and zero completions',
+    'PASS: monitor signal policies, trace path/capacity, reset preview/undo, stale-reset refusal, independent trace merge, actual monitor override removal and inherited reload without completions',
   );
 }

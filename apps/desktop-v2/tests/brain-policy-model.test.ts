@@ -1,5 +1,10 @@
 import { expect, it } from 'vitest';
-import { brainDraft, brainPatch, brainSnapshot } from '../src/brain-policy-model';
+import {
+  brainDraft,
+  brainMonitorResetPatch,
+  brainPatch,
+  brainSnapshot,
+} from '../src/brain-policy-model';
 
 const snapshot = {
   mode: 'headless',
@@ -95,4 +100,23 @@ it('clears trace destinations with the canonical empty string and validates trac
   expect(brainPatch(base, { ...base, 'monitor.fileEditTools': '' }, base)).toEqual({
     monitor: { fileEditTools: [] },
   });
+});
+it('resets the complete monitor override only against its observed revision, retaining other policies', () => {
+  const baseline = {
+    ...snapshot,
+    monitor: { enabled: false, signals: { futureSignal: true }, fileEditTools: [] },
+  };
+  expect(brainMonitorResetPatch(baseline, baseline)).toEqual({ monitor: null });
+  expect(brainMonitorResetPatch(baseline, { ...baseline, trace: { enabled: true } })).toEqual({
+    monitor: null,
+  });
+  expect(() =>
+    brainMonitorResetPatch(baseline, {
+      ...baseline,
+      monitor: { ...baseline.monitor, futureThreshold: 17 },
+    }),
+  ).toThrow(/changed elsewhere/);
+  expect(brainMonitorResetPatch(baseline, { monitor: {} })).toEqual({ monitor: null });
+  expect(brainMonitorResetPatch({}, {})).toEqual({ monitor: null });
+  expect(baseline.monitor.fileEditTools).toEqual([]);
 });
