@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-28T17:28:57.616Z",
+  "generatedAt": "2026-10-28T18:28:11.591Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,17 +12,17 @@
   },
   "summary": {
     "packages": 45,
-    "sourceFiles": 5251,
-    "testFiles": 4611,
-    "sourceLines": 1156479,
-    "workspaceEdges": 221,
-    "moduleEdges": 15741,
+    "sourceFiles": 5384,
+    "testFiles": 4710,
+    "sourceLines": 1193657,
+    "workspaceEdges": 222,
+    "moduleEdges": 16183,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
-    "testsWithoutTypecheck": 34,
+    "testsWithoutTypecheck": 77,
     "testsWithMultipleTypechecks": 0,
-    "testOnlyExports": 944
+    "testOnlyExports": 969
   },
   "errors": [
     "2 unexcepted module cycle(s)"
@@ -141,8 +141,8 @@
     {
       "name": "@wrongstack/bench",
       "dir": "packages/bench",
-      "sourceFiles": 29,
-      "testFiles": 56,
+      "sourceFiles": 32,
+      "testFiles": 64,
       "workspaceDependencies": [
         "@wrongstack/core"
       ],
@@ -155,7 +155,7 @@
         {
           "path": "packages/bench/tsconfig.test.json",
           "error": null,
-          "testFiles": 56
+          "testFiles": 64
         }
       ]
     },
@@ -163,7 +163,7 @@
       "name": "@wrongstack/builtin-plugins",
       "dir": "packages/builtin-plugins",
       "sourceFiles": 33,
-      "testFiles": 27,
+      "testFiles": 28,
       "workspaceDependencies": [
         "@wrongstack/contracts",
         "@wrongstack/core",
@@ -179,7 +179,7 @@
         {
           "path": "packages/builtin-plugins/tsconfig.test.json",
           "error": null,
-          "testFiles": 27
+          "testFiles": 28
         }
       ]
     },
@@ -210,8 +210,8 @@
     {
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
-      "sourceFiles": 674,
-      "testFiles": 672,
+      "sourceFiles": 676,
+      "testFiles": 674,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/agent-catalog",
@@ -262,7 +262,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 672
+          "testFiles": 674
         }
       ]
     },
@@ -362,8 +362,8 @@
     {
       "name": "@wrongstack/core",
       "dir": "packages/core",
-      "sourceFiles": 633,
-      "testFiles": 678,
+      "sourceFiles": 635,
+      "testFiles": 686,
       "workspaceDependencies": [
         "@wrongstack/agent-catalog",
         "@wrongstack/contracts",
@@ -380,15 +380,15 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 678
+          "testFiles": 686
         }
       ]
     },
     {
       "name": "@wrongstack/desktop-v2",
       "dir": "apps/desktop-v2",
-      "sourceFiles": 101,
-      "testFiles": 34,
+      "sourceFiles": 216,
+      "testFiles": 77,
       "workspaceDependencies": [
         "@wrongstack/contracts",
         "@wrongstack/core",
@@ -633,7 +633,7 @@
       "name": "@wrongstack/plugins",
       "dir": "packages/plugins",
       "sourceFiles": 152,
-      "testFiles": 127,
+      "testFiles": 133,
       "workspaceDependencies": [
         "@wrongstack/contracts",
         "@wrongstack/coordination",
@@ -651,7 +651,7 @@
         {
           "path": "packages/plugins/tsconfig.test.json",
           "error": null,
-          "testFiles": 127
+          "testFiles": 133
         }
       ]
     },
@@ -744,7 +744,7 @@
       "name": "@wrongstack/runtime",
       "dir": "packages/runtime",
       "sourceFiles": 35,
-      "testFiles": 34,
+      "testFiles": 35,
       "workspaceDependencies": [
         "@wrongstack/builtin-plugins",
         "@wrongstack/chronicle",
@@ -769,7 +769,7 @@
         {
           "path": "packages/runtime/tsconfig.test.json",
           "error": null,
-          "testFiles": 34
+          "testFiles": 35
         }
       ]
     },
@@ -923,7 +923,7 @@
       "name": "@wrongstack/tools",
       "dir": "packages/tools",
       "sourceFiles": 374,
-      "testFiles": 367,
+      "testFiles": 372,
       "workspaceDependencies": [
         "@wrongstack/agent-catalog",
         "@wrongstack/contracts",
@@ -942,7 +942,7 @@
         {
           "path": "packages/tools/tsconfig.test.json",
           "error": null,
-          "testFiles": 367
+          "testFiles": 372
         }
       ]
     },
@@ -1031,8 +1031,8 @@
     {
       "name": "@wrongstack/webui",
       "dir": "packages/webui",
-      "sourceFiles": 768,
-      "testFiles": 506,
+      "sourceFiles": 770,
+      "testFiles": 508,
       "workspaceDependencies": [
         "@wrongstack/contracts",
         "@wrongstack/core",
@@ -1057,7 +1057,7 @@
         {
           "path": "packages/webui/tsconfig.test.json",
           "error": null,
-          "testFiles": 506
+          "testFiles": 508
         }
       ]
     },
@@ -1114,9 +1114,10 @@
     {
       "name": "@wrongstack/webui-server",
       "dir": "packages/webui-server",
-      "sourceFiles": 308,
-      "testFiles": 318,
+      "sourceFiles": 317,
+      "testFiles": 340,
       "workspaceDependencies": [
+        "@wrongstack/agent-catalog",
         "@wrongstack/builtin-plugins",
         "@wrongstack/chronicle",
         "@wrongstack/contracts",
@@ -1148,7 +1149,7 @@
         {
           "path": "packages/webui-server/tsconfig.test.json",
           "error": null,
-          "testFiles": 318
+          "testFiles": 340
         }
       ]
     },
@@ -1156,7 +1157,7 @@
       "name": "@wrongstack/worktree",
       "dir": "packages/worktree",
       "sourceFiles": 10,
-      "testFiles": 3,
+      "testFiles": 4,
       "workspaceDependencies": [
         "@wrongstack/contracts",
         "@wrongstack/core"
@@ -1170,7 +1171,7 @@
         {
           "path": "packages/worktree/tsconfig.test.json",
           "error": null,
-          "testFiles": 3
+          "testFiles": 4
         }
       ]
     },
@@ -1226,15 +1227,15 @@
       {
         "kind": "type-module-cycle",
         "members": [
-          "apps/desktop-v2/src/EngineDataView.tsx",
-          "apps/desktop-v2/src/EngineWorkspace.tsx"
+          "packages/cli/src/fleet/host.ts",
+          "packages/cli/src/fleet/routing.ts"
         ]
       },
       {
         "kind": "type-module-cycle",
         "members": [
-          "packages/cli/src/fleet/host.ts",
-          "packages/cli/src/fleet/routing.ts"
+          "packages/cli/src/subcommands/handlers/bench-menu.ts",
+          "packages/cli/src/subcommands/handlers/bench.ts"
         ]
       },
       {
@@ -1294,8 +1295,8 @@
       {
         "kind": "type-module-cycle",
         "members": [
-          "apps/desktop-v2/src/EngineDataView.tsx",
-          "apps/desktop-v2/src/EngineWorkspace.tsx"
+          "packages/cli/src/subcommands/handlers/bench-menu.ts",
+          "packages/cli/src/subcommands/handlers/bench.ts"
         ]
       },
       {
@@ -1338,7 +1339,25 @@
         ]
       },
       {
+        "file": "apps/desktop-v2/tests/atlas-boundary-model.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "apps/desktop-v2/tests/atlas-views.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "apps/desktop-v2/tests/automation-environment-model.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "apps/desktop-v2/tests/automation-evidence.test.ts",
         "projects": [
           "root-node"
         ]
@@ -1350,7 +1369,25 @@
         ]
       },
       {
+        "file": "apps/desktop-v2/tests/brain-policy-model.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "apps/desktop-v2/tests/brain-targets-model.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "apps/desktop-v2/tests/brand-parity.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "apps/desktop-v2/tests/chimera-model.test.ts",
         "projects": [
           "root-node"
         ]
@@ -1386,6 +1423,18 @@
         ]
       },
       {
+        "file": "apps/desktop-v2/tests/dead-code-model.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "apps/desktop-v2/tests/design-studio-model.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "apps/desktop-v2/tests/draft-storage.test.ts",
         "projects": [
           "root-node"
@@ -1404,7 +1453,19 @@
         ]
       },
       {
+        "file": "apps/desktop-v2/tests/engine-restore.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "apps/desktop-v2/tests/engine-state.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "apps/desktop-v2/tests/execution-policy-model.test.ts",
         "projects": [
           "root-node"
         ]
@@ -1416,13 +1477,37 @@
         ]
       },
       {
+        "file": "apps/desktop-v2/tests/file-draft.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "apps/desktop-v2/tests/file-model.test.ts",
         "projects": [
           "root-node"
         ]
       },
       {
+        "file": "apps/desktop-v2/tests/fleet-policy-model.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "apps/desktop-v2/tests/graph-model.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "apps/desktop-v2/tests/history-page-model.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "apps/desktop-v2/tests/history-view-store.test.ts",
         "projects": [
           "root-node"
         ]
@@ -1440,13 +1525,55 @@
         ]
       },
       {
+        "file": "apps/desktop-v2/tests/local-provider-scope.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "apps/desktop-v2/tests/local-provider.test.ts",
         "projects": [
           "root-node"
         ]
       },
       {
+        "file": "apps/desktop-v2/tests/mailbox-model.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "apps/desktop-v2/tests/markdown-content.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "apps/desktop-v2/tests/mcp-content-text.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "apps/desktop-v2/tests/mcp-tasks-model.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "apps/desktop-v2/tests/model-advanced-editor.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "apps/desktop-v2/tests/model-catalog-editor.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "apps/desktop-v2/tests/model-visibility.test.ts",
         "projects": [
           "root-node"
         ]
@@ -1464,13 +1591,103 @@
         ]
       },
       {
+        "file": "apps/desktop-v2/tests/oauth-model.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "apps/desktop-v2/tests/portable.test.ts",
         "projects": [
           "root-node"
         ]
       },
       {
+        "file": "apps/desktop-v2/tests/profile-model-policy.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "apps/desktop-v2/tests/project-goals.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "apps/desktop-v2/tests/project-history.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "apps/desktop-v2/tests/project-kit.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "apps/desktop-v2/tests/project-sdd.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "apps/desktop-v2/tests/provider-health.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "apps/desktop-v2/tests/provider-settings-model.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "apps/desktop-v2/tests/refinement-policy-model.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "apps/desktop-v2/tests/refinement-recovery.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "apps/desktop-v2/tests/requirement-record-draft.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "apps/desktop-v2/tests/requirements.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "apps/desktop-v2/tests/review-note-draft.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "apps/desktop-v2/tests/review-notes-store.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "apps/desktop-v2/tests/review-policy.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "apps/desktop-v2/tests/roster-model.test.ts",
         "projects": [
           "root-node"
         ]
@@ -1488,13 +1705,43 @@
         ]
       },
       {
+        "file": "apps/desktop-v2/tests/sage-validity.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "apps/desktop-v2/tests/session-activity.test.ts",
         "projects": [
           "root-node"
         ]
       },
       {
+        "file": "apps/desktop-v2/tests/session-agent-plan.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "apps/desktop-v2/tests/session-layout.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "apps/desktop-v2/tests/session-process-model.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "apps/desktop-v2/tests/session-recovery.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "apps/desktop-v2/tests/session-usage-model.test.ts",
         "projects": [
           "root-node"
         ]
@@ -1512,6 +1759,12 @@
         ]
       },
       {
+        "file": "apps/desktop-v2/tests/side-effects-model.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "apps/desktop-v2/tests/skill-model.test.ts",
         "projects": [
           "root-node"
@@ -1519,6 +1772,12 @@
       },
       {
         "file": "apps/desktop-v2/tests/task-definition-model.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "apps/desktop-v2/tests/techstack-model.test.ts",
         "projects": [
           "root-node"
         ]
@@ -1980,6 +2239,18 @@
         ]
       },
       {
+        "file": "packages/bench/tests/bench-coverage-additions.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/bench/tests/child-env.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/bench/tests/compare.test.ts",
         "projects": [
           "root-node"
@@ -2041,6 +2312,12 @@
       },
       {
         "file": "packages/bench/tests/grade-authority.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/bench/tests/hard-suite.test.ts",
         "projects": [
           "root-node"
         ]
@@ -2136,6 +2413,12 @@
         ]
       },
       {
+        "file": "packages/bench/tests/polyglot-prepare.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/bench/tests/polyglot-suite.test.ts",
         "projects": [
           "root-node"
@@ -2202,6 +2485,12 @@
         ]
       },
       {
+        "file": "packages/bench/tests/sandbox-reaper.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/bench/tests/session-metrics-coverage.test.ts",
         "projects": [
           "root-node"
@@ -2226,6 +2515,18 @@
         ]
       },
       {
+        "file": "packages/bench/tests/session-metrics-subagents.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/bench/tests/session-metrics-tokens.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/bench/tests/session-metrics.test.ts",
         "projects": [
           "root-node"
@@ -2233,6 +2534,12 @@
       },
       {
         "file": "packages/bench/tests/smoke-suite.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/bench/tests/stop-resume.test.ts",
         "projects": [
           "root-node"
         ]
@@ -2341,6 +2648,12 @@
       },
       {
         "file": "packages/builtin-plugins/tests/perf-command.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/builtin-plugins/tests/prompts-command-slug.test.ts",
         "projects": [
           "root-node"
         ]
@@ -3049,6 +3362,12 @@
       },
       {
         "file": "packages/cli/tests/bench-experiments.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/bench-menu.test.ts",
         "projects": [
           "root-node"
         ]
@@ -3931,6 +4250,12 @@
       },
       {
         "file": "packages/cli/tests/governance-trace-context.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/headless-harness-defaults.test.ts",
         "projects": [
           "root-node"
         ]
@@ -8556,6 +8881,12 @@
         ]
       },
       {
+        "file": "packages/core/tests/core/instruction-symlink-confinement.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/core/tests/core/instruction-template.test.ts",
         "projects": [
           "root-node"
@@ -8677,6 +9008,12 @@
       },
       {
         "file": "packages/core/tests/core/queued-messages.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/core/quick-variant.test.ts",
         "projects": [
           "root-node"
         ]
@@ -8988,6 +9325,12 @@
         ]
       },
       {
+        "file": "packages/core/tests/execution/brain-target-roundtrip.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/core/tests/execution/brain-tiered-flow.test.ts",
         "projects": [
           "root-node"
@@ -9174,7 +9517,19 @@
         ]
       },
       {
+        "file": "packages/core/tests/execution/design-store-symlink-confinement.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/core/tests/execution/design-tune.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/execution/design-turn-gate-write-targets.test.ts",
         "projects": [
           "root-node"
         ]
@@ -9919,6 +10274,12 @@
       },
       {
         "file": "packages/core/tests/registry/provider-registry.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/registry/session-tool-reach.test.ts",
         "projects": [
           "root-node"
         ]
@@ -10836,6 +11197,12 @@
         ]
       },
       {
+        "file": "packages/core/tests/storage/memory-project-agents-symlink.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/core/tests/storage/orphan-lock-cleaner.test.ts",
         "projects": [
           "root-node"
@@ -10981,6 +11348,12 @@
       },
       {
         "file": "packages/core/tests/storage/session-event-bridge.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/storage/session-history-page.test.ts",
         "projects": [
           "root-node"
         ]
@@ -14436,6 +14809,12 @@
         ]
       },
       {
+        "file": "packages/plugins/tests/branch-guard-shell-tools.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/plugins/tests/branch-guard.test.ts",
         "projects": [
           "root-node"
@@ -14538,7 +14917,19 @@
         ]
       },
       {
+        "file": "packages/plugins/tests/dep-guard-install-spellings.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/plugins/tests/dep-guard-lockfile-sync.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/plugins/tests/dep-guard-structured-install.test.ts",
         "projects": [
           "root-node"
         ]
@@ -14784,6 +15175,18 @@
         ]
       },
       {
+        "file": "packages/plugins/tests/path-guard-output-writers.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/plugins/tests/path-guard-pwsh-writers.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/plugins/tests/path-guard-redos.test.ts",
         "projects": [
           "root-node"
@@ -14953,6 +15356,12 @@
       },
       {
         "file": "packages/plugins/tests/schema-evolution-guard.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/plugins/tests/secret-scanner-ast-replace.test.ts",
         "projects": [
           "root-node"
         ]
@@ -16171,6 +16580,12 @@
       },
       {
         "file": "packages/runtime/tests/automation.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/runtime/tests/clipboard-exit-before-stdout.test.ts",
         "projects": [
           "root-node"
         ]
@@ -18900,6 +19315,12 @@
         ]
       },
       {
+        "file": "packages/tools/tests/codebase-diff-impact-sides.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/tools/tests/codebase-embedding-pass-edges.test.ts",
         "projects": [
           "root-node"
@@ -19578,6 +19999,12 @@
         ]
       },
       {
+        "file": "packages/tools/tests/grep-rg-hidden-parity.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/tools/tests/grep-rg-stream-decoding.test.ts",
         "projects": [
           "root-node"
@@ -19591,6 +20018,12 @@
       },
       {
         "file": "packages/tools/tests/index-service-piggyback.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tools/tests/infra-parser-yaml-indent.test.ts",
         "projects": [
           "root-node"
         ]
@@ -19795,6 +20228,12 @@
       },
       {
         "file": "packages/tools/tests/language-package-execute.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tools/tests/language-package-permission-subject.test.ts",
         "projects": [
           "root-node"
         ]
@@ -20299,6 +20738,12 @@
       },
       {
         "file": "packages/tools/tests/replace-cancellation.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tools/tests/replace-rg-enumeration.test.ts",
         "projects": [
           "root-node"
         ]
@@ -24066,6 +24511,12 @@
         ]
       },
       {
+        "file": "packages/webui-server/tests/brain-config-correlation.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/webui-server/tests/brain-request-correlation.test.ts",
         "projects": [
           "root-node"
@@ -24091,6 +24542,12 @@
       },
       {
         "file": "packages/webui-server/tests/browser-live.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/webui-server/tests/chimera-project-desktop.test.ts",
         "projects": [
           "root-node"
         ]
@@ -24246,6 +24703,12 @@
         ]
       },
       {
+        "file": "packages/webui-server/tests/content-design-request-correlation.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/webui-server/tests/content-file-request-correlation.test.ts",
         "projects": [
           "root-node"
@@ -24330,6 +24793,12 @@
         ]
       },
       {
+        "file": "packages/webui-server/tests/custom-model-reasoning.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/webui-server/tests/deadcode-handlers.test.ts",
         "projects": [
           "root-node"
@@ -24343,6 +24812,12 @@
       },
       {
         "file": "packages/webui-server/tests/design-contrast-gate.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/webui-server/tests/design-desktop-output.test.ts",
         "projects": [
           "root-node"
         ]
@@ -24408,6 +24883,12 @@
         ]
       },
       {
+        "file": "packages/webui-server/tests/file-content-search.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/webui-server/tests/file-handlers.test.ts",
         "projects": [
           "root-node"
@@ -24450,6 +24931,18 @@
         ]
       },
       {
+        "file": "packages/webui-server/tests/git-conflict-variants.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/webui-server/tests/git-conflict.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/webui-server/tests/git-handlers.test.ts",
         "projects": [
           "root-node"
@@ -24457,6 +24950,12 @@
       },
       {
         "file": "packages/webui-server/tests/git-history-isolation.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/webui-server/tests/git-hunks.test.ts",
         "projects": [
           "root-node"
         ]
@@ -24720,6 +25219,12 @@
         ]
       },
       {
+        "file": "packages/webui-server/tests/mailbox-read-correlation.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/webui-server/tests/mailbox-routes.test.ts",
         "projects": [
           "root-node"
@@ -24733,6 +25238,12 @@
       },
       {
         "file": "packages/webui-server/tests/mcp-auth-handlers.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/webui-server/tests/mcp-content-request-correlation.test.ts",
         "projects": [
           "root-node"
         ]
@@ -24996,6 +25507,18 @@
         ]
       },
       {
+        "file": "packages/webui-server/tests/process-request-correlation.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/webui-server/tests/project-history-search.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/webui-server/tests/project-image.test.ts",
         "projects": [
           "root-node"
@@ -25158,6 +25681,12 @@
         ]
       },
       {
+        "file": "packages/webui-server/tests/provider-oauth-desktop.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/webui-server/tests/provider-operations-oauth.test.ts",
         "projects": [
           "root-node"
@@ -25189,6 +25718,12 @@
       },
       {
         "file": "packages/webui-server/tests/provider-routes.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/webui-server/tests/provider-status-persistence.test.ts",
         "projects": [
           "root-node"
         ]
@@ -25255,6 +25790,12 @@
       },
       {
         "file": "packages/webui-server/tests/routes-composition-coverage.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/webui-server/tests/sage-validity-review.test.ts",
         "projects": [
           "root-node"
         ]
@@ -25344,7 +25885,19 @@
         ]
       },
       {
+        "file": "packages/webui-server/tests/session-agent-registry-variant-seed.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/webui-server/tests/session-catalog-connections.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/webui-server/tests/session-checkpoint-handlers.test.ts",
         "projects": [
           "root-node"
         ]
@@ -25404,6 +25957,12 @@
         ]
       },
       {
+        "file": "packages/webui-server/tests/session-history-content.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/webui-server/tests/session-history.test.ts",
         "projects": [
           "root-node"
@@ -25440,6 +25999,12 @@
         ]
       },
       {
+        "file": "packages/webui-server/tests/session-recovery-desktop.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/webui-server/tests/session-route-correlation.test.ts",
         "projects": [
           "root-node"
@@ -25459,6 +26024,12 @@
       },
       {
         "file": "packages/webui-server/tests/session-swap-lifecycle.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/webui-server/tests/session-transcript.test.ts",
         "projects": [
           "root-node"
         ]
@@ -25758,6 +26329,12 @@
         ]
       },
       {
+        "file": "packages/webui-server/tests/usage-pricing.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/webui-server/tests/user-instructions-handlers.test.ts",
         "projects": [
           "root-node"
@@ -25885,6 +26462,12 @@
       },
       {
         "file": "packages/webui/tests/components/ChatInput/code-detect.test.ts",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
+        "file": "packages/webui/tests/components/ChatInput/companions-button.test.tsx",
         "projects": [
           "webui-jsdom"
         ]
@@ -27241,6 +27824,12 @@
       },
       {
         "file": "packages/webui/tests/components/slash-commands.test.ts",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
+        "file": "packages/webui/tests/components/slash-routing-hunt-stop.test.ts",
         "projects": [
           "webui-jsdom"
         ]
@@ -28920,6 +29509,12 @@
         ]
       },
       {
+        "file": "packages/worktree/tests/windows-drive-case.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/worktree/tests/worktree-hold.test.ts",
         "projects": [
           "root-node"
@@ -29009,7 +29604,28 @@
         "typecheckProjects": []
       },
       {
+        "file": "apps/desktop-v2/tests/atlas-boundary-model.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
         "file": "apps/desktop-v2/tests/atlas-views.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
+        "file": "apps/desktop-v2/tests/automation-environment-model.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
+        "file": "apps/desktop-v2/tests/automation-evidence.test.ts",
         "runtimeProjects": [
           "root-node"
         ],
@@ -29023,7 +29639,28 @@
         "typecheckProjects": []
       },
       {
+        "file": "apps/desktop-v2/tests/brain-policy-model.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
+        "file": "apps/desktop-v2/tests/brain-targets-model.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
         "file": "apps/desktop-v2/tests/brand-parity.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
+        "file": "apps/desktop-v2/tests/chimera-model.test.ts",
         "runtimeProjects": [
           "root-node"
         ],
@@ -29065,6 +29702,20 @@
         "typecheckProjects": []
       },
       {
+        "file": "apps/desktop-v2/tests/dead-code-model.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
+        "file": "apps/desktop-v2/tests/design-studio-model.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
         "file": "apps/desktop-v2/tests/draft-storage.test.ts",
         "runtimeProjects": [
           "root-node"
@@ -29086,7 +29737,21 @@
         "typecheckProjects": []
       },
       {
+        "file": "apps/desktop-v2/tests/engine-restore.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
         "file": "apps/desktop-v2/tests/engine-state.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
+        "file": "apps/desktop-v2/tests/execution-policy-model.test.ts",
         "runtimeProjects": [
           "root-node"
         ],
@@ -29100,6 +29765,13 @@
         "typecheckProjects": []
       },
       {
+        "file": "apps/desktop-v2/tests/file-draft.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
         "file": "apps/desktop-v2/tests/file-model.test.ts",
         "runtimeProjects": [
           "root-node"
@@ -29107,7 +29779,28 @@
         "typecheckProjects": []
       },
       {
+        "file": "apps/desktop-v2/tests/fleet-policy-model.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
         "file": "apps/desktop-v2/tests/graph-model.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
+        "file": "apps/desktop-v2/tests/history-page-model.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
+        "file": "apps/desktop-v2/tests/history-view-store.test.ts",
         "runtimeProjects": [
           "root-node"
         ],
@@ -29128,6 +29821,13 @@
         "typecheckProjects": []
       },
       {
+        "file": "apps/desktop-v2/tests/local-provider-scope.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
         "file": "apps/desktop-v2/tests/local-provider.test.ts",
         "runtimeProjects": [
           "root-node"
@@ -29135,7 +29835,49 @@
         "typecheckProjects": []
       },
       {
+        "file": "apps/desktop-v2/tests/mailbox-model.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
         "file": "apps/desktop-v2/tests/markdown-content.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
+        "file": "apps/desktop-v2/tests/mcp-content-text.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
+        "file": "apps/desktop-v2/tests/mcp-tasks-model.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
+        "file": "apps/desktop-v2/tests/model-advanced-editor.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
+        "file": "apps/desktop-v2/tests/model-catalog-editor.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
+        "file": "apps/desktop-v2/tests/model-visibility.test.ts",
         "runtimeProjects": [
           "root-node"
         ],
@@ -29156,6 +29898,13 @@
         "typecheckProjects": []
       },
       {
+        "file": "apps/desktop-v2/tests/oauth-model.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
         "file": "apps/desktop-v2/tests/portable.test.ts",
         "runtimeProjects": [
           "root-node"
@@ -29163,7 +29912,105 @@
         "typecheckProjects": []
       },
       {
+        "file": "apps/desktop-v2/tests/profile-model-policy.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
+        "file": "apps/desktop-v2/tests/project-goals.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
+        "file": "apps/desktop-v2/tests/project-history.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
+        "file": "apps/desktop-v2/tests/project-kit.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
+        "file": "apps/desktop-v2/tests/project-sdd.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
+        "file": "apps/desktop-v2/tests/provider-health.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
         "file": "apps/desktop-v2/tests/provider-settings-model.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
+        "file": "apps/desktop-v2/tests/refinement-policy-model.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
+        "file": "apps/desktop-v2/tests/refinement-recovery.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
+        "file": "apps/desktop-v2/tests/requirement-record-draft.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
+        "file": "apps/desktop-v2/tests/requirements.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
+        "file": "apps/desktop-v2/tests/review-note-draft.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
+        "file": "apps/desktop-v2/tests/review-notes-store.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
+        "file": "apps/desktop-v2/tests/review-policy.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
+        "file": "apps/desktop-v2/tests/roster-model.test.ts",
         "runtimeProjects": [
           "root-node"
         ],
@@ -29184,6 +30031,13 @@
         "typecheckProjects": []
       },
       {
+        "file": "apps/desktop-v2/tests/sage-validity.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
         "file": "apps/desktop-v2/tests/session-activity.test.ts",
         "runtimeProjects": [
           "root-node"
@@ -29191,7 +30045,35 @@
         "typecheckProjects": []
       },
       {
+        "file": "apps/desktop-v2/tests/session-agent-plan.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
         "file": "apps/desktop-v2/tests/session-layout.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
+        "file": "apps/desktop-v2/tests/session-process-model.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
+        "file": "apps/desktop-v2/tests/session-recovery.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
+        "file": "apps/desktop-v2/tests/session-usage-model.test.ts",
         "runtimeProjects": [
           "root-node"
         ],
@@ -29212,6 +30094,13 @@
         "typecheckProjects": []
       },
       {
+        "file": "apps/desktop-v2/tests/side-effects-model.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
         "file": "apps/desktop-v2/tests/skill-model.test.ts",
         "runtimeProjects": [
           "root-node"
@@ -29220,6 +30109,13 @@
       },
       {
         "file": "apps/desktop-v2/tests/task-definition-model.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
+        "file": "apps/desktop-v2/tests/techstack-model.test.ts",
         "runtimeProjects": [
           "root-node"
         ],
@@ -29407,6 +30303,26 @@
       "syntax": "import"
     },
     {
+      "from": "apps/desktop-v2/src/AtlasBoundaryMap.tsx",
+      "specifier": "./atlas-boundaries.css",
+      "syntax": "import"
+    },
+    {
+      "from": "apps/desktop-v2/src/AutomationWorkspace.tsx",
+      "specifier": "./automation-workspace.css",
+      "syntax": "import"
+    },
+    {
+      "from": "apps/desktop-v2/src/BrainPolicySettings.tsx",
+      "specifier": "./brain-policy.css",
+      "syntax": "import"
+    },
+    {
+      "from": "apps/desktop-v2/src/BrainTargetEditor.tsx",
+      "specifier": "./brain-targets.css",
+      "syntax": "import"
+    },
+    {
       "from": "apps/desktop-v2/src/ChronicleInsights.tsx",
       "specifier": "./chronicle-insights.css",
       "syntax": "import"
@@ -29419,6 +30335,31 @@
     {
       "from": "apps/desktop-v2/src/ComposerAttachments.tsx",
       "specifier": "./composer-attachments.css",
+      "syntax": "import"
+    },
+    {
+      "from": "apps/desktop-v2/src/ExecutionPolicySettings.tsx",
+      "specifier": "./execution-policy.css",
+      "syntax": "import"
+    },
+    {
+      "from": "apps/desktop-v2/src/FileContentSearch.tsx",
+      "specifier": "./file-content-search.css",
+      "syntax": "import"
+    },
+    {
+      "from": "apps/desktop-v2/src/FileWorkspace.tsx",
+      "specifier": "./file-draft.css",
+      "syntax": "import"
+    },
+    {
+      "from": "apps/desktop-v2/src/FleetPolicySettings.tsx",
+      "specifier": "./fleet-policy.css",
+      "syntax": "import"
+    },
+    {
+      "from": "apps/desktop-v2/src/GitHunkReview.tsx",
+      "specifier": "./git-hunk-review.css",
       "syntax": "import"
     },
     {
@@ -29487,8 +30428,63 @@
       "syntax": "import"
     },
     {
+      "from": "apps/desktop-v2/src/McpConnectionEditor.tsx",
+      "specifier": "./mcp-connection.css",
+      "syntax": "import"
+    },
+    {
+      "from": "apps/desktop-v2/src/McpContentBrowser.tsx",
+      "specifier": "./mcp-content.css",
+      "syntax": "import"
+    },
+    {
+      "from": "apps/desktop-v2/src/MergeConflictReview.tsx",
+      "specifier": "./merge-conflict-review.css",
+      "syntax": "import"
+    },
+    {
+      "from": "apps/desktop-v2/src/ModelCatalogSettings.tsx",
+      "specifier": "./model-catalog.css",
+      "syntax": "import"
+    },
+    {
+      "from": "apps/desktop-v2/src/ModelVisibilitySettings.tsx",
+      "specifier": "./model-visibility.css",
+      "syntax": "import"
+    },
+    {
       "from": "apps/desktop-v2/src/NextStepsPanel.tsx",
       "specifier": "./next-steps.css",
+      "syntax": "import"
+    },
+    {
+      "from": "apps/desktop-v2/src/ProjectAgentRoster.tsx",
+      "specifier": "./project-agent-roster.css",
+      "syntax": "import"
+    },
+    {
+      "from": "apps/desktop-v2/src/ProjectChimera.tsx",
+      "specifier": "./project-chimera.css",
+      "syntax": "import"
+    },
+    {
+      "from": "apps/desktop-v2/src/ProjectDeadCode.tsx",
+      "specifier": "./project-dead-code.css",
+      "syntax": "import"
+    },
+    {
+      "from": "apps/desktop-v2/src/ProjectDesignStudio.tsx",
+      "specifier": "./project-design-studio.css",
+      "syntax": "import"
+    },
+    {
+      "from": "apps/desktop-v2/src/ProjectGoals.tsx",
+      "specifier": "./project-goals.css",
+      "syntax": "import"
+    },
+    {
+      "from": "apps/desktop-v2/src/ProjectHistorySearch.tsx",
+      "specifier": "./project-history-search.css",
       "syntax": "import"
     },
     {
@@ -29497,13 +30493,68 @@
       "syntax": "import"
     },
     {
+      "from": "apps/desktop-v2/src/ProjectKit.tsx",
+      "specifier": "./project-kit.css",
+      "syntax": "import"
+    },
+    {
       "from": "apps/desktop-v2/src/ProjectLiveFleet.tsx",
       "specifier": "./project-live-fleet.css",
       "syntax": "import"
     },
     {
+      "from": "apps/desktop-v2/src/ProjectMailbox.tsx",
+      "specifier": "./project-mailbox.css",
+      "syntax": "import"
+    },
+    {
+      "from": "apps/desktop-v2/src/ProjectRequirements.tsx",
+      "specifier": "./project-requirements.css",
+      "syntax": "import"
+    },
+    {
+      "from": "apps/desktop-v2/src/ProjectSdd.tsx",
+      "specifier": "./project-sdd.css",
+      "syntax": "import"
+    },
+    {
+      "from": "apps/desktop-v2/src/ProjectSessionHistory.tsx",
+      "specifier": "./project-session-history.css",
+      "syntax": "import"
+    },
+    {
+      "from": "apps/desktop-v2/src/ProjectTechStack.tsx",
+      "specifier": "./project-techstack.css",
+      "syntax": "import"
+    },
+    {
+      "from": "apps/desktop-v2/src/ProjectToolsMenu.tsx",
+      "specifier": "./project-tools-menu.css",
+      "syntax": "import"
+    },
+    {
       "from": "apps/desktop-v2/src/PromptWorkspace.tsx",
       "specifier": "./composer-resources.css",
+      "syntax": "import"
+    },
+    {
+      "from": "apps/desktop-v2/src/ProviderHealth.tsx",
+      "specifier": "./provider-health.css",
+      "syntax": "import"
+    },
+    {
+      "from": "apps/desktop-v2/src/ProviderOAuth.tsx",
+      "specifier": "./provider-oauth.css",
+      "syntax": "import"
+    },
+    {
+      "from": "apps/desktop-v2/src/ProviderSettings.tsx",
+      "specifier": "./provider-management.css",
+      "syntax": "import"
+    },
+    {
+      "from": "apps/desktop-v2/src/RefinementPolicySettings.tsx",
+      "specifier": "./refinement-policy.css",
       "syntax": "import"
     },
     {
@@ -29517,6 +30568,11 @@
       "syntax": "import"
     },
     {
+      "from": "apps/desktop-v2/src/SessionAgentPlan.tsx",
+      "specifier": "./session-agent-plan.css",
+      "syntax": "import"
+    },
+    {
       "from": "apps/desktop-v2/src/SessionComposer.tsx",
       "specifier": "./composer.css",
       "syntax": "import"
@@ -29524,6 +30580,36 @@
     {
       "from": "apps/desktop-v2/src/SessionComposer.tsx",
       "specifier": "./composer-resources.css",
+      "syntax": "import"
+    },
+    {
+      "from": "apps/desktop-v2/src/SessionMcpTasks.tsx",
+      "specifier": "./session-mcp-tasks.css",
+      "syntax": "import"
+    },
+    {
+      "from": "apps/desktop-v2/src/SessionProcesses.tsx",
+      "specifier": "./session-processes.css",
+      "syntax": "import"
+    },
+    {
+      "from": "apps/desktop-v2/src/SessionRecovery.tsx",
+      "specifier": "./session-recovery.css",
+      "syntax": "import"
+    },
+    {
+      "from": "apps/desktop-v2/src/SessionSideEffects.tsx",
+      "specifier": "./session-side-effects.css",
+      "syntax": "import"
+    },
+    {
+      "from": "apps/desktop-v2/src/SessionUsage.tsx",
+      "specifier": "./session-usage.css",
+      "syntax": "import"
+    },
+    {
+      "from": "apps/desktop-v2/src/SessionWorkbench.tsx",
+      "specifier": "./draft-conflict.css",
       "syntax": "import"
     },
     {
@@ -29539,6 +30625,11 @@
     {
       "from": "apps/desktop-v2/src/WrongStackSettings.tsx",
       "specifier": "./settings-policy.css",
+      "syntax": "import"
+    },
+    {
+      "from": "apps/desktop-v2/src/WrongStackSettings.tsx",
+      "specifier": "./review-policy.css",
       "syntax": "import"
     }
   ],
@@ -29562,7 +30653,7 @@
     },
     {
       "file": "packages/cli/src/fleet/host-skill-companion.ts",
-      "lines": 753,
+      "lines": 756,
       "relativeImports": 3
     },
     {
@@ -29611,9 +30702,24 @@
       "relativeImports": 6
     },
     {
+      "file": "packages/tools/src/codebase-index/codebase-diff-impact-tool.ts",
+      "lines": 704,
+      "relativeImports": 8
+    },
+    {
       "file": "packages/tools/src/codebase-index/infra-parser.ts",
-      "lines": 889,
+      "lines": 903,
       "relativeImports": 2
+    },
+    {
+      "file": "packages/tui/src/reducers/panel-pickers.ts",
+      "lines": 714,
+      "relativeImports": 5
+    },
+    {
+      "file": "packages/tui/src/reducers/settings-value-cycle.ts",
+      "lines": 703,
+      "relativeImports": 6
     },
     {
       "file": "packages/vibeui/src/components/memory-browser.tsx",
@@ -29657,23 +30763,38 @@
     },
     {
       "file": "packages/webui-server/src/server/completion-handlers.ts",
-      "lines": 723,
-      "relativeImports": 1
+      "lines": 737,
+      "relativeImports": 3
     },
     {
       "file": "packages/webui-server/src/server/memory-handlers.ts",
-      "lines": 747,
+      "lines": 777,
       "relativeImports": 5
     },
     {
+      "file": "packages/webui-server/src/server/pref-helpers.ts",
+      "lines": 712,
+      "relativeImports": 3
+    },
+    {
+      "file": "packages/webui-server/src/server/provider-routes.ts",
+      "lines": 766,
+      "relativeImports": 3
+    },
+    {
+      "file": "apps/desktop-v2/src/AutomationWorkspace.tsx",
+      "lines": 713,
+      "relativeImports": 9
+    },
+    {
       "file": "apps/desktop-v2/src/CodeAtlas.tsx",
-      "lines": 915,
+      "lines": 916,
       "relativeImports": 11
     },
     {
       "file": "apps/desktop-v2/src/FileWorkspace.tsx",
-      "lines": 1370,
-      "relativeImports": 7
+      "lines": 1743,
+      "relativeImports": 15
     },
     {
       "file": "apps/desktop-v2/src/KanbanTaskInspector.tsx",
@@ -29681,19 +30802,64 @@
       "relativeImports": 6
     },
     {
+      "file": "apps/desktop-v2/src/ModelCatalogSettings.tsx",
+      "lines": 772,
+      "relativeImports": 9
+    },
+    {
+      "file": "apps/desktop-v2/src/ProjectAgentRoster.tsx",
+      "lines": 1478,
+      "relativeImports": 12
+    },
+    {
+      "file": "apps/desktop-v2/src/ProjectChimera.tsx",
+      "lines": 778,
+      "relativeImports": 10
+    },
+    {
+      "file": "apps/desktop-v2/src/ProjectDesignStudio.tsx",
+      "lines": 739,
+      "relativeImports": 7
+    },
+    {
+      "file": "apps/desktop-v2/src/ProjectGoals.tsx",
+      "lines": 856,
+      "relativeImports": 5
+    },
+    {
       "file": "apps/desktop-v2/src/ProjectKnowledge.tsx",
       "lines": 913,
       "relativeImports": 8
     },
     {
+      "file": "apps/desktop-v2/src/ProjectMailbox.tsx",
+      "lines": 722,
+      "relativeImports": 9
+    },
+    {
       "file": "apps/desktop-v2/src/ProjectMemory.tsx",
-      "lines": 806,
+      "lines": 826,
       "relativeImports": 8
     },
     {
+      "file": "apps/desktop-v2/src/ProjectRequirements.tsx",
+      "lines": 977,
+      "relativeImports": 9
+    },
+    {
+      "file": "apps/desktop-v2/src/ProjectSdd.tsx",
+      "lines": 762,
+      "relativeImports": 10
+    },
+    {
+      "file": "apps/desktop-v2/src/ProjectSessionHistory.tsx",
+      "lines": 734,
+      "relativeImports": 14
+    },
+    {
       "file": "apps/desktop-v2/src/SessionComposer.tsx",
-      "lines": 804,
-      "relativeImports": 15
+      "lines": 999,
+      "relativeImports": 17
     },
     {
       "file": "apps/desktop-v2/src/SkillLibrary.tsx",
@@ -29704,8 +30870,13 @@
   "hotspots": [
     {
       "file": "apps/desktop-v2/src/FileWorkspace.tsx",
-      "lines": 1370,
-      "relativeImports": 7
+      "lines": 1743,
+      "relativeImports": 15
+    },
+    {
+      "file": "apps/desktop-v2/src/ProjectAgentRoster.tsx",
+      "lines": 1478,
+      "relativeImports": 12
     },
     {
       "file": "packages/vibeui/src/components/workspace.tsx",
@@ -29718,8 +30889,18 @@
       "relativeImports": 0
     },
     {
+      "file": "apps/desktop-v2/src/SessionComposer.tsx",
+      "lines": 999,
+      "relativeImports": 17
+    },
+    {
+      "file": "apps/desktop-v2/src/ProjectRequirements.tsx",
+      "lines": 977,
+      "relativeImports": 9
+    },
+    {
       "file": "apps/desktop-v2/src/CodeAtlas.tsx",
-      "lines": 915,
+      "lines": 916,
       "relativeImports": 11
     },
     {
@@ -29729,8 +30910,13 @@
     },
     {
       "file": "packages/tools/src/codebase-index/infra-parser.ts",
-      "lines": 889,
+      "lines": 903,
       "relativeImports": 2
+    },
+    {
+      "file": "apps/desktop-v2/src/ProjectGoals.tsx",
+      "lines": 856,
+      "relativeImports": 5
     },
     {
       "file": "apps/desktop-v2/src/SkillLibrary.tsx",
@@ -29738,19 +30924,14 @@
       "relativeImports": 6
     },
     {
-      "file": "packages/vibeui/src/lib/session.ts",
-      "lines": 815,
-      "relativeImports": 5
-    },
-    {
       "file": "apps/desktop-v2/src/ProjectMemory.tsx",
-      "lines": 806,
+      "lines": 826,
       "relativeImports": 8
     },
     {
-      "file": "apps/desktop-v2/src/SessionComposer.tsx",
-      "lines": 804,
-      "relativeImports": 15
+      "file": "packages/vibeui/src/lib/session.ts",
+      "lines": 815,
+      "relativeImports": 5
     },
     {
       "file": "packages/vibeui/src/components/resource-hub.tsx",
@@ -29758,14 +30939,39 @@
       "relativeImports": 12
     },
     {
-      "file": "packages/client/src/client.ts",
-      "lines": 754,
-      "relativeImports": 4
+      "file": "apps/desktop-v2/src/ProjectChimera.tsx",
+      "lines": 778,
+      "relativeImports": 10
+    },
+    {
+      "file": "packages/webui-server/src/server/memory-handlers.ts",
+      "lines": 777,
+      "relativeImports": 5
+    },
+    {
+      "file": "apps/desktop-v2/src/ModelCatalogSettings.tsx",
+      "lines": 772,
+      "relativeImports": 9
+    },
+    {
+      "file": "packages/webui-server/src/server/provider-routes.ts",
+      "lines": 766,
+      "relativeImports": 3
+    },
+    {
+      "file": "apps/desktop-v2/src/ProjectSdd.tsx",
+      "lines": 762,
+      "relativeImports": 10
     },
     {
       "file": "packages/cli/src/fleet/host-skill-companion.ts",
-      "lines": 753,
+      "lines": 756,
       "relativeImports": 3
+    },
+    {
+      "file": "packages/client/src/client.ts",
+      "lines": 754,
+      "relativeImports": 4
     },
     {
       "file": "packages/vibeui/src/lib/use-session.ts",
@@ -29773,18 +30979,28 @@
       "relativeImports": 8
     },
     {
-      "file": "packages/webui-server/src/server/memory-handlers.ts",
-      "lines": 747,
-      "relativeImports": 5
-    },
-    {
       "file": "apps/desktop-v2/src/KanbanTaskInspector.tsx",
       "lines": 743,
       "relativeImports": 6
     },
     {
+      "file": "apps/desktop-v2/src/ProjectDesignStudio.tsx",
+      "lines": 739,
+      "relativeImports": 7
+    },
+    {
       "file": "packages/coordination/src/sqlite-mailbox.ts",
       "lines": 737,
+      "relativeImports": 14
+    },
+    {
+      "file": "packages/webui-server/src/server/completion-handlers.ts",
+      "lines": 737,
+      "relativeImports": 3
+    },
+    {
+      "file": "apps/desktop-v2/src/ProjectSessionHistory.tsx",
+      "lines": 734,
       "relativeImports": 14
     },
     {
@@ -29803,9 +31019,9 @@
       "relativeImports": 1
     },
     {
-      "file": "packages/webui-server/src/server/completion-handlers.ts",
-      "lines": 723,
-      "relativeImports": 1
+      "file": "apps/desktop-v2/src/ProjectMailbox.tsx",
+      "lines": 722,
+      "relativeImports": 9
     },
     {
       "file": "packages/webui/src/components/MemoryManager/useMemoryManagerState.ts",
@@ -29816,6 +31032,21 @@
       "file": "packages/plugins/src/audit/index.ts",
       "lines": 715,
       "relativeImports": 0
+    },
+    {
+      "file": "packages/tui/src/reducers/panel-pickers.ts",
+      "lines": 714,
+      "relativeImports": 5
+    },
+    {
+      "file": "apps/desktop-v2/src/AutomationWorkspace.tsx",
+      "lines": 713,
+      "relativeImports": 9
+    },
+    {
+      "file": "packages/webui-server/src/server/pref-helpers.ts",
+      "lines": 712,
+      "relativeImports": 3
     },
     {
       "file": "packages/vibeui/src/components/memory-browser.tsx",
@@ -29843,12 +31074,22 @@
       "relativeImports": 5
     },
     {
+      "file": "packages/tools/src/codebase-index/codebase-diff-impact-tool.ts",
+      "lines": 704,
+      "relativeImports": 8
+    },
+    {
       "file": "packages/core/src/execution/auto-compaction-middleware.ts",
       "lines": 703,
       "relativeImports": 18
     },
     {
       "file": "packages/tools/src/codebase-index/ast-symbol-mutator.ts",
+      "lines": 703,
+      "relativeImports": 6
+    },
+    {
+      "file": "packages/tui/src/reducers/settings-value-cycle.ts",
       "lines": 703,
       "relativeImports": 6
     },
@@ -29863,94 +31104,19 @@
       "relativeImports": 2
     },
     {
+      "file": "packages/core/src/core/agent-tools.ts",
+      "lines": 699,
+      "relativeImports": 11
+    },
+    {
       "file": "packages/governance/src/runtime-compatibility.ts",
       "lines": 699,
       "relativeImports": 12
     },
     {
-      "file": "packages/sage/src/types.ts",
+      "file": "packages/plugins/src/dep-guard/index.ts",
       "lines": 699,
-      "relativeImports": 10
-    },
-    {
-      "file": "packages/coordination/src/task-auctioneer.ts",
-      "lines": 698,
-      "relativeImports": 8
-    },
-    {
-      "file": "packages/core/src/core/agent-response.ts",
-      "lines": 697,
-      "relativeImports": 21
-    },
-    {
-      "file": "packages/tools/src/codebase-index/writer-graph-reader.ts",
-      "lines": 697,
-      "relativeImports": 7
-    },
-    {
-      "file": "packages/webui/src/components/KanbanView.tsx",
-      "lines": 697,
-      "relativeImports": 18
-    },
-    {
-      "file": "packages/cli/src/boot/tui-session-resume.ts",
-      "lines": 696,
-      "relativeImports": 3
-    },
-    {
-      "file": "packages/coordination/src/autonomous-brain.ts",
-      "lines": 696,
-      "relativeImports": 2
-    },
-    {
-      "file": "packages/core/src/core/agent-tools.ts",
-      "lines": 696,
-      "relativeImports": 11
-    },
-    {
-      "file": "packages/coordination/src/fleet-manager.ts",
-      "lines": 695,
-      "relativeImports": 9
-    },
-    {
-      "file": "packages/core/src/registry/tool-registry.ts",
-      "lines": 695,
       "relativeImports": 5
-    },
-    {
-      "file": "packages/core/src/storage/config-loader.ts",
-      "lines": 695,
-      "relativeImports": 25
-    },
-    {
-      "file": "packages/cli/src/slash-commands/fix-classifier.ts",
-      "lines": 694,
-      "relativeImports": 0
-    },
-    {
-      "file": "packages/requirement-intake/src/service.ts",
-      "lines": 694,
-      "relativeImports": 17
-    },
-    {
-      "file": "packages/core/src/core/agent-loop.ts",
-      "lines": 693,
-      "relativeImports": 31
-    },
-    {
-      "file": "packages/core/src/execution/eternal-autonomy.ts",
-      "lines": 693,
-      "relativeImports": 13
-    },
-    {
-      "file": "packages/hq/src/publisher.ts",
-      "lines": 693,
-      "relativeImports": 11
-    },
-    {
-      "file": "packages/tui/src/hooks/use-provider-event-bridge.ts",
-      "lines": 693,
-      "relativeImports": 11
     }
   ],
   "testOnlyExports": [
@@ -29965,6 +31131,14 @@
     {
       "file": "apps/desktop-v2/src/availability-model.ts",
       "name": "scheduleMinute"
+    },
+    {
+      "file": "apps/desktop-v2/src/brain-targets-model.ts",
+      "name": "brainTargetsWire"
+    },
+    {
+      "file": "apps/desktop-v2/src/CatalogModelSearch.tsx",
+      "name": "catalogMatchDefinition"
     },
     {
       "file": "apps/desktop-v2/src/composer-attachments.ts",
@@ -29991,8 +31165,56 @@
       "name": "memoryGraph"
     },
     {
+      "file": "apps/desktop-v2/src/history-view-store.ts",
+      "name": "defaultHistoryView"
+    },
+    {
+      "file": "apps/desktop-v2/src/history-view-store.ts",
+      "name": "parseHistoryView"
+    },
+    {
       "file": "apps/desktop-v2/src/input-form-model.ts",
       "name": "answerFor"
+    },
+    {
+      "file": "apps/desktop-v2/src/mailbox-draft.ts",
+      "name": "MailboxDraftStore"
+    },
+    {
+      "file": "apps/desktop-v2/src/ProjectRequirements.tsx",
+      "name": "requirementFields"
+    },
+    {
+      "file": "apps/desktop-v2/src/ProviderHealth.tsx",
+      "name": "mergeQuotaSnapshots"
+    },
+    {
+      "file": "apps/desktop-v2/src/ProviderHealth.tsx",
+      "name": "quotaPercent"
+    },
+    {
+      "file": "apps/desktop-v2/src/ProviderHealth.tsx",
+      "name": "QuotaReading"
+    },
+    {
+      "file": "apps/desktop-v2/src/requirement-record-draft.ts",
+      "name": "parseRecordDraft"
+    },
+    {
+      "file": "apps/desktop-v2/src/RequirementResources.tsx",
+      "name": "isRequirementUrl"
+    },
+    {
+      "file": "apps/desktop-v2/src/review-note-draft.ts",
+      "name": "parseReviewNote"
+    },
+    {
+      "file": "apps/desktop-v2/src/review-notes-store.ts",
+      "name": "parseReviewNotes"
+    },
+    {
+      "file": "apps/desktop-v2/src/SddDependencyGraph.tsx",
+      "name": "sddGraphElements"
     },
     {
       "file": "packages/acp/src/agent/server-agent-turn.ts",
@@ -30089,6 +31311,30 @@
     {
       "file": "packages/agent-catalog/src/role-skills.ts",
       "name": "BUNDLED_AGENT_SKILLS"
+    },
+    {
+      "file": "packages/bench/src/child-env.ts",
+      "name": "registryJavaHome"
+    },
+    {
+      "file": "packages/bench/src/orchestrate.ts",
+      "name": "failureHint"
+    },
+    {
+      "file": "packages/bench/src/orchestrate.ts",
+      "name": "heartbeatLine"
+    },
+    {
+      "file": "packages/bench/src/orchestrate.ts",
+      "name": "resultSummary"
+    },
+    {
+      "file": "packages/bench/src/suites/polyglot.ts",
+      "name": "installDependencies"
+    },
+    {
+      "file": "packages/bench/src/suites/polyglot.ts",
+      "name": "prepareExercise"
     },
     {
       "file": "packages/builtin-plugins/src/perf-command.ts",
@@ -30207,6 +31453,10 @@
       "name": "findLatestProviderBackup"
     },
     {
+      "file": "packages/cli/src/boot/dispatch-singleshot.ts",
+      "name": "providerToolNames"
+    },
+    {
       "file": "packages/cli/src/boot/governance-trace-context.ts",
       "name": "MAX_GOVERNANCE_PLAN_BYTES"
     },
@@ -30237,10 +31487,6 @@
     {
       "file": "packages/cli/src/boot/short-circuit-hq.ts",
       "name": "isReusedContainerPid"
-    },
-    {
-      "file": "packages/cli/src/boot/system-prompt-menu.ts",
-      "name": "isSystemPromptPinned"
     },
     {
       "file": "packages/cli/src/boot/system-prompt-menu.ts",
@@ -30533,6 +31779,18 @@
     {
       "file": "packages/cli/src/subcommands/handlers/automation-credentials.ts",
       "name": "resolveAutomationCredentials"
+    },
+    {
+      "file": "packages/cli/src/subcommands/handlers/bench-menu.ts",
+      "name": "parseIndexList"
+    },
+    {
+      "file": "packages/cli/src/subcommands/handlers/bench-menu.ts",
+      "name": "plannedAttempts"
+    },
+    {
+      "file": "packages/cli/src/subcommands/handlers/bench-menu.ts",
+      "name": "planRuns"
     },
     {
       "file": "packages/cli/src/subcommands/handlers/bench-run-help.ts",
@@ -31037,6 +32295,10 @@
     {
       "file": "packages/core/src/quota/index.ts",
       "name": "resetProviderQuota"
+    },
+    {
+      "file": "packages/core/src/registry/scout-tool-surface.ts",
+      "name": "QUICK_BASIC_TOOL_NAMES"
     },
     {
       "file": "packages/core/src/sandbox/types.ts",
@@ -32377,6 +33639,10 @@
     {
       "file": "packages/tui/src/browser-access-hint.ts",
       "name": "browserAccessHint"
+    },
+    {
+      "file": "packages/tui/src/cell-selection.ts",
+      "name": "orderedRange"
     },
     {
       "file": "packages/tui/src/components/animation-style.ts",

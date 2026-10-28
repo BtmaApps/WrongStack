@@ -356,6 +356,64 @@ describe('getRecentActivity', () => {
     await expect(getRecentActivity(wt, 'src/foo.ts', 0)).resolves.toEqual([]);
     await expect(getRecentActivity(wt, 'src/foo.ts', -1)).resolves.toEqual([]);
   });
+
+  it('does not poison seenIds on timestamp-less feed events or deduplicate empty event_id (F837)', async () => {
+    const wt = {
+      ...offlineStub(),
+      isAvailable: true,
+      async getRecentEvents() {
+        return [{ event_id: 'evt-1', file_path: 'src/foo.ts' }];
+      },
+      async getFrictionMatrix() {
+        return {
+          recent_collisions: [
+            {
+              event_id: 'evt-1',
+              file_path: 'src/foo.ts',
+              overwriter_time: '2026-08-24T10:00:00Z',
+              overwriter_model: 'agent-a',
+            },
+            {
+              event_id: '',
+              file_path: 'src/foo.ts',
+              overwriter_time: '2026-08-24T11:00:00Z',
+              overwriter_model: 'agent-b',
+            },
+            {
+              event_id: '',
+              file_path: 'src/foo.ts',
+              overwriter_time: '2026-08-24T12:00:00Z',
+              overwriter_model: 'agent-c',
+            },
+          ],
+        } as never;
+      },
+    };
+    const out = await getRecentActivity(wt, 'src/foo.ts', 10);
+    expect(out.map((e) => e.actor)).toEqual(['agent-c', 'agent-b', 'agent-a']);
+
+    const riskWt = {
+      ...offlineStub(),
+      isAvailable: true,
+      async getFileHealth() {
+        return {
+          path: 'src/foo.ts',
+          health_score: 90,
+          is_fragile: false,
+          recent_thrashing_count: 0,
+          is_locked: false,
+        };
+      },
+      async getFrictionMatrix() {
+        return [
+          { files: ['src/foo.ts'], conflict_count: -10 },
+          { files: ['src/foo.ts'], conflict_count: 4 },
+        ] as never;
+      },
+    };
+    const risk = await getCrossAgentRisk(riskWt, 'src/foo.ts');
+    expect(risk.risk).toBe(20);
+  });
 });
 
 describe('digestAtlas', () => {

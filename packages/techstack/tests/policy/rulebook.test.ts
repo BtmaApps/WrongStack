@@ -351,4 +351,23 @@ describe('loadRulebook', () => {
       expect(result.source).toBe(DEFAULT_JSON);
     }
   });
+
+  it('defaults omitted pinned, banned, deferred, and preferred arrays to empty arrays on load (F853)', async () => {
+    const io = new MemoryFileSystem();
+    io.set(
+      DEFAULT_JSON,
+      JSON.stringify({
+        schemaVersion: '1',
+        pinned: [{ selector: { name: 'react' }, max: '18.3.1', reason: 'legacy peer' }],
+      }),
+    );
+    const result = await loadRulebook(ROOT, undefined, io);
+    expect(result.kind).toBe('loaded');
+    if (result.kind === 'loaded') {
+      expect(result.rulebook.pinned).toHaveLength(1);
+      expect(result.rulebook.banned).toEqual([]);
+      expect(result.rulebook.deferred).toEqual([]);
+      expect(result.rulebook.preferred).toEqual([]);
+    }
+  });
 });

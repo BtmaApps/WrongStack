@@ -149,8 +149,6 @@ export async function createWrongTraceClient(
     },
 
     async getFileHealth(path: string): Promise<WrongTraceFileHealth | null> {
-      const base = requireBaseUrl();
-      if (!base) return notAvailable();
       // IPC-first: live-verified JSON-RPC method on the daemon's pipe
       // (both instances, 2026-08-24). Falls back to HTTP when the pipe is
       // absent, unreachable, or answers with an error envelope.
@@ -164,6 +162,8 @@ export async function createWrongTraceClient(
         const viaMcp = await mcp.invoke<WrongTraceFileHealth>('get_file_health_score', { path });
         if (viaMcp) return viaMcp;
       }
+      const base = requireBaseUrl();
+      if (!base) return notAvailable();
       return httpJson<WrongTraceFileHealth>(
         base,
         `/api/file/health?path=${encodeURIComponent(path)}`,
@@ -219,16 +219,6 @@ export async function createWrongTraceClient(
     },
 
     async getAtlas(query?: WrongTraceAtlasQuery): Promise<WrongTraceAtlasSummary | null> {
-      const base = requireBaseUrl();
-      if (!base) return notAvailable();
-      const params = new URLSearchParams();
-      if (query?.workspace !== undefined && query.workspace !== '')
-        params.set('workspace', query.workspace);
-      if (query?.summary === true) params.set('summary', 'true');
-      if (query?.includeSymbols === false) params.set('include_symbols', 'false');
-      if (query?.limit !== undefined) params.set('limit', String(query.limit));
-      if (query?.offset !== undefined) params.set('offset', String(query.offset));
-      const qs = params.size > 0 ? `?${params.toString()}` : '';
       // IPC-first since daemon v0.3.3 (live-verified 2026-08-24): get_atlas
       // answers JSON-RPC on the pipe. Older daemons reply -32601 →
       // {result:null} → HTTP fallback below. summary=true keeps the pipe
@@ -245,6 +235,16 @@ export async function createWrongTraceClient(
         });
         if (viaIpc.result) return viaIpc.result;
       }
+      const base = requireBaseUrl();
+      if (!base) return notAvailable();
+      const params = new URLSearchParams();
+      if (query?.workspace !== undefined && query.workspace !== '')
+        params.set('workspace', query.workspace);
+      if (query?.summary === true) params.set('summary', 'true');
+      if (query?.includeSymbols === false) params.set('include_symbols', 'false');
+      if (query?.limit !== undefined) params.set('limit', String(query.limit));
+      if (query?.offset !== undefined) params.set('offset', String(query.offset));
+      const qs = params.size > 0 ? `?${params.toString()}` : '';
       return httpJson<WrongTraceAtlasSummary>(base, `/api/atlas${qs}`);
     },
 

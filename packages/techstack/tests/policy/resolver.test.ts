@@ -406,4 +406,12 @@ describe('resolveDependencies', () => {
     const result = resolveDependencies([makeDep()], rulebook, NOW);
     expect(result[0]?.reason).toBe('banned_unresolved_replacement');
   });
+
+  it('rejects prereleases of the boundary version for partial < comparators such as <18 and <1.2 (F775)', () => {
+    expect(satisfiesRange('18.0.0-alpha.1', parseRange(asVersionRange('<18')))).toBe(false);
+    expect(satisfiesRange('18.0.0-0', parseRange(asVersionRange('<18')))).toBe(false);
+    expect(satisfiesRange('1.2.0-beta.1', parseRange(asVersionRange('<1.2')))).toBe(false);
+    expect(satisfiesRange('17.9.9', parseRange(asVersionRange('<18')))).toBe(true);
+    expect(satisfiesRange('1.1.9', parseRange(asVersionRange('<1.2')))).toBe(true);
+  });
 });

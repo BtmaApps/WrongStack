@@ -153,7 +153,7 @@ async function scoreFromHealth(
   if (fileFriction.length > 0) {
     const totalConflicts = fileFriction.reduce((acc, r) => {
       const raw = (r as { conflict_count?: unknown }).conflict_count;
-      return acc + (typeof raw === 'number' ? raw : 0);
+      return acc + (typeof raw === 'number' && Number.isFinite(raw) && raw >= 0 ? raw : 0);
     }, 0);
     if (totalConflicts >= 3) {
       risk = Math.min(100, risk + 20);
@@ -337,12 +337,12 @@ export async function getRecentActivity(
     if (ev === null || typeof ev !== 'object' || Array.isArray(ev)) continue;
     if (typeof ev.file_path !== 'string' || normalizeMatchPath(ev.file_path) !== targetPath)
       continue;
-    if (typeof ev.event_id === 'string') {
+    const at = ev.overwriter_time ?? ev.author_time ?? ev.event_time ?? ev.timestamp ?? '';
+    if (!at) continue;
+    if (typeof ev.event_id === 'string' && ev.event_id.length > 0) {
       if (seenIds.has(ev.event_id)) continue;
       seenIds.add(ev.event_id);
     }
-    const at = ev.overwriter_time ?? ev.author_time ?? ev.event_time ?? ev.timestamp ?? '';
-    if (!at) continue;
     const entry: RecentActivityEntry = {
       at,
       actor: ev.overwriter_model ?? ev.author_model ?? 'unknown',

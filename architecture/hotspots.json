@@ -15,7 +15,7 @@
       "relativeImports": 17
     },
     "packages/cli/src/fleet/host-skill-companion.ts": {
-      "lines": 753,
+      "lines": 756,
       "relativeImports": 3
     },
     "packages/client/src/client.ts": {
@@ -54,9 +54,21 @@
       "lines": 703,
       "relativeImports": 6
     },
+    "packages/tools/src/codebase-index/codebase-diff-impact-tool.ts": {
+      "lines": 704,
+      "relativeImports": 8
+    },
     "packages/tools/src/codebase-index/infra-parser.ts": {
-      "lines": 889,
+      "lines": 903,
       "relativeImports": 2
+    },
+    "packages/tui/src/reducers/panel-pickers.ts": {
+      "lines": 714,
+      "relativeImports": 5
+    },
+    "packages/tui/src/reducers/settings-value-cycle.ts": {
+      "lines": 703,
+      "relativeImports": 6
     },
     "packages/vibeui/src/components/memory-browser.tsx": {
       "lines": 709,
@@ -91,36 +103,84 @@
       "relativeImports": 9
     },
     "packages/webui-server/src/server/completion-handlers.ts": {
-      "lines": 723,
-      "relativeImports": 1
+      "lines": 737,
+      "relativeImports": 3
     },
     "packages/webui-server/src/server/memory-handlers.ts": {
-      "lines": 747,
+      "lines": 777,
       "relativeImports": 5
     },
+    "packages/webui-server/src/server/pref-helpers.ts": {
+      "lines": 712,
+      "relativeImports": 3
+    },
+    "packages/webui-server/src/server/provider-routes.ts": {
+      "lines": 766,
+      "relativeImports": 3
+    },
+    "apps/desktop-v2/src/AutomationWorkspace.tsx": {
+      "lines": 713,
+      "relativeImports": 9
+    },
     "apps/desktop-v2/src/CodeAtlas.tsx": {
-      "lines": 915,
+      "lines": 916,
       "relativeImports": 11
     },
     "apps/desktop-v2/src/FileWorkspace.tsx": {
-      "lines": 1370,
-      "relativeImports": 7
+      "lines": 1743,
+      "relativeImports": 15
     },
     "apps/desktop-v2/src/KanbanTaskInspector.tsx": {
       "lines": 743,
       "relativeImports": 6
     },
+    "apps/desktop-v2/src/ModelCatalogSettings.tsx": {
+      "lines": 772,
+      "relativeImports": 9
+    },
+    "apps/desktop-v2/src/ProjectAgentRoster.tsx": {
+      "lines": 1478,
+      "relativeImports": 12
+    },
+    "apps/desktop-v2/src/ProjectChimera.tsx": {
+      "lines": 778,
+      "relativeImports": 10
+    },
+    "apps/desktop-v2/src/ProjectDesignStudio.tsx": {
+      "lines": 739,
+      "relativeImports": 7
+    },
+    "apps/desktop-v2/src/ProjectGoals.tsx": {
+      "lines": 856,
+      "relativeImports": 5
+    },
     "apps/desktop-v2/src/ProjectKnowledge.tsx": {
       "lines": 913,
       "relativeImports": 8
     },
+    "apps/desktop-v2/src/ProjectMailbox.tsx": {
+      "lines": 722,
+      "relativeImports": 9
+    },
     "apps/desktop-v2/src/ProjectMemory.tsx": {
-      "lines": 806,
+      "lines": 826,
       "relativeImports": 8
     },
+    "apps/desktop-v2/src/ProjectRequirements.tsx": {
+      "lines": 977,
+      "relativeImports": 9
+    },
+    "apps/desktop-v2/src/ProjectSdd.tsx": {
+      "lines": 762,
+      "relativeImports": 10
+    },
+    "apps/desktop-v2/src/ProjectSessionHistory.tsx": {
+      "lines": 734,
+      "relativeImports": 14
+    },
     "apps/desktop-v2/src/SessionComposer.tsx": {
-      "lines": 804,
-      "relativeImports": 15
+      "lines": 999,
+      "relativeImports": 17
     },
     "apps/desktop-v2/src/SkillLibrary.tsx": {
       "lines": 848,

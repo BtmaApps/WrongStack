@@ -352,6 +352,10 @@ export function satisfiesRange(version: string, range: ParsedRange): boolean {
             return compareVersions(version, partial[1]) >= 0;
           case '<=':
             return compareVersions(version, partial[1]) < 0;
+          case '<':
+            return compareVersions(version, `${partial[0]}-0`) < 0;
+          case '>=':
+            return compareVersions(version, partial[0]) >= 0;
         }
       }
       const cmp = compareVersions(version, range.version);

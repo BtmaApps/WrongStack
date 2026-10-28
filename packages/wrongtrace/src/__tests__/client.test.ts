@@ -471,4 +471,32 @@ describe('createWrongTraceClient()', () => {
     expect(defaultSocketPath('/home/alice', 'linux')).toContain('.wrongtrace');
     expect(defaultSocketPath('', 'linux')).toBe('/tmp/wrongtrace.sock');
   });
+
+  it('routes getFileHealth and getAtlas through wired MCP/IPC when HTTP discovery is offline (F755)', async () => {
+    let mcpCalls = 0;
+    const wt = await createWrongTraceClient({
+      baseUrl: 'http://127.0.0.1:59999',
+      socketPath: '',
+      fetchImpl: makeFetch(async () => {
+        throw new Error('ECONNREFUSED');
+      }),
+      mcpTools: {
+        get_file_health_score: async (args) => {
+          mcpCalls += 1;
+          return {
+            path: args.path,
+            health_score: 91,
+            is_fragile: false,
+            recent_thrashing_count: 0,
+            is_locked: false,
+          };
+        },
+      },
+    });
+    const health = await wt.getFileHealth('src/index.ts');
+    expect(health?.health_score).toBe(91);
+    expect(mcpCalls).toBe(1);
+    const atlas = await wt.getAtlas({ workspace: 'repo', summary: true });
+    expect(atlas).toBeNull();
+  });
 });

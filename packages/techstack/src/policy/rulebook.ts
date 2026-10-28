@@ -355,7 +355,15 @@ export async function loadRulebook(
     if (errors.length > 0) {
       return { kind: 'malformed', source: candidate, errors };
     }
-    return { kind: 'loaded', rulebook: parsed as Rulebook, source: candidate };
+    const rawRulebook = parsed as Partial<Rulebook> & { schemaVersion: '1' };
+    const rulebook: Rulebook = {
+      ...rawRulebook,
+      pinned: rawRulebook.pinned ?? [],
+      banned: rawRulebook.banned ?? [],
+      deferred: rawRulebook.deferred ?? [],
+      preferred: rawRulebook.preferred ?? [],
+    };
+    return { kind: 'loaded', rulebook, source: candidate };
   }
 
   return { kind: 'absent' };
