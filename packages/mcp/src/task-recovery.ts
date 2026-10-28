@@ -166,6 +166,9 @@ export class MCPTaskRecovery {
       done: Promise.resolve(),
     };
     let receipt: MCPTaskReceipt | undefined, heartbeat: ReturnType<typeof setInterval> | undefined;
+    // The client rejects an aborted call without waiting for a pending
+    // onStatus hook, so the receipt can land after `finally` below has run.
+    let settled = false;
     const beforeRequest = async () => {
       if (!sameTaskOwner(owner, taskOwner(context)) || binding !== (await taskBinding(client.opts)))
         pause.abort();
@@ -182,7 +185,7 @@ export class MCPTaskRecovery {
             onStatus: async (task) => {
               await beforeRequest();
               if (!receipt) {
-                receipt = await this.journal.create(
+                const created = await this.journal.create(
                   owner,
                   client.opts.name,
                   tool.name,
@@ -190,6 +193,12 @@ export class MCPTaskRecovery {
                   task,
                   token,
                 );
+                if (settled) {
+                  // Nothing is left to observe it: leave it unleased for recovery.
+                  await this.release(created.id, token);
+                  return;
+                }
+                receipt = created;
                 this.active.set(receipt.id, job);
                 heartbeat = this.heartbeat(receipt.id, token, pause);
               } else await this.journal.update(receipt.id, token, { task });
@@ -207,6 +216,7 @@ export class MCPTaskRecovery {
           await this.journal.update(receipt.id, token, { delivered: true }).catch(() => undefined);
         throw error;
       } finally {
+        settled = true;
         if (heartbeat) clearInterval(heartbeat);
         if (receipt) {
           await this.release(receipt.id, token);

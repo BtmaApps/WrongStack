@@ -1323,4 +1323,28 @@ describe('HTTP transport authorization provider', () => {
       globalThis.fetch = originalFetch;
     }
   });
+
+  it('parses Bearer challenge parameters accurately across quoted commas and multi-scheme headers', () => {
+    const resource = 'https://mcp.example.com/v1';
+    const quotedComma = parseMcpBearerChallenge(
+      'Bearer realm="Acme, scope=admin", scope="mcp:tools"',
+      resource,
+    );
+    expect(quotedComma.scopes).toEqual(['mcp:tools']);
+
+    const multiChallenge = parseMcpBearerChallenge(
+      'Bearer realm="mcp", Basic realm="fallback", scope="basic:leak"',
+      resource,
+    );
+    expect(multiChallenge.scopes).toEqual([]);
+
+    const precededByQuotedBearer = parseMcpBearerChallenge(
+      'Basic realm="first, Bearer scope=fake", Bearer realm="Acme \\"MCP, scope=fake\\"", resource_metadata="https://mcp.example.com/.well-known/oauth-protected-resource", scope="mcp:read mcp:write"',
+      resource,
+    );
+    expect(precededByQuotedBearer.resourceMetadataUrl).toBe(
+      'https://mcp.example.com/.well-known/oauth-protected-resource',
+    );
+    expect(precededByQuotedBearer.scopes).toEqual(['mcp:read', 'mcp:write']);
+  });
 });

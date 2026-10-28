@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-28T17:25:18.201Z",
+  "generatedAt": "2026-10-28T17:25:54.128Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 45,
     "sourceFiles": 5251,
-    "testFiles": 4605,
-    "sourceLines": 1156225,
+    "testFiles": 4606,
+    "sourceLines": 1156295,
     "workspaceEdges": 221,
     "moduleEdges": 15741,
     "nonCommandSlashImports": 0,
@@ -546,7 +546,7 @@
       "name": "@wrongstack/mcp",
       "dir": "packages/mcp",
       "sourceFiles": 74,
-      "testFiles": 97,
+      "testFiles": 98,
       "workspaceDependencies": [
         "@wrongstack/contracts",
         "@wrongstack/core"
@@ -560,7 +560,7 @@
         {
           "path": "packages/mcp/tsconfig.test.json",
           "error": null,
-          "testFiles": 97
+          "testFiles": 98
         }
       ]
     },
@@ -13645,6 +13645,12 @@
       },
       {
         "file": "packages/mcp/tests/task-management.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/mcp/tests/task-receipt-created-after-abort.test.ts",
         "projects": [
           "root-node"
         ]

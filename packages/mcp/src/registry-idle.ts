@@ -31,9 +31,11 @@ export async function sleepIdleSlot(ctx: RegistryIdleContext, slot: ServerSlot):
   slot.state = 'dormant';
   const client = slot.client;
   slot.client = undefined;
+  const handler = slot.onDisconnect;
+  slot.onDisconnect = undefined;
   if (client) {
     client.removeExitListener?.(ctx.onChildExit);
-    if (slot.onDisconnect) client.removeDisconnectListener?.(slot.onDisconnect);
+    if (handler) client.removeDisconnectListener?.(handler);
     client.removeToolsChangedListener?.(ctx.onToolsChanged);
     ctx.removeCatalogListeners(client);
     try {
@@ -51,7 +53,6 @@ export async function sleepIdleSlot(ctx: RegistryIdleContext, slot: ServerSlot):
   // could then never be detached), inflate `sleepCount`, and broadcast
   // `mcp.server.disconnected {reason:'idle-sleep'}` for a server now serving work.
   if (ctx.servers.get(slot.cfg.name) !== slot || slot.client || slot.state !== 'dormant') return;
-  slot.onDisconnect = undefined;
   slot.operations.sleepCount++;
   ctx.recordOperation(slot, 'sleep', 'idle-timeout');
   ctx.log.info(`MCP server "${slot.cfg.name}" idle — sleeping (tools stay registered)`);

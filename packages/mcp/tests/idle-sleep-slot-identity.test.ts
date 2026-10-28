@@ -61,3 +61,39 @@ it('verifies replaced slot never publishes, including repeated replacement and n
   expect(control.events).toBe(1);
   expect(control.records).toBe(1);
 });
+
+it('detaches and clears slot.onDisconnect before awaiting client.close() even when state changes mid-close (F757)', async () => {
+  let releaseClose!: () => void;
+  const closeGate = new Promise<void>((r) => {
+    releaseClose = r;
+  });
+  const removeDisconnectListener = vi.fn();
+  const staleHandler = () => {};
+  const slot = {
+    cfg: { name: 'server' },
+    state: 'connected',
+    onDisconnect: staleHandler,
+    client: {
+      close: async () => closeGate,
+      removeDisconnectListener,
+    },
+    operations: { inFlightCalls: 0, sleepCount: 0 },
+    reconnectPending: false,
+  } as never;
+  const servers = new Map([['server', slot]]);
+  const ctx = {
+    servers,
+    events: { emit: vi.fn() },
+    log: { warn: vi.fn(), info: vi.fn() },
+    recordOperation: vi.fn(),
+    removeCatalogListeners: vi.fn(),
+  } as never;
+
+  const pending = sleepIdleSlot(ctx, slot);
+  expect((slot as { onDisconnect?: unknown }).onDisconnect).toBeUndefined();
+  expect(removeDisconnectListener).toHaveBeenCalledWith(staleHandler);
+  Object.assign(slot, { state: 'failed' });
+  releaseClose();
+  await pending;
+  expect((slot as { onDisconnect?: unknown }).onDisconnect).toBeUndefined();
+});

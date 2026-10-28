@@ -173,17 +173,21 @@ export async function handleHttpRequest(
         hasModernMetadata(message?.['params']) ||
         (typeof req.headers['mcp-protocol-version'] === 'string' &&
           req.headers['mcp-protocol-version'] >= '2026-07-28');
-      if (modern) {
+      const validEnvelope =
+        message !== undefined &&
+        message['jsonrpc'] === '2.0' &&
+        typeof message['method'] === 'string' &&
+        (message['id'] === undefined ||
+          message['id'] === null ||
+          typeof message['id'] === 'string' ||
+          typeof message['id'] === 'number');
+      if (modern && validEnvelope && message) {
         try {
           const headers = new Headers();
           for (const [name, value] of Object.entries(req.headers)) {
             if (typeof value === 'string') headers.set(name, value);
           }
-          await server.validateHttpHeaders(
-            String(message?.['method']),
-            message?.['params'],
-            headers,
-          );
+          await server.validateHttpHeaders(message['method'] as string, message['params'], headers);
         } catch (error) {
           send(
             400,

@@ -96,9 +96,8 @@ export function parseMcpBearerChallenge(
     rawScheme: 'Bearer',
   };
   if (!header) return challenge;
-  const bearer = /(?:^|,)\s*Bearer(?:\s+|$)/i.exec(header);
-  if (!bearer) return challenge;
-  const parameters = header.slice(bearer.index + bearer[0].length);
+  const parameters = extractBearerParameters(header);
+  if (parameters === undefined) return challenge;
   const resourceMetadata = challengeParameter(parameters, 'resource_metadata');
   if (resourceMetadata) {
     const metadataUrl = validateMetadataUrl(resourceMetadata);
@@ -278,14 +277,70 @@ export async function discoverMcpAuthorization(
   };
 }
 
+function extractBearerParameters(header: string): string | undefined {
+  const bearerAtStart = /^\s*Bearer(?:\s+(?!\s*=)|\s*(?=,|$))/i;
+  let atBoundary = true;
+  let i = 0;
+  while (i < header.length) {
+    if (atBoundary) {
+      const m = bearerAtStart.exec(header.slice(i));
+      if (m) {
+        return header.slice(i + m[0].length);
+      }
+      atBoundary = false;
+    }
+    const ch = header[i]!;
+    if (ch === '"') {
+      i++;
+      while (i < header.length) {
+        if (header[i] === '\\') {
+          i += 2;
+          continue;
+        }
+        if (header[i] === '"') {
+          i++;
+          break;
+        }
+        i++;
+      }
+      continue;
+    }
+    if (ch === ',') {
+      atBoundary = true;
+    }
+    i++;
+  }
+  return undefined;
+}
+
 export function challengeParameter(parameters: string, name: string): string | undefined {
-  const pattern = new RegExp(
-    `(?:^|,)\\s*${name}\\s*=\\s*(?:"((?:\\\\.|[^"\\\\])*)"|([^,\\s]+))`,
-    'i',
-  );
-  const match = pattern.exec(parameters);
-  const value = match?.[1] ?? match?.[2];
-  return value?.replace(/\\(["\\])/g, '$1');
+  const target = name.toLowerCase();
+  const itemPattern =
+    /\s*(?:,\s*)*([A-Za-z0-9!#$%&'*+.^_`|~-]+)(?:\s*=\s*(?:"((?:\\.|[^"\\])*)"|([^,\s]+)))?/y;
+  let index = 0;
+  let first = true;
+  while (index < parameters.length) {
+    itemPattern.lastIndex = index;
+    const match = itemPattern.exec(parameters);
+    if (!match) break;
+    const key = match[1]!;
+    const quoted = match[2];
+    const token = match[3];
+    // A token without `=` after a comma separator (or after the first item) begins the next challenge scheme.
+    if (quoted === undefined && token === undefined) {
+      if (!first || /^\s*,/.test(match[0])) break;
+      index = itemPattern.lastIndex;
+      first = false;
+      continue;
+    }
+    first = false;
+    if (key.toLowerCase() === target) {
+      const value = quoted ?? token;
+      return value?.replace(/\\(.)/g, '$1');
+    }
+    index = itemPattern.lastIndex;
+  }
+  return undefined;
 }
 
 export function validateMetadataUrl(value: string): string | undefined {

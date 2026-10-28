@@ -1016,4 +1016,37 @@ describe('serveHttp', () => {
       await handle.close();
     }
   });
+
+  it('returns JSON-RPC -32700 and -32600 instead of -32020 when modern MCP-Protocol-Version header accompanies malformed JSON or invalid envelope', async () => {
+    const handle = await serveHttp(new MCPServer({ host: makeHost() }), { port: 0 });
+    try {
+      const malformed = await fetch(handle.url, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'mcp-protocol-version': '2026-07-28',
+        },
+        body: '{malformed json',
+      });
+      const malformedJson = (await malformed.json()) as { error?: { code?: number } };
+      expect(malformedJson.error?.code).toBe(-32700);
+
+      const invalidEnvelope = await fetch(handle.url, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'mcp-protocol-version': '2026-07-28',
+        },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 7 }),
+      });
+      const invalidJson = (await invalidEnvelope.json()) as {
+        id?: number;
+        error?: { code?: number };
+      };
+      expect(invalidJson.error?.code).toBe(-32600);
+      expect(invalidJson.id).toBe(7);
+    } finally {
+      await handle.close();
+    }
+  });
 });
