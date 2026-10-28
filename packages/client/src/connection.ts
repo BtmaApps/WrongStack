@@ -56,13 +56,19 @@ function isSessionStartPayload(value: unknown): value is WSSessionStart['payload
  */
 export function openSocket(
   Ctor: WebSocketConstructor,
-  options: { url: string; token?: string | undefined; timeoutMs: number },
+  options: {
+    url: string;
+    token?: string | undefined;
+    timeoutMs: number;
+    onSocket?: ((socket: WebSocketLike) => void) | undefined;
+  },
   routes: SocketRoutes,
 ): Promise<OpenedSocket> {
   return new Promise<OpenedSocket>((resolve, reject) => {
     let socket: WebSocketLike;
     try {
       socket = new Ctor(socketUrl(options.url, options.token));
+      options.onSocket?.(socket);
     } catch (error) {
       reject(
         new WrongStackError({ kind: 'connection', code: 'invalid_url', detail: String(error) }),

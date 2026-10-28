@@ -105,15 +105,33 @@ export function createHttpClient(options: HttpClientOptions): WrongStackHttpClie
     }
   }
 
-  const session = (id: string): string => `/api/sessions/${encodeURIComponent(id)}`;
+  const session = (id: string): string => {
+    const trimmed = typeof id === 'string' ? id.trim() : '';
+    if (!trimmed || trimmed === '.' || trimmed === '..') {
+      throw new WrongStackError({
+        kind: 'invalid',
+        code: 'invalid_session_id',
+        detail: `Invalid sessionId: ${JSON.stringify(id)}`,
+      });
+    }
+    return `/api/sessions/${encodeURIComponent(trimmed)}`;
+  };
 
   return {
     listLiveSessions: () => call<ApiSession[]>('/api/sessions'),
     sessionAgents: (id) => call<ApiSessionAgents>(`${session(id)}/agents`),
-    sessionEvents: (id, limit) =>
-      call<ApiSessionEvents>(
-        `${session(id)}/events${limit !== undefined ? `?limit=${limit}` : ''}`,
-      ),
+    sessionEvents: (id, limit) => {
+      if (limit !== undefined && (!Number.isFinite(limit) || limit < 0)) {
+        throw new WrongStackError({
+          kind: 'invalid',
+          code: 'invalid_limit',
+          detail: `Invalid limit: ${String(limit)}`,
+        });
+      }
+      return call<ApiSessionEvents>(
+        `${session(id)}/events${limit !== undefined ? `?limit=${Math.trunc(limit)}` : ''}`,
+      );
+    },
     messageSession: (id, message) =>
       call<ApiSessionMessageResponse>(`${session(id)}/message`, { method: 'POST', body: message }),
     interruptSession: (id, request = {}) =>

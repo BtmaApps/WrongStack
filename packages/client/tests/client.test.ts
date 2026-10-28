@@ -1085,4 +1085,110 @@ describe('createHttpClient', () => {
     expect(attempt).toBe(3);
     client.close();
   });
+
+  it('deduplicates in-flight autoConfirm requests and closes an in-flight reconnect socket when client.close() is called (F771)', async () => {
+    let handlerCalls = 0;
+    let releaseDecision!: (val: 'yes') => void;
+    const decisionGate = new Promise<'yes'>((r) => {
+      releaseDecision = r;
+    });
+    const { server, client } = await connected(
+      {},
+      {
+        onConfirm: () => {
+          handlerCalls += 1;
+          return decisionGate;
+        },
+      },
+    );
+    server.emit({
+      type: 'tool.confirm_needed',
+      payload: {
+        id: 'req_dup_f771',
+        toolName: 'bash',
+        input: { cmd: 'ls' },
+        suggestedPattern: 'bash',
+        sessionId: 'sess_1',
+      },
+    });
+    server.emit({
+      type: 'tool.confirm_needed',
+      payload: {
+        id: 'req_dup_f771',
+        toolName: 'bash',
+        input: { cmd: 'ls' },
+        suggestedPattern: 'bash',
+        sessionId: 'sess_1',
+      },
+    });
+    await expect.poll(() => handlerCalls).toBe(1);
+    releaseDecision('yes');
+    const frame = await server.frame('tool.confirm_result');
+    expect(frame.payload).toEqual({
+      id: 'req_dup_f771',
+      decision: 'yes',
+      sessionId: 'sess_1',
+    });
+    expect(server.received.filter((m) => m.type === 'tool.confirm_result')).toHaveLength(1);
+    client.close();
+
+    let attempt = 0;
+    const sockets: Array<{ closedWith: number | null }> = [];
+    class SlowReconnectSocket {
+      static readonly OPEN = 1;
+      readyState = 0;
+      closedWith: number | null = null;
+      private readonly listeners = {
+        open: [] as Array<() => void>,
+        error: [] as Array<(e: unknown) => void>,
+        close: [] as Array<(e: { code?: number; reason?: string }) => void>,
+        message: [] as Array<(e: { data: unknown }) => void>,
+      };
+      constructor(_url: string) {
+        attempt += 1;
+        sockets.push(this);
+        if (attempt === 1) {
+          queueMicrotask(() => {
+            this.readyState = 1;
+            for (const fn of this.listeners.open) fn();
+            for (const fn of this.listeners.message) {
+              fn({
+                data: JSON.stringify({
+                  type: 'session.start',
+                  payload: { sessionId: 'sess_1', provider: 'openai', model: 'gpt-5' },
+                }),
+              });
+            }
+          });
+        }
+      }
+      dropServer(): void {
+        this.readyState = 3;
+        for (const fn of this.listeners.close) fn({ code: 1006, reason: 'lost' });
+      }
+      send(): void {}
+      close(code = 1000, reason = ''): void {
+        this.closedWith = code;
+        this.readyState = 3;
+        for (const fn of this.listeners.close) fn({ code, reason });
+      }
+      addEventListener(
+        type: 'open' | 'error' | 'close' | 'message',
+        listener: (...args: never[]) => void,
+      ): void {
+        (this.listeners[type] as unknown[]).push(listener);
+      }
+    }
+
+    const rcClient = await WrongStackClient.connect({
+      url: 'http://127.0.0.1:3456',
+      WebSocket: SlowReconnectSocket,
+      reconnect: { attempts: 3, initialDelayMs: 0, maxDelayMs: 0 },
+    });
+    (sockets[0] as unknown as SlowReconnectSocket).dropServer();
+    await new Promise((r) => setTimeout(r, 15));
+    expect(sockets).toHaveLength(2);
+    rcClient.close();
+    expect(sockets[1]?.closedWith).toBe(1000);
+  });
 });

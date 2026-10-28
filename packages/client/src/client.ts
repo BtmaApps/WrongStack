@@ -69,6 +69,8 @@ export class WrongStackClient {
   private subscribed: string[] = [];
   private readonly runs = new Map<string, PendingRun>();
   private readonly answeredConfirms = new Set<string>();
+  private readonly inFlightConfirms = new Set<string>();
+  private openingSocket: WebSocketLike | undefined;
   private readonly listeners = new Map<string, Set<Listener>>();
   private readonly stateListeners = new Set<StateListener>();
   private readonly waiters = new Set<{
@@ -276,6 +278,9 @@ export class WrongStackClient {
     this.closing = true;
     if (this.connection === 'reconnecting') {
       this.retryTimer?.cancel();
+      const pendingSocket = this.openingSocket;
+      this.openingSocket = undefined;
+      pendingSocket?.close(NORMAL_CLOSURE, 'client closed');
       this.finish(undefined);
       return;
     }
@@ -314,24 +319,32 @@ export class WrongStackClient {
     // join `early` instead of failing the socket-number check and vanishing.
     let late: Frame[] | undefined = [];
     let lateClose: CloseInfo | undefined;
-    const opened = await openSocket(
-      this.Ctor,
-      {
-        url: this.options.url,
-        token: this.options.token,
-        timeoutMs: this.options.timeoutMs ?? 15_000,
-      },
-      {
-        frame: (frame) => {
-          if (late) late.push(frame);
-          else if (number === this.socketNumber) this.receive(frame);
+    let opened: Awaited<ReturnType<typeof openSocket>>;
+    try {
+      opened = await openSocket(
+        this.Ctor,
+        {
+          url: this.options.url,
+          token: this.options.token,
+          timeoutMs: this.options.timeoutMs ?? 15_000,
+          onSocket: (sock) => {
+            this.openingSocket = sock;
+          },
         },
-        close: (event) => {
-          if (late) lateClose = event;
-          else if (number === this.socketNumber) this.handleClose(event);
+        {
+          frame: (frame) => {
+            if (late) late.push(frame);
+            else if (number === this.socketNumber) this.receive(frame);
+          },
+          close: (event) => {
+            if (late) lateClose = event;
+            else if (number === this.socketNumber) this.handleClose(event);
+          },
         },
-      },
-    );
+      );
+    } finally {
+      this.openingSocket = undefined;
+    }
     this.socket = opened.socket;
     this.socketNumber = number;
     const early = [...opened.early, ...late];
@@ -594,8 +607,10 @@ export class WrongStackClient {
   private autoConfirm(request: ConfirmRequest, sessionId: string): void {
     const handler = this.options.onConfirm;
     // The server re-sends open confirmations to a new socket; one already
-    // answered here is not asked again.
-    if (!handler || this.answeredConfirms.has(request.id)) return;
+    // answered or currently being evaluated here is not asked again.
+    if (!handler || this.answeredConfirms.has(request.id) || this.inFlightConfirms.has(request.id))
+      return;
+    this.inFlightConfirms.add(request.id);
     void Promise.resolve()
       .then(() => handler({ ...request, sessionId }))
       .then((decision) => {
@@ -605,6 +620,9 @@ export class WrongStackClient {
       })
       .catch(() => {
         // A throwing handler leaves the request open; the server's deadline applies.
+      })
+      .finally(() => {
+        this.inFlightConfirms.delete(request.id);
       });
   }
 
@@ -704,6 +722,11 @@ export class WrongStackClient {
     if (this.connection === 'closed') return;
     this.closeError = error;
     this.connection = 'closed';
+    // A catch-up still pending would release its held frames into the closed
+    // client when its give-up timer fires, and keep a Node process up until
+    // then. Drop them; a resume note naming no tab disarms the timer.
+    this.frames.gate.releaseAll();
+    this.frames.onFramesResumed({ type: 'session.frames_resumed', payload: {} });
     const closeError = error ?? new WrongStackError({ kind: 'connection', code: 'closed' });
     this.failRuns(() => true, closeError);
     for (const waiter of [...this.waiters]) waiter.reject(closeError);

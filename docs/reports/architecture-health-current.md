@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-28T17:20:34.701Z
+**Generated:** 2026-10-28T17:21:04.944Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,8 +9,8 @@
 |---|---:|
 | Workspace packages | 45 |
 | Production source files | 5251 |
-| Production source lines | 1156010 |
-| Test files | 4604 |
+| Production source lines | 1156057 |
+| Test files | 4605 |
 | Workspace dependency edges | 221 |
 | Relative module edges | 15741 |
 | Non-command slash imports | 0 |
@@ -33,7 +33,7 @@
 | @wrongstack/builtin-plugins | 33 | 27 | @wrongstack/contracts, @wrongstack/core, @wrongstack/kanban, @wrongstack/primitives |
 | @wrongstack/chronicle | 52 | 43 | @wrongstack/contracts, @wrongstack/core, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/cli | 674 | 672 | @wrongstack/acp, @wrongstack/agent-catalog, @wrongstack/bench, @wrongstack/builtin-plugins, @wrongstack/chronicle, @wrongstack/codebase-index-mcp, @wrongstack/contracts, @wrongstack/coordination, @wrongstack/core, @wrongstack/goal, @wrongstack/hq, @wrongstack/kanban, @wrongstack/kanban-mcp, @wrongstack/mailbox-mcp, @wrongstack/mcp, @wrongstack/persistence, @wrongstack/plug-lsp, @wrongstack/plugins, @wrongstack/primitives, @wrongstack/providers, @wrongstack/requirement-intake, @wrongstack/requirement-intake-mcp, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sage-mcp, @wrongstack/sdd, @wrongstack/security-scanner, @wrongstack/techstack, @wrongstack/telegram, @wrongstack/tools, @wrongstack/tui, @wrongstack/vector-memory, @wrongstack/vibeui, @wrongstack/webui, @wrongstack/webui-hq, @wrongstack/webui-protocol, @wrongstack/webui-server, @wrongstack/worktree, @wrongstack/wrongtrace |
-| @wrongstack/client | 7 | 3 | @wrongstack/webui-protocol |
+| @wrongstack/client | 7 | 4 | @wrongstack/webui-protocol |
 | @wrongstack/codebase-index-mcp | 6 | 5 | @wrongstack/contracts, @wrongstack/core, @wrongstack/mcp, @wrongstack/tools |
 | @wrongstack/contracts | 126 | 4 | @wrongstack/kanban, @wrongstack/primitives |
 | @wrongstack/coordination | 190 | 183 | @wrongstack/agent-catalog, @wrongstack/contracts, @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
@@ -102,13 +102,13 @@ None.
 | 806 | `apps/desktop-v2/src/ProjectMemory.tsx` |
 | 804 | `apps/desktop-v2/src/SessionComposer.tsx` |
 | 800 | `packages/vibeui/src/components/resource-hub.tsx` |
+| 754 | `packages/client/src/client.ts` |
 | 753 | `packages/cli/src/fleet/host-skill-companion.ts` |
 | 750 | `packages/vibeui/src/lib/use-session.ts` |
 | 747 | `packages/webui-server/src/server/memory-handlers.ts` |
 | 743 | `apps/desktop-v2/src/KanbanTaskInspector.tsx` |
 | 737 | `packages/coordination/src/sqlite-mailbox.ts` |
 | 733 | `packages/vibeui/src/components/provider-manager.tsx` |
-| 731 | `packages/client/src/client.ts` |
 | 725 | `packages/coordination/src/multi-agent-coordinator.ts` |
 | 723 | `packages/webui-server/src/server/completion-handlers.ts` |
 | 720 | `packages/webui/src/components/MemoryManager/useMemoryManagerState.ts` |

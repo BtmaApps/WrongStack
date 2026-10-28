@@ -19,7 +19,7 @@
       "relativeImports": 3
     },
     "packages/client/src/client.ts": {
-      "lines": 731,
+      "lines": 754,
       "relativeImports": 4
     },
     "packages/coordination/src/agent-monitor.ts": {

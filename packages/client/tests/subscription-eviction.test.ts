@@ -1,7 +1,7 @@
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { afterEach, describe, expect, it } from 'vitest';
-import { WrongStackClient } from '../src/index.js';
+import { createHttpClient, WrongStackClient } from '../src/index.js';
 import { WebSocketServer } from './ws-runtime.js';
 
 type Frame = { type: string; payload?: Record<string, unknown> };
@@ -110,5 +110,16 @@ describe('WrongStackClient subscription slots and runs in flight', () => {
     } finally {
       client.close();
     }
+  });
+
+  it('rejects dot-segment sessionId values and non-finite limits in createHttpClient (F862)', async () => {
+    const httpClient = createHttpClient({
+      url: 'http://127.0.0.1:3456',
+      fetch: (async () => new Response('{}', { status: 200 })) as typeof fetch,
+    });
+    expect(() => httpClient.sessionAgents('..')).toThrow(/Invalid sessionId/);
+    expect(() => httpClient.sessionAgents('.')).toThrow(/Invalid sessionId/);
+    expect(() => httpClient.sessionAgents('')).toThrow(/Invalid sessionId/);
+    expect(() => httpClient.sessionEvents('sess-1', Number.NaN)).toThrow(/Invalid limit/);
   });
 });
