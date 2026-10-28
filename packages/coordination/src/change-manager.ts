@@ -128,6 +128,7 @@ export class ChangeManager {
    * Does NOT automatically initiate voting — call `submitForReview()` for that.
    */
   async propose(input: ChangeProposal): Promise<ChangeNode> {
+    const initialGate = this._buildQualityGateResult();
     const node = (await this.graph.add({
       type: 'change',
       title: input.title,
@@ -142,20 +143,18 @@ export class ChangeManager {
       approvedBy: [],
       rejectedBy: [],
       votes: [],
-      qualityGate: { passed: false, checks: [] }, // filled after quality gate
+      qualityGate: initialGate,
       satisfiesGoals: input.satisfiesGoals,
     } as Omit<ChangeNode, 'id'>)) as ChangeNode;
 
-    // Run quality gate asynchronously. Chain the persistence into the same
-    // promise and guard it with a single .catch: this is best-effort
-    // background work and must never surface as an unhandled rejection (the
-    // graph dir may have been torn down, or a concurrent writer may hold a
-    // lock) — that would crash the process / poison an unrelated test.
-    void this._runQualityGate(node.id, input.files)
-      .then((gate) => this.graph.update(node.id, { qualityGate: gate }))
-      .catch(() => {
-        /* background quality-gate persistence is best-effort */
-      });
+    // Persist the initial quality gate before returning so subsequent
+    // updateQualityGate() calls are never overwritten by a trailing background write.
+    try {
+      const gate = await this._runQualityGate(node.id, input.files);
+      node.qualityGate = gate;
+    } catch {
+      /* quality-gate persistence is best-effort */
+    }
 
     this._emit('change:proposed', { changeId: node.id, title: node.title });
     return node;
@@ -186,7 +185,7 @@ export class ChangeManager {
    */
   async markApplied(changeId: string, appliedAt: string): Promise<ChangeNode | null> {
     const change = this.graph.get(changeId) as ChangeNode | undefined;
-    if (!change) return null;
+    if (change?.type !== 'change') return null;
 
     const updated = (await this.graph.update(changeId, {
       status: 'applied',
@@ -209,7 +208,7 @@ export class ChangeManager {
     verify: () => Promise<QualityGateResult>,
   ): Promise<ApplyResult> {
     const change = this.graph.get(changeId) as ChangeNode | undefined;
-    if (!change) throw new Error(`ChangeManager: unknown change "${changeId}"`);
+    if (change?.type !== 'change') throw new Error(`ChangeManager: unknown change "${changeId}"`);
 
     const appliedAt = new Date().toISOString();
     await this.markApplied(changeId, appliedAt);
@@ -287,6 +286,9 @@ export class ChangeManager {
    * Mark a change as rolled back.
    */
   async markRolledBack(changeId: string, rolledBackAt: string): Promise<ChangeNode | null> {
+    const change = this.graph.get(changeId) as ChangeNode | undefined;
+    if (change?.type !== 'change') return null;
+
     const updated = (await this.graph.update(changeId, {
       status: 'rolled_back',
       rolledBackAt,
@@ -309,7 +311,8 @@ export class ChangeManager {
   }
 
   getChange(id: string): ChangeNode | undefined {
-    return this.graph.get(id) as ChangeNode | undefined;
+    const node = this.graph.get(id) as ChangeNode | undefined;
+    return node?.type === 'change' ? node : undefined;
   }
 
   getChangesForGoal(goalId: string): ChangeNode[] {
@@ -318,22 +321,9 @@ export class ChangeManager {
 
   // ── Quality gate ──────────────────────────────────────────────────────
 
-  /**
-   * Run quality gate checks. This is informational — actual test/lint/typecheck
-   * execution is done by agents spawned for this purpose. This method stores
-   * the result in the change node.
-   */
-  private async _runQualityGate(
-    _changeId: string,
-    _files: ChangeFile[],
-  ): Promise<QualityGateResult> {
+  private _buildQualityGateResult(): QualityGateResult {
     const checks: QualityGateResult['checks'] = [];
 
-    // For now, gate is informational. A full implementation would:
-    // 1. Spawn a verify agent to run tests
-    // 2. Spawn a typecheck agent
-    // 3. Spawn a security scan agent
-    // For now, we mark all as pending (actual results set by agents)
     if (this.checks.runTests) {
       checks.push({ name: 'tests', passed: false, detail: 'Tests must be run by a verify agent' });
     }
@@ -347,11 +337,22 @@ export class ChangeManager {
       checks.push({ name: 'lint', passed: false, detail: 'Lint check' });
     }
 
-    const result: QualityGateResult = {
+    return {
       passed: checks.length === 0,
       checks,
     };
+  }
 
+  /**
+   * Run quality gate checks. This is informational — actual test/lint/typecheck
+   * execution is done by agents spawned for this purpose. This method stores
+   * the result in the change node.
+   */
+  private async _runQualityGate(
+    _changeId: string,
+    _files: ChangeFile[],
+  ): Promise<QualityGateResult> {
+    const result = this._buildQualityGateResult();
     await this.graph.update(_changeId, { qualityGate: result });
     return result;
   }
@@ -366,7 +367,7 @@ export class ChangeManager {
     result: { passed: boolean; detail?: string },
   ): Promise<void> {
     const change = this.graph.get(changeId) as ChangeNode | undefined;
-    if (!change) return;
+    if (change?.type !== 'change') return;
 
     const checks = change.qualityGate.checks.map((c) =>
       c.name === checkName ? { ...c, ...result } : c,

@@ -388,6 +388,48 @@ describe('makeDependencyWatcherConfig', () => {
 
       expect(spy).not.toHaveBeenCalled();
     });
+
+    it('debounces mixed relative and root-prefixed manifest paths together and ignores onChange after dispose (F764)', async () => {
+      const pkgPath = path.join(projectRoot, 'package.json');
+      await fs.writeFile(
+        pkgPath,
+        JSON.stringify({ name: 'f764-pkg', dependencies: { zod: '^3.22.0' } }, null, 2),
+        'utf8',
+      );
+      const future = new Date(Date.now() + 2000);
+      await fs.utimes(pkgPath, future, future);
+
+      const normalizedRoot = projectRoot.replaceAll('\\', '/');
+      const cfg = makeDependencyWatcherConfig({
+        projectRoot: normalizedRoot,
+        mailbox,
+        debounceMs: 25,
+      });
+      const spy = vi.spyOn(mailbox, 'send');
+
+      await cfg.onChange(makeEntry({ path: 'package.json' }));
+      await cfg.onChange(makeEntry({ path: `${normalizedRoot}/package.json` }));
+      await waitForSend(spy);
+      await new Promise((r) => setTimeout(r, 40));
+
+      expect(spy).toHaveBeenCalledTimes(1);
+
+      cfg.dispose();
+      await fs.writeFile(
+        pkgPath,
+        JSON.stringify(
+          { name: 'f764-pkg', dependencies: { zod: '^3.22.0', vitest: '^2.0.0' } },
+          null,
+          2,
+        ),
+        'utf8',
+      );
+      await fs.utimes(pkgPath, future, future);
+      await cfg.onChange(makeEntry({ path: 'package.json' }));
+      await new Promise((r) => setTimeout(r, 50));
+
+      expect(spy).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('defaults', () => {

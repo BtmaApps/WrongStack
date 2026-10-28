@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-28T17:24:43.233Z
+**Generated:** 2026-10-28T17:25:18.201Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,7 +9,7 @@
 |---|---:|
 | Workspace packages | 45 |
 | Production source files | 5251 |
-| Production source lines | 1156189 |
+| Production source lines | 1156225 |
 | Test files | 4605 |
 | Workspace dependency edges | 221 |
 | Relative module edges | 15741 |
@@ -110,9 +110,9 @@ None.
 | 737 | `packages/coordination/src/sqlite-mailbox.ts` |
 | 733 | `packages/vibeui/src/components/provider-manager.tsx` |
 | 725 | `packages/coordination/src/multi-agent-coordinator.ts` |
+| 724 | `packages/coordination/src/agent-monitor.ts` |
 | 723 | `packages/webui-server/src/server/completion-handlers.ts` |
 | 720 | `packages/webui/src/components/MemoryManager/useMemoryManagerState.ts` |
-| 715 | `packages/coordination/src/agent-monitor.ts` |
 | 715 | `packages/plugins/src/audit/index.ts` |
 | 709 | `packages/vibeui/src/components/memory-browser.tsx` |
 | 707 | `packages/acp/src/client/acp-session.ts` |
@@ -125,6 +125,7 @@ None.
 | 699 | `packages/coordination/src/subagent-budget.ts` |
 | 699 | `packages/governance/src/runtime-compatibility.ts` |
 | 699 | `packages/sage/src/types.ts` |
+| 698 | `packages/coordination/src/task-auctioneer.ts` |
 | 697 | `packages/core/src/core/agent-response.ts` |
 | 697 | `packages/tools/src/codebase-index/writer-graph-reader.ts` |
 | 697 | `packages/webui/src/components/KanbanView.tsx` |
@@ -140,7 +141,6 @@ None.
 | 693 | `packages/core/src/execution/eternal-autonomy.ts` |
 | 693 | `packages/hq/src/publisher.ts` |
 | 693 | `packages/tui/src/hooks/use-provider-event-bridge.ts` |
-| 693 | `packages/vector-memory/src/store.ts` |
 
 ## Exports only tests reference
 

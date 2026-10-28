@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-28T17:24:43.233Z",
+  "generatedAt": "2026-10-28T17:25:18.201Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -14,7 +14,7 @@
     "packages": 45,
     "sourceFiles": 5251,
     "testFiles": 4605,
-    "sourceLines": 1156189,
+    "sourceLines": 1156225,
     "workspaceEdges": 221,
     "moduleEdges": 15741,
     "nonCommandSlashImports": 0,
@@ -29536,7 +29536,7 @@
     },
     {
       "file": "packages/coordination/src/agent-monitor.ts",
-      "lines": 715,
+      "lines": 724,
       "relativeImports": 1
     },
     {
@@ -29762,6 +29762,11 @@
       "relativeImports": 13
     },
     {
+      "file": "packages/coordination/src/agent-monitor.ts",
+      "lines": 724,
+      "relativeImports": 1
+    },
+    {
       "file": "packages/webui-server/src/server/completion-handlers.ts",
       "lines": 723,
       "relativeImports": 1
@@ -29770,11 +29775,6 @@
       "file": "packages/webui/src/components/MemoryManager/useMemoryManagerState.ts",
       "lines": 720,
       "relativeImports": 9
-    },
-    {
-      "file": "packages/coordination/src/agent-monitor.ts",
-      "lines": 715,
-      "relativeImports": 1
     },
     {
       "file": "packages/plugins/src/audit/index.ts",
@@ -29835,6 +29835,11 @@
       "file": "packages/sage/src/types.ts",
       "lines": 699,
       "relativeImports": 10
+    },
+    {
+      "file": "packages/coordination/src/task-auctioneer.ts",
+      "lines": 698,
+      "relativeImports": 8
     },
     {
       "file": "packages/core/src/core/agent-response.ts",
@@ -29910,11 +29915,6 @@
       "file": "packages/tui/src/hooks/use-provider-event-bridge.ts",
       "lines": 693,
       "relativeImports": 11
-    },
-    {
-      "file": "packages/vector-memory/src/store.ts",
-      "lines": 693,
-      "relativeImports": 8
     }
   ],
   "testOnlyExports": [

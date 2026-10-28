@@ -707,6 +707,64 @@ describe('AgentMonitorService', () => {
       await fsp.rm(transcriptsDir, { recursive: true, force: true });
       await expect(monitor.loadSessionsFromDisk()).resolves.toEqual([]);
     });
+
+    it('preserves a live subagent spawned while loadSessionsFromDisk is reading its transcript (F762)', async () => {
+      const dir = path.join(transcriptsDir, 'race-worker');
+      await fsp.mkdir(dir, { recursive: true });
+      await fsp.writeFile(
+        path.join(dir, 'transcript.jsonl'),
+        `${JSON.stringify({
+          id: 'disk-1',
+          subagentId: 'race-worker',
+          agentName: 'Stale Disk Worker',
+          ts: '2026-07-16T09:00:00.000Z',
+          kind: 'text',
+          content: 'from prior disk run',
+          iteration: 0,
+        })}\n`,
+      );
+
+      const loadPromise = monitor.loadSessionsFromDisk(['race-worker']);
+      monitor.trackSubagent('race-worker', 'Live Worker', 'fresh task');
+      await loadPromise;
+
+      const session = monitor.getSession('race-worker');
+      expect(session?.status).toBe('spawned');
+      expect(session?.agentName).toBe('Live Worker');
+      expect(session?.transcript.some((e) => e.content === 'from prior disk run')).toBe(false);
+    });
+  });
+
+  it('attaches FleetBus listener when setFleetBus is called after start() and detaches old bus on rebind (F762)', () => {
+    const lateMonitor = createAgentMonitorService({
+      events,
+      transcriptsDir,
+      streamEnabled: true,
+    });
+    const firstBus = new FleetBus();
+    const secondBus = new FleetBus();
+
+    lateMonitor.start();
+    lateMonitor.setFleetBus(firstBus);
+    lateMonitor.start(); // idempotent after late setFleetBus
+    lateMonitor.trackSubagent('a-late', 'Late Agent');
+
+    firstBus.emit(makeFleetEvent('a-late', 'subagent.running', { taskId: 'late-task' }));
+    expect(lateMonitor.getSession('a-late')?.status).toBe('running');
+
+    // Rebinding while running detaches firstBus and subscribes secondBus
+    lateMonitor.setFleetBus(secondBus);
+    firstBus.emit(
+      makeFleetEvent('a-late', 'provider.text_delta', { text: 'stale-bus', iteration: 0 }),
+    );
+    secondBus.emit(
+      makeFleetEvent('a-late', 'provider.text_delta', { text: 'active-bus', iteration: 0 }),
+    );
+
+    const session = lateMonitor.getSession('a-late');
+    expect(session?.transcript.some((e) => e.content.includes('active-bus'))).toBe(true);
+    expect(session?.transcript.some((e) => e.content.includes('stale-bus'))).toBe(false);
+    lateMonitor.stop();
   });
 
   // ── Iteration heartbeat ──────────────────────────────────────────

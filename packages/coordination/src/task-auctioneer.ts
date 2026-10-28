@@ -243,6 +243,13 @@ export class TaskAuctioneer {
     // Reject bids below minimum confidence threshold
     if (score < this.minConfidence) return false;
 
+    // Re-check task state and agent capacity after awaiting dispatcher:
+    // the task may have been claimed/completed/failed or the agent may have
+    // reached capacity while `dispatchAgent` was in flight.
+    const latestGoal = this.graph.get(taskId) as GoalNode | undefined;
+    if (latestGoal?.type !== 'goal' || latestGoal.status !== 'pending') return false;
+    if (this._getAgentTaskCount(agent.agentId) >= this.maxTasksPerAgent) return false;
+
     const bid: TaskBid = {
       id: randomUUID(),
       taskId,
@@ -300,19 +307,18 @@ export class TaskAuctioneer {
     // Clear any bid window
     this._cancelBidWindow(taskId);
 
+    // Clear pending bids and retry count and update agent task count before
+    // yielding to graph.update so concurrent in-flight bids observe the award.
+    this.pendingBids.delete(taskId);
+    this.bidRetryCounts.delete(taskId);
+    this.agentTaskCount(agentId, +1);
+
     // Update the goal
     await this.graph.update(taskId, {
       status: 'in_progress',
       assignee: agentId,
       updatedAt: new Date().toISOString(),
     });
-
-    // Clear pending bids and retry count
-    this.pendingBids.delete(taskId);
-    this.bidRetryCounts.delete(taskId);
-
-    // Update agent task count
-    this.agentTaskCount(agentId, +1);
 
     // Notify the winner
     await this._notifyAgent(agentId, {
@@ -347,7 +353,9 @@ export class TaskAuctioneer {
     if (isTerminalGoalStatus(goal.status)) return;
 
     const agentId = goal.assignee ?? 'unknown';
-    this.agentTaskCount(agentId, -1);
+    if (goal.status === 'in_progress' && goal.assignee) {
+      this.agentTaskCount(goal.assignee, -1);
+    }
 
     await this.graph.update(taskId, {
       status: 'done',
@@ -409,7 +417,9 @@ export class TaskAuctioneer {
     if (isTerminalGoalStatus(goal.status)) return;
 
     const agentId = goal.assignee ?? 'unknown';
-    this.agentTaskCount(agentId, -1);
+    if (goal.status === 'in_progress' && goal.assignee) {
+      this.agentTaskCount(goal.assignee, -1);
+    }
 
     await this.graph.update(taskId, {
       status: 'failed',
@@ -648,13 +658,13 @@ export class TaskAuctioneer {
     /* v8 ignore next -- always called with the just-created goal from publishTask */
     if (!goal) return;
 
+    this.agentTaskCount(agentId, +1);
+
     await this.graph.update(taskId, {
       status: 'in_progress',
       assignee: agentId,
       updatedAt: new Date().toISOString(),
     });
-
-    this.agentTaskCount(agentId, +1);
     await this._notifyAgent(agentId, {
       type: 'assign',
       subject: `[assigned] ${goal.title}`,

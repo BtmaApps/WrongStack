@@ -478,5 +478,63 @@ describe('ChangeManager', () => {
       // Pending checks mean the gate has not passed yet.
       expect(gate.passed).toBe(false);
     });
+
+    it('populates qualityGate before propose resolves without clobbering immediate updateQualityGate or mutating non-change nodes (F763)', async () => {
+      const nodes = new Map<string, Record<string, unknown>>();
+      const asyncGraph = {
+        add: vi.fn(async (data: Record<string, unknown>) => {
+          const id = `change_${nodes.size + 1}`;
+          const node = { ...data, id };
+          nodes.set(id, node);
+          return node;
+        }),
+        get: vi.fn((id: string) => nodes.get(id)),
+        update: vi.fn(async (id: string, patch: Record<string, unknown>) => {
+          await Promise.resolve();
+          const existing = nodes.get(id);
+          if (!existing) return null;
+          const updated = { ...existing, ...patch };
+          nodes.set(id, updated);
+          return updated;
+        }),
+        getChanges: vi.fn(() => []),
+      } as never as KnowledgeGraph;
+
+      const gatedManager = new ChangeManager({
+        graph: asyncGraph,
+        consensus,
+        fleet,
+        checks: {
+          runTests: true,
+          runTypecheck: false,
+          runSecurityScan: false,
+          runLint: false,
+        },
+      });
+
+      const proposed = await gatedManager.propose(sampleChangeProposal());
+      expect(proposed.qualityGate.checks).toHaveLength(1);
+      expect(proposed.qualityGate.passed).toBe(false);
+
+      await gatedManager.updateQualityGate(proposed.id, 'tests', {
+        passed: true,
+        detail: 'All unit tests passed',
+      });
+      await new Promise((r) => setTimeout(r, 10));
+
+      const afterUpdate = gatedManager.getChange(proposed.id);
+      expect(afterUpdate?.qualityGate.passed).toBe(true);
+
+      nodes.set('goal_1', { id: 'goal_1', type: 'goal', status: 'open' });
+      expect(gatedManager.getChange('goal_1')).toBeUndefined();
+      expect(await gatedManager.markApplied('goal_1', new Date().toISOString())).toBeNull();
+      expect(await gatedManager.markRolledBack('goal_1', new Date().toISOString())).toBeNull();
+      await expect(
+        gatedManager.markAppliedWithVerification('goal_1', async () => ({
+          passed: true,
+          checks: [],
+        })),
+      ).rejects.toThrow(/unknown change/);
+    });
   });
 });

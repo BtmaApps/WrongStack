@@ -831,5 +831,49 @@ describe('TaskAuctioneer (extended coverage)', () => {
         vi.useRealTimers();
       }
     });
+
+    it('rejects in-flight bids after concurrent claim/capacity exhaustion and preserves active task count when failing/completing blocked tasks (F822)', async () => {
+      const a = new TaskAuctioneer({
+        graph,
+        fleet,
+        mailbox,
+        selfAgentId: 't',
+        maxTasksPerAgent: 1,
+        minConfidence: 0.3,
+      });
+      const t1 = await a.publishTask({ title: 'Race Task', description: 'Fix bug' });
+      const bidPromise = a.bid(
+        t1,
+        { agentId: 'late-bidder', agentName: 'Late', agentRole: 'bug-hunter' },
+        'too late',
+      );
+      const claimed = await a.claim(t1, 'winner-agent', 'Winner');
+      const lateBidAccepted = await bidPromise;
+      expect(claimed).toBe(true);
+      expect(lateBidAccepted).toBe(false);
+      expect(a.getBids(t1)).toEqual([]);
+
+      const blocker = await a.publishTask({
+        title: 'Blocker',
+        description: 'Fix bug',
+        targetAgent: 'agent-busy',
+      });
+      const blockedChild = await a.publishTask({
+        title: 'Blocked Child',
+        description: 'Fix bug',
+        targetAgent: 'agent-busy',
+        blockedBy: [blocker],
+      });
+      await a.fail(blockedChild, 'cancelled while blocked');
+
+      const extra = await a.publishTask({ title: 'Extra', description: 'Fix bug' });
+      const busyAccepted = await a.bid(
+        extra,
+        { agentId: 'agent-busy', agentName: 'Busy', agentRole: 'bug-hunter' },
+        'still busy',
+      );
+      expect(busyAccepted).toBe(false);
+      a.dispose();
+    });
   });
 });

@@ -129,9 +129,18 @@ export class AgentMonitorService {
 
   // ── Public API ────────────────────────────────────────────────────
 
-  /** Set the FleetBus to listen on. Must be called before `start()`. */
+  /** Set the FleetBus to listen on. Re-binds live subscription if already started. */
   setFleetBus(bus: FleetBus): void {
+    if (this._fleetDisposer) {
+      this._fleetDisposer();
+      this._fleetDisposer = undefined;
+    }
     this._fleetBus = bus;
+    if (this._started) {
+      this._fleetDisposer = this._fleetBus.onAny((event) => {
+        this._routeEvent(event.subagentId, event.type, event.payload as Record<string, unknown>);
+      });
+    }
   }
 
   get streamEnabled(): boolean {
@@ -188,6 +197,7 @@ export class AgentMonitorService {
     for (const subagentId of subagentIds) {
       if (this._sessions.has(subagentId)) continue; // live ring is authoritative
       const transcript = await this._readTranscriptFile(subagentId);
+      if (this._sessions.has(subagentId)) continue; // live subagent spawned while reading disk
       if (transcript.length === 0) continue;
       const first = expectDefined(transcript[0]);
       const last = expectDefined(transcript[transcript.length - 1]);
@@ -255,13 +265,12 @@ export class AgentMonitorService {
 
   /** Start listening to FleetBus events. */
   start(): void {
-    if (this._started) return;
+    if (this._started && this._fleetDisposer) return;
+    this._started = true;
     if (!this._fleetBus) {
-      // FleetBus not set yet — start() will be called again after setFleetBus().
-      this._started = true; // Mark as started so stop() works
+      // FleetBus not set yet — start() or setFleetBus() will attach when set.
       return;
     }
-    this._started = true;
 
     // Subscribe to every FleetBus event and route to the appropriate handler.
     // FleetBus.any fires for ALL events from ALL subagents.

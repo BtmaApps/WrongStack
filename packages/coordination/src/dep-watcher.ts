@@ -179,6 +179,17 @@ export function makeDependencyWatcherConfig(
     return normalized.startsWith('/') || /^[a-zA-Z]:\//.test(normalized);
   }
 
+  const normalizedRoot = projectRoot.replaceAll('\\', '/').replace(/\/+$/, '');
+  const normalizedRootLower = normalizedRoot.toLowerCase();
+
+  function normalizeManifestKey(manifestPath: string): string {
+    const slash = manifestPath.replaceAll('\\', '/').replace(/^\.\//, '');
+    if (normalizedRoot.length > 0 && slash.toLowerCase().startsWith(`${normalizedRootLower}/`)) {
+      return slash.slice(normalizedRoot.length + 1);
+    }
+    return slash;
+  }
+
   /**
    * Subject line. When the delta names new packages they lead the subject, so
    * the notification is legible in a mailbox list — and so a consumer that can
@@ -224,7 +235,7 @@ export function makeDependencyWatcherConfig(
    * delta rather than breaking the watcher.
    */
   async function readDelta(manifestPath: string): Promise<DependencyDelta | 'unchanged'> {
-    const key = manifestPath.replaceAll('\\', '/');
+    const key = normalizeManifestKey(manifestPath);
     try {
       const absolute = isAbsolutePath(manifestPath)
         ? manifestPath
@@ -265,8 +276,9 @@ export function makeDependencyWatcherConfig(
     return false;
   }
 
-  // Debounce state — keyed by file path
+  // Debounce state — keyed by canonical manifest path
   const pending = new Map<string, ReturnType<typeof setTimeout>>();
+  let disposed = false;
 
   // Last-known declared dependency set per manifest, used to compute the delta.
   const baselines = new Map<string, DeclaredDependencyMap>();
@@ -279,10 +291,13 @@ export function makeDependencyWatcherConfig(
     watchPaths: unique,
     debounceMs,
     dispose(): void {
+      disposed = true;
       for (const t of pending.values()) clearTimeout(t);
       pending.clear();
     },
     async onChange(entry: DepWatchEntry): Promise<void> {
+      if (disposed) return;
+
       // Only react to create/change events (not delete)
       if (entry.event === 'delete') return;
 
@@ -295,7 +310,7 @@ export function makeDependencyWatcherConfig(
       if (!matchesPattern(entry.path)) return;
 
       // Debounce — multiple rapid saves (e.g. auto-format on save) collapse
-      const key = entry.path;
+      const key = normalizeManifestKey(entry.path);
       const existing = pending.get(key);
       if (existing) clearTimeout(existing);
 
@@ -303,10 +318,11 @@ export function makeDependencyWatcherConfig(
         key,
         setTimeout(async () => {
           pending.delete(key);
+          if (disposed) return;
           try {
             const fileName = entry.path.split('/').pop()?.split('\\').pop() ?? entry.path;
             const delta = await readDelta(entry.path);
-            if (delta === 'unchanged') return;
+            if (disposed || delta === 'unchanged') return;
             const body: string[] = [
               `Manifest: ${entry.path}`,
               `File: ${entry.path}`,
