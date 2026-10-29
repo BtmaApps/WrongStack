@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-29T08:52:47.139Z",
+  "generatedAt": "2026-10-29T08:56:44.251Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,10 +13,10 @@
   "summary": {
     "packages": 45,
     "sourceFiles": 5411,
-    "testFiles": 4730,
-    "sourceLines": 1197528,
+    "testFiles": 4731,
+    "sourceLines": 1197521,
     "workspaceEdges": 222,
-    "moduleEdges": 16265,
+    "moduleEdges": 16266,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -211,7 +211,7 @@
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
       "sourceFiles": 676,
-      "testFiles": 675,
+      "testFiles": 676,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/agent-catalog",
@@ -262,7 +262,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 675
+          "testFiles": 676
         }
       ]
     },
@@ -3464,6 +3464,12 @@
       },
       {
         "file": "packages/cli/tests/bench-run-help.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/bench-tool-surface.test.ts",
         "projects": [
           "root-node"
         ]

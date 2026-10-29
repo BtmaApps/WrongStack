@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { DiffPreview } from './DiffPreview';
 import type { EngineCommand } from './engine-operations';
 import type { SkillEditorDraft } from './skill-editor-draft';
 import { type SkillDraftScope, useDraftState, useSkillEditorDraft } from './useSkillEditorDraft';
@@ -105,16 +106,14 @@ export function SkillDraftNotice({
       {state?.review && controller && (
         <section className="skill-draft-notice" aria-label="Skill draft conflict">
           <p>Another window saved different unsaved edits for this skill. Choose which to keep.</p>
-          <div className="skill-draft-compare">
-            <div>
-              <strong>Saved in another window</strong>
-              <pre>{state.review.value?.body ?? 'No saved edits.'}</pre>
-            </div>
-            <div>
-              <strong>This window</strong>
-              <pre>{state.value?.body ?? 'No edits.'}</pre>
-            </div>
-          </div>
+          <p className="field-help">
+            Lines below change from the other window’s edits to this window’s.
+          </p>
+          <DiffPreview
+            before={state.review.value?.body ?? binding.body ?? ''}
+            after={state.value?.body ?? binding.body ?? ''}
+            path="SKILL.md"
+          />
           <footer>
             <button
               type="button"
@@ -144,16 +143,10 @@ export function SkillDraftNotice({
             Unsaved edits kept on this device started from an older version of this skill. The file
             has changed since. Compare them before continuing; nothing is applied until you choose.
           </p>
-          <div className="skill-draft-compare">
-            <div>
-              <strong>Current skill file</strong>
-              <pre>{binding.body}</pre>
-            </div>
-            <div>
-              <strong>Your earlier edits</strong>
-              <pre>{stale.body}</pre>
-            </div>
-          </div>
+          <p className="field-help">
+            Lines below change from the current skill file to your earlier edits.
+          </p>
+          <DiffPreview before={binding.body ?? ''} after={stale.body} path="SKILL.md" />
           <footer>
             <button type="button" className="button secondary small" onClick={binding.useStale}>
               Continue with my edits

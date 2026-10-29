@@ -2951,3 +2951,15 @@ Verification on the shared working snapshot:
   tree with another agent's uncommitted core/cli edits.
 - Not covered: the role-creation dialog, full application restart, multi-window UI stress, full
   repository release/coverage, hosted CI and installed-app replacement.
+
+## Diff-focused skill draft review (2026-10-29)
+
+- The skill draft review panels (older edits against a changed file, and peer-window conflicts)
+  now reuse the existing bounded Myers `DiffPreview` instead of two full-text panes: changed lines
+  with context, added/removed counts, unified/side-by-side modes and "Show entire file". The
+  now-unused `.skill-draft-compare` styles were removed.
+- Checks: desktop **427 tests / 90 files PASS**; typecheck **249 PASS**; Biome PASS.
+- Native `--skills` on portable identity `236f5103eeb4-344ee89c60b0`, bundled engine/checksums
+  verified: **exit 0 / PASS**. The draft scenario now also asserts the removed `## External change`
+  line and the added `## Parked edit` line in the review. Inspected
+  `skills/native-skill-draft-review.png`: the difference is visible without scrolling.

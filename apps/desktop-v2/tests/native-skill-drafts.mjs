@@ -66,6 +66,9 @@ export async function exerciseNativeSkillDrafts({
   const review = page.getByRole('region', { name: 'Earlier skill edits', exact: true });
   await review.waitFor();
   assert.equal(await source.count(), 0, 'Older edits are not loaded into the editor silently');
+  // The review shows only what changed: the external heading removed, the parked heading added.
+  await review.locator('.diff-line-add').filter({ hasText: '## Parked edit' }).waitFor();
+  await review.locator('.diff-line-remove').filter({ hasText: '## External change' }).waitFor();
   await page.screenshot({
     path: join(artifactDir, 'native-skill-draft-review.png'),
     fullPage: true,

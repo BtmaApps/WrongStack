@@ -352,7 +352,7 @@ Entry points include `SessionComposer.tsx`, `SessionWorkbench.tsx`, `SessionMode
 | Roster/fleet: `ProjectAgentRoster.tsx`, `ProjectMailbox.tsx`, roster/runtime editors | Actual worker execution and routing, knowledge-checklist editing, delegation ancestry/office topology, agent-level controls/council, large catalogs/fleets, restart-durable drafts and atomic cross-window controls. Membership maps and role inheritance do not establish delegation. |
 | Mailbox/collaboration: `MailboxComposer.tsx`, `ProjectMailbox.tsx` | Restart-safe compose with multi-window conflict handling, older thread retrieval, richer delivery/read receipts/notifications, retention, annotations/control and broader lifecycle stress. Delivery acknowledgement is not proof that a worker read or executed the message. |
 | Session audit: `SessionSideEffects.tsx` | Persisted paging, project-wide aggregation, live outcome changes, more operation-kind native cases and long-history evidence. |
-| Skills: `SkillLibrary.tsx` | Native Git install/update/uninstall/export proof, richer document/dependency metadata, invocation progress and a diff-focused draft comparison. `skills.edit` is still an unconditional engine write behind a read-compare preflight. |
+| Skills: `SkillLibrary.tsx` | Native Git install/update/uninstall/export proof, richer document/dependency metadata, invocation progress. `skills.edit` is still an unconditional engine write behind a read-compare preflight. |
 
 ### P2: automation, MCP and supporting runtime tools
 
