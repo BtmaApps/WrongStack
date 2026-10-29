@@ -105,6 +105,10 @@ const INTENTIONALLY_UNHANDLED = new Set<string>([
   // files.search; its own search UI uses a separate implementation. The native
   // FileContentSearch consumes these correlated replies through EngineOperations.
   'files.search',
+  // Desktop's GitWorkspace owns correlated hunk/conflict review requests;
+  // the WebUI does not issue these requests (it uses git.diff instead).
+  'git.hunks',
+  'git.conflict',
   // Collab "observer mirror" stream — incomplete feature, no UI surface yet,
   // standalone-only (the CLI server no-ops collab). See webui-cli-ws-protocol-parity.
   'collab.event',

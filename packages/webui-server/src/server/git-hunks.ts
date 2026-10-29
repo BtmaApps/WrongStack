@@ -2,6 +2,7 @@ import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { lstat, realpath } from 'node:fs/promises';
 import { dirname, relative, resolve } from 'node:path';
+import { buildChildEnv } from '@wrongstack/core/utils';
 import { gitIsolationEnv } from '@wrongstack/primitives';
 import type { WebSocket } from 'ws';
 import { isUnsafeRelativePath, repoRelativePrefix } from './git-paths.js';
@@ -17,7 +18,7 @@ export async function gitReviewBytes(cwd: string, args: string[], input?: string
       args,
       {
         cwd,
-        env: { ...process.env, ...isolation, GIT_LITERAL_PATHSPECS: '1' },
+        env: { ...buildChildEnv(), ...isolation, GIT_LITERAL_PATHSPECS: '1' },
         timeout: 10000,
         maxBuffer: 2 * 1024 * 1024,
         windowsHide: true,

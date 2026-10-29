@@ -52,6 +52,10 @@ describe('workspace edits with non-file URIs', () => {
       },
       documentChanges: [
         {
+          textDocument: { uri: pathToUri(file), version: 1 },
+          edits: edit('result2'),
+        },
+        {
           textDocument: { uri: 'vscode-remote://ssh-remote%2Bhost/home/u/x.ts', version: 1 },
           edits: edit('z'),
         },

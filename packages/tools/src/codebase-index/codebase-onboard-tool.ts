@@ -1,3 +1,17 @@
+import type {
+  CodebaseOnboardOutput,
+  OnboardingPersona,
+  TourStage,
+  TourStep,
+} from './codebase-onboard-contracts.js';
+
+export type {
+  CodebaseOnboardOutput,
+  OnboardingPersona,
+  TourStage,
+  TourStep,
+} from './codebase-onboard-contracts.js';
+
 /**
  * `codebase-onboard` tool — Guided Architectural Tour & Onboarding Generator.
  *
@@ -13,14 +27,10 @@ import { existsSync } from 'node:fs';
 import * as path from 'node:path';
 import type { Tool } from '@wrongstack/contracts/types';
 import { ATLAS_DIR, ensureAtlasDir, writeAtlasFile } from './atlas-projection.js';
-import {
-  discoverEntryPoints,
-  type ExecutionFlow,
-  sliceExecutionFlow,
-} from './codebase-flow-trace-tool.js';
+import { discoverEntryPoints, sliceExecutionFlow } from './codebase-flow-trace-tool.js';
 import { isTestFilePath } from './codebase-impact-analysis-tool.js';
-import { type AnchoredSageInsight, findAnchoredSageMemories } from './ecosystem-bridge.js';
-import { detectStoreFileCommunities, type FileCommunity } from './louvain.js';
+import { findAnchoredSageMemories } from './ecosystem-bridge.js';
+import { detectStoreFileCommunities } from './louvain.js';
 import { onboardNote, withNextStepNote } from './next-step-notes.js';
 import {
   codebaseIndexDirOverride,
@@ -33,26 +43,6 @@ import { posixIndexPath } from './writer-helpers.js';
 
 export const ATLAS_ONBOARDING = 'ONBOARDING.md';
 
-export type TourStage = 'foundation' | 'hub' | 'subsystem' | 'entry-flow';
-
-export type OnboardingPersona = 'junior' | 'experienced' | 'architect' | 'non-technical';
-
-export interface TourStep {
-  order: number;
-  stage: TourStage;
-  title: string;
-  file: string;
-  lineSpan: { start: number; end: number };
-  rank: number;
-  inDeg: number;
-  outDeg: number;
-  symbols: Array<{ name: string; kind: string; line: number; signature: string }>;
-  explanation: string;
-  /** Detected language/design patterns in the step's declarations (generics, async, inheritance, etc.). */
-  languageNotes?: string[] | undefined;
-  memories?: AnchoredSageInsight[] | undefined;
-}
-
 export interface CodebaseOnboardInput {
   /** Optional package, directory, or keyword filter to focus the tour. */
   focus?: string | undefined;
@@ -60,24 +50,6 @@ export interface CodebaseOnboardInput {
   maxSteps?: number | undefined;
   /** Target reader persona: 'junior' | 'experienced' | 'architect' | 'non-technical'. */
   persona?: OnboardingPersona | undefined;
-}
-
-export interface CodebaseOnboardOutput {
-  status: 'ok';
-  persona: OnboardingPersona;
-  summary: string;
-  stats: {
-    totalFiles: number;
-    totalSymbols: number;
-    communities: number;
-    entryPoints: number;
-  };
-  communities: FileCommunity[];
-  steps: TourStep[];
-  flows: ExecutionFlow[];
-  markdown: string;
-  /** Next-step guidance: which tool answers the follow-up, or why the result is empty. */
-  note?: string | undefined;
 }
 
 /**

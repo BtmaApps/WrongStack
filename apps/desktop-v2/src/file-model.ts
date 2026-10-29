@@ -222,3 +222,14 @@ export function selectionLineRange(
   const last = content[to - 1] === '\n' ? lineAt(to - 1) : lineAt(to);
   return [first, Math.max(first, last)];
 }
+/** Character offset of a 1-based line and 0-based column, clamped to that line. */
+export function sourcePointOffset(content: string, line: number, column: number): number {
+  let start = 0;
+  for (let current = 1; current < line; current++) {
+    const next = content.indexOf('\n', start);
+    if (next < 0) return content.length;
+    start = next + 1;
+  }
+  const end = content.indexOf('\n', start);
+  return start + Math.max(0, Math.min(column, (end < 0 ? content.length : end) - start));
+}

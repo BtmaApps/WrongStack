@@ -68,12 +68,11 @@ export function mailboxThreads(messages: Record<string, unknown>[]) {
 }
 export function mailboxDuration(hours: string, label: string) {
   const value = Number(hours);
-  if (
-    !hours.trim() ||
-    !Number.isFinite(value) ||
-    value < 0 ||
-    !Number.isSafeInteger(value * 3600000)
-  )
+  // Whole milliseconds: binary floating point turns ordinary decimal hours
+  // into a fraction (1.1 × 3600000 = 3960000.0000000005), which the safe-
+  // integer bound below — there to reject overflowing input — then refused.
+  const ms = Math.round(value * 3600000);
+  if (!hours.trim() || !Number.isFinite(value) || value < 0 || !Number.isSafeInteger(ms))
     throw Error(`${label} must be a non-negative number of hours.`);
-  return value * 3600000;
+  return ms;
 }

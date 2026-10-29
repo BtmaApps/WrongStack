@@ -12,26 +12,26 @@ import type { Tool } from '@wrongstack/contracts/types';
 import type {
   CodebaseAstReplaceInput,
   CodebaseAstReplaceOutput,
-} from './codebase-ast-replace-tool.js';
-import type { CodebaseAtlasOutput } from './codebase-atlas-tool.js';
-import type { CodebaseContextOutput } from './codebase-context-tool.js';
-import type { CodebaseDiffImpactOutput } from './codebase-diff-impact-tool.js';
+} from './codebase-ast-replace-contracts.js';
+import type { CodebaseAtlasOutput } from './codebase-atlas-contracts.js';
+import type { CodebaseContextOutput } from './codebase-context-contracts.js';
+import type { CodebaseDiffImpactOutput } from './codebase-diff-impact-contracts.js';
 import type {
   CodebaseFlowTraceInput,
   CodebaseFlowTraceOutput,
-} from './codebase-flow-trace-tool.js';
-import type { ImpactAnalysisOutput } from './codebase-impact-analysis-tool.js';
-import type { IncomingCallsOutput } from './codebase-incoming-calls-tool.js';
-import type { CodebaseIndexOutput } from './codebase-index-tool.js';
-import type { CodebaseInvariantCheckOutput } from './codebase-invariant-check-tool.js';
-import type { CodebaseOnboardOutput } from './codebase-onboard-tool.js';
-import type { OutgoingCallsOutput } from './codebase-outgoing-calls-tool.js';
-import type { CodebaseReadSymbolOutput } from './codebase-read-symbol-tool.js';
-import type { CodebaseRepoMapOutput } from './codebase-repo-map-tool.js';
-import type { CodebaseSearchInput, CodebaseSearchOutput } from './codebase-search-tool.js';
-import type { CodebaseSkeletonOutput } from './codebase-skeleton-tool.js';
-import type { CodebaseStatsOutput } from './codebase-stats-tool.js';
-import type { TargetedTestOutput } from './codebase-targeted-test-tool.js';
+} from './codebase-flow-trace-contracts.js';
+import type { ImpactAnalysisOutput } from './codebase-impact-analysis-contracts.js';
+import type { IncomingCallsOutput } from './codebase-incoming-calls-contracts.js';
+import type { CodebaseIndexOutput } from './codebase-index-contracts.js';
+import type { CodebaseInvariantCheckOutput } from './codebase-invariant-check-contracts.js';
+import type { CodebaseOnboardOutput } from './codebase-onboard-contracts.js';
+import type { OutgoingCallsOutput } from './codebase-outgoing-calls-contracts.js';
+import type { CodebaseReadSymbolOutput } from './codebase-read-symbol-contracts.js';
+import type { CodebaseRepoMapOutput } from './codebase-repo-map-contracts.js';
+import type { CodebaseSearchInput, CodebaseSearchOutput } from './codebase-search-contracts.js';
+import type { CodebaseSkeletonOutput } from './codebase-skeleton-contracts.js';
+import type { CodebaseStatsOutput } from './codebase-stats-contracts.js';
+import type { TargetedTestOutput } from './codebase-targeted-test-contracts.js';
 import { displayIndexPath } from './writer-helpers.js';
 
 type AgentContext = Parameters<Tool<unknown, unknown>['execute']>[1];

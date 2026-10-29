@@ -235,6 +235,32 @@ export async function exerciseNativeComposerResources({
   await page.locator('.session-tab-label').filter({ hasText: 'Native UI terminal' }).click();
   await page.locator('.session-tab-label').filter({ hasText: 'WrongStack engine proof' }).click();
   await chips.getByText('README.md:1-2', { exact: true }).waitFor();
+  // Quoting the selected text replaces that file's range with the text itself.
+  await page
+    .getByRole('navigation', { name: 'Agent workspace views' })
+    .getByRole('button', { name: 'Files', exact: true })
+    .click();
+  await page.locator('.file-source-code [data-source-line="1"] code').waitFor();
+  const quoted = await page.evaluate(() => {
+    const code = document.querySelector('.file-source-code [data-source-line="1"] code');
+    const range = document.createRange();
+    range.selectNodeContents(code);
+    const selection = getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+    return code.textContent;
+  });
+  assert.ok(quoted.trim(), 'README line 1 has text to quote');
+  await page.getByRole('button', { name: 'Quote selection', exact: true }).click();
+  const quoteChip = chips.getByText(/^README\.md:1 “/);
+  await quoteChip.waitFor();
+  await chips.getByRole('button', { name: 'Show quoted text from README.md', exact: true }).click();
+  const quoteView = page.getByRole('figure', { name: 'Quoted text', exact: true });
+  assert.equal(await quoteView.locator('pre').textContent(), quoted);
+  await page
+    .getByRole('region', { name: 'Quote from README.md', exact: true })
+    .getByRole('button', { name: 'Close', exact: true })
+    .click();
   await input().fill('[native-composer-resource] Inspect the referenced project file.');
   await page.getByRole('button', { name: 'Send message', exact: true }).click();
   await waitFor(
@@ -248,14 +274,15 @@ export async function exerciseNativeComposerResources({
     item.composerPrompt.includes('[native-composer-resource]'),
   );
   assert.ok(
-    request.composerPrompt.includes('- "README.md" lines 1-2') &&
+    request.composerPrompt.includes(`- "README.md" lines 1-1 snippet ${JSON.stringify(quoted)}`) &&
+      request.composerPrompt.includes('Snippets are the exact text the user selected') &&
       request.composerPrompt.includes('Project Alpha') &&
       request.composerPrompt.includes('Continue paginated reads until EOF'),
   );
   await idle();
   await page
     .getByRole('region', { name: 'Referenced project files', exact: true })
-    .getByText('README.md:1-2', { exact: true })
+    .getByText(/^README\.md:1 “/)
     .waitFor();
   assert.equal(
     await page

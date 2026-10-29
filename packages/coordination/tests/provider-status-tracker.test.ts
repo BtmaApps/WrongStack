@@ -956,7 +956,7 @@ describe('ProviderModelStatusTracker', () => {
   it('reaps expired cooldowns in isRateLimited and recordSuccess, normalizes session-note identities, and enforces markDelivered settlement (F680)', async () => {
     const t = new ProviderModelStatusTracker({
       config: {
-        rateLimitCooldownMs: 5,
+        blockDurationMs: 5,
         blockAfterRateLimitHits: 5,
         recoverAfterSuccesses: 2,
       },
@@ -967,7 +967,7 @@ describe('ProviderModelStatusTracker', () => {
 
     const t2 = new ProviderModelStatusTracker({
       config: {
-        rateLimitCooldownMs: 5,
+        blockDurationMs: 5,
         blockAfterRateLimitHits: 5,
         recoverAfterSuccesses: 2,
       },
@@ -996,7 +996,7 @@ describe('ProviderModelStatusTracker', () => {
       sessionId: 'sess-1',
       from: 'sender@sess-1',
       to: '@session:sess-1',
-      kind: 'directive',
+      kind: 'steer',
       body: 'Broadcast payload',
     });
     strictEqual(receivedByWorker.length, 1);
@@ -1006,7 +1006,7 @@ describe('ProviderModelStatusTracker', () => {
       sessionId: 'sess-1',
       from: 'leader',
       to: 'worker-a@sess-1',
-      kind: 'directive',
+      kind: 'steer',
       body: 'Direct payload',
     });
     strictEqual(receivedByWorker.length, 2);

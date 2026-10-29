@@ -4,11 +4,11 @@ import {
   parseNextSteps,
   projectNextStepsToolInput,
 } from '@wrongstack/webui-protocol';
-import { type ComposerAttachment, transcriptAttachments } from './composer-attachments';
-import { contentText, entries, record } from './engine-values';
-import { parseInputRequest } from './input-form-model';
+import { type ComposerAttachment, transcriptAttachments } from './composer-attachments.js';
+import { contentText, entries, record } from './engine-values.js';
+import { parseInputRequest } from './input-form-model.js';
 
-export { contentText, entries, record } from './engine-values';
+export { contentText, entries, record } from './engine-values.js';
 export interface EngineEvent {
   type: string;
   payload: Record<string, unknown>;

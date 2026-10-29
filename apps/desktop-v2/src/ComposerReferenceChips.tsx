@@ -1,4 +1,4 @@
-import { FilePlus2, ListOrdered, X } from 'lucide-react';
+import { FilePlus2, ListOrdered, Quote, X } from 'lucide-react';
 import { useState } from 'react';
 import {
   type ComposerFileReference,
@@ -34,12 +34,14 @@ export function ComposerReferenceChips({
             {referenceLabel(ref)}
             <button
               type="button"
-              aria-label={`Set line range for ${ref.path}`}
+              aria-label={
+                ref.snippet ? `Show quoted text from ${ref.path}` : `Set line range for ${ref.path}`
+              }
               aria-pressed={editing === ref.path}
               disabled={disabled}
               onClick={() => setEditing(editing === ref.path ? null : ref.path)}
             >
-              <ListOrdered size={11} />
+              {ref.snippet ? <Quote size={11} /> : <ListOrdered size={11} />}
             </button>
             <button
               type="button"
@@ -55,7 +57,43 @@ export function ComposerReferenceChips({
           </span>
         ))}
       </section>
-      {target && (
+      {target?.snippet && (
+        <section className="composer-reference-range" aria-label={`Quote from ${target.path}`}>
+          <figure className="composer-reference-preview" aria-label="Quoted text">
+            <pre>{target.snippet}</pre>
+            <figcaption>
+              {target.snippet.length.toLocaleString()} characters quoted
+              {target.lines
+                ? ` from ${referenceLabel({ path: target.path, lines: target.lines })}`
+                : ' (line numbers not attached: the text was unsaved)'}
+              . The quote is sent as selected; the file on disk may differ.
+            </figcaption>
+          </figure>
+          <footer>
+            <button
+              type="button"
+              className="button secondary small"
+              onClick={() => setEditing(null)}
+            >
+              Close
+            </button>
+            <button
+              type="button"
+              className="button secondary small"
+              disabled={disabled}
+              onClick={() => {
+                setEditing(null);
+                void onChange(
+                  references.map((ref) => (ref.path === target.path ? { path: ref.path } : ref)),
+                );
+              }}
+            >
+              Reference whole file instead
+            </button>
+          </footer>
+        </section>
+      )}
+      {target && !target.snippet && (
         <ReferenceRangeEditor
           key={target.path}
           reference={target}
@@ -184,7 +222,7 @@ function ReferenceRangeEditor({
       )}
       {preview && (
         <figure className="composer-reference-preview">
-          <pre aria-label="Referenced lines preview">
+          <pre role="region" aria-label="Referenced lines preview">
             {preview.lines.map((text, index) => (
               <span key={first + index}>
                 <i>{first + index}</i>

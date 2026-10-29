@@ -22,7 +22,7 @@ describe('standalone provider health persistence', () => {
         prepareProviderStatus: persistence.prepare,
         persistProviderStatusControl: persistence.persistControl,
         providerAuditFile: persistence.auditFile,
-      } as ProviderRouteHandlers;
+      } as unknown as ProviderRouteHandlers;
       const frames: Array<{ type: string; payload: Record<string, unknown> }> = [];
       const ws = {
         readyState: 1,

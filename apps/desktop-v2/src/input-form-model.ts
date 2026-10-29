@@ -4,7 +4,7 @@ import type {
   UserInputRequest,
   UserInputResponse,
 } from '@wrongstack/contracts/types';
-import { entries, record } from './engine-values';
+import { entries, record } from './engine-values.js';
 
 export interface QuestionDraft {
   selectedOptionIds: string[];

@@ -3,7 +3,13 @@ import * as path from 'node:path';
 import { resolveWstackPaths } from '@wrongstack/core/utils';
 import { aggregateAll } from './aggregate.js';
 import { computeHarnessFingerprint } from './fingerprint.js';
-import { type BenchProfile, cleanupSandbox, createSandbox, prepareWorkdir } from './isolation.js';
+import {
+  type BenchProfile,
+  cleanupSandbox,
+  createSandbox,
+  LEAN_BENCH_TOOL_NAMES,
+  prepareWorkdir,
+} from './isolation.js';
 import { type QualityReviewPolicy, reviewTranscript } from './quality-review.js';
 import { mapWithConcurrency, runWstack } from './runner.js';
 import { reapProcessesUnder, sandboxRootsFor } from './sandbox-reaper.js';
@@ -34,7 +40,7 @@ export interface RunBenchmarkOptions {
   config: BenchConfig;
   reviewPolicy?: QualityReviewPolicy | undefined;
   cliVersion: string;
-  /** Tool names available to the agent — folded into the fingerprint. */
+  /** Host tool names; lean runs always fingerprint LEAN_BENCH_TOOL_NAMES. */
   toolNames: string[];
   /** Tool names + schemas/descriptions/usage hints hash, when available. */
   toolManifestHash?: string | undefined;
@@ -138,7 +144,7 @@ export async function runBenchmark(opts: RunBenchmarkOptions): Promise<BenchRepo
 
   const fingerprint = computeHarnessFingerprint({
     cliVersion: opts.cliVersion,
-    toolNames: opts.toolNames,
+    toolNames: opts.profile === 'host' ? opts.toolNames : [...LEAN_BENCH_TOOL_NAMES],
     maxIterations: opts.config.maxIterations,
     yolo: true,
     subsetId,
@@ -365,6 +371,7 @@ export async function runBenchmark(opts: RunBenchmarkOptions): Promise<BenchRepo
           timeoutMs: opts.config.timeoutMs,
           env: opts.env,
           signal: opts.signal,
+          profile: opts.profile,
         });
       let run = await runOnce();
       if (aborted()) return undefined;

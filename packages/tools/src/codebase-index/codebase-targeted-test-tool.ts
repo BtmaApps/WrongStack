@@ -1,3 +1,7 @@
+import type { TargetedTestOutput } from './codebase-targeted-test-contracts.js';
+
+export type { TargetedTestOutput } from './codebase-targeted-test-contracts.js';
+
 /**
  * `codebase-targeted-test` tool — automatically identify and run only the relevant tests for a modified symbol or file.
  *
@@ -30,18 +34,6 @@ export interface TargetedTestInput {
 }
 
 export type CodebaseTargetedTestInput = TargetedTestInput;
-
-export interface TargetedTestOutput {
-  status: 'passed' | 'failed' | 'no_tests_found';
-  discoveredSuites: string[];
-  testsRun: number;
-  passed: number;
-  failed: number;
-  durationMs: number;
-  output: string;
-  /** Next-step guidance: which tool answers the follow-up, or why the result is empty. */
-  note?: string | undefined;
-}
 
 export type CodebaseTargetedTestOutput = TargetedTestOutput;
 

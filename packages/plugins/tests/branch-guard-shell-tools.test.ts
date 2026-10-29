@@ -21,7 +21,7 @@ const { mockExecFile } = vi.hoisted(() => ({
 vi.mock('node:child_process', () => ({ execFile: mockExecFile }));
 
 const { hookMatcherMatches } = await import('@wrongstack/core/hooks');
-const plugin = (await import('../src/branch-guard')).default;
+const plugin = (await import('../src/branch-guard/index.js')).default;
 
 function registered() {
   const api = {

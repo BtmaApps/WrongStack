@@ -32,6 +32,11 @@
       "fingerprint": "5ff5b6ad8219d119"
     },
     {
+      "file": "packages/bench/tests/child-env.test.ts",
+      "kind": "runIf",
+      "fingerprint": "9ffd9ab4ee25c955"
+    },
+    {
       "file": "packages/chronicle/tests/metrics-store-sqlite-source.test.ts",
       "kind": "skipIf",
       "fingerprint": "1b4c70186dfe382c"
@@ -75,6 +80,11 @@
       "file": "packages/cli/tests/hq-visual-smoke.test.ts",
       "kind": "skipIf",
       "fingerprint": "cdceee059ef2523c"
+    },
+    {
+      "file": "packages/cli/tests/project-manifest.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "b46da87cbf4e603f"
     },
     {
       "file": "packages/cli/tests/remote-target.test.ts",
@@ -135,6 +145,11 @@
       "file": "packages/coordination/tests/package-author-tracker.test.ts",
       "kind": "skipIf",
       "fingerprint": "6c1dfd9f1895e5c4"
+    },
+    {
+      "file": "packages/core/tests/boot-project-registration-identity.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "ce32fc5eae4b423b"
     },
     {
       "file": "packages/core/tests/infrastructure/path-resolver.test.ts",
@@ -255,6 +270,11 @@
       "file": "packages/kanban/tests/project-server-auth-gate.test.ts",
       "kind": "skipIf",
       "fingerprint": "387f2407d416c0b9"
+    },
+    {
+      "file": "packages/kanban/tests/verification-cmd-shim-quoting.test.ts",
+      "kind": "runIf",
+      "fingerprint": "9d00e8e9f4d8d88e"
     },
     {
       "file": "packages/kanban/tests/verification/command-allowlist-env.test.ts",
@@ -752,6 +772,11 @@
       "fingerprint": "5d302b5384c529c4"
     },
     {
+      "file": "packages/tools/tests/grep-rg-hidden-parity.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "2e917934928446fc"
+    },
+    {
       "file": "packages/tools/tests/parser-worker-pool-failover.test.ts",
       "kind": "runIf",
       "fingerprint": "afe17d1aea5b792d"
@@ -970,6 +995,11 @@
       "file": "packages/webui-server/tests/wrongtrace-webui-gate.test.ts",
       "kind": "skipIf",
       "fingerprint": "dfcfaa2f1bf75b6f"
+    },
+    {
+      "file": "packages/worktree/tests/windows-drive-case.test.ts",
+      "kind": "runIf",
+      "fingerprint": "34242864260a2ab8"
     },
     {
       "file": "packages/worktree/tests/worktree-manager.test.ts",

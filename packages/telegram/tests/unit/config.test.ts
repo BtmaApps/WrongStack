@@ -18,7 +18,7 @@ describe('telegram config', () => {
 
   it('returns defaults when no plugin options are set', () => {
     const api = { config: {} };
-    const cfg = readTelegramConfig(api as Parameters<typeof readTelegramConfig>[0]);
+    const cfg = readTelegramConfig(api as unknown as Parameters<typeof readTelegramConfig>[0]);
     expect(cfg.pollIntervalSec).toBe(2);
     expect(cfg.notifyOnSessionEnd).toBe(false);
     expect(cfg.longToolThresholdMs).toBe(30_000);
@@ -48,7 +48,7 @@ describe('telegram config', () => {
         },
       },
     };
-    const cfg = readTelegramConfig(api as Parameters<typeof readTelegramConfig>[0]);
+    const cfg = readTelegramConfig(api as unknown as Parameters<typeof readTelegramConfig>[0]);
     expect(cfg.botToken).toBe('token123');
     expect(cfg.notifyChatId).toBe('999');
     expect(cfg.pollIntervalSec).toBe(5);
@@ -71,7 +71,7 @@ describe('telegram config', () => {
         },
       },
     };
-    const cfg = readTelegramConfig(api as Parameters<typeof readTelegramConfig>[0]);
+    const cfg = readTelegramConfig(api as unknown as Parameters<typeof readTelegramConfig>[0]);
     expect(cfg.botToken).toBe('legacy-token');
     expect(cfg.notifyChatId).toBe('111');
   });
@@ -91,7 +91,7 @@ describe('telegram config', () => {
         ],
       },
     };
-    const cfg = readTelegramConfig(api as Parameters<typeof readTelegramConfig>[0]);
+    const cfg = readTelegramConfig(api as unknown as Parameters<typeof readTelegramConfig>[0]);
     expect(cfg.botToken).toBe('entry-token');
     expect(cfg.notifyChatId).toBe('222');
     expect(cfg.pollIntervalSec).toBe(7);
@@ -116,7 +116,7 @@ describe('telegram config', () => {
         },
       },
     };
-    const cfg = readTelegramConfig(api as Parameters<typeof readTelegramConfig>[0]);
+    const cfg = readTelegramConfig(api as unknown as Parameters<typeof readTelegramConfig>[0]);
     expect(cfg.botToken).toBe('entry-token');
     expect(cfg.notifyChatId).toBe('333');
   });
@@ -131,7 +131,7 @@ describe('telegram config', () => {
         },
       },
     };
-    const cfg = readTelegramConfig(api as Parameters<typeof readTelegramConfig>[0]);
+    const cfg = readTelegramConfig(api as unknown as Parameters<typeof readTelegramConfig>[0]);
     expect(cfg.botToken).toBe('token456');
     expect(cfg.pollIntervalSec).toBe(2); // default
     expect(cfg.notifyOnSessionEnd).toBe(false); // default
@@ -149,7 +149,7 @@ describe('telegram config', () => {
           },
         },
       },
-    } as Parameters<typeof readTelegramConfig>[0]);
+    } as unknown as Parameters<typeof readTelegramConfig>[0]);
 
     expect(cfg.inboundMode).toBe('public');
     expect(cfg.allowedUsers).toEqual([]);
@@ -167,7 +167,7 @@ describe('telegram config', () => {
             },
           },
         },
-      } as Parameters<typeof readTelegramConfig>[0]),
+      } as unknown as Parameters<typeof readTelegramConfig>[0]),
     ).toThrow('Expected one of: disabled, paired, allowlist, public');
   });
 
@@ -184,7 +184,7 @@ describe('telegram config', () => {
             },
           },
         },
-      } as Parameters<typeof readTelegramConfig>[0]),
+      } as unknown as Parameters<typeof readTelegramConfig>[0]),
     ).toThrow('requires at least one allowedUsers or allowedChats entry');
   });
 
@@ -199,7 +199,7 @@ describe('telegram config', () => {
             },
           },
         },
-      } as Parameters<typeof readTelegramConfig>[0]),
+      } as unknown as Parameters<typeof readTelegramConfig>[0]),
     ).toThrow('requires notifyChatId');
   });
 
@@ -215,7 +215,7 @@ describe('telegram config', () => {
         },
       },
       log: { warn },
-    } as Parameters<typeof readTelegramConfig>[0]);
+    } as unknown as Parameters<typeof readTelegramConfig>[0]);
 
     expect(cfg.inboundMode).toBe('allowlist');
     expect(warn).not.toHaveBeenCalled();
@@ -233,7 +233,7 @@ describe('telegram config', () => {
         },
       },
       log: { warn },
-    } as Parameters<typeof readTelegramConfig>[0]);
+    } as unknown as Parameters<typeof readTelegramConfig>[0]);
 
     expect(cfg.inboundMode).toBe('paired');
     expect(warn).toHaveBeenCalledOnce();
@@ -253,7 +253,7 @@ describe('telegram config', () => {
         },
       },
       log: { warn },
-    } as Parameters<typeof readTelegramConfig>[0]);
+    } as unknown as Parameters<typeof readTelegramConfig>[0]);
 
     expect(cfg.inboundMode).toBe('disabled');
     expect(warn).toHaveBeenCalledOnce();
@@ -286,7 +286,7 @@ describe('telegram config', () => {
             },
           },
         },
-      } as Parameters<typeof readTelegramConfig>[0]),
+      } as unknown as Parameters<typeof readTelegramConfig>[0]),
     ).toThrow(/requires at least one allowedUsers or allowedChats entry/);
 
     const list = inboundAllowlist({

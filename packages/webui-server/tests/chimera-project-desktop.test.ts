@@ -4,7 +4,7 @@ import { join, resolve, sep } from 'node:path';
 import { JsonlReportStore } from '@wrongstack/builtin-plugins';
 import { describe, expect, it } from 'vitest';
 import type { WebSocket } from 'ws';
-import { createChimeraRouteHandlers, handleChimeraRoute } from '../src/server/chimera-routes';
+import { createChimeraRouteHandlers, handleChimeraRoute } from '../src/server/chimera-routes.js';
 
 describe('Project-owned desktop Chimera routes', () => {
   async function fixture(

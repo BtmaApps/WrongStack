@@ -31,6 +31,16 @@ describe('project mailbox', () => {
       expect(() => mailboxDuration(hours, 'Age')).toThrow();
     },
   );
+  it.each([
+    ['0', 0],
+    ['0.5', 1_800_000],
+    ['1.1', 3_960_000],
+    ['2.3', 8_280_000],
+    ['0.3', 1_080_000],
+    ['24', 86_400_000],
+  ])('accepts %s hours as whole milliseconds', (hours, ms) => {
+    expect(mailboxDuration(hours, 'Age')).toBe(ms);
+  });
   it('preserves a failed send draft, refuses duplicate pending sends and publishes acknowledgement across views', () => {
     const store = new MailboxDraftStore();
     const draft = { ...emptyMailDraft(), subject: 'Retain this', body: 'Unsent content' };

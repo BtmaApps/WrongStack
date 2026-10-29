@@ -116,7 +116,7 @@ describe('generateUpgradePlan per-dependency deduplication', () => {
         {
           id: 'f-replace',
           dependencyId: 'dep-replace',
-          type: 'deprecation',
+          type: 'deprecated',
           severity: 'medium',
           action: 'replace',
           confidence: 1,
@@ -126,7 +126,7 @@ describe('generateUpgradePlan per-dependency deduplication', () => {
         {
           id: 'f-remove',
           dependencyId: 'dep-remove',
-          type: 'policy',
+          type: 'vulnerability',
           severity: 'high',
           action: 'remove',
           confidence: 1,

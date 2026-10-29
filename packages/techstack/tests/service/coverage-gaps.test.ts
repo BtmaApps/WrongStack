@@ -184,7 +184,7 @@ describe('runEnrichPhase', () => {
         online: true,
         signal: makeCutoffSignal(),
       });
-      expect(enriched.findings.some((f) => f.category === 'license')).toBe(false);
+      expect(enriched.findings.some((f) => f.type === 'license')).toBe(false);
     }
   });
 });

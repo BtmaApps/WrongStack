@@ -94,11 +94,17 @@ describe('clearStaleProviderDefaults & ProviderConfigSnapshots (F41)', () => {
   it('merges snapshots without false conflicts when object keys are in a different order', () => {
     const snapshots = new ProviderConfigSnapshots();
     const editable = snapshots.track({
-      openai: { apiKey: 'sk-1', baseUrl: 'https://api.openai.com/v1' },
+      openai: { type: 'openai-compatible', apiKey: 'sk-1', baseUrl: 'https://api.openai.com/v1' },
     });
-    editable.openai = { apiKey: 'sk-2', baseUrl: 'https://api.openai.com/v1' };
+    editable.openai = {
+      type: 'openai-compatible',
+      apiKey: 'sk-2',
+      baseUrl: 'https://api.openai.com/v1',
+    };
     const merged = snapshots.merge(
-      { openai: { baseUrl: 'https://api.openai.com/v1', apiKey: 'sk-1' } },
+      {
+        openai: { baseUrl: 'https://api.openai.com/v1', apiKey: 'sk-1', type: 'openai-compatible' },
+      },
       editable,
     );
     expect(merged.openai?.apiKey).toBe('sk-2');

@@ -1,7 +1,7 @@
 import type { BrainConfig } from '@wrongstack/contracts/types/config';
 import type { Provider } from '@wrongstack/contracts/types/provider';
 import { expect, it, vi } from 'vitest';
-import { createBrainRuntime } from '../../src/execution/brain-runtime';
+import { createBrainRuntime } from '../../src/execution/brain-runtime.js';
 
 function boot(initialConfig: BrainConfig, persist?: (config: BrainConfig) => Promise<void>) {
   const provider = {

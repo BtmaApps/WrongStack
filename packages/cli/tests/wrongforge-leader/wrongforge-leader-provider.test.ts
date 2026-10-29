@@ -3,11 +3,12 @@ import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { EventBus } from '@wrongstack/contracts/kernel';
+import { EventBus, type EventMap } from '@wrongstack/contracts/kernel';
 import type { Config, Provider, Request, StreamEvent, Tool } from '@wrongstack/contracts/types';
 import { ProviderError } from '@wrongstack/contracts/types';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { type AcpLeaderHost, bindAcpLeaderHost } from '../../src/acp-leader/acp-leader-host.js';
+import type { WfEvent } from '../../src/fleet/wrongforge-client.js';
 import { startLeaderGateway } from '../../src/wrongforge-leader/wrongforge-leader-gateway.js';
 import { WrongForgeLeaderProvider } from '../../src/wrongforge-leader/wrongforge-leader-provider.js';
 
@@ -15,7 +16,7 @@ const KEY = 'wf_leader-test-key-0123456789';
 const MODELS = ['claude-a-1', 'claude-b-2'];
 
 interface Scripted {
-  events: Array<{ type: string; data: Record<string, unknown> }>;
+  events: Array<Omit<WfEvent, 'seq'>>;
   result: Record<string, unknown>;
   /** Answer the FIRST terminal-record GET with 503 (transient; undici never retries a status). */
   failRecordGetOnce?: boolean | undefined;
@@ -382,7 +383,7 @@ describe('WrongForge as the leader', () => {
     closers.push(wf.close);
     process.env['WRONGFORGE_URL'] = wf.url;
     const { host } = fakeHost();
-    const progress: Array<{ sessionId?: string; tokens: number; durationMs: number }> = [];
+    const progress: Array<EventMap['provider.output_progress']> = [];
     host.events.on('provider.output_progress', (e) => progress.push(e));
     bindAcpLeaderHost(host);
     const provider = new WrongForgeLeaderProvider({

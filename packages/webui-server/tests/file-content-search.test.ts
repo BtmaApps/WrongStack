@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, expect, it } from 'vitest';
 import type { WebSocket } from 'ws';
-import { type ContentRouteContext, handleContentRoute } from '../src/server/content-routes';
+import { type ContentRouteContext, handleContentRoute } from '../src/server/content-routes.js';
 
 const owned: string[] = [];
 afterEach(async () => {

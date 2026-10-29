@@ -86,6 +86,16 @@ export function behaviorConfigProjection(config: unknown): Record<string, unknow
  */
 export type BenchProfile = 'lean' | 'host';
 
+/** Fixed direct tool surface for lean runs; independent of the general coding tiers. */
+export const LEAN_BENCH_TOOL_NAMES: readonly string[] = [
+  'read',
+  'edit',
+  'write',
+  'bash',
+  'grep',
+  'glob',
+];
+
 /**
  * Pinned behavior for the lean profile. Background companions each run their
  * own model loop beside the leader — a measured core task spent more tokens in
@@ -100,6 +110,7 @@ export type BenchProfile = 'lean' | 'host';
 export const LEAN_BENCH_CONFIG = {
   systemPrompt: { variant: 'quick' },
   features: {
+    skills: false,
     mcp: false,
     plugins: false,
     memory: false,

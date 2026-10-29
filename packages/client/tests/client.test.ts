@@ -398,7 +398,7 @@ describe('WrongStackClient', () => {
       reconnect: { initialDelayMs: 50 },
       onConfirm: (request) => {
         asked.push(request.id);
-        return 'yes';
+        return 'yes' as const;
       },
     });
     const answered = () =>
@@ -900,7 +900,7 @@ describe('createHttpClient', () => {
       {
         onConfirm: (req) => {
           confirmed.push(req.id);
-          return 'yes';
+          return 'yes' as const;
         },
       },
     );
@@ -966,7 +966,7 @@ describe('createHttpClient', () => {
       {
         onConfirm: async () => {
           await gate;
-          return 'yes';
+          return 'yes' as const;
         },
       },
     );
@@ -1004,7 +1004,7 @@ describe('createHttpClient', () => {
     const seen: Array<{ url: string; token: string | undefined }> = [];
     const httpClient = createHttpClient({
       url: `${s.url.replace(/^http:/, 'WS:')}?token=query-secret`,
-      fetch: (async (input: RequestInfo | URL, init?: RequestInit) => {
+      fetch: (async (input: Parameters<typeof fetch>[0], init?: RequestInit) => {
         const headers = (init?.headers ?? {}) as Record<string, string>;
         seen.push({ url: String(input), token: headers['X-WS-Token'] });
         return new Response('[]', { status: 200 });

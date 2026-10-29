@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   projectSessionTranscript,
   readSessionTranscriptBlock,
-} from '../src/server/session-transcript';
+} from '../src/server/session-transcript.js';
 
 describe('bounded retained session transcript', () => {
   it('searches beyond excerpts and excludes opaque media payloads and thinking signatures', () => {

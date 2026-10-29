@@ -16,6 +16,7 @@ import {
   LoaderCircle,
   MoreHorizontal,
   Pencil,
+  Quote,
   RefreshCw,
   Save,
   Search,
@@ -43,8 +44,8 @@ import {
   parentPath,
   projectRelativePath,
   reviewText,
-  selectionLineRange,
 } from './file-model';
+import { selectionReference } from './file-selection-reference';
 import { GitHistory } from './GitHistory';
 import { GitHunkReview } from './GitHunkReview';
 import { MergeConflictReview } from './MergeConflictReview';
@@ -584,37 +585,12 @@ export function FileWorkspace({
   const [folderLimit, setFolderLimit] = useState(FOLDER_PAGE);
   // A new folder, search or sort starts again at the first page.
   useEffect(() => setFolderLimit(FOLDER_PAGE), [folder, search, sort]);
-  const referenceSelection = () => {
-    if (!onReference || !document || !active) return;
-    let lines: [number, number] | null = null;
-    const editor = contentElement.current?.querySelector<HTMLTextAreaElement>(
-      'textarea.file-code-editor',
-    );
-    if (document.editing && editor) {
-      lines = selectionLineRange(document.content, editor.selectionStart, editor.selectionEnd);
-      // The conversation reads the file on disk, so unsaved line numbers could point elsewhere.
-      if (lines && document.content !== document.saved) {
-        setError(
-          'Save this file before referencing selected lines; the conversation reads it from disk.',
-        );
-        return;
-      }
-    } else {
-      const selection = window.getSelection();
-      const lineOf = (node: Node | null | undefined) => {
-        const element = node instanceof Element ? node : node?.parentElement;
-        const row = element?.closest('[data-source-line]');
-        return row && contentElement.current?.contains(row)
-          ? Number(row.getAttribute('data-source-line'))
-          : null;
-      };
-      if (selection && !selection.isCollapsed) {
-        const from = lineOf(selection.anchorNode),
-          to = lineOf(selection.focusNode);
-        if (from && to) lines = [Math.min(from, to), Math.max(from, to)];
-      }
-    }
-    onReference(lines ? { path: active, lines } : { path: active });
+  const referenceSelection = (quote: boolean) => {
+    const root = contentElement.current;
+    if (!onReference || !document || !active || !root) return;
+    const result = selectionReference(active, document, root, quote);
+    if ('error' in result) setError(result.error);
+    else onReference(result.reference);
   };
   const review = () => {
     const text = reviewText(notes);
@@ -1080,10 +1056,22 @@ export function FileWorkspace({
                     title="Attach this file, or the selected lines, to the conversation"
                     // Keep the current text selection while the button is pressed.
                     onMouseDown={(event) => event.preventDefault()}
-                    onClick={referenceSelection}
+                    onClick={() => referenceSelection(false)}
                   >
                     <FilePlus2 size={13} />
                     Reference in conversation
+                  </button>
+                )}
+                {mode === 'files' && onReference && document && !document.binary && (
+                  <button
+                    type="button"
+                    className="button secondary small"
+                    title="Attach the selected text itself to the conversation"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => referenceSelection(true)}
+                  >
+                    <Quote size={13} />
+                    Quote selection
                   </button>
                 )}
                 {mode === 'files' && (

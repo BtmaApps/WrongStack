@@ -1,3 +1,7 @@
+import type { CodebaseReadSymbolOutput } from './codebase-read-symbol-contracts.js';
+
+export type { CodebaseReadSymbolOutput } from './codebase-read-symbol-contracts.js';
+
 /**
  * `codebase-read-symbol` tool — read a function, method, class, or declaration via AST.
  *
@@ -12,7 +16,7 @@
 import { type Tool, ToolValidationError } from '@wrongstack/contracts/types';
 import { safeResolveProjectPath } from '../_util.js';
 import { readSymbolInFile } from './ast-symbol-reader.js';
-import { type AnchoredSageInsight, findAnchoredSageMemories } from './ecosystem-bridge.js';
+import { findAnchoredSageMemories } from './ecosystem-bridge.js';
 import { readSymbolNote, withNextStepNote } from './next-step-notes.js';
 
 export interface CodebaseReadSymbolInput {
@@ -27,21 +31,6 @@ export interface CodebaseReadSymbolInput {
   includeDocs?: boolean | undefined;
   /** Whether to read the complete declaration ('full', default) or only the inner block ('body'). */
   target?: 'full' | 'body' | undefined;
-}
-
-export interface CodebaseReadSymbolOutput {
-  file: string;
-  symbol: string;
-  kind: string;
-  startLine: number;
-  endLine: number;
-  totalLines: number;
-  /** Numbered source code in standard `N→content` display format. */
-  text: string;
-  /** Active SAGE memories anchored to this symbol or file, when present. */
-  relatedMemories?: AnchoredSageInsight[] | undefined;
-  /** Next-step guidance: which tool answers the follow-up, or why the result is empty. */
-  note?: string | undefined;
 }
 
 const codebaseReadSymbolToolBase: Tool<CodebaseReadSymbolInput, CodebaseReadSymbolOutput> = {

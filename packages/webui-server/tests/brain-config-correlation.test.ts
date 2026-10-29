@@ -2,9 +2,9 @@ import type { Provider } from '@wrongstack/contracts/types';
 import { createBrainRuntime } from '@wrongstack/core/execution';
 import { expect, it, vi } from 'vitest';
 import type { WebSocket } from 'ws';
-import type { BrainHandlerContext } from '../src/server/brain-handlers';
-import { createBrainRouteHandlers, handleBrainRoute } from '../src/server/brain-routes';
-import type { WSClientMessage, WSServerMessage } from '../src/server/types';
+import type { BrainHandlerContext } from '../src/server/brain-handlers.js';
+import { createBrainRouteHandlers, handleBrainRoute } from '../src/server/brain-routes.js';
+import type { WSClientMessage, WSServerMessage } from '../src/server/types.js';
 
 function fixture() {
   const sent: WSServerMessage[] = [];
@@ -14,7 +14,7 @@ function fixture() {
     defaultProviderId: 'fixture',
     sessionProvider: () => ({ id: 'fixture' }) as Provider,
     sessionModel: () => 'fixture',
-    resolveProvider: () => undefined,
+    resolveProvider: () => null,
     persist,
   });
   const ctx: BrainHandlerContext = {

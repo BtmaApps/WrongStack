@@ -135,6 +135,8 @@ export function readTuiSettings(configStore: ConfigStore): Record<string, unknow
     featurePlugins: cfg.features?.plugins !== false,
     featureMemory: cfg.features?.memory !== false,
     featureSkills: cfg.features?.skills !== false,
+    includeGlobalAgents: cfg.systemPrompt?.includeGlobalAgents !== false,
+    includeProjectAgents: cfg.systemPrompt?.includeProjectAgents !== false,
     featureModelsRegistry: cfg.features?.modelsRegistry !== false,
     featureToolCoach: cfg.features?.toolCoach !== false,
     // Preserve the 'auto' sentinel for the picker DISPLAY (normalize would

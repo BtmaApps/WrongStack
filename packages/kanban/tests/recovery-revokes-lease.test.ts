@@ -37,7 +37,13 @@ async function startedDispatch(maxAttempts?: number) {
     ...(maxAttempts !== undefined ? { budget: { maxAttempts } } : {}),
   });
   const leaseId = reserved!.lease.leaseId;
-  await startKanbanDispatch(tmpDir, { boardId: board.id, taskId, leaseId, sessionId: SESSION });
+  await startKanbanDispatch(tmpDir, {
+    boardId: board.id,
+    taskId,
+    leaseId,
+    sessionId: SESSION,
+    actor: 'leader',
+  });
   return { boardId: board.id, taskId, leaseId };
 }
 
@@ -56,6 +62,7 @@ describe('stale recovery revokes the lease in every mode', () => {
       ...dispatch,
       sessionId: SESSION,
       result: 'late result',
+      actor: 'leader',
     });
     expect(late).toBeNull();
     expect((await getTask(tmpDir, dispatch.boardId, dispatch.taskId))?.assignment?.status).toBe(

@@ -1513,6 +1513,7 @@ describe('Agent — additional coverage', () => {
         jsonMode: false,
         maxContext: 100_000,
         cacheControl: 'none',
+        reasoning: false,
       };
       calls = 0;
       async complete(req: Request): Promise<Response> {
@@ -1680,6 +1681,7 @@ describe('Agent — additional coverage', () => {
         jsonMode: false,
         maxContext: 100_000,
         cacheControl: 'none',
+        reasoning: false,
       };
       async complete(): Promise<Response> {
         throw new ProviderError('doomed HTTP 400', 400, false, 'doomed', {
@@ -1724,6 +1726,7 @@ describe('Agent — additional coverage', () => {
         jsonMode: false,
         maxContext: 100_000,
         cacheControl: 'none',
+        reasoning: false,
       };
       async complete(): Promise<Response> {
         throw new ProviderError('outage HTTP 503', 503, true, 'outage');
@@ -1813,6 +1816,7 @@ describe('Agent — additional coverage', () => {
         jsonMode: false,
         maxContext: 100_000,
         cacheControl: 'none',
+        reasoning: false,
       };
       async complete(): Promise<Response> {
         throw new ProviderError('bad request', 400, false, 'fail-prov');
@@ -1850,6 +1854,7 @@ describe('Agent — additional coverage', () => {
         jsonMode: false,
         maxContext: 100_000,
         cacheControl: 'none',
+        reasoning: false,
       };
       calls = 0;
       async complete(req: Request): Promise<Response> {
@@ -1902,6 +1907,7 @@ describe('Agent — additional coverage', () => {
         jsonMode: false,
         maxContext: 100_000,
         cacheControl: 'none',
+        reasoning: false,
       };
       calls = 0;
       async complete(): Promise<Response> {
@@ -1950,6 +1956,7 @@ describe('Agent — additional coverage', () => {
         jsonMode: false,
         maxContext: 100_000,
         cacheControl: 'none',
+        reasoning: false,
       };
       async complete(): Promise<Response> {
         throw new ProviderError('server failed', 500, false, 'fail-provider');

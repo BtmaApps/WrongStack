@@ -3,8 +3,8 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, it } from 'vitest';
-import { handleGitConflict } from '../src/server/git-conflict';
-import { handleShellGitRoute } from '../src/server/shell-git-routes';
+import { handleGitConflict } from '../src/server/git-conflict.js';
+import { handleShellGitRoute } from '../src/server/shell-git-routes.js';
 
 it('reviews real index stages and resolves only the reviewed text conflict with stale/marker refusal', async () => {
   const root = await mkdtemp(join(tmpdir(), 'wrongstack-conflict-'));
@@ -39,8 +39,10 @@ it('reviews real index stages and resolves only the reviewed text conflict with 
       ws as never,
       { type, payload: { ...payload, requestId: 'merge-proof' } } as never,
       {
-        gitConflict: (socket, message) =>
-          handleGitConflict(socket, root, message.payload, type === 'git.conflict.resolve'),
+        gitConflict: (
+          socket: import('ws').WebSocket,
+          message: import('../src/server/types.js').WSClientMessage,
+        ) => handleGitConflict(socket, root, message.payload, type === 'git.conflict.resolve'),
       } as never,
     );
     expect(reply.requestId).toBe('merge-proof');

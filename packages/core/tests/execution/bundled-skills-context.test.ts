@@ -113,9 +113,10 @@ describe('bundled operational skills → prompt context', () => {
   it('injects their deterministic name and trigger manifest in progressive mode', async () => {
     const text = await prompt('progressive');
 
+    expect(text).toContain('| Skill | Use when |');
     for (const name of operationalSkills) {
-      expect(text).toContain(`**${name}**`);
-      expect(text).toContain(`| \`${name}\` |`);
+      const row = text.split('\n').find((line) => line.startsWith(`| \`${name}\` |`));
+      expect(row).toMatch(/\|\s+\S.+\|$/);
     }
     expect(text).toContain('Call the `skill` tool to load a skill before relying on it.');
     expect(text).not.toContain('## Skill: mnemosyne');

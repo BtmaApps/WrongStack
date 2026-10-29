@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { basename, join, resolve, sep } from 'node:path';
 import { DefaultSessionStore } from '@wrongstack/core/storage';
 import { expect, it } from 'vitest';
-import { toSessionHistoryEntries } from '../src/server/session-history';
+import { toSessionHistoryEntries } from '../src/server/session-history.js';
 
 async function removeFixture(root: string) {
   const target = resolve(root);
@@ -15,7 +15,7 @@ async function removeFixture(root: string) {
   await rm(target, { recursive: true, force: true });
 }
 
-import { withSessionContentState } from '../src/server/session-history-content';
+import { withSessionContentState } from '../src/server/session-history-content.js';
 
 it('annotates actual journal content independently of summary counters, without changing legacy rows', async () => {
   const root = await mkdtemp(join(tmpdir(), 'wrongstack-history-content-'));

@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import * as path from 'node:path';
+import { buildChildEnv } from '@wrongstack/core/utils';
 
 /**
  * The bench's own environment as its children should see it. `wstack bench`
@@ -63,6 +64,7 @@ export function registryJavaHome(
 function queryRegistryValue(key: string): string | undefined {
   try {
     const out = execFileSync('reg', ['query', key, '/v', 'JAVA_HOME'], {
+      env: buildChildEnv(),
       encoding: 'utf8',
       windowsHide: true,
       stdio: ['ignore', 'pipe', 'ignore'],

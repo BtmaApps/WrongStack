@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve, sep } from 'node:path';
 import { expect, it } from 'vitest';
 import type { WebSocket } from 'ws';
-import { type ContentRouteContext, handleContentRoute } from '../src/server/content-routes';
+import { type ContentRouteContext, handleContentRoute } from '../src/server/content-routes.js';
 
 it('correlates real skill creation, duplicate refusal and unavailable lifecycle actions', async () => {
   const base = resolve(tmpdir()),

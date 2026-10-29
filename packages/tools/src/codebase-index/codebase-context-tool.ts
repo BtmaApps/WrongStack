@@ -1,3 +1,7 @@
+import type { CodebaseContextOutput } from './codebase-context-contracts.js';
+
+export type { CodebaseContextOutput } from './codebase-context-contracts.js';
+
 /**
  * `codebase-context` tool — one call that answers "which files does this task
  * touch, and what is in them?".
@@ -20,8 +24,8 @@ import type { Tool } from '@wrongstack/contracts/types';
 import { ToolValidationError } from '@wrongstack/contracts/types';
 import { toErrorMessage } from '@wrongstack/core/utils';
 import { codebaseContext, codebaseVectorSearch } from './background-indexer.js';
-import type { ContextEntry } from './context-retrieval.js';
-import { type AnchoredSageInsight, findAnchoredSageMemories } from './ecosystem-bridge.js';
+
+import { findAnchoredSageMemories } from './ecosystem-bridge.js';
 import type { EmbeddingPort } from './embedding-pass.js';
 import { contextNote, withNextStepNote } from './next-step-notes.js';
 import { codebaseIndexDirOverride } from './writer.js';
@@ -35,29 +39,6 @@ export interface CodebaseContextInput {
   symbolsPerFile?: number | undefined;
   /** Restrict results to a project-relative path prefix. */
   pathPrefix?: string | undefined;
-}
-
-export interface CodebaseContextOutput {
-  query: string;
-  entries: ContextEntry[];
-  /** Lexical hits that seeded the walk. */
-  seedCount: number;
-  /** Semantic hits that also seeded it. Zero without an embedding model. */
-  semanticSeedCount: number;
-  /** Files the walk reached before truncation to `limit`. */
-  totalCandidates: number;
-  /**
-   * `ok` — a ranked answer. `no-matches` — the index exists but the query
-   * matched nothing. `unranked` — symbols exist but no reference graph, so
-   * results are lexical only. A missing index or a failed lookup THROWS.
-   */
-  indexStatus: 'ok' | 'no-matches' | 'unranked';
-  /** True when a cached answer from a previous generation was served. */
-  stale?: boolean | undefined;
-  /** Active SAGE memories anchored to the retrieved files or declarations. */
-  relatedMemories?: AnchoredSageInsight[] | undefined;
-  /** Next-step guidance: which tool answers the follow-up, or why the result is empty. */
-  note?: string | undefined;
 }
 
 /** The host watchdog cancels at 30s; ask for slightly more so it wins. */

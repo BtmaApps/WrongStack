@@ -458,6 +458,7 @@ describe('defineWireFormat', () => {
     const events: StreamEvent[] = [
       ...mistralWireFormat.parseStreamEvent(
         {
+          event: 'message',
           data: JSON.stringify({
             id: 'cmpl-1',
             model: 'mistral-large-latest',
@@ -477,7 +478,7 @@ describe('defineWireFormat', () => {
         },
         state,
       ),
-      ...mistralWireFormat.parseStreamEvent({ data: '[DONE]' }, state),
+      ...mistralWireFormat.parseStreamEvent({ event: 'message', data: '[DONE]' }, state),
     ];
 
     const starts = events.filter(

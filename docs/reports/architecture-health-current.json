@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-29T09:44:07.334Z",
+  "generatedAt": "2026-10-29T10:16:57.512Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,21 +12,19 @@
   },
   "summary": {
     "packages": 45,
-    "sourceFiles": 5414,
-    "testFiles": 4733,
-    "sourceLines": 1197998,
+    "sourceFiles": 5432,
+    "testFiles": 4734,
+    "sourceLines": 1198298,
     "workspaceEdges": 222,
-    "moduleEdges": 16276,
+    "moduleEdges": 16332,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
-    "typeModuleCycles": 5,
-    "testsWithoutTypecheck": 92,
+    "typeModuleCycles": 3,
+    "testsWithoutTypecheck": 93,
     "testsWithMultipleTypechecks": 0,
     "testOnlyExports": 971
   },
-  "errors": [
-    "2 unexcepted module cycle(s)"
-  ],
+  "errors": [],
   "packageCycles": [],
   "coreAreas": {
     "actual": [
@@ -387,8 +385,8 @@
     {
       "name": "@wrongstack/desktop-v2",
       "dir": "apps/desktop-v2",
-      "sourceFiles": 245,
-      "testFiles": 92,
+      "sourceFiles": 246,
+      "testFiles": 93,
       "workspaceDependencies": [
         "@wrongstack/contracts",
         "@wrongstack/core",
@@ -922,7 +920,7 @@
     {
       "name": "@wrongstack/tools",
       "dir": "packages/tools",
-      "sourceFiles": 374,
+      "sourceFiles": 391,
       "testFiles": 373,
       "workspaceDependencies": [
         "@wrongstack/agent-catalog",
@@ -1234,13 +1232,6 @@
       {
         "kind": "type-module-cycle",
         "members": [
-          "packages/cli/src/subcommands/handlers/bench-menu.ts",
-          "packages/cli/src/subcommands/handlers/bench.ts"
-        ]
-      },
-      {
-        "kind": "type-module-cycle",
-        "members": [
           "packages/contracts/src/kernel/events.ts",
           "packages/contracts/src/kernel/events/brain-events.ts",
           "packages/contracts/src/kernel/events/session-events.ts"
@@ -1261,29 +1252,6 @@
           "packages/contracts/src/types/token-counter.ts",
           "packages/contracts/src/types/tool.ts"
         ]
-      },
-      {
-        "kind": "type-module-cycle",
-        "members": [
-          "packages/tools/src/codebase-index/codebase-ast-replace-tool.ts",
-          "packages/tools/src/codebase-index/codebase-atlas-tool.ts",
-          "packages/tools/src/codebase-index/codebase-context-tool.ts",
-          "packages/tools/src/codebase-index/codebase-diff-impact-tool.ts",
-          "packages/tools/src/codebase-index/codebase-flow-trace-tool.ts",
-          "packages/tools/src/codebase-index/codebase-impact-analysis-tool.ts",
-          "packages/tools/src/codebase-index/codebase-incoming-calls-tool.ts",
-          "packages/tools/src/codebase-index/codebase-index-tool.ts",
-          "packages/tools/src/codebase-index/codebase-invariant-check-tool.ts",
-          "packages/tools/src/codebase-index/codebase-onboard-tool.ts",
-          "packages/tools/src/codebase-index/codebase-outgoing-calls-tool.ts",
-          "packages/tools/src/codebase-index/codebase-read-symbol-tool.ts",
-          "packages/tools/src/codebase-index/codebase-repo-map-tool.ts",
-          "packages/tools/src/codebase-index/codebase-search-tool.ts",
-          "packages/tools/src/codebase-index/codebase-skeleton-tool.ts",
-          "packages/tools/src/codebase-index/codebase-stats-tool.ts",
-          "packages/tools/src/codebase-index/codebase-targeted-test-tool.ts",
-          "packages/tools/src/codebase-index/next-step-notes.ts"
-        ]
       }
     ],
     "matchedExceptions": [
@@ -1291,38 +1259,7 @@
       "ARCH-CYCLE-TYPE-09",
       "ARCH-CYCLE-TYPE-12"
     ],
-    "unexcepted": [
-      {
-        "kind": "type-module-cycle",
-        "members": [
-          "packages/cli/src/subcommands/handlers/bench-menu.ts",
-          "packages/cli/src/subcommands/handlers/bench.ts"
-        ]
-      },
-      {
-        "kind": "type-module-cycle",
-        "members": [
-          "packages/tools/src/codebase-index/codebase-ast-replace-tool.ts",
-          "packages/tools/src/codebase-index/codebase-atlas-tool.ts",
-          "packages/tools/src/codebase-index/codebase-context-tool.ts",
-          "packages/tools/src/codebase-index/codebase-diff-impact-tool.ts",
-          "packages/tools/src/codebase-index/codebase-flow-trace-tool.ts",
-          "packages/tools/src/codebase-index/codebase-impact-analysis-tool.ts",
-          "packages/tools/src/codebase-index/codebase-incoming-calls-tool.ts",
-          "packages/tools/src/codebase-index/codebase-index-tool.ts",
-          "packages/tools/src/codebase-index/codebase-invariant-check-tool.ts",
-          "packages/tools/src/codebase-index/codebase-onboard-tool.ts",
-          "packages/tools/src/codebase-index/codebase-outgoing-calls-tool.ts",
-          "packages/tools/src/codebase-index/codebase-read-symbol-tool.ts",
-          "packages/tools/src/codebase-index/codebase-repo-map-tool.ts",
-          "packages/tools/src/codebase-index/codebase-search-tool.ts",
-          "packages/tools/src/codebase-index/codebase-skeleton-tool.ts",
-          "packages/tools/src/codebase-index/codebase-stats-tool.ts",
-          "packages/tools/src/codebase-index/codebase-targeted-test-tool.ts",
-          "packages/tools/src/codebase-index/next-step-notes.ts"
-        ]
-      }
-    ]
+    "unexcepted": []
   },
   "testOwnership": {
     "runtimeAssignments": [
@@ -1856,6 +1793,12 @@
       },
       {
         "file": "apps/desktop-v2/tests/skill-model.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "apps/desktop-v2/tests/snippet-references.test.ts",
         "projects": [
           "root-node"
         ]
@@ -30351,6 +30294,13 @@
         "typecheckProjects": []
       },
       {
+        "file": "apps/desktop-v2/tests/snippet-references.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
         "file": "apps/desktop-v2/tests/task-definition-model.test.ts",
         "runtimeProjects": [
           "root-node"
@@ -30950,11 +30900,6 @@
       "relativeImports": 6
     },
     {
-      "file": "packages/tools/src/codebase-index/codebase-diff-impact-tool.ts",
-      "lines": 704,
-      "relativeImports": 8
-    },
-    {
       "file": "packages/tools/src/codebase-index/infra-parser.ts",
       "lines": 903,
       "relativeImports": 2
@@ -31041,8 +30986,8 @@
     },
     {
       "file": "apps/desktop-v2/src/FileWorkspace.tsx",
-      "lines": 1700,
-      "relativeImports": 18
+      "lines": 1688,
+      "relativeImports": 19
     },
     {
       "file": "apps/desktop-v2/src/KanbanTaskInspector.tsx",
@@ -31123,8 +31068,8 @@
   "hotspots": [
     {
       "file": "apps/desktop-v2/src/FileWorkspace.tsx",
-      "lines": 1700,
-      "relativeImports": 18
+      "lines": 1688,
+      "relativeImports": 19
     },
     {
       "file": "apps/desktop-v2/src/ProjectAgentRoster.tsx",
@@ -31332,11 +31277,6 @@
       "relativeImports": 5
     },
     {
-      "file": "packages/tools/src/codebase-index/codebase-diff-impact-tool.ts",
-      "lines": 704,
-      "relativeImports": 8
-    },
-    {
       "file": "packages/core/src/execution/auto-compaction-middleware.ts",
       "lines": 703,
       "relativeImports": 18
@@ -31355,6 +31295,11 @@
       "file": "packages/coordination/src/provider-status-tracker.ts",
       "lines": 701,
       "relativeImports": 4
+    },
+    {
+      "file": "apps/desktop-v2/src/useDesktop.ts",
+      "lines": 700,
+      "relativeImports": 9
     },
     {
       "file": "packages/coordination/src/subagent-budget.ts",

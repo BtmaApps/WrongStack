@@ -15,10 +15,15 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { type BenchReport, readRunDir, readRunManifest, runProgress } from '@wrongstack/bench';
 import { SYSTEM_PROMPT_VARIANT_OPTIONS } from '@wrongstack/core/agent';
-import { color, toErrorMessage } from '@wrongstack/core/utils';
+import {
+  buildChildEnv,
+  buildWin32CmdShimInvocation,
+  color,
+  toErrorMessage,
+} from '@wrongstack/core/utils';
 import { buildPickableProviders } from '../../provider-helpers.js';
 import type { SubcommandDeps } from '../contracts.js';
-import type { BenchRunPreset } from './bench.js';
+import type { BenchRunPreset } from './bench-run-config.js';
 
 export type CompareMode = 'models' | 'prompts' | 'both';
 export type MenuSuite = 'core' | 'hard' | 'polyglot-40' | 'polyglot';
@@ -491,11 +496,20 @@ async function detectLanguages(subsetOnly: boolean): Promise<string[]> {
 
 function succeeds(command: string, args: string[], timeoutMs: number): Promise<boolean> {
   return new Promise((resolve) => {
-    // shell: launchers like npm are .cmd shims on Windows. Constant argv only.
+    // npm is a .cmd shim on Windows; keep quoting and env filtering canonical.
+    const invocation =
+      process.platform === 'win32'
+        ? buildWin32CmdShimInvocation(command, args)
+        : { command, args, windowsVerbatimArguments: false };
     execFile(
-      command,
-      args,
-      { timeout: timeoutMs, windowsHide: true, shell: process.platform === 'win32' },
+      invocation.command,
+      invocation.args,
+      {
+        timeout: timeoutMs,
+        windowsHide: true,
+        env: buildChildEnv(),
+        windowsVerbatimArguments: invocation.windowsVerbatimArguments,
+      },
       (err) => resolve(!err),
     );
   });

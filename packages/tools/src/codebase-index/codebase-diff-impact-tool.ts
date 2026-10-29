@@ -1,3 +1,15 @@
+import type {
+  CodebaseDiffImpactOutput,
+  DiffAffectedSymbol,
+  DiffChangedFileReport,
+} from './codebase-diff-impact-contracts.js';
+
+export type {
+  CodebaseDiffImpactOutput,
+  DiffAffectedSymbol,
+  DiffChangedFileReport,
+} from './codebase-diff-impact-contracts.js';
+
 /**
  * `codebase-diff-impact` tool — analyze the blast radius, affected symbols,
  * contract invariant violations, and impacted test suites of a git diff
@@ -19,12 +31,7 @@ import {
   isRunnableTestFile,
   isTestFilePath,
 } from './codebase-impact-analysis-tool.js';
-import {
-  type AnchoredFileHealth,
-  type AnchoredSageInsight,
-  findAnchoredSageMemories,
-  findFileHealthAlerts,
-} from './ecosystem-bridge.js';
+import { findAnchoredSageMemories, findFileHealthAlerts } from './ecosystem-bridge.js';
 import type { StructuralChangeKind } from './fingerprint.js';
 import { diffImpactNote, withNextStepNote } from './next-step-notes.js';
 import { codebaseIndexDirOverride, indexStorePool, resolveIndexDir } from './writer.js';
@@ -44,23 +51,6 @@ export interface ParsedDiffFile {
   hunks: DiffHunkRange[];
 }
 
-export interface DiffAffectedSymbol {
-  name: string;
-  kind: string;
-  file: string;
-  line: number;
-  directCallers: number;
-  transitiveCallers: number;
-}
-
-export interface DiffChangedFileReport {
-  file: string;
-  status: 'added' | 'modified' | 'deleted';
-  changeKind: StructuralChangeKind;
-  modifiedSymbols: string[];
-  invariantViolations: InvariantViolation[];
-}
-
 export interface CodebaseDiffImpactInput {
   /**
    * Optional git ref or range to diff against (e.g. `"HEAD"`, `"HEAD~1"`,
@@ -78,26 +68,6 @@ export interface CodebaseDiffImpactInput {
 }
 
 export const ATLAS_DIFF_OVERLAY_JSON = '.wrongstack/atlas/diff-overlay.json';
-
-export interface CodebaseDiffImpactOutput {
-  status: 'ok';
-  baseRef: string;
-  riskLevel: 'low' | 'medium' | 'high';
-  summary: string;
-  changedFiles: DiffChangedFileReport[];
-  affectedSymbols: DiffAffectedSymbol[];
-  totalCallSites: number;
-  affectedProductionFiles: string[];
-  affectedTestFiles: string[];
-  invariantViolations: Array<InvariantViolation & { file: string }>;
-  callSites: ImpactCallSite[];
-  recommendedActionPlan: string[];
-  relatedMemories?: AnchoredSageInsight[] | undefined;
-  fileHealthAlerts?: AnchoredFileHealth[] | undefined;
-  persistedOverlayPath?: string | undefined;
-  /** Next-step guidance: which tool answers the follow-up, or why the result is empty. */
-  note?: string | undefined;
-}
 
 /**
  * Persist a git diff blast-radius overlay to `.wrongstack/atlas/diff-overlay.json`

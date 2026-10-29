@@ -15,8 +15,8 @@ import {
   handleProcessKill,
   handleProcessList,
   handleProcessOutput,
-} from '../src/server/process-handlers';
-import { handleProcessRoute, type ProcessRouteHandlers } from '../src/server/process-routes';
+} from '../src/server/process-handlers.js';
+import { handleProcessRoute, type ProcessRouteHandlers } from '../src/server/process-routes.js';
 
 beforeEach(() => {
   vi.clearAllMocks();

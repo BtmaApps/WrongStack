@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { basename, join, resolve, sep } from 'node:path';
 import { DefaultSessionStore } from '@wrongstack/core/storage';
 import { afterEach, describe, expect, it } from 'vitest';
-import { searchProjectHistory } from '../src/server/project-history-search';
+import { searchProjectHistory } from '../src/server/project-history-search.js';
 
 const owned: string[] = [];
 afterEach(async () => {

@@ -516,7 +516,7 @@ export function EngineWorkspace({
             setTab('chat');
           }}
           onReference={(ref) => {
-            // One reference per file: a new selection replaces that file's earlier range.
+            // One reference per file: a new selection or quote replaces that file's earlier one.
             void onReferencesChange([...references.filter((item) => item.path !== ref.path), ref]);
             setTab('chat');
           }}

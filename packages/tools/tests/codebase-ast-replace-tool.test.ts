@@ -147,7 +147,7 @@ def helper():
           cwd: tempDir,
           projectRoot: tempDir,
           recordRead: (p: string, mtimeMs: number, source = 'read', hash?: string) => {
-            reads.push({ path: p, mtimeMs, source, hash });
+            reads.push({ path: p, mtimeMs, source, ...(hash !== undefined ? { hash } : {}) });
           },
           session: {
             recordFileChange: (c: {

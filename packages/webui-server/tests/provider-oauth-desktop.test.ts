@@ -4,9 +4,9 @@ import type {
   ProviderConfig,
 } from '@wrongstack/contracts/types';
 import { describe, expect, it, vi } from 'vitest';
-import { projectSavedProviders } from '../src/server/provider/projection';
-import { createProviderOperations } from '../src/server/provider-handlers';
-import { handleProviderRoute } from '../src/server/provider-routes';
+import { projectSavedProviders } from '../src/server/provider/projection.js';
+import { createProviderOperations } from '../src/server/provider-handlers.js';
+import { handleProviderRoute } from '../src/server/provider-routes.js';
 
 const outcome = (providerId: string): ProviderAuthOutcome => ({
   providerId,

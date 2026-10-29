@@ -5,6 +5,7 @@ import * as path from 'node:path';
 import type { SlashCommand } from '@wrongstack/contracts/types';
 import type { Context } from '@wrongstack/core/agent';
 import {
+  canonicalProjectRoot,
   cliSpawnArgs,
   color,
   ensureProjectGitignore,
@@ -291,9 +292,13 @@ async function addProjectCommand(
   const name = displayName?.trim() || path.basename(resolved);
   const slug = generateSlug(resolved);
   const now = new Date().toISOString();
+  // Canonical identity, not raw text: boot registers the canonical root, so a
+  // worktree- or case-spelled add must match that entry instead of adding a
+  // duplicate under the same slug.
+  const identityRoot = canonicalProjectRoot(resolved);
   let existing: { name: string; slug: string } | undefined;
   await updateManifest(opts.paths?.globalConfig, (manifest) => {
-    existing = manifest.projects.find((p) => p.root === resolved);
+    existing = manifest.projects.find((p) => canonicalProjectRoot(p.root) === identityRoot);
     if (existing) return false;
     manifest.projects.push({ name, root: resolved, slug, lastSeen: now, createdAt: now });
     return true;
@@ -419,8 +424,9 @@ async function switchProjectCommand(
 
   // Update the manifest with the new lastSeen before spawning
   let registeredSlug: string | undefined;
+  const identityRoot = canonicalProjectRoot(resolved);
   await updateManifest(opts.paths?.globalConfig, (manifest) => {
-    const existing = manifest.projects.find((p) => p.root === resolved);
+    const existing = manifest.projects.find((p) => canonicalProjectRoot(p.root) === identityRoot);
     if (existing) {
       existing.lastSeen = new Date().toISOString();
       return true;

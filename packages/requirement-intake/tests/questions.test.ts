@@ -132,7 +132,9 @@ describe('upsertQuestion', () => {
   it('skips scope_notes and provided_context in buildInitialQuestions when scopeNotes and providedContext are populated on CreateIntakeInput', () => {
     const questions = buildInitialQuestions(
       {
-        rawRequest: 'Add SSO login',
+        originalRequest: 'Add SSO login',
+        projectId: 'proj_alpha',
+        requestedBy: 'user-alice',
         scopeNotes: 'Web only',
         providedContext: ['packages/auth'],
       },

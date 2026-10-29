@@ -54,9 +54,18 @@ run robust to a model crashing, hanging (per-task timeout + tree-kill), or OOMin
 The isolated home runs the pinned **lean profile** by default: factory defaults,
 your provider definitions (auth only, keys stay encrypted), and
 `LEAN_BENCH_CONFIG` — the `quick` system prompt, the aggressive token-saving
-tier, and MCP, plugins, memory, the prompt library and the explore/skill
+tier, and MCP, plugins, memory, skills, the prompt library and the explore/skill
 companions off. None of your personal behavior settings cross over, so the same
 suite fingerprints the same on every machine.
+
+Lean runs expose only six tool schemas: `read`, `edit`, `write`, `bash`, `grep`,
+and `glob`. A launch-time allow-list also blocks tools registered later;
+`tool_search` and `tool_use` are explicitly denied so lazy discovery cannot add
+schemas. This bound applies to every suite, including `--harness` overlays.
+The tool roster and manifest fingerprint use this bounded set, rather than the
+launcher's general coding tier. Existing runs with a different fingerprint
+cannot be resumed or treated as directly comparable. Use `--host-profile` to
+measure your active profile with its usual tool surface instead.
 
 `quick` was picked by measurement. On glm-5.3-flash (2026-10-27, `hard`,
 2 attempts) it passed 16/16 at 83.9k tokens per solve; the factory `pro` prompt

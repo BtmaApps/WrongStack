@@ -3,9 +3,9 @@ import { tmpdir } from 'node:os';
 import { join, resolve, sep } from 'node:path';
 import { expect, it } from 'vitest';
 import type { WebSocket } from 'ws';
-import { materializeProjectTheme } from '../../../apps/desktop-v2/src/design-studio-actions';
-import { EngineOperations } from '../../../apps/desktop-v2/src/engine-operations';
-import { type ContentRouteContext, handleContentRoute } from '../src/server/content-routes';
+import { materializeProjectTheme } from '../../../apps/desktop-v2/src/design-studio-actions.js';
+import { EngineOperations } from '../../../apps/desktop-v2/src/engine-operations.js';
+import { type ContentRouteContext, handleContentRoute } from '../src/server/content-routes.js';
 
 it('writes and reads a project theme through the real desktop action and canonical file protocol', async () => {
   const base = resolve(tmpdir()),

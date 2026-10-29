@@ -3,7 +3,7 @@ import * as path from 'node:path';
 import type { EventBus } from '@wrongstack/contracts/kernel/events';
 import { atomicWrite, withFileLock } from './utils/atomic-write.js';
 import { toErrorMessage } from './utils/error.js';
-import type { WstackPaths } from './utils/wstack-paths.js';
+import { canonicalProjectRoot, type WstackPaths } from './utils/wstack-paths.js';
 
 /**
  * Refuse to boot when the resolved project root lives inside
@@ -145,7 +145,12 @@ export async function registerProjectInManifest(
       }
 
       const now = new Date().toISOString();
-      const existing = manifest.projects.find((p) => p.root === projectRoot);
+      // Identity is the canonical root — what boot passes and what projectSlug
+      // is derived from — not raw text: an entry registered through a linked
+      // worktree or a differently-cased spelling of the same directory must be
+      // refreshed, not duplicated under the same slug.
+      const identityRoot = canonicalProjectRoot(projectRoot);
+      const existing = manifest.projects.find((p) => canonicalProjectRoot(p.root) === identityRoot);
       if (existing) {
         existing.lastSeen = now;
         if (projectId) existing.projectId = projectId;

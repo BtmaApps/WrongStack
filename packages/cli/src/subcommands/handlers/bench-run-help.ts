@@ -207,7 +207,7 @@ export const BENCH_RUN_FLAGS: ReadonlyArray<BenchRunFlag> = [
     name: 'host-profile',
     flag: '--host-profile',
     description:
-      'Run your own active profile (skills, companions, memory, brain) instead of the pinned lean harness. Scores are then specific to your setup.',
+      'Run your own active profile and tool surface (skills, companions, memory, brain) instead of the six-tool lean harness. Scores are then specific to your setup.',
     group: 'control',
     kind: 'boolean',
   },

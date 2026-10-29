@@ -1,3 +1,7 @@
+import type { CodebaseInvariantCheckOutput } from './codebase-invariant-check-contracts.js';
+
+export type { CodebaseInvariantCheckOutput } from './codebase-invariant-check-contracts.js';
+
 /**
  * `codebase-invariant-check` tool — deterministic backward-compatibility & invariant audit.
  *
@@ -8,7 +12,7 @@
 import * as fs from 'node:fs/promises';
 import { type Tool, ToolValidationError } from '@wrongstack/contracts/types';
 import { safeResolveProjectPath } from '../_util.js';
-import { type InvariantViolation, polyglotInvariantEngine } from './ast-invariant-engine.js';
+import { polyglotInvariantEngine } from './ast-invariant-engine.js';
 import { detectLang, EXT_TO_LANG } from './languages.js';
 import { invariantNote, withNextStepNote } from './next-step-notes.js';
 import type { SymbolLang } from './schema.js';
@@ -20,16 +24,6 @@ export interface CodebaseInvariantCheckInput {
   originalCode?: string | undefined;
   modifiedCode: string;
   lang?: SymbolLang | undefined;
-}
-
-export interface CodebaseInvariantCheckOutput {
-  valid: boolean;
-  /** False when the language has no invariant rules — `valid` then proves nothing. */
-  verified: boolean;
-  violations: InvariantViolation[];
-  summary: string;
-  /** Next-step guidance: which tool answers the follow-up, or why the result is empty. */
-  note?: string | undefined;
 }
 
 const codebaseInvariantCheckToolBase: Tool<

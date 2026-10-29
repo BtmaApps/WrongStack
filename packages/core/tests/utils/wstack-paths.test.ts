@@ -145,17 +145,19 @@ describe('wstack-paths', () => {
   );
 
   it('resolves global + project dirs under user home', () => {
+    const userHome = path.resolve('/home/dev');
+    const projectRoot = path.resolve('/work/x');
     const paths = resolveWstackPaths({
-      userHome: '/home/dev',
-      projectRoot: '/work/x',
+      userHome,
+      projectRoot,
     });
-    expect(paths.globalRoot).toBe(path.join('/home/dev', '.wrongstack'));
+    expect(paths.globalRoot).toBe(path.join(userHome, '.wrongstack'));
     expect(paths.profileName).toBe('default');
-    expect(paths.profileDir).toBe(path.join('/home/dev', '.wrongstack', 'profiles', 'default'));
+    expect(paths.profileDir).toBe(path.join(userHome, '.wrongstack', 'profiles', 'default'));
     expect(paths.globalSkills).toBe(
-      path.join('/home/dev', '.wrongstack', 'profiles', 'default', 'skills'),
+      path.join(userHome, '.wrongstack', 'profiles', 'default', 'skills'),
     );
-    expect(paths.inProjectSkills).toBe(path.join('/work/x', '.wrongstack', 'skills'));
+    expect(paths.inProjectSkills).toBe(path.join(projectRoot, '.wrongstack', 'skills'));
     expect(paths.modelsCache).toContain('cache');
     expect(paths.projectDir).toContain('projects');
     expect(paths.projectDir).toContain(paths.projectSlug);
@@ -194,7 +196,13 @@ describe('wstack-paths', () => {
   it('validates project status slugs before constructing a path', () => {
     const paths = resolveWstackPaths({ userHome: '/home/dev', projectRoot: '/work/x' });
     expect(paths.projectStatus('wrongstack-a1b2c3')).toBe(
-      path.join('/home/dev', '.wrongstack', 'projects', 'wrongstack-a1b2c3', 'status.json'),
+      path.join(
+        path.resolve('/home/dev'),
+        '.wrongstack',
+        'projects',
+        'wrongstack-a1b2c3',
+        'status.json',
+      ),
     );
     expect(() => paths.projectStatus('../escape')).toThrow('Invalid project slug');
     expect(() => paths.projectStatus(paths.projectHash)).toThrow('Invalid project slug');

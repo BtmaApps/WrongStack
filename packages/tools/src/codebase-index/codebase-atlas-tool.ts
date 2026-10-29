@@ -1,3 +1,7 @@
+import type { CodebaseAtlasMode, CodebaseAtlasOutput } from './codebase-atlas-contracts.js';
+
+export type { CodebaseAtlasMode, CodebaseAtlasOutput } from './codebase-atlas-contracts.js';
+
 /**
  * `codebase-atlas` tool — query or project the repository's Codebase Atlas,
  * concept coverage, subsystem edges, Louvain file communities, and freshness.
@@ -12,22 +16,13 @@ import { existsSync } from 'node:fs';
 import * as path from 'node:path';
 import type { Tool } from '@wrongstack/contracts/types';
 import { ToolValidationError } from '@wrongstack/contracts/types';
-import { type AtlasBrief, buildAtlasBrief } from './atlas-brief.js';
-import {
-  type AtlasDocument,
-  type AtlasFreshness,
-  buildAtlas,
-  checkAtlasFreshness,
-  type WrittenAtlas,
-  writeAtlas,
-} from './atlas-projection.js';
-import { detectStoreFileCommunities, type FileCommunity } from './louvain.js';
+import { buildAtlasBrief } from './atlas-brief.js';
+import { buildAtlas, checkAtlasFreshness, writeAtlas } from './atlas-projection.js';
+import { detectStoreFileCommunities } from './louvain.js';
 import { atlasNote, withNextStepNote } from './next-step-notes.js';
 import { codebaseIndexDirOverride, indexStorePool, resolveIndexDir } from './writer.js';
-import type { ConceptCoverage, ConceptEdge, Subsystem } from './writer-concepts.js';
-import { posixIndexPath } from './writer-helpers.js';
 
-export type CodebaseAtlasMode = 'brief' | 'full' | 'communities' | 'freshness' | 'write';
+import { posixIndexPath } from './writer-helpers.js';
 
 const VALID_MODES = new Set<CodebaseAtlasMode>([
   'brief',
@@ -49,21 +44,6 @@ export interface CodebaseAtlasInput {
   mode?: CodebaseAtlasMode | undefined;
   /** Maximum number of Louvain communities to return (default 15, max 50). */
   maxCommunities?: number | undefined;
-}
-
-export interface CodebaseAtlasOutput {
-  mode: CodebaseAtlasMode;
-  indexed: boolean;
-  freshness?: AtlasFreshness | undefined;
-  conceptCoverage?: ConceptCoverage | undefined;
-  brief?: AtlasBrief | undefined;
-  document?: AtlasDocument | undefined;
-  communities?: FileCommunity[] | undefined;
-  subsystems?: Subsystem[] | undefined;
-  conceptEdges?: ConceptEdge[] | undefined;
-  written?: WrittenAtlas | undefined;
-  /** Next-step guidance: which tool answers the follow-up, or why the result is empty. */
-  note?: string | undefined;
 }
 
 const codebaseAtlasToolBase: Tool<CodebaseAtlasInput, CodebaseAtlasOutput> = {

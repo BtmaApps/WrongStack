@@ -149,6 +149,32 @@ function updateWebsite(version) {
   return updated;
 }
 
+/** Native metadata is not a workspace package.json, but ships the same product version. */
+function updateNativeDesktop(version) {
+  const nativeDir = resolve(repoRoot, 'apps/desktop-v2/src-tauri');
+  const config = resolve(nativeDir, 'tauri.conf.json');
+  if (existsSync(config)) writeVersion(config, version);
+  const manifest = resolve(nativeDir, 'Cargo.toml');
+  if (existsSync(manifest)) {
+    const text = readFileSync(manifest, 'utf8');
+    writeFileSync(
+      manifest,
+      text.replace(/(\[package\][\s\S]*?^version\s*=\s*)"[^"]*"/m, `$1"${version}"`),
+    );
+  }
+  const lock = resolve(nativeDir, 'Cargo.lock');
+  if (existsSync(lock)) {
+    const text = readFileSync(lock, 'utf8');
+    writeFileSync(
+      lock,
+      text.replace(
+        /(\[\[package\]\]\r?\nname = "wrongstack-desktop-v2"\r?\nversion = )"[^"]*"/,
+        `$1"${version}"`,
+      ),
+    );
+  }
+}
+
 const [, , type, arg] = process.argv;
 
 const rootPath = resolve(repoRoot, 'package.json');
@@ -202,12 +228,16 @@ assertNoConflictMarkers([
   ...manifests,
   resolve(repoRoot, 'website', 'package.json'),
   resolve(repoRoot, 'website', 'package-lock.json'),
+  resolve(repoRoot, 'apps/desktop-v2/src-tauri/tauri.conf.json'),
+  resolve(repoRoot, 'apps/desktop-v2/src-tauri/Cargo.toml'),
+  resolve(repoRoot, 'apps/desktop-v2/src-tauri/Cargo.lock'),
 ]);
 for (const path of manifests) {
   writeVersion(path, newVersion);
 }
 
 const websiteUpdated = updateWebsite(newVersion);
+updateNativeDesktop(newVersion);
 
 // Schemas include the package version. Use their canonical writer rather than
 // patching generated JSON, and do not report success if regeneration failed.

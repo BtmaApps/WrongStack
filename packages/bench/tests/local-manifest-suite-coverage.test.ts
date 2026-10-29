@@ -275,9 +275,6 @@ describe('createLocalManifestSuite — validation errors', () => {
         JSON.stringify({ type: 'session_start', id: 's' }) + '\n',
         'utf8',
       );
-      const _sha256 = createHash('sha256')
-        .update(JSON.stringify({ type: 'session_start', id: 's' }) + '\n')
-        .digest('hex');
       await fs.writeFile(
         path.join(dir, 'bench.local.json'),
         JSON.stringify({

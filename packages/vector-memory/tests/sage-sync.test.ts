@@ -542,7 +542,7 @@ describe('first-boot sage sync', () => {
     await store.remember({ text: 'shared architectural note', scope: 'project' });
     store.close();
 
-    const failingProvider: EmbeddingProvider = {
+    const failingProvider: EmbeddingProvider & { isAvailable(): Promise<boolean> } = {
       id: 'failing-8d-next',
       dimensions: 8,
       async isAvailable() {

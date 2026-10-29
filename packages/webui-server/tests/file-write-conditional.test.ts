@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { WebSocket } from 'ws';
-import { handleFilesRead, handleFilesWrite } from '../src/server/file-handlers';
+import { handleFilesRead, handleFilesWrite } from '../src/server/file-handlers.js';
 
 type Reply = { type: string; payload: Record<string, unknown> };
 function socket() {

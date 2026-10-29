@@ -99,13 +99,19 @@ describe('telegram_read tool', () => {
     pushMsg(bot, { messageId: 20, text: 'other chat', chatId: 222 });
 
     const tool = makeTelegramReadTool({ bot });
-    const padded = await tool.execute({ chat_id: ' 111 ', ack_last: 10 });
+    const padded = (await tool.execute({ chat_id: ' 111 ', ack_last: 10 }, {} as never, {
+      signal: new AbortController().signal,
+    })) as { messages: Array<{ text: string }>; acked: number };
     expect(padded.messages).toHaveLength(1);
     expect(padded.messages[0]!.text).toBe('padded match');
     expect(padded.acked).toBe(1);
     expect(bot.bufferCount).toBe(1);
 
-    const blankChat = await tool.execute({ chat_id: '   ', limit: -5, ack_last: 20 });
+    const blankChat = (await tool.execute(
+      { chat_id: '   ', limit: -5, ack_last: 20 },
+      {} as never,
+      { signal: new AbortController().signal },
+    )) as { messages: Array<{ text: string }>; acked: number };
     expect(blankChat.messages).toHaveLength(1);
     expect(blankChat.messages[0]!.text).toBe('other chat');
     expect(blankChat.acked).toBe(1);

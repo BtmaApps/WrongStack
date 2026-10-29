@@ -2,10 +2,10 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, it } from 'vitest';
-import { validateOperationArgs } from '../../src/session-catalog/project-server-operations';
-import { SessionCatalogStore } from '../../src/session-catalog/store';
-import { historyPageFromSummaries } from '../../src/storage/session-history-page';
-import { DefaultSessionStore } from '../../src/storage/session-store';
+import { validateOperationArgs } from '../../src/session-catalog/project-server-operations.js';
+import { SessionCatalogStore } from '../../src/session-catalog/store.js';
+import { historyPageFromSummaries } from '../../src/storage/session-history-page.js';
+import { DefaultSessionStore } from '../../src/storage/session-store.js';
 
 it('pages and anchors beyond the legacy 1000-record RPC limit with exact membership/order guards', async () => {
   const root = await mkdtemp(join(tmpdir(), 'wrongstack-history-pages-'));
@@ -63,10 +63,10 @@ it('pages and anchors beyond the legacy 1000-record RPC limit with exact members
     expect(() => store.pageCatalog({ limit: 200, offset: 200, excludeId })).toThrow('requires');
     expect(() => store.pageCatalog({ limit: 201 })).toThrow('1–200');
     expect(() => store.pageCatalog({ anchorId: excludeId, excludeId })).toThrow('no longer');
-    validateOperationArgs('page_catalog', { limit: 100, offset: 0, excludeId });
-    expect(() => validateOperationArgs('page_catalog', { limit: 100, path: '../outside' })).toThrow(
-      'unknown',
-    );
+    validateOperationArgs('page_catalog', { limit: 100, offset: 0, excludeId }, root);
+    expect(() =>
+      validateOperationArgs('page_catalog', { limit: 100, path: '../outside' }, root),
+    ).toThrow('unknown');
     upsert(1106);
     expect(() =>
       store.pageCatalog({ limit: 200, offset: 200, expectedRevision: first.revision, excludeId }),

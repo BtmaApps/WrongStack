@@ -4,7 +4,8 @@
     "noEmit": true,
     "allowImportingTsExtensions": true,
     "rootDir": "../..",
-    "types": ["node", "vitest"]
+    "types": ["node", "vitest"],
+    "lib": ["ES2024", "DOM", "DOM.Iterable"]
   },
   "include": ["src/**/*", "tests/**/*", "vitest.config.ts", "../../vitest.workers.ts"],
   "exclude": ["dist", "node_modules", "tests/fixtures/**/*"]

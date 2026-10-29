@@ -1,5 +1,5 @@
 import type { WSUserMessageImage } from '@wrongstack/webui-protocol';
-import { entries, record } from './engine-values';
+import { entries, record } from './engine-values.js';
 
 export interface ComposerAttachment extends WSUserMessageImage {
   id: string;

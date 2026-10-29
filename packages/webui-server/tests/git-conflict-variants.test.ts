@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterEach, expect, it } from 'vitest';
-import { handleGitConflict } from '../src/server/git-conflict';
+import { handleGitConflict } from '../src/server/git-conflict.js';
 
 const owned: string[] = [];
 afterEach(async () => {

@@ -23,6 +23,20 @@ describe('automation environment authoring', () => {
     };
     expect(environmentProfile(environmentDraft(profile))).toEqual(profile);
   });
+  it.each([
+    ['300', 300_000],
+    ['1.5', 1_500],
+    ['16.1', 16_100],
+    ['32.2', 32_200],
+    ['64.4', 64_400],
+  ])('stores a %s second setup timeout as whole milliseconds', (seconds, ms) => {
+    const draft = { ...environmentDraft(undefined, 'trusted:1'), timeoutSeconds: seconds };
+    expect(environmentProfile(draft).setupTimeoutMs).toBe(ms);
+  });
+  it.each(['', 'abc', '0.5', '3601'])('still refuses a %j second setup timeout', (seconds) => {
+    const draft = { ...environmentDraft(undefined, 'trusted:1'), timeoutSeconds: seconds };
+    expect(() => environmentProfile(draft)).toThrow('1 to 3600 seconds');
+  });
   it('uses canonical validation and refuses multiline service commands, secrets as names and unsafe cache paths', () => {
     const draft = environmentDraft(undefined, 'trusted:1');
     draft.services.push({

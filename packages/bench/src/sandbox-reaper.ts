@@ -1,5 +1,6 @@
 import { execFile } from 'node:child_process';
 import * as path from 'node:path';
+import { buildChildEnv } from '@wrongstack/core/utils';
 
 /**
  * Every task workdir is its own project, and each `wstack` run starts that
@@ -82,7 +83,7 @@ function listProcesses(): Promise<ProcessRow[]> {
           '-Command',
           "Get-CimInstance Win32_Process -Filter \"Name='node.exe' OR Name='bun.exe'\" | Select-Object ProcessId,CommandLine | ConvertTo-Json -Compress",
         ],
-        { windowsHide: true, maxBuffer: 32 * 1024 * 1024, timeout: 30_000 },
+        { env: buildChildEnv(), windowsHide: true, maxBuffer: 32 * 1024 * 1024, timeout: 30_000 },
         (err, stdout) => {
           if (err) return reject(err);
           const raw = stdout.trim();
@@ -104,7 +105,7 @@ function listProcesses(): Promise<ProcessRow[]> {
     execFile(
       'ps',
       ['-eo', 'pid=,args='],
-      { maxBuffer: 32 * 1024 * 1024, timeout: 30_000 },
+      { env: buildChildEnv(), maxBuffer: 32 * 1024 * 1024, timeout: 30_000 },
       (err, stdout) => {
         if (err) return reject(err);
         resolve(

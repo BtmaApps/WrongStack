@@ -3,9 +3,9 @@ import { tmpdir } from 'node:os';
 import { basename, join, resolve, sep } from 'node:path';
 import { DefaultSessionStore } from '@wrongstack/core/storage';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createSessionCheckpointHandlers } from '../src/server/session-checkpoint-handlers';
-import { createSessionTransitionGate } from '../src/server/session-handler-helpers';
-import { handleSessionRoute } from '../src/server/session-routes';
+import { createSessionCheckpointHandlers } from '../src/server/session-checkpoint-handlers.js';
+import { createSessionTransitionGate } from '../src/server/session-handler-helpers.js';
+import { handleSessionRoute } from '../src/server/session-routes.js';
 
 const owned: string[] = [];
 afterEach(async () => {

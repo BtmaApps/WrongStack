@@ -69,6 +69,44 @@ const config: BenchConfig = {
 };
 
 describe('runBenchmark', () => {
+  it.each([undefined, 'lean', 'host'] as const)(
+    'keeps the child tool surface and fingerprint aligned for profile %s',
+    async (profile) => {
+      const entry = path.join(dir, `tool-surface-${profile}.cjs`);
+      await fs.writeFile(
+        entry,
+        'console.log(JSON.stringify({status:"completed",finalText:JSON.stringify(process.argv.slice(2))}));',
+      );
+      const tools = ['read', 'edit', 'write', 'bash', 'grep', 'glob'];
+      const report = await runBenchmark({
+        suite: makeSuite(['tools']),
+        grade: async () => ({ passed: true }),
+        config: { ...config, cells: [config.cells[0]!] },
+        cliVersion: '1',
+        toolNames: [...tools, 'project_kit', 'tool_search', 'tool_use'],
+        nodeBin: process.execPath,
+        wstackEntry: entry,
+        profile,
+      });
+      expect(report.results[0]?.run.status).toBe('completed');
+      const args: string[] = JSON.parse(report.results[0]!.run.finalText!);
+      if (profile === 'host') {
+        expect(args).not.toContain('--only-tools');
+        expect(args).not.toContain('--disallowed-tools');
+        expect(report.fingerprint.toolNames).toContain('project_kit');
+      } else {
+        expect(args).toContain('--only-tools');
+        expect(args[args.indexOf('--only-tools') + 1]?.split(',').sort()).toEqual(tools.sort());
+        expect(args).toContain('--disallowed-tools');
+        expect(args[args.indexOf('--disallowed-tools') + 1]?.split(',').sort()).toEqual([
+          'tool_search',
+          'tool_use',
+        ]);
+        expect(report.fingerprint.toolNames).toEqual(tools.sort());
+      }
+    },
+  );
+
   it('retries a run whose CLI failed to load instead of scoring the model for it', async () => {
     // First start: the checkout is mid-rebuild and a dist file is missing.
     const counter = path.join(dir, 'boot-attempts.txt');

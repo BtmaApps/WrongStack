@@ -232,14 +232,14 @@ describe('CheckpointManager', () => {
             {
               title: 'Task 1',
               description: 'T1',
-              type: 'implementation',
+              type: 'feature',
               priority: 'high',
               estimateHours: 1,
             },
             {
               title: 'Task 2',
               description: 'T2',
-              type: 'implementation',
+              type: 'feature',
               priority: 'high',
               estimateHours: 1,
               dependsOn: [0],

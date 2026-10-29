@@ -392,9 +392,109 @@ export async function runProjectPicker(opts: {
       return code >= 0x20 && code < 0x7f;
     };
 
+    /** Handle one key press; returns true once the picker has resolved. */
+    const handleKey = (ch: string): boolean => {
+      // Ctrl+C — always quit
+      if (ch === CTRL_C) {
+        cleanup();
+        out.write(CURSOR_SHOW);
+        out.write('\n');
+        resolve(undefined);
+        return true;
+      }
+
+      // Escape
+      if (ch === ESC) {
+        if (filter.length > 0) {
+          // First ESC clears the filter
+          applyFilter('');
+          render();
+          return false;
+        }
+        // No filter active — quit
+        cleanup();
+        out.write(CURSOR_SHOW);
+        out.write('\n');
+        resolve(undefined);
+        return true;
+      }
+
+      // Backspace — remove last char from filter
+      if (ch === BS || ch === '\b') {
+        if (filter.length > 0) {
+          applyFilter(filter.slice(0, -1));
+        }
+        render();
+        return false;
+      }
+
+      // Enter/Return
+      if (ch === ENTER) {
+        const item = displayItems[selectedIdx];
+        cleanup();
+        out.write(CURSOR_SHOW);
+        out.write('\n');
+
+        if (!item || item.key === '__divider__' || item.key === 'quit') {
+          resolve(undefined);
+        } else if (item.key === 'new-session') {
+          resolve({ kind: 'action', key: 'new-session', action: 'new-session' });
+        } else if (item.key === 'prev-sessions') {
+          resolve({ kind: 'action', key: 'prev-sessions', action: 'prev-sessions' });
+        } else {
+          // Project item
+          resolve({ kind: 'project', key: item.key });
+        }
+        return true;
+      }
+
+      // Special single-char navigation (only when filter is empty)
+      if (filter.length === 0) {
+        if (ch === 'q' || ch === 'Q') {
+          cleanup();
+          out.write(CURSOR_SHOW);
+          out.write('\n');
+          resolve(undefined);
+          return true;
+        }
+        if (ch === 'j') {
+          navigateDown();
+          render();
+          return false;
+        }
+        if (ch === 'k') {
+          navigateUp();
+          render();
+          return false;
+        }
+      }
+
+      // Printable character → add to filter
+      if (isPrintable(ch)) {
+        applyFilter(filter + ch);
+        render();
+      }
+      return false;
+    };
+
     const onData = (chunk: Buffer) => {
       const str = chunk.toString();
       buf += str;
+
+      // A terminal delivers pasted or fast-typed text as ONE multi-character
+      // chunk. Only escape sequences need buffering: plain keys are split off
+      // the front one at a time. Keeping such a chunk whole matched no branch
+      // and was never cleared, so every later key — Ctrl+C included — was
+      // appended to a dead buffer and the raw-mode picker wedged.
+      while (buf.length > 0 && !buf.startsWith(ESC)) {
+        const ch = String.fromCodePoint(buf.codePointAt(0) as number);
+        buf = buf.slice(ch.length);
+        if (handleKey(ch)) {
+          buf = '';
+          return;
+        }
+      }
+      if (buf.length === 0) return;
 
       // Escape sequences (ESC + [...])
       if (buf.startsWith(ESC) && buf.length >= 3) {
@@ -438,111 +538,10 @@ export async function runProjectPicker(opts: {
         return;
       }
 
-      // Single-byte inputs
-      if (buf.length === 1) {
-        const ch = buf;
-
-        // Ctrl+C — always quit
-        if (ch === CTRL_C) {
-          cleanup();
-          out.write(CURSOR_SHOW);
-          out.write('\n');
-          resolve(undefined);
-          return;
-        }
-
-        // Escape
-        if (ch === ESC) {
-          if (filter.length > 0) {
-            // First ESC clears the filter
-            applyFilter('');
-            buf = '';
-            render();
-            return;
-          }
-          // No filter active — quit
-          cleanup();
-          out.write(CURSOR_SHOW);
-          out.write('\n');
-          resolve(undefined);
-          return;
-        }
-
-        // Backspace — remove last char from filter
-        if (ch === BS || ch === '\b') {
-          if (filter.length > 0) {
-            applyFilter(filter.slice(0, -1));
-          }
-          buf = '';
-          render();
-          return;
-        }
-
-        // Enter/Return
-        if (ch === ENTER) {
-          const item = displayItems[selectedIdx];
-          cleanup();
-          out.write(CURSOR_SHOW);
-          out.write('\n');
-
-          if (!item || item.key === '__divider__') {
-            resolve(undefined);
-            return;
-          }
-
-          if (item.key === 'quit') {
-            resolve(undefined);
-            return;
-          }
-
-          if (item.key === 'new-session') {
-            resolve({ kind: 'action', key: 'new-session', action: 'new-session' });
-            return;
-          }
-
-          if (item.key === 'prev-sessions') {
-            resolve({ kind: 'action', key: 'prev-sessions', action: 'prev-sessions' });
-            return;
-          }
-
-          // Project item
-          resolve({ kind: 'project', key: item.key });
-          return;
-        }
-
-        // Special single-char navigation (only when filter is empty)
-        if (filter.length === 0) {
-          if (ch === 'q' || ch === 'Q') {
-            cleanup();
-            out.write(CURSOR_SHOW);
-            out.write('\n');
-            resolve(undefined);
-            return;
-          }
-          if (ch === 'j') {
-            buf = '';
-            navigateDown();
-            render();
-            return;
-          }
-          if (ch === 'k') {
-            buf = '';
-            navigateUp();
-            render();
-            return;
-          }
-        }
-
-        // Printable character → add to filter
-        if (isPrintable(ch)) {
-          applyFilter(filter + ch);
-          buf = '';
-          render();
-          return;
-        }
-
+      // A lone ESC is the Escape key itself (plain keys were consumed above).
+      if (buf === ESC) {
         buf = '';
-        return;
+        handleKey(ESC);
       }
     };
 

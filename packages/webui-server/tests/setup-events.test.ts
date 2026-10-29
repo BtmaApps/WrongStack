@@ -498,8 +498,8 @@ describe('setupEvents worklist board pairing', () => {
     });
 
     try {
-      events.emit('iteration.started', { sessionId: 'sess-a', index: 0, maxIterations: 10 });
-      events.emit('iteration.started', { sessionId: 'sess-b', index: 0, maxIterations: 10 });
+      events.emit('iteration.started', { sessionId: 'sess-a', index: 0, ctx: {} as never });
+      events.emit('iteration.started', { sessionId: 'sess-b', index: 0, ctx: {} as never });
       events.emit('provider.response', {
         sessionId: 'sess-b',
         content: 'done',

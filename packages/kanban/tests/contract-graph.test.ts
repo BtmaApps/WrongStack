@@ -412,7 +412,7 @@ describe('Kanban contract graph', () => {
     const readinessPendingWaived = await evaluateTaskContractGraph(tmpDir, boardId, taskId);
     expect(
       readinessPendingWaived?.evaluation.issues.some(
-        (d) => d.code === 'node-unresolved' || d.code === 'waiver-expired',
+        (d) => d.code === 'node-unresolved' || d.code === 'waiver-invalid',
       ),
     ).toBe(false);
 

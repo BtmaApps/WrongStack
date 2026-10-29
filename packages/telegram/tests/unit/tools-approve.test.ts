@@ -674,13 +674,13 @@ describe('telegram_approve with bot allowlist', () => {
 
   it('rejects whitespace-only group allowedUserIds and trims padded user IDs in approval matching (F648)', async () => {
     const bot = makeBot({ allowedUsers: ['1'], allowedChats: ['-100999', '999'] });
-    const whitespaceGroupTool = makeTool(bot, '-100999', ['   '], true);
+    const whitespaceGroupTool = makeTool(bot, '-100999', ['   ']);
     await expect(
-      whitespaceGroupTool.execute({ prompt: 'Deploy?', chat_id: '-100999', timeout_ms: 1_000 }),
+      runApprove(whitespaceGroupTool, { prompt: 'Deploy?', chat_id: '-100999', timeout_ms: 1_000 }),
     ).rejects.toThrow(/group approvals require explicit per-user configuration/i);
 
     const paddedTool = makeTool(bot, '999', [' 1 ']);
-    const execPromise = paddedTool.execute({ prompt: 'Trim?', timeout_ms: 1_000 });
+    const execPromise = runApprove(paddedTool, { prompt: 'Trim?', timeout_ms: 1_000 });
     await new Promise((r) => setTimeout(r, 5));
     const prompt = sentBodies.find((b) => b.includes('Trim?'))!;
     const yesKey = prompt.match(/"callback_data":"(approve:[^"]+:yes)"/)![1]!;

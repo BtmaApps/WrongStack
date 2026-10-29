@@ -2,8 +2,8 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
-import { handlePrefsGet, type PrefsHandlerContext } from '../src/server/prefs-handlers';
-import { profileIdentity } from '../src/server/profile-identity';
+import { handlePrefsGet, type PrefsHandlerContext } from '../src/server/prefs-handlers.js';
+import { profileIdentity } from '../src/server/profile-identity.js';
 
 describe('runtime profile ownership', () => {
   it('identifies the actual config path across updates, separating identical profile names under different homes', async () => {

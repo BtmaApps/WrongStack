@@ -3,6 +3,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { defaultGitignoreUpdater, GitignoreUpdater } from '../src/gitignore-updater.js';
+import type { GeneratedSkill, SecurityPattern } from '../src/types.js';
 
 let tmp: string;
 let gitignorePath: string;
@@ -150,41 +151,42 @@ describe('GitignoreUpdater', () => {
           {
             id: 'custom-no-ext',
             name: 'Custom Token Without Extensions',
-            category: 'api-key',
+            category: 'secrets',
             patterns: [/CUSTOM_TOKEN_[0-9]{6}/g],
             severity: 'high',
             confidence: 'high',
             description: 'Custom token pattern with omitted fileExtensions',
             remediation: 'Rotate token',
-          },
+            falsePositiveMarkers: [],
+            // External patterns may omit this required field at runtime.
+          } as unknown as SecurityPattern,
           {
             id: 'custom-ts-ext',
             name: 'Custom Token With TS Extension',
-            category: 'api-key',
+            category: 'secrets',
             patterns: [/CUSTOM_TOKEN_[0-9]{6}/g],
             fileExtensions: ['.ts'],
             severity: 'high',
             confidence: 'high',
             description: 'Custom token pattern with .ts fileExtensions',
             remediation: 'Rotate token',
+            falsePositiveMarkers: [],
           },
         ],
         excludePatterns: [],
         severityThresholds: { blockOn: 'critical', warnOn: 'high' },
         metadata: {
           generatedAt: '2026-08-01T00:00:00.000Z',
-          techStackHash: 'hash',
+          targetFiles: [],
           confidence: 1,
         },
-      },
+      } as unknown as GeneratedSkill,
       {
-        languages: ['typescript'],
-        frameworks: [],
-        packageManagers: ['npm'],
-        configFiles: [],
-        hasEnvFiles: false,
-        hasDocker: false,
-        hasCI: false,
+        stack: 'nodejs',
+        packageManager: 'npm',
+        manifestFile: 'package.json',
+        dependencies: [],
+        projectPath: tmp,
       },
     );
     expect(scanResult.findings.some((f) => f.patternId === 'custom-no-ext')).toBe(true);

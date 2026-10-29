@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   type BenchMenuChoices,
+  type BenchMenuIo,
   cellLabels,
   parseIndexList,
   plannedAttempts,
@@ -121,7 +122,7 @@ describe('runBenchMenu', () => {
   }
 
   it('turns the answers into one bench run per prompt variant and remembers them', async () => {
-    const run = vi.fn(async () => 0);
+    const run = vi.fn<BenchMenuIo['run']>(async () => 0);
     // compare: prompts · bench: hard · model typed · variants: quick(5), pro(3) · 1 attempt · start
     const first = deps(['2', '2', 'zai-coding-plan/glm-5.3-flash', '5,3', '', '']);
     expect(await runBenchMenu(first.deps, { run })).toBe(0);
@@ -245,7 +246,7 @@ describe('runBenchMenu', () => {
   });
 
   it('keeps the case of a typed model id', async () => {
-    const run = vi.fn(async () => 0);
+    const run = vi.fn<BenchMenuIo['run']>(async () => 0);
     const session = deps(['1', '1', 'minimax-coding-plan/MiniMax-M3.1-Flash', '', '']);
     await runBenchMenu(session.deps, { run });
     expect(run.mock.calls[0]?.[0]).toMatchObject({

@@ -1,3 +1,7 @@
+import type { CodebaseRepoMapOutput } from './codebase-repo-map-contracts.js';
+
+export type { CodebaseRepoMapOutput } from './codebase-repo-map-contracts.js';
+
 /**
  * `codebase-repo-map` tool — generate a reference-weighted, token-budgeted Repository Map.
  *
@@ -12,7 +16,7 @@ import type { Tool } from '@wrongstack/contracts/types';
 import { ToolValidationError } from '@wrongstack/contracts/types';
 import { safeResolveProjectPath } from '../_util.js';
 import { repoMapNote, withNextStepNote } from './next-step-notes.js';
-import { generateRepoMap, type RepoMapResult } from './repo-map.js';
+import { generateRepoMap } from './repo-map.js';
 import { codebaseIndexDirOverride } from './writer.js';
 
 export interface CodebaseRepoMapInput {
@@ -24,12 +28,6 @@ export interface CodebaseRepoMapInput {
 
 const MIN_MAP_TOKENS = 100;
 const MAX_MAP_TOKENS = 20_000;
-
-export interface CodebaseRepoMapOutput extends RepoMapResult {
-  status: 'ok';
-  /** Next-step guidance: which tool answers the follow-up, or why the result is empty. */
-  note?: string | undefined;
-}
 
 const codebaseRepoMapToolBase: Tool<CodebaseRepoMapInput, CodebaseRepoMapOutput> = {
   name: 'codebase-repo-map',

@@ -28,6 +28,17 @@ describe('TUI settings reset targets match the core config defaults', () => {
   const cfg = structuredClone(CONFIG_BEHAVIOR_DEFAULTS);
   const live = readTuiSettings({ get: () => cfg } as unknown as ConfigStore);
 
+  it('keeps explicit AGENTS.md exclusions when opening the settings picker', () => {
+    const excluded = {
+      ...cfg,
+      systemPrompt: { includeGlobalAgents: false, includeProjectAgents: false },
+    };
+    expect(readTuiSettings({ get: () => excluded } as unknown as ConfigStore)).toMatchObject({
+      includeGlobalAgents: false,
+      includeProjectAgents: false,
+    });
+  });
+
   for (const [key, resetValue] of Object.entries(SETTINGS_DEFAULTS)) {
     if (PICKER_OWNED.has(key)) continue;
     it(key, () => {

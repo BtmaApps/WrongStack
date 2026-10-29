@@ -1,3 +1,7 @@
+import type { ImpactAnalysisOutput, ImpactCallSite } from './codebase-impact-analysis-contracts.js';
+
+export type { ImpactAnalysisOutput, ImpactCallSite } from './codebase-impact-analysis-contracts.js';
+
 /**
  * `codebase-impact-analysis` tool — calculate the blast radius and breaking change risk of modifying a symbol.
  *
@@ -14,12 +18,7 @@ import type { Tool } from '@wrongstack/contracts/types';
 import { ToolValidationError } from '@wrongstack/contracts/types';
 import { toErrorMessage } from '@wrongstack/core/utils';
 import { codebaseIndexStats, getIndexState, incomingCallsService } from './background-indexer.js';
-import {
-  type AnchoredFileHealth,
-  type AnchoredSageInsight,
-  findAnchoredSageMemories,
-  findFileHealthAlerts,
-} from './ecosystem-bridge.js';
+import { findAnchoredSageMemories, findFileHealthAlerts } from './ecosystem-bridge.js';
 import { impactNote, withNextStepNote } from './next-step-notes.js';
 import type { CallSite } from './schema.js';
 import { codebaseIndexDirOverride } from './writer.js';
@@ -34,39 +33,6 @@ export interface ImpactAnalysisInput {
 }
 
 export type CodebaseImpactAnalysisInput = ImpactAnalysisInput;
-
-export interface ImpactCallSite {
-  file: string;
-  line: number;
-  callerName: string;
-  callerKind: string;
-  callType: string;
-  isTest: boolean;
-  /** A caller of a caller: reached through the transitive tree, not a direct use. */
-  indirect?: boolean | undefined;
-}
-
-export interface ImpactAnalysisOutput {
-  status: 'ok';
-  symbol: string;
-  riskLevel: 'low' | 'medium' | 'high';
-  summary: string;
-  totalCallSites: number;
-  affectedProductionFiles: string[];
-  affectedTestFiles: string[];
-  callSites: ImpactCallSite[];
-  recommendedActionPlan: string[];
-  /** False when the symbol could not be resolved in the index. */
-  symbolFound?: boolean;
-  /** True when a previous generation's cached answer was served during a refresh. */
-  stale?: boolean | undefined;
-  /** Active SAGE memories anchored to this symbol or its affected files. */
-  relatedMemories?: AnchoredSageInsight[] | undefined;
-  /** WrongTrace file fragility / thrashing / lock alerts for affected files. */
-  fileHealthAlerts?: AnchoredFileHealth[] | undefined;
-  /** Next-step guidance: which tool answers the follow-up, or why the result is empty. */
-  note?: string | undefined;
-}
 
 export type CodebaseImpactAnalysisOutput = ImpactAnalysisOutput;
 

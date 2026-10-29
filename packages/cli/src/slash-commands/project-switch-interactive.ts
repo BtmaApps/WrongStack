@@ -3,7 +3,7 @@ import * as fs from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import * as path from 'node:path';
 import type { Context } from '@wrongstack/core/agent';
-import { cliSpawnArgs, color } from '@wrongstack/core/utils';
+import { canonicalProjectRoot, cliSpawnArgs, color } from '@wrongstack/core/utils';
 import { runProjectPicker } from '../project-picker.js';
 import type { SlashCommandContext } from './command-context.js';
 import {
@@ -111,8 +111,13 @@ export async function switchInteractiveCommand(
         return { message: color.red(`Project not found: ${result.key}`) };
       }
 
-      // If already in the selected project, don't respawn
-      if (project.root === currentRoot) {
+      // If already in the selected project, don't respawn. Identity is the
+      // canonical root: a session inside a linked worktree (or a differently
+      // cased spelling) of the picked project is already in it.
+      if (
+        currentRoot !== undefined &&
+        canonicalProjectRoot(project.root) === canonicalProjectRoot(currentRoot)
+      ) {
         return { message: color.dim(`Already in ${project.name} (${project.root})`) };
       }
 
@@ -169,8 +174,9 @@ async function spawnInProject(
 
   // Update the manifest with the new lastSeen before spawning
   let registeredSlug: string | undefined;
+  const identityRoot = canonicalProjectRoot(root);
   await updateManifest(opts.paths?.globalConfig, (manifest) => {
-    const existing = manifest.projects.find((p) => p.root === root);
+    const existing = manifest.projects.find((p) => canonicalProjectRoot(p.root) === identityRoot);
     if (existing) {
       existing.lastSeen = new Date().toISOString();
       return true;

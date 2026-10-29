@@ -3,6 +3,7 @@ import { performance } from 'node:perf_hooks';
 import { cliSpawnArgs } from '@wrongstack/core/utils';
 import { settleWin32Kill } from '@wrongstack/core/utils/tree-kill';
 import { inheritedEnv } from './child-env.js';
+import { type BenchProfile, LEAN_BENCH_TOOL_NAMES } from './isolation.js';
 import { BENCH_DAEMON_IDLE_ENV } from './sandbox-reaper.js';
 import type { ModelCell, RawRun } from './types.js';
 
@@ -23,6 +24,8 @@ export interface RunWstackOptions {
   env?: NodeJS.ProcessEnv | undefined;
   /** Extra CLI args appended after the standard set (Phase 2 hooks). */
   extraArgs?: string[] | undefined;
+  /** Lean runs pin six file/shell tools; host runs keep the active profile's tools. */
+  profile?: BenchProfile | undefined;
   /** Kills the agent's process tree when the bench is stopped. */
   signal?: AbortSignal | undefined;
 }
@@ -55,6 +58,16 @@ export async function runWstack(opts: RunWstackOptions): Promise<RawRun> {
     // variant); without this the CLI's headless default would pin `quick` over it.
     '--host-profile',
     ...(opts.extraArgs ?? []),
+    ...(opts.profile === 'host'
+      ? []
+      : [
+          '--only-tools',
+          LEAN_BENCH_TOOL_NAMES.join(','),
+          // --only-tools preserves the lazy gateways by design. Deny them
+          // explicitly so discovery cannot add schemas during a lean run.
+          '--disallowed-tools',
+          'tool_search,tool_use',
+        ]),
   ]);
 
   const startedAt = performance.now();

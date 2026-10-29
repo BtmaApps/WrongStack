@@ -14,6 +14,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AutomationConfiguration, AutomationTemplates } from './AutomationConfiguration';
 import { AutomationEnvironmentEditor } from './AutomationEnvironmentEditor';
 import { AutomationRunInspector } from './AutomationRunInspector';
+import { automationMilliseconds } from './automation-units';
 import type { EngineHttp } from './engine-http';
 import { emptyEngineState } from './engine-state';
 import { Modal } from './Modal';
@@ -362,7 +363,9 @@ export function AutomationWorkspace({ http, projectId }: { http: EngineHttp; pro
                   min={1}
                   max={1440}
                   value={draft.timeoutMs / 60000}
-                  onChange={(event) => update('timeoutMs', Number(event.target.value) * 60000)}
+                  onChange={(event) =>
+                    update('timeoutMs', automationMilliseconds(event.target.value, 60000))
+                  }
                 />
               </label>
               <label>
@@ -455,7 +458,9 @@ export function AutomationWorkspace({ http, projectId }: { http: EngineHttp; pro
                   type="number"
                   min={1}
                   value={draft.intervalMs / 60000}
-                  onChange={(event) => update('intervalMs', Number(event.target.value) * 60000)}
+                  onChange={(event) =>
+                    update('intervalMs', automationMilliseconds(event.target.value, 60000))
+                  }
                 />
               </label>
             )}
@@ -508,7 +513,7 @@ export function AutomationWorkspace({ http, projectId }: { http: EngineHttp; pro
                 onChange={(event) =>
                   update('verification', {
                     commands: draft.verification?.commands ?? [],
-                    timeoutMs: Number(event.target.value) * 1000,
+                    timeoutMs: automationMilliseconds(event.target.value, 1000),
                   })
                 }
               />

@@ -64,6 +64,45 @@ describe('generateSlug', () => {
     const slug = generateSlug('///---');
     expect(slug.startsWith('project-')).toBe(true);
   });
+
+  it('names the same data directory boot keys the project under', async () => {
+    // The manifest slug used to be a local re-derivation of projectSlug that
+    // drifted from it, so /project add, /project switch and registration
+    // recorded a ~/.wrongstack/projects/<slug> directory nothing else used.
+    const { projectSlug } = await import('@wrongstack/core/utils');
+    const plain = path.join(dir, 'plain-project');
+    await fs.mkdir(plain);
+    expect(generateSlug(plain)).toBe(projectSlug(plain));
+
+    // A 40-char cut that ends on a separator keeps no trailing hyphen.
+    const long = path.join(dir, `${'a'.repeat(39)}-tail`);
+    await fs.mkdir(long);
+    expect(generateSlug(long)).toBe(projectSlug(long));
+    expect(generateSlug(long)).not.toContain('--');
+  });
+
+  it('gives a linked Git worktree its main checkout identity', async () => {
+    const { execFileSync } = await import('node:child_process');
+    const git = (cwd: string, args: string[]) =>
+      execFileSync('git', args, { cwd, stdio: ['ignore', 'pipe', 'pipe'] });
+    const main = path.join(dir, 'main-repo');
+    await fs.mkdir(main);
+    git(main, ['init', '-q']);
+    git(main, ['config', 'user.email', 't@t.dev']);
+    git(main, ['config', 'user.name', 'T']);
+    git(main, ['commit', '-q', '--allow-empty', '-m', 'init']);
+    const worktree = path.join(dir, 'feature-wt');
+    git(main, ['worktree', 'add', '-q', worktree]);
+
+    expect(generateSlug(worktree)).toBe(generateSlug(main));
+    const entry = await touchProjectInManifest({
+      projectRoot: worktree,
+      globalConfigPath: cfgPath,
+    });
+    expect(entry.slug).toBe(generateSlug(main));
+    // The registered root itself stays the checkout the user opened.
+    expect(entry.root).toBe(worktree);
+  });
 });
 
 describe('loadManifest / saveManifest', () => {
@@ -197,5 +236,77 @@ describe('touchProjectInManifest', () => {
     const manifest = await loadManifest(cfgPath);
     expect(manifest.projects).toHaveLength(1);
     expect(manifest.projects[0]!.projectId).toBe('proj_01J1ABC2DEF3GHIJKLMNOPQRST');
+  });
+
+  // Regression (bug-hunt r9-20261029-manifest-identity): entry identity is the
+  // canonical project root, not raw text. Boot registers the canonical root,
+  // so the same repository reached through a linked worktree or a
+  // differently-cased spelling must refresh the entry, not duplicate it under
+  // the same slug.
+  describe('canonical identity (one repository, one entry)', () => {
+    async function makeRepoWithWorktree(prefix: string): Promise<{ main: string; wt: string }> {
+      const { execFileSync } = await import('node:child_process');
+      const git = (cwd: string, args: string[]) =>
+        execFileSync('git', args, { cwd, stdio: ['ignore', 'pipe', 'pipe'] });
+      const main = path.join(dir, `${prefix}-main`);
+      await fs.mkdir(main);
+      git(main, ['init', '-q']);
+      git(main, ['config', 'user.email', 't@t.dev']);
+      git(main, ['config', 'user.name', 'T']);
+      git(main, ['commit', '-q', '--allow-empty', '-m', 'init']);
+      const wt = path.join(dir, `${prefix}-wt`);
+      git(main, ['worktree', 'add', '-q', wt]);
+      return { main, wt };
+    }
+
+    it('refreshes a boot-registered canonical entry instead of duplicating it via a worktree', async () => {
+      const { canonicalProjectRoot } = await import('@wrongstack/core/utils');
+      const { main, wt } = await makeRepoWithWorktree('canon-first');
+
+      // Boot registered the canonical identity root…
+      await touchProjectInManifest({
+        projectRoot: canonicalProjectRoot(main),
+        globalConfigPath: cfgPath,
+      });
+      // …then the CLI touches the same repository through the worktree.
+      await touchProjectInManifest({ projectRoot: wt, globalConfigPath: cfgPath });
+
+      const manifest = await loadManifest(cfgPath);
+      expect(manifest.projects, 'one repository, one entry').toHaveLength(1);
+      expect(manifest.projects[0]!.root).toBe(canonicalProjectRoot(main));
+    });
+
+    it('refreshes a worktree-spelled entry when the canonical root registers later', async () => {
+      const { canonicalProjectRoot } = await import('@wrongstack/core/utils');
+      const { main, wt } = await makeRepoWithWorktree('wt-first');
+
+      // The CLI registered the worktree spelling (as /project add would)…
+      await touchProjectInManifest({ projectRoot: wt, globalConfigPath: cfgPath });
+      // …then boot arrives with the canonical root of the same repository.
+      await touchProjectInManifest({
+        projectRoot: canonicalProjectRoot(main),
+        globalConfigPath: cfgPath,
+      });
+
+      const manifest = await loadManifest(cfgPath);
+      expect(manifest.projects, 'one repository, one entry').toHaveLength(1);
+      // The entry keeps the root text it was first registered with.
+      expect(manifest.projects[0]!.root).toBe(wt);
+    });
+
+    it.skipIf(process.platform !== 'win32')(
+      'refreshes across a drive-letter case difference',
+      async () => {
+        const projectRoot = path.join(dir, 'CaseDir');
+        await fs.mkdir(projectRoot);
+        const lowerSpelling = `${projectRoot.at(0)?.toLowerCase()}${projectRoot.slice(1)}`;
+
+        await touchProjectInManifest({ projectRoot, globalConfigPath: cfgPath });
+        await touchProjectInManifest({ projectRoot: lowerSpelling, globalConfigPath: cfgPath });
+
+        const manifest = await loadManifest(cfgPath);
+        expect(manifest.projects, 'a case difference is the same directory').toHaveLength(1);
+      },
+    );
   });
 });

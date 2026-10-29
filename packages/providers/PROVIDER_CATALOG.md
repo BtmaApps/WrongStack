@@ -26,7 +26,7 @@
 | deepseek | DeepSeek API (Metered) | openai-compatible | metered-api | https://api.deepseek.com | DEEPSEEK_API_KEY | deepseek-v4-flash, deepseek-v4-pro |
 | groq | GroqCloud (Metered) | openai-compatible | metered-api | https://api.groq.com/openai/v1 | GROQ_API_KEY | llama-3.3-70b-versatile, llama-3.1-8b-instant, mixtral-8x7b-32768, gemma2-9b-it |
 | perplexity | Perplexity Sonar API (Metered) | openai-compatible | metered-api | https://api.perplexity.ai | PERPLEXITY_API_KEY | sonar-pro, sonar, sonar-reasoning-pro, sonar-reasoning |
-| alibaba-token-plan | Alibaba Token Plan (Personal Edition) | openai-compatible | subscription-interactive | https://dashscope.aliyuncs.com/compatible-mode/v1 | ALIBABA_API_KEY, DASHSCOPE_API_KEY | qwen3.8-max-preview, qwen3.7-max, qwen3.7-plus, qwen3.6-flash, glm-5.2, deepseek-v4-pro, wan2.7-image, wan2.7-image-pro, happyhorse-1.1-t2v, happyhorse-1.1-i2v, happyhorse-1.1-r2v |
+| alibaba-token-plan | Alibaba Token Plan (Personal Edition) | openai-compatible | subscription-interactive | https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1 | ALIBABA_API_KEY, DASHSCOPE_API_KEY | qwen3.8-max-preview, qwen3.7-max, qwen3.7-plus, qwen3.6-flash, glm-5.2, deepseek-v4-pro, wan2.7-image, wan2.7-image-pro, happyhorse-1.1-t2v, happyhorse-1.1-i2v, happyhorse-1.1-r2v |
 | omniroute | OmniRoute | openai-compatible | local | http://localhost:20128/v1 | — | catalog/discovery |
 | ollama | Ollama | openai-compatible | local | http://localhost:11434/v1 | — | catalog/discovery |
 | vllm | vLLM | openai-compatible | local | http://localhost:8000/v1 | — | catalog/discovery |

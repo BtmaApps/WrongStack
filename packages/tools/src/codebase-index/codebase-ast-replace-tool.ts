@@ -1,3 +1,13 @@
+import type {
+  CodebaseAstReplaceInput,
+  CodebaseAstReplaceOutput,
+} from './codebase-ast-replace-contracts.js';
+
+export type {
+  CodebaseAstReplaceInput,
+  CodebaseAstReplaceOutput,
+} from './codebase-ast-replace-contracts.js';
+
 /**
  * `codebase-ast-replace` tool — surgically replace a function, method, or class body via AST.
  *
@@ -13,23 +23,8 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { type Tool, ToolValidationError } from '@wrongstack/contracts/types';
 import { safeResolveProjectPath, sha256hex } from '../_util.js';
-import { type MutateSymbolOptions, replaceSymbolInFile } from './ast-symbol-mutator.js';
+import { replaceSymbolInFile } from './ast-symbol-mutator.js';
 import { astReplaceNote, withNextStepNote } from './next-step-notes.js';
-
-export interface CodebaseAstReplaceInput extends MutateSymbolOptions {}
-
-export interface CodebaseAstReplaceOutput {
-  status: 'ok';
-  file: string;
-  symbol: string;
-  originalRange: { startLine: number; endLine: number };
-  newRange: { startLine: number; endLine: number };
-  violations?: string[] | undefined;
-  /** Mode actually applied: a complete declaration given as `body` is promoted to `full`. */
-  appliedTarget?: 'body' | 'full' | undefined;
-  /** Next-step guidance: which tool answers the follow-up, or why the result is empty. */
-  note?: string | undefined;
-}
 
 const codebaseAstReplaceToolBase: Tool<CodebaseAstReplaceInput, CodebaseAstReplaceOutput> = {
   name: 'codebase-ast-replace',

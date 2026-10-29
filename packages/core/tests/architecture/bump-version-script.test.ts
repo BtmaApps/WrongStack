@@ -106,6 +106,39 @@ describe('bump-version script', () => {
     expect(manifestVersions(fixture)).toEqual(['9.9.10', '9.9.10', '9.9.10']);
   });
 
+  it('keeps the native desktop version and its lock entry aligned without changing dependencies', () => {
+    fixture = makeFixture();
+    const native = join(fixture.root, 'apps', 'desktop-v2', 'src-tauri');
+    mkdirSync(native, { recursive: true });
+    writeFileSync(join(native, 'tauri.conf.json'), JSON.stringify({ version: '0.0.1' }));
+    writeFileSync(
+      join(native, 'Cargo.toml'),
+      '[package]\nname = "wrongstack-desktop-v2"\nversion = "0.0.1"\n\n[dependencies]\ndep = "0.0.1"\n',
+    );
+    writeFileSync(
+      join(native, 'Cargo.lock'),
+      'version = 4\n\n[[package]]\nname = "dep"\nversion = "0.0.1"\n\n[[package]]\nname = "wrongstack-desktop-v2"\nversion = "0.0.1"\n',
+    );
+    for (const [args, expected] of [
+      [['set', '1.3.0'], '1.3.0'],
+      [['patch'], '1.3.1'],
+    ] as const) {
+      const result = fixture.run([...args]);
+      expect(result.status, result.stderr).toBe(0);
+      expect(JSON.parse(readFileSync(join(native, 'tauri.conf.json'), 'utf8')).version).toBe(
+        expected,
+      );
+      expect(readFileSync(join(native, 'Cargo.toml'), 'utf8')).toContain(`version = "${expected}"`);
+      expect(readFileSync(join(native, 'Cargo.toml'), 'utf8')).toContain('dep = "0.0.1"');
+      expect(readFileSync(join(native, 'Cargo.lock'), 'utf8')).toContain(
+        `name = "wrongstack-desktop-v2"\nversion = "${expected}"`,
+      );
+      expect(readFileSync(join(native, 'Cargo.lock'), 'utf8')).toContain(
+        'name = "dep"\nversion = "0.0.1"',
+      );
+    }
+  });
+
   it('bumps private workspace manifests and keeps them private', () => {
     // npm publishing is retired: every workspace package is `"private": true`,
     // and the binaries still read their version from these manifests.

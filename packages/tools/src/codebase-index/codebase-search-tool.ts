@@ -1,3 +1,7 @@
+import type { CodebaseSearchInput, CodebaseSearchOutput } from './codebase-search-contracts.js';
+
+export type { CodebaseSearchInput, CodebaseSearchOutput } from './codebase-search-contracts.js';
+
 /**
  * `codebase-search` tool — search the symbol index with BM25 ranking.
  *
@@ -22,7 +26,7 @@ import { toErrorMessage } from '@wrongstack/core/utils';
 import { codebaseIndexStats, getIndexState, searchCodebaseIndex } from './background-indexer.js';
 import { EXT_TO_LANG } from './languages.js';
 import { searchNote, withNextStepNote } from './next-step-notes.js';
-import type { SearchResult, SymbolLang } from './schema.js';
+import type { SymbolLang } from './schema.js';
 import { codebaseIndexDirOverride } from './writer.js';
 import { displayIndexPath } from './writer-helpers.js';
 
@@ -237,35 +241,3 @@ const codebaseSearchToolBase: Tool<CodebaseSearchInput, CodebaseSearchOutput> = 
 };
 
 export const codebaseSearchTool = withNextStepNote(codebaseSearchToolBase, searchNote);
-
-// ─── Types ─────────────────────────────────────────────────────────────────────
-
-export interface CodebaseSearchInput {
-  query: string;
-  kind?: string | undefined;
-  lang?: string | undefined;
-  file?: string | undefined;
-  limit?: number | undefined;
-  lspKind?: number | undefined;
-  /**
-   * Deprecated compatibility hint. The built-in tool is index-only; the LSP
-   * plugin exposes live workspace-symbol search as `codebase-lsp-search`.
-   */
-  preferLsp?: boolean | undefined;
-}
-
-export interface CodebaseSearchOutput {
-  results: SearchResult[];
-  total: number; // total candidates before limit
-  query: string;
-  /**
-   * True when the project server served a previous generation's cached
-   * answer during a refresh. Results are internally consistent but may lag
-   * the files currently being indexed.
-   */
-  stale?: boolean | undefined;
-  /** Advisory note when a stale previous-generation answer was served. */
-  indexStatus?: string | undefined;
-  /** Next-step guidance: which tool answers the follow-up, or why the result is empty. */
-  note?: string | undefined;
-}

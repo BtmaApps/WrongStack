@@ -48,6 +48,7 @@ export {
   cleanupSandbox,
   createSandbox,
   LEAN_BENCH_CONFIG,
+  LEAN_BENCH_TOOL_NAMES,
   prepareWorkdir,
   type Sandbox,
 } from './isolation.js';

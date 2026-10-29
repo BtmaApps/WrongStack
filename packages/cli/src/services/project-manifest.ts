@@ -1,9 +1,10 @@
-import { createHash } from 'node:crypto';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { ConfigError } from '@wrongstack/contracts/types';
 import {
   atomicWrite,
+  canonicalProjectRoot,
+  projectSlug,
   readProjectIdentity,
   withFileLock,
   wstackGlobalRoot,
@@ -131,17 +132,15 @@ export async function updateManifest(
 
 /**
  * Generate a unique slug from a project root path.
+ *
+ * Must equal the canonical `projectSlug` — the directory boot actually keys
+ * the project's state under. A local re-derivation drifted from it (linked Git
+ * worktrees share their main checkout's identity; a 40-char cut ending on a
+ * separator keeps no trailing hyphen), so the manifest named a data directory
+ * nothing else used.
  */
 export function generateSlug(root: string): string {
-  const base =
-    path
-      .basename(root)
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '')
-      .slice(0, 40) || 'project';
-  const hash = createHash('sha256').update(path.resolve(root)).digest('hex').slice(0, 6);
-  return `${base}-${hash}`;
+  return projectSlug(path.resolve(root));
 }
 
 /**
@@ -195,13 +194,18 @@ export async function touchProjectInManifest(opts: {
   name?: string | undefined;
 }): Promise<ProjectEntry> {
   const root = path.resolve(opts.projectRoot);
+  // Identity is the canonical root (what boot registers and what the slug is
+  // derived from), not raw text: the same repository reached through a linked
+  // worktree or a differently-cased spelling must refresh the entry, not
+  // duplicate it under the same slug.
+  const identityRoot = canonicalProjectRoot(root);
   const projectId = (await readProjectIdentity(root).catch(() => undefined))?.projectId;
   const file = projectsJsonPath(opts.globalConfigPath);
   let entry: ProjectEntry | undefined;
   await withFileLock(file, async () => {
     const manifest = await loadManifest(opts.globalConfigPath);
     const now = new Date().toISOString();
-    entry = manifest.projects.find((p) => path.resolve(p.root) === root);
+    entry = manifest.projects.find((p) => canonicalProjectRoot(p.root) === identityRoot);
     if (entry) {
       entry.lastSeen = now;
       if (projectId) entry.projectId = projectId;

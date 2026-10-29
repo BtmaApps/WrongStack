@@ -10,9 +10,9 @@ import type { WebSocket } from 'ws';
 import {
   handleIntrospectionRoute,
   type IntrospectionRouteContext,
-} from '../src/server/introspection-routes';
-import { writeGlobalConfigFile } from '../src/server/pref-config-write';
-import type { WSServerMessage } from '../src/server/types';
+} from '../src/server/introspection-routes.js';
+import { writeGlobalConfigFile } from '../src/server/pref-config-write.js';
+import type { WSServerMessage } from '../src/server/types.js';
 
 const owned: string[] = [];
 afterEach(async () => {
@@ -35,7 +35,7 @@ async function fixture() {
   const store = new DefaultConfigStore({
     version: 1,
     tools: { maxIterations: 40, disabledTools: [] },
-  } as Config);
+  } as unknown as Config);
   const tools = new ToolRegistry();
   for (const name of ['read', 'keep-disabled'])
     tools.register({
@@ -51,7 +51,7 @@ async function fixture() {
   const ctx = {
     agent: { tools } as never,
     configStore: store,
-    getConfig: () => store.get() as Config,
+    getConfig: () => store.get() as unknown as Config,
     getProjectRoot: () => dir,
     getSessionId: () => 'fixture',
     getSessionStartedAt: () => 0,

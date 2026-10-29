@@ -54,10 +54,6 @@
       "lines": 703,
       "relativeImports": 6
     },
-    "packages/tools/src/codebase-index/codebase-diff-impact-tool.ts": {
-      "lines": 704,
-      "relativeImports": 8
-    },
     "packages/tools/src/codebase-index/infra-parser.ts": {
       "lines": 903,
       "relativeImports": 2
@@ -127,8 +123,8 @@
       "relativeImports": 11
     },
     "apps/desktop-v2/src/FileWorkspace.tsx": {
-      "lines": 1700,
-      "relativeImports": 18
+      "lines": 1688,
+      "relativeImports": 19
     },
     "apps/desktop-v2/src/KanbanTaskInspector.tsx": {
       "lines": 743,

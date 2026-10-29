@@ -108,7 +108,7 @@ describe('retryTask status and active subagent guard', () => {
     const task = tracker.addNode({
       title: 'Task F673',
       description: 'Desc',
-      type: 'implementation',
+      type: 'feature',
       priority: 'medium',
       status: 'pending',
     });

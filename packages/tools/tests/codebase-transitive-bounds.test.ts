@@ -78,7 +78,7 @@ describe('transitive call trees', () => {
       ctx(),
       {} as never,
     );
-    expect(out.calls.every((c) => c.callType !== '')).toBe(true);
+    expect(out.calls.every((c) => String(c.callType).length > 0)).toBe(true);
     expect(out.calls.map((c) => c.symbol.name)).toContain('viaDirect');
   });
 

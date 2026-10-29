@@ -1,6 +1,7 @@
 import * as path from 'node:path';
 import {
   type BenchConfig,
+  type BenchReport,
   CORE_CONFIG_DEFAULTS,
   configFromCells,
   loadBenchConfig,
@@ -9,6 +10,12 @@ import {
 } from '@wrongstack/bench';
 
 const DEFAULT_BENCH_MODELS_FILE = 'bench.config.json';
+
+/** What the interactive menu hands `bench run` beyond plain flags. */
+export interface BenchRunPreset {
+  harnessOverlay?: Record<string, unknown> | undefined;
+  onFinished?: ((report: BenchReport, outDir: string) => void) | undefined;
+}
 
 export interface ResolveBenchRunConfigInput {
   suiteId: string;

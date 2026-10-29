@@ -14,139 +14,139 @@ function makeConfig(overrides: Record<string, unknown> = {}): any {
 
 describe('seedContextMeta', () => {
   it('sets autonomy to off by default when no defaultMode', () => {
-    const context = { meta: {} };
+    const context = { meta: {} as Record<string, unknown> };
     seedContextMeta(makeConfig(), context);
     expect(context.meta['autonomy']).toBe('off');
   });
 
   it('sets autonomy to suggest when defaultMode is suggest', () => {
-    const context = { meta: {} };
+    const context = { meta: {} as Record<string, unknown> };
     seedContextMeta(makeConfig({ autonomy: { defaultMode: 'suggest' } }), context);
     expect(context.meta['autonomy']).toBe('suggest');
   });
 
   it('sets autonomy to auto when defaultMode is auto', () => {
-    const context = { meta: {} };
+    const context = { meta: {} as Record<string, unknown> };
     seedContextMeta(makeConfig({ autonomy: { defaultMode: 'auto' } }), context);
     expect(context.meta['autonomy']).toBe('auto');
   });
 
   it('sets autonomy to off for unknown modes', () => {
-    const context = { meta: {} };
+    const context = { meta: {} as Record<string, unknown> };
     seedContextMeta(makeConfig({ autonomy: { defaultMode: 'unknown' } }), context);
     expect(context.meta['autonomy']).toBe('off');
   });
 
   it('sets default autonomyDelayMs to 15000', () => {
-    const context = { meta: {} };
+    const context = { meta: {} as Record<string, unknown> };
     seedContextMeta(makeConfig(), context);
     expect(context.meta['autonomyDelayMs']).toBe(15000);
   });
 
   it('sets the default auto-review quiet window to 15000ms', () => {
-    const context: { meta: Record<string, unknown> } = { meta: {} };
+    const context: { meta: Record<string, unknown> } = { meta: {} as Record<string, unknown> };
     seedContextMeta(makeConfig(), context);
     expect(context.meta['autoReviewDebounceMs']).toBe(15_000);
   });
 
   it('reads autoProceedDelayMs from config', () => {
-    const context = { meta: {} };
+    const context = { meta: {} as Record<string, unknown> };
     seedContextMeta(makeConfig({ autonomy: { autoProceedDelayMs: 30000 } }), context);
     expect(context.meta['autonomyDelayMs']).toBe(30000);
   });
 
   it('sets autoProceedMaxIterations with default 0 (unlimited)', () => {
-    const context = { meta: {} };
+    const context = { meta: {} as Record<string, unknown> };
     seedContextMeta(makeConfig(), context);
     expect(context.meta['autoProceedMaxIterations']).toBe(0);
   });
 
   it('reads autoProceedMaxIterations from config', () => {
-    const context = { meta: {} };
+    const context = { meta: {} as Record<string, unknown> };
     seedContextMeta(makeConfig({ autonomy: { autoProceedMaxIterations: 100 } }), context);
     expect(context.meta['autoProceedMaxIterations']).toBe(100);
   });
 
   it('sets yolo from autonomy config', () => {
-    const context = { meta: {} };
+    const context = { meta: {} as Record<string, unknown> };
     seedContextMeta(makeConfig({ autonomy: { yolo: true } }), context);
     expect(context.meta['yolo']).toBe(true);
   });
 
   it('falls back to config.yolo when autonomy.yolo is not set', () => {
-    const context = { meta: {} };
+    const context = { meta: {} as Record<string, unknown> };
     seedContextMeta(makeConfig({ yolo: true }), context);
     expect(context.meta['yolo']).toBe(true);
   });
 
   it('sets chime from config', () => {
-    const context = { meta: {} };
+    const context = { meta: {} as Record<string, unknown> };
     seedContextMeta(makeConfig({ autonomy: { chime: true } }), context);
     expect(context.meta['chime']).toBe(true);
   });
 
   it('sets confirmExit default to true', () => {
-    const context = { meta: {} };
+    const context = { meta: {} as Record<string, unknown> };
     seedContextMeta(makeConfig(), context);
     expect(context.meta['confirmExit']).toBe(true);
   });
 
   it('sets confirmExit to false when configured', () => {
-    const context = { meta: {} };
+    const context = { meta: {} as Record<string, unknown> };
     seedContextMeta(makeConfig({ autonomy: { confirmExit: false } }), context);
     expect(context.meta['confirmExit']).toBe(false);
   });
 
   it('sets fleetChatVerbosity default to off', () => {
-    const context = { meta: {} };
+    const context = { meta: {} as Record<string, unknown> };
     seedContextMeta(makeConfig(), context);
     expect(context.meta['fleetChatVerbosity']).toBe('off');
   });
 
   it('sets fleetChatVerbosity to off when configured', () => {
-    const context = { meta: {} };
+    const context = { meta: {} as Record<string, unknown> };
     seedContextMeta(makeConfig({ autonomy: { fleetChatVerbosity: 'off' } }), context);
     expect(context.meta['fleetChatVerbosity']).toBe('off');
   });
 
   it('sets enhanceEnabled default to true', () => {
-    const context = { meta: {} };
+    const context = { meta: {} as Record<string, unknown> };
     seedContextMeta(makeConfig(), context);
     expect(context.meta['enhanceEnabled']).toBe(true);
   });
 
   it('sets enhanceDelayMs default to 15000', () => {
-    const context = { meta: {} };
+    const context = { meta: {} as Record<string, unknown> };
     seedContextMeta(makeConfig(), context);
     expect(context.meta['enhanceDelayMs']).toBe(15000);
   });
 
   it('sets enhanceLanguage default to "english"', () => {
-    const context = { meta: {} };
+    const context = { meta: {} as Record<string, unknown> };
     seedContextMeta(makeConfig(), context);
     expect(context.meta['enhanceLanguage']).toBe('english');
   });
 
   it('sets nextPrediction from config', () => {
-    const context = { meta: {} };
+    const context = { meta: {} as Record<string, unknown> };
     seedContextMeta(makeConfig({ nextPrediction: true }), context);
     expect(context.meta['nextPrediction']).toBe(true);
   });
 
   it('sets fallbackModels from config', () => {
-    const context = { meta: {} };
+    const context = { meta: {} as Record<string, unknown> };
     seedContextMeta(makeConfig({ fallbackModels: ['gpt-4'] }), context);
     expect(context.meta['fallbackModels']).toEqual(['gpt-4']);
   });
 
   it('sets fallbackBridge from config', () => {
-    const context: { meta: Record<string, unknown> } = { meta: {} };
+    const context: { meta: Record<string, unknown> } = { meta: {} as Record<string, unknown> };
     seedContextMeta(makeConfig({ fallbackBridge: 'openai/gpt-5' }), context);
     expect(context.meta['fallbackBridge']).toBe('openai/gpt-5');
   });
 
   it('reports the same bridge and explicit chain used by auto-review', () => {
-    const context: { meta: Record<string, unknown> } = { meta: {} };
+    const context: { meta: Record<string, unknown> } = { meta: {} as Record<string, unknown> };
     seedContextMeta(
       makeConfig({
         provider: 'openai',
@@ -163,55 +163,55 @@ describe('seedContextMeta', () => {
   });
 
   it('sets fallbackProfiles from config', () => {
-    const context = { meta: {} };
+    const context = { meta: {} as Record<string, unknown> };
     seedContextMeta(makeConfig({ fallbackProfiles: { coding: ['claude'] } }), context);
     expect(context.meta['fallbackProfiles']).toEqual({ coding: ['claude'] });
   });
 
   it('sets favoriteModels from config', () => {
-    const context = { meta: {} };
+    const context = { meta: {} as Record<string, unknown> };
     seedContextMeta(makeConfig({ favoriteModels: ['gpt-4o'] }), context);
     expect(context.meta['favoriteModels']).toEqual(['gpt-4o']);
   });
 
   it('sets favoriteModelsOnly', () => {
-    const context = { meta: {} };
+    const context = { meta: {} as Record<string, unknown> };
     seedContextMeta(makeConfig({ favoriteModelsOnly: true }), context);
     expect(context.meta['favoriteModelsOnly']).toBe(true);
   });
 
   it('sets modelMatrix from config', () => {
-    const context = { meta: {} };
+    const context = { meta: {} as Record<string, unknown> };
     seedContextMeta(makeConfig({ modelMatrix: { 'gpt-4': ['gpt-4o'] } }), context);
     expect(context.meta['modelMatrix']).toEqual({ 'gpt-4': ['gpt-4o'] });
   });
 
   it('sets fallbackAuto default to true', () => {
-    const context = { meta: {} };
+    const context = { meta: {} as Record<string, unknown> };
     seedContextMeta(makeConfig(), context);
     expect(context.meta['fallbackAuto']).toBe(true);
   });
 
   it('sets uiLocale when config has a truthy string', () => {
-    const context = { meta: {} };
+    const context = { meta: {} as Record<string, unknown> };
     seedContextMeta(makeConfig({ uiLocale: 'tr-TR' }), context);
     expect(context.meta['uiLocale']).toBe('tr-TR');
   });
 
   it('does not set uiLocale when config has empty string', () => {
-    const context = { meta: {} };
+    const context = { meta: {} as Record<string, unknown> };
     seedContextMeta(makeConfig({ uiLocale: '' }), context);
     expect(context.meta['uiLocale']).toBeUndefined();
   });
 
   it('does not set uiLocale when config has non-string value', () => {
-    const context = { meta: {} };
+    const context = { meta: {} as Record<string, unknown> };
     seedContextMeta(makeConfig({ uiLocale: 42 }), context);
     expect(context.meta['uiLocale']).toBeUndefined();
   });
 
   it('enables features by default', () => {
-    const context = { meta: {} };
+    const context = { meta: {} as Record<string, unknown> };
     seedContextMeta(makeConfig(), context);
     expect(context.meta['featureMcp']).toBe(true);
     expect(context.meta['featurePlugins']).toBe(true);
@@ -222,7 +222,7 @@ describe('seedContextMeta', () => {
   });
 
   it('disables features when configured', () => {
-    const context = { meta: {} };
+    const context = { meta: {} as Record<string, unknown> };
     seedContextMeta(
       makeConfig({
         features: {
@@ -245,91 +245,91 @@ describe('seedContextMeta', () => {
   });
 
   it('sets indexOnStart default to true', () => {
-    const context = { meta: {} };
+    const context = { meta: {} as Record<string, unknown> };
     seedContextMeta(makeConfig(), context);
     expect(context.meta['indexOnStart']).toBe(true);
   });
 
   it('sets indexOnStart to false when configured', () => {
-    const context = { meta: {} };
+    const context = { meta: {} as Record<string, unknown> };
     seedContextMeta(makeConfig({ indexing: { onSessionStart: false } }), context);
     expect(context.meta['indexOnStart']).toBe(false);
   });
 
   it('sets contextAutoCompact default to true', () => {
-    const context = { meta: {} };
+    const context = { meta: {} as Record<string, unknown> };
     seedContextMeta(makeConfig(), context);
     expect(context.meta['contextAutoCompact']).toBe(true);
   });
 
   it('sets contextStrategy default to hybrid', () => {
-    const context = { meta: {} };
+    const context = { meta: {} as Record<string, unknown> };
     seedContextMeta(makeConfig(), context);
     expect(context.meta['contextStrategy']).toBe('hybrid');
   });
 
   it('sets logLevel default to warn', () => {
-    const context = { meta: {} };
+    const context = { meta: {} as Record<string, unknown> };
     seedContextMeta(makeConfig(), context);
     expect(context.meta['logLevel']).toBe('warn');
   });
 
   it('sets auditLevel default to full', () => {
-    const context = { meta: {} };
+    const context = { meta: {} as Record<string, unknown> };
     seedContextMeta(makeConfig(), context);
     expect(context.meta['auditLevel']).toBe('full');
   });
 
   it('sets maxIterations default to 0 (unlimited)', () => {
-    const context: { meta: Record<string, unknown> } = { meta: {} };
+    const context: { meta: Record<string, unknown> } = { meta: {} as Record<string, unknown> };
     seedContextMeta(makeConfig(), context);
     expect(context.meta['maxIterations']).toBe(0);
   });
 
   it('sets contextMode default to balanced', () => {
-    const context = { meta: {} };
+    const context = { meta: {} as Record<string, unknown> };
     seedContextMeta(makeConfig(), context);
     expect(context.meta['contextMode']).toBe('balanced');
   });
 
   it('sets tokenSavingTier to off by default', () => {
-    const context = { meta: {} };
+    const context = { meta: {} as Record<string, unknown> };
     seedContextMeta(makeConfig(), context);
     expect(context.meta['tokenSavingTier']).toBe('off');
   });
 
   it('handles tokenSavingMode string values', () => {
-    const context = { meta: {} };
+    const context = { meta: {} as Record<string, unknown> };
     seedContextMeta(makeConfig({ features: { tokenSavingMode: 'aggressive' } }), context);
     expect(context.meta['tokenSavingTier']).toBe('aggressive');
   });
 
   it('handles tokenSavingMode true -> medium', () => {
-    const context = { meta: {} };
+    const context = { meta: {} as Record<string, unknown> };
     seedContextMeta(makeConfig({ features: { tokenSavingMode: true } }), context);
     expect(context.meta['tokenSavingTier']).toBe('medium');
   });
 
   it('sets maxConcurrent default to 10', () => {
-    const context = { meta: {} };
+    const context = { meta: {} as Record<string, unknown> };
     seedContextMeta(makeConfig(), context);
     expect(context.meta['maxConcurrent']).toBe(10);
   });
 
   it('reads maxConcurrent from config', () => {
-    const context = { meta: {} };
+    const context = { meta: {} as Record<string, unknown> };
     seedContextMeta(makeConfig({ maxConcurrent: 5 }), context);
     expect(context.meta['maxConcurrent']).toBe(5);
   });
 
   it('sets titleAnimation default to true', () => {
-    const context = { meta: {} };
+    const context = { meta: {} as Record<string, unknown> };
     seedContextMeta(makeConfig(), context);
     expect(context.meta['titleAnimation']).toBe(true);
   });
 
   it('handles modelRuntime reasoning settings', () => {
-    const context = { meta: {} };
+    const context = { meta: {} as Record<string, unknown> };
     seedContextMeta(
       makeConfig({
         modelRuntime: {
@@ -346,7 +346,7 @@ describe('seedContextMeta', () => {
   });
 
   it('sets default reasoning values when modelRuntime is empty', () => {
-    const context = { meta: {} };
+    const context = { meta: {} as Record<string, unknown> };
     seedContextMeta(makeConfig(), context);
     expect(context.meta['reasoningMode']).toBe('auto');
     expect(context.meta['reasoningEffort']).toBe('high');
@@ -355,7 +355,7 @@ describe('seedContextMeta', () => {
   });
 
   it('seeds streamTimeouts with only the watchdogs the user set', () => {
-    const context = { meta: {} };
+    const context = { meta: {} as Record<string, unknown> };
     seedContextMeta(
       makeConfig({
         modelRuntime: { streaming: { hangTimeoutMs: 300_000, headersTimeoutMs: 0 } },
@@ -364,13 +364,13 @@ describe('seedContextMeta', () => {
     );
     expect(context.meta['streamTimeouts']).toEqual({ hangTimeoutMs: 300_000, headersTimeoutMs: 0 });
 
-    const unset = { meta: {} };
+    const unset = { meta: {} as Record<string, unknown> };
     seedContextMeta(makeConfig(), unset);
     expect(unset.meta['streamTimeouts']).toEqual({});
   });
 
   it('handles hq config', () => {
-    const context = { meta: {} };
+    const context = { meta: {} as Record<string, unknown> };
     seedContextMeta(
       makeConfig({
         hq: { enabled: true, url: 'https://hq.example.com', token: 'secret', rawContent: true },
@@ -384,7 +384,7 @@ describe('seedContextMeta', () => {
   });
 
   it('handles hq config defaults', () => {
-    const context = { meta: {} };
+    const context = { meta: {} as Record<string, unknown> };
     seedContextMeta(makeConfig(), context);
     expect(context.meta['hqEnabled']).toBe(false);
     expect(context.meta['hqUrl']).toBe('');
@@ -393,7 +393,7 @@ describe('seedContextMeta', () => {
   });
 
   it('handles telegram extension settings', () => {
-    const context = { meta: {} };
+    const context = { meta: {} as Record<string, unknown> };
     seedContextMeta(
       makeConfig({
         extensions: {
@@ -414,7 +414,7 @@ describe('seedContextMeta', () => {
   });
 
   it('handles telegram with missing bot token', () => {
-    const context = { meta: {} };
+    const context = { meta: {} as Record<string, unknown> };
     seedContextMeta(
       makeConfig({
         extensions: { telegram: { botToken: '' } },
@@ -425,7 +425,7 @@ describe('seedContextMeta', () => {
   });
 
   it('handles no telegram extension', () => {
-    const context = { meta: {} };
+    const context = { meta: {} as Record<string, unknown> };
     seedContextMeta(makeConfig(), context);
     expect(context.meta['tgConfigured']).toBe(false);
     expect(context.meta['tgSessionEnd']).toBe(false);
@@ -434,7 +434,7 @@ describe('seedContextMeta', () => {
   });
 
   it('handles missing extensions field entirely', () => {
-    const context = { meta: {} };
+    const context = { meta: {} as Record<string, unknown> };
     seedContextMeta(makeConfig({ extensions: undefined } as any), context);
     expect(context.meta['tgConfigured']).toBe(false);
   });
@@ -446,7 +446,7 @@ describe('seedContextMeta', () => {
 // wrong state on connect.
 describe('seedContextMeta — per-plugin effective state', () => {
   const seed = (config: Record<string, unknown>): Record<string, unknown> | undefined => {
-    const context = { meta: {} as Record<string, unknown> };
+    const context = { meta: {} as Record<string, unknown> as Record<string, unknown> };
     seedContextMeta(makeConfig(config), context);
     return context.meta['pluginsEnabled'] as Record<string, unknown> | undefined;
   };
@@ -503,7 +503,7 @@ describe('seedContextMeta — per-plugin effective state', () => {
   // fix alone would leave behind. Mirrors the CLI's
   // `tui-settings-adapter.ts:266-268` read path so TUI and WebUI agree.
   it('seeds wrongProxyEnabled + wrongProxyUrl from config.tools.wrongProxy', () => {
-    const context: { meta: Record<string, unknown> } = { meta: {} };
+    const context: { meta: Record<string, unknown> } = { meta: {} as Record<string, unknown> };
     seedContextMeta(
       makeConfig({ tools: { wrongProxy: { enabled: true, url: 'http://proxy.local:9000' } } }),
       context,
@@ -513,14 +513,14 @@ describe('seedContextMeta — per-plugin effective state', () => {
   });
 
   it('defaults wrongProxyEnabled to false and wrongProxyUrl to empty when config has no nested entry', () => {
-    const context: { meta: Record<string, unknown> } = { meta: {} };
+    const context: { meta: Record<string, unknown> } = { meta: {} as Record<string, unknown> };
     seedContextMeta(makeConfig(), context);
     expect(context.meta['wrongProxyEnabled']).toBe(false);
     expect(context.meta['wrongProxyUrl']).toBe('');
   });
 
   it('preserves a sibling tools.* key when seeding wrongProxy', () => {
-    const context: { meta: Record<string, unknown> } = { meta: {} };
+    const context: { meta: Record<string, unknown> } = { meta: {} as Record<string, unknown> };
     seedContextMeta(
       makeConfig({
         tools: {
@@ -536,13 +536,13 @@ describe('seedContextMeta — per-plugin effective state', () => {
   });
 
   it('seeds companion agent toggles defaulting to true and honoring explicit false', () => {
-    const defaultsCtx: { meta: Record<string, unknown> } = { meta: {} };
+    const defaultsCtx: { meta: Record<string, unknown> } = { meta: {} as Record<string, unknown> };
     seedContextMeta(makeConfig(), defaultsCtx);
     expect(defaultsCtx.meta['memoryCompanionEnabled']).toBe(true);
     expect(defaultsCtx.meta['exploreCompanionEnabled']).toBe(true);
     expect(defaultsCtx.meta['skillCompanionEnabled']).toBe(true);
 
-    const disabledCtx: { meta: Record<string, unknown> } = { meta: {} };
+    const disabledCtx: { meta: Record<string, unknown> } = { meta: {} as Record<string, unknown> };
     seedContextMeta(
       makeConfig({
         fleet: {

@@ -1,3 +1,7 @@
+import type { OutgoingCallsOutput } from './codebase-outgoing-calls-contracts.js';
+
+export type { OutgoingCallsOutput } from './codebase-outgoing-calls-contracts.js';
+
 /**
  * `codebase-outgoing-calls` tool — find all callees/dependencies of a symbol.
  *
@@ -20,7 +24,7 @@ import { toErrorMessage } from '@wrongstack/core/utils';
 import { codebaseIndexStats, getIndexState, outgoingCallsService } from './background-indexer.js';
 import { serializeCallSites } from './call-site-serializer.js';
 import { outgoingCallsNote, withNextStepNote } from './next-step-notes.js';
-import type { CallSite } from './schema.js';
+
 import { codebaseIndexDirOverride } from './writer.js';
 import { displayIndexPath } from './writer-helpers.js';
 
@@ -203,19 +207,5 @@ export interface OutgoingCallsInput {
 }
 
 export type CodebaseOutgoingCallsInput = OutgoingCallsInput;
-
-export interface OutgoingCallsOutput {
-  symbol: string;
-  calls: CallSite[];
-  total: number;
-  /**
-   * True when the project server served a previous generation's cached
-   * answer during a refresh. Results are internally consistent but may lag
-   * the files currently being indexed.
-   */
-  stale?: boolean | undefined;
-  /** Advisory note when the symbol was not found, or unresolved refs exist. */
-  note?: string | undefined;
-}
 
 export type CodebaseOutgoingCallsOutput = OutgoingCallsOutput;

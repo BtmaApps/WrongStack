@@ -1,4 +1,4 @@
-import type { EngineEvent } from './engine-state';
+import type { EngineEvent } from './engine-state.js';
 
 export type EngineSend = (type: string, payload?: Record<string, unknown>) => Promise<void>;
 export type EngineCommand = (

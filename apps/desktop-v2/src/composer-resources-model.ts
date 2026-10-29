@@ -2,8 +2,19 @@ export interface ComposerFileReference {
   path: string;
   /** Inclusive 1-based line range that marks the relevant section of the file. */
   lines?: [number, number];
+  /** Exact text the user selected when attaching; the file on disk may differ. */
+  snippet?: string;
 }
 export const MAX_REFERENCE_LINE = 10_000_000;
+export const MAX_SNIPPET_CHARS = 8_000;
+export function validSnippet(value: unknown): value is string {
+  return typeof value === 'string' && value.trim() !== '' && value.length <= MAX_SNIPPET_CHARS;
+}
+/** The quoted text on one short line, for chips and titles. */
+export function snippetSummary(snippet: string, max = 40): string {
+  const line = snippet.trim().replace(/\s+/g, ' ');
+  return line.length > max ? `${line.slice(0, max - 1)}…` : line;
+}
 export function validReferenceLines(value: unknown): value is [number, number] {
   return (
     Array.isArray(value) &&
@@ -13,11 +24,12 @@ export function validReferenceLines(value: unknown): value is [number, number] {
   );
 }
 export function referenceLabel(ref: ComposerFileReference): string {
-  return ref.lines
+  const base = ref.lines
     ? ref.lines[0] === ref.lines[1]
       ? `${ref.path}:${ref.lines[0]}`
       : `${ref.path}:${ref.lines[0]}-${ref.lines[1]}`
     : ref.path;
+  return ref.snippet ? `${base} “${snippetSummary(ref.snippet)}”` : base;
 }
 export interface PromptVariable {
   name: string;
@@ -29,6 +41,8 @@ export interface PromptVariable {
 }
 const rangeNote =
   'Line ranges mark the relevant section; read beyond them when the task needs more context.';
+const snippetNote =
+  'Snippets are the exact text the user selected when attaching it, possibly from unsaved editor text; the file on disk may differ.';
 const referenceReadContract =
   'Read each referenced file from this project root with the available file-reading tools before answering or editing it. Continue paginated reads until EOF; filenames alone are not file contents.';
 
@@ -59,9 +73,12 @@ export function referenceMessage(
     `Project root: ${JSON.stringify(root)}`,
     ...unique.map(
       (ref) =>
-        `- ${JSON.stringify(ref.path)}${ref.lines ? ` lines ${ref.lines[0]}-${ref.lines[1]}` : ''}`,
+        `- ${JSON.stringify(ref.path)}${ref.lines ? ` lines ${ref.lines[0]}-${ref.lines[1]}` : ''}${
+          ref.snippet ? ` snippet ${JSON.stringify(ref.snippet)}` : ''
+        }`,
     ),
     unique.some((ref) => ref.lines) ? rangeNote : '',
+    unique.some((ref) => ref.snippet) ? snippetNote : '',
     referenceReadContract,
   ]
     .filter(Boolean)
@@ -82,13 +99,22 @@ export function splitReferenceMessage(value: string): {
       .split('\n')
       .filter((line) => line.startsWith('- '))
       .map((line): ComposerFileReference | null => {
-        const match = /^- ("(?:[^"\\]|\\.)*")(?: lines (\d+)-(\d+))?$/.exec(line);
+        const match =
+          /^- ("(?:[^"\\]|\\.)*")(?: lines (\d+)-(\d+))?(?: snippet ("(?:[^"\\]|\\.)*"))?$/.exec(
+            line,
+          );
         if (!match) return null;
         const path = JSON.parse(match[1]!) as unknown;
         if (typeof path !== 'string' || !path) return null;
         const lines = match[2] ? [Number(match[2]), Number(match[3])] : undefined;
         if (lines && !validReferenceLines(lines)) return null;
-        return lines ? { path, lines: lines as [number, number] } : { path };
+        const snippet = match[4] === undefined ? undefined : (JSON.parse(match[4]) as unknown);
+        if (snippet !== undefined && !validSnippet(snippet)) return null;
+        return {
+          path,
+          ...(lines ? { lines: lines as [number, number] } : {}),
+          ...(snippet === undefined ? {} : { snippet }),
+        };
       });
     if (!references.length || references.some((ref) => !ref)) return plain;
     const refs = references as ComposerFileReference[];

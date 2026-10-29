@@ -49,7 +49,9 @@ export function environmentProfile(draft: EnvironmentDraft): EnvironmentProfile 
     version: 1,
     name: draft.name.trim(),
     image: draft.image.trim(),
-    setupTimeoutMs: Number(draft.timeoutSeconds) * 1000,
+    // Whole milliseconds: 16.1 × 1000 is 16100.000000000002 in binary floating
+    // point, which the profile's safe-integer check reported as out of range.
+    setupTimeoutMs: Math.round(Number(draft.timeoutSeconds) * 1000),
     setupCommands: parseAutomationCommands(draft.setup),
     services: draft.services.map((service) => ({
       name: service.name.trim(),

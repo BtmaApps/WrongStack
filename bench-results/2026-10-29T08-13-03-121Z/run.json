@@ -1,0 +1,62 @@
+{
+  "suite": "polyglot",
+  "startedAt": "2026-10-29T08:13:03.182Z",
+  "fingerprint": {
+    "cliVersion": "1.3.0",
+    "toolNames": [
+      "bash",
+      "clarify",
+      "codebase-ast-replace",
+      "codebase-context",
+      "codebase-diff-impact",
+      "codebase-impact-analysis",
+      "codebase-incoming-calls",
+      "codebase-index",
+      "codebase-invariant-check",
+      "codebase-outgoing-calls",
+      "codebase-read-symbol",
+      "codebase-repo-map",
+      "codebase-search",
+      "codebase-skeleton",
+      "codebase-stats",
+      "codebase-targeted-test",
+      "diff",
+      "edit",
+      "glob",
+      "grep",
+      "json",
+      "patch",
+      "present_artifact",
+      "project_kit",
+      "read",
+      "search",
+      "security-ast-scan",
+      "tool_search",
+      "tool_use",
+      "write"
+    ],
+    "maxIterations": 40,
+    "yolo": true,
+    "subsetId": "polyglot:7adc0f98d56c",
+    "toolManifestHash": "351b94e2398e",
+    "configHash": "6a85e5f65b2c",
+    "profile": "lean",
+    "hash": "69da8880435d"
+  },
+  "cells": [
+    {
+      "label": "glm-5.2",
+      "provider": "zai-coding-plan",
+      "model": "glm-5.2"
+    }
+  ],
+  "planned": 120,
+  "flags": {
+    "suite": "polyglot",
+    "cell": "glm-5.2=zai-coding-plan/glm-5.2",
+    "repeats": "3",
+    "polyglot-dir": "C:\\Users\\ersin\\.wrongstack\\bench-data\\polyglot-benchmark",
+    "subset": "polyglot-wstack-40",
+    "languages": "python,javascript,go,rust"
+  }
+}

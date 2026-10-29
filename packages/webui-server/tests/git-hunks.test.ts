@@ -3,8 +3,8 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, it } from 'vitest';
-import { handleGitHunks } from '../src/server/git-hunks';
-import { handleShellGitRoute } from '../src/server/shell-git-routes';
+import { handleGitHunks } from '../src/server/git-hunks.js';
+import { handleShellGitRoute } from '../src/server/shell-git-routes.js';
 
 it('stages and unstages only the reviewed hunk, refuses stale diffs, and keeps worktree bytes', async () => {
   const root = await mkdtemp(join(tmpdir(), 'wrongstack-hunks-'));
@@ -18,8 +18,10 @@ it('stages and unstages only the reviewed hunk, refuses stale diffs, and keeps w
       ws as never,
       { type, payload: { ...payload, requestId: 'hunk-proof' } } as never,
       {
-        gitHunks: (socket, message) =>
-          handleGitHunks(socket, project, message.payload, message.type === 'git.hunk.apply'),
+        gitHunks: (
+          socket: import('ws').WebSocket,
+          message: import('../src/server/types.js').WSClientMessage,
+        ) => handleGitHunks(socket, project, message.payload, message.type === 'git.hunk.apply'),
       } as never,
     );
     expect(frames.at(-1)?.payload.requestId).toBe('hunk-proof');

@@ -360,6 +360,7 @@ describe('buildFleetTopology', () => {
           id: 'agent-1',
           name: 'Planner',
           status: 'running' as const,
+          lastActivityAt: '2026-07-09T00:01:00.000Z',
           iterations: 2,
           toolCalls: 3,
         },

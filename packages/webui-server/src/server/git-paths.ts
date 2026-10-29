@@ -1,3 +1,4 @@
+import { realpathSync } from 'node:fs';
 import nodePath from 'node:path';
 
 /**
@@ -16,8 +17,11 @@ import nodePath from 'node:path';
  */
 export function repoRelativePrefix(repoRoot: string, projectRoot: string): string {
   if (!repoRoot || !projectRoot) return '';
+  // `rev-parse --show-toplevel` prints the RESOLVED repository path, so a
+  // project opened through a symlink or junction (or macOS /tmp) shares no
+  // lexical prefix with it. Compare canonical paths, as git-hunks does.
   const rel = nodePath
-    .relative(nodePath.normalize(repoRoot), nodePath.normalize(projectRoot))
+    .relative(canonicalPath(repoRoot), canonicalPath(projectRoot))
     .replaceAll('\\', '/');
   if (!rel || rel === '.') return '';
   // Outside the repo maps to '' — SEGMENT-aware: '..' or '../x' escapes,
@@ -25,6 +29,16 @@ export function repoRelativePrefix(repoRoot: string, projectRoot: string): strin
   // falsely reported "no relation" for projects under such a directory).
   if (rel === '..' || rel.startsWith('../')) return '';
   return rel + '/';
+}
+
+/** Real path when it exists, otherwise the normalized input. */
+function canonicalPath(p: string): string {
+  const normalized = nodePath.normalize(p);
+  try {
+    return realpathSync.native(normalized);
+  } catch {
+    return normalized;
+  }
 }
 
 export const MAX_DIFF_BYTES = 2 * 1024 * 1024;

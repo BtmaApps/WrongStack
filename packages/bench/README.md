@@ -29,10 +29,18 @@ Three invariants keep the report objective:
 By default the sandbox runs the pinned **lean profile**, not the operator's
 own settings: factory defaults, the operator's provider definitions (auth
 only), and `LEAN_BENCH_CONFIG` — the `quick` system prompt with the aggressive
-token-saving tier, and MCP, plugins, memory, the prompt library and the
+token-saving tier, and MCP, plugins, memory, skills, the prompt library and the
 explore/skill companions off. The same suite therefore fingerprints the same on
 every machine, and a published score describes WrongStack rather than one
 person's config.
+
+The lean tool surface is pinned to `read`, `edit`, `write`, `bash`, `grep`, and
+`glob` for every suite. The child runs with `--only-tools` and explicitly denies
+`tool_search` / `tool_use`, preventing later registrations or lazy discovery
+from expanding its schemas. Harness overlays retain this bound; `--host-profile`
+keeps the active profile's usual tool surface. The fingerprint records the lean
+roster and its manifest, so older runs with a different fingerprint cannot be
+resumed or compared as the same harness.
 
 `quick` was chosen by measurement, not taste. On glm-5.3-flash
 (2026-10-27) it passed the `hard` suite 16/16 at 83.9k tokens per solve; the

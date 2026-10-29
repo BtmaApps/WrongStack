@@ -1,4 +1,4 @@
-import type { EngineCommand } from './engine-operations';
+import type { EngineCommand } from './engine-operations.js';
 
 export async function materializeProjectTheme(
   command: EngineCommand,

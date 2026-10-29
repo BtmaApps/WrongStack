@@ -1,3 +1,10 @@
+import type { CodebaseSkeletonOutput } from './codebase-skeleton-contracts.js';
+
+export type {
+  CodebaseSkeletonFile,
+  CodebaseSkeletonOutput,
+} from './codebase-skeleton-contracts.js';
+
 /**
  * `codebase-skeleton` tool — extract AST-based file skeletons with body redaction.
  *
@@ -21,11 +28,7 @@ import { toErrorMessage } from '@wrongstack/core/utils';
 import { safeResolveProjectPath } from '../_util.js';
 import { extractDirectorySkeleton } from './directory-skeleton.js';
 import { skeletonNote, withNextStepNote } from './next-step-notes.js';
-import {
-  extractFileSkeleton,
-  type FileSkeletonResult,
-  type SkeletonOptions,
-} from './skeleton-extractor.js';
+import { extractFileSkeleton, type SkeletonOptions } from './skeleton-extractor.js';
 
 export interface CodebaseSkeletonInput extends SkeletonOptions {
   /** Relative or absolute file or directory path. */
@@ -34,31 +37,6 @@ export interface CodebaseSkeletonInput extends SkeletonOptions {
   maxFiles?: number;
   /** Character budget for a directory skeleton. Defaults to 60,000. */
   maxChars?: number;
-}
-
-/** One directory file's place in the result; its skeleton is in `skeleton`. */
-export type CodebaseSkeletonFile = Pick<FileSkeletonResult, 'file' | 'lang' | 'stats'>;
-
-export interface CodebaseSkeletonOutput {
-  path: string;
-  isDir: boolean;
-  skeleton: string;
-  stats: {
-    originalLines: number;
-    skeletonLines: number;
-    tokenSavingsPercent: number;
-    symbolCount: number;
-    fileCount?: number;
-  };
-  files?: CodebaseSkeletonFile[];
-  /** Directory files left out to stay within `maxChars`, directory-relative. */
-  omittedFiles?: string[];
-  /** The directory walk stopped at `maxFiles` with more files left. */
-  moreFiles?: boolean;
-  maxFiles?: number;
-  maxChars?: number;
-  /** Next-step guidance: which tool answers the follow-up, or why the result is empty. */
-  note?: string | undefined;
 }
 
 const DEFAULT_MAX_CHARS = 60_000;

@@ -20,6 +20,7 @@ import {
   gradePolyglot,
   gradeSwebench,
   javaToolchainProblem,
+  LEAN_BENCH_TOOL_NAMES,
   loadBenchConfig,
   loadSubsetIds,
   type ModelCell,
@@ -42,7 +43,9 @@ import { CLI_VERSION } from '../../version.js';
 import type { SubcommandDeps, SubcommandHandler } from '../contracts.js';
 import { benchExperimentCommand, readBenchReviewPolicy } from './bench-experiments.js';
 import { runBenchMenu } from './bench-menu.js';
-import { resolveBenchRunConfig } from './bench-run-config.js';
+import { type BenchRunPreset, resolveBenchRunConfig } from './bench-run-config.js';
+
+export type { BenchRunPreset } from './bench-run-config.js';
 
 /**
  * `wstack bench` — run model-independent agentic benchmarks (bundled smoke,
@@ -138,6 +141,14 @@ function flagBool(deps: SubcommandDeps, name: string): boolean {
   return v === true || v === 'true';
 }
 
+/** Record the bounded lean surface rather than the launcher's general coding tier. */
+function benchmarkTools(deps: SubcommandDeps) {
+  const tools = deps.toolRegistry?.list() ?? [];
+  return flagBool(deps, 'host-profile')
+    ? tools
+    : tools.filter((tool) => LEAN_BENCH_TOOL_NAMES.includes(tool.name));
+}
+
 function positiveIntegerFlag(deps: SubcommandDeps, name: string): number | undefined {
   const raw = flagStr(deps, name);
   if (raw === undefined) return undefined;
@@ -159,14 +170,6 @@ async function resolveWstackEntry(): Promise<string> {
   } catch {
     return process.argv[1] ?? '';
   }
-}
-
-/** What the interactive menu hands `bench run` beyond plain flags. */
-export interface BenchRunPreset {
-  /** Lean-profile overlay, as `--harness <file>` would load it. */
-  harnessOverlay?: Record<string, unknown> | undefined;
-  /** Called with the finished report and its directory. */
-  onFinished?: ((report: BenchReport, outDir: string) => void) | undefined;
 }
 
 async function benchRun(
@@ -391,7 +394,7 @@ async function benchRunWith(
     return 1;
   }
 
-  const tools = deps.toolRegistry?.list() ?? [];
+  const tools = benchmarkTools(deps);
   const toolNames = tools.map((t) => t.name);
   const toolManifestHash = computeToolManifestHash(tools);
   const wstackEntry = await resolveWstackEntry();
@@ -636,7 +639,7 @@ async function benchList(_args: string[], deps: SubcommandDeps): Promise<number>
           `  ${cell.label.padEnd(16)} ${color.dim(`${cell.provider}/${cell.model}`)}\n`,
         );
       }
-      const tools = deps.toolRegistry?.list() ?? [];
+      const tools = benchmarkTools(deps);
       const fp = reportHeaderLine({
         cliVersion: CLI_VERSION,
         toolNames: tools.map((t) => t.name),

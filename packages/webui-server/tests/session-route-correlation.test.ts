@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { WebSocket } from 'ws';
-import { handleSessionRoute, type SessionRouteHandlers } from '../src/server/session-routes';
+import { handleSessionRoute, type SessionRouteHandlers } from '../src/server/session-routes.js';
 
 describe('session context acknowledgement routing', () => {
   it('correlates context mutation results and failures for the asking desktop operation', async () => {
@@ -26,7 +26,7 @@ describe('session context acknowledgement routing', () => {
           }),
         );
       },
-    } as SessionRouteHandlers;
+    } as unknown as SessionRouteHandlers;
     await handleSessionRoute(
       socket,
       {
@@ -61,7 +61,7 @@ describe('session context acknowledgement routing', () => {
       debugContext: async (ws: WebSocket) => {
         actual = ws;
       },
-    } as SessionRouteHandlers;
+    } as unknown as SessionRouteHandlers;
     await handleSessionRoute(socket, { type: 'context.debug', payload: {} } as never, handlers);
     expect(actual).toBe(socket);
   });

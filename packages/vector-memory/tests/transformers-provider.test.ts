@@ -117,7 +117,7 @@ describe('TransformersEmbeddingProvider', () => {
   });
 
   it('rejects non-divisible or empty flat Float32Array batch outputs with vector-count mismatch (F836)', async () => {
-    const provider = new TransformersEmbeddingProvider({ batchSize: 2, dimensions: 2 });
+    const provider = new TransformersEmbeddingProvider({ batchSize: 2 });
     Object.defineProperty(provider, 'getExtractor', {
       configurable: true,
       value: async () => async () => ({
@@ -128,7 +128,7 @@ describe('TransformersEmbeddingProvider', () => {
       'returned 1 vectors for a batch of 2',
     );
 
-    const emptyProvider = new TransformersEmbeddingProvider({ batchSize: 2, dimensions: 1 });
+    const emptyProvider = new TransformersEmbeddingProvider({ batchSize: 2 });
     Object.defineProperty(emptyProvider, 'getExtractor', {
       configurable: true,
       value: async () => async () => ({

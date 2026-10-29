@@ -493,6 +493,43 @@ describe('git change-set handlers', () => {
       expect(fsSync.readFileSync(path.join(repo, 'keep.txt'), 'utf8')).toBe(before);
     });
 
+    it('resolves the repo prefix for a project opened through a link', async () => {
+      // `rev-parse --show-toplevel` prints the resolved repository path. A
+      // project opened via a symlink/junction (macOS /tmp is one) used to
+      // share no lexical prefix with it: repoPrefix came back '' and every
+      // repo-relative action double-nested (`packages/webui/packages/webui/`).
+      const linkParent = path.join(
+        process.env.TEMP || '/tmp',
+        `gitlink-${randomBytes(4).toString('hex')}`,
+      );
+      fsSync.mkdirSync(linkParent, { recursive: true });
+      const link = path.join(linkParent, 'repo-link');
+      fsSync.symlinkSync(repo, link, 'junction');
+      try {
+        const linkedSub = path.join(link, 'packages', 'webui');
+        expect(repoRelativePrefix(repo, linkedSub)).toBe('packages/webui/');
+        // The link target itself is the repository root.
+        expect(repoRelativePrefix(repo, link)).toBe('');
+
+        const changes = createMockWs();
+        await handleGitChanges(changes, linkedSub);
+        expect(changes.sent[0]?.payload.repoPrefix).toBe('packages/webui/');
+
+        const stage = createMockWs();
+        await handleGitStage(stage, linkedSub, ['packages/webui/index.ts']);
+        expect(stage.sent.find((m) => m.type === 'git.action_result')?.payload.ok).toBe(true);
+        expect(stagedState()).toBe('M ');
+
+        // Containment still holds through the link.
+        const outside = createMockWs();
+        await handleGitStage(outside, linkedSub, ['keep.txt']);
+        expect(outside.sent.find((m) => m.type === 'git.action_result')?.payload.ok).toBe(false);
+      } finally {
+        fsSync.rmSync(link, { force: true, recursive: false });
+        fsSync.rmSync(linkParent, { recursive: true, force: true });
+      }
+    });
+
     it('repoRelativePrefix treats a legal ..hidden directory as inside the repo', () => {
       // Regression (chimera round-4): a raw startsWith('..') check
       // reported "no relation" for a project under a `..hidden` directory,
