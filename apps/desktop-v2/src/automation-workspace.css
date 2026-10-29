@@ -380,3 +380,14 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+.automation-draft-review {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.automation-draft-review-text {
+  flex-basis: 100%;
+  margin: 0;
+}

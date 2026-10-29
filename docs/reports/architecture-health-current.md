@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-29T10:39:26.802Z
+**Generated:** 2026-10-29T10:54:05.674Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -8,15 +8,15 @@
 | Measure | Value |
 |---|---:|
 | Workspace packages | 45 |
-| Production source files | 5433 |
-| Production source lines | 1198808 |
-| Test files | 4735 |
+| Production source files | 5435 |
+| Production source lines | 1199211 |
+| Test files | 4736 |
 | Workspace dependency edges | 222 |
-| Relative module edges | 16336 |
+| Relative module edges | 16344 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 3 |
-| Tests without TypeScript test-project coverage | 94 |
+| Tests without TypeScript test-project coverage | 95 |
 | Tests in multiple TypeScript projects | 0 |
 
 ## Verification result
@@ -38,7 +38,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/contracts | 126 | 4 | @wrongstack/kanban, @wrongstack/primitives |
 | @wrongstack/coordination | 190 | 183 | @wrongstack/agent-catalog, @wrongstack/contracts, @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/core | 635 | 687 | @wrongstack/agent-catalog, @wrongstack/contracts, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
-| @wrongstack/desktop-v2 | 247 | 94 | @wrongstack/contracts, @wrongstack/core, @wrongstack/webui-protocol, @wrongstack/webui-server |
+| @wrongstack/desktop-v2 | 249 | 95 | @wrongstack/contracts, @wrongstack/core, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/goal | 22 | 22 | @wrongstack/contracts, @wrongstack/core, @wrongstack/worktree |
 | @wrongstack/governance | 45 | 37 | @wrongstack/persistence |
 | @wrongstack/hq | 62 | 42 | @wrongstack/contracts, @wrongstack/core, @wrongstack/persistence, @wrongstack/primitives |
@@ -115,6 +115,7 @@ None.
 | 750 | `packages/vibeui/src/lib/use-session.ts` |
 | 743 | `apps/desktop-v2/src/KanbanTaskInspector.tsx` |
 | 740 | `apps/desktop-v2/src/ProjectMailbox.tsx` |
+| 739 | `apps/desktop-v2/src/AutomationWorkspace.tsx` |
 | 737 | `packages/coordination/src/sqlite-mailbox.ts` |
 | 737 | `packages/webui-server/src/server/completion-handlers.ts` |
 | 734 | `apps/desktop-v2/src/ProjectSessionHistory.tsx` |
@@ -123,7 +124,6 @@ None.
 | 724 | `packages/coordination/src/agent-monitor.ts` |
 | 720 | `packages/tools/src/read.ts` |
 | 720 | `packages/webui/src/components/MemoryManager/useMemoryManagerState.ts` |
-| 718 | `apps/desktop-v2/src/AutomationWorkspace.tsx` |
 | 715 | `packages/plugins/src/audit/index.ts` |
 | 714 | `packages/tui/src/reducers/panel-pickers.ts` |
 | 712 | `packages/webui-server/src/server/pref-helpers.ts` |
@@ -137,18 +137,18 @@ None.
 | 703 | `packages/tools/src/codebase-index/ast-symbol-mutator.ts` |
 | 703 | `packages/tui/src/reducers/settings-value-cycle.ts` |
 | 701 | `packages/coordination/src/provider-status-tracker.ts` |
+| 701 | `packages/webui-server/src/server/conversation-operations.ts` |
 | 700 | `apps/desktop-v2/src/useDesktop.ts` |
-| 699 | `packages/coordination/src/subagent-budget.ts` |
 
 ## Exports only tests reference
 
-- 972 runtime exports are referenced by tests and by no other production file.
+- 973 runtime exports are referenced by tests and by no other production file.
 - Green coverage on one of these proves the function works, not that anything calls it.
 - The set is frozen in `architecture/test-only-exports.json`; the check fires on additions.
 
 ## TypeScript test coverage debt
 
-- 94 test files are not included in a package TypeScript test project.
+- 95 test files are not included in a package TypeScript test project.
 - 0 test files are included in more than one package TypeScript project.
 
 > This report is generated. Change architecture registry inputs or source code, then regenerate it; do not hand-edit measurements.

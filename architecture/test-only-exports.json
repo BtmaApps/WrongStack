@@ -5,6 +5,9 @@
       "hslHex",
       "paletteColors"
     ],
+    "apps/desktop-v2/src/automation-draft.ts": [
+      "NEW_AUTOMATION"
+    ],
     "apps/desktop-v2/src/availability-model.ts": [
       "scheduleMinute"
     ],

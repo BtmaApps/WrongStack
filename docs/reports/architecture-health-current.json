@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-29T10:39:26.802Z",
+  "generatedAt": "2026-10-29T10:54:05.674Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,17 +12,17 @@
   },
   "summary": {
     "packages": 45,
-    "sourceFiles": 5433,
-    "testFiles": 4735,
-    "sourceLines": 1198808,
+    "sourceFiles": 5435,
+    "testFiles": 4736,
+    "sourceLines": 1199211,
     "workspaceEdges": 222,
-    "moduleEdges": 16336,
+    "moduleEdges": 16344,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 3,
-    "testsWithoutTypecheck": 94,
+    "testsWithoutTypecheck": 95,
     "testsWithMultipleTypechecks": 0,
-    "testOnlyExports": 972
+    "testOnlyExports": 973
   },
   "errors": [],
   "packageCycles": [],
@@ -385,8 +385,8 @@
     {
       "name": "@wrongstack/desktop-v2",
       "dir": "apps/desktop-v2",
-      "sourceFiles": 247,
-      "testFiles": 94,
+      "sourceFiles": 249,
+      "testFiles": 95,
       "workspaceDependencies": [
         "@wrongstack/contracts",
         "@wrongstack/core",
@@ -1283,6 +1283,12 @@
       },
       {
         "file": "apps/desktop-v2/tests/atlas-views.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "apps/desktop-v2/tests/automation-draft.test.ts",
         "projects": [
           "root-node"
         ]
@@ -29705,6 +29711,13 @@
         "typecheckProjects": []
       },
       {
+        "file": "apps/desktop-v2/tests/automation-draft.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
         "file": "apps/desktop-v2/tests/automation-environment-model.test.ts",
         "runtimeProjects": [
           "root-node"
@@ -30983,6 +30996,11 @@
       "relativeImports": 3
     },
     {
+      "file": "packages/webui-server/src/server/conversation-operations.ts",
+      "lines": 701,
+      "relativeImports": 8
+    },
+    {
       "file": "packages/webui-server/src/server/memory-handlers.ts",
       "lines": 777,
       "relativeImports": 5
@@ -30999,8 +31017,8 @@
     },
     {
       "file": "apps/desktop-v2/src/AutomationWorkspace.tsx",
-      "lines": 718,
-      "relativeImports": 10
+      "lines": 739,
+      "relativeImports": 12
     },
     {
       "file": "apps/desktop-v2/src/CodeAtlas.tsx",
@@ -31220,6 +31238,11 @@
       "relativeImports": 10
     },
     {
+      "file": "apps/desktop-v2/src/AutomationWorkspace.tsx",
+      "lines": 739,
+      "relativeImports": 12
+    },
+    {
       "file": "packages/coordination/src/sqlite-mailbox.ts",
       "lines": 737,
       "relativeImports": 14
@@ -31258,11 +31281,6 @@
       "file": "packages/webui/src/components/MemoryManager/useMemoryManagerState.ts",
       "lines": 720,
       "relativeImports": 9
-    },
-    {
-      "file": "apps/desktop-v2/src/AutomationWorkspace.tsx",
-      "lines": 718,
-      "relativeImports": 10
     },
     {
       "file": "packages/plugins/src/audit/index.ts",
@@ -31330,14 +31348,14 @@
       "relativeImports": 4
     },
     {
+      "file": "packages/webui-server/src/server/conversation-operations.ts",
+      "lines": 701,
+      "relativeImports": 8
+    },
+    {
       "file": "apps/desktop-v2/src/useDesktop.ts",
       "lines": 700,
       "relativeImports": 9
-    },
-    {
-      "file": "packages/coordination/src/subagent-budget.ts",
-      "lines": 699,
-      "relativeImports": 2
     }
   ],
   "testOnlyExports": [
@@ -31348,6 +31366,10 @@
     {
       "file": "apps/desktop-v2/src/appearance.ts",
       "name": "paletteColors"
+    },
+    {
+      "file": "apps/desktop-v2/src/automation-draft.ts",
+      "name": "NEW_AUTOMATION"
     },
     {
       "file": "apps/desktop-v2/src/availability-model.ts",

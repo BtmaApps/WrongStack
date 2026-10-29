@@ -14,21 +14,19 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AutomationConfiguration, AutomationTemplates } from './AutomationConfiguration';
 import { AutomationEnvironmentEditor } from './AutomationEnvironmentEditor';
 import { AutomationRunInspector } from './AutomationRunInspector';
+import { activeDrafts, automationDraftKey, jobDrafts } from './automation-draft';
 import { automationMilliseconds } from './automation-units';
 import type { EngineHttp } from './engine-http';
 import { emptyEngineState } from './engine-state';
 import { Modal } from './Modal';
 import { ProfileModelPicker } from './ProfileModelPicker';
 import { sameSetting } from './settings-save-model';
+import {
+  AutomationDraftPersistenceStatus,
+  useAutomationDraftPersistence,
+} from './useAutomationDraftPersistence';
 import './automation-workspace.css';
 
-type AutomationDraft = {
-  selected: AutomationJobRecord | null;
-  draft: AutomationJobInput;
-  commands: string;
-};
-const activeDrafts = new Map<string, AutomationDraft>(),
-  jobDrafts = new Map<string, AutomationDraft>();
 const fresh = () => ({ ...createAutomationJobInput(), enabled: false });
 export function AutomationWorkspace({ http, projectId }: { http: EngineHttp; projectId: string }) {
   const cached = useRef(activeDrafts.get(projectId)).current;
@@ -53,7 +51,7 @@ export function AutomationWorkspace({ http, projectId }: { http: EngineHttp; pro
     working = useRef(false),
     previewSequence = useRef(0),
     loadSequence = useRef(0);
-  const draftKey = (id?: string) => JSON.stringify([projectId, id ?? '@new']);
+  const draftKey = (id?: string) => automationDraftKey(projectId, id);
   const dirty =
     !sameSetting(draft, selected ? editableAutomationJob(selected) : fresh()) ||
     commands !== formatAutomationCommands(selected?.verification?.commands ?? []);
@@ -63,6 +61,21 @@ export function AutomationWorkspace({ http, projectId }: { http: EngineHttp; pro
     if (dirty) jobDrafts.set(draftKey(selected?.id), snapshot);
     else jobDrafts.delete(draftKey(selected?.id));
   }, [projectId, selected, draft, commands, dirty]);
+  const persisted = useAutomationDraftPersistence({
+    projectId,
+    activeId: selected?.id,
+    restore: (saved, updatedAt) => {
+      setSelected(saved.selected);
+      setDraft(saved.draft);
+      setCommands(saved.commands);
+      setPreview(null);
+      setNotice(
+        `Recovered an unsaved automation draft${updatedAt ? ` saved ${new Date(updatedAt).toLocaleString()}` : ''}.`,
+      );
+    },
+  });
+  const current = selected && data.jobs.find((job) => job.id === selected.id);
+  const staleBase = dirty && current && (current.revision ?? 1) !== (selected.revision ?? 1);
   const load = useCallback(async () => {
     const sequence = ++loadSequence.current;
     const next = (await http('/api/automation/state')) as AutomationStateView;
@@ -210,11 +223,19 @@ export function AutomationWorkspace({ http, projectId }: { http: EngineHttp; pro
           : selected
             ? `Saved revision ${selected.revision ?? 1}`
             : 'New automation'}{' '}
-        · Drafts are kept per job in this window.{' '}
+        · Unsaved drafts are kept per job and restored after a restart.{' '}
         <button type="button" className="text-link" disabled={busy} onClick={() => setReload(true)}>
           Discard draft / reload saved
         </button>
       </p>
+      {staleBase && (
+        <p className="session-error" role="alert">
+          This job was saved again (revision {current.revision ?? 1}) after this draft started from
+          revision {selected.revision ?? 1}. Saving is refused; copy what you need, then discard the
+          draft and reload the saved job.
+        </p>
+      )}
+      <AutomationDraftPersistenceStatus {...persisted} />
       <AutomationTemplates
         disabled={busy}
         onApply={(id) => {

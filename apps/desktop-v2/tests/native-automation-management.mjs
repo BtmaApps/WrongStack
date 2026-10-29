@@ -227,6 +227,35 @@ export async function exerciseNativeAutomationManagement({
     await workspace().getByLabel('Automation instructions', { exact: true }).inputValue(),
     'Keep this unsaved Alpha job draft.',
   );
+  // Unsaved job drafts are saved natively per project and restored after a renderer reload.
+  const storedDrafts = (owner) =>
+    page.evaluate(
+      (params) =>
+        window.__TAURI_INTERNALS__.invoke('host_request', { method: 'form-draft.get', params }),
+      { projectId: owner.id, formKey: 'automation-drafts' },
+    );
+  await waitFor(async () => {
+    const saved = (await storedDrafts(project)).value;
+    return (
+      saved?.active === stored.id &&
+      saved.drafts[stored.id]?.draft.prompt === 'Keep this unsaved Alpha job draft.' &&
+      saved.drafts['@new']?.draft.name === 'Unsent second job'
+    );
+  }, 'Automation drafts saved natively');
+  await waitFor(
+    async () =>
+      (await storedDrafts(otherProject)).value?.drafts['@new']?.draft.name === 'Beta unsaved draft',
+    'Other project keeps its own automation draft',
+  );
+  await page.reload();
+  await open(project);
+  await workspace()
+    .getByText(/Recovered an unsaved automation draft/)
+    .waitFor();
+  assert.equal(
+    await workspace().getByLabel('Automation instructions', { exact: true }).inputValue(),
+    'Keep this unsaved Alpha job draft.',
+  );
   const peer = await http(project, `jobs/${stored.id}`, 'PUT', {
     expectedRevision: stored.revision,
     spec: { ...editableAutomationJob(stored), prompt: 'Peer revision must survive stale UI save.' },
@@ -253,6 +282,10 @@ export async function exerciseNativeAutomationManagement({
       (await workspace().getByLabel('Automation instructions', { exact: true }).inputValue()) ===
       peer.prompt,
     'Explicit automation reload',
+  );
+  await waitFor(
+    async () => !(await storedDrafts(project)).value?.drafts[stored.id],
+    'Discarded job draft leaves native storage',
   );
   await workspace().getByRole('button', { name: 'New automation', exact: true }).click();
   assert.equal(

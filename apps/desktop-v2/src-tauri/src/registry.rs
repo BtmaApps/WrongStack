@@ -248,6 +248,7 @@ impl Registry {
             && form_key != "roster-inputs"
             && form_key != "roster-create"
             && form_key != "mailbox-compose"
+            && form_key != "automation-drafts"
             && !record_form
             && !resource_input
             && !file_form
@@ -990,6 +991,12 @@ mod tests {
             1
         );
         assert!(peer.form_draft(&b.id, "mailbox-compose").unwrap()["value"].is_null());
+        assert_eq!(
+            db.save_form_draft(&a.id, "automation-drafts", &design, 0)
+                .unwrap(),
+            1
+        );
+        assert!(peer.form_draft(&b.id, "automation-drafts").unwrap()["value"].is_null());
         let roster = format!("roster-document:{}", "9".repeat(64));
         assert_eq!(db.save_form_draft(&a.id, &roster, &design, 0).unwrap(), 1);
         assert!(peer.form_draft(&a.id, "roster-document:reviewer").is_err());

@@ -3093,3 +3093,30 @@ Verification on the shared working snapshot:
   The engine bundle was built from the shared tree and may include other in-progress edits.
 - Not covered: the two-window review natively (unit only), a full application process restart
   for this form, full release/coverage, hosted CI and installed-app replacement.
+
+## Restart-safe automation job drafts (2026-10-29)
+
+- Unsaved automation job drafts (per job id, plus the new-automation draft) are now written to the
+  native project form `automation-drafts` (new Rust allow-list literal) through `DurableFormDraft`.
+  The envelope is versioned and bounded (50 drafts, 1 MB); a job draft is accepted only under its
+  own job id and a new draft never carries a saved record. A new window restores the job that was
+  open and says so; the other drafts return when their job is opened. Nothing is written until
+  the saved drafts have been merged, so loading never erases them. A draft is removed after its
+  engine save succeeds or after "Discard draft / reload saved". Another window's newer version
+  stops autosave until this window's drafts or the saved ones are chosen. A draft whose job was
+  saved again since it started now shows a stale-revision warning before the engine refuses
+  the save.
+- Checks: desktop **447 tests / 95 files PASS** (new `automation-draft` tests: project-scoped
+  projection as a copy, round trip, refusal of foreign/mismatched/prototype/oversized envelopes);
+  typecheck **256 PASS**; Biome PASS; Rust fmt PASS; native Rust **21 tests PASS**.
+- Native on portable identity `32ceed56aeb1-b9af8f76b4a5`: `--automation` **exit 0 / PASS** on the
+  first run. Both projects' drafts are read back from native storage separately; after a renderer
+  reload the open Alpha job draft is restored with its notice and the new-automation draft
+  returns; the existing stale-save refusal still holds; the explicit discard removes the job
+  draft from storage. The engine was **not rebuilt** for this run: `build:engine` failed on
+  another session's uncommitted `packages/webui-server` change (type errors in
+  `conversation-operations.ts`), so the run reused the previous bundled engine `b9af8f76b4a5`
+  (this change has no engine part).
+- Not covered: the two-window review natively (unit-level behaviour comes from the shared
+  `DurableFormDraft`), the environment editor (still window-only), a full application process
+  restart, full release/coverage, hosted CI and installed-app replacement.
