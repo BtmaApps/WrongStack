@@ -1,7 +1,36 @@
+import { execFileSync } from 'node:child_process';
+import * as fs from 'node:fs/promises';
+import * as os from 'node:os';
+import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { execCommand } from '../src/exec-command.js';
 
 const NODE = process.execPath;
+
+/** PIDs of live processes whose command line contains `needle`. */
+function listProcessesMatching(needle: string): number[] {
+  const out =
+    process.platform === 'win32'
+      ? execFileSync(
+          'powershell',
+          [
+            '-NoProfile',
+            '-Command',
+            `(Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like '*${needle}*' -and $_.Name -eq 'node.exe' }).ProcessId`,
+          ],
+          { encoding: 'utf8', windowsHide: true },
+        )
+      : execFileSync('ps', ['-eo', 'pid=,args='], { encoding: 'utf8' })
+          .split('\n')
+          .filter((line) => line.includes(needle) && !line.includes('ps -eo'))
+          .map((line) => line.trim().split(/\s+/)[0])
+          .join('\n');
+  return out
+    .split(/\s+/)
+    .filter(Boolean)
+    .map(Number)
+    .filter((pid) => pid !== process.pid);
+}
 
 describe('execCommand', () => {
   it('captures stdout and a zero exit code (no shell)', async () => {
@@ -74,6 +103,35 @@ describe('execCommand', () => {
     });
     expect(res.timedOut).toBe(true);
   });
+
+  it('settles a timed-out shell command whose grandchild holds the pipes', async () => {
+    // npm → cmd.exe → jest stuck in a solution's infinite loop: killing the
+    // shell first orphaned jest, which kept stdout open, so `close` never came
+    // and the grader hung the bench run. Same shape: shell → node → busy loop.
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'exec-orphan-'));
+    const marker = `busy-${process.pid}-${Date.now()}.cjs`;
+    await fs.writeFile(path.join(dir, marker), 'for (;;) {}\n', 'utf8');
+    const started = Date.now();
+    const res = await execCommand({
+      command: 'node',
+      args: [marker],
+      cwd: dir,
+      timeoutMs: 500,
+    });
+    expect(res.timedOut).toBe(true);
+    expect(Date.now() - started).toBeLessThan(15_000);
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    const survivors = listProcessesMatching(marker);
+    for (const pid of survivors) {
+      try {
+        process.kill(pid, 'SIGKILL');
+      } catch {
+        /* already gone */
+      }
+    }
+    await fs.rm(dir, { recursive: true, force: true });
+    expect(survivors).toEqual([]);
+  }, 30_000);
 
   it('surfaces a synchronous spawn failure as exitCode null', async () => {
     // A NUL byte in the command makes spawn throw synchronously, exercising the

@@ -50,6 +50,7 @@ const BEHAVIOR_CONFIG_KEYS = [
   'context',
   'extensions',
   'features',
+  'fleet',
   'hints',
   'indexing',
   'maxConcurrent',
@@ -73,6 +74,49 @@ export function behaviorConfigProjection(config: unknown): Record<string, unknow
   return projection;
 }
 
+/**
+ * Which harness the sandboxed CLI runs.
+ *
+ * - `lean` (default): factory defaults plus {@link LEAN_BENCH_CONFIG}. Only the
+ *   operator's provider definitions (auth) cross over, so the same suite
+ *   produces the same fingerprint on every machine and a published score
+ *   describes WrongStack, not one person's settings.
+ * - `host`: the operator's own active profile (skills, companions, brain,
+ *   token-saving tier …) — useful to measure a personal setup, not to publish.
+ */
+export type BenchProfile = 'lean' | 'host';
+
+/**
+ * Pinned behavior for the lean profile. Background companions each run their
+ * own model loop beside the leader — a measured core task spent more tokens in
+ * the explore companion than in the leader itself — and memory, MCP, plugins
+ * and the prompt library read state that differs per machine.
+ *
+ * The `quick` identity with the aggressive token-saving tier is the cheapest
+ * harness that did not cost success: on glm-5.3-flash it passed the hard
+ * suite 16/16 at 83.9k tokens per solve against the factory `pro` prompt's
+ * 15/16 at 434.8k (2026-10-27, `--repeats 2`).
+ */
+export const LEAN_BENCH_CONFIG = {
+  systemPrompt: { variant: 'quick' },
+  features: {
+    mcp: false,
+    plugins: false,
+    memory: false,
+    prompts: false,
+    tokenSavingMode: 'aggressive',
+  },
+  fleet: {
+    exploreCompanion: { enabled: false },
+    skillCompanion: { enabled: false },
+  },
+  // Every `npm install` an agent ran rewrote package-lock.json, and the
+  // default-on dep-watcher spawned a tech-stack audit subagent for it: ~19% of
+  // a polyglot run's tokens (2026-10-28) went to registry lookups nobody graded.
+  extensions: { 'file-watcher': { depWatcher: { enabled: false } } },
+  Sage: { enabled: false },
+} as const;
+
 /** Create the sandbox tree and seed the isolated home's config.json. */
 export async function createSandbox(opts: {
   /** Where to create the sandbox. Defaults to an OS temp dir. */
@@ -86,6 +130,14 @@ export async function createSandbox(opts: {
    * Project sessions and logs stay isolated.
    */
   hostHomeDir?: string | undefined;
+  /** Harness profile. Defaults to `lean`. */
+  profile?: BenchProfile | undefined;
+  /**
+   * Config deep-merged over the lean profile (ignored for `host`) — how a
+   * harness A/B (prompt variant, token-saving tier, …) is run. It lands in the
+   * effective config, so it flips `configHash` like any other behavior change.
+   */
+  harnessOverlay?: Record<string, unknown> | undefined;
 }): Promise<Sandbox> {
   const base = opts.baseDir ?? (await fs.mkdtemp(path.join(os.tmpdir(), 'wstack-bench-')));
   await fs.mkdir(base, { recursive: true });
@@ -101,7 +153,9 @@ export async function createSandbox(opts: {
   };
 
   let effective: Record<string, unknown> = overlay;
-  if (opts.hostHomeDir) {
+  if ((opts.profile ?? 'lean') === 'lean') {
+    effective = await writeLeanConfig(opts.hostHomeDir, homeDir, overlay, opts.harnessOverlay);
+  } else if (opts.hostHomeDir) {
     effective = await copyHostAuth(opts.hostHomeDir, homeDir, overlay);
   } else {
     await fs.writeFile(path.join(homeDir, 'config.json'), JSON.stringify(overlay, null, 2), 'utf8');
@@ -113,6 +167,73 @@ export async function createSandbox(opts: {
     workRoot,
     configHash: computeStableJsonHash(behaviorConfigProjection(effective)),
   };
+}
+
+/**
+ * Seed the lean profile: one root config holding factory defaults, the pinned
+ * lean behavior, and nothing from the operator except provider definitions
+ * (encrypted keys stay encrypted; the vault key is copied so they decrypt).
+ */
+async function writeLeanConfig(
+  hostHome: string | undefined,
+  sandboxHome: string,
+  overlay: { yolo: boolean; tools: { maxIterations: number }; session: { auditLevel: 'standard' } },
+  harnessOverlay?: Record<string, unknown> | undefined,
+): Promise<Record<string, unknown>> {
+  let providers: unknown;
+  if (hostHome) {
+    await copyIfExists(path.join(hostHome, '.key'), path.join(sandboxHome, '.key'));
+    await copyModelsCache(hostHome, sandboxHome);
+    const root = await readJsonObject(path.join(hostHome, 'config.json'));
+    const active = typeof root['activeProfile'] === 'string' ? root['activeProfile'] : undefined;
+    const profile = active
+      ? await readJsonObject(path.join(hostHome, 'profiles', active, 'config.json'))
+      : {};
+    providers = profile['providers'] ?? root['providers'];
+  }
+  // The harness overlay may tune behavior but never the pinned run contract
+  // (yolo, iteration cap, audit level) or the credentials.
+  const config: Record<string, unknown> = {
+    ...deepMerge(structuredClone(LEAN_BENCH_CONFIG), harnessOverlay ?? {}),
+    ...overlay,
+    ...(providers !== undefined ? { providers } : {}),
+  };
+  await fs.writeFile(
+    path.join(sandboxHome, 'config.json'),
+    JSON.stringify(config, null, 2),
+    'utf8',
+  );
+  return config;
+}
+
+/** Plain-object deep merge; arrays and scalars from `over` replace. Exported for tests. */
+export function deepMerge(
+  base: Record<string, unknown>,
+  over: Record<string, unknown>,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...base };
+  for (const [key, value] of Object.entries(over)) {
+    const prev = out[key];
+    out[key] = isRecord(prev) && isRecord(value) ? deepMerge(prev, value) : value;
+  }
+  return out;
+}
+
+async function readJsonObject(file: string): Promise<Record<string, unknown>> {
+  try {
+    const raw: unknown = JSON.parse((await fs.readFile(file, 'utf8')).replace(/^﻿/, ''));
+    return isRecord(raw) ? raw : {};
+  } catch {
+    return {};
+  }
+}
+
+async function copyModelsCache(hostHome: string, sandboxHome: string): Promise<void> {
+  const cacheDest = path.join(sandboxHome, 'cache');
+  await fs.mkdir(cacheDest, { recursive: true });
+  for (const name of ['models.dev.json', 'models-overlay.json']) {
+    await copyIfExists(path.join(hostHome, 'cache', name), path.join(cacheDest, name));
+  }
 }
 
 /**
@@ -160,17 +281,7 @@ async function copyHostAuth(
     if (name === activeProfile) effective = profileConfig;
   }
 
-  const cacheDest = path.join(sandboxHome, 'cache');
-  await fs.mkdir(cacheDest, { recursive: true });
-  await copyIfExists(
-    path.join(hostHome, 'cache', 'models.dev.json'),
-    path.join(cacheDest, 'models.dev.json'),
-  );
-  await copyIfExists(
-    path.join(hostHome, 'cache', 'models-overlay.json'),
-    path.join(cacheDest, 'models-overlay.json'),
-  );
-
+  await copyModelsCache(hostHome, sandboxHome);
   return effective;
 }
 

@@ -30,10 +30,13 @@ export function aggregateCell(cell: ModelCell, results: TaskResult[]): CellResul
       avgCostUsd: 0,
       avgTokensIn: 0,
       avgTokensOut: 0,
+      avgTokensTotal: 0,
+      avgSubagentTokens: 0,
       p50Iterations: 0,
       p50ElapsedMs: 0,
       timeoutRate: 0,
       totalRateLimitRetries: 0,
+      totalSubagentSpawns: 0,
     };
   }
 
@@ -63,6 +66,7 @@ export function aggregateCell(cell: ModelCell, results: TaskResult[]): CellResul
   const editApplyRate =
     editCalls === 0 ? 1 : Math.max(0, Math.min(1, (editCalls - editErrors) / editCalls));
   const traceEval = aggregateTraceEval(results);
+  const totalTokens = finiteSum(results, rowTokenTotal);
 
   const stability = foldTaskStability(byTask);
 
@@ -88,10 +92,16 @@ export function aggregateCell(cell: ModelCell, results: TaskResult[]): CellResul
     avgCostUsd: finiteSum(results, (r) => r.run.costUsd) / attemptCount,
     avgTokensIn: finiteSum(results, (r) => r.run.tokensIn) / attemptCount,
     avgTokensOut: finiteSum(results, (r) => r.run.tokensOut) / attemptCount,
+    avgTokensTotal: totalTokens / attemptCount,
+    avgSubagentTokens: finiteSum(results, (r) => r.tokens?.subagentTotal ?? 0) / attemptCount,
+    tokensPerSolve: passed === 0 ? undefined : totalTokens / passed,
     p50Iterations: median(results.map((r) => r.run.iterations)),
     p50ElapsedMs: median(results.map((r) => r.run.elapsedMs)),
     timeoutRate: timeouts / attemptCount,
     totalRateLimitRetries: counterSum(results, (r) => r.tools.rateLimitRetries),
+    // counterSum treats a missing field (results.jsonl rows written before the
+    // metric existed) as 0 instead of NaN.
+    totalSubagentSpawns: counterSum(results, (r) => r.tools.subagentSpawns),
   };
   if (traceEval) cellResult.traceEval = traceEval;
   return cellResult;
@@ -180,17 +190,26 @@ export function median(values: number[]): number {
     : (sorted[mid] as number);
 }
 
-function counterSum<T>(items: T[], pick: (item: T) => number): number {
+function counterSum<T>(items: T[], pick: (item: T) => number | undefined): number {
   let total = 0;
   for (const item of items) {
     const value = pick(item);
-    if (Number.isSafeInteger(value) && value >= 0) total += value;
+    // undefined covers artifacts written before a counter existed.
+    if (value !== undefined && Number.isSafeInteger(value) && value >= 0) total += value;
   }
   return total;
 }
 
 /** Sum of finite values only; NaN/Infinity contribute 0 so the cell average
  *  never becomes Infinity/NaN from a single malformed row. */
+/**
+ * Every token one attempt moved. Rows written before session-log token
+ * metrics existed fall back to the CLI's fresh-only usage block.
+ */
+export function rowTokenTotal(r: TaskResult): number {
+  return r.tokens?.total ?? r.run.tokensIn + r.run.tokensOut;
+}
+
 function finiteSum<T>(items: T[], pick: (item: T) => number): number {
   let total = 0;
   for (const item of items) {

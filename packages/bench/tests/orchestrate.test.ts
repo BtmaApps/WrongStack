@@ -1,9 +1,16 @@
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { runBenchmark } from '../src/orchestrate.js';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { failureHint, resultSummary, runBenchmark } from '../src/orchestrate.js';
 import type { BenchConfig, BenchSuite, BenchTask } from '../src/types.js';
+
+// runBenchmark sweeps leftover daemons through the OS process list after every
+// task; these tests run fake agents, so keep them off the real process table.
+vi.mock('../src/sandbox-reaper.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../src/sandbox-reaper.js')>()),
+  reapProcessesUnder: async () => 0,
+}));
 
 let dir: string;
 let fakeWstack: string;
@@ -62,6 +69,78 @@ const config: BenchConfig = {
 };
 
 describe('runBenchmark', () => {
+  it('retries a run whose CLI failed to load instead of scoring the model for it', async () => {
+    // First start: the checkout is mid-rebuild and a dist file is missing.
+    const counter = path.join(dir, 'boot-attempts.txt');
+    const flaky = path.join(dir, 'flaky-wstack.js');
+    await fs.writeFile(
+      flaky,
+      [
+        'const fs = require("node:fs");',
+        `const f = ${JSON.stringify(counter)};`,
+        'const n = fs.existsSync(f) ? Number(fs.readFileSync(f, "utf8")) + 1 : 1;',
+        'fs.writeFileSync(f, String(n));',
+        'if (n === 1) {',
+        '  process.stderr.write("Error [ERR_MODULE_NOT_FOUND]: Cannot find module dist/index.js\\n");',
+        '  process.exit(1);',
+        '}',
+        'process.stdout.write(JSON.stringify({ status: "completed", finalText: "ok", usage: { iterations: 2 } }) + "\\n");',
+      ].join('\n'),
+      'utf8',
+    );
+    const progress: string[] = [];
+    const report = await runBenchmark({
+      suite: makeSuite(['t1']),
+      grade: async () => ({ passed: true }),
+      config: { ...config, concurrency: 1, cells: [{ label: 'only', provider: 'p', model: 'm' }] },
+      cliVersion: '1',
+      toolNames: [],
+      nodeBin: process.execPath,
+      wstackEntry: flaky,
+      bootRetryDelayMs: 0,
+      onProgress: (msg) => progress.push(msg),
+    });
+    expect(report.results[0]?.run.status).toBe('completed');
+    expect(report.results[0]?.grade.passed).toBe(true);
+    expect(await fs.readFile(counter, 'utf8')).toBe('2');
+    expect(progress.some((line) => line.includes('CLI failed to load, retry 1/2'))).toBe(true);
+  });
+
+  it('retries a run that crashed booting before its first model request', async () => {
+    // The project SAGE server missed its ping on a loaded machine: no module
+    // error, but no model request was made either.
+    const counter = path.join(dir, 'sage-attempts.txt');
+    const flaky = path.join(dir, 'sage-wstack.js');
+    await fs.writeFile(
+      flaky,
+      [
+        'const fs = require("node:fs");',
+        `const f = ${JSON.stringify(counter)};`,
+        'const n = fs.existsSync(f) ? Number(fs.readFileSync(f, "utf8")) + 1 : 1;',
+        'fs.writeFileSync(f, String(n));',
+        'if (n === 1) {',
+        '  process.stderr.write("Error: SAGE ping exceeded its 5000ms timeout\\n");',
+        '  process.exit(1);',
+        '}',
+        'process.stdout.write(JSON.stringify({ status: "completed", finalText: "ok", usage: { iterations: 2 } }) + "\\n");',
+      ].join('\n'),
+      'utf8',
+    );
+    const report = await runBenchmark({
+      suite: makeSuite(['t1']),
+      grade: async () => ({ passed: true }),
+      config: { ...config, concurrency: 1, cells: [{ label: 'only', provider: 'p', model: 'm' }] },
+      cliVersion: '1',
+      toolNames: [],
+      nodeBin: process.execPath,
+      wstackEntry: flaky,
+      bootRetryDelayMs: 0,
+    });
+    expect(report.results[0]?.run.status).toBe('completed');
+    expect(report.results[0]?.grade.passed).toBe(true);
+    expect(await fs.readFile(counter, 'utf8')).toBe('2');
+  });
+
   it('fans out every (task × cell), grades, and folds into a fingerprinted report', async () => {
     const report = await runBenchmark({
       suite: makeSuite(['t1', 't2']),
@@ -130,5 +209,43 @@ describe('runBenchmark', () => {
         wstackEntry: fakeWstack,
       }),
     ).rejects.toThrow(/no tasks/);
+  });
+});
+
+describe('live progress line', () => {
+  const run = {
+    status: 'completed' as const,
+    finalText: 'ok',
+    iterations: 9,
+    tokensIn: 0,
+    tokensOut: 0,
+    costUsd: 0,
+    elapsedMs: 101_880,
+    exitCode: 0,
+  };
+
+  it('summarises a finished row the way results.jsonl records it', () => {
+    expect(resultSummary(run, { total: 88_556, input: 30_000, cacheRead: 50_000 }, 22)).toBe(
+      'completed · 102s · 9 it · 88.6k tok (cache 63%) · 22 tools',
+    );
+    // A crash reads no transcript: no token part, and cost only when known.
+    expect(resultSummary({ ...run, status: 'crashed', costUsd: 0.0125 }, undefined, 0)).toBe(
+      'crashed · 102s · 9 it · 0 tools · $0.013',
+    );
+  });
+
+  it('names why a row failed in one ANSI-free line', () => {
+    expect(failureHint('agent crashed: exit 1: Error: SAGE ping exceeded\n…15 failed')).toBe(
+      'agent crashed: exit 1: Error: SAGE ping exceeded',
+    );
+    expect(
+      failureHint('…noise\n  \u001b[1m● Bowling › rolls after game over\u001b[22m\n  expect(...)'),
+    ).toBe('● Bowling › rolls after game over');
+    expect(failureHint('…a\r\nFAILED pov_test.py::PovTest::test_x - Assertion\r\n15 failed')).toBe(
+      'FAILED pov_test.py::PovTest::test_x - Assertion',
+    );
+    expect(failureHint('> test\n> jest ./*')).toBe('> jest ./*');
+    expect(failureHint(undefined)).toBe('no detail');
+    expect(failureHint('x'.repeat(300))).toHaveLength(158);
   });
 });

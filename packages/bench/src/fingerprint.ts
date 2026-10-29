@@ -32,6 +32,7 @@ export function computeHarnessFingerprint(input: {
   toolManifestHash?: string | undefined;
   systemPromptHash?: string | undefined;
   configHash?: string | undefined;
+  profile?: 'lean' | 'host' | undefined;
 }): HarnessFingerprint {
   const toolNames = [...input.toolNames].sort();
   // Canonical, order-stable serialization of every field that affects results.
@@ -55,6 +56,7 @@ export function computeHarnessFingerprint(input: {
     ...(input.toolManifestHash ? { toolManifestHash: input.toolManifestHash } : {}),
     ...(input.systemPromptHash ? { systemPromptHash: input.systemPromptHash } : {}),
     ...(input.configHash ? { configHash: input.configHash } : {}),
+    ...(input.profile ? { profile: input.profile } : {}),
     hash,
   };
 }
@@ -63,6 +65,7 @@ export function computeHarnessFingerprint(input: {
 export function fingerprintLabel(fp: HarnessFingerprint): string {
   const parts = [`wrongstack@${fp.cliVersion}`, `fp:${fp.hash}`, `maxIter=${fp.maxIterations}`];
   if (fp.yolo) parts.push('yolo');
+  if (fp.profile) parts.push(`profile=${fp.profile}`);
   return parts.join(' · ');
 }
 

@@ -101,9 +101,15 @@ export function extractPatchPaths(patch: string): Set<string> {
       continue;
     }
     const minus = /^--- (?:a\/)?(.+)$/.exec(line);
-    if (minus && minus[1] !== '/dev/null') paths.add(stripTimestamp(minus[1] as string));
+    if (minus) {
+      const p = stripTimestamp(minus[1] as string);
+      if (p !== '/dev/null') paths.add(p);
+    }
     const plus = /^\+\+\+ (?:b\/)?(.+)$/.exec(line);
-    if (plus && plus[1] !== '/dev/null') paths.add(stripTimestamp(plus[1] as string));
+    if (plus) {
+      const p = stripTimestamp(plus[1] as string);
+      if (p !== '/dev/null') paths.add(p);
+    }
   }
   return paths;
 }
@@ -155,10 +161,10 @@ export function filterPatchSections(
       const nextLine = i + 1 < lines.length ? (lines[i + 1] as string) : undefined;
       const plus = nextLine !== undefined ? /^\+\+\+ (?:b\/)?(.+)$/.exec(nextLine) : null;
       if (minus && plus) {
-        const rawA = minus[1] as string;
-        const rawB = plus[1] as string;
-        const aPath = rawA === '/dev/null' ? '' : stripTimestamp(rawA);
-        const bPath = rawB === '/dev/null' ? '' : stripTimestamp(rawB);
+        const rawA = stripTimestamp(minus[1] as string);
+        const rawB = stripTimestamp(plus[1] as string);
+        const aPath = rawA === '/dev/null' ? '' : rawA;
+        const bPath = rawB === '/dev/null' ? '' : rawB;
         skipping = shouldDrop(aPath, bPath);
         if (!skipping) {
           out.push(line, nextLine as string);

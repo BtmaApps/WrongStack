@@ -87,7 +87,8 @@ export const BENCH_RUN_FLAGS: ReadonlyArray<BenchRunFlag> = [
   {
     name: 'suite',
     flag: '--suite <id>',
-    description: 'Benchmark suite id (`core`, `smoke`, `local`, `polyglot`, or `swebench`).',
+    description:
+      'Benchmark suite id (`core`, `hard`, `smoke`, `local`, `polyglot`, or `swebench`).',
     group: 'suite',
     kind: 'value',
     defaultValue: 'core',
@@ -103,6 +104,14 @@ export const BENCH_RUN_FLAGS: ReadonlyArray<BenchRunFlag> = [
     name: 'languages',
     flag: '--languages <csv>',
     description: 'Comma-separated language list to filter the polyglot suite (e.g. `python,go`).',
+    group: 'suite',
+    kind: 'value',
+  },
+  {
+    name: 'subset',
+    flag: '--subset <path|name>',
+    description:
+      'Polyglot: run only the pinned task ids in a JSON {"ids":[...]} file, or a bundled subset by name (e.g. polyglot-wstack-40).',
     group: 'suite',
     kind: 'value',
   },
@@ -185,6 +194,38 @@ export const BENCH_RUN_FLAGS: ReadonlyArray<BenchRunFlag> = [
     group: 'control',
     kind: 'value',
     defaultValue: '1',
+  },
+  {
+    name: 'harness',
+    flag: '--harness <path>',
+    description:
+      'JSON config deep-merged over the lean harness (e.g. {"systemPrompt":{"variant":"quick"}}) for harness A/B runs. Changes the fingerprint.',
+    group: 'control',
+    kind: 'value',
+  },
+  {
+    name: 'host-profile',
+    flag: '--host-profile',
+    description:
+      'Run your own active profile (skills, companions, memory, brain) instead of the pinned lean harness. Scores are then specific to your setup.',
+    group: 'control',
+    kind: 'boolean',
+  },
+  {
+    name: 'resume',
+    flag: '--resume <run-dir>',
+    description:
+      'Finish a stopped run in its own directory: replays its flags and runs only the units without a row. Refused if the harness fingerprint changed.',
+    group: 'control',
+    kind: 'value',
+  },
+  {
+    name: 'rerun',
+    flag: '--rerun <prefixes>',
+    description:
+      'With --resume: drop recorded rows whose task id starts with one of these comma-separated prefixes (e.g. polyglot/java/) and run them again.',
+    group: 'control',
+    kind: 'value',
   },
   {
     name: 'keep-sandbox',

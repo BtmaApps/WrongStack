@@ -1,7 +1,7 @@
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { aggregateCell } from '../src/aggregate.js';
 import { parseBenchConfig } from '../src/config.js';
 import { runBenchmark } from '../src/orchestrate.js';
@@ -13,6 +13,13 @@ import type {
   ModelCell,
   TaskResult,
 } from '../src/types.js';
+
+// runBenchmark sweeps leftover daemons through the OS process list after every
+// task; these tests run fake agents, so keep them off the real process table.
+vi.mock('../src/sandbox-reaper.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../src/sandbox-reaper.js')>()),
+  reapProcessesUnder: async () => 0,
+}));
 
 const cell: ModelCell = { label: 'cellA', provider: 'p', model: 'm' };
 
@@ -46,7 +53,7 @@ function row(
       exitCode: 0,
     },
     grade: { passed },
-    tools: { totalCalls: 1, editCalls: 1, editErrors: 0, rateLimitRetries: 0 },
+    tools: { totalCalls: 1, editCalls: 1, editErrors: 0, rateLimitRetries: 0, subagentSpawns: 0 },
     ...over,
   };
 }
@@ -144,7 +151,7 @@ describe('markdown report with repeats', () => {
     expect(md).toContain('**Attempts/task:** 2');
     expect(md).toContain('Pass@2');
     expect(md).toContain('Flaky tasks');
-    expect(md).toContain('lower bounds');
+    expect(md).toContain('lower bound');
     expect(md).toContain('## Failures');
     expect(md).toContain('agent timed out');
   });
@@ -159,7 +166,7 @@ describe('markdown report with repeats', () => {
     });
     expect(md).not.toContain('**Attempts/task:**');
     expect(md).not.toContain('## Failures');
-    expect(md).not.toContain('lower bounds');
+    expect(md).not.toContain('lower bound');
   });
 
   it('clamps a long failure detail instead of pasting a whole test log', () => {

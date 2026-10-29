@@ -20,10 +20,28 @@ function result(over: Partial<TaskResult> & { passed: boolean; graded?: boolean 
       ...over.run,
     },
     grade: { passed: over.passed, graded: over.graded },
-    tools: { totalCalls: 5, editCalls: 4, editErrors: 0, rateLimitRetries: 0, ...over.tools },
+    tools: {
+      totalCalls: 5,
+      editCalls: 4,
+      editErrors: 0,
+      rateLimitRetries: 0,
+      subagentSpawns: 0,
+      ...over.tools,
+    },
     traceEval: over.traceEval,
+    ...(over.tokens ? { tokens: over.tokens } : {}),
   };
 }
+
+const tokens = (total: number, subagentTotal = 0) => ({
+  input: total,
+  cacheRead: 0,
+  cacheWrite: 0,
+  output: 0,
+  requests: 1,
+  subagentTotal,
+  total,
+});
 
 describe('median', () => {
   it('handles odd and even lengths', () => {
@@ -34,17 +52,46 @@ describe('median', () => {
 });
 
 describe('aggregateCell', () => {
+  it('prices one solved task with every attempt, failures included', () => {
+    const c = aggregateCell(cell, [
+      result({ taskId: 'a', passed: true, tokens: tokens(30_000, 10_000) }),
+      result({ taskId: 'b', passed: false, tokens: tokens(50_000) }),
+      // Pre-metric row: falls back to the CLI's fresh in+out (1500).
+      result({ taskId: 'c', passed: true }),
+    ]);
+    expect(c.avgTokensTotal).toBeCloseTo((30_000 + 50_000 + 1500) / 3);
+    expect(c.tokensPerSolve).toBeCloseTo((30_000 + 50_000 + 1500) / 2);
+    expect(c.avgSubagentTokens).toBeCloseTo(10_000 / 3);
+  });
+
+  it('leaves tokens-per-solve undefined when nothing passed', () => {
+    const c = aggregateCell(cell, [result({ passed: false, tokens: tokens(1000) })]);
+    expect(c.tokensPerSolve).toBeUndefined();
+  });
+
   it('computes pass rate and edit-apply rate', () => {
     const results = [
       result({
         taskId: 'a',
         passed: true,
-        tools: { totalCalls: 4, editCalls: 4, editErrors: 0, rateLimitRetries: 0 },
+        tools: {
+          totalCalls: 4,
+          editCalls: 4,
+          editErrors: 0,
+          rateLimitRetries: 0,
+          subagentSpawns: 0,
+        },
       }),
       result({
         taskId: 'b',
         passed: false,
-        tools: { totalCalls: 6, editCalls: 6, editErrors: 3, rateLimitRetries: 1 },
+        tools: {
+          totalCalls: 6,
+          editCalls: 6,
+          editErrors: 3,
+          rateLimitRetries: 1,
+          subagentSpawns: 0,
+        },
       }),
     ];
     const agg = aggregateCell(cell, results);
@@ -55,11 +102,46 @@ describe('aggregateCell', () => {
     expect(agg.totalRateLimitRetries).toBe(1);
   });
 
+  it('totals subagent spawns across attempts', () => {
+    const results = [
+      result({
+        taskId: 'a',
+        passed: true,
+        tools: {
+          totalCalls: 2,
+          editCalls: 0,
+          editErrors: 0,
+          rateLimitRetries: 0,
+          subagentSpawns: 2,
+        },
+      }),
+      result({
+        taskId: 'b',
+        passed: true,
+        tools: {
+          totalCalls: 1,
+          editCalls: 0,
+          editErrors: 0,
+          rateLimitRetries: 0,
+          subagentSpawns: 1,
+        },
+      }),
+    ];
+    const agg = aggregateCell(cell, results);
+    expect(agg.totalSubagentSpawns).toBe(3);
+  });
+
   it('reports edit-apply rate of 1 when no edits were attempted', () => {
     const agg = aggregateCell(cell, [
       result({
         passed: true,
-        tools: { totalCalls: 2, editCalls: 0, editErrors: 0, rateLimitRetries: 0 },
+        tools: {
+          totalCalls: 2,
+          editCalls: 0,
+          editErrors: 0,
+          rateLimitRetries: 0,
+          subagentSpawns: 0,
+        },
       }),
     ]);
     expect(agg.editApplyRate).toBe(1);
@@ -189,12 +271,24 @@ describe('aggregateCell', () => {
         taskId: 'flaky-task',
         passed: false,
         run: { status: 'crashed' } as any,
-        tools: { totalCalls: 5, editCalls: 2, editErrors: 5, rateLimitRetries: -3 },
+        tools: {
+          totalCalls: 5,
+          editCalls: 2,
+          editErrors: 5,
+          rateLimitRetries: -3,
+          subagentSpawns: 0,
+        },
       }),
       result({
         taskId: 'flaky-task',
         passed: true,
-        tools: { totalCalls: 3, editCalls: 0, editErrors: 0, rateLimitRetries: 2 },
+        tools: {
+          totalCalls: 3,
+          editCalls: 0,
+          editErrors: 0,
+          rateLimitRetries: 2,
+          subagentSpawns: 0,
+        },
       }),
     ]);
     expect(agg.editApplyRate).toBe(0);

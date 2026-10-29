@@ -13,7 +13,8 @@ free-form answers with an LLM (model-*dependent*). Implemented in
 
 | Suite | Standard | What it measures | Grading |
 |---|---|---|---|
-| `core` | Bundled 6-task Node agent-edit eval (ships with the package) | edit accuracy under tests | Node tests + sentinel so tests cannot be gutted |
+| `core` | Bundled 6-task Node agent-edit eval (ships with the package) | edit accuracy under tests; saturated, so regression and token checks rather than ranking | Node tests + sentinel so tests cannot be gutted |
+| `hard` | Bundled 8-task discriminating eval (spec edge cases, hidden interacting bugs, a behavior-preserving refactor) | separating capable from weak models | Node tests + sentinel |
 | `smoke` | 3 trivial file edits | harness wiring | command + file assertions — not a quality score |
 | `local` | Project-defined manifest tasks | WrongStack-specific regressions | run manifest command and/or file assertions in the workdir |
 | `polyglot` | [Aider polyglot](https://github.com/Aider-AI/polyglot-benchmark) (225 Exercism exercises, 6 languages) | edit accuracy | run the exercise's hidden tests in the workdir (exit code) |
@@ -48,6 +49,24 @@ Because the subprocess is the *whole* harness (real wiring, real tools), the onl
 variable between cells is `--provider`/`--model`. Process isolation also makes the
 run robust to a model crashing, hanging (per-task timeout + tree-kill), or OOMing.
 
+### Harness profile
+
+The isolated home runs the pinned **lean profile** by default: factory defaults,
+your provider definitions (auth only, keys stay encrypted), and
+`LEAN_BENCH_CONFIG` — the `quick` system prompt, the aggressive token-saving
+tier, and MCP, plugins, memory, the prompt library and the explore/skill
+companions off. None of your personal behavior settings cross over, so the same
+suite fingerprints the same on every machine.
+
+`quick` was picked by measurement. On glm-5.3-flash (2026-10-27, `hard`,
+2 attempts) it passed 16/16 at 83.9k tokens per solve; the factory `pro` prompt
+passed 15/16 at 434.8k.
+
+| Flag | Effect |
+|---|---|
+| `--host-profile` | Run your own active profile (skills, companions, brain …). Scores describe your setup; do not publish them. |
+| `--harness <file.json>` | Deep-merge config over the lean profile for a harness A/B, e.g. `{"systemPrompt":{"variant":"pro"}}`. Changes the fingerprint. |
+
 ## Commands
 
 | Usage | Effect |
@@ -69,11 +88,81 @@ wstack bench compare ./bench-results/<baseline> ./bench-results/<candidate>
 `--cell` is `provider/model` or `label=provider/model`, comma-separated. If omitted,
 `bench.config.json` is used when present, otherwise the saved `wstack` provider/model.
 
+## Interactive menu
+
+Type `wstack bench` with nothing after it at a terminal and a numbered menu
+walks through the choices; no flags to learn:
+
+1. **What to compare** — models, system prompts, or both.
+2. **Which benchmark** — Quick check (`core`), Hard, Polyglot 40, or Polyglot full.
+3. **Models** — your last picks, saved model and favorites, or browse every
+   keyed provider; several at once (`1,3`), or type `provider/model`.
+4. **Prompt variants** (when comparing prompts) — `quick` is preselected as the
+   measured cheapest.
+5. **Attempts per task** — 1 for a first look, 3 before sharing scores.
+
+For polyglot it offers to download the exercises (into
+`~/.wrongstack/bench-data/`) and skips languages whose toolchain is missing.
+The summary shows how many agent runs the plan makes before anything starts.
+Answers are remembered, so the next `wstack bench` asks only "Run that again?".
+Each menu run is an ordinary `bench run` with the same flags, fingerprint and
+report; comparing several prompts prints a combined table at the end. `q`
+quits at any step; piped or `--no-interactive` invocations print the usage
+instead.
+
+## Trigger a run yourself (quickstart)
+
+1. **Pick the model** — one flag, no config file:
+
+   ```bash
+   wstack bench run --cell mylabel=zai-coding-plan/glm-5.3-flash
+   ```
+
+   Multiple models in one matrix: `--cell a=provider/model-a,b=provider/model-b`.
+   For a reusable matrix (`maxIterations`, `concurrency`, `timeoutMs`, `repeats`,
+   `cells`), write `bench.config.json` and pass `--models bench.config.json`.
+
+2. **Choose the suite and scope.** Default is `core` (no dataset needed). For the
+   Aider Polyglot suite, clone it once and point at it; `--limit N` caps the task
+   count and `--languages a,b` restricts to languages whose toolchains you have
+   (missing toolchains grade as `—`, they do not fail the run):
+
+   ```bash
+   wstack bench run --suite polyglot --polyglot-dir D:\path\to\polyglot --limit 10 --repeats 3
+   ```
+
+3. **Watch it while it runs.** Every row lands incrementally in
+   `<out>/<timestamp>/results.jsonl` (one JSON row per task × model × attempt:
+   status, `run.tokensIn/tokensOut/costUsd`, iterations, grade, `tools.*`
+   counters) — the run survives interruption with everything it finished.
+
+4. **Read the report.** `<out>/<timestamp>/report.md` carries the leaderboard
+   (Pass@1, and with `--repeats > 1` also Pass@k / All-pass / flaky count), the
+   cost and token columns, the `subagents` column, a per-task matrix and a
+   `## Failures` section. Re-render any time with
+   `wstack bench report <run-dir>`.
+
+5. **Compare two runs** (e.g. your system-prompt variant A vs B):
+
+   ```bash
+   wstack bench compare <baseline-run-dir> <candidate-run-dir>
+   ```
+
+   Run each variant with its own `--harness <file.json>`; the sandbox hashes
+   the behavior-affecting config (including `systemPrompt`) into the report's
+   fingerprint. Matching fingerprints mean the deltas are real; a mismatch
+   prints **Not comparable** and names what changed — so two prompt variants
+   are never silently folded into one score.
+
+Budget guidance: a full Polyglot pass is 225 tasks × repeats. Iterate on
+`--subset polyglot-wstack-40` (a pinned 10-per-language subset) and publish
+from the full set; keep `concurrency` at 2–4.
+
 ### `run` flags
 
 | Flag | Default | Meaning |
 |---|---|---|
-| `--suite <core\|smoke\|local\|polyglot\|swebench>` | `core` | Which suite to run |
+| `--suite <core\|hard\|smoke\|local\|polyglot\|swebench>` | `core` | Which suite to run |
 | `--cell <spec>` | — | Comma-separated model cells; skips the config file |
 | `--models <path>` | `bench.config.json` | Model matrix config (optional when `--cell` or a saved model is set) |
 | `--limit <N>` | all | Cap the number of tasks (cheap smoke runs) |
@@ -83,10 +172,20 @@ wstack bench compare ./bench-results/<baseline> ./bench-results/<candidate>
 | `--manifest <path>` | `<suite-dir>/bench.local.json` | Explicit local manifest path |
 | `--polyglot-dir <path>` | — | **Required for polyglot** — local checkout of polyglot-benchmark |
 | `--languages <a,b>` | all | Restrict polyglot languages (python, javascript, go, rust, cpp, java) |
+| `--subset <path\|name>` | — | Polyglot: only the pinned ids in a `{"ids":[...]}` file, or a bundled subset by name (`polyglot-wstack-40`). A pinned id missing from the checkout is an error |
 | `--dataset-dir <path>` | — | **Required for swebench** — materialized instances |
 | `--docker` | off | Reserved for inline SWE-bench grading (otherwise predictions are exported) |
 | `--repeats <N>` | `1` | Attempts per `(task × model)`. `>1` unlocks Pass@k, All-pass and a flakiness count |
+| `--harness <path>` | — | JSON deep-merged over the lean profile (harness A/B) |
+| `--host-profile` | off | Run your own active profile instead of the lean profile |
+| `--resume <run-dir>` | — | Finish a stopped run in place: replays its `run.json` flags and runs only the units without a row. Refused when the harness fingerprint changed |
 | `--keep-sandbox` | off | Keep the temporary sandbox (workdirs + isolated home) on disk for debugging |
+
+### Watching and stopping a run
+
+Every finished row prints as it lands — `[45/249 · 40 pass] cell · task #2 → PASS  completed · 158s · 20 it · 268.0k tok (cache 69%) · 31 tools` — with a one-line reason under a `FAIL`. While every slot is busy a `⏳` line each minute names the longest-running unit and estimates the time left.
+
+The first Ctrl-C stops cleanly: nothing new starts, in-flight agents and test commands are killed and their rows dropped, and `report.md` covers the finished rows with an **Incomplete** banner (exit code 130). A second Ctrl-C quits at once. Finish the rest with `wstack bench run --resume <run-dir>`, or run `wstack bench` — the menu offers the newest unfinished run first. A run killed outright (no report) still has `run.json`, so `bench report` and `--resume` work on it too.
 
 ## Config (`bench.config.json`)
 
@@ -127,8 +226,18 @@ that flipped pass/fail are listed explicitly.
 ### Report columns
 
 `Pass@1` (graded attempts only) · `Edit-apply` (% of edit/write tool calls that
-applied cleanly — the polyglot edit-accuracy signal) · `$/task` · `tok in/out` ·
-`iters (p50)` · `wall (p50)` · `timeout %` · `429s`.
+applied cleanly — the polyglot edit-accuracy signal) · `$/task` · `tok/task` · `tok/solve` ·
+`iters (p50)` · `wall (p50)` · `timeout %` · `429s` · `subagents` — a cell-wide
+TOTAL of subagent delegation starts (`delegate_started` lifecycle events plus
+admitted `spawn_subagent` tool calls; failed spawns are not counted), summed
+over every task and attempt.
+
+`tok/task` is every token an attempt moved: the full prompt including cache
+reads, plus output, for the leader and every subagent or companion, summed from
+`llm_response.usage` in the session JSONL tree. `tok/solve` divides all tokens
+spent by passing attempts — the price of one solved task, failures included.
+The CLI usage block counts only fresh leader tokens (one measured run: 9.4k
+reported, ~83k actual), so it no longer feeds the token columns.
 
 With `--repeats N` the leaderboard swaps in three more columns: `Pass@N` (tasks
 solved at least once), `All-pass` (tasks solved on every attempt) and
@@ -139,8 +248,8 @@ A `## Failures` section lists every failing `(task × model)` row with its run
 status and the grader's own detail (failing tests, compiler error) or the
 agent's reported error — so a red row is diagnosable without opening
 `results.jsonl`. When any attempt timed out or crashed before printing its usage
-payload, the report says so explicitly: those rows contribute zero tokens and
-zero cost, making the `$/task` and token columns lower bounds. Metrics come from the
+payload, the report says so explicitly: their cost is zero, making `$/task` a
+lower bound (their tokens are still counted from the session log). Metrics come from the
 `--output-json` usage block and the isolated session JSONL (`tool_call_end`,
 `provider_retry`/`provider_error`) — never an LLM. Exported-but-ungraded SWE-bench
 rows show `—` in Pass@1 so they never masquerade as failures.
@@ -167,6 +276,12 @@ This is what `wstack bench run` executes when `--suite` is omitted.
 | `query-parser` | parse a small language (encoding, repeats, typed `limit`) |
 | `rate-limiter` | stateful class with an injectable clock |
 
+`--suite hard` is the discriminating counterpart: eight Node tasks
+(`csv-parser`, `topo-sort`, `weighted-lru`, `json-patch`, `async-pool`,
+`unicode-text`, `config-refactor`, `week-report`) whose tests check exact spec
+edge cases, two or three interacting hidden bugs, or that a refactor preserved
+old quirks. Every shipped fixture fails and a reference solution passes.
+
 `--suite smoke` is the 3-task wiring check (`add-banner` / `rename-export` /
 `strip-todo`). Do not rank models on it.
 
@@ -182,8 +297,18 @@ wstack bench run --suite polyglot --polyglot-dir /path/to/polyglot \
   --models bench.config.json --limit 5
 ```
 
-Requires the language toolchains you want to grade (Python+pytest, Node+npm, Go,
-Rust, …). The `.meta/` reference solution is never copied into the agent's workdir.
+Requires the language toolchains you want to grade: Python+pytest, Node+npm, Go,
+Rust, CMake + a C++17 compiler (Ninja on Windows) and a JDK. The `.meta/`
+reference solution is never copied into the agent's workdir.
+
+Grading follows Aider's protocol. Exercism ships all but the first test
+disabled, so the harness un-skips them before the agent starts and again at
+grading: JS `xtest(` → `test(`, Java `@Disabled(...)` stripped, cpp configured
+with `-DEXERCISM_RUN_ALL_TESTS=1`, Rust `--include-ignored`. Test files and the
+build scaffolding (`CMakeLists.txt`, cpp `test/`, Java `build.gradle`) are
+restored from the template first, so an agent cannot switch tests back off. The
+cpp target name is pinned to the exercise slug because Exercism derives it from
+the directory name, which in a bench workdir is a hashed label.
 
 ## Local
 

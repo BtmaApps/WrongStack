@@ -8,6 +8,7 @@
  */
 
 export { aggregateAll, aggregateCell, median } from './aggregate.js';
+export { inheritedEnv, javaToolchainProblem } from './child-env.js';
 export {
   buildIntraRunInsights,
   type CellDelta,
@@ -42,15 +43,33 @@ export { gradeLocalManifest } from './graders/local-manifest-grader.js';
 export { gradePolyglot } from './graders/polyglot-grader.js';
 export { gradeSwebench, type SwebenchExternalGrade } from './graders/swebench-grader.js';
 export {
+  type BenchProfile,
   behaviorConfigProjection,
   cleanupSandbox,
   createSandbox,
+  LEAN_BENCH_CONFIG,
   prepareWorkdir,
   type Sandbox,
 } from './isolation.js';
-export { type RunBenchmarkOptions, runBenchmark, runFailureReason } from './orchestrate.js';
+export {
+  partitionRerunRows,
+  type RunBenchmarkOptions,
+  runBenchmark,
+  runFailureReason,
+  unitKey,
+} from './orchestrate.js';
 export * from './quality-review.js';
-export { readResultsJsonl, readRunDir, readSummary, writeJsonArtifacts } from './report/json.js';
+export {
+  RUN_MANIFEST_FILE,
+  type RunManifest,
+  readResultsJsonl,
+  readRunDir,
+  readRunManifest,
+  readSummary,
+  runProgress,
+  writeJsonArtifacts,
+  writeRunManifest,
+} from './report/json.js';
 export {
   renderComparisonMarkdown,
   renderMarkdownReport,
@@ -64,12 +83,19 @@ export {
   writePredictionsJsonl,
 } from './report/predictions.js';
 export { mapWithConcurrency, type RunWstackOptions, runWstack } from './runner.js';
-export { readSessionLogEvents, readToolMetrics, type SessionLogEvent } from './session-metrics.js';
+export {
+  readSessionLogEvents,
+  readTokenMetrics,
+  readToolMetrics,
+  type SessionLogEvent,
+} from './session-metrics.js';
+export { loadSubsetIds } from './suites/bundled.js';
 export {
   CORE_TASK_COUNT,
   createCoreSuite,
   resolveCoreSuiteDir,
 } from './suites/core.js';
+export { createHardSuite, HARD_TASK_COUNT, resolveHardSuiteDir } from './suites/hard.js';
 // Suites
 export {
   createLocalManifestSuite,

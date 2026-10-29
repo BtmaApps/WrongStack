@@ -169,4 +169,38 @@ describe('gradeLocalManifest', () => {
     expect(result.detail).toMatch(/^restored modified protected file\(s\): check\.mjs/);
     expect(await fs.readFile(path.join(workdir, 'check.mjs'), 'utf8')).toBe(checker);
   });
+
+  it('rejects symlinks inside workdir that point outside workdir or dangle', async () => {
+    const workdir = await makeWorkdir();
+    const outsideDir = await makeWorkdir();
+    const outsideFile = path.join(outsideDir, 'outside-secret.txt');
+    await fs.writeFile(outsideFile, 'SECRET_TOKEN\n', 'utf8');
+    await fs.symlink(outsideFile, path.join(workdir, 'escaped-link.txt'), 'file');
+    await fs.symlink(
+      path.join(outsideDir, 'missing.txt'),
+      path.join(workdir, 'dangling-link.txt'),
+      'file',
+    );
+
+    const result = await gradeLocalManifest({
+      workdir,
+      task: task(
+        {
+          manifestFile: 'bench.local.json',
+          rawId: 'test',
+          templateHash: 'abc',
+          assertions: [
+            { type: 'file_contains', path: 'escaped-link.txt', text: 'SECRET_TOKEN' },
+            { type: 'file_not_exists', path: 'dangling-link.txt' },
+          ],
+        },
+        workdir,
+      ),
+      timeoutMs: 10_000,
+    });
+
+    expect(result.passed).toBe(false);
+    expect(result.detail).toContain('assertion path escapes workdir: escaped-link.txt');
+    expect(result.detail).toContain('assertion path escapes workdir: dangling-link.txt');
+  });
 });

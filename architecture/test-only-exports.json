@@ -128,6 +128,18 @@
     "packages/agent-catalog/src/role-skills.ts": [
       "BUNDLED_AGENT_SKILLS"
     ],
+    "packages/bench/src/child-env.ts": [
+      "registryJavaHome"
+    ],
+    "packages/bench/src/orchestrate.ts": [
+      "failureHint",
+      "heartbeatLine",
+      "resultSummary"
+    ],
+    "packages/bench/src/suites/polyglot.ts": [
+      "installDependencies",
+      "prepareExercise"
+    ],
     "packages/builtin-plugins/src/perf-command.ts": [
       "buildPerfRunText",
       "parsePerfArgs"
@@ -374,6 +386,11 @@
     ],
     "packages/cli/src/subcommands/handlers/automation-credentials.ts": [
       "resolveAutomationCredentials"
+    ],
+    "packages/cli/src/subcommands/handlers/bench-menu.ts": [
+      "parseIndexList",
+      "plannedAttempts",
+      "planRuns"
     ],
     "packages/cli/src/subcommands/handlers/bench-run-help.ts": [
       "BENCH_RUN_BOOLEAN_FLAG_NAMES",

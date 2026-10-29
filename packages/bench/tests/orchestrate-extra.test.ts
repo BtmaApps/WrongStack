@@ -1,9 +1,16 @@
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { runBenchmark } from '../src/orchestrate.js';
 import type { BenchConfig, BenchSuite, BenchTask } from '../src/types.js';
+
+// runBenchmark sweeps leftover daemons through the OS process list after every
+// task; these tests run fake agents, so keep them off the real process table.
+vi.mock('../src/sandbox-reaper.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../src/sandbox-reaper.js')>()),
+  reapProcessesUnder: async () => 0,
+}));
 
 let dir: string;
 let fakeWstack: string;

@@ -54,7 +54,13 @@ describe('readToolMetrics', () => {
       homeDir: path.join(emptyBase, 'home'),
       workdir: path.join(emptyBase, 'work'),
     });
-    expect(m).toEqual({ totalCalls: 0, editCalls: 0, editErrors: 0, rateLimitRetries: 0 });
+    expect(m).toEqual({
+      totalCalls: 0,
+      editCalls: 0,
+      editErrors: 0,
+      rateLimitRetries: 0,
+      subagentSpawns: 0,
+    });
     await fs.rm(emptyBase, { recursive: true, force: true });
   });
 });

@@ -36,7 +36,7 @@ function result(
       ...over,
     },
     grade: { passed },
-    tools: { totalCalls: 4, editCalls: 1, editErrors: 0, rateLimitRetries: 0 },
+    tools: { totalCalls: 4, editCalls: 1, editErrors: 0, rateLimitRetries: 0, subagentSpawns: 0 },
   };
 }
 

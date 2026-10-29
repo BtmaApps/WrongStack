@@ -1,0 +1,5 @@
+{
+  "name": "weighted-lru",
+  "private": true,
+  "type": "module"
+}

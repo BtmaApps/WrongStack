@@ -101,6 +101,18 @@ describe('ReadlineInputReader.readLine', () => {
     await expect(promise).resolves.toBe('');
   });
 
+  it('readLineCancelable tells Ctrl+C / EOF apart from an empty Enter', async () => {
+    const reader = new ReadlineInputReader({ historyFile: await tempHistoryFile() });
+    const cancelled = reader.readLineCancelable('> ');
+    (await activeInterface()).emit('close');
+    await expect(cancelled).resolves.toBeNull();
+
+    resetReadline();
+    const entered = reader.readLineCancelable('> ');
+    (await activeInterface()).__cb!('');
+    await expect(entered).resolves.toBe('');
+  });
+
   it('persists a non-empty line to the history file', async () => {
     const historyFile = await tempHistoryFile();
     const reader = new ReadlineInputReader({ historyFile });

@@ -1,10 +1,10 @@
 import * as path from 'node:path';
 import {
   type BenchConfig,
+  CORE_CONFIG_DEFAULTS,
   configFromCells,
   loadBenchConfig,
   parseCellList,
-  CORE_CONFIG_DEFAULTS,
   SMOKE_CONFIG_DEFAULTS,
 } from '@wrongstack/bench';
 
@@ -29,7 +29,7 @@ export async function resolveBenchRunConfig(
   input: ResolveBenchRunConfigInput,
 ): Promise<BenchConfig> {
   const suiteDefaults =
-    input.suiteId === 'core'
+    input.suiteId === 'core' || input.suiteId === 'hard'
       ? CORE_CONFIG_DEFAULTS
       : input.suiteId === 'smoke'
         ? SMOKE_CONFIG_DEFAULTS

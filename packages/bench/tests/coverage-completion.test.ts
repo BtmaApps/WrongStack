@@ -3,10 +3,11 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { buildIntraRunInsights } from '../src/compare.js';
 import * as commandRunner from '../src/exec-command.js';
 import { gradeLocalManifest } from '../src/graders/local-manifest-grader.js';
 import { createLocalManifestSuite, type LocalTaskMeta } from '../src/suites/local-manifest.js';
-import type { BenchTask } from '../src/types.js';
+import type { BenchTask, TaskResult } from '../src/types.js';
 import { removeProjectFixtureDirectory } from './helpers/remove-fixture-directory.js';
 
 const tempDirs: string[] = [];
@@ -219,5 +220,65 @@ describe('bench final coverage branches', () => {
     });
     expect(result.passed).toBe(false);
     expect(result.detail).toContain('command timed out');
+  });
+
+  it('preserves the first passing attempt status and detail when repeated attempts both pass', () => {
+    const cell = { label: 'cell-a', provider: 'anthropic' as const, model: 'claude' };
+    const insights = buildIntraRunInsights([
+      {
+        taskId: 'local/t1',
+        cell,
+        attempt: 1,
+        run: {
+          status: 'completed',
+          finalText: 'ok',
+          iterations: 1,
+          tokensIn: 10,
+          tokensOut: 5,
+          costUsd: 0.02,
+          elapsedMs: 100,
+          exitCode: 0,
+        },
+        grade: { passed: true, detail: 'restored modified protected file(s): check.mjs' },
+        tools: {
+          totalCalls: 1,
+          editCalls: 0,
+          editErrors: 0,
+          rateLimitRetries: 0,
+          subagentSpawns: 0,
+        },
+      } satisfies TaskResult,
+      {
+        taskId: 'local/t1',
+        cell,
+        attempt: 2,
+        run: {
+          status: 'timeout',
+          finalText: null,
+          iterations: 1,
+          tokensIn: 10,
+          tokensOut: 5,
+          costUsd: 0.03,
+          elapsedMs: 100,
+          exitCode: null,
+        },
+        grade: { passed: true },
+        tools: {
+          totalCalls: 1,
+          editCalls: 0,
+          editErrors: 0,
+          rateLimitRetries: 0,
+          subagentSpawns: 0,
+        },
+      } satisfies TaskResult,
+    ]);
+
+    expect(insights.matrix['local/t1']?.['cell-a']).toEqual({
+      passed: true,
+      graded: true,
+      status: 'completed',
+      detail: 'restored modified protected file(s): check.mjs',
+      costUsd: 0.05,
+    });
   });
 });

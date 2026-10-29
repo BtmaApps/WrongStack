@@ -10,6 +10,7 @@ import {
   compareReports,
   computeToolManifestHash,
   createCoreSuite,
+  createHardSuite,
   createLocalManifestSuite,
   createPolyglotSuite,
   createSmokeSuite,
@@ -18,21 +19,29 @@ import {
   gradeLocalManifest,
   gradePolyglot,
   gradeSwebench,
+  javaToolchainProblem,
   loadBenchConfig,
+  loadSubsetIds,
   type ModelCell,
   mineTranscript,
+  partitionRerunRows,
+  readResultsJsonl,
   readRunDir,
+  readRunManifest,
   renderComparisonMarkdown,
   renderMarkdownReport,
   reportHeaderLine,
   runBenchmark,
+  type TaskResult,
   writeJsonArtifacts,
   writePredictionsJsonl,
+  writeRunManifest,
 } from '@wrongstack/bench';
 import { color, toErrorMessage } from '@wrongstack/core/utils';
 import { CLI_VERSION } from '../../version.js';
 import type { SubcommandDeps, SubcommandHandler } from '../contracts.js';
 import { benchExperimentCommand, readBenchReviewPolicy } from './bench-experiments.js';
+import { runBenchMenu } from './bench-menu.js';
 import { resolveBenchRunConfig } from './bench-run-config.js';
 
 /**
@@ -65,16 +74,33 @@ export const benchCmd: SubcommandHandler = async (args, deps) => {
     case 'mine':
       return benchMine(rest, deps);
     default:
+      if (sub === undefined && isInteractive(deps)) {
+        return runBenchMenu(deps, {
+          run: (flags, preset) => benchRun([], { ...deps, flags }, preset),
+          resume: (runDir, rerun) =>
+            benchRun([], {
+              ...deps,
+              flags: { resume: runDir, ...(rerun ? { rerun: rerun.join(',') } : {}) },
+            }),
+        });
+      }
       printUsage(deps);
       return sub === undefined ? 0 : 1;
   }
 };
+
+/** The menu needs a person at a real terminal; scripts keep the usage text. */
+function isInteractive(deps: SubcommandDeps): boolean {
+  if (deps.flags?.['no-interactive'] === true || deps.flags?.['no-menu'] === true) return false;
+  return process.stdin.isTTY === true && process.stdout.isTTY === true;
+}
 
 function printUsage(deps: SubcommandDeps): void {
   deps.renderer.write(
     [
       color.bold('wstack bench') + ' — model-independent agentic benchmarks',
       '',
+      '  (none)   At a terminal: step-by-step menu — pick models, prompts and a benchmark',
       '  run      Run a suite across a model matrix and write a report',
       '  compare  Diff two finished run directories (fingerprint-aware)',
       '  mine     Copy a real session transcript and draft trace-eval cases',
@@ -135,7 +161,78 @@ async function resolveWstackEntry(): Promise<string> {
   }
 }
 
-async function benchRun(_args: string[], deps: SubcommandDeps): Promise<number> {
+/** What the interactive menu hands `bench run` beyond plain flags. */
+export interface BenchRunPreset {
+  /** Lean-profile overlay, as `--harness <file>` would load it. */
+  harnessOverlay?: Record<string, unknown> | undefined;
+  /** Called with the finished report and its directory. */
+  onFinished?: ((report: BenchReport, outDir: string) => void) | undefined;
+}
+
+async function benchRun(
+  args: string[],
+  deps: SubcommandDeps,
+  preset?: BenchRunPreset,
+): Promise<number> {
+  const resumeRaw = flagStr(deps, 'resume');
+  const rerunRaw = flagStr(deps, 'rerun');
+  if (!resumeRaw) {
+    if (rerunRaw) {
+      deps.renderer.writeError('--rerun only applies with --resume <run-dir>.');
+      return 1;
+    }
+    return benchRunWith(args, deps, preset, undefined);
+  }
+  // Resume: replay the run's own flags into its own directory, and skip every
+  // unit that already has a row. Only --concurrency may change — it is not
+  // part of the fingerprint.
+  const runDir = path.resolve(deps.cwd, resumeRaw);
+  const manifest = await readRunManifest(runDir);
+  if (!manifest) {
+    deps.renderer.writeError(
+      `${runDir} has no run.json — only runs started by this version can be resumed.`,
+    );
+    return 1;
+  }
+  const concurrency = flagStr(deps, 'concurrency');
+  const flags = { ...manifest.flags, ...(concurrency ? { concurrency } : {}) };
+  let priorResults = await readResultsJsonl(runDir);
+  if (rerunRaw) {
+    const prefixes = rerunRaw
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const { kept, dropped } = partitionRerunRows(priorResults, prefixes);
+    if (dropped.length === 0) {
+      deps.renderer.writeError(`--rerun ${rerunRaw} matches no recorded row in ${runDir}.`);
+      return 1;
+    }
+    deps.renderer.writeInfo(
+      `Running ${dropped.length} recorded row(s) again (task ids starting with ${prefixes.join(', ')}).`,
+    );
+    priorResults = kept;
+  }
+  return benchRunWith(
+    args,
+    { ...deps, flags },
+    { ...preset, harnessOverlay: manifest.harnessOverlay },
+    { runDir, priorResults, fingerprintHash: manifest.fingerprint.hash },
+  );
+}
+
+/** A stopped run being finished in place. */
+interface ResumeTarget {
+  runDir: string;
+  priorResults: TaskResult[];
+  fingerprintHash: string;
+}
+
+async function benchRunWith(
+  _args: string[],
+  deps: SubcommandDeps,
+  preset: BenchRunPreset | undefined,
+  resume: ResumeTarget | undefined,
+): Promise<number> {
   let reviewPolicy: Awaited<ReturnType<typeof readBenchReviewPolicy>> | undefined;
   try {
     if (flagStr(deps, 'review-policy'))
@@ -145,6 +242,28 @@ async function benchRun(_args: string[], deps: SubcommandDeps): Promise<number> 
   } catch (error) {
     deps.renderer.writeError(toErrorMessage(error));
     return 1;
+  }
+  let harnessOverlay: Record<string, unknown> | undefined = preset?.harnessOverlay;
+  const harnessPath = flagStr(deps, 'harness');
+  if (harnessPath) {
+    try {
+      const raw: unknown = JSON.parse(
+        (await fs.readFile(path.resolve(deps.cwd, harnessPath), 'utf8')).replace(/^﻿/, ''),
+      );
+      if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
+        throw new Error('--harness must point at a JSON object');
+      }
+      harnessOverlay = raw as Record<string, unknown>;
+    } catch (error) {
+      deps.renderer.writeError(`--harness: ${toErrorMessage(error)}`);
+      return 1;
+    }
+    if (flagBool(deps, 'host-profile')) {
+      deps.renderer.writeError(
+        '--harness tunes the lean profile and cannot be combined with --host-profile',
+      );
+      return 1;
+    }
   }
   const suiteId = flagStr(deps, 'suite') ?? 'core';
   let limit: number | undefined;
@@ -179,7 +298,7 @@ async function benchRun(_args: string[], deps: SubcommandDeps): Promise<number> 
   // The output directory is computed up front: the SWE-bench grader writes
   // per-instance predictions under it during the run.
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const outDir = path.resolve(deps.cwd, outBase, stamp);
+  const outDir = resume?.runDir ?? path.resolve(deps.cwd, outBase, stamp);
   const predictionsDir = path.join(outDir, 'predictions');
 
   // Build suite + grader.
@@ -193,6 +312,9 @@ async function benchRun(_args: string[], deps: SubcommandDeps): Promise<number> 
   let isSwebench = false;
   if (suiteId === 'core') {
     suite = createCoreSuite();
+    grade = (a) => gradeLocalManifest(a);
+  } else if (suiteId === 'hard') {
+    suite = createHardSuite();
     grade = (a) => gradeLocalManifest(a);
   } else if (suiteId === 'smoke') {
     suite = createSmokeSuite();
@@ -210,7 +332,31 @@ async function benchRun(_args: string[], deps: SubcommandDeps): Promise<number> 
           .map((s) => s.trim())
           .filter(Boolean)
       : undefined;
-    suite = createPolyglotSuite({ polyglotDir: path.resolve(deps.cwd, polyglotDir), languages });
+    let ids: string[] | undefined;
+    const subsetArg = flagStr(deps, 'subset');
+    if (subsetArg) {
+      try {
+        ids = await loadSubsetIds(subsetArg, deps.cwd);
+      } catch (error) {
+        deps.renderer.writeError(toErrorMessage(error));
+        return 1;
+      }
+    }
+    const runsJava =
+      (languages ? languages.includes('java') : true) &&
+      (!ids || ids.some((id) => id.startsWith('polyglot/java/')));
+    const javaProblem = runsJava ? javaToolchainProblem() : undefined;
+    if (javaProblem) {
+      deps.renderer.writeError(
+        `Java tasks cannot be graded: ${javaProblem} Fix it, or leave java out of --languages.`,
+      );
+      return 1;
+    }
+    suite = createPolyglotSuite({
+      polyglotDir: path.resolve(deps.cwd, polyglotDir),
+      languages,
+      ids,
+    });
     grade = (a) => gradePolyglot(a);
   } else if (suiteId === 'swebench') {
     isSwebench = true;
@@ -257,11 +403,56 @@ async function benchRun(_args: string[], deps: SubcommandDeps): Promise<number> 
   // nothing; `writeJsonArtifacts` rewrites the same file at the end.
   await fs.mkdir(outDir, { recursive: true });
   const partialPath = path.join(outDir, 'results.jsonl');
-  await fs.writeFile(partialPath, '', 'utf8');
+  // A resumed run keeps its rows; rewriting them drops a line a hard kill cut short.
+  const kept = resume?.priorResults ?? [];
+  await fs.writeFile(partialPath, kept.map((row) => `${JSON.stringify(row)}\n`).join(''), 'utf8');
+
+  // First Ctrl-C stops cleanly: nothing new starts, in-flight runs are killed
+  // and dropped, and the finished rows are reported and can be resumed. A
+  // second Ctrl-C quits at once.
+  const stop = new AbortController();
+  const onSigint = () => {
+    if (stop.signal.aborted) process.exit(130);
+    deps.renderer.write(
+      `\n${color.amber('■')} Stopping — runs in progress are dropped, finished ones are kept. ` +
+        `${color.dim('Ctrl-C again to quit now.')}\n`,
+    );
+    stop.abort();
+  };
+  process.on('SIGINT', onSigint);
+  const runFlags = Object.fromEntries(
+    Object.entries(deps.flags ?? {}).filter(
+      (entry): entry is [string, string | boolean] =>
+        entry[0] !== 'resume' && (typeof entry[1] === 'string' || typeof entry[1] === 'boolean'),
+    ),
+  );
 
   let report: BenchReport;
   try {
     report = await runBenchmark({
+      signal: stop.signal,
+      priorResults: resume?.priorResults,
+      onStart: async ({ fingerprint, planned }) => {
+        if (resume) {
+          // Rows from another harness would mix two measurements in one score.
+          if (fingerprint.hash !== resume.fingerprintHash) {
+            throw new Error(
+              `the harness changed since this run started (fingerprint ${resume.fingerprintHash} → ${fingerprint.hash}: ` +
+                'a rebuild, a version or a config change). Start a new run instead.',
+            );
+          }
+          return;
+        }
+        await writeRunManifest(outDir, {
+          suite: suite.id,
+          startedAt: new Date().toISOString(),
+          fingerprint,
+          cells: config.cells,
+          planned,
+          flags: runFlags,
+          ...(harnessOverlay ? { harnessOverlay } : {}),
+        });
+      },
       suite,
       grade,
       config,
@@ -274,12 +465,16 @@ async function benchRun(_args: string[], deps: SubcommandDeps): Promise<number> 
       limit,
       hostHomeDir: deps.paths?.globalRoot,
       keepSandbox: flagBool(deps, 'keep-sandbox'),
+      profile: flagBool(deps, 'host-profile') ? 'host' : 'lean',
+      harnessOverlay,
       onProgress: (msg) => deps.renderer.write(color.dim(msg) + '\n'),
       onResult: (result) => fs.appendFile(partialPath, JSON.stringify(result) + '\n', 'utf8'),
     });
   } catch (err) {
     deps.renderer.writeError(toErrorMessage(err));
     return 1;
+  } finally {
+    process.removeListener('SIGINT', onSigint);
   }
 
   await writeJsonArtifacts(outDir, report);
@@ -304,6 +499,16 @@ async function benchRun(_args: string[], deps: SubcommandDeps): Promise<number> 
   }
 
   deps.renderer.writeInfo(`Report written to ${path.join(outDir, 'report.md')}`);
+  const progress = report.progress;
+  if (progress && progress.completed < progress.planned) {
+    deps.renderer.writeInfo(
+      `${progress.completed}/${progress.planned} runs recorded. Finish the rest with: ` +
+        `wstack bench run --resume ${path.relative(deps.cwd, outDir) || outDir}` +
+        `${color.dim('  (or run `wstack bench` and accept the resume prompt)')}`,
+    );
+    return progress.interrupted ? 130 : 1;
+  }
+  preset?.onFinished?.(report, outDir);
 
   // Every single attempt crashed before producing a result — a bad model id,
   // missing credentials, or a broken CLI entry, not a model outcome. Returning
@@ -402,6 +607,10 @@ async function benchList(_args: string[], deps: SubcommandDeps): Promise<number>
   deps.renderer.write(
     '  core      ' +
       color.dim('Bundled 6-task agent-edit eval (hidden tests) — default for `bench run`\n'),
+  );
+  deps.renderer.write(
+    '  hard      ' +
+      color.dim('Bundled 8-task discriminating eval (spec traps, hidden bugs, refactor)\n'),
   );
   deps.renderer.write(
     '  smoke     ' + color.dim('3 trivial file edits — harness wiring only, not a quality score\n'),

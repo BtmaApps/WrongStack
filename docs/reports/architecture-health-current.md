@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-29T00:45:02.053Z
+**Generated:** 2026-10-29T00:46:30.786Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -8,20 +8,20 @@
 | Measure | Value |
 |---|---:|
 | Workspace packages | 45 |
-| Production source files | 5384 |
-| Production source lines | 1190611 |
-| Test files | 4681 |
+| Production source files | 5388 |
+| Production source lines | 1192857 |
+| Test files | 4690 |
 | Workspace dependency edges | 222 |
-| Relative module edges | 16177 |
+| Relative module edges | 16191 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
-| Type-inclusive module cycles | 4 |
+| Type-inclusive module cycles | 5 |
 | Tests without TypeScript test-project coverage | 80 |
 | Tests in multiple TypeScript projects | 0 |
 
 ## Verification result
 
-- 1 unexcepted module cycle(s)
+- 2 unexcepted module cycle(s)
 
 ## Workspace packages
 
@@ -29,10 +29,10 @@
 |---|---:|---:|---|
 | @wrongstack/acp | 54 | 60 | @wrongstack/contracts, @wrongstack/coordination, @wrongstack/core, @wrongstack/primitives |
 | @wrongstack/agent-catalog | 44 | 12 | @wrongstack/contracts, @wrongstack/persistence, @wrongstack/primitives |
-| @wrongstack/bench | 29 | 56 | @wrongstack/core |
+| @wrongstack/bench | 32 | 64 | @wrongstack/core |
 | @wrongstack/builtin-plugins | 33 | 27 | @wrongstack/contracts, @wrongstack/core, @wrongstack/kanban, @wrongstack/primitives |
 | @wrongstack/chronicle | 52 | 43 | @wrongstack/contracts, @wrongstack/core, @wrongstack/persistence, @wrongstack/primitives |
-| @wrongstack/cli | 674 | 672 | @wrongstack/acp, @wrongstack/agent-catalog, @wrongstack/bench, @wrongstack/builtin-plugins, @wrongstack/chronicle, @wrongstack/codebase-index-mcp, @wrongstack/contracts, @wrongstack/coordination, @wrongstack/core, @wrongstack/goal, @wrongstack/hq, @wrongstack/kanban, @wrongstack/kanban-mcp, @wrongstack/mailbox-mcp, @wrongstack/mcp, @wrongstack/persistence, @wrongstack/plug-lsp, @wrongstack/plugins, @wrongstack/primitives, @wrongstack/providers, @wrongstack/requirement-intake, @wrongstack/requirement-intake-mcp, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sage-mcp, @wrongstack/sdd, @wrongstack/security-scanner, @wrongstack/techstack, @wrongstack/telegram, @wrongstack/tools, @wrongstack/tui, @wrongstack/vector-memory, @wrongstack/vibeui, @wrongstack/webui, @wrongstack/webui-hq, @wrongstack/webui-protocol, @wrongstack/webui-server, @wrongstack/worktree, @wrongstack/wrongtrace |
+| @wrongstack/cli | 675 | 673 | @wrongstack/acp, @wrongstack/agent-catalog, @wrongstack/bench, @wrongstack/builtin-plugins, @wrongstack/chronicle, @wrongstack/codebase-index-mcp, @wrongstack/contracts, @wrongstack/coordination, @wrongstack/core, @wrongstack/goal, @wrongstack/hq, @wrongstack/kanban, @wrongstack/kanban-mcp, @wrongstack/mailbox-mcp, @wrongstack/mcp, @wrongstack/persistence, @wrongstack/plug-lsp, @wrongstack/plugins, @wrongstack/primitives, @wrongstack/providers, @wrongstack/requirement-intake, @wrongstack/requirement-intake-mcp, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sage-mcp, @wrongstack/sdd, @wrongstack/security-scanner, @wrongstack/techstack, @wrongstack/telegram, @wrongstack/tools, @wrongstack/tui, @wrongstack/vector-memory, @wrongstack/vibeui, @wrongstack/webui, @wrongstack/webui-hq, @wrongstack/webui-protocol, @wrongstack/webui-server, @wrongstack/worktree, @wrongstack/wrongtrace |
 | @wrongstack/client | 7 | 4 | @wrongstack/webui-protocol |
 | @wrongstack/codebase-index-mcp | 6 | 6 | @wrongstack/contracts, @wrongstack/core, @wrongstack/mcp, @wrongstack/tools |
 | @wrongstack/contracts | 126 | 4 | @wrongstack/kanban, @wrongstack/primitives |
@@ -82,6 +82,7 @@ None.
 ### Type-inclusive
 
 - packages/cli/src/fleet/host.ts ↔ packages/cli/src/fleet/routing.ts
+- packages/cli/src/subcommands/handlers/bench-menu.ts ↔ packages/cli/src/subcommands/handlers/bench.ts
 - packages/contracts/src/kernel/events.ts ↔ packages/contracts/src/kernel/events/brain-events.ts ↔ packages/contracts/src/kernel/events/session-events.ts
 - packages/contracts/src/types/blocks.ts ↔ packages/contracts/src/types/context.ts ↔ packages/contracts/src/types/conversation-state.ts ↔ packages/contracts/src/types/messages.ts ↔ packages/contracts/src/types/provider.ts ↔ packages/contracts/src/types/run-env.ts ↔ packages/contracts/src/types/session-events.ts ↔ packages/contracts/src/types/session-storage.ts ↔ packages/contracts/src/types/session.ts ↔ packages/contracts/src/types/token-counter.ts ↔ packages/contracts/src/types/tool.ts
 - packages/tools/src/codebase-index/codebase-ast-replace-tool.ts ↔ packages/tools/src/codebase-index/codebase-atlas-tool.ts ↔ packages/tools/src/codebase-index/codebase-context-tool.ts ↔ packages/tools/src/codebase-index/codebase-diff-impact-tool.ts ↔ packages/tools/src/codebase-index/codebase-flow-trace-tool.ts ↔ packages/tools/src/codebase-index/codebase-impact-analysis-tool.ts ↔ packages/tools/src/codebase-index/codebase-incoming-calls-tool.ts ↔ packages/tools/src/codebase-index/codebase-index-tool.ts ↔ packages/tools/src/codebase-index/codebase-invariant-check-tool.ts ↔ packages/tools/src/codebase-index/codebase-onboard-tool.ts ↔ packages/tools/src/codebase-index/codebase-outgoing-calls-tool.ts ↔ packages/tools/src/codebase-index/codebase-read-symbol-tool.ts ↔ packages/tools/src/codebase-index/codebase-repo-map-tool.ts ↔ packages/tools/src/codebase-index/codebase-search-tool.ts ↔ packages/tools/src/codebase-index/codebase-skeleton-tool.ts ↔ packages/tools/src/codebase-index/codebase-stats-tool.ts ↔ packages/tools/src/codebase-index/codebase-targeted-test-tool.ts ↔ packages/tools/src/codebase-index/next-step-notes.ts
@@ -143,7 +144,7 @@ None.
 
 ## Exports only tests reference
 
-- 959 runtime exports are referenced by tests and by no other production file.
+- 968 runtime exports are referenced by tests and by no other production file.
 - Green coverage on one of these proves the function works, not that anything calls it.
 - The set is frozen in `architecture/test-only-exports.json`; the check fires on additions.
 

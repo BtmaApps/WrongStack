@@ -56,6 +56,39 @@ describe('renderMarkdownReport — conditionalPct edge cases', () => {
     expect(md).toContain('—');
   });
 
+  it('renders the subagents column as a cell-wide total for every table variant', () => {
+    const md = renderMarkdownReport({
+      suite: 'local',
+      finishedAt: 'now',
+      fingerprint: FP,
+      cells: [
+        {
+          cell: opus,
+          taskCount: 2,
+          gradedCount: 2,
+          passRate: 0.5,
+          editApplyRate: 0.9,
+          avgCostUsd: 0.1,
+          avgTokensIn: 100,
+          avgTokensOut: 50,
+          p50Iterations: 5,
+          p50ElapsedMs: 500,
+          timeoutRate: 0,
+          totalRateLimitRetries: 2,
+          totalSubagentSpawns: 7,
+        },
+      ],
+    });
+    expect(md).toContain(
+      '| Model | Pass@1 | Edit-apply | $/task | tok/task | tok/solve | iters (p50) | wall (p50) | timeout | 429s | subagents |',
+    );
+    const dataLine = md.split('\n').find((l) => l.includes('opus-4.8'));
+    expect(dataLine).toBeDefined();
+    expect(dataLine).toContain('| 7 |');
+    // Legend is rendered for single-attempt runs too, and states the total semantics.
+    expect(md).toContain('Subagents is a cell-wide TOTAL');
+  });
+
   it('shows dash for all conditional columns when traceEval.retrieval is undefined', () => {
     const md = renderMarkdownReport({
       suite: 'local',
@@ -366,7 +399,13 @@ describe('renderMarkdownReport — conditionalPct edge cases', () => {
             graded: true,
             detail: 'long-line-failure-'.repeat(60), // > 800 chars
           },
-          tools: { totalCalls: 0, editCalls: 0, editErrors: 0, rateLimitRetries: 0 },
+          tools: {
+            totalCalls: 0,
+            editCalls: 0,
+            editErrors: 0,
+            rateLimitRetries: 0,
+            subagentSpawns: 0,
+          },
         },
         {
           taskId: 'task-two',
@@ -382,7 +421,13 @@ describe('renderMarkdownReport — conditionalPct edge cases', () => {
             exitCode: 0,
           },
           grade: { passed: true },
-          tools: { totalCalls: 0, editCalls: 0, editErrors: 0, rateLimitRetries: 0 },
+          tools: {
+            totalCalls: 0,
+            editCalls: 0,
+            editErrors: 0,
+            rateLimitRetries: 0,
+            subagentSpawns: 0,
+          },
         },
       ],
     });

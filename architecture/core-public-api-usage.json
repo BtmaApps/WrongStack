@@ -4,9 +4,9 @@
   "rootImportFiles": 0,
   "bySpecifier": {
     "@wrongstack/core/agent": {
-      "files": 484,
+      "files": 485,
       "typeOnly": 367,
-      "runtimeOrMixed": 145
+      "runtimeOrMixed": 146
     },
     "@wrongstack/core/agent-catalog": {
       "files": 1,
@@ -169,9 +169,9 @@
       "runtimeOrMixed": 23
     },
     "@wrongstack/core/utils": {
-      "files": 927,
+      "files": 932,
       "typeOnly": 69,
-      "runtimeOrMixed": 893
+      "runtimeOrMixed": 898
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -733,6 +733,12 @@
       "file": "packages/cli/src/slash-commands/todos.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/cli/src/subcommands/handlers/bench-menu.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/agent",
@@ -10522,6 +10528,12 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
+      "file": "packages/bench/src/orchestrate.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
       "file": "packages/bench/src/runner.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -10540,6 +10552,12 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
+      "file": "packages/bench/tests/bench-coverage-additions.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
       "file": "packages/bench/tests/session-metrics-coverage.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -10553,6 +10571,18 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/bench/tests/session-metrics-sidecar.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/bench/tests/session-metrics-subagents.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/bench/tests/session-metrics-tokens.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -12149,6 +12179,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/src/subcommands/handlers/automation.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/src/subcommands/handlers/bench-menu.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

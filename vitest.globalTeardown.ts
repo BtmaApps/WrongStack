@@ -45,14 +45,20 @@ function isBunVitestCoordinator(commandLine: string): boolean {
 
 const ROOT_FLAG = /--project-(?:root|dir)[\s=]+("[^"]+"|\S+)/u;
 
-function isTempRooted(commandLine: string): boolean {
+/** `createSandbox`'s mkdtemp prefix in `@wrongstack/bench`. */
+const BENCH_SANDBOX_PREFIX = 'wstack-bench-';
+
+export function isTempRooted(commandLine: string): boolean {
   if (!commandLine.includes('project-server')) return false;
   const match = ROOT_FLAG.exec(commandLine);
   if (!match?.[1]) return false;
   const root = path.resolve(match[1].replace(/^"|"$/gu, ''));
   const tmp = path.resolve(os.tmpdir());
   const rel = path.relative(tmp, root);
-  return rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel);
+  if (rel === '' || rel.startsWith('..') || path.isAbsolute(rel)) return false;
+  // A `wstack bench run` sandbox belongs to a live benchmark, which removes it
+  // itself; reaping its daemons mid-run broke the agent runs in progress.
+  return !rel.split(/[\\/]/u)[0]?.startsWith(BENCH_SANDBOX_PREFIX);
 }
 
 async function listRuntimeProcesses(): Promise<Candidate[]> {

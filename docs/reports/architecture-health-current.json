@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-29T00:45:02.053Z",
+  "generatedAt": "2026-10-29T00:46:30.786Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,20 +12,20 @@
   },
   "summary": {
     "packages": 45,
-    "sourceFiles": 5384,
-    "testFiles": 4681,
-    "sourceLines": 1190611,
+    "sourceFiles": 5388,
+    "testFiles": 4690,
+    "sourceLines": 1192857,
     "workspaceEdges": 222,
-    "moduleEdges": 16177,
+    "moduleEdges": 16191,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
-    "typeModuleCycles": 4,
+    "typeModuleCycles": 5,
     "testsWithoutTypecheck": 80,
     "testsWithMultipleTypechecks": 0,
-    "testOnlyExports": 959
+    "testOnlyExports": 968
   },
   "errors": [
-    "1 unexcepted module cycle(s)"
+    "2 unexcepted module cycle(s)"
   ],
   "packageCycles": [],
   "coreAreas": {
@@ -141,8 +141,8 @@
     {
       "name": "@wrongstack/bench",
       "dir": "packages/bench",
-      "sourceFiles": 29,
-      "testFiles": 56,
+      "sourceFiles": 32,
+      "testFiles": 64,
       "workspaceDependencies": [
         "@wrongstack/core"
       ],
@@ -155,7 +155,7 @@
         {
           "path": "packages/bench/tsconfig.test.json",
           "error": null,
-          "testFiles": 56
+          "testFiles": 64
         }
       ]
     },
@@ -210,8 +210,8 @@
     {
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
-      "sourceFiles": 674,
-      "testFiles": 672,
+      "sourceFiles": 675,
+      "testFiles": 673,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/agent-catalog",
@@ -262,7 +262,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 672
+          "testFiles": 673
         }
       ]
     },
@@ -1234,6 +1234,13 @@
       {
         "kind": "type-module-cycle",
         "members": [
+          "packages/cli/src/subcommands/handlers/bench-menu.ts",
+          "packages/cli/src/subcommands/handlers/bench.ts"
+        ]
+      },
+      {
+        "kind": "type-module-cycle",
+        "members": [
           "packages/contracts/src/kernel/events.ts",
           "packages/contracts/src/kernel/events/brain-events.ts",
           "packages/contracts/src/kernel/events/session-events.ts"
@@ -1285,6 +1292,13 @@
       "ARCH-CYCLE-TYPE-12"
     ],
     "unexcepted": [
+      {
+        "kind": "type-module-cycle",
+        "members": [
+          "packages/cli/src/subcommands/handlers/bench-menu.ts",
+          "packages/cli/src/subcommands/handlers/bench.ts"
+        ]
+      },
       {
         "kind": "type-module-cycle",
         "members": [
@@ -2243,6 +2257,18 @@
         ]
       },
       {
+        "file": "packages/bench/tests/bench-coverage-additions.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/bench/tests/child-env.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/bench/tests/compare.test.ts",
         "projects": [
           "root-node"
@@ -2304,6 +2330,12 @@
       },
       {
         "file": "packages/bench/tests/grade-authority.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/bench/tests/hard-suite.test.ts",
         "projects": [
           "root-node"
         ]
@@ -2399,6 +2431,12 @@
         ]
       },
       {
+        "file": "packages/bench/tests/polyglot-prepare.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/bench/tests/polyglot-suite.test.ts",
         "projects": [
           "root-node"
@@ -2465,6 +2503,12 @@
         ]
       },
       {
+        "file": "packages/bench/tests/sandbox-reaper.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/bench/tests/session-metrics-coverage.test.ts",
         "projects": [
           "root-node"
@@ -2489,6 +2533,18 @@
         ]
       },
       {
+        "file": "packages/bench/tests/session-metrics-subagents.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/bench/tests/session-metrics-tokens.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/bench/tests/session-metrics.test.ts",
         "projects": [
           "root-node"
@@ -2496,6 +2552,12 @@
       },
       {
         "file": "packages/bench/tests/smoke-suite.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/bench/tests/stop-resume.test.ts",
         "projects": [
           "root-node"
         ]
@@ -3312,6 +3374,12 @@
       },
       {
         "file": "packages/cli/tests/bench-experiments.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/bench-menu.test.ts",
         "projects": [
           "root-node"
         ]
@@ -31135,6 +31203,30 @@
       "name": "BUNDLED_AGENT_SKILLS"
     },
     {
+      "file": "packages/bench/src/child-env.ts",
+      "name": "registryJavaHome"
+    },
+    {
+      "file": "packages/bench/src/orchestrate.ts",
+      "name": "failureHint"
+    },
+    {
+      "file": "packages/bench/src/orchestrate.ts",
+      "name": "heartbeatLine"
+    },
+    {
+      "file": "packages/bench/src/orchestrate.ts",
+      "name": "resultSummary"
+    },
+    {
+      "file": "packages/bench/src/suites/polyglot.ts",
+      "name": "installDependencies"
+    },
+    {
+      "file": "packages/bench/src/suites/polyglot.ts",
+      "name": "prepareExercise"
+    },
+    {
       "file": "packages/builtin-plugins/src/perf-command.ts",
       "name": "buildPerfRunText"
     },
@@ -31577,6 +31669,18 @@
     {
       "file": "packages/cli/src/subcommands/handlers/automation-credentials.ts",
       "name": "resolveAutomationCredentials"
+    },
+    {
+      "file": "packages/cli/src/subcommands/handlers/bench-menu.ts",
+      "name": "parseIndexList"
+    },
+    {
+      "file": "packages/cli/src/subcommands/handlers/bench-menu.ts",
+      "name": "plannedAttempts"
+    },
+    {
+      "file": "packages/cli/src/subcommands/handlers/bench-menu.ts",
+      "name": "planRuns"
     },
     {
       "file": "packages/cli/src/subcommands/handlers/bench-run-help.ts",

@@ -9,7 +9,13 @@ let base: string;
 let homeDir: string;
 let workdir: string;
 
-const EMPTY = { totalCalls: 0, editCalls: 0, editErrors: 0, rateLimitRetries: 0 };
+const EMPTY = {
+  totalCalls: 0,
+  editCalls: 0,
+  editErrors: 0,
+  rateLimitRetries: 0,
+  subagentSpawns: 0,
+};
 
 async function sessionsDir(): Promise<string> {
   return resolveWstackPaths({ projectRoot: workdir, globalRoot: homeDir }).projectSessions;
@@ -62,7 +68,13 @@ describe('readToolMetrics edge cases', () => {
     ].join('\n');
     await fs.writeFile(path.join(d, 'a.jsonl'), lines);
     const m = await readToolMetrics({ homeDir, workdir });
-    expect(m).toEqual({ totalCalls: 4, editCalls: 2, editErrors: 1, rateLimitRetries: 2 });
+    expect(m).toEqual({
+      totalCalls: 4,
+      editCalls: 2,
+      editErrors: 1,
+      rateLimitRetries: 2,
+      subagentSpawns: 0,
+    });
   });
 
   it('picks the newest of several jsonl files', async () => {
@@ -99,7 +111,13 @@ describe('readToolMetrics edge cases', () => {
     );
 
     const m = await readToolMetrics({ homeDir, workdir });
-    expect(m).toEqual({ totalCalls: 2, editCalls: 1, editErrors: 1, rateLimitRetries: 1 });
+    expect(m).toEqual({
+      totalCalls: 2,
+      editCalls: 1,
+      editErrors: 1,
+      rateLimitRetries: 1,
+      subagentSpawns: 0,
+    });
   });
 
   it('chooses the newest log across flat and sharded layouts', async () => {
@@ -123,7 +141,13 @@ describe('readToolMetrics edge cases', () => {
     );
 
     const m = await readToolMetrics({ homeDir, workdir });
-    expect(m).toEqual({ totalCalls: 2, editCalls: 2, editErrors: 0, rateLimitRetries: 1 });
+    expect(m).toEqual({
+      totalCalls: 2,
+      editCalls: 2,
+      editErrors: 0,
+      rateLimitRetries: 1,
+      subagentSpawns: 0,
+    });
   });
 
   it('does not count non-429 provider failures as rate-limit retries', async () => {

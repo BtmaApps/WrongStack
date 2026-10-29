@@ -2,6 +2,8 @@ import { type ChildProcess, spawn } from 'node:child_process';
 import { performance } from 'node:perf_hooks';
 import { cliSpawnArgs } from '@wrongstack/core/utils';
 import { settleWin32Kill } from '@wrongstack/core/utils/tree-kill';
+import { inheritedEnv } from './child-env.js';
+import { BENCH_DAEMON_IDLE_ENV } from './sandbox-reaper.js';
 import type { ModelCell, RawRun } from './types.js';
 
 /** Everything needed to run one (task × cell) subprocess. */
@@ -21,6 +23,8 @@ export interface RunWstackOptions {
   env?: NodeJS.ProcessEnv | undefined;
   /** Extra CLI args appended after the standard set (Phase 2 hooks). */
   extraArgs?: string[] | undefined;
+  /** Kills the agent's process tree when the bench is stopped. */
+  signal?: AbortSignal | undefined;
 }
 
 /**
@@ -47,6 +51,9 @@ export async function runWstack(opts: RunWstackOptions): Promise<RawRun> {
     '--yolo',
     '--no-models-refresh',
     '--skip-index',
+    // The sandbox config is the harness (lean `quick`, or a `--harness` A/B
+    // variant); without this the CLI's headless default would pin `quick` over it.
+    '--host-profile',
     ...(opts.extraArgs ?? []),
   ]);
 
@@ -56,7 +63,12 @@ export async function runWstack(opts: RunWstackOptions): Promise<RawRun> {
     try {
       child = spawn(opts.nodeBin, args, {
         cwd: opts.workdir,
-        env: { ...process.env, ...opts.env, WRONGSTACK_HOME: opts.homeDir },
+        env: {
+          ...inheritedEnv(),
+          ...BENCH_DAEMON_IDLE_ENV,
+          ...opts.env,
+          WRONGSTACK_HOME: opts.homeDir,
+        },
         // windowsHide + no detached: per the repo spawn convention, detached on
         // win32 voids CREATE_NO_WINDOW and pops visible consoles for grandchildren.
         windowsHide: true,
@@ -81,6 +93,9 @@ export async function runWstack(opts: RunWstackOptions): Promise<RawRun> {
       timedOut = true;
       treeKill(child);
     }, opts.timeoutMs);
+    const onAbort = () => treeKill(child);
+    if (opts.signal?.aborted) onAbort();
+    else opts.signal?.addEventListener('abort', onAbort, { once: true });
 
     // Decode across chunks: `d.toString()` per Buffer turned a multibyte
     // character split between two pipe reads into U+FFFD pairs inside the
@@ -99,6 +114,7 @@ export async function runWstack(opts: RunWstackOptions): Promise<RawRun> {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
+      opts.signal?.removeEventListener('abort', onAbort);
       resolve(run);
     };
 

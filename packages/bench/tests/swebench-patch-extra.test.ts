@@ -80,4 +80,35 @@ describe('filterPatchExcludingPaths — non-git unified diffs', () => {
     });
     expect(pairs).toEqual([['old.py', 'new.py']]);
   });
+
+  it('ignores /dev/null with a trailing tab+timestamp in extractPatchPaths and filterPatchExcludingPaths (F781)', async () => {
+    const { filterPatchExcludingPaths } = await import('../src/suites/swebench-patch.js');
+    const testPatch = [
+      '--- /dev/null\t1970-01-01 00:00:00.000000000 +0000',
+      '+++ b/tests/test_new.py\t2026-01-01 12:00:00.000000000 +0000',
+      '@@ -0,0 +1,2 @@',
+      '+def test_new():',
+      '+    assert True',
+    ].join('\n');
+    const testPaths = extractPatchPaths(testPatch);
+    expect(testPaths.has('/dev/null')).toBe(false);
+    expect(testPaths.has('tests/test_new.py')).toBe(true);
+
+    const modelPatch = [
+      '--- /dev/null\t1970-01-01 00:00:00.000000000 +0000',
+      '+++ b/src/new_helper.py\t2026-01-01 12:00:00.000000000 +0000',
+      '@@ -0,0 +1,2 @@',
+      '+def helper():',
+      '+    return 42',
+      '--- /dev/null\t1970-01-01 00:00:00.000000000 +0000',
+      '+++ b/tests/test_new.py\t2026-01-01 12:00:00.000000000 +0000',
+      '@@ -0,0 +1,2 @@',
+      '+def test_new():',
+      '+    assert True',
+    ].join('\n');
+    const filtered = filterPatchExcludingPaths(modelPatch, testPaths);
+    expect(filtered).toContain('src/new_helper.py');
+    expect(filtered).toContain('return 42');
+    expect(filtered).not.toContain('tests/test_new.py');
+  });
 });

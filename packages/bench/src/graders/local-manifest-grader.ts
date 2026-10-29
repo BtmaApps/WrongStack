@@ -9,6 +9,7 @@ export async function gradeLocalManifest(opts: {
   workdir: string;
   task: BenchTask;
   timeoutMs: number;
+  signal?: AbortSignal | undefined;
 }): Promise<GradeResult> {
   const meta = opts.task.meta as never as LocalTaskMeta;
   // The agent works in this same directory: grade with the checker it was
@@ -26,7 +27,7 @@ export async function gradeLocalManifest(opts: {
 }
 
 async function gradeWorkdir(
-  opts: { workdir: string; task: BenchTask; timeoutMs: number },
+  opts: { workdir: string; task: BenchTask; timeoutMs: number; signal?: AbortSignal | undefined },
   meta: LocalTaskMeta,
 ): Promise<GradeResult> {
   const failures: string[] = [];
@@ -40,6 +41,7 @@ async function gradeWorkdir(
       shell: meta.grader.shell,
       maxBufferBytes: meta.grader.maxBufferBytes,
       env: meta.grader.env,
+      signal: opts.signal,
     });
 
     if (result.timedOut) {
@@ -76,7 +78,7 @@ async function checkAssertion(
   workdir: string,
   assertion: LocalAssertion,
 ): Promise<string | undefined> {
-  const target = resolveInside(workdir, assertion.path);
+  const target = await resolveInside(workdir, assertion.path);
   if (!target.ok) return target.error;
 
   switch (assertion.type) {
@@ -124,10 +126,10 @@ async function readText(
   }
 }
 
-function resolveInside(
+async function resolveInside(
   root: string,
   rel: string,
-): { ok: true; path: string } | { ok: false; error: string } {
+): Promise<{ ok: true; path: string } | { ok: false; error: string }> {
   if (path.isAbsolute(rel)) {
     return { ok: false, error: `absolute assertion paths are not allowed: ${rel}` };
   }
@@ -136,6 +138,47 @@ function resolveInside(
   const relative = path.relative(rootAbs, target);
   if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
     return { ok: false, error: `assertion path escapes workdir: ${rel}` };
+  }
+  let realpathFn: typeof fs.realpath | undefined;
+  let lstatFn: typeof fs.lstat | undefined;
+  try {
+    realpathFn = fs.realpath;
+    lstatFn = fs.lstat;
+  } catch {
+    realpathFn = undefined;
+    lstatFn = undefined;
+  }
+  if (typeof realpathFn === 'function') {
+    const canonicalRoot = await realpathFn(rootAbs).catch(() => undefined);
+    if (canonicalRoot) {
+      for (let probe = target; ; probe = path.dirname(probe)) {
+        let canonical: string;
+        try {
+          canonical = await realpathFn(probe);
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code !== 'ENOENT' || probe === rootAbs) {
+            return { ok: false, error: `assertion path escapes workdir: ${rel}` };
+          }
+          if (typeof lstatFn === 'function') {
+            const entry = await lstatFn(probe).catch(() => undefined);
+            if (entry?.isSymbolicLink()) {
+              return { ok: false, error: `assertion path escapes workdir: ${rel}` };
+            }
+          }
+          continue;
+        }
+        const resolved = path.resolve(canonical, path.relative(probe, target));
+        const canonicalRelative = path.relative(canonicalRoot, resolved);
+        if (
+          canonicalRelative === '..' ||
+          canonicalRelative.startsWith(`..${path.sep}`) ||
+          path.isAbsolute(canonicalRelative)
+        ) {
+          return { ok: false, error: `assertion path escapes workdir: ${rel}` };
+        }
+        break;
+      }
+    }
   }
   return { ok: true, path: target };
 }

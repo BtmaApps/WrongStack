@@ -76,7 +76,7 @@ describe('renderMarkdownReport', () => {
       suite: 'polyglot' as const,
       finishedAt: 'now',
       fingerprint: FP,
-      cells: [cell({ cell: opus, avgTokensIn: 12_500, avgTokensOut: 500, p50ElapsedMs: 250 })],
+      cells: [cell({ cell: opus, avgTokensTotal: 12_500, tokensPerSolve: 500, p50ElapsedMs: 250 })],
     };
     const md = renderMarkdownReport(report);
     expect(md).toMatch(/12\.5k/); // fmtK >= 1000
@@ -153,7 +153,7 @@ describe('writeJsonArtifacts / readSummary', () => {
       exitCode: 0,
     },
     grade: { passed: true },
-    tools: { totalCalls: 5, editCalls: 2, editErrors: 0, rateLimitRetries: 0 },
+    tools: { totalCalls: 5, editCalls: 2, editErrors: 0, rateLimitRetries: 0, subagentSpawns: 0 },
   });
 
   it('writes results.jsonl and summary.json then reads the summary back', async () => {

@@ -1,5 +1,7 @@
+import * as os from 'node:os';
+import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { hasCompetingVitestRun } from '../../../../vitest.globalTeardown.js';
+import { hasCompetingVitestRun, isTempRooted } from '../../../../vitest.globalTeardown.js';
 
 describe('Vitest daemon cleanup concurrency guard', () => {
   it('recognizes Bun coordinators launched through the package runner', () => {
@@ -46,5 +48,16 @@ describe('Vitest daemon cleanup concurrency guard', () => {
     expect(
       hasCompetingVitestRun([{ pid: 100, commandLine: 'bun --bun run vitest run' }], 100),
     ).toBe(false);
+  });
+
+  it('reaps temp-rooted test daemons but spares a live bench sandbox', () => {
+    const daemon = (root: string) =>
+      `node packages/kanban/dist/project-server.js --project-root "${root}"`;
+    const tmp = os.tmpdir();
+    expect(isTempRooted(daemon(path.join(tmp, 'kanban-test-abc')))).toBe(true);
+    expect(isTempRooted(daemon(path.join(tmp, 'wstack-bench-Xy12', 'work', 'cell__task')))).toBe(
+      false,
+    );
+    expect(isTempRooted(daemon(path.join(path.parse(tmp).root, 'repo')))).toBe(false);
   });
 });

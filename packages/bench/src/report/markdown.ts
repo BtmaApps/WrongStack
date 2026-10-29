@@ -18,9 +18,10 @@ import type { BenchReport, CellResult, HarnessFingerprint, TaskResult } from '..
 export function renderMarkdownReport(
   report: Pick<BenchReport, 'suite' | 'finishedAt' | 'fingerprint' | 'cells'> & {
     results?: TaskResult[] | undefined;
+    progress?: BenchReport['progress'];
   },
 ): string {
-  const { suite, finishedAt, fingerprint, cells } = report;
+  const { suite, finishedAt, fingerprint, cells, progress } = report;
   const lines: string[] = [];
 
   lines.push(`# WrongStack benchmark — ${suite}`);
@@ -28,6 +29,24 @@ export function renderMarkdownReport(
   lines.push(`**Harness:** ${fingerprintLabel(fingerprint)}`);
   lines.push(`**Finished:** ${finishedAt}`);
   lines.push(`**Tasks/cell:** ${cells[0]?.taskCount ?? 0}`);
+  if (progress && progress.completed < progress.planned) {
+    lines.push('');
+    lines.push(
+      `> **Incomplete:** ${progress.completed}/${progress.planned} runs recorded` +
+        `${progress.interrupted ? ' (stopped before the end)' : ''}. Scores cover the recorded runs ` +
+        'only and are not comparable to a full run. Finish it with `wstack bench run --resume <this directory>`.',
+    );
+  }
+  const lastChance = (report.results ?? []).filter((row) => row.lastChance);
+  if (lastChance.length > 0) {
+    const rescued = lastChance.filter((row) => row.lastChance?.passed).length;
+    lines.push('');
+    lines.push(
+      `> **Last chance:** ${lastChance.length} failed run(s) were graded again after the run, ` +
+        `without a new agent run; ${rescued} passed the second grade and count as passes. ` +
+        'A pass there points at the harness (toolchain, flaky grader), not the model.',
+    );
+  }
   const repeats = Math.max(1, ...cells.map((c) => c.repeats ?? 1));
   if (repeats > 1) {
     lines.push(`**Attempts/task:** ${repeats} (pass@1 is measured over every attempt)`);
@@ -47,19 +66,19 @@ export function renderMarkdownReport(
     lines.push(
       '| Model | Pass@1 | Pass@' +
         repeats +
-        ' | All-pass | Flaky tasks | Edit-apply | $/task | tok in/out | iters (p50) | wall (p50) | timeout | 429s |',
+        ' | All-pass | Flaky tasks | Edit-apply | $/task | tok/task | tok/solve | iters (p50) | wall (p50) | timeout | 429s | subagents |',
     );
-    lines.push('|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|');
+    lines.push('|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|');
   } else if (hasTraceEval) {
     lines.push(
-      '| Model | Pass@1 | Retrieval | Recall (given retrieval) | Edit application (given recall) | Tool edit-apply | $/task | tok in/out | iters (p50) | wall (p50) | timeout | 429s |',
+      '| Model | Pass@1 | Retrieval | Recall (given retrieval) | Edit application (given recall) | Tool edit-apply | $/task | tok/task | tok/solve | iters (p50) | wall (p50) | timeout | 429s | subagents |',
     );
-    lines.push('|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|');
+    lines.push('|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|');
   } else {
     lines.push(
-      '| Model | Pass@1 | Edit-apply | $/task | tok in/out | iters (p50) | wall (p50) | timeout | 429s |',
+      '| Model | Pass@1 | Edit-apply | $/task | tok/task | tok/solve | iters (p50) | wall (p50) | timeout | 429s | subagents |',
     );
-    lines.push('|---|---:|---:|---:|---:|---:|---:|---:|---:|');
+    lines.push('|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|');
   }
   for (const c of sorted) {
     lines.push(showRepeats ? renderRepeatRow(c) : renderRow(c, hasTraceEval));
@@ -73,11 +92,22 @@ export function renderMarkdownReport(
     );
     lines.push('');
   }
+  lines.push(
+    '_tok/task is every token an attempt moved — full prompt including cache reads plus output, leader and ' +
+      'subagents/companions together. tok/solve is all tokens spent divided by passing attempts: the price of ' +
+      'one solved task, failures included. Lower is better._',
+  );
+  lines.push('');
+  lines.push(
+    '_Subagents is a cell-wide TOTAL of delegation starts (`delegate_started` events plus `spawn_subagent` tool calls) ' +
+      'summed over every task and attempt — not a per-task average._',
+  );
+  lines.push('');
   const incomplete = cells.reduce((total, c) => total + (c.incompleteCount ?? 0), 0);
   if (incomplete > 0) {
     lines.push(
-      `> ⚠ ${incomplete} attempt(s) timed out or crashed before reporting usage. Their tokens and cost ` +
-        'are counted as zero, so the $/task and token columns are lower bounds.',
+      `> ⚠ ${incomplete} attempt(s) timed out or crashed before reporting usage. Their cost is counted as ` +
+        'zero, so $/task is a lower bound (token columns come from the session log and still count them).',
     );
     lines.push('');
   }
@@ -150,8 +180,8 @@ function renderCostQuality(cells: CellResult[]): string[] {
   const lines: string[] = [
     '## Cost vs quality',
     '',
-    '| Model | Pass@1 | $/task | Pass per $ |',
-    '|---|---:|---:|---:|',
+    '| Model | Pass@1 | $/task | Pass per $ | tok/solve |',
+    '|---|---:|---:|---:|---:|',
   ];
   const ranked = [...cells].sort((a, b) => passPerDollar(b) - passPerDollar(a));
   for (const c of ranked) {
@@ -160,7 +190,7 @@ function renderCostQuality(cells: CellResult[]): string[] {
     const efficiency =
       finiteCost && c.avgCostUsd > 0 && c.gradedCount > 0 ? passPerDollar(c).toFixed(1) : '—';
     lines.push(
-      `| ${markdownCell(c.cell.label)} | ${passCell} | $${usd(c.avgCostUsd)} | ${efficiency} |`,
+      `| ${markdownCell(c.cell.label)} | ${passCell} | $${usd(c.avgCostUsd)} | ${efficiency} | ${c.tokensPerSolve === undefined ? '—' : fmtK(c.tokensPerSolve)} |`,
     );
   }
   lines.push('');
@@ -366,11 +396,13 @@ function renderRow(c: CellResult, hasTraceEval: boolean): string {
     ...traceCells,
     pct(c.editApplyRate),
     `$${usd(c.avgCostUsd)}`,
-    `${fmtK(c.avgTokensIn)}/${fmtK(c.avgTokensOut)}`,
+    fmtK(c.avgTokensTotal ?? c.avgTokensIn + c.avgTokensOut),
+    c.tokensPerSolve === undefined ? '—' : fmtK(c.tokensPerSolve),
     fmtN(c.p50Iterations),
     fmtMs(c.p50ElapsedMs),
     pct(c.timeoutRate),
     String(c.totalRateLimitRetries),
+    String(c.totalSubagentSpawns ?? 0),
     '',
   ]
     .join(' | ')
@@ -395,11 +427,13 @@ function renderRepeatRow(c: CellResult): string {
     `${c.flakyTaskCount ?? 0}/${c.taskCount}`,
     pct(c.editApplyRate),
     `$${usd(c.avgCostUsd)}`,
-    `${fmtK(c.avgTokensIn)}/${fmtK(c.avgTokensOut)}`,
+    fmtK(c.avgTokensTotal ?? c.avgTokensIn + c.avgTokensOut),
+    c.tokensPerSolve === undefined ? '—' : fmtK(c.tokensPerSolve),
     fmtN(c.p50Iterations),
     fmtMs(c.p50ElapsedMs),
     pct(c.timeoutRate),
     String(c.totalRateLimitRetries),
+    String(c.totalSubagentSpawns ?? 0),
     '',
   ]
     .join(' | ')

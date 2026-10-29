@@ -1,5 +1,5 @@
 import { execCommand } from '../exec-command.js';
-import type { PolyglotMeta } from '../suites/polyglot.js';
+import { type PolyglotMeta, preparedText } from '../suites/polyglot.js';
 import type { BenchTask, GradeResult } from '../types.js';
 import { restoredNote, restoreFromTemplate } from './restore-files.js';
 
@@ -18,13 +18,20 @@ export async function gradePolyglot(opts: {
   task: BenchTask;
   /** Per-step timeout for setup/test commands. */
   timeoutMs: number;
+  signal?: AbortSignal | undefined;
 }): Promise<GradeResult> {
   const meta = opts.task.meta as never as PolyglotMeta;
 
   // The agent works in this same directory, so its test files are whatever the
   // agent left there: rewriting a test to `assert True` scored as a pass.
   // Grade against the exercise's OWN tests, as Aider's harness does.
-  const restored = await restoreFromTemplate(opts.task.templateDir, opts.workdir, meta.testFiles);
+  // Restored to the harness-prepared content: tests un-skipped, CMake pinned.
+  const restored = await restoreFromTemplate(
+    opts.task.templateDir,
+    opts.workdir,
+    [...meta.testFiles, ...(meta.harnessFiles ?? [])],
+    (rel, original) => Buffer.from(preparedText(meta, rel, original.toString('utf8')), 'utf8'),
+  );
   const note = restoredNote(restored, 'test file(s)');
 
   if (meta.setupCommand) {
@@ -33,6 +40,7 @@ export async function gradePolyglot(opts: {
       args: meta.setupCommand.args,
       cwd: opts.workdir,
       timeoutMs: opts.timeoutMs,
+      signal: opts.signal,
     });
     if (setup.exitCode !== 0) {
       return {
@@ -50,6 +58,7 @@ export async function gradePolyglot(opts: {
     args: meta.testCommand.args,
     cwd: opts.workdir,
     timeoutMs: opts.timeoutMs,
+    signal: opts.signal,
   });
 
   if (test.timedOut) {

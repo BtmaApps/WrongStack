@@ -1,0 +1,5 @@
+{
+  "name": "async-pool",
+  "private": true,
+  "type": "module"
+}

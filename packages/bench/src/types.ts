@@ -64,6 +64,13 @@ export interface BenchTask {
   /** Opaque per-suite data the grader needs (test command, language, etc.). */
   meta: Record<string, unknown>;
   /**
+   * Adjust a freshly copied workdir before the agent starts (e.g. polyglot
+   * un-skips Exercism's disabled tests so the agent runs the suite it is
+   * graded on). Not part of the subset fingerprint: it must be a pure
+   * function of the template.
+   */
+  prepareWorkdir?: ((workdir: string) => Promise<void>) | undefined;
+  /**
    * Optional three-stage trace evaluation. These cases are mined from a real
    * session transcript and make retrieval, model recall/intent, and edit-tool
    * application independently observable.
@@ -71,7 +78,7 @@ export interface BenchTask {
   traceEval?: TranscriptEvalSpec | undefined;
 }
 
-export type SuiteId = 'polyglot' | 'swebench' | 'local' | 'smoke' | 'core';
+export type SuiteId = 'polyglot' | 'swebench' | 'local' | 'smoke' | 'core' | 'hard';
 
 /** A suite knows how to enumerate its tasks and grade a finished workdir. */
 export interface BenchSuite {
@@ -133,9 +140,47 @@ export interface TaskResult {
   grade: GradeResult;
   /** Tool-call metrics parsed from the isolated session JSONL. */
   tools: ToolMetrics;
+  /**
+   * Every token the run moved, read from the session JSONL tree (leader plus
+   * subagents/companions). Absent in rows written before the metric existed;
+   * readers fall back to `run.tokensIn + run.tokensOut`.
+   */
+  tokens?: TokenMetrics | undefined;
   /** Present only for real-transcript trace evaluation cases. */
   traceEval?: TraceEvalResult | undefined;
   qualityReview?: ReturnType<typeof import('./quality-review.js').reviewTranscript> | undefined;
+  /**
+   * The row failed and was graded once more after the whole run finished, on
+   * the same workdir without running the agent again. `passed` is the second
+   * grade's verdict, which `grade` then carries; `firstDetail` is what the
+   * first grade said. A pass here points at the harness (a grader on the
+   * wrong JDK, a flaky toolchain), not at the model.
+   */
+  lastChance?: { passed: boolean; firstDetail?: string | undefined } | undefined;
+}
+
+/**
+ * Token totals derived from `llm_response.usage` in the session JSONL tree.
+ *
+ * The CLI's `--output-json` usage block reports only fresh `input`/`output`
+ * for the leader, so cached prefix reads (the bulk of an agentic prompt) and
+ * every background subagent or companion were invisible — a measured run
+ * reported 9.4k tokens against an actual ~83k. These fields count the full
+ * prompt each request loaded, and because they come from per-request events
+ * they survive a timeout or crash that never printed the usage payload.
+ */
+export interface TokenMetrics {
+  /** Fresh full-rate prompt tokens, leader + subagents. */
+  input: number;
+  cacheRead: number;
+  cacheWrite: number;
+  output: number;
+  /** Model requests observed, leader + subagents. */
+  requests: number;
+  /** Share of `total` spent by subagents and companions. */
+  subagentTotal: number;
+  /** input + cacheRead + cacheWrite + output. */
+  total: number;
 }
 
 /** Tool-level metrics derived from the session log (model-free). */
@@ -147,6 +192,20 @@ export interface ToolMetrics {
   editErrors: number;
   /** provider 429 / retry events. */
   rateLimitRetries: number;
+  /**
+   * Subagent delegation starts observed in the session log: `delegate_started`
+   * lifecycle events plus admitted `spawn_subagent` tool invocations (calls
+   * that ended in an error spawned nothing and are not counted). The two
+   * signals cover the two delegation paths and NEVER overlap for one spawn:
+   * `delegate_started` is emitted only by `startDelegationAttempt`
+   * (coordination/src/delegation/run-delegation.ts, the `delegate` tool), while
+   * `spawn_subagent` spawns via `makeSpawnTool`'s DirectorAdmissionPort and
+   * leaves only its own `tool_call_end` row. Counting both therefore counts
+   * each delegation exactly once. Optional so TaskResult rows deserialized
+   * from older `results.jsonl` artifacts (written before the metric existed)
+   * remain type-honest; readers treat absence as 0.
+   */
+  subagentSpawns?: number | undefined;
 }
 
 /** Immutable provenance for an evaluation case mined from a real session. */
@@ -255,6 +314,18 @@ export interface CellResult {
   avgCostUsd: number;
   avgTokensIn: number;
   avgTokensOut: number;
+  /**
+   * Mean of every token moved per attempt (prompt incl. cache + output,
+   * leader + subagents). Absent in pre-metric artifacts.
+   */
+  avgTokensTotal?: number | undefined;
+  /**
+   * Total tokens across every attempt divided by passing attempts — the
+   * "cost of one solved task" signal. Undefined when nothing passed.
+   */
+  tokensPerSolve?: number | undefined;
+  /** Mean subagent/companion tokens per attempt. */
+  avgSubagentTokens?: number | undefined;
   /** Median iterations across tasks. */
   p50Iterations: number;
   /** Median wall-clock per task, ms. */
@@ -262,6 +333,11 @@ export interface CellResult {
   /** Fraction in [0,1] of tasks that hit the timeout. */
   timeoutRate: number;
   totalRateLimitRetries: number;
+  /**
+   * Total subagent delegation starts across every attempt. Absent in artifacts
+   * written before the metric existed — readers must treat it as 0.
+   */
+  totalSubagentSpawns?: number | undefined;
 }
 
 /**
@@ -283,6 +359,8 @@ export interface HarnessFingerprint {
   systemPromptHash?: string | undefined;
   /** Hash of behavior-affecting harness config beyond maxIterations/yolo. */
   configHash?: string | undefined;
+  /** Harness profile the sandbox ran (`lean` / `host`); covered by `configHash`, shown for readers. */
+  profile?: 'lean' | 'host' | undefined;
   /** sha256 hex (first 12 chars) of the comparable harness fields above. */
   hash: string;
 }
@@ -296,4 +374,16 @@ export interface BenchReport {
   cells: CellResult[];
   /** Every per-(task × cell) row, for reproducibility. */
   results: TaskResult[];
+  /**
+   * How much of the planned matrix the rows cover. Absent in reports written
+   * before runs could be stopped and resumed; then the run is taken as whole.
+   */
+  progress?: BenchProgress | undefined;
+}
+
+/** Planned vs recorded runs, and whether the run was stopped. */
+export interface BenchProgress {
+  planned: number;
+  completed: number;
+  interrupted: boolean;
 }

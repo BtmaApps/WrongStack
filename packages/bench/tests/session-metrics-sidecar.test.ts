@@ -49,7 +49,13 @@ describe('newestJsonl ignores session-store sidecar files', () => {
     await setMtime(path.join(sessionsDir, '_index.jsonl'), '2026-09-26T10:00:05Z');
 
     const m = await readToolMetrics({ homeDir, workdir });
-    expect(m).toEqual({ totalCalls: 2, editCalls: 1, editErrors: 0, rateLimitRetries: 1 });
+    expect(m).toEqual({
+      totalCalls: 2,
+      editCalls: 1,
+      editErrors: 0,
+      rateLimitRetries: 1,
+      subagentSpawns: 0,
+    });
   });
 
   it('reads the transcript even when a per-session sidecar (.replay.jsonl) is newer', async () => {
@@ -69,6 +75,12 @@ describe('newestJsonl ignores session-store sidecar files', () => {
     await fs.mkdir(sessionsDir, { recursive: true });
     await fs.writeFile(path.join(sessionsDir, '_mailbox.jsonl'), '{}\n');
     const m = await readToolMetrics({ homeDir, workdir });
-    expect(m).toEqual({ totalCalls: 0, editCalls: 0, editErrors: 0, rateLimitRetries: 0 });
+    expect(m).toEqual({
+      totalCalls: 0,
+      editCalls: 0,
+      editErrors: 0,
+      rateLimitRetries: 0,
+      subagentSpawns: 0,
+    });
   });
 });

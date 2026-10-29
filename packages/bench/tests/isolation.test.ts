@@ -2,7 +2,12 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { cleanupSandbox, createSandbox, prepareWorkdir } from '../src/isolation.js';
+import {
+  cleanupSandbox,
+  createSandbox,
+  LEAN_BENCH_CONFIG,
+  prepareWorkdir,
+} from '../src/isolation.js';
 
 let base: string;
 beforeEach(async () => {
@@ -51,6 +56,7 @@ describe('createSandbox', () => {
       maxIterations: 20,
       yolo: true,
       hostHomeDir: host,
+      profile: 'host',
     });
     const cfg = JSON.parse(await fs.readFile(path.join(sandbox.homeDir, 'config.json'), 'utf8'));
     expect(cfg.yolo).toBe(true);
@@ -66,6 +72,102 @@ describe('createSandbox', () => {
     expect(await fs.readFile(path.join(sandbox.homeDir, 'cache', 'models.dev.json'), 'utf8')).toBe(
       '{"ok":true}',
     );
+  });
+
+  it('lean profile keeps only provider auth from the host and pins the lean behavior', async () => {
+    const host = path.join(base, 'host-home');
+    await fs.mkdir(path.join(host, 'profiles', 'work'), { recursive: true });
+    await fs.mkdir(path.join(host, 'cache'), { recursive: true });
+    await fs.writeFile(path.join(host, '.key'), 'vault-key', 'utf8');
+    await fs.writeFile(path.join(host, 'cache', 'models.dev.json'), '{"ok":true}', 'utf8');
+    await fs.writeFile(
+      path.join(host, 'config.json'),
+      JSON.stringify({ activeProfile: 'work' }),
+      'utf8',
+    );
+    await fs.writeFile(
+      path.join(host, 'profiles', 'work', 'config.json'),
+      JSON.stringify({
+        providers: { 'zai-coding-plan': { type: 'openai-compatible', apiKey: 'enc:v1:x' } },
+        skills: { mode: 'eager' },
+        brain: { council: { enabled: true } },
+        extensions: { telegram: { botToken: 'enc:v1:y' } },
+        fleet: { exploreCompanion: { enabled: true } },
+      }),
+      'utf8',
+    );
+
+    const sandbox = await createSandbox({
+      baseDir: path.join(base, 'sandbox'),
+      maxIterations: 20,
+      yolo: true,
+      hostHomeDir: host,
+    });
+    const cfg = JSON.parse(await fs.readFile(path.join(sandbox.homeDir, 'config.json'), 'utf8'));
+    expect(cfg.providers['zai-coding-plan'].apiKey).toBe('enc:v1:x');
+    expect(cfg.skills).toBeUndefined();
+    expect(cfg.brain).toBeUndefined();
+    expect(cfg.extensions).toEqual(LEAN_BENCH_CONFIG.extensions);
+    expect(cfg.activeProfile).toBeUndefined();
+    expect(cfg.fleet).toEqual(LEAN_BENCH_CONFIG.fleet);
+    expect(cfg.features).toEqual(LEAN_BENCH_CONFIG.features);
+    expect(cfg.tools.maxIterations).toBe(20);
+    await expect(fs.stat(path.join(sandbox.homeDir, 'profiles'))).rejects.toThrow();
+    expect(await fs.readFile(path.join(sandbox.homeDir, '.key'), 'utf8')).toBe('vault-key');
+    expect(await fs.readFile(path.join(sandbox.homeDir, 'cache', 'models.dev.json'), 'utf8')).toBe(
+      '{"ok":true}',
+    );
+
+    // Personal behavior must not leak into the fingerprint: a host with
+    // different settings but no providers hashes identically.
+    const bare = await createSandbox({
+      baseDir: path.join(base, 'sandbox-bare'),
+      maxIterations: 20,
+      yolo: true,
+    });
+    expect(sandbox.configHash).toBe(bare.configHash);
+  });
+
+  it('host profile keeps existing tools/session keys and tolerates odd configs', async () => {
+    const host = path.join(base, 'odd-host');
+    await fs.mkdir(path.join(host, 'profiles', 'arr'), { recursive: true });
+    await fs.writeFile(
+      path.join(host, 'config.json'),
+      JSON.stringify({ tools: { timeoutMs: 5 }, session: { sampling: 1 } }),
+    );
+    await fs.writeFile(path.join(host, 'profiles', 'arr', 'config.json'), '[]');
+    const sandbox = await createSandbox({
+      baseDir: path.join(base, 'sandbox-odd-host'),
+      maxIterations: 9,
+      yolo: true,
+      hostHomeDir: host,
+      profile: 'host',
+    });
+    const cfg = JSON.parse(await fs.readFile(path.join(sandbox.homeDir, 'config.json'), 'utf8'));
+    expect(cfg.tools).toEqual({ timeoutMs: 5, maxIterations: 9 });
+    expect(cfg.session).toEqual({ sampling: 1, auditLevel: 'standard' });
+    const arr = JSON.parse(
+      await fs.readFile(path.join(sandbox.homeDir, 'profiles', 'arr', 'config.json'), 'utf8'),
+    );
+    expect(arr.tools.maxIterations).toBe(9);
+  });
+
+  it('host profile tolerates a missing root config and a profile without one', async () => {
+    const host = path.join(base, 'bare-host');
+    await fs.mkdir(path.join(host, 'profiles', 'empty'), { recursive: true });
+    const sandbox = await createSandbox({
+      baseDir: path.join(base, 'sandbox-bare-host'),
+      maxIterations: 7,
+      yolo: true,
+      hostHomeDir: host,
+      profile: 'host',
+    });
+    const cfg = JSON.parse(await fs.readFile(path.join(sandbox.homeDir, 'config.json'), 'utf8'));
+    expect(cfg.tools.maxIterations).toBe(7);
+    // A profile with no config of its own is not seeded with an overlay-only file.
+    await expect(
+      fs.stat(path.join(sandbox.homeDir, 'profiles', 'empty', 'config.json')),
+    ).rejects.toThrow();
   });
 
   it('defaults to an OS temp dir when no baseDir is given', async () => {

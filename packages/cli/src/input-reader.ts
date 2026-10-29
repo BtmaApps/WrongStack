@@ -23,6 +23,8 @@ export class ReadlineInputReader implements InputReader {
   private history: string[] = [];
   private pending = false;
   private suppressNextHistory = false;
+  /** Whether the last read ended with an answer rather than Ctrl-C / Ctrl-D. */
+  private lastReadAnswered = false;
 
   constructor(opts: ReadlineInputReaderOptions = {}) {
     this.historyFile =
@@ -137,7 +139,9 @@ export class ReadlineInputReader implements InputReader {
           }, timeoutOpts.timeoutMs);
         }
 
+        this.lastReadAnswered = false;
         fresh.question(prompt ?? '> ', (line) => {
+          this.lastReadAnswered = true;
           const persistHistory = !this.suppressNextHistory && this.shouldPersistHistory(line);
           this.suppressNextHistory = false;
           if (line.trim() && persistHistory) {
@@ -275,6 +279,16 @@ export class ReadlineInputReader implements InputReader {
       stdin.on('close', onClose);
       signal?.addEventListener('abort', onAbort, { once: true });
     });
+  }
+
+  /**
+   * Like {@link readLine}, but Ctrl-C / Ctrl-D resolve `null`. readLine turns
+   * both into `''`, which a prompt with a default reads as Enter: a menu's
+   * "Start? [Y/n]" started the run the user was trying to cancel.
+   */
+  async readLineCancelable(prompt: string): Promise<string | null> {
+    const line = await this.readLine(prompt);
+    return this.lastReadAnswered ? line : null;
   }
 
   /**

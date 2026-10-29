@@ -9,11 +9,16 @@ import * as path from 'node:path';
  * Invalid template paths are skipped. An existing protected file whose
  * destination cannot be safely resolved prevents grading. Returns the
  * relative paths that were restored.
+ *
+ * `prepare` maps a template file to the content the harness itself put in the
+ * workdir (e.g. polyglot's un-skipped tests), so the harness's own edit is
+ * neither reported as the agent's nor undone.
  */
 export async function restoreFromTemplate(
   templateDir: string,
   workdir: string,
   relPaths: readonly string[],
+  prepare?: ((rel: string, original: Buffer) => Buffer) | undefined,
 ): Promise<string[]> {
   const restored: string[] = [];
   for (const rel of relPaths) {
@@ -25,6 +30,7 @@ export async function restoreFromTemplate(
     } catch {
       continue; // not in the template: nothing to restore from
     }
+    if (prepare) original = prepare(rel, original);
     const target = await inside(workdir, rel);
     if (!target) throw new Error(`cannot safely restore protected file: ${rel}`);
     const current = await fs.readFile(target).catch(() => undefined);

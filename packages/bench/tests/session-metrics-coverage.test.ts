@@ -68,6 +68,12 @@ describe('readToolMetrics — readFile on an unreadable jsonl file', () => {
     await fs.mkdir(workdir, { recursive: true });
     // No sessions dir at all
     const m = await readToolMetrics({ homeDir, workdir });
-    expect(m).toEqual({ totalCalls: 0, editCalls: 0, editErrors: 0, rateLimitRetries: 0 });
+    expect(m).toEqual({
+      totalCalls: 0,
+      editCalls: 0,
+      editErrors: 0,
+      rateLimitRetries: 0,
+      subagentSpawns: 0,
+    });
   });
 });

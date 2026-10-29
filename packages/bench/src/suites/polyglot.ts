@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
+import { execCommand } from '../exec-command.js';
 import type { BenchSuite, BenchTask } from '../types.js';
 
 /**
@@ -20,6 +21,11 @@ import type { BenchSuite, BenchTask } from '../types.js';
  * `--polyglot-dir` at a local checkout.
  */
 
+const CPP_GRADE_BUILD_DIR = '.bench-build';
+// Aider's script uses Unix Makefiles; Windows dev boxes rarely have make on PATH.
+/* v8 ignore next -- one side per host platform. */
+const CPP_GENERATOR = process.platform === 'win32' ? 'Ninja' : 'Unix Makefiles';
+
 /** Per-language test command + optional dependency-install step. */
 interface LanguageRunner {
   /** Directory name under the polyglot root. */
@@ -37,7 +43,10 @@ const LANGUAGE_RUNNERS: Record<string, LanguageRunner> = {
   },
   javascript: {
     dir: 'javascript',
-    setup: { command: 'npm', args: ['install', '--no-audit', '--no-fund'] },
+    // A per-workdir install, as Aider's harness has: sharing one tree across
+    // workdirs let agents empty it through the link mid-run. With a warm npm
+    // cache --prefer-offline takes ~15 s.
+    setup: { command: 'npm', args: ['install', '--prefer-offline', '--no-audit', '--no-fund'] },
     test: () => ({ command: 'npm', args: ['test'] }),
   },
   go: {
@@ -48,13 +57,33 @@ const LANGUAGE_RUNNERS: Record<string, LanguageRunner> = {
     dir: 'rust',
     test: () => ({ command: 'cargo', args: ['test', '--', '--include-ignored'] }),
   },
+  // Aider's cpp-test.sh: configure with every test enabled, then build — the
+  // CMakeLists makes running the test binary part of the default target. A
+  // dedicated build dir keeps an agent's own `build/` cache (possibly another
+  // generator) from breaking the configure step.
   cpp: {
     dir: 'cpp',
-    test: () => ({ command: 'cmake', args: ['--build', 'build', '--target', 'test'] }),
+    setup: {
+      command: 'cmake',
+      args: [
+        '-S',
+        '.',
+        '-B',
+        CPP_GRADE_BUILD_DIR,
+        '-G',
+        CPP_GENERATOR,
+        '-DEXERCISM_RUN_ALL_TESTS=1',
+      ],
+    },
+    test: () => ({ command: 'cmake', args: ['--build', CPP_GRADE_BUILD_DIR] }),
   },
   java: {
     dir: 'java',
-    test: () => ({ command: './gradlew', args: ['test'] }),
+    test: () => ({
+      /* v8 ignore next -- one side per host platform. */
+      command: process.platform === 'win32' ? '.\\gradlew.bat' : './gradlew',
+      args: ['test'],
+    }),
   },
 };
 
@@ -65,18 +94,39 @@ export interface PolyglotMeta {
   testFiles: string[];
   testCommand: { command: string; args: string[] };
   setupCommand?: { command: string; args: string[] } | undefined;
+  /** Exercise slug; cpp's CMakeLists is pinned to it. Absent in old artifacts. */
+  slug?: string | undefined;
+  /**
+   * Build/test scaffolding restored from the template before grading, like
+   * the tests: an agent that rewrote `build.gradle` or the CMake test target
+   * could otherwise skip the suite. Absent in old artifacts.
+   */
+  harnessFiles?: string[] | undefined;
 }
+
+/** Scaffolding per language that grading must see as shipped. */
+const HARNESS_FILES: Record<string, string[]> = {
+  cpp: ['CMakeLists.txt', 'test/tests-main.cpp', 'test/catch.hpp'],
+  java: ['build.gradle'],
+};
 
 export function createPolyglotSuite(opts: {
   /** Local checkout of the polyglot-benchmark repo. */
   polyglotDir: string;
   /** Restrict to these languages (default: all present). */
   languages?: string[] | undefined;
+  /**
+   * Pinned task ids (`polyglot/<language>/<slug>`). When set, only these load,
+   * and an id missing from the checkout is an error: a silently shrunken
+   * subset would publish a score over fewer tasks than it claims.
+   */
+  ids?: string[] | undefined;
 }): BenchSuite {
   return {
     id: 'polyglot',
     async loadTasks({ limit }) {
       const tasks: BenchTask[] = [];
+      const wanted = opts.ids ? new Set(opts.ids) : undefined;
       const langs = opts.languages ?? Object.keys(LANGUAGE_RUNNERS);
       for (const lang of langs) {
         const runner = LANGUAGE_RUNNERS[lang];
@@ -92,10 +142,23 @@ export function createPolyglotSuite(opts: {
           continue; // language not present in this checkout
         }
         for (const slug of slugs) {
+          if (wanted && !wanted.has(`polyglot/${lang}/${slug}`)) continue;
           const exerciseDir = path.join(practiceDir, slug);
           const task = await loadExercise(exerciseDir, lang, runner, slug);
           if (task) tasks.push(task);
           if (limit !== undefined && tasks.length >= limit) return tasks;
+        }
+      }
+      if (wanted) {
+        const loaded = new Set(tasks.map((task) => task.id));
+        const missing = [...wanted].filter(
+          (id) =>
+            !loaded.has(id) && (!opts.languages || opts.languages.includes(id.split('/')[1] ?? '')),
+        );
+        if (missing.length > 0) {
+          throw new Error(
+            `polyglot subset names ${missing.length} task(s) not in this checkout: ${missing.slice(0, 5).join(', ')}`,
+          );
         }
       }
       return tasks;
@@ -134,17 +197,97 @@ async function loadExercise(
     testFiles,
     testCommand: runner.test(testFiles),
     setupCommand: runner.setup,
+    slug,
+    harnessFiles: HARNESS_FILES[language] ?? [],
   };
 
   return {
     id: `polyglot/${language}/${slug}`,
     suite: 'polyglot',
+    prepareWorkdir: async (workdir) => {
+      await prepareExercise(workdir, meta);
+      await installDependencies(workdir, meta);
+    },
     prompt: buildPrompt(instructions, solutionFiles, testFiles),
     templateDir: exerciseDir,
     // Never copy the reference solution into the agent's workdir.
     templateExclude: ['.meta'],
     meta: meta as never as Record<string, unknown>,
   };
+}
+
+/** Apply {@link preparedText} to a freshly copied workdir before the agent starts. */
+export async function prepareExercise(workdir: string, meta: PolyglotMeta): Promise<void> {
+  for (const rel of [...meta.testFiles, ...(meta.harnessFiles ?? [])]) {
+    const full = path.join(workdir, rel);
+    let text: string;
+    try {
+      text = await fs.readFile(full, 'utf8');
+    } catch {
+      continue;
+    }
+    const next = preparedText(meta, rel, text);
+    if (next !== text) await fs.writeFile(full, next, 'utf8');
+  }
+}
+
+const DEPENDENCY_INSTALL_TIMEOUT_MS = 300_000;
+
+/**
+ * Install the exercise's dependencies before the agent starts, as Aider's
+ * harness does. Only the grader used to run `npm install`, so the agent saw no
+ * node_modules: `npx jest` fetched a bare jest without the exercise's babel
+ * preset and failed to load the spec — 83 of 137 JS sessions (2026-10-28) hit
+ * it, then either spent ~30 s installing or verified with a hand-written
+ * runner the real suite later failed. A failed install is left for the grader
+ * to report; it reruns setup anyway.
+ */
+export async function installDependencies(
+  workdir: string,
+  meta: PolyglotMeta,
+  run: typeof execCommand = execCommand,
+): Promise<void> {
+  if (meta.language !== 'javascript' || !meta.setupCommand) return;
+  await run({
+    command: meta.setupCommand.command,
+    args: meta.setupCommand.args,
+    cwd: workdir,
+    timeoutMs: DEPENDENCY_INSTALL_TIMEOUT_MS,
+  });
+}
+
+/**
+ * The shipped file as the harness runs it. Exported so the grader restores
+ * to exactly this content.
+ *
+ * - JS `xtest(` and Java `@Disabled(...)` are un-skipped (Aider's
+ *   `npm-test.sh` sed and `benchmark.py` strip). Exercism disables all but
+ *   the first test in 48 of 49 JS and 48 Java exercises; graded as shipped, a
+ *   stub that passed that one test scored as a solve. Rust is covered by
+ *   `--include-ignored`, cpp by `EXERCISM_RUN_ALL_TESTS`.
+ * - cpp's CMakeLists names its target after the directory, and a bench
+ *   workdir is `<cell>-<hash>__<task>-<hash>`, so the name is pinned to the
+ *   slug. Catch's `__COUNTER__` is also a `-Wpedantic` error on clang 23+
+ *   (`-Wc2y-extensions`), toolchain noise unrelated to the solution.
+ */
+export function preparedText(meta: PolyglotMeta, rel: string, text: string): string {
+  if (meta.testFiles.includes(rel)) {
+    if (meta.language === 'javascript') return text.replace(/\bxtest\(/g, 'test(');
+    if (meta.language === 'java') return text.replace(/@Disabled\([^)]*\)\s*\n/g, '');
+  }
+  if (meta.language === 'cpp' && rel === 'CMakeLists.txt') {
+    let next = text.replace(
+      '-Wall -Wextra -Wpedantic -Werror"',
+      '-Wall -Wextra -Wpedantic -Werror -Wno-c2y-extensions"',
+    );
+    if (meta.slug) {
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: literal CMake text
+      const derived = 'get_filename_component(exercise ${CMAKE_CURRENT_SOURCE_DIR} NAME)';
+      next = next.replace(derived, `set(exercise ${meta.slug})`);
+    }
+    return next;
+  }
+  return text;
 }
 
 async function readInstructions(exerciseDir: string): Promise<string> {

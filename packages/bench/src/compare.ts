@@ -81,8 +81,10 @@ function mergeOutcomes(a: TaskOutcome, b: TaskOutcome): TaskOutcome {
       : a.passed === false || b.passed === false
         ? false
         : null;
-  const preferB = b.passed === true || (a.passed !== true && !a.graded && b.graded);
-  const preferA = a.passed === true || (b.passed !== true && a.graded && !b.graded);
+  const preferB =
+    (b.passed === true && a.passed !== true) || (a.passed !== true && !a.graded && b.graded);
+  const preferA =
+    (a.passed === true && b.passed !== true) || (b.passed !== true && a.graded && !b.graded);
   return {
     // A graded failure is a verdict even when another attempt went ungraded
     // (SWE-bench: an empty patch is graded, an exported one is not) — the

@@ -20,7 +20,14 @@ function result(over: Partial<TaskResult> & { passed: boolean }): TaskResult {
       ...over.run,
     },
     grade: { passed: over.passed },
-    tools: { totalCalls: 1, editCalls: 0, editErrors: 0, rateLimitRetries: 0, ...over.tools },
+    tools: {
+      totalCalls: 1,
+      editCalls: 0,
+      editErrors: 0,
+      rateLimitRetries: 0,
+      subagentSpawns: 0,
+      ...over.tools,
+    },
     traceEval: over.traceEval,
   };
 }

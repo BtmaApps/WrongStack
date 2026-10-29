@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process';
 import { StringDecoder } from 'node:string_decoder';
+import { inheritedEnv } from './child-env.js';
 import { treeKill } from './runner.js';
 
 /**
@@ -10,6 +11,9 @@ import { treeKill } from './runner.js';
  * process tree, and flag the result — keeping execCommand's never-reject contract.
  */
 const DEFAULT_MAX_BUFFER_BYTES = 10 * 1024 * 1024; // 10 MiB
+
+/** How long after a tree kill to wait for `close` before giving up on the pipes. */
+const KILL_GRACE_MS = 5_000;
 
 export interface ExecResult {
   exitCode: number | null;
@@ -51,6 +55,8 @@ export function execCommand(opts: {
    * (10 MiB). Guards against a runaway command OOM-ing the runner.
    */
   maxBufferBytes?: number | undefined;
+  /** Kills the process tree when aborted (the bench was stopped). */
+  signal?: AbortSignal | undefined;
 }): Promise<ExecResult> {
   const useShell = opts.shell ?? true;
   const maxBufferBytes = positiveSafeInteger(opts.maxBufferBytes, DEFAULT_MAX_BUFFER_BYTES);
@@ -64,7 +70,7 @@ export function execCommand(opts: {
         const line = [opts.command, ...opts.args.map(shellQuote)].join(' ');
         child = spawn(line, {
           cwd: opts.cwd,
-          env: { ...process.env, ...opts.env },
+          env: { ...inheritedEnv(), ...opts.env },
           windowsHide: true,
           shell: true,
         });
@@ -73,7 +79,7 @@ export function execCommand(opts: {
         // is interpreted. Preferred for git/python/etc.
         child = spawn(opts.command, opts.args, {
           cwd: opts.cwd,
-          env: { ...process.env, ...opts.env },
+          env: { ...inheritedEnv(), ...opts.env },
           windowsHide: true,
         });
       }
@@ -98,24 +104,36 @@ export function execCommand(opts: {
     const stdoutDecoder = new StringDecoder('utf8');
     const stderrDecoder = new StringDecoder('utf8');
 
-    const timer = setTimeout(() => {
-      timedOut = true;
+    let killBackstop: NodeJS.Timeout | undefined;
+    // Kill the tree, then stop waiting for `close` after a grace period: a
+    // descendant that survived still holds the stdio pipes, and `close` never
+    // fires while it does — the grader then hung the whole bench run forever.
+    const killTree = () => {
       try {
         child.stdin?.destroy();
       } catch {
         /* v8 ignore next -- defensive catch never throws in node */
       }
-      try {
-        child.kill();
-      } catch {
-        /* v8 ignore next -- defensive catch never throws in node */
-      }
-      // A naive child.kill() only signals the direct child — with shell:true
-      // that's the /bin/sh or cmd.exe wrapper, leaving the actual test process
-      // (npm/gradle/etc.) orphaned. treeKill tears down the whole process tree
-      // (taskkill /T on Windows, SIGTERM→SIGKILL on POSIX).
+      // treeKill only — a direct child.kill() first killed the cmd.exe wrapper
+      // on Windows, and `taskkill /T` cannot walk the tree from a dead root, so
+      // npm → jest survived the timeout. treeKill keeps its own direct-kill
+      // fallback (taskkill /T on Windows, SIGTERM→SIGKILL on POSIX).
       treeKill(child);
+      killBackstop ??= setTimeout(() => {
+        child.stdout?.destroy();
+        child.stderr?.destroy();
+        done(child.exitCode);
+      }, KILL_GRACE_MS);
+      killBackstop.unref?.();
+    };
+
+    const timer = setTimeout(() => {
+      timedOut = true;
+      killTree();
     }, opts.timeoutMs);
+    const onAbort = () => killTree();
+    if (opts.signal?.aborted) onAbort();
+    else opts.signal?.addEventListener('abort', onAbort, { once: true });
 
     // Append a chunk to the target stream up to the shared byte budget. Once the
     // combined stdout+stderr budget is exhausted, stop buffering and kill the
@@ -146,7 +164,7 @@ export function execCommand(opts: {
         bufferedBytes = maxBufferBytes;
       }
       truncated = true;
-      treeKill(child);
+      killTree();
     };
 
     child.stdout?.on('data', (d: Buffer) => appendCapped(d, stdoutDecoder, (s) => (stdout += s)));
@@ -156,6 +174,8 @@ export function execCommand(opts: {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
+      clearTimeout(killBackstop);
+      opts.signal?.removeEventListener('abort', onAbort);
       if (!truncated) {
         stdout += stdoutDecoder.end();
         stderr += stderrDecoder.end();

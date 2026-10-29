@@ -25,14 +25,14 @@ import { renderDeepHelpToString } from '../src/subcommands/handlers/per-subcomma
  */
 describe('bench-run-help', () => {
   describe('BENCH_RUN_FLAGS (the source of truth)', () => {
-    it('contains 14 flags: 7 suite + 2 models + 5 control', () => {
-      expect(BENCH_RUN_FLAGS).toHaveLength(14);
+    it('contains 19 flags: 8 suite + 2 models + 9 control', () => {
+      expect(BENCH_RUN_FLAGS).toHaveLength(19);
       const suite = BENCH_RUN_FLAGS.filter((f) => f.group === 'suite');
       const models = BENCH_RUN_FLAGS.filter((f) => f.group === 'models');
       const control = BENCH_RUN_FLAGS.filter((f) => f.group === 'control');
-      expect(suite).toHaveLength(7);
+      expect(suite).toHaveLength(8);
       expect(models).toHaveLength(2);
-      expect(control).toHaveLength(5);
+      expect(control).toHaveLength(9);
     });
 
     it('each entry has a non-empty name, flag, description, group, and kind', () => {
@@ -45,8 +45,8 @@ describe('bench-run-help', () => {
       }
     });
 
-    it('boolean flags are the suite docker toggle and the sandbox-retention switch', () => {
-      expect(BENCH_RUN_BOOLEAN_FLAG_NAMES).toEqual(['docker', 'keep-sandbox']);
+    it('boolean flags are the suite docker toggle, the profile switch and sandbox retention', () => {
+      expect(BENCH_RUN_BOOLEAN_FLAG_NAMES).toEqual(['docker', 'host-profile', 'keep-sandbox']);
     });
 
     it('value flags include the required polyglot-dir and the optional languages / dataset-dir', () => {
@@ -63,7 +63,11 @@ describe('bench-run-help', () => {
       expect(names).toContain('out');
       expect(names).toContain('concurrency');
       expect(names).toContain('repeats');
-      expect(names).toHaveLength(12);
+      expect(names).toContain('subset');
+      expect(names).toContain('harness');
+      expect(names).toContain('resume');
+      expect(names).toContain('rerun');
+      expect(names).toHaveLength(16);
     });
 
     it('every flag has a unique name (no duplicates)', () => {

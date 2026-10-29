@@ -186,11 +186,13 @@ describe('sandbox config fingerprinting', () => {
       maxIterations: 10,
       yolo: true,
       hostHomeDir: hostHome,
+      profile: 'host',
     });
     const rootOnly = await createSandbox({
       baseDir: path.join(dir, 'sb-root'),
       maxIterations: 10,
       yolo: true,
+      profile: 'host',
     });
 
     // The active profile's `skills.mode` is what the child runs on, so it —

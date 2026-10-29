@@ -48,6 +48,29 @@ afterEach(async () => {
 });
 
 describe('createPolyglotSuite.loadTasks', () => {
+  it('loads only pinned ids and fails loudly when one is missing from the checkout', async () => {
+    await writeExercise('python', 'alpha');
+    await writeExercise('python', 'beta');
+    await writeExercise('python', 'gamma');
+    const tasks = await createPolyglotSuite({
+      polyglotDir: root,
+      ids: ['polyglot/python/gamma', 'polyglot/python/alpha'],
+    }).loadTasks({});
+    expect(tasks.map((t) => t.id)).toEqual(['polyglot/python/alpha', 'polyglot/python/gamma']);
+
+    await expect(
+      createPolyglotSuite({ polyglotDir: root, ids: ['polyglot/python/zeta'] }).loadTasks({}),
+    ).rejects.toThrow(/not in this checkout: polyglot\/python\/zeta/);
+    // A pinned id for a language filtered out by --languages is not "missing".
+    await expect(
+      createPolyglotSuite({
+        polyglotDir: root,
+        languages: ['python'],
+        ids: ['polyglot/python/alpha', 'polyglot/go/zeta'],
+      }).loadTasks({}),
+    ).resolves.toHaveLength(1);
+  });
+
   it('loads exercises into BenchTasks with prompt, exclude and meta', async () => {
     await writeExercise('python', 'bowling', {
       solution: ['bowling.py'],
@@ -147,7 +170,7 @@ describe('LANGUAGE_RUNNERS', () => {
     }
     expect(LANGUAGE_RUNNERS.javascript!.setup).toEqual({
       command: 'npm',
-      args: ['install', '--no-audit', '--no-fund'],
+      args: ['install', '--prefer-offline', '--no-audit', '--no-fund'],
     });
   });
 });

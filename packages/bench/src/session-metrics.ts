@@ -2,7 +2,7 @@ import type { Dirent } from 'node:fs';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { resolveWstackPaths } from '@wrongstack/core/utils';
-import type { ToolMetrics } from './types.js';
+import type { TokenMetrics, ToolMetrics } from './types.js';
 
 /** A minimally typed event from a persisted session JSONL file. */
 export type SessionLogEvent = Record<string, unknown>;
@@ -43,9 +43,12 @@ export async function readToolMetrics(opts: {
     editCalls: 0,
     editErrors: 0,
     rateLimitRetries: 0,
+    subagentSpawns: 0,
   };
 
-  const metrics = { ...empty };
+  // The reader ALWAYS emits every counter it knows about; the artifact-facing
+  // ToolMetrics keeps subagentSpawns optional only for older on-disk rows.
+  const metrics = { ...empty, subagentSpawns: 0 };
   for (const event of await readSessionLogEvents(opts)) {
     const type = event['type'];
     if (type === 'tool_call_end') {
@@ -55,6 +58,12 @@ export async function readToolMetrics(opts: {
         metrics.editCalls++;
         if (event['ok'] === false) metrics.editErrors++;
       }
+      // Only ADMITTED spawns count: a spawn_subagent call that ended in an
+      // error (unknown role, budget refusal) spawned nothing, mirroring how
+      // delegate_started is only emitted after the worker spawn resolves.
+      if (name === 'spawn_subagent' && event['ok'] !== false) metrics.subagentSpawns++;
+    } else if (type === 'delegate_started') {
+      metrics.subagentSpawns++;
     } else if (
       (type === 'provider_retry' || type === 'provider_error') &&
       event['status'] === 429
@@ -66,35 +75,123 @@ export async function readToolMetrics(opts: {
 }
 
 /**
- * Read the current run's session events without interpreting them. The helper
- * deliberately shares the same missing/corrupt-log behaviour as
- * {@link readToolMetrics}: a crashed run yields an empty array rather than
- * losing the entire benchmark row.
+ * Sum `llm_response.usage` across the leader transcript and every subagent /
+ * companion transcript under `<session>/subagents/`. Model-free and
+ * crash-tolerant: a run killed mid-flight still reports the requests it made.
  */
-export async function readSessionLogEvents(opts: {
+export async function readTokenMetrics(opts: {
   homeDir: string;
   workdir: string;
-}): Promise<SessionLogEvent[]> {
-  let jsonlPath: string | undefined;
+}): Promise<TokenMetrics> {
+  const leaderPath = await leaderTranscriptPath(opts);
+  const leader = emptyUsage();
+  const subagents = emptyUsage();
+  if (leaderPath) {
+    addUsage(leader, await readJsonlEvents(leaderPath));
+    const subDir = path.join(
+      path.dirname(leaderPath),
+      path.basename(leaderPath, '.jsonl'),
+      'subagents',
+    );
+    for (const file of await subagentTranscripts(subDir)) {
+      addUsage(subagents, await readJsonlEvents(file));
+    }
+  }
+  const subagentTotal = usageTotal(subagents);
+  return {
+    input: leader.input + subagents.input,
+    cacheRead: leader.cacheRead + subagents.cacheRead,
+    cacheWrite: leader.cacheWrite + subagents.cacheWrite,
+    output: leader.output + subagents.output,
+    requests: leader.requests + subagents.requests,
+    subagentTotal,
+    total: usageTotal(leader) + subagentTotal,
+  };
+}
+
+interface UsageSum {
+  input: number;
+  cacheRead: number;
+  cacheWrite: number;
+  output: number;
+  requests: number;
+}
+
+function emptyUsage(): UsageSum {
+  return { input: 0, cacheRead: 0, cacheWrite: 0, output: 0, requests: 0 };
+}
+
+function usageTotal(u: UsageSum): number {
+  return u.input + u.cacheRead + u.cacheWrite + u.output;
+}
+
+function addUsage(sum: UsageSum, events: SessionLogEvent[]): void {
+  for (const event of events) {
+    if (event['type'] !== 'llm_response') continue;
+    const usage = event['usage'];
+    if (!isRecord(usage)) continue;
+    sum.input += count(usage['input']);
+    sum.cacheRead += count(usage['cacheRead']);
+    sum.cacheWrite += count(usage['cacheWrite']);
+    sum.output += count(usage['output']);
+    sum.requests++;
+  }
+}
+
+function count(v: unknown): number {
+  return typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : 0;
+}
+
+/**
+ * Subagent transcripts live date-sharded under the leader's `subagents/` dir.
+ * `transcripts/` holds a message-only mirror of the same runs (no usage) and
+ * is skipped so nothing is counted twice.
+ */
+async function subagentTranscripts(dir: string, depth = 0): Promise<string[]> {
+  /* v8 ignore next -- guard against a pathological nesting; real trees are 2 deep. */
+  if (depth > 4) return [];
+  let entries: Dirent[];
+  try {
+    entries = await fs.readdir(dir, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+  const files: string[] = [];
+  for (const entry of entries) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      if (entry.name === 'transcripts') continue;
+      files.push(...(await subagentTranscripts(full, depth + 1)));
+    } else if (entry.isFile() && isSessionTranscriptName(entry.name)) {
+      files.push(full);
+    }
+  }
+  return files;
+}
+
+async function leaderTranscriptPath(opts: {
+  homeDir: string;
+  workdir: string;
+}): Promise<string | undefined> {
   try {
     const sessionsDir = resolveWstackPaths({
       projectRoot: opts.workdir,
       globalRoot: opts.homeDir,
     }).projectSessions;
-    jsonlPath = await newestJsonl(sessionsDir);
+    return await newestJsonl(sessionsDir);
   } catch {
     /* v8 ignore next -- resolveWstackPaths is pure and newestJsonl swallows its own fs errors; this outer catch is defensive. */
-    return [];
+    return undefined;
   }
-  if (!jsonlPath) return [];
+}
 
+async function readJsonlEvents(file: string): Promise<SessionLogEvent[]> {
   let raw: string;
   try {
-    raw = await fs.readFile(jsonlPath, 'utf8');
+    raw = await fs.readFile(file, 'utf8');
   } catch {
     return [];
   }
-
   const events: SessionLogEvent[] = [];
   for (const line of raw.split('\n')) {
     const trimmed = line.trim();
@@ -107,6 +204,20 @@ export async function readSessionLogEvents(opts: {
     }
   }
   return events;
+}
+
+/**
+ * Read the current run's session events without interpreting them. The helper
+ * deliberately shares the same missing/corrupt-log behaviour as
+ * {@link readToolMetrics}: a crashed run yields an empty array rather than
+ * losing the entire benchmark row.
+ */
+export async function readSessionLogEvents(opts: {
+  homeDir: string;
+  workdir: string;
+}): Promise<SessionLogEvent[]> {
+  const jsonlPath = await leaderTranscriptPath(opts);
+  return jsonlPath ? readJsonlEvents(jsonlPath) : [];
 }
 
 /**

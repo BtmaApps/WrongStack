@@ -1,8 +1,15 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { compareQualityExperiment, routingExperiment } from '../src/experiments.js';
 import { runBenchmark } from '../src/orchestrate.js';
 import { reviewTranscript } from '../src/quality-review.js';
 import type { BenchReport, TaskResult } from '../src/types.js';
+
+// runBenchmark sweeps leftover daemons through the OS process list after every
+// task; these tests run fake agents, so keep them off the real process table.
+vi.mock('../src/sandbox-reaper.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../src/sandbox-reaper.js')>()),
+  reapProcessesUnder: async () => 0,
+}));
 
 function fixture(): BenchReport {
   const row = (model: string, attempt: number, costUsd: number): TaskResult => ({
@@ -21,7 +28,7 @@ function fixture(): BenchReport {
       exitCode: 0,
     },
     grade: { passed: true },
-    tools: { totalCalls: 2, editCalls: 1, editErrors: 0, rateLimitRetries: 0 },
+    tools: { totalCalls: 2, editCalls: 1, editErrors: 0, rateLimitRetries: 0, subagentSpawns: 0 },
   });
   return {
     suite: 'core',

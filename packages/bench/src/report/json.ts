@@ -1,6 +1,13 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import type { BenchReport, TaskResult } from '../types.js';
+import { aggregateAll } from '../aggregate.js';
+import type {
+  BenchProgress,
+  BenchReport,
+  HarnessFingerprint,
+  ModelCell,
+  TaskResult,
+} from '../types.js';
 
 /**
  * Write the machine-readable report artifacts:
@@ -21,6 +28,7 @@ export async function writeJsonArtifacts(outDir: string, report: BenchReport): P
     finishedAt: report.finishedAt,
     fingerprint: report.fingerprint,
     cells: report.cells,
+    ...(report.progress ? { progress: report.progress } : {}),
   };
   await fs.writeFile(path.join(outDir, 'summary.json'), JSON.stringify(summary, null, 2), 'utf8');
 }
@@ -28,7 +36,7 @@ export async function writeJsonArtifacts(outDir: string, report: BenchReport): P
 /** Read back a summary.json into the partial report shape markdown needs. */
 export async function readSummary(
   outDir: string,
-): Promise<Pick<BenchReport, 'suite' | 'finishedAt' | 'fingerprint' | 'cells'>> {
+): Promise<Pick<BenchReport, 'suite' | 'finishedAt' | 'fingerprint' | 'cells' | 'progress'>> {
   const raw = await fs.readFile(path.join(outDir, 'summary.json'), 'utf8');
   const parsed: unknown = JSON.parse(raw);
   if (
@@ -41,7 +49,10 @@ export async function readSummary(
   ) {
     throw new Error('Benchmark summary has an invalid envelope.');
   }
-  return parsed as unknown as Pick<BenchReport, 'suite' | 'finishedAt' | 'fingerprint' | 'cells'>;
+  return parsed as unknown as Pick<
+    BenchReport,
+    'suite' | 'finishedAt' | 'fingerprint' | 'cells' | 'progress'
+  >;
 }
 
 /** Load per-(task × cell) rows from a finished run directory. Missing file → []. */
@@ -97,7 +108,83 @@ function isTaskResultRecord(value: unknown): boolean {
 
 /** Load summary.json plus results.jsonl so a report can be re-rendered or compared. */
 export async function readRunDir(outDir: string): Promise<BenchReport> {
-  const summary = await readSummary(outDir);
   const results = await readResultsJsonl(outDir);
+  let summary: Awaited<ReturnType<typeof readSummary>>;
+  try {
+    summary = await readSummary(outDir);
+  } catch (error) {
+    // No summary.json: the run was stopped or killed before it finished.
+    // run.json, written at its start, still says what it was.
+    const manifest = await readRunManifest(outDir);
+    if (!manifest) throw error;
+    return {
+      suite: manifest.suite,
+      finishedAt: `unfinished (started ${manifest.startedAt})`,
+      fingerprint: manifest.fingerprint,
+      cells: aggregateAll(manifest.cells, results),
+      results,
+      progress: { planned: manifest.planned, completed: results.length, interrupted: true },
+    };
+  }
   return { ...summary, results };
+}
+
+/**
+ * Written when a run starts, so a run that never reaches summary.json can
+ * still be reported and resumed with the same flags.
+ */
+export interface RunManifest {
+  suite: BenchReport['suite'];
+  startedAt: string;
+  fingerprint: HarnessFingerprint;
+  cells: ModelCell[];
+  planned: number;
+  /** The `bench run` flags, replayed by `--resume`. */
+  flags: Record<string, string | boolean>;
+  /** Lean-profile overlay the run used (a prompt-variant menu run). */
+  harnessOverlay?: Record<string, unknown> | undefined;
+}
+
+export const RUN_MANIFEST_FILE = 'run.json';
+
+export async function writeRunManifest(outDir: string, manifest: RunManifest): Promise<void> {
+  await fs.mkdir(outDir, { recursive: true });
+  await fs.writeFile(
+    path.join(outDir, RUN_MANIFEST_FILE),
+    JSON.stringify(manifest, null, 2),
+    'utf8',
+  );
+}
+
+export async function readRunManifest(outDir: string): Promise<RunManifest | undefined> {
+  try {
+    const parsed: unknown = JSON.parse(
+      await fs.readFile(path.join(outDir, RUN_MANIFEST_FILE), 'utf8'),
+    );
+    if (
+      !isRecord(parsed) ||
+      typeof parsed['suite'] !== 'string' ||
+      typeof parsed['startedAt'] !== 'string' ||
+      !isRecord(parsed['fingerprint']) ||
+      !Array.isArray(parsed['cells']) ||
+      typeof parsed['planned'] !== 'number' ||
+      !isRecord(parsed['flags'])
+    ) {
+      return undefined;
+    }
+    return parsed as unknown as RunManifest;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Planned vs recorded, for a finished or unfinished run directory. */
+export function runProgress(report: Pick<BenchReport, 'progress' | 'results'>): BenchProgress {
+  return (
+    report.progress ?? {
+      planned: report.results.length,
+      completed: report.results.length,
+      interrupted: false,
+    }
+  );
 }
