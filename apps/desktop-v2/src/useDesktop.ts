@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { type ComposerAttachment, validateAttachments } from './composer-attachments';
 import type { SubmitMode } from './composer-model';
-import type { ComposerFileReference } from './composer-resources-model';
+import { type ComposerFileReference, validReferenceLines } from './composer-resources-model';
 import { DraftWriter } from './draft-storage';
 import type { InputDraft } from './input-form-model';
 import { initialSnapshot, isLive, type Session, type Snapshot, visibleSessions } from './model';
@@ -22,7 +22,13 @@ function validateSavedDraft(value: SavedDraft): SavedDraft {
   if (typeof value.text !== 'string') throw Error('Saved draft text is invalid.');
   if (
     !Array.isArray(value.references) ||
-    value.references.some((ref) => !ref || typeof ref.path !== 'string' || !ref.path)
+    value.references.some(
+      (ref) =>
+        !ref ||
+        typeof ref.path !== 'string' ||
+        !ref.path ||
+        (ref.lines !== undefined && !validReferenceLines(ref.lines)),
+    )
   )
     throw Error('Saved file references are invalid.');
   if (

@@ -386,3 +386,60 @@
     display: none;
   }
 }
+.composer-reference-range {
+  display: grid;
+  gap: 8px;
+  margin: 6px 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--raised);
+  font-size: 12px;
+}
+.composer-reference-range-fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+}
+.composer-reference-range-fields label {
+  display: grid;
+  gap: 4px;
+}
+.composer-reference-range-fields input {
+  width: 110px;
+}
+.composer-reference-range footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.composer-reference-preview {
+  margin: 0;
+  min-width: 0;
+}
+.composer-reference-preview pre {
+  max-height: 220px;
+  margin: 0;
+  overflow: auto;
+  font-size: 11px;
+  line-height: 1.55;
+}
+.composer-reference-preview pre span {
+  display: block;
+  white-space: pre;
+}
+.composer-reference-preview pre i {
+  display: inline-block;
+  min-width: 4ch;
+  margin-right: 10px;
+  color: var(--muted);
+  font-style: normal;
+  text-align: right;
+  user-select: none;
+}
+.composer-reference-preview figcaption {
+  margin-top: 4px;
+  color: var(--muted);
+}

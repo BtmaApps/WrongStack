@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-29T08:56:44.251Z",
+  "generatedAt": "2026-10-29T09:05:59.355Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 45,
-    "sourceFiles": 5411,
+    "sourceFiles": 5412,
     "testFiles": 4731,
-    "sourceLines": 1197521,
+    "sourceLines": 1197790,
     "workspaceEdges": 222,
-    "moduleEdges": 16266,
+    "moduleEdges": 16269,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -387,7 +387,7 @@
     {
       "name": "@wrongstack/desktop-v2",
       "dir": "apps/desktop-v2",
-      "sourceFiles": 242,
+      "sourceFiles": 243,
       "testFiles": 90,
       "workspaceDependencies": [
         "@wrongstack/contracts",
@@ -31085,8 +31085,8 @@
     },
     {
       "file": "apps/desktop-v2/src/SessionComposer.tsx",
-      "lines": 999,
-      "relativeImports": 17
+      "lines": 987,
+      "relativeImports": 18
     },
     {
       "file": "apps/desktop-v2/src/SkillLibrary.tsx",
@@ -31116,14 +31116,14 @@
       "relativeImports": 0
     },
     {
-      "file": "apps/desktop-v2/src/SessionComposer.tsx",
-      "lines": 999,
-      "relativeImports": 17
-    },
-    {
       "file": "apps/desktop-v2/src/ProjectRequirements.tsx",
       "lines": 997,
       "relativeImports": 10
+    },
+    {
+      "file": "apps/desktop-v2/src/SessionComposer.tsx",
+      "lines": 987,
+      "relativeImports": 18
     },
     {
       "file": "apps/desktop-v2/src/ModelCatalogSettings.tsx",

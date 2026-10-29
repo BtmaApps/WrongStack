@@ -2963,3 +2963,27 @@ Verification on the shared working snapshot:
   verified: **exit 0 / PASS**. The draft scenario now also asserts the removed `## External change`
   line and the added `## Parked edit` line in the review. Inspected
   `skills/native-skill-draft-review.png`: the difference is visible without scrolling.
+
+## Line-range file references in the composer (2026-10-29)
+
+- `ComposerFileReference` gains an optional inclusive 1-based `lines` range. The desktop-owned wire
+  contract lists `- "path" lines A-B`, adds one sentence that ranges mark the relevant section (read
+  beyond them when needed) only when a range exists, and keeps the original read contract as the
+  final line, so older messages still parse. One reference per file; the last range wins.
+  `splitReferenceMessage` now returns `references` (with ranges) beside `paths`; reversed, zero,
+  fractional or oversized ranges make the block untrusted. Stop/edit, queue copy and restore paths
+  now keep ranges; saved-draft validation accepts only valid ranges.
+- New `ComposerReferenceChips` shows `path:A-B` chips with a range editor and a bounded 40-line
+  preview read through the real `files.read`, reporting binary/too-large files and ranges past the
+  end of file. Sent user messages show the same labels.
+- Checks: desktop **428 tests / 90 files PASS** (reference model test extended for range roundtrip,
+  labels, reversed-range refusal and bounds); typecheck **250 PASS**; Biome PASS (three
+  pre-existing CSS specificity warnings in `composer-resources.css`).
+- Native `--composer` on portable identity `caaaf17d0999-344ee89c60b0`, bundled engine/checksums
+  verified: **exit 0 / PASS** on the first run. The resource scenario sets lines 1-2 on README.md,
+  previews the real lines, keeps the range across a tab switch (native draft), finds
+  `- "README.md" lines 1-2` in the prompt received by the fixture provider and shows
+  `README.md:1-2` in the sent message. All other composer scenarios still pass.
+- Not covered: snippet references, choosing a range from the file viewer, full application restart
+  with a ranged reference, multi-window stress, full release/coverage, hosted CI and installed-app
+  replacement.

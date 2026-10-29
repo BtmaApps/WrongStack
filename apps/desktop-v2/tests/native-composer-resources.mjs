@@ -204,6 +204,19 @@ export async function exerciseNativeComposerResources({
     .getByRole('button', { name: 'Remove file reference README.md', exact: true })
     .waitFor();
   assert.equal(await input().inputValue(), 'Inspect ');
+  // A line range narrows the reference, previews bounded real file lines and survives a tab switch.
+  const chips = page.getByRole('region', { name: 'Attached project files', exact: true });
+  await chips.getByRole('button', { name: 'Set line range for README.md', exact: true }).click();
+  const range = page.getByRole('region', { name: 'Line range for README.md', exact: true });
+  await range.getByLabel('First referenced line', { exact: true }).fill('1');
+  await range.getByLabel('Last referenced line', { exact: true }).fill('2');
+  await range.getByRole('button', { name: 'Preview lines', exact: true }).click();
+  await range.getByLabel('Referenced lines preview', { exact: true }).waitFor();
+  await range.getByRole('button', { name: 'Use lines 1-2', exact: true }).click();
+  await chips.getByText('README.md:1-2', { exact: true }).waitFor();
+  await page.locator('.session-tab-label').filter({ hasText: 'Native UI terminal' }).click();
+  await page.locator('.session-tab-label').filter({ hasText: 'WrongStack engine proof' }).click();
+  await chips.getByText('README.md:1-2', { exact: true }).waitFor();
   await input().fill('[native-composer-resource] Inspect the referenced project file.');
   await page.getByRole('button', { name: 'Send message', exact: true }).click();
   await waitFor(
@@ -217,14 +230,14 @@ export async function exerciseNativeComposerResources({
     item.composerPrompt.includes('[native-composer-resource]'),
   );
   assert.ok(
-    request.composerPrompt.includes('README.md') &&
+    request.composerPrompt.includes('- "README.md" lines 1-2') &&
       request.composerPrompt.includes('Project Alpha') &&
       request.composerPrompt.includes('Continue paginated reads until EOF'),
   );
   await idle();
   await page
     .getByRole('region', { name: 'Referenced project files', exact: true })
-    .getByText('README.md', { exact: true })
+    .getByText('README.md:1-2', { exact: true })
     .waitFor();
   assert.equal(
     await page

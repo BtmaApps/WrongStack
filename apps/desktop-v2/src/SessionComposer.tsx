@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { ComposerAttachments, useComposerAttachments } from './ComposerAttachments';
+import { ComposerReferenceChips } from './ComposerReferenceChips';
 import { type ComposerAttachment, wireAttachments } from './composer-attachments';
 import { dispatchComposer, type SubmitMode, supportsQueue } from './composer-model';
 import {
@@ -98,6 +99,7 @@ export function SessionComposer({
     [restore, setRestore] = useState<{
       text: string;
       paths: string[];
+      references: ComposerFileReference[];
       attachments?: ComposerAttachment[];
     } | null>(null),
     [queueBusy, setQueueBusy] = useState(false),
@@ -411,7 +413,7 @@ export function SessionComposer({
           setRestore(view);
         else {
           onDraftChange(view.text);
-          onReferencesChange(view.paths.map((path) => ({ path })));
+          onReferencesChange(view.references);
           onAttachmentsChange(view.attachments);
         }
       })
@@ -551,7 +553,7 @@ export function SessionComposer({
                       if (draft.trim() || references.length || attachments.length) setRestore(view);
                       else {
                         onDraftChange(view.text);
-                        onReferencesChange(view.paths.map((path) => ({ path })));
+                        onReferencesChange(view.references);
                       }
                     }}
                   >
@@ -588,7 +590,7 @@ export function SessionComposer({
             type="button"
             onClick={() => {
               onDraftChange(restore.text);
-              onReferencesChange(restore.paths.map((path) => ({ path })));
+              onReferencesChange(restore.references);
               onAttachmentsChange(restore.attachments ?? []);
               setRestore(null);
             }}
@@ -628,26 +630,12 @@ export function SessionComposer({
           onChange={onAttachmentsChange}
           control={media}
         />
-        {references.length > 0 && (
-          <section className="composer-reference-chips" aria-label="Attached project files">
-            {references.map((ref) => (
-              <span key={ref.path} title={ref.path}>
-                <FilePlus2 size={12} />
-                {ref.path}
-                <button
-                  type="button"
-                  aria-label={`Remove file reference ${ref.path}`}
-                  disabled={sending}
-                  onClick={() =>
-                    onReferencesChange(references.filter((item) => item.path !== ref.path))
-                  }
-                >
-                  <X size={11} />
-                </button>
-              </span>
-            ))}
-          </section>
-        )}
+        <ComposerReferenceChips
+          references={references}
+          disabled={sending}
+          command={command}
+          onChange={onReferencesChange}
+        />
         <textarea
           ref={textarea}
           aria-label="Message WrongStack"

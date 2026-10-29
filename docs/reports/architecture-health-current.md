@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-29T08:56:44.251Z
+**Generated:** 2026-10-29T09:05:59.355Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -8,11 +8,11 @@
 | Measure | Value |
 |---|---:|
 | Workspace packages | 45 |
-| Production source files | 5411 |
-| Production source lines | 1197521 |
+| Production source files | 5412 |
+| Production source lines | 1197790 |
 | Test files | 4731 |
 | Workspace dependency edges | 222 |
-| Relative module edges | 16266 |
+| Relative module edges | 16269 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 5 |
@@ -38,7 +38,7 @@
 | @wrongstack/contracts | 126 | 4 | @wrongstack/kanban, @wrongstack/primitives |
 | @wrongstack/coordination | 190 | 183 | @wrongstack/agent-catalog, @wrongstack/contracts, @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/core | 635 | 687 | @wrongstack/agent-catalog, @wrongstack/contracts, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
-| @wrongstack/desktop-v2 | 242 | 90 | @wrongstack/contracts, @wrongstack/core, @wrongstack/webui-protocol, @wrongstack/webui-server |
+| @wrongstack/desktop-v2 | 243 | 90 | @wrongstack/contracts, @wrongstack/core, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/goal | 22 | 22 | @wrongstack/contracts, @wrongstack/core, @wrongstack/worktree |
 | @wrongstack/governance | 45 | 37 | @wrongstack/persistence |
 | @wrongstack/hq | 62 | 42 | @wrongstack/contracts, @wrongstack/core, @wrongstack/persistence, @wrongstack/primitives |
@@ -95,8 +95,8 @@ None.
 | 1546 | `apps/desktop-v2/src/ProjectAgentRoster.tsx` |
 | 1206 | `packages/vibeui/src/components/workspace.tsx` |
 | 1098 | `packages/webui/src/components/codemap-model.ts` |
-| 999 | `apps/desktop-v2/src/SessionComposer.tsx` |
 | 997 | `apps/desktop-v2/src/ProjectRequirements.tsx` |
+| 987 | `apps/desktop-v2/src/SessionComposer.tsx` |
 | 917 | `apps/desktop-v2/src/ModelCatalogSettings.tsx` |
 | 916 | `apps/desktop-v2/src/CodeAtlas.tsx` |
 | 913 | `apps/desktop-v2/src/ProjectKnowledge.tsx` |

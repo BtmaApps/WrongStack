@@ -16,7 +16,11 @@ import { AttachmentPreview } from './ComposerAttachments';
 import { CopyButton } from './CopyButton';
 import type { ComposerAttachment } from './composer-attachments';
 import type { SubmitMode } from './composer-model';
-import { type ComposerFileReference, splitReferenceMessage } from './composer-resources-model';
+import {
+  type ComposerFileReference,
+  referenceLabel,
+  splitReferenceMessage,
+} from './composer-resources-model';
 import { EngineDataView } from './EngineDataView';
 import { type EngineState, record } from './engine-state';
 import { workspaceFilePath } from './file-model';
@@ -526,8 +530,8 @@ function UserComposerMessage({ text }: { text: string }) {
       {view.text}
       {view.paths.length > 0 && (
         <section className="chat-file-references" aria-label="Referenced project files">
-          {view.paths.map((path) => (
-            <code key={path}>{path}</code>
+          {view.references.map((ref) => (
+            <code key={ref.path}>{referenceLabel(ref)}</code>
           ))}
         </section>
       )}

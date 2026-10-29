@@ -1,5 +1,23 @@
 export interface ComposerFileReference {
   path: string;
+  /** Inclusive 1-based line range that marks the relevant section of the file. */
+  lines?: [number, number];
+}
+export const MAX_REFERENCE_LINE = 10_000_000;
+export function validReferenceLines(value: unknown): value is [number, number] {
+  return (
+    Array.isArray(value) &&
+    value.length === 2 &&
+    value.every((line) => Number.isSafeInteger(line) && line >= 1 && line <= MAX_REFERENCE_LINE) &&
+    value[0] <= value[1]
+  );
+}
+export function referenceLabel(ref: ComposerFileReference): string {
+  return ref.lines
+    ? ref.lines[0] === ref.lines[1]
+      ? `${ref.path}:${ref.lines[0]}`
+      : `${ref.path}:${ref.lines[0]}-${ref.lines[1]}`
+    : ref.path;
 }
 export interface PromptVariable {
   name: string;
@@ -9,6 +27,8 @@ export interface PromptVariable {
   multiline?: boolean;
   enum?: string[];
 }
+const rangeNote =
+  'Line ranges mark the relevant section; read beyond them when the task needs more context.';
 const referenceReadContract =
   'Read each referenced file from this project root with the available file-reading tools before answering or editing it. Continue paginated reads until EOF; filenames alone are not file contents.';
 
@@ -27,7 +47,8 @@ export function referenceMessage(
   projectRoot: string,
 ): string {
   if (!refs.length) return text.trim();
-  const paths = [...new Set(refs.map((ref) => ref.path))];
+  // One entry per file; the last range given for a path wins.
+  const unique = [...new Map(refs.map((ref) => [ref.path, ref])).values()];
   const root = projectRoot
     .replace(/^\\\\\?\\/, '')
     .replaceAll('\\', '/')
@@ -36,27 +57,48 @@ export function referenceMessage(
     text.trim(),
     '[Project file references]',
     `Project root: ${JSON.stringify(root)}`,
-    ...paths.map((path) => `- ${JSON.stringify(path)}`),
+    ...unique.map(
+      (ref) =>
+        `- ${JSON.stringify(ref.path)}${ref.lines ? ` lines ${ref.lines[0]}-${ref.lines[1]}` : ''}`,
+    ),
+    unique.some((ref) => ref.lines) ? rangeNote : '',
     referenceReadContract,
   ]
     .filter(Boolean)
     .join('\n\n');
 }
-export function splitReferenceMessage(value: string): { text: string; paths: string[] } {
+export function splitReferenceMessage(value: string): {
+  text: string;
+  paths: string[];
+  references: ComposerFileReference[];
+} {
   const marker = '[Project file references]';
+  const plain = { text: value, paths: [], references: [] };
   const start = value.lastIndexOf(marker);
-  if (start < 0 || !value.endsWith(referenceReadContract)) return { text: value, paths: [] };
+  if (start < 0 || !value.endsWith(referenceReadContract)) return plain;
   try {
-    const lines = value
+    const references = value
       .slice(start + marker.length)
       .split('\n')
-      .filter((line) => line.startsWith('- '));
-    const paths = lines.map((line) => JSON.parse(line.slice(2)) as unknown);
-    if (!paths.length || paths.some((path) => typeof path !== 'string'))
-      return { text: value, paths: [] };
-    return { text: value.slice(0, start).trimEnd(), paths: paths as string[] };
+      .filter((line) => line.startsWith('- '))
+      .map((line): ComposerFileReference | null => {
+        const match = /^- ("(?:[^"\\]|\\.)*")(?: lines (\d+)-(\d+))?$/.exec(line);
+        if (!match) return null;
+        const path = JSON.parse(match[1]!) as unknown;
+        if (typeof path !== 'string' || !path) return null;
+        const lines = match[2] ? [Number(match[2]), Number(match[3])] : undefined;
+        if (lines && !validReferenceLines(lines)) return null;
+        return lines ? { path, lines: lines as [number, number] } : { path };
+      });
+    if (!references.length || references.some((ref) => !ref)) return plain;
+    const refs = references as ComposerFileReference[];
+    return {
+      text: value.slice(0, start).trimEnd(),
+      paths: refs.map((ref) => ref.path),
+      references: refs,
+    };
   } catch {
-    return { text: value, paths: [] };
+    return plain;
   }
 }
 export function fileMention(

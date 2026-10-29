@@ -4,9 +4,11 @@ import {
   desktopCommands,
   fileMention,
   parseDesktopCommand,
+  referenceLabel,
   referenceMessage,
   renderPromptTemplate,
   splitReferenceMessage,
+  validReferenceLines,
 } from '../src/composer-resources-model';
 
 describe('desktop composer project resources', () => {
@@ -29,12 +31,41 @@ describe('desktop composer project resources', () => {
     expect(splitReferenceMessage(payload)).toEqual({
       text: 'Review this file.',
       paths: ['src/file with spaces.ts'],
+      references: [{ path: 'src/file with spaces.ts' }],
     });
+    expect(payload).not.toContain('Line ranges mark');
     expect(referenceMessage('Plain input', [], 'D:/Example')).toBe('Plain input');
     expect(splitReferenceMessage('[Project file references]\n- bad JSON')).toEqual({
       text: '[Project file references]\n- bad JSON',
       paths: [],
+      references: [],
     });
+  });
+  it('carries optional line ranges through the message and back', () => {
+    const payload = referenceMessage(
+      'Fix the parser.',
+      [
+        { path: 'src/parse.ts', lines: [10, 24] },
+        { path: 'README.md' },
+        { path: 'src/one.ts', lines: [7, 7] },
+      ],
+      'D:/Example',
+    );
+    expect(payload).toContain('- "src/parse.ts" lines 10-24');
+    expect(payload).toContain('Line ranges mark the relevant section');
+    expect(splitReferenceMessage(payload).references).toEqual([
+      { path: 'src/parse.ts', lines: [10, 24] },
+      { path: 'README.md' },
+      { path: 'src/one.ts', lines: [7, 7] },
+    ]);
+    expect(referenceLabel({ path: 'src/one.ts', lines: [7, 7] })).toBe('src/one.ts:7');
+    expect(referenceLabel({ path: 'src/parse.ts', lines: [10, 24] })).toBe('src/parse.ts:10-24');
+    // A reversed range in a message is not trusted as references.
+    const reversed = payload.replace('lines 10-24', 'lines 24-10');
+    expect(splitReferenceMessage(reversed).references).toEqual([]);
+    for (const lines of [[0, 1], [5, 4], [1.5, 2], [1], [1, 10_000_001]])
+      expect(validReferenceLines(lines)).toBe(false);
+    expect(validReferenceLines([1, 1])).toBe(true);
   });
   it('only opens file mentions in prose at the caret and preserves surrounding paragraphs', () => {
     expect(fileMention('Read @src/fi', 12)).toEqual({ start: 5, end: 12, query: 'src/fi' });
