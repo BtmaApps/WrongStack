@@ -39,14 +39,14 @@
       "runtimeOrMixed": 1
     },
     "@wrongstack/core/design": {
-      "files": 14,
+      "files": 15,
       "typeOnly": 1,
-      "runtimeOrMixed": 15
+      "runtimeOrMixed": 16
     },
     "@wrongstack/core/execution": {
-      "files": 104,
+      "files": 105,
       "typeOnly": 25,
-      "runtimeOrMixed": 95
+      "runtimeOrMixed": 96
     },
     "@wrongstack/core/execution/refine-decisions": {
       "files": 2,
@@ -64,9 +64,9 @@
       "runtimeOrMixed": 11
     },
     "@wrongstack/core/infrastructure": {
-      "files": 64,
+      "files": 65,
       "typeOnly": 8,
-      "runtimeOrMixed": 59
+      "runtimeOrMixed": 60
     },
     "@wrongstack/core/kernel": {
       "files": 1,
@@ -74,9 +74,9 @@
       "runtimeOrMixed": 2
     },
     "@wrongstack/core/models": {
-      "files": 41,
+      "files": 45,
       "typeOnly": 11,
-      "runtimeOrMixed": 31
+      "runtimeOrMixed": 35
     },
     "@wrongstack/core/notifications": {
       "files": 6,
@@ -154,9 +154,9 @@
       "runtimeOrMixed": 30
     },
     "@wrongstack/core/storage": {
-      "files": 183,
+      "files": 187,
       "typeOnly": 54,
-      "runtimeOrMixed": 161
+      "runtimeOrMixed": 165
     },
     "@wrongstack/core/tasking": {
       "files": 45,
@@ -169,9 +169,9 @@
       "runtimeOrMixed": 23
     },
     "@wrongstack/core/utils": {
-      "files": 926,
+      "files": 927,
       "typeOnly": 69,
-      "runtimeOrMixed": 891
+      "runtimeOrMixed": 893
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -3376,6 +3376,12 @@
     },
     {
       "specifier": "@wrongstack/core/design",
+      "file": "apps/desktop-v2/tests/design-studio-model.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/design",
       "file": "packages/cli/src/fleet/host-subagent-factory.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -4078,6 +4084,12 @@
     },
     {
       "specifier": "@wrongstack/core/execution",
+      "file": "packages/webui-server/tests/brain-config-correlation.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/execution",
       "file": "packages/webui-server/tests/session-context-ops-per-session.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -4600,6 +4612,12 @@
     },
     {
       "specifier": "@wrongstack/core/infrastructure",
+      "file": "packages/webui-server/tests/usage-pricing.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/infrastructure",
       "file": "packages/webui/tests/components/official-servers-sync.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -4609,6 +4627,24 @@
       "file": "packages/core/tests/architecture/core-public-api-snapshot-sync.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 2
+    },
+    {
+      "specifier": "@wrongstack/core/models",
+      "file": "apps/desktop-v2/tests/model-advanced-editor.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/models",
+      "file": "apps/desktop-v2/tests/model-price-tiers.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/models",
+      "file": "apps/desktop-v2/tests/model-visibility.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/models",
@@ -4795,6 +4831,12 @@
       "file": "packages/webui-server/src/server/mode-handlers.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/models",
+      "file": "packages/webui-server/src/server/model-catalog.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/models",
@@ -8836,6 +8878,12 @@
     },
     {
       "specifier": "@wrongstack/core/storage",
+      "file": "apps/desktop-v2/engine/main.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/storage",
       "file": "packages/builtin-plugins/src/cloud-config-sync-plugin.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -9904,6 +9952,12 @@
     },
     {
       "specifier": "@wrongstack/core/storage",
+      "file": "packages/webui-server/tests/project-history-search.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/storage",
       "file": "packages/webui-server/tests/project-session-identity.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -9916,7 +9970,19 @@
     },
     {
       "specifier": "@wrongstack/core/storage",
+      "file": "packages/webui-server/tests/session-history-content.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/storage",
       "file": "packages/webui-server/tests/session-prompt-queue.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/storage",
+      "file": "packages/webui-server/tests/session-recovery-desktop.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -10392,7 +10458,7 @@
       "specifier": "@wrongstack/core/utils",
       "file": "apps/desktop-v2/engine/main.ts",
       "typeOnly": 0,
-      "runtimeOrMixed": 1
+      "runtimeOrMixed": 2
     },
     {
       "specifier": "@wrongstack/core/utils",
@@ -15629,6 +15695,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/webui-server/src/server/provider-keys.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/webui-server/src/server/provider-status-persistence.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

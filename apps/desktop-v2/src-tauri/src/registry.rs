@@ -43,6 +43,7 @@ impl Registry {
           CREATE TABLE IF NOT EXISTS projects (id TEXT PRIMARY KEY, name TEXT NOT NULL, root TEXT NOT NULL UNIQUE, created_at INTEGER NOT NULL);
           CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, project_id TEXT NOT NULL REFERENCES projects(id), title TEXT NOT NULL, kind TEXT NOT NULL, workdir TEXT NOT NULL, status TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, exit_code INTEGER, error TEXT);
           CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+          CREATE TABLE IF NOT EXISTS profile_form_drafts (form_key TEXT PRIMARY KEY, revision INTEGER NOT NULL, payload TEXT, updated_at INTEGER NOT NULL);
           CREATE TABLE IF NOT EXISTS project_form_drafts (project_id TEXT NOT NULL REFERENCES projects(id), form_key TEXT NOT NULL, revision INTEGER NOT NULL, payload TEXT, updated_at INTEGER NOT NULL, PRIMARY KEY(project_id,form_key));
           CREATE TABLE IF NOT EXISTS draft_revisions (session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE, part TEXT NOT NULL, revision INTEGER NOT NULL, PRIMARY KEY(session_id, part));
           CREATE TRIGGER IF NOT EXISTS draft_revision_insert AFTER INSERT ON settings WHEN NEW.key LIKE 'draft:%' OR NEW.key LIKE 'draftrefs:%' OR NEW.key LIKE 'draftmedia:%' OR NEW.key LIKE 'draftmode:%' BEGIN
@@ -250,6 +251,89 @@ impl Registry {
             .transpose()?
             .unwrap_or(Value::Null);
         Ok(serde_json::json!({"revision":revision,"value":value,"updatedAt":updated_at}))
+    }
+    fn ensure_profile_form(form_key: &str) -> Result<()> {
+        if !form_key
+            .strip_prefix("model-editor:")
+            .is_some_and(|id| id.len() == 64 && id.bytes().all(|value| value.is_ascii_hexdigit()))
+        {
+            return Err("Unknown profile form".into());
+        }
+        Ok(())
+    }
+    pub fn profile_form_draft(&self, form_key: &str) -> Result<Value> {
+        use rusqlite::OptionalExtension;
+        Self::ensure_profile_form(form_key)?;
+        let row = self
+            .db
+            .query_row(
+                "SELECT revision,payload,updated_at FROM profile_form_drafts WHERE form_key=?1",
+                [form_key],
+                |row| {
+                    Ok((
+                        row.get::<_, i64>(0)?,
+                        row.get::<_, Option<String>>(1)?,
+                        row.get::<_, i64>(2)?,
+                    ))
+                },
+            )
+            .optional()
+            .map_err(err)?;
+        let (revision, payload, updated_at) = row.unwrap_or((0, None, 0));
+        let value = payload
+            .map(|value| serde_json::from_str::<Value>(&value).map_err(err))
+            .transpose()?
+            .unwrap_or(Value::Null);
+        Ok(json!({"revision":revision,"value":value,"updatedAt":updated_at}))
+    }
+    pub fn save_profile_form_draft(
+        &self,
+        form_key: &str,
+        value: &Value,
+        expected: i64,
+    ) -> Result<i64> {
+        Self::ensure_profile_form(form_key)?;
+        if expected < 0 || (!value.is_object() && !value.is_null()) {
+            return Err("Invalid profile form draft".into());
+        }
+        let payload = if value.is_null() {
+            None
+        } else {
+            Some(serde_json::to_string(value).map_err(err)?)
+        };
+        if payload
+            .as_ref()
+            .is_some_and(|text| text.len() > 2 * 1024 * 1024)
+        {
+            return Err("Profile draft exceeds the 2 MB storage limit".into());
+        }
+        self.db.execute_batch("BEGIN IMMEDIATE").map_err(err)?;
+        let result = (|| {
+            let revision = self.profile_form_draft(form_key)?["revision"]
+                .as_i64()
+                .ok_or("Invalid profile draft revision")?;
+            if revision != expected {
+                return Err("DRAFT_CONFLICT: This profile draft changed in another window".into());
+            }
+            let next = revision
+                .checked_add(1)
+                .ok_or("Profile draft revision exhausted")?;
+            self.db.execute("INSERT INTO profile_form_drafts(form_key,revision,payload,updated_at) VALUES (?1,?2,?3,?4) ON CONFLICT(form_key) DO UPDATE SET revision=excluded.revision,payload=excluded.payload,updated_at=excluded.updated_at", params![form_key,next,payload,now()]).map_err(err)?;
+            Ok(next)
+        })();
+        match result {
+            Ok(next) => {
+                if let Err(error) = self.db.execute_batch("COMMIT") {
+                    let _ = self.db.execute_batch("ROLLBACK");
+                    return Err(err(error));
+                }
+                Ok(next)
+            }
+            Err(error) => {
+                let _ = self.db.execute_batch("ROLLBACK");
+                Err(error)
+            }
+        }
     }
     pub fn file_drafts(&self, project_id: &str) -> Result<Value> {
         self.ensure_form_project(project_id, &format!("file-draft:{}", "0".repeat(64)))?;
@@ -576,6 +660,58 @@ impl Registry {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn profile_model_drafts_need_no_projects_and_use_revision_checked_cleanup() {
+        let dir = std::env::temp_dir().join(uuid::Uuid::new_v4().to_string());
+        let db = super::Registry::open(&dir).unwrap();
+        let key = format!("model-editor:{}", "a".repeat(64));
+        let other = format!("model-editor:{}", "b".repeat(64));
+        assert!(db.projects().unwrap().is_empty());
+        assert_eq!(db.profile_form_draft(&key).unwrap()["revision"], 0);
+        let value =
+            serde_json::json!({"version":1,"providerId":"one","editor":{"draft":"in progress"}});
+        assert_eq!(db.save_profile_form_draft(&key, &value, 0).unwrap(), 1);
+        let peer = super::Registry::open(&dir).unwrap();
+        assert_eq!(peer.profile_form_draft(&key).unwrap()["value"], value);
+        assert!(peer.profile_form_draft(&other).unwrap()["value"].is_null());
+        assert!(peer
+            .save_profile_form_draft(&key, &serde_json::Value::Null, 0)
+            .unwrap_err()
+            .contains("DRAFT_CONFLICT"));
+        assert_eq!(
+            peer.save_profile_form_draft(&key, &serde_json::json!({"newer":true}), 1)
+                .unwrap(),
+            2
+        );
+        assert!(db
+            .save_profile_form_draft(&key, &serde_json::Value::Null, 1)
+            .is_err());
+        assert!(db
+            .save_profile_form_draft(&key, &serde_json::json!([]), 2)
+            .is_err());
+        assert!(db.profile_form_draft("model-editor:../bad").is_err());
+        assert!(db.profile_form_draft("requirements-new").is_err());
+        assert!(db.save_profile_form_draft(&key, &value, -1).is_err());
+        assert!(db
+            .save_profile_form_draft(
+                &other,
+                &serde_json::json!({"text":"x".repeat(2 * 1024 * 1024)}),
+                0
+            )
+            .is_err());
+        assert_eq!(
+            db.save_profile_form_draft(&key, &serde_json::Value::Null, 2)
+                .unwrap(),
+            3
+        );
+        drop(peer);
+        drop(db);
+        let reopened = super::Registry::open(&dir).unwrap();
+        assert_eq!(reopened.profile_form_draft(&key).unwrap()["revision"], 3);
+        assert!(reopened.profile_form_draft(&key).unwrap()["value"].is_null());
+        drop(reopened);
+        std::fs::remove_dir_all(dir).unwrap();
+    }
     use super::*;
     #[test]
     fn file_drafts_are_project_scoped_persistent_metadata_with_checked_clears() {

@@ -71,6 +71,8 @@ async fn host_request(
         "draft.replace",
         "form-draft.get",
         "form-draft.save",
+        "profile-draft.get",
+        "profile-draft.save",
         "file-drafts.list",
     ]
     .contains(&method.as_str())
@@ -82,6 +84,14 @@ async fn host_request(
     let drafts = Arc::clone(&state.drafts);
     let aliases = Arc::clone(&state.project_aliases);
     tauri::async_runtime::spawn_blocking(move || {
+        if method == "profile-draft.get" || method == "profile-draft.save" {
+            let registry = drafts.lock().map_err(err)?;
+            let key = crate::sessions::field(&params, "formKey")?;
+            if method == "profile-draft.get" { return registry.profile_form_draft(key); }
+            let expected = params["expectedRevision"].as_i64().filter(|value| *value >= 0).ok_or("Missing profile draft revision")?;
+            let value = params.get("value").ok_or("Missing profile draft value")?;
+            return Ok(json!({"revision":registry.save_profile_form_draft(key, value, expected)?}));
+        }
         if method == "file-drafts.list" {
             return drafts.lock().map_err(err)?.file_drafts(crate::sessions::field(&params, "projectId")?);
         }

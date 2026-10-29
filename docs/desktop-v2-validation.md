@@ -2575,3 +2575,119 @@ Verification on the shared working snapshot:
   acceptance result: `.temp_files/desktop-v2-native/brain-policy/native-result.json`.
 - The native application still requires separate real council execution/quality acceptance,
   cross-runtime policy refresh and broader release certification. No installed binary was replaced.
+## Structured model context price tiers (2026-10-28)
+
+- Native model settings now author the observed catalog shape
+  `cost.tiers[].tier = { type: "context", size: <tokens> }`. Rows expose context thresholds and
+  input/output/cache/reasoning/audio rates in USD per million tokens; add, reorder, remove and
+  explicit whole-schedule removal remain drafts until Save. Read-only detail shows human-readable
+  saved thresholds/rates. Blank rates remain unspecified; explicit zero is preserved.
+- Rejects non-positive/fractional/unsafe thresholds, duplicate context thresholds, negative/non-finite
+  rates and new rows without any price. Unknown row/nested metadata survives supported edits;
+  provider-specific rows and unsupported root formats remain preserved until explicit removal.
+- Existing structured `context_over_200k` schedules are displayed separately, retained during unrelated
+  edits and protected from the scalar input. The shared schema now accepts both legacy scalar rates
+  and observed nested schedules while retaining future keys and validating known numeric fields.
+- Saved tier edits/removal require exact tier-array readback rather than only a subset match.
+  Existing whole-definition stale-edit preflight remains. This is catalog metadata authoring;
+  historical billing and tier-aware Usage & cost calculations remain separate work.
+- Registry format verified directly against [the upstream catalog](https://models.dev/api.json)
+  on this date; sampled context tiers use `tier.type=context` and `tier.size`, including nested
+  `context_over_200k` schedules. No package dependency or framework version changed.
+- Before-proof uses preserved HEAD copies without overwriting production source:
+  `.temp_files/desktop-v2-price-tiers/proof.mjs --before`, **exit 1 / assertion RED**;
+  scalar control PASS, nested schedule accepted=false and preserved=false. The identical production
+  assertions after the patch report accepted=true and preserved=true, **exit 0 / PASS**.
+  Evidence: `red.log` and `green.log` in that directory. Durable regressions are in the core schema
+  suite and desktop `model-price-tiers.test.ts`.
+- Desktop: **365 tests / 78 files PASS**, **225 files typecheck PASS**. Core schema: **12 tests /
+  1 file PASS**; core source typecheck: **634 files PASS**. Focused Biome: **10 files PASS**.
+  Fresh engine build and Tauri release build: **PASS**.
+- Real bundled native `--models`: **exit 0 / PASS**, portable identity
+  `7ef0ce69f3ea-890d72a48a36`, bundled-engine/checksum verification PASS. Exercised canonical saved
+  schedule loading, unrelated edit preservation, row add/reorder/remove, explicit zero/blank,
+  duplicate refusal before storage, actual profile disk/readback, reopen and whole-tier removal
+  retaining base/legacy prices. Existing provider visibility/OAuth-metadata/catalog/key/quota
+  acceptance also passed; no external OAuth authentication or provider billing was certified.
+- Inspected `.temp_files/desktop-v2-native/models/native-model-price-tiers-compact.png` at 800px;
+  no document or tier-panel horizontal overflow. Desktop screenshots and `native-result.json` are
+  in that directory. Logs: `.temp_files/desktop-v2-native/model-price-tiers-native.log` and `.err`.
+- Full repository release/coverage, hosted CI, installed app replacement, live provider invoices,
+  and durable model-editor draft recovery were not performed in this increment. Shared-checkout
+  HEAD advanced independently during verification; these results describe the tested dirty source
+  snapshot and exact recorded native build, not a pristine checkout certification.
+## Durable native model-editor drafts (2026-10-28)
+
+- Added a native SQLite `profile_form_drafts` table, separate from project forms and conversation
+  drafts. Trusted Tauri IPC exposes only `profile-draft.get/save`; model-editor keys are restricted
+  to a provider-derived SHA-256 namespace. Draft payloads are object/null values, bounded at 2 MiB.
+  Saves and clears use `BEGIN IMMEDIATE`, exact expected revision checks and checked acknowledgements.
+- The desktop profile context keeps one parked editor per provider. A versioned envelope retains
+  provider ownership, model identity, original saved definition/baseline, typed form values, reasoning
+  and price-tier edits, including invalid-in-progress numbers. Unsupported/cross-provider formats
+  fail closed. Autosave never writes provider configuration or creates a project/session.
+- Reopen displays an explicit Continue/Discard notice rather than applying or automatically opening
+  the draft. Provider refresh retains the current editor's provider identity. Local and saved forms
+  have readable comparisons, including capabilities, reasoning, lifecycle, connection metadata and
+  price tiers. Saved choices are read again before replacement; intervening changes require a new
+  review. Conflicted local edits remain in the current window until a reviewed choice.
+- Applying a model first flushes and verifies the native draft revision and checks that the rendered
+  editor matches the acknowledged draft. Existing saved-model stale-edit checks remain. Provider
+  save/readback is followed by revision-checked draft cleanup. A newer peer draft cannot be erased by
+  old cleanup, and a failed clear retains the editor. This is not an atomic transaction spanning
+  provider config and native draft storage.
+- Desktop full suite: **371 tests / 79 files PASS**. Typecheck: **228 source files PASS**.
+  New controller tests cover complete restoration, ownership/format rejection, ordered in-flight
+  autosave, explicit conflict resolution, changed-again review, stale application/cleanup, bad
+  acknowledgements and mismatched rendered-form preflight. Focused Biome: **8 files PASS**;
+  Rust formatting check PASS. Native Rust: **20 tests PASS**, including SQLite reopen, independent
+  provider keys, no-project operation, stale saves/clears, payload/key limits and invalid inputs.
+- Tauri release build PASS. Final real bundled `--models` acceptance: **exit 0 / PASS**, portable
+  identity `59b87f3dc9da-890d72a48a36`, bundled engine/checksum verification PASS. Tested unfinished
+  negative-price recovery across renderer reload, explicit resume/discard, native-IPC-injected peer
+  writes, changed-again refusal, saved-version choice, actual model application/readback, acknowledged
+  cleanup and provider isolation. Resolution assertions wait for native storage acknowledgement.
+  Existing price-tier/catalog/provider visibility/OAuth-metadata/key/quota scopes also passed.
+- Inspected `native-model-draft-comparison-compact.png` at 800px, with no document horizontal overflow.
+  Artifacts: `.temp_files/desktop-v2-native/models/`; final `native-result.json` is tied to the portable
+  identity above. Logs: `.temp_files/desktop-v2-native/model-drafts-native.log` / `.err`,
+  `model-drafts-build.log` / `.err` and `model-draft-rust.log`.
+- Storage is scoped to the current native desktop data/profile context; active WrongStack profile
+  switching, orphaned-provider draft administration and future format migration remain open.
+  A full application-process restart/abrupt-termination and actual concurrent multi-window stress
+  were not exercised; renderer reload plus SQLite close/reopen were verified separately. Full
+  repository release/coverage, hosted CI and installed application replacement were not run.
+## Actual process restart acceptance for model drafts (2026-10-29)
+
+- Added a dedicated `--model-draft-restart` native acceptance scope. It launches the real portable
+  Tauri application with a fresh WebView2 data directory on every launch, terminates the actual UI
+  process twice, and separately terminates/restarts the owned host and engine tree twice. Numeric
+  process identities and observed exit/signal state are recorded; cold restart also checks that the
+  host authentication identity changes without logging its token.
+- The test confirms an exact acknowledged native SQLite draft snapshot across UI-only and complete
+  host/engine restarts, including an unfinished negative price and the original model definition
+  baseline. Recovery remains opt-in and never adds the unfinished model to provider configuration.
+- A model definition changed independently before a cold restart cannot be overwritten by the
+  recovered stale draft. Local form values remain visible on refusal. Explicitly discarded drafts
+  stay cleared after a subsequent process restart. Project/session registry membership is preserved.
+- Cleanup and restart operate only on this test's unique `mkdtemp` directory and authenticated owned
+  host PID. Resolved temporary-directory boundaries are checked before process cleanup and recursive
+  removal. The same bounded scoped cleanup helper is shared with the normal harness teardown.
+- The initial harness attempt incorrectly treated Windows `exitCode=null` with `signalCode=SIGTERM`
+  as a live UI. The corrected assertion records a real process exit through its code or signal.
+  Fixture teardown preserves the original failure when a page has already closed.
+- Final native command: `bun apps/desktop-v2/tests/native-smoke.mjs --release --bundled
+  --model-draft-restart`, **exit 0 / PASS**, portable identity `59b87f3dc9da-890d72a48a36`.
+  Bundled engine/checksum verification PASS. Four restarts produced five distinct Tauri PIDs;
+  both cold restarts changed native host PIDs and both UI-only restarts retained the host.
+- Desktop package checks remain green: **371 tests / 79 files PASS**; **228 source files typecheck
+  PASS**. Focused Biome: **2 files PASS**. This acceptance increment reuses the recorded portable
+  executables; runtime source did not require a change or a rebuild.
+- Artifacts: `.temp_files/desktop-v2-native/model-draft-restart/native-result.json`,
+  `native-model-draft-restarts.json`, `native-model-draft-cold-recovered.png` and
+  `native-model-draft-cold-stale-refusal.png`. Logs: `.temp_files/desktop-v2-native/model-draft-restart.log`
+  and `.err`. The final stale-refusal screenshot was inspected.
+- This closes the previously unexercised complete application-process restart case for acknowledged
+  model-editor drafts. It does not guarantee the last unacknowledged keystroke survives termination,
+  or certify power loss, long-running repeated crashes, actual concurrent multi-window UI stress,
+  active profile switching, the full release/coverage matrix, hosted CI or installed-app replacement.

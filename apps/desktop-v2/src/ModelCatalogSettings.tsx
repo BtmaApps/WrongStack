@@ -3,13 +3,20 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { CatalogModelSearch } from './CatalogModelSearch';
 import type { EngineCommand } from './engine-operations';
 import { entries, record } from './engine-values';
+import { LegacyModelDraftNotice } from './LegacyModelDraftNotice';
 import { Modal } from './Modal';
 import { ModelAdvancedFields } from './ModelAdvancedFields';
+import {
+  type ModelProfileIdentity,
+  useModelProfile,
+  verifyModelProfile,
+} from './ModelCatalogProfile';
+import { ModelDraftNotice } from './ModelDraftNotice';
+import { ModelPriceTiers, SavedModelPriceTiers } from './ModelPriceTiers';
 import { modelAdvancedDraft } from './model-advanced-editor';
 import {
   buildModelDefinition,
   containsModelDefinition,
-  type ModelEditorDraft,
   modelDefinition,
   modelEditorDraft,
   modelFlags,
@@ -17,20 +24,46 @@ import {
   modelTextFields,
   savedModelProvider,
 } from './model-catalog-editor';
+import type { ModelEditorState } from './model-editor-draft';
 import { sameSetting } from './settings-save-model';
+import { useModelEditorDraft } from './useModelEditorDraft';
 import './model-catalog.css';
 
-type Editor = {
-  originalId: string;
-  initial: Record<string, unknown> | undefined;
-  draft: ModelEditorDraft;
-  baseline: ModelEditorDraft;
-};
+type Editor = ModelEditorState;
 function makeEditor(id: string, initial?: Record<string, unknown>, name = ''): Editor {
   const draft = modelEditorDraft(id, initial ?? { name });
   return { originalId: id, initial, draft, baseline: draft };
 }
 export function ModelCatalogSettings({ command }: { command: EngineCommand }) {
+  const context = useModelProfile(command);
+  if (!context.profile)
+    return (
+      <section aria-label="Model catalog settings">
+        <p role={context.error ? 'alert' : 'status'}>
+          {context.error || 'Identifying the profile runtime…'}
+        </p>
+        {context.error && (
+          <button type="button" className="button secondary" onClick={context.retry}>
+            Reconnect model profile
+          </button>
+        )}
+      </section>
+    );
+  return (
+    <ProfileModelCatalogSettings
+      key={context.profile.id}
+      command={command}
+      profile={context.profile}
+    />
+  );
+}
+function ProfileModelCatalogSettings({
+  command,
+  profile,
+}: {
+  command: EngineCommand;
+  profile: ModelProfileIdentity;
+}) {
   const [providers, setProviders] = useState<Record<string, unknown>[]>([]);
   const [providerId, setProviderId] = useState('');
   const [provider, setProvider] = useState<Record<string, unknown>>({});
@@ -41,7 +74,13 @@ export function ModelCatalogSettings({ command }: { command: EngineCommand }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
-  const [editor, setEditor] = useState<Editor | null>(null);
+  const [editor, setEditorValue] = useState<Editor | null>(null);
+  const modelDraft = useModelEditorDraft(providerId, profile.id);
+  const setEditor = (value: Editor) => {
+    modelDraft.controller.edit(value);
+    setEditorValue(value);
+  };
+  const blockedDraft = !modelDraft.state.ready || (!editor && !!modelDraft.state.value);
   const [discard, setDiscard] = useState(false);
   const [remove, setRemove] = useState(false);
   const [registrySearch, setRegistrySearch] = useState(false);
@@ -54,7 +93,7 @@ export function ModelCatalogSettings({ command }: { command: EngineCommand }) {
         if (!active) return;
         const values = entries(result['providers']);
         setProviders(values);
-        setProviderId(String(values[0]?.['id'] ?? ''));
+        setProviderId((current) => current || String(values[0]?.['id'] ?? ''));
       })
       .catch((error) => {
         if (active) setError(String(error));
@@ -69,6 +108,7 @@ export function ModelCatalogSettings({ command }: { command: EngineCommand }) {
     setLoading(true);
     setError('');
     try {
+      await verifyModelProfile(command, profile);
       const [saved, catalog] = await Promise.all([
         command('providers.saved', {}, ['providers.saved']),
         command('provider.models', { providerId, includeDisabled: true }, ['provider.models']),
@@ -86,7 +126,7 @@ export function ModelCatalogSettings({ command }: { command: EngineCommand }) {
     } finally {
       if (seq === sequence.current) setLoading(false);
     }
-  }, [command, providerId]);
+  }, [command, providerId, profile]);
   useEffect(() => {
     setProvider({});
     setModels([]);
@@ -116,6 +156,7 @@ export function ModelCatalogSettings({ command }: { command: EngineCommand }) {
   const caps = record(definition?.['capabilities']);
   const limit = record(md['limit']);
   const cost = record(md['cost']);
+  const editorCost = record(record(editor?.initial?.['modelsDev'])['cost']);
   const advancedModel = modelAdvancedDraft(md);
   const metric = (value: unknown, price = false) =>
     typeof value === 'number'
@@ -126,7 +167,23 @@ export function ModelCatalogSettings({ command }: { command: EngineCommand }) {
   const closeEditor = () => {
     if (busyRef.current) return;
     if (editor && !sameSetting(editor.draft, editor.baseline)) setDiscard(true);
-    else setEditor(null);
+    else void dismissEditor();
+  };
+  const dismissEditor = async () => {
+    if (busyRef.current) return;
+    busyRef.current = true;
+    setBusy(true);
+    try {
+      await modelDraft.controller.clear();
+      setEditorValue(null);
+      setDiscard(false);
+      setError('');
+    } catch (error) {
+      setError(String(error));
+    } finally {
+      busyRef.current = false;
+      setBusy(false);
+    }
   };
   const mutate = async (action: 'save' | 'remove') => {
     if (busyRef.current) return;
@@ -135,6 +192,8 @@ export function ModelCatalogSettings({ command }: { command: EngineCommand }) {
     setError('');
     setNotice('');
     try {
+      await verifyModelProfile(command, profile);
+      if (action === 'save') await modelDraft.controller.prepare(editor ?? undefined);
       const input =
         action === 'save' && editor
           ? buildModelDefinition(editor.draft, editor.initial ?? {})
@@ -156,15 +215,28 @@ export function ModelCatalogSettings({ command }: { command: EngineCommand }) {
         await command('providers.saved', {}, ['providers.saved']),
         providerId,
       );
+      const actualDefinition = modelDefinition(verified, id);
       if (
         action === 'save'
-          ? !containsModelDefinition(modelDefinition(verified, id), input!.definition)
-          : modelDefinition(verified, id) !== undefined
+          ? !containsModelDefinition(actualDefinition, input!.definition)
+          : actualDefinition !== undefined
       )
         throw Error(
           'The model change was acknowledged but its saved definition could not be verified. Refresh before retrying.',
         );
-      setEditor(null);
+      if (
+        action === 'save' &&
+        editor?.draft.pricing.changed &&
+        !sameSetting(
+          record(record(actualDefinition?.['modelsDev'])['cost'])['tiers'],
+          record(record(input!.definition['modelsDev'])['cost'])['tiers'],
+        )
+      )
+        throw Error(
+          'The saved price tiers did not match your reviewed changes. Your draft is retained.',
+        );
+      if (action === 'save') await modelDraft.controller.clear();
+      setEditorValue(null);
       setRemove(false);
       setDiscard(false);
       setSelected(action === 'save' ? id : '');
@@ -233,7 +305,7 @@ export function ModelCatalogSettings({ command }: { command: EngineCommand }) {
         <button
           type="button"
           className="button primary"
-          disabled={loading || busy || !!editor || remove || !provider['id']}
+          disabled={loading || busy || !!editor || remove || !provider['id'] || blockedDraft}
           onClick={() => {
             setError('');
             setEditor(makeEditor(''));
@@ -245,12 +317,37 @@ export function ModelCatalogSettings({ command }: { command: EngineCommand }) {
         <button
           type="button"
           className="button secondary"
-          disabled={loading || busy || !!editor || remove || !provider['id']}
+          disabled={loading || busy || !!editor || remove || !provider['id'] || blockedDraft}
           onClick={() => setRegistrySearch((value) => !value)}
         >
           Find in model registry
         </button>
       </div>
+      {providerId && !editor && (
+        <ModelDraftNotice
+          state={modelDraft.state}
+          controller={modelDraft.controller}
+          editing={false}
+          busy={busy}
+          onResume={() => setEditorValue(modelDraft.state.value)}
+          onResolved={() => {}}
+          onDiscard={() => {
+            void dismissEditor();
+          }}
+        />
+      )}
+      {providerId && !editor && (
+        <LegacyModelDraftNotice
+          key={providerId}
+          providerId={providerId}
+          profileName={profile.name}
+          controller={modelDraft.controller}
+          onCopied={() => {
+            setEditorValue(modelDraft.controller.snapshot().value);
+            setError('');
+          }}
+        />
+      )}
       {registrySearch && (
         <CatalogModelSearch
           key={providerId}
@@ -304,7 +401,7 @@ export function ModelCatalogSettings({ command }: { command: EngineCommand }) {
                     type="button"
                     key={item.id}
                     aria-pressed={selected === item.id}
-                    disabled={busy || remove}
+                    disabled={busy || remove || blockedDraft}
                     onClick={() => {
                       setSelected(item.id);
                       setError('');
@@ -360,6 +457,7 @@ export function ModelCatalogSettings({ command }: { command: EngineCommand }) {
                       </div>
                     ))}
                   </dl>
+                  <SavedModelPriceTiers cost={cost} />
                   {definition && (
                     <details className="model-advanced-fields">
                       <summary>Saved advanced behavior</summary>
@@ -525,7 +623,7 @@ export function ModelCatalogSettings({ command }: { command: EngineCommand }) {
                     <button
                       type="button"
                       className="button secondary"
-                      disabled={busy || remove}
+                      disabled={busy || remove || blockedDraft}
                       onClick={() => {
                         setError('');
                         setEditor(makeEditor(selected, definition, current.name));
@@ -583,7 +681,9 @@ export function ModelCatalogSettings({ command }: { command: EngineCommand }) {
         <Modal onClose={closeEditor}>
           <header>
             <div>
-              <span className="eyebrow">{providerId}</span>
+              <span className="eyebrow">
+                {profile.name} · {providerId}
+              </span>
               <h2 id="dialog-title">
                 {editor.draft.id ? 'Model definition' : 'Add model definition'}
               </h2>
@@ -609,6 +709,17 @@ export function ModelCatalogSettings({ command }: { command: EngineCommand }) {
               Blank optional values inherit catalog defaults. Additional saved schema fields are
               preserved.
             </p>
+            <ModelDraftNotice
+              state={modelDraft.state}
+              controller={modelDraft.controller}
+              editing
+              busy={busy}
+              onResume={() => {}}
+              onDiscard={() => {
+                void dismissEditor();
+              }}
+              onResolved={() => setEditorValue(modelDraft.controller.snapshot().value)}
+            />
             <fieldset disabled={busy}>
               <label>
                 Model ID
@@ -653,6 +764,14 @@ export function ModelCatalogSettings({ command }: { command: EngineCommand }) {
                       type="number"
                       min={0}
                       step={group === 'limit' ? 1 : 'any'}
+                      disabled={
+                        group === 'cost' && !!editorCost[key] && typeof editorCost[key] === 'object'
+                      }
+                      placeholder={
+                        group === 'cost' && typeof editorCost[key] === 'object'
+                          ? 'Structured schedule preserved below'
+                          : undefined
+                      }
                       value={editor.draft.numbers[`${group}.${key}`] ?? ''}
                       onChange={(event) =>
                         setEditor({
@@ -670,6 +789,13 @@ export function ModelCatalogSettings({ command }: { command: EngineCommand }) {
                   </label>
                 ))}
               </div>
+              <ModelPriceTiers
+                value={editor.draft.pricing}
+                legacySchedule={editorCost['context_over_200k']}
+                onChange={(pricing) =>
+                  setEditor({ ...editor, draft: { ...editor.draft, pricing } })
+                }
+              />
               <h3>Capabilities</h3>
               <div className="model-editor-grid">
                 {modelFlags.map(([key, label]) => (
@@ -739,10 +865,9 @@ export function ModelCatalogSettings({ command }: { command: EngineCommand }) {
                 <button
                   type="button"
                   className="button secondary danger"
+                  disabled={busy}
                   onClick={() => {
-                    setEditor(null);
-                    setDiscard(false);
-                    setError('');
+                    void dismissEditor();
                   }}
                 >
                   Discard model draft
@@ -758,7 +883,16 @@ export function ModelCatalogSettings({ command }: { command: EngineCommand }) {
                 >
                   Cancel model editing
                 </button>
-                <button type="submit" className="button primary" disabled={busy}>
+                <button
+                  type="submit"
+                  className="button primary"
+                  disabled={
+                    busy ||
+                    !modelDraft.state.ready ||
+                    !!modelDraft.state.review ||
+                    !!modelDraft.state.error
+                  }
+                >
                   {busy ? 'Saving…' : 'Save model definition'}
                 </button>
               </footer>

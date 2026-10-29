@@ -788,6 +788,7 @@
         "export { describeCatalogModel, type ProviderModelDescriptor, resolveProviderModelList, } from './provider-model-resolve.js';",
         "export { findModelProfile, inferTaskType, MODEL_PROFILES, type ModelProfile, scoreModelForTask, TASK_TO_ROLE, type TaskType, } from './model-intelligence.js';",
         "export { hasProviderCredential, hasProviderKeyInConfig, hasProviderKeyInEnv, isKeylessLocalProvider, type ProviderCredentialConfig, type ProviderCredentialSubject, } from './provider-credentials.js';",
+        "export { normalizeModelsDevModel } from './models-registry-normalization.js';",
         "export { type ModelIntelligenceEntry, type ModelPick, ModelRouter, type RouterConfig, type RouterCosts, } from './model-router.js';"
       ]
     },
@@ -1088,7 +1089,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime pilot candidate after R2/R3",
       "sourceFiles": 107,
-      "sourceLines": 26016
+      "sourceLines": 26027
     },
     {
       "directory": "extension",
@@ -1116,7 +1117,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime or Providers",
       "sourceFiles": 19,
-      "sourceLines": 4361
+      "sourceLines": 4362
     },
     {
       "directory": "notifications",
@@ -1193,7 +1194,7 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "project-scoped ownership and catalog subsystem",
       "sourceFiles": 20,
-      "sourceLines": 5628
+      "sourceLines": 5693
     },
     {
       "directory": "skills",
@@ -1213,8 +1214,8 @@
       "directory": "storage",
       "classification": "storage/repository implementation",
       "intendedOwner": "repositories over dependency-free persistence",
-      "sourceFiles": 118,
-      "sourceLines": 26273
+      "sourceFiles": 119,
+      "sourceLines": 26385
     },
     {
       "directory": "tasking",

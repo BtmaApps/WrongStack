@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { exerciseNativeModelDrafts } from './native-model-drafts.mjs';
+import { exerciseNativeModelPriceTiers } from './native-model-price-tiers.mjs';
 import { exerciseNativeModelVisibility } from './native-model-visibility.mjs';
 import { exerciseNativeProviderOAuth } from './native-provider-oauth.mjs';
 
@@ -288,6 +290,26 @@ export async function exerciseNativeModelCatalog({ page, rpc, waitFor, artifactD
       ).reasoningEffortLevels,
       ['low', 'high'],
     );
+    await exerciseNativeModelPriceTiers({
+      page,
+      catalog,
+      call,
+      saved,
+      providerId,
+      modelId,
+      artifactDir,
+      configPath,
+    });
+    await exerciseNativeModelDrafts({
+      page,
+      catalog,
+      call,
+      saved,
+      providerId,
+      modelId,
+      artifactDir,
+      waitFor,
+    });
     await page.screenshot({ path: join(artifactDir, 'native-model-catalog.png'), fullPage: true });
     await page.setViewportSize({ width: 800, height: 640 });
     assert.equal(

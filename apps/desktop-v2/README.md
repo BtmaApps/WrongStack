@@ -23,6 +23,21 @@ synchronization does not require the legacy Electron application.
 New builds leave binaries used by open sessions in place. Existing sessions remain on their
 original host; an older host can run beside a newer project-service host without restarting them.
 
+Context-price tier authoring uses the catalog's `tier.type=context` and `tier.size` format.
+Add, reorder or remove tiers, review saved rates, distinguish explicit zero from unspecified prices,
+and retain unknown/provider-specific metadata. Nested legacy over-200k schedules remain readable
+and survive unrelated edits. Saved tier changes are compared exactly after readback. Tier metadata
+is separate from the current-rate Usage & cost estimate; this editor does not implement tier billing.
+
+Model editor forms are retained in native SQLite in the desktop profile context, with one parked
+editor per verified profile and provider. The runtime identifies its actual profile config file with an\nopaque ownership ID; the ID is checked before model catalog reads and writes. Recovery is opt-in and keeps the original saved-definition baseline, reasoning
+controls and unfinished price tiers. Autosave does not apply provider settings. Compare conflicting
+window drafts before choosing; successful model save/readback or explicit discard uses acknowledged,
+revision-checked cleanup. Project/session drafts use their own storage and are not involved. Earlier unassigned drafts have\na separate review/copy/discard flow. Explicit copying retains the source and does not apply model\nsettings; changed source revisions and occupied profile drafts are protected.
+Targeted restart acceptance terminates the actual UI process and, separately, its isolated host
+and engines. Fresh WebViews restore acknowledged drafts without applying settings, retain the
+original model baseline, refuse stale model writes and keep confirmed discards cleared.
+
 ## Develop
 
 Conversation Tools includes a dedicated Usage & cost workspace. It separates accumulated token
@@ -403,6 +418,8 @@ bun apps/desktop-v2/tests/native-smoke.mjs --release --bundled --usage
 bun apps/desktop-v2/tests/native-smoke.mjs --release --bundled --sage
 bun apps/desktop-v2/tests/native-smoke.mjs --release --bundled --sdd
 bun apps/desktop-v2/tests/native-smoke.mjs --release --bundled --models
+bun apps/desktop-v2/tests/native-smoke.mjs --release --bundled --model-draft-restart
+bun apps/desktop-v2/tests/native-smoke.mjs --release --bundled --model-profiles
 bun apps/desktop-v2/tests/native-smoke.mjs --release --bundled --mailbox
 bun apps/desktop-v2/tests/native-smoke.mjs --release --bundled --kit
 bun apps/desktop-v2/tests/native-smoke.mjs --release --bundled --techstack

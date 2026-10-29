@@ -101,6 +101,10 @@ function clientHandledTypes(): Set<string> {
  * a reason; if you wire one up, remove it from here.
  */
 const INTENTIONALLY_UNHANDLED = new Set<string>([
+  // Explicit desktop-owned content-search replies. The WebUI does not issue
+  // files.search; its own search UI uses a separate implementation. The native
+  // FileContentSearch consumes these correlated replies through EngineOperations.
+  'files.search',
   // Collab "observer mirror" stream — incomplete feature, no UI surface yet,
   // standalone-only (the CLI server no-ops collab). See webui-cli-ws-protocol-parity.
   'collab.event',

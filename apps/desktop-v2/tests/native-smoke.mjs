@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { copyFile, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { createConnection, createServer } from 'node:net';
 import { tmpdir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
 import { createSqliteMemoryPort, getSageSurface } from '../../../packages/sage/dist/index.js';
@@ -37,6 +37,8 @@ import { exerciseNativeMailbox } from './native-mailbox.mjs';
 import { exerciseNativeMcpComposer, exerciseNativeMcpContent } from './native-mcp-content.mjs';
 import { exerciseNativeMcpTasks } from './native-mcp-tasks.mjs';
 import { exerciseNativeModelCatalog } from './native-model-catalog.mjs';
+import { exerciseNativeModelDraftRestart } from './native-model-draft-restart.mjs';
+import { exerciseNativeModelProfiles } from './native-model-profiles.mjs';
 import { exerciseNativeNextSteps } from './native-next-steps.mjs';
 import { exerciseNativeProcesses } from './native-processes.mjs';
 import { exerciseNativeProjectHistory } from './native-project-history.mjs';
@@ -63,6 +65,8 @@ const chronicleOnly = process.argv.includes('--chronicle');
 const goalsOnly = process.argv.includes('--goals');
 const sddOnly = process.argv.includes('--sdd');
 const modelsOnly = process.argv.includes('--models');
+const modelDraftRestartOnly = process.argv.includes('--model-draft-restart');
+const modelProfilesOnly = process.argv.includes('--model-profiles');
 const mailboxOnly = process.argv.includes('--mailbox');
 const kitOnly = process.argv.includes('--kit');
 const techstackOnly = process.argv.includes('--techstack');
@@ -89,71 +93,77 @@ const usageOnly = process.argv.includes('--usage');
 const artifactDir = resolve(
   root,
   '.temp_files/desktop-v2-native',
-  usageOnly
-    ? 'session-usage'
-    : sageOnly
-      ? 'sage-validity'
-      : refinementPolicyOnly
-        ? 'refinement-policy'
-        : executionPolicyOnly
-          ? 'execution-policy'
-          : brainPolicyOnly
-            ? 'brain-policy'
-            : fleetPolicyOnly
-              ? 'fleet-policy'
-              : atlasOnly
-                ? 'atlas-boundaries'
-                : fleetOnly
-                  ? 'fleet'
-                  : processesOnly
-                    ? 'processes'
-                    : mcpTasksOnly
-                      ? 'mcp-tasks'
-                      : mcpOnly
-                        ? 'mcp'
-                        : automationOnly
-                          ? 'automation'
-                          : rosterOnly
-                            ? 'roster'
-                            : filesOnly
-                              ? 'files'
-                              : settingsOnly
-                                ? 'settings'
-                                : historyOnly
-                                  ? companion
-                                    ? 'history-companion'
-                                    : 'history'
-                                  : recoveryOnly
-                                    ? 'recovery'
-                                    : chimeraOnly
-                                      ? 'chimera'
-                                      : designOnly
-                                        ? 'design'
-                                        : deadCodeOnly
-                                          ? 'deadcode'
-                                          : techstackOnly
-                                            ? 'techstack'
-                                            : kitOnly
-                                              ? 'kit'
-                                              : mailboxOnly
-                                                ? 'mailbox'
-                                                : modelsOnly
-                                                  ? 'models'
-                                                  : sddOnly
-                                                    ? 'sdd'
-                                                    : goalsOnly
-                                                      ? 'goals'
-                                                      : chronicleOnly
-                                                        ? 'chronicle'
-                                                        : composerOnly
-                                                          ? companion
-                                                            ? 'composer-companion'
-                                                            : 'composer'
-                                                          : companion
-                                                            ? 'companion'
-                                                            : '.',
+  modelProfilesOnly
+    ? 'model-profiles'
+    : modelDraftRestartOnly
+      ? 'model-draft-restart'
+      : usageOnly
+        ? 'session-usage'
+        : sageOnly
+          ? 'sage-validity'
+          : refinementPolicyOnly
+            ? 'refinement-policy'
+            : executionPolicyOnly
+              ? 'execution-policy'
+              : brainPolicyOnly
+                ? 'brain-policy'
+                : fleetPolicyOnly
+                  ? 'fleet-policy'
+                  : atlasOnly
+                    ? 'atlas-boundaries'
+                    : fleetOnly
+                      ? 'fleet'
+                      : processesOnly
+                        ? 'processes'
+                        : mcpTasksOnly
+                          ? 'mcp-tasks'
+                          : mcpOnly
+                            ? 'mcp'
+                            : automationOnly
+                              ? 'automation'
+                              : rosterOnly
+                                ? 'roster'
+                                : filesOnly
+                                  ? 'files'
+                                  : settingsOnly
+                                    ? 'settings'
+                                    : historyOnly
+                                      ? companion
+                                        ? 'history-companion'
+                                        : 'history'
+                                      : recoveryOnly
+                                        ? 'recovery'
+                                        : chimeraOnly
+                                          ? 'chimera'
+                                          : designOnly
+                                            ? 'design'
+                                            : deadCodeOnly
+                                              ? 'deadcode'
+                                              : techstackOnly
+                                                ? 'techstack'
+                                                : kitOnly
+                                                  ? 'kit'
+                                                  : mailboxOnly
+                                                    ? 'mailbox'
+                                                    : modelsOnly
+                                                      ? 'models'
+                                                      : sddOnly
+                                                        ? 'sdd'
+                                                        : goalsOnly
+                                                          ? 'goals'
+                                                          : chronicleOnly
+                                                            ? 'chronicle'
+                                                            : composerOnly
+                                                              ? companion
+                                                                ? 'composer-companion'
+                                                                : 'composer'
+                                                              : companion
+                                                                ? 'companion'
+                                                                : '.',
 );
 await mkdir(artifactDir, { recursive: true });
+if (modelDraftRestartOnly || modelProfilesOnly)
+  await rm(join(artifactDir, 'native-result.json'), { force: true });
 const dir = await mkdtemp(join(tmpdir(), 'wrongstack-desktop-v2-'));
 const release = process.argv.includes('--release');
 const bundled = process.argv.includes('--bundled');
@@ -412,6 +422,76 @@ const stopUi = async () => {
   // A CDP connection can keep an old WebView2 profile alive after its owner exits.
   if (browser) await bounded(browser.close(), 'CDP shutdown').catch(() => {});
   browser = undefined;
+};
+const cleanupOwnedProcesses = async () => {
+  assert.equal(dirname(resolve(dir)).toLowerCase(), resolve(tmpdir()).toLowerCase());
+  assert.ok(basename(dir).startsWith('wrongstack-desktop-v2-'));
+  const code =
+    "$pattern=[regex]::Escape($env:WRONGSTACK_DESKTOP_TEST_DIR); Get-CimInstance Win32_Process -Filter \"Name='msedgewebview2.exe' OR Name='wrongstack-engine.exe' OR Name='wrongstack-session-host.exe'\" | Where-Object { $_.CommandLine -match $pattern } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }";
+  const cleanup = spawn(
+    join(process.env.SystemRoot, 'System32/WindowsPowerShell/v1.0/powershell.exe'),
+    ['-NoProfile', '-NonInteractive', '-Command', code],
+    {
+      env: { ...process.env, WRONGSTACK_DESKTOP_TEST_DIR: dir },
+      windowsHide: true,
+      stdio: 'ignore',
+    },
+  );
+  await bounded(
+    new Promise((resolve, reject) => {
+      cleanup.once('exit', (code) =>
+        code === 0 ? resolve() : reject(Error(`Owned process cleanup failed: ${code}`)),
+      );
+      cleanup.once('error', reject);
+    }),
+    'Owned native process cleanup',
+  );
+};
+const restartForModelDrafts = async (cold, beforeLaunch) => {
+  const previous = { uiPid: child.pid, hostPid: (await rpc('snapshot')).hostPid };
+  const previousToken = endpoint.token;
+  assert.equal(previous.hostPid, endpoint.pid);
+  await stopUi();
+  assert.ok(
+    Number.isInteger(child.exitCode) || !!child.signalCode,
+    'The old Tauri process exited before relaunch',
+  );
+  previous.uiExitCode = child.exitCode;
+  previous.uiSignal = child.signalCode;
+  if (cold) {
+    // This authenticated endpoint belongs to this test's unique data directory.
+    const kill = spawn('taskkill', ['/PID', String(previous.hostPid), '/T', '/F'], {
+      windowsHide: true,
+      stdio: 'ignore',
+    });
+    await bounded(
+      new Promise((resolve, reject) => {
+        kill.once('exit', (code) =>
+          code === 0 ? resolve() : reject(Error(`Owned host termination failed: ${code}`)),
+        );
+        kill.once('error', reject);
+      }),
+      'Owned host termination',
+    );
+    await cleanupOwnedProcesses();
+    await assert.rejects(rpc('ping'), 'Old host endpoint is closed');
+  }
+  if (beforeLaunch) {
+    assert.ok(cold, 'Profile bootstrap changes require a stopped host');
+    await beforeLaunch();
+  }
+  await launch();
+  const current = { uiPid: child.pid, hostPid: (await rpc('snapshot')).hostPid };
+  assert.notEqual(current.uiPid, previous.uiPid, 'A new Tauri process owns the restored editor');
+  if (cold) {
+    assert.notEqual(current.hostPid, previous.hostPid, 'Cold restart opens a fresh native host');
+    assert.ok(
+      endpoint.token !== previousToken,
+      'Cold restart replaces the host authentication identity',
+    );
+  } else assert.equal(current.hostPid, previous.hostPid, 'UI restart preserves the existing host');
+  if (expectedEngineBuild) assert.equal((await rpc('ping')).engineBuild, expectedEngineBuild);
+  return { cold, previous, current };
 };
 
 try {
@@ -1033,6 +1113,44 @@ try {
       portableIdentity,
       bundledEngine: bundled,
       portableChecksumsVerified: bundled,
+      artifacts: artifactDir,
+    };
+  } else if (modelProfilesOnly) {
+    const profileProof = await exerciseNativeModelProfiles({
+      getPage: () => page,
+      rpc: workspaceRpc,
+      waitFor,
+      restart: restartForModelDrafts,
+      artifactDir,
+      wrongstackHome: env.WRONGSTACK_HOME,
+    });
+    assert.deepEqual(errors, []);
+    result = {
+      result: 'PASS',
+      scope: 'model-profiles',
+      portableIdentity,
+      bundledEngine: bundled,
+      portableChecksumsVerified: bundled,
+      profileProof,
+      artifacts: artifactDir,
+    };
+  } else if (modelDraftRestartOnly) {
+    const restartProof = await exerciseNativeModelDraftRestart({
+      getPage: () => page,
+      rpc: workspaceRpc,
+      waitFor,
+      restart: restartForModelDrafts,
+      artifactDir,
+      configPath: join(dir, 'wrongstack/profiles/default/config.json'),
+    });
+    assert.deepEqual(errors, []);
+    result = {
+      result: 'PASS',
+      scope: 'model-draft-restart',
+      portableIdentity,
+      bundledEngine: bundled,
+      portableChecksumsVerified: bundled,
+      restartProof,
       artifacts: artifactDir,
     };
   } else if (modelsOnly) {
@@ -1933,23 +2051,7 @@ try {
   if (providerFixture) await providerFixture.close();
   // WebView2 can outlive a forcibly terminated UI. Terminate only browser
   // processes and detached engine daemons whose command lines name this test's unique directory.
-  const cleanupCode =
-    "$pattern=[regex]::Escape($env:WRONGSTACK_DESKTOP_TEST_DIR); Get-CimInstance Win32_Process -Filter \"Name='msedgewebview2.exe' OR Name='wrongstack-engine.exe' OR Name='wrongstack-session-host.exe'\" | Where-Object { $_.CommandLine -match $pattern } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }";
-  const cleanup = spawn(
-    join(process.env.SystemRoot, 'System32/WindowsPowerShell/v1.0/powershell.exe'),
-    ['-NoProfile', '-NonInteractive', '-Command', cleanupCode],
-    {
-      env: { ...process.env, WRONGSTACK_DESKTOP_TEST_DIR: dir },
-      windowsHide: true,
-      stdio: 'ignore',
-    },
-  );
-  await new Promise((resolve, reject) => {
-    cleanup.once('exit', (code) =>
-      code === 0 ? resolve() : reject(new Error(`WebView2 cleanup failed: ${code}`)),
-    );
-    cleanup.once('error', reject);
-  });
+  await cleanupOwnedProcesses();
   await rm(dir, { recursive: true, force: true, maxRetries: 25, retryDelay: 200 });
 }
 await writeFile(

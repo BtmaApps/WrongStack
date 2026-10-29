@@ -4,6 +4,11 @@ import {
   type ModelAdvancedDraft,
   modelAdvancedDraft,
 } from './model-advanced-editor';
+import {
+  applyModelPriceTiers,
+  type ModelPriceTiersDraft,
+  modelPriceTiersDraft,
+} from './model-price-tiers';
 
 export const modelTextFields = [
   ['name', 'Display name'],
@@ -44,6 +49,7 @@ export interface ModelEditorDraft {
   input: string;
   output: string;
   advanced: ModelAdvancedDraft;
+  pricing: ModelPriceTiersDraft;
 }
 export function modelEditorDraft(
   id: string,
@@ -64,6 +70,7 @@ export function modelEditorDraft(
   return {
     id,
     advanced: modelAdvancedDraft(md),
+    pricing: modelPriceTiersDraft(record(md['cost'])),
     text: Object.fromEntries(
       modelTextFields.map(([key]) => [
         key,
@@ -90,7 +97,7 @@ export function modelEditorDraft(
       : '',
   };
 }
-/** Preserve schema fields outside this form, including reasoning options and price tiers. */
+/** Author supported catalog fields while retaining unedited provider-specific metadata. */
 export function buildModelDefinition(draft: ModelEditorDraft, initial: Record<string, unknown>) {
   const id = draft.id.trim();
   if (
@@ -111,8 +118,11 @@ export function buildModelDefinition(draft: ModelEditorDraft, initial: Record<st
   for (const [group, key, label] of modelNumberFields) {
     const object = { ...record(md[group]) };
     const raw = draft.numbers[`${group}.${key}`]?.trim();
-    if (!raw) delete object[key];
-    else {
+    if (!raw) {
+      // Structured upstream rates cannot be represented by the legacy scalar input.
+      if (group !== 'cost' || typeof object[key] !== 'object' || object[key] === null)
+        delete object[key];
+    } else {
       const value = Number(raw);
       if (
         !Number.isFinite(value) ||
@@ -127,6 +137,7 @@ export function buildModelDefinition(draft: ModelEditorDraft, initial: Record<st
     if (Object.keys(object).length) md[group] = object;
     else delete md[group];
   }
+  applyModelPriceTiers(md, draft.pricing);
   for (const [key] of modelFlags) {
     if (draft.flags[key] === 'inherit') delete md[key];
     else md[key] = draft.flags[key] === 'true';

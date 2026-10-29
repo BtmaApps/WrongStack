@@ -1,6 +1,54 @@
 .model-catalog-settings {
   min-width: 0;
 }
+.model-draft-notice {
+  padding: 14px;
+  margin-block: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--raised);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.model-draft-comparison {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(230px, 100%), 1fr));
+  gap: 12px;
+}
+.model-draft-comparison > div {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px;
+}
+:where(.model-draft-notice) .model-tier-actions {
+  flex-wrap: wrap;
+}
+.model-price-tiers {
+  min-width: 0;
+  margin-block: 22px;
+}
+.model-price-tiers p {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.model-price-tier {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  margin-block: 12px;
+}
+.model-price-tier > header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+.model-tier-actions {
+  display: flex;
+  gap: 6px;
+}
 .catalog-model-search {
   padding: 16px;
   margin-bottom: 18px;

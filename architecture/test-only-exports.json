@@ -40,6 +40,9 @@
     "apps/desktop-v2/src/mailbox-draft.ts": [
       "MailboxDraftStore"
     ],
+    "apps/desktop-v2/src/ModelCatalogProfile.tsx": [
+      "readModelProfile"
+    ],
     "apps/desktop-v2/src/ProjectRequirements.tsx": [
       "requirementFields"
     ],
@@ -125,18 +128,6 @@
     "packages/agent-catalog/src/role-skills.ts": [
       "BUNDLED_AGENT_SKILLS"
     ],
-    "packages/bench/src/child-env.ts": [
-      "registryJavaHome"
-    ],
-    "packages/bench/src/orchestrate.ts": [
-      "failureHint",
-      "heartbeatLine",
-      "resultSummary"
-    ],
-    "packages/bench/src/suites/polyglot.ts": [
-      "installDependencies",
-      "prepareExercise"
-    ],
     "packages/builtin-plugins/src/perf-command.ts": [
       "buildPerfRunText",
       "parsePerfArgs"
@@ -202,9 +193,6 @@
       "defaultProfileProvidersAreEmpty",
       "findLatestProviderBackup"
     ],
-    "packages/cli/src/boot/dispatch-singleshot.ts": [
-      "providerToolNames"
-    ],
     "packages/cli/src/boot/governance-trace-context.ts": [
       "MAX_GOVERNANCE_PLAN_BYTES"
     ],
@@ -224,6 +212,7 @@
       "isReusedContainerPid"
     ],
     "packages/cli/src/boot/system-prompt-menu.ts": [
+      "isSystemPromptPinned",
       "runSystemPromptMenu",
       "shouldSkipSystemPromptMenu",
       "SYSTEM_PROMPT_OPTIONS"
@@ -385,11 +374,6 @@
     ],
     "packages/cli/src/subcommands/handlers/automation-credentials.ts": [
       "resolveAutomationCredentials"
-    ],
-    "packages/cli/src/subcommands/handlers/bench-menu.ts": [
-      "parseIndexList",
-      "plannedAttempts",
-      "planRuns"
     ],
     "packages/cli/src/subcommands/handlers/bench-run-help.ts": [
       "BENCH_RUN_BOOLEAN_FLAG_NAMES",
@@ -626,9 +610,6 @@
     "packages/core/src/quota/index.ts": [
       "reachedQuotaWindow",
       "resetProviderQuota"
-    ],
-    "packages/core/src/registry/scout-tool-surface.ts": [
-      "QUICK_BASIC_TOOL_NAMES"
     ],
     "packages/core/src/sandbox/types.ts": [
       "DEFAULT_SANDBOX_CONFIG"
@@ -1364,9 +1345,6 @@
     ],
     "packages/tui/src/browser-access-hint.ts": [
       "browserAccessHint"
-    ],
-    "packages/tui/src/cell-selection.ts": [
-      "orderedRange"
     ],
     "packages/tui/src/components/animation-style.ts": [
       "CYCLE_INTERVAL_SECONDS",
