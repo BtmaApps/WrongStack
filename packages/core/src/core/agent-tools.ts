@@ -617,14 +617,17 @@ export function createAgentToolHandler(a: AgentInternals): AgentToolHandler {
       await (a.ctx.activeRunSessionWriter ?? a.ctx.session).appendBatch(sessionEvents);
     }
 
-    // Merge any pending PostToolUse separate context as a leading text block
-    // in the same user message as the tool results — this keeps tool-use/
-    // tool-result adjacency intact. The context text was stored on ctx by
-    // the tool executor when a PostToolUse hook returned contextAs='separate'.
+    // Merge any pending post-tool context (PostToolUse contextAs='separate',
+    // directory instructions) as a TRAILING text block in the same user
+    // message as the tool results. Same message keeps tool-use/tool-result
+    // adjacency intact; trailing keeps the results first, as the Messages API
+    // requires. A leading block reached Anthropic-compatible proxies that
+    // convert to the OpenAI shape as a user message before the tool answers,
+    // and they rejected every call in the turn as unanswered (400).
     const pendingContext = a.ctx.pendingPostToolContext;
     a.ctx.pendingPostToolContext = undefined;
     const contentBlocks: ContentBlock[] = pendingContext
-      ? [{ type: 'text', text: pendingContext }, ...resultsForMessage]
+      ? [...resultsForMessage, { type: 'text', text: pendingContext }]
       : resultsForMessage;
     a.ctx.state.appendMessage({ role: 'user', content: contentBlocks });
     // Tool results were added — mark adjacency as potentially needing repair

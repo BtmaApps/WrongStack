@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-29T00:53:54.132Z",
+  "generatedAt": "2026-10-29T00:56:02.179Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,10 +13,10 @@
   "summary": {
     "packages": 45,
     "sourceFiles": 5393,
-    "testFiles": 4701,
-    "sourceLines": 1194213,
+    "testFiles": 4699,
+    "sourceLines": 1194234,
     "workspaceEdges": 222,
-    "moduleEdges": 16205,
+    "moduleEdges": 16208,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -744,7 +744,7 @@
       "name": "@wrongstack/runtime",
       "dir": "packages/runtime",
       "sourceFiles": 35,
-      "testFiles": 35,
+      "testFiles": 34,
       "workspaceDependencies": [
         "@wrongstack/builtin-plugins",
         "@wrongstack/chronicle",
@@ -769,7 +769,7 @@
         {
           "path": "packages/runtime/tsconfig.test.json",
           "error": null,
-          "testFiles": 35
+          "testFiles": 34
         }
       ]
     },
@@ -1179,7 +1179,7 @@
       "name": "@wrongstack/wrongtrace",
       "dir": "packages/wrongtrace",
       "sourceFiles": 11,
-      "testFiles": 10,
+      "testFiles": 9,
       "workspaceDependencies": [],
       "tsconfigs": [
         {
@@ -1190,7 +1190,7 @@
         {
           "path": "packages/wrongtrace/tsconfig.test.json",
           "error": null,
-          "testFiles": 10
+          "testFiles": 9
         }
       ]
     },
@@ -16525,12 +16525,6 @@
         ]
       },
       {
-        "file": "packages/runtime/tests/automation-result-headerless-sections.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
         "file": "packages/runtime/tests/automation-result-hunk-paths.test.ts",
         "projects": [
           "root-node"
@@ -29491,12 +29485,6 @@
         ]
       },
       {
-        "file": "packages/wrongtrace/src/__tests__/hooks-comma-file-list.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
         "file": "packages/wrongtrace/src/__tests__/hooks.test.ts",
         "projects": [
           "root-node"
@@ -31056,6 +31044,11 @@
       "relativeImports": 2
     },
     {
+      "file": "packages/core/src/core/agent-tools.ts",
+      "lines": 699,
+      "relativeImports": 11
+    },
+    {
       "file": "packages/governance/src/runtime-compatibility.ts",
       "lines": 699,
       "relativeImports": 12
@@ -31074,11 +31067,6 @@
       "file": "packages/core/src/core/agent-response.ts",
       "lines": 697,
       "relativeImports": 21
-    },
-    {
-      "file": "packages/tools/src/codebase-index/writer-graph-reader.ts",
-      "lines": 697,
-      "relativeImports": 7
     }
   ],
   "testOnlyExports": [

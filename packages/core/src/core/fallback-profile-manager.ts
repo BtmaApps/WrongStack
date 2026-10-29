@@ -24,6 +24,7 @@ import type {
   ProviderHealth,
 } from '@wrongstack/contracts/types/fallback';
 import type { ProviderStatusTrackerPort } from '@wrongstack/contracts/types/provider-status';
+import { configuredProviderIdentities } from '../utils/provider-catalog-binding.js';
 import {
   asProfileName,
   asRefList,
@@ -88,7 +89,11 @@ export class FallbackProfileManagerImpl implements FallbackProfileManagerPort {
   private isRuntimeAvailable(providerId: string, model: string): boolean {
     if (this.ignoreAvailability) return true;
     if (this.statusTracker && !this.statusTracker.isAvailable(providerId, model)) return false;
-    return evaluateModelCalendar(this.config.modelAvailabilitySchedule, providerId, model).allowed;
+    return evaluateModelCalendar(
+      this.config.modelAvailabilitySchedule,
+      configuredProviderIdentities(this.config.providers, providerId),
+      model,
+    ).allowed;
   }
 
   /**
@@ -336,8 +341,9 @@ export class FallbackProfileManagerImpl implements FallbackProfileManagerPort {
     };
     // Read here as well as inside resolve/resolveRefs/smartDefault: the
     // configured-primary push below is its own routing decision and must honour
-    // the same provider-level switch.
+    // the same provider-level switch, model-level switch, and runtime availability.
     const disabledProviders = disabledProviderKeys(this.config);
+    const disabledModels = disabledModelKeys(this.config);
 
     // Outside a closed-world allowlist, honour fallbackAuto explicitly and use
     // auto discovery by default when the setting is absent.
@@ -401,6 +407,8 @@ export class FallbackProfileManagerImpl implements FallbackProfileManagerPort {
       // drifted session must not be routed back onto it.
       if (
         !isDisabledProvider(disabledProviders, configuredPrimary.providerId) &&
+        !isDisabledModel(disabledModels, configuredPrimary.providerId, configuredPrimary.model) &&
+        this.isRuntimeAvailable(configuredPrimary.providerId, configuredPrimary.model) &&
         !(
           configuredPrimary.providerId === current.providerId &&
           configuredPrimary.model === current.model

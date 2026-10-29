@@ -7,7 +7,11 @@ import type { Request } from '@wrongstack/contracts/types/provider';
 export type { ChroniclePromptManifest };
 
 /** Content-addressed prompt composition manifest; raw prompt/tool prose never leaves this function. */
-export function createChroniclePromptManifest(request: Request): ChroniclePromptManifest {
+export function createChroniclePromptManifest(
+  request: Request,
+  /** Names the prompt layer a system block came from; unknown → `untagged`. */
+  systemBlockSource?: (block: NonNullable<Request['system']>[number]) => string | undefined,
+): ChroniclePromptManifest {
   const roleCounts: Record<string, number> = {},
     blockCounts: Record<string, number> = {};
   const messages = request.messages.map((message, index) =>
@@ -53,6 +57,11 @@ export function createChroniclePromptManifest(request: Request): ChroniclePrompt
       blockCount: request.system?.length ?? 0,
       bytes: Buffer.byteLength(systemText),
       hash: hash(systemText),
+      blocks: (request.system ?? []).map((block) => ({
+        source: systemBlockSource?.(block) ?? 'untagged',
+        bytes: Buffer.byteLength(block.text),
+        hash: hash(block.text),
+      })),
     },
     messages,
     tools: {

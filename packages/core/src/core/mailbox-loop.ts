@@ -136,6 +136,9 @@ export function createMailboxChecker(opts: MailboxLoopOptions): () => Promise<Ma
             .catch(() => [] as MailboxMessage[]),
         ),
       );
+      if (getMailbox() !== mailbox || currentId() !== agentId || currentSessionId() !== sessionId) {
+        return [];
+      }
       const seen = new Set<string>();
       const messages: MailboxMessage[] = [];
       for (const batch of batches) {
@@ -154,15 +157,18 @@ export function createMailboxChecker(opts: MailboxLoopOptions): () => Promise<Ma
         }
       }
 
-      // Filter out already-injected and completed messages
-      const fresh = messages.filter((m) => !injectedIds.has(m.id) && !m.completed);
+      // Filter out already-injected (scoped to reader identity so an
+      // in-process session swap does not suppress alias/broadcast mail for
+      // the new session) and completed messages.
+      const injectedKey = (messageId: string): string => `${agentId}\0${messageId}`;
+      const fresh = messages.filter((m) => !injectedIds.has(injectedKey(m.id)) && !m.completed);
 
       // Track as injected — skipped when the composition layer owns dedup
       // (trackInjected: false), so wrapper-dropped messages are returned
       // again on later polls until they are acked or age out.
       if (trackInjected) {
         for (const m of fresh) {
-          injectedIds.add(m.id);
+          injectedIds.add(injectedKey(m.id));
         }
       }
 

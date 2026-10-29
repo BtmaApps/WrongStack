@@ -28,11 +28,20 @@ export const MEMORY_EVIDENCE_TAG = 'memory_evidence';
 /**
  * Matches an opening or closing fence delimiter, tolerating the whitespace and
  * attribute variants a model would still read as a tag (`[/memory_evidence]`,
- * `[ / memory_evidence ]`, `[memory_evidence source="x"]`). Newlines are
- * excluded so a bracketed span running across lines is left alone — it is not
- * a delimiter and rewriting it would corrupt legitimate memory text.
+ * `[ / memory_evidence ]`, `[memory_evidence source="x"]`).
+ *
+ * Newlines are excluded so a bracketed span running across lines is left
+ * alone — it is not a delimiter and rewriting it would corrupt legitimate
+ * memory text. Characters nobody sees (zero-width, BOM, soft hyphen, variation
+ * selectors) and Unicode spaces are not: they may sit wherever a space may and
+ * between the letters of the name, and the delimiter still reads as one.
  */
-const FENCE_DELIMITER = /\[[ \t]*\/?[ \t]*memory_evidence\b[^\]\n]*\]/gi;
+const FENCE_INVISIBLE = String.raw`[\u00AD\u034F\u180E\u200B-\u200F\u2060-\u2064\uFE00-\uFE0F\uFEFF]`;
+const FENCE_SPACE = String.raw`(?:[^\S\r\n]|[\u00AD\u034F\u180E\u200B-\u200F\u2060-\u2064\uFE00-\uFE0F])`;
+const FENCE_DELIMITER = new RegExp(
+  `\\[${FENCE_SPACE}*/?${FENCE_SPACE}*${[...MEMORY_EVIDENCE_TAG].join(`${FENCE_INVISIBLE}*`)}\\b[^\\]\\n]*\\]`,
+  'gi',
+);
 
 /**
  * De-fang any fence delimiter inside untrusted body text.

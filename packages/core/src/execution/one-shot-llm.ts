@@ -16,6 +16,10 @@ import {
 import type { FallbackChain } from '../core/fallback-profile-manager.js';
 import { evaluateModelCalendar } from '../core/model-availability-calendar.js';
 import { shouldRecordProviderFailure } from '../core/provider-runner.js';
+import {
+  configuredProviderIdentities,
+  providerIdentities,
+} from '../utils/provider-catalog-binding.js';
 import { estimateRequestTokens } from '../utils/token-estimate.js';
 
 /**
@@ -120,8 +124,16 @@ export class OneShotOrchestrator {
     // Check if the primary target is blocked
     if (
       (tracker && !tracker.isAvailable(target.providerId, target.model)) ||
-      !evaluateModelCalendar(config.modelAvailabilitySchedule, target.providerId, target.model)
-        .allowed
+      !evaluateModelCalendar(
+        config.modelAvailabilitySchedule,
+        [
+          ...new Set([
+            ...providerIdentities(provider),
+            ...configuredProviderIdentities(config.providers, target.providerId),
+          ]),
+        ],
+        target.model,
+      ).allowed
     ) {
       this.opts.logger?.debug(
         `one-shot: primary "${target.providerId}/${target.model}" is blocked — trying fallback`,
@@ -186,8 +198,11 @@ export class OneShotOrchestrator {
       // rotating instead of burning a buildProvider per remaining entry.
       if (externalSignal?.aborted) break;
       if (
-        !evaluateModelCalendar(config.modelAvailabilitySchedule, entry.providerId, entry.model)
-          .allowed
+        !evaluateModelCalendar(
+          config.modelAvailabilitySchedule,
+          configuredProviderIdentities(config.providers, entry.providerId),
+          entry.model,
+        ).allowed
       )
         continue;
       // Re-check availability right before attempting — a concurrent failure
@@ -203,6 +218,21 @@ export class OneShotOrchestrator {
         fbProvider = await this.opts.buildProvider(entry.providerId, entry.model);
       } catch (err) {
         lastError = err;
+        continue;
+      }
+
+      if (
+        !evaluateModelCalendar(
+          config.modelAvailabilitySchedule,
+          [
+            ...new Set([
+              ...providerIdentities(fbProvider),
+              ...configuredProviderIdentities(config.providers, entry.providerId),
+            ]),
+          ],
+          entry.model,
+        ).allowed
+      ) {
         continue;
       }
 

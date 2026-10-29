@@ -148,3 +148,18 @@ describe('provider request memory evidence', () => {
     expect(text.match(/\[\/memory_evidence\]/g)).toHaveLength(2);
   });
 });
+
+describe('sanitizeMemoryEvidenceBody: characters nobody sees', () => {
+  const ZW = String.fromCharCode(0x200b);
+  const NBSP = String.fromCharCode(0xa0);
+
+  it.each([
+    ['zero-width space after the bracket', `[${ZW}/memory_evidence]`],
+    ['zero-width space inside the name', `[/memory_${ZW}evidence]`],
+    ['no-break space after the bracket', `[${NBSP}/memory_evidence]`],
+  ])('neutralizes a closer with a %s', (_label, text) => {
+    const out = sanitizeMemoryEvidenceBody(text);
+    expect(out.startsWith('(')).toBe(true);
+    expect(out).toHaveLength(text.length);
+  });
+});

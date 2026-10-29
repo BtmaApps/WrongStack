@@ -88,11 +88,15 @@ function walk(
     }
   }
 
-  if (typeof schema.type === 'string') {
-    if (!checkType(value, schema.type)) {
+  // `type` may also be an array (`["integer", "null"]`, the standard nullable
+  // form): it was skipped entirely, so `--json-schema` answers and MCP tool
+  // input of the wrong type passed unchecked.
+  const types = declaredTypes(schema);
+  if (types.length > 0) {
+    if (!types.some((type) => checkType(value, type))) {
       errors.push({
         path: path || '<root>',
-        message: `expected ${schema.type}, got ${describeType(value)} (${previewValue(value)})`,
+        message: `expected ${types.join(' | ')}, got ${describeType(value)} (${previewValue(value)})`,
       });
       return;
     }
@@ -285,7 +289,9 @@ function walk(
     }
   }
 
-  if (schema.type === 'array' && Array.isArray(value) && schema.items) {
+  // Like the object keywords, `items` applies to any array instance — a
+  // nullable `["array", "null"]` or an untyped schema left its items unchecked.
+  if (Array.isArray(value) && schema.items) {
     for (let i = 0; i < value.length; i++) {
       walk(value[i], schema.items as JSONSchema, `${path}[${i}]`, errors, depth + 1);
     }
@@ -429,6 +435,13 @@ function coerceWalk(value: unknown, schema: JSONSchema, depth: number): Coercion
   }
 
   return { value, changed: false };
+}
+
+/** `type` as a list: a string, or the string members of an array form. */
+function declaredTypes(schema: JSONSchema): string[] {
+  const type: unknown = schema.type;
+  if (typeof type === 'string') return [type];
+  return Array.isArray(type) ? type.filter((t): t is string => typeof t === 'string') : [];
 }
 
 function checkType(value: unknown, type: string): boolean {

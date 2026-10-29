@@ -75,6 +75,21 @@ const MODEL_WITH_RARE_FIELDS = {
 };
 
 describe('modelsDevModelSchema', () => {
+  it('accepts observed nested over-200k prices as well as legacy scalar rates without stripping future keys', () => {
+    for (const rate of [2, { input: 2, output: 4, cache_read: 0, future: 'keep' }]) {
+      const cost = { context_over_200k: rate };
+      expect(
+        modelsDevModelSchema.parse({ id: 'tier-fixture', name: 'Tier fixture', cost }).cost,
+      ).toEqual(cost);
+    }
+    expect(
+      modelsDevModelSchema.safeParse({
+        id: 'tier-fixture',
+        name: 'Tier fixture',
+        cost: { context_over_200k: { input: 'free' } },
+      }).success,
+    ).toBe(false);
+  });
   it('parses real anthropic claude-sonnet-4-6 across every field group', () => {
     const parsed = modelsDevModelSchema.parse(CLAUDE_SONNET_4_6);
     expect(parsed.id).toBe('claude-sonnet-4-6');

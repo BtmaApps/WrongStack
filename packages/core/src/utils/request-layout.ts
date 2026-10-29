@@ -23,8 +23,14 @@ import {
  * token walk happens lazily when a surface asks for the residency.
  */
 
-/** How the active wire caches the prompt prefix. */
-export type CacheMechanism = 'explicit' | 'automatic' | 'none';
+/**
+ * How the active wire caches the prompt prefix. `implicit`: the wire declares
+ * no cache, yet the provider reports cache reads for this route (Z.AI caches
+ * every GLM prefix with no request field). The request is composed as on a
+ * cache-less wire — live context rides the tail and is not replayed — so the
+ * conversation prefix is reusable and the live tail is not.
+ */
+export type CacheMechanism = 'explicit' | 'automatic' | 'implicit' | 'none';
 
 /**
  * Expected cache placement of a request segment:
@@ -134,6 +140,8 @@ interface LayoutRecord extends RequestLayoutInput {
   durableCount: number;
   durableLast: Message | undefined;
   usage?: Usage | undefined;
+  /** An earlier request on this route reported a cache read. */
+  cacheSeen?: boolean | undefined;
 }
 
 interface LayoutSlot {
@@ -190,6 +198,12 @@ export function commitRequestLayout(ctx: object, request: object, now: number = 
   // Numbered per context: the n-th request THIS agent sent, not a global id.
   record.seq = (slot?.current.seq ?? 0) + 1;
   record.at = now;
+  const prior = slot?.current;
+  record.cacheSeen =
+    prior !== undefined &&
+    prior.providerId === record.providerId &&
+    prior.model === record.model &&
+    (prior.cacheSeen === true || (prior.usage?.cacheRead ?? 0) > 0);
   slots.set(ctx, { current: record, previous: slot?.current });
 }
 
@@ -441,7 +455,11 @@ export function getRequestResidency(ctx: {
   if (!slot) return undefined;
   const record = slot.current;
   const previous = slot.previous;
-  const mechanism = mechanismOf(record.cacheControl);
+  const declared = mechanismOf(record.cacheControl);
+  const mechanism: CacheMechanism =
+    declared === 'none' && (record.cacheSeen || (record.usage?.cacheRead ?? 0) > 0)
+      ? 'implicit'
+      : declared;
 
   const priorCount = previous ? commonPrefix(previous.history, record.history) : 0;
   const { breakers, toolsSame, systemSame } = findBreakers(record, previous, priorCount);

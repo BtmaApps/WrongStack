@@ -209,6 +209,11 @@ async function copySessionFiles(
   const paths: string[] = [];
   const copy = async (from: string, to: string, recursive = false): Promise<void> => {
     if (!(await exists(from))) return;
+    // Record only what this move creates: a pre-existing target was pushed
+    // here, `cp` refused it, and the rollback then deleted the target's file.
+    if (await exists(to)) {
+      throw new Error(`The target project already has ${path.basename(to)} for session ${id}.`);
+    }
     paths.push(to);
     await fsp.cp(from, to, { recursive, errorOnExist: true, force: false });
   };

@@ -406,6 +406,16 @@ describe('SecretScrubber', () => {
       expect(scrubbed).toContain('[REDACTED:slack_webhook]');
       expect(scrubbed).not.toContain(url);
     });
+
+    it.each([
+      'https://discord.com/api/webhooks/1122334455/',
+      'https://canary.discordapp.com/api/v10/webhooks/1122334455/',
+    ])('redacts a Discord webhook URL (%s…): the token is a path segment', (prefix) => {
+      const token = `Ab3_${'x9Y-'.repeat(15)}`;
+      const scrubbed = s.scrub(`posting to ${prefix}${token}`);
+      expect(scrubbed).toContain('[REDACTED:discord_webhook]');
+      expect(scrubbed).not.toContain(token);
+    });
   });
 
   describe('JSON-serialised credentials', () => {
@@ -484,5 +494,15 @@ describe('SecretScrubber', () => {
     ])('leaves %s untouched', (_label, payload) => {
       expect(s.scrub(payload)).toBe(payload);
     });
+  });
+});
+
+describe('SecretScrubber — json credential keys in any casing', () => {
+  it('scrubs mixed-case keys the json_credential_key pattern matches', () => {
+    const secret = 'hunter2hunter2hunter2';
+    for (const key of ['PassWord', 'AccessTOKen', 'clientSeCret', 'x-Api-kEy']) {
+      expect(s.scrub(`{"${key}":"${secret}"}`), key).not.toContain(secret);
+    }
+    expect(s.scrub('{"maxTokens":"123456789"}')).toBe('{"maxTokens":"123456789"}');
   });
 });

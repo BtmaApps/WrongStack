@@ -806,3 +806,37 @@ describe('json-schema-validate / coerceAgainstSchema', () => {
     expect(validateAgainstSchema(r.value, objSchema).ok).toBe(true);
   });
 });
+
+// `type` arrays (the standard nullable form) and `items` outside `type: 'array'` were not checked at all,
+// so `--json-schema` answers and MCP tool input of the wrong type passed.
+const vNullable = (value: unknown, schema: unknown) =>
+  validateAgainstSchema(value, schema as never);
+
+describe('validateAgainstSchema — type arrays and untyped items', () => {
+  it('array type = any of its members', () => {
+    const s = { type: ['integer', 'null'] };
+    expect(vNullable(1, s).ok).toBe(true);
+    expect(vNullable(null, s).ok).toBe(true);
+    expect(vNullable('1', s).ok).toBe(false);
+    expect(vNullable(1.5, s).ok).toBe(false);
+    expect(vNullable('1', s).errors[0]?.message).toMatch(/expected integer \| null, got string/);
+  });
+
+  it('items apply to nullable and untyped arrays; null and non-arrays are untouched by items', () => {
+    const nullable = { type: ['array', 'null'], items: { type: 'string' } };
+    expect(vNullable(['a'], nullable).ok).toBe(true);
+    expect(vNullable(null, nullable).ok).toBe(true);
+    expect(vNullable([1], nullable).errors[0]?.path).toBe('[0]');
+    expect(vNullable([1], { items: { type: 'string' } }).ok).toBe(false);
+    expect(vNullable('x', { items: { type: 'string' } }).ok).toBe(true);
+  });
+
+  it('edge: empty / non-string type arrays impose nothing; single string type unchanged', () => {
+    expect(vNullable('x', { type: [] }).ok).toBe(true);
+    expect(vNullable('x', { type: [1, {}] }).ok).toBe(true);
+    expect(vNullable('x', { type: 'string' }).ok).toBe(true);
+    expect(vNullable(1, { type: 'string' }).errors[0]?.message).toMatch(
+      /^expected string, got number/,
+    );
+  });
+});

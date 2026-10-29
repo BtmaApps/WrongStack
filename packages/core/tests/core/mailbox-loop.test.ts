@@ -700,4 +700,82 @@ describe('createMailboxChecker — broadcast floor', () => {
 
     expect(await check()).toEqual([]);
   });
+
+  it('delivers alias and broadcast messages to a new session after an in-process session swap', async () => {
+    let activeAgentId = 'leader@sessA';
+    let activeSessionId = 'sessA';
+    const readBy: Record<string, Record<string, string>> = {};
+    const mb = {
+      query: vi.fn(async ({ to, unreadBy }: MailboxQuery) => {
+        if (to === 'leader' && unreadBy && !readBy['m_shared_alias']?.[unreadBy]) {
+          return [
+            msg({
+              type: 'ask',
+              id: 'm_shared_alias',
+              to: 'leader',
+              timestamp: '2026-07-21T12:00:01.000Z',
+            }),
+          ];
+        }
+        return [];
+      }),
+      ackMany: vi.fn(async ({ acks }: { acks: Array<{ messageId: string; readerId: string }> }) => {
+        for (const a of acks) {
+          readBy[a.messageId] ??= {};
+          readBy[a.messageId]![a.readerId] = '2026-07-21T12:00:02.000Z';
+        }
+        return acks.length;
+      }),
+    } as unknown as Mailbox;
+
+    const check = createMailboxChecker({
+      mailbox: mb,
+      agentId: () => activeAgentId,
+      sessionId: () => activeSessionId,
+      aliases: ['leader'],
+      broadcastFloor: FLOOR,
+    });
+
+    expect((await check()).map((m) => m.id)).toEqual(['m_shared_alias']);
+    expect(await check()).toEqual([]);
+
+    activeAgentId = 'leader@sessB';
+    activeSessionId = 'sessB';
+    expect((await check()).map((m) => m.id)).toEqual(['m_shared_alias']);
+    expect(await check()).toEqual([]);
+  });
+
+  it('drops stale in-flight poll results when the session swaps mid-query', async () => {
+    let activeAgentId = 'leader@sessA';
+    let activeSessionId = 'sessA';
+    let resolveInFlight!: (messages: MailboxMessage[]) => void;
+    const inFlightQuery = new Promise<MailboxMessage[]>((res) => {
+      resolveInFlight = res;
+    });
+    const ackManyMock = vi.fn(async () => 1);
+    const mb = {
+      query: vi.fn(async ({ unreadBy }: MailboxQuery) => {
+        if (unreadBy === 'leader@sessA') return inFlightQuery;
+        return [msg({ type: 'note', id: 'm_sess_b', to: 'leader@sessB' })];
+      }),
+      ackMany: ackManyMock,
+    } as unknown as Mailbox;
+
+    const check = createMailboxChecker({
+      mailbox: mb,
+      agentId: () => activeAgentId,
+      sessionId: () => activeSessionId,
+      broadcastFloor: FLOOR,
+    });
+
+    const stalePoll = check();
+    activeAgentId = 'leader@sessB';
+    activeSessionId = 'sessB';
+    resolveInFlight([msg({ type: 'note', id: 'm_sess_a', to: 'leader@sessA' })]);
+
+    expect(await stalePoll).toEqual([]);
+    expect(ackManyMock).not.toHaveBeenCalled();
+    expect((await check()).map((m) => m.id)).toEqual(['m_sess_b']);
+    expect(ackManyMock).toHaveBeenCalledTimes(1);
+  });
 });

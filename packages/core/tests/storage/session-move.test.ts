@@ -308,3 +308,21 @@ describe('session_moved readers', () => {
     expect(ok.released, `a consumed lease must not be released (ops: ${ok.ops})`).toBe(false);
   });
 });
+
+describe('session move: rollback ownership', () => {
+  it('a sidecar the target already has refuses the move and is never deleted', async () => {
+    const source = new DefaultSessionStore({ dir: sourceDir, projectRoot: path.join(tmp, 'a') });
+    const target = new DefaultSessionStore({ dir: targetDir, projectRoot: path.join(tmp, 'b') });
+    const id = await closedSession(source);
+    await fs.writeFile(path.join(sourceDir, `${id}.todos.json`), 'SOURCE');
+    const owned = path.join(targetDir, `${id}.todos.json`);
+    await fs.mkdir(path.dirname(owned), { recursive: true });
+    await fs.writeFile(owned, 'TARGET-OWNED');
+
+    await expect(source.move(id, { store: target, checkout: path.join(tmp, 'b') })).rejects.toThrow(
+      /already has/,
+    );
+    expect(await fs.readFile(owned, 'utf8')).toBe('TARGET-OWNED');
+    expect((await source.list(5)).map((s) => s.id)).toEqual([id]);
+  });
+});

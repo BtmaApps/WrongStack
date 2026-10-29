@@ -197,6 +197,42 @@ describe('getRequestResidency', () => {
     expect(r?.verdict).toBe('unsupported');
   });
 
+  // Z.AI (openai-compatible, declared `none`) caches every GLM prefix with no
+  // request field. Its reads were filed against a 0% layout ("layout allows
+  // 0%"), and a zero read was "unsupported" instead of a provider miss.
+  it('no-cache wire that reports reads: the conversation prefix is implicit cache', () => {
+    const zai = { cacheControl: 'none' as const, providerId: 'zai-coding-plan', model: 'glm' };
+    const h1 = [msg('user', 'question '.repeat(400))];
+    const ctx = { messages: h1 };
+    const r1 = send(ctx, input(h1, zai), 1_000);
+    recordRequestLayoutUsage(r1, { input: 1_000, output: 1, cacheRead: 0 });
+    expect(getRequestResidency(ctx)?.verdict).toBe('unsupported');
+
+    const h2 = [...h1, msg('assistant', 'answer '.repeat(400)), msg('user', 'next')];
+    ctx.messages = h2;
+    const tail = [{ source: 'memory-evidence', block: block('evidence') }];
+    const r2 = send(ctx, input(h2, { ...zai, tail }), 2_000);
+    recordRequestLayoutUsage(r2, { input: 600, output: 1, cacheRead: 1_200 });
+    const hit = getRequestResidency(ctx);
+    expect(hit?.mechanism).toBe('implicit');
+    expect(hit?.segments.find((s) => s.kind === 'history-prior')?.lane).toBe('cached');
+    expect(hit?.segments.find((s) => s.kind === 'history-new')?.lane).toBe('written');
+    // Not replayed on this wire: the live tail is never part of the prefix.
+    expect(hit?.segments.find((s) => s.kind === 'live-tail')?.lane).toBe('uncached');
+    expect(hit?.expectedCacheRatio).toBeGreaterThan(0);
+    expect(hit?.verdict).toBe('hit');
+
+    // A later zero read on the same route is the provider's miss.
+    const h3 = [...h2, msg('assistant', 'more'), msg('user', 'again')];
+    ctx.messages = h3;
+    const r3 = send(ctx, input(h3, zai), 3_000);
+    recordRequestLayoutUsage(r3, { input: 2_000, output: 1, cacheRead: 0 });
+    const miss = getRequestResidency(ctx);
+    expect(miss?.mechanism).toBe('implicit');
+    expect(miss?.verdict).toBe('miss');
+    expect(miss?.breakers.map((b) => b.kind)).toEqual(['provider']);
+  });
+
   it('tells what the next request adds, or that history was rewritten', () => {
     const h = [msg('user', 'q')];
     const ctx = { messages: h };

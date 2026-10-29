@@ -93,3 +93,20 @@ describe('formatProjectSuppliedBlock', () => {
     expect(block).not.toContain('<script>');
   });
 });
+
+describe('sanitizeProjectSuppliedBody: characters nobody sees', () => {
+  const ZW = String.fromCharCode(0x200b);
+  const BOM = String.fromCharCode(0xfeff);
+  const NBSP = String.fromCharCode(0xa0);
+
+  it.each([
+    ['zero-width space after the bracket', `<${ZW}/project-supplied>`],
+    ['BOM after the slash', `</${BOM}project-supplied>`],
+    ['zero-width space inside the name', `</project-sup${ZW}plied>`],
+    ['no-break space after the bracket', `<${NBSP}/project-supplied>`],
+  ])('neutralizes a closer with a %s', (_label, text) => {
+    const out = sanitizeProjectSuppliedBody(text);
+    expect(out.startsWith('(')).toBe(true);
+    expect(out).toHaveLength(text.length);
+  });
+});

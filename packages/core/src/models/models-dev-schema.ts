@@ -89,7 +89,18 @@ export const modelsDevCostSchema = z.looseObject({
   cache_write: finiteNumber.optional(),
   cache_write_5m: finiteNumber.optional(),
   cache_write_1h: finiteNumber.optional(),
-  context_over_200k: finiteNumber.optional(),
+  context_over_200k: z
+    .union([
+      finiteNumber,
+      z.looseObject({
+        input: finiteNumber.optional(),
+        output: finiteNumber.optional(),
+        cache_read: finiteNumber.optional(),
+        cache_write: finiteNumber.optional(),
+        reasoning: finiteNumber.optional(),
+      }),
+    ])
+    .optional(),
   reasoning: finiteNumber.optional(),
   input_audio: finiteNumber.optional(),
   output_audio: finiteNumber.optional(),

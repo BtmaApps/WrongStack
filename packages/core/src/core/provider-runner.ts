@@ -26,6 +26,7 @@ import {
 import { resolveEventSessionId } from './context.js';
 import { spanSessionAttributes } from './span-session.js';
 import { streamProviderToResponse } from './streaming-response-builder.js';
+import { SYSTEM_BLOCK_SOURCE } from './system-prompt-blocks.js';
 
 /** Fields worth including in every provider-run log for cross-correlation. */
 function scrubProviderBody(body: ProviderError['body']): ProviderError['body'] {
@@ -142,7 +143,9 @@ function markProviderFailureTracked(err: unknown): void {
 export async function runProviderWithRetry(opts: RunProviderOptions): Promise<Response> {
   const { provider, request, signal, ctx, events, retry, logger, tracer, statusTracker } = opts;
   const logicalRequestId = opts.logicalRequestId ?? randomUUID();
-  const promptManifest = createChroniclePromptManifest(request);
+  const promptManifest = createChroniclePromptManifest(request, (block) =>
+    SYSTEM_BLOCK_SOURCE.get(block),
+  );
   // Keep the request identity alive after the provider response returns: the
   // following tool calls are the materialized effects of this exact prompt.
   ctx.activeLogicalRequestId = logicalRequestId;
