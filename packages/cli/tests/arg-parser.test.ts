@@ -525,3 +525,18 @@ describe('parseSpawnFlags', () => {
     expect(r.description).toBe('fix issue');
   });
 });
+
+describe('parseArgs — inline boolean values', () => {
+  it('reads --switch=true / --switch=false as booleans, not strings every reader ignores', () => {
+    const { flags } = parseArgs([
+      '--restricted=true',
+      '--safe-mode=TRUE',
+      '--dry-run=false',
+      '--model=true',
+    ]);
+    expect(flags['restricted']).toBe(true);
+    expect(flags['safe-mode']).toBe(true);
+    expect(flags['dry-run']).toBe(false);
+    expect(flags['model']).toBe('true');
+  });
+});

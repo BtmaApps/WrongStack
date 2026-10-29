@@ -195,8 +195,11 @@ export class HostSkillCompanion {
         // and is never held for a recommendation (tool-executor.ts), so a
         // probe would only spend a side model on a note it cannot act on.
         // The picker comes back with the first turn a WrongStack model runs.
+        // Quick carries no skill catalog and is never held (skill-speed-bump),
+        // so it gets no probe either.
         if (
           keepsOwnContext(event.ctx.provider) ||
+          event.ctx.meta?.['systemPromptVariant'] === 'quick' ||
           isProofDrivenBugHuntRequest(event.inputText ?? '')
         ) {
           this.release(sessionId);

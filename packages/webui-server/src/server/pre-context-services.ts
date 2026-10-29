@@ -73,6 +73,7 @@ import {
 } from '@wrongstack/core/utils';
 import {
   createVaultBackedMcpAuthorizationProviderFactory,
+  elicitViaUserInput,
   MCPAuthorizationManager,
   type MCPAuthorizationStateEvent,
   MCPRegistry,
@@ -391,6 +392,9 @@ export async function createPreContextServices(
       onStateChange: onMcpAuthorizationState,
     }),
     authorizationManager: mcpAuthorizationManager,
+    // Mid-call input belongs to the invoking run. There is deliberately no root-session
+    // fallback before a context exists; unsolicited input is safely cancelled.
+    elicitationHandler: (request) => elicitViaUserInput(request),
   });
   if (config.features.mcp && config.mcpServers) {
     for (const [name, cfg] of Object.entries(config.mcpServers)) {
@@ -550,6 +554,10 @@ export async function createPreContextServices(
     // don't also inject a static memory section here (avoids double injection).
     injectMemory: false,
     skillLoader,
+    // Without these the builder fell back to injecting skill BODIES, so the
+    // configured progressive manifest never applied on WebUI or desktop.
+    skillMode: config.skills?.mode,
+    skillEagerMaxChars: config.skills?.eagerMaxChars,
     modeStore,
     modeId,
     modePrompt,
@@ -560,6 +568,8 @@ export async function createPreContextServices(
       projectDir: wpaths.inProjectInstructions,
       systemVariant: config.systemPrompt?.variant,
     },
+    userInstructionsFile: config.systemPrompt?.includeGlobalAgents === false ? false : undefined,
+    projectInstructions: config.systemPrompt?.includeProjectAgents !== false,
   });
   if (container.has(TOKENS.SystemPromptBuilder)) {
     container.override(TOKENS.SystemPromptBuilder, () => systemPromptBuilder, { owner: 'webui' });

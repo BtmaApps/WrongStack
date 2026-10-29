@@ -1,6 +1,6 @@
 /** Per-tab agents for the CLI-embedded WebUI host. */
 
-import { createSessionAgentRegistry } from '@wrongstack/webui-server';
+import { createSessionAgentRegistry, newSessionMetaFromConfig } from '@wrongstack/webui-server';
 import type { WebSocket } from 'ws';
 import type { CliWebUIOptions } from '../webui-server-options.js';
 import type { ConnectedClient } from './connection-handler.js';
@@ -34,6 +34,9 @@ export function createEmbeddedSessionAgents(
     // A tab that is still on screen must outlive one that was closed, whatever
     // order their agents were created in.
     isDisplayed: isSessionDisplayed,
+    // `applyVariant` moves `opts.appConfig`, so a new tab or a `/clear` starts
+    // on the identity the user picked last.
+    newSessionMeta: () => newSessionMetaFromConfig(opts.appConfig),
   });
   return { sessionAgents, isSessionDisplayed };
 }

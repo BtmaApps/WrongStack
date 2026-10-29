@@ -89,7 +89,7 @@ export function unknownToolResult(use: ToolUseBlock, listFns: () => string[]): T
   return {
     type: 'tool_result',
     tool_use_id: use.id,
-    content: `Tool "${use.name}" is not registered. Available tools: ${listFns().join(', ')}`,
+    content: `Tool "${use.name}" is not available in this session. Available tools: ${listFns().join(', ')}`,
     is_error: true,
   };
 }

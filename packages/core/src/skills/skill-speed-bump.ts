@@ -26,8 +26,12 @@
 
 import { basename } from 'node:path';
 import type { Message } from '@wrongstack/contracts/types/messages';
-import { isElidedResultContent, isElidedToolInput } from '../utils/elision-markers.js';
-import { REQUIRED_SKILLS_LOADER_TOOL } from './required-skill-gate.js';
+import { isElidedResultContent } from '../utils/elision-markers.js';
+import {
+  isElidedSkillCallInput,
+  loadedSkillName,
+  REQUIRED_SKILLS_LOADER_TOOL,
+} from './required-skill-gate.js';
 import { declaredPathMatch, MAX_GLOBS_PER_SKILL } from './skill-path-rules.js';
 
 export const SKILL_COMPANION_META_KEY = 'skillCompanion';
@@ -201,10 +205,10 @@ export function skillDeliveredInTranscript(
   for (const message of messages) {
     if (message.role !== 'assistant' || typeof message.content === 'string') continue;
     for (const block of message.content) {
-      if (block.type !== 'tool_use' || block.name !== REQUIRED_SKILLS_LOADER_TOOL) continue;
-      if (isElidedToolInput(block.input)) continue;
-      const loaded = (block.input as { name?: unknown } | undefined)?.name;
-      if (typeof loaded === 'string' && normalizeName(loaded) === target) {
+      if (block.type !== 'tool_use') continue;
+      if (isElidedSkillCallInput(block)) continue;
+      const loaded = loadedSkillName(block);
+      if (loaded === target) {
         if (toolResultReadable(messages, block.id)) return true;
       }
     }
@@ -363,6 +367,43 @@ function sameAssistantMessage(
   return false;
 }
 
+/**
+ * Whether a file-changing call already succeeded since the user's latest
+ * message — i.e. the change this turn is making is underway.
+ */
+function fileChangeLandedThisTurn(messages: readonly Message[] | undefined): boolean {
+  if (!messages) return false;
+  // The turn starts at the latest user message that carries no tool results.
+  let start = 0;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const message = messages[i];
+    if (message?.role !== 'user') continue;
+    if (
+      typeof message.content === 'string' ||
+      !message.content.some((block) => block.type === 'tool_result')
+    ) {
+      start = i + 1;
+      break;
+    }
+  }
+  const changeIds = new Set<string>();
+  for (const message of messages.slice(start)) {
+    if (typeof message.content === 'string') continue;
+    for (const block of message.content) {
+      if (block.type === 'tool_use' && SKILL_BUMP_TOOLS.has(block.name.toLowerCase())) {
+        changeIds.add(block.id);
+      } else if (
+        block.type === 'tool_result' &&
+        !block.is_error &&
+        changeIds.has(block.tool_use_id)
+      ) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 export function skillSpeedBumpMessage(pending: readonly SkillRecommendation[]): string {
   const list = pending
     .map((rec) => (rec.reason ? `${rec.name} (${rec.reason})` : rec.name))
@@ -390,14 +431,25 @@ export function skillSpeedBump(
   ctx: MetaHolder,
   use: { id: string; name: string; targets?: readonly string[] | undefined },
 ): string | undefined {
-  let state = readSkillCompanionState(ctx);
+  // Quick is the lean identity: no skill catalog in its prompt, so no hold
+  // pointing at one (and no full skill load riding into its context).
+  if (ctx?.meta?.['systemPromptVariant'] === 'quick') return undefined;
+  const state = readSkillCompanionState(ctx);
   if (!state || (state.recommended.length === 0 && !state.pathRules?.length)) return undefined;
   if (ctx?.session?.id !== state.sessionId) return undefined;
   if (!SKILL_BUMP_TOOLS.has(use.name.toLowerCase())) return undefined;
-  state = fireDeclaredRules(ctx, state, use.targets ?? []);
+  return decideHold(ctx, use, fireDeclaredRules(ctx, state, use.targets ?? []));
+}
+
+function decideHold(
+  ctx: MetaHolder,
+  use: { id: string; name: string },
+  initial: SkillCompanionState,
+): string | undefined {
+  let state = initial;
   if (state.recommended.length === 0) return undefined;
 
-  const pending = state.recommended.filter(
+  let pending = state.recommended.filter(
     (rec) =>
       !state.loaded.includes(rec.name) &&
       !state.declined.includes(rec.name) &&
@@ -408,7 +460,23 @@ export function skillSpeedBump(
     return undefined;
   }
 
-  const fresh = pending.filter((rec) => !state.held.includes(rec.name));
+  let fresh = pending.filter((rec) => !state.held.includes(rec.name));
+  const late = fresh.filter((rec) => !rec.declared);
+  if (late.length > 0 && fileChangeLandedThisTurn(ctx?.messages)) {
+    // Too late to steer: this turn already changed files, and holding now
+    // stops a half-applied change midway (the probe that raised it finished
+    // after the edits began). Drop it without a hold and without counting a
+    // decline the leader never made; it can be raised before the next change.
+    // A declared `paths` match is not late — it fires before the very file it
+    // names — so it still holds.
+    const dropped = new Set(late.map((rec) => rec.name));
+    const remaining = state.recommended.filter((rec) => !dropped.has(rec.name));
+    writeState(ctx, { ...state, recommended: remaining });
+    state = { ...state, recommended: remaining };
+    fresh = fresh.filter((rec) => !dropped.has(rec.name));
+    if (fresh.length === 0) return undefined;
+    pending = pending.filter((rec) => !dropped.has(rec.name));
+  }
   if (fresh.length > 0) {
     writeState(ctx, {
       ...state,

@@ -56,10 +56,16 @@ describe('buildSystemPromptInfo', () => {
   it('prices every bundled variant, coding ladder cheapest first', async () => {
     const info = await buildSystemPromptInfo(surface(path.join(tmp, 'config.json')));
 
-    expect(info.variants.map((v) => v.variant)).toEqual(['lite', 'default', 'pro', 'scout']);
+    expect(info.variants.map((v) => v.variant)).toEqual([
+      'lite',
+      'default',
+      'pro',
+      'scout',
+      'quick',
+    ]);
     for (const v of info.variants) expect(v.tokens).toBeGreaterThan(0);
     // The ladder only helps a user choose if the sizes actually differ. Scout
-    // sits outside it: a different identity, not a point on the size scale.
+    // and Quick sit outside it: different identities, not points on the size scale.
     expect(info.variants[0]!.tokens).toBeLessThan(info.variants[1]!.tokens);
     expect(info.variants[1]!.tokens).toBeLessThan(info.variants[2]!.tokens);
   });
@@ -78,7 +84,7 @@ describe('buildSystemPromptInfo', () => {
   it('treats an unreadable config as "never chosen" rather than failing', async () => {
     const info = await buildSystemPromptInfo(surface(path.join(tmp, 'missing.json')));
     expect(info.chosen).toBe(false);
-    expect(info.variants).toHaveLength(4);
+    expect(info.variants).toHaveLength(5);
   });
 });
 
@@ -93,7 +99,7 @@ describe('handleSystemPromptGet', () => {
     expect(send).toHaveBeenCalledTimes(1);
     const msg = send.mock.calls[0]![1] as { type: string; payload: { variants: unknown[] } };
     expect(msg.type).toBe('system_prompt.info');
-    expect(msg.payload.variants).toHaveLength(4);
+    expect(msg.payload.variants).toHaveLength(5);
   });
 
   it('answers with the ASKING tab’s variant, not the host default', async () => {

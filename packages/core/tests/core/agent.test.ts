@@ -924,6 +924,117 @@ describe('Agent', () => {
     expect(provider.calls).toBe(2);
   });
 
+  it('appends post-tool context after the tool results, never before them', async () => {
+    // Directory instructions ride `pendingPostToolContext`. As a LEADING block
+    // they reached Kimi For Coding (an Anthropic-compatible proxy that converts
+    // to the OpenAI shape) as a user message between `tool_calls` and their
+    // answers, and every call in the turn was rejected as unanswered (400).
+    let agentCtx: Context | undefined;
+    const reader: Tool = {
+      name: 'read',
+      description: '',
+      inputSchema: { type: 'object' },
+      permission: 'auto',
+      mutating: false,
+      async execute() {
+        if (agentCtx) agentCtx.pendingPostToolContext = 'directory instructions';
+        return 'file body';
+      },
+    };
+    const provider = new MockProvider([
+      {
+        content: [
+          { type: 'tool_use', id: 'u1', name: 'read', input: {} },
+          { type: 'tool_use', id: 'u2', name: 'read', input: {} },
+        ],
+        stopReason: 'tool_use',
+      },
+      { content: [{ type: 'text', text: 'done' }], stopReason: 'end_turn' },
+    ]);
+    const { agent, ctx, tmp } = await buildAgent(provider, [reader]);
+    cleanupDirs.push(tmp);
+    agentCtx = ctx;
+    await agent.run('go');
+    const turn = ctx.messages.find(
+      (m) => Array.isArray(m.content) && m.content.some((b) => b.type === 'tool_result'),
+    );
+    const kinds = ((turn?.content ?? []) as Array<{ type: string }>).map((b) => b.type);
+    expect(kinds).toEqual(['tool_result', 'tool_result', 'text']);
+  });
+
+  it('coaches a surface without tool_use only toward tools on it', async () => {
+    // With no `tool_use` registered, Quick's surface is its basic set and has
+    // no route to the rest of the catalog; the coach used to rank the catalog.
+    const tool = (name: string, description: string): Tool => ({
+      name,
+      description,
+      inputSchema: { type: 'object' },
+      permission: 'auto',
+      mutating: false,
+      execute: async () => 'ok',
+    });
+    const provider = new MockProvider([
+      { content: [{ type: 'text', text: 'ok' }], stopReason: 'end_turn' },
+    ]);
+    const { agent, ctx, tmp } = await buildAgent(provider, [
+      tool('read', 'Read a file.'),
+      tool('codebase-read-symbol', 'Read a symbol definition from the codebase index.'),
+    ]);
+    cleanupDirs.push(tmp);
+    ctx.meta['systemPromptVariant'] = 'quick';
+    await agent.run('read the symbol definition of parseConfig', { inputOrigin: 'user' });
+    const sent = JSON.stringify(provider.receivedRequests[0]?.messages);
+    expect(sent).toContain('[TOOL COACH');
+    expect(sent).not.toContain('codebase-read-symbol');
+  });
+
+  it('refuses a registered tool a surface without tool_use cannot reach', async () => {
+    // Registered is not offered: with no `tool_use` registered, Quick's surface
+    // is closed, so a call to a catalog tool it was never shown must not run.
+    const gitRuns: unknown[] = [];
+    const reg = (name: string, run?: () => void): Tool => ({
+      name,
+      description: name,
+      inputSchema: { type: 'object' },
+      permission: 'auto',
+      mutating: false,
+      execute: async () => {
+        run?.();
+        return 'ran';
+      },
+    });
+    const provider = new MockProvider([
+      {
+        content: [
+          { type: 'tool_use', id: 'g1', name: 'git', input: {} },
+          { type: 'tool_use', id: 'r1', name: 'read', input: {} },
+        ],
+        stopReason: 'tool_use',
+      },
+      { content: [{ type: 'text', text: 'ok' }], stopReason: 'end_turn' },
+    ]);
+    const { agent, ctx, tmp } = await buildAgent(provider, [
+      reg('read'),
+      reg('git', () => gitRuns.push(1)),
+    ]);
+    cleanupDirs.push(tmp);
+    ctx.meta['systemPromptVariant'] = 'quick';
+    await agent.run('go');
+    expect(gitRuns).toHaveLength(0);
+    const results = ctx.messages
+      .flatMap((m) => (Array.isArray(m.content) ? m.content : []))
+      .filter((b) => b.type === 'tool_result') as Array<{
+      tool_use_id: string;
+      content: unknown;
+      is_error?: boolean;
+    }>;
+    const git = results.find((r) => r.tool_use_id === 'g1');
+    expect(git?.is_error).toBe(true);
+    expect(String(git?.content)).toContain('not available in this session');
+    expect(String(git?.content)).toContain('Available tools: read');
+    expect(results.find((r) => r.tool_use_id === 'r1')?.is_error).toBeFalsy();
+  });
+
   // ── sizeSignals coverage — read vs bash/grep/logs vs other tools ──────────
 
   it('sizeSignals returns outputLines for read tool (line prefix format)', async () => {

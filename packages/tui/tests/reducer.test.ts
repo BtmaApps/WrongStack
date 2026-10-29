@@ -842,6 +842,8 @@ describe('TUI reducer', () => {
     expect(s.settingsPicker.nextSystemPromptVariant).toBe('scout');
     expect(s.settingsPicker.hint).toBe('↻ Takes effect next session');
     s = reducer(s, { type: 'settingsValueChange', delta: 1 } as never);
+    expect(s.settingsPicker.nextSystemPromptVariant).toBe('quick');
+    s = reducer(s, { type: 'settingsValueChange', delta: 1 } as never);
     expect(s.settingsPicker.nextSystemPromptVariant).toBe('lite');
   });
 

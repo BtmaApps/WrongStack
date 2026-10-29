@@ -14,7 +14,7 @@
 
 import type { EventBus } from '@wrongstack/contracts/kernel';
 import type { JSONSchema, TokenCounter } from '@wrongstack/contracts/types';
-import type { Agent, RunResult } from '@wrongstack/core/agent';
+import { type Agent, providerToolsForVariant, type RunResult } from '@wrongstack/core/agent';
 import { color, writeOut } from '@wrongstack/core/utils';
 import { contextOverflowHint } from '../context-overflow-diagnostic.js';
 import type { TerminalRenderer } from '../renderer.js';
@@ -51,6 +51,23 @@ interface SingleShotDispatchContext {
    * binds it to its own controller for the duration of the turn.
    */
   interruptController?: { abortLeader: () => boolean } | undefined;
+}
+
+/**
+ * The tools the model is offered, for the stream-json `init` line. The whole
+ * registry (~120 names) reported a Quick session as if it sent every schema,
+ * while its requests carried a dozen; a harness logging `init` saw the wrong
+ * surface. Same selection the agent loop sends (variant + provider filter).
+ */
+export function providerToolNames(agent: Pick<Agent, 'tools' | 'ctx'>): string[] {
+  const meta = agent.ctx?.meta ?? {};
+  const tools = providerToolsForVariant(
+    agent.tools,
+    meta['systemPromptVariant'],
+    meta,
+    agent.ctx?.provider,
+  );
+  return tools.map((tool) => tool.name);
 }
 
 /** Exit code for a run status: 0 success, 130 aborted, 1 anything that stopped short. */
@@ -103,14 +120,13 @@ export async function runSingleShotDispatch(ctx: SingleShotDispatchContext): Pro
   }
   let stopStream: (() => void) | undefined;
   if (format === 'stream-json') {
-    const tools = agent.tools?.listForProvider?.() ?? agent.tools?.list?.() ?? [];
     writeOut(
       streamJsonInit({
         sessionId: agent.ctx?.session?.id ?? null,
         provider: agent.ctx?.provider?.id ?? null,
         model: agent.ctx?.model ?? null,
         cwd: agent.ctx?.cwd ?? process.cwd(),
-        tools: tools.map((tool) => tool.name),
+        tools: providerToolNames(agent),
       }),
     );
     if (ctx.events) {

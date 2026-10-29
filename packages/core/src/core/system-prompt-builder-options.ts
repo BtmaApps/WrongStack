@@ -74,6 +74,8 @@ export interface DefaultSystemPromptBuilderOptions {
    * (under `WRONGSTACK_HOME` when set); `false` leaves it out.
    */
   userInstructionsFile?: string | false | undefined;
+  /** `false` leaves the project's root `AGENTS.md` / `CLAUDE.md` out. */
+  projectInstructions?: boolean | undefined;
   /**
    * Token-saving mode tier. Controls how aggressively the system prompt is
    * compacted: skill bodies are omitted/trimmed, tool hints are shortened,

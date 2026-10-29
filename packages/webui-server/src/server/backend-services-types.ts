@@ -48,6 +48,8 @@ type Session = Awaited<ReturnType<SessionStore['create']>>;
 export interface AgentServicesInput {
   trustBoundary: TrustBoundary;
   config: Config;
+  /** The LIVE config (`config` is the boot snapshot); new session agents seed from it. */
+  getConfig?: (() => Config) | undefined;
   wpaths: WstackPaths;
   logger: Logger;
   projectRoot: string;

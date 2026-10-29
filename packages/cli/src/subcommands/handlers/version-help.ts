@@ -89,7 +89,7 @@ export const helpCmd: SubcommandHandler = async (_args, deps) => {
       ['--provider <id> --model <id>', 'Provider and model for this run'],
       ['--fallback-model <a,b,...>', 'Models to fall back to when the primary is unavailable'],
       ['--effort <level>', 'Reasoning effort: none|minimal|low|medium|high|xhigh|max'],
-      ['--system-prompt lite|pro|scout|default', 'Bundled system-prompt variant'],
+      ['--system-prompt lite|pro|scout|quick|default', 'Bundled system-prompt variant'],
       [
         '--append-system-prompt <text> | --append-system-prompt-file <path>',
         'Add instructions to the host agent prompt for this run',
@@ -116,6 +116,11 @@ export const helpCmd: SubcommandHandler = async (_args, deps) => {
         '--output-format text|json|stream-json',
         'stream-json: init, assistant, tool_result, result lines',
       ],
+      [
+        '--host-profile',
+        'Headless runs default to Quick prompt, basic tools, no tool coach; keep your profile',
+      ],
+      ['--no-tool-coach', 'No [TOOL COACH] advice folded into turns'],
       ['--include-partial-messages', 'stream-json: add text_delta lines'],
       ['--json-schema <file|json>', 'Answer must be JSON matching the schema (structuredOutput)'],
       ['--max-budget-usd <amount>', 'Stop once spend (leader + subagents) passes the amount'],

@@ -21,12 +21,13 @@
  */
 
 import type {
+  Config,
   ModelsRegistry,
   SessionStore,
   SessionWriter,
   TokenCounter,
 } from '@wrongstack/contracts/types';
-import { Agent, Context } from '@wrongstack/core/agent';
+import { Agent, Context, providerToolsForVariant } from '@wrongstack/core/agent';
 import { DefaultTokenCounter } from '@wrongstack/core/infrastructure';
 import { setSessionLeaderMetaResolver } from '@wrongstack/core/security';
 import { SESSION_SCOPED_PREF_KEYS } from './session-scoped-prefs.js';
@@ -66,6 +67,25 @@ export interface SessionAgentRegistryOptions {
    * then loses its in-memory transcript and comes back empty.
    */
   isDisplayed?: ((sessionId: string) => boolean) | undefined;
+  /**
+   * The session-scoped defaults a NEW session agent starts from, read from the
+   * live config at creation time.
+   *
+   * `inheritedSessionMeta` drops the leader's copy of these keys on purpose,
+   * but the identity variant has no meta-free fallback that tracks the user's
+   * last pick: without a seed the agent composed the boot-time identity and
+   * sent the full tier tool surface, so a Scout or Quick pick was lost on
+   * `/clear` and in every new tab.
+   */
+  newSessionMeta?: (() => Record<string, unknown>) | undefined;
+}
+
+/** {@link SessionAgentRegistryOptions.newSessionMeta} seed for a config. */
+export function newSessionMetaFromConfig(
+  config: Pick<Config, 'systemPrompt'> | undefined,
+): Record<string, unknown> {
+  const variant = config?.systemPrompt?.variant;
+  return variant ? { systemPromptVariant: variant } : {};
 }
 
 export interface SessionAgentRegistry {
@@ -380,7 +400,20 @@ export function createSessionAgentRegistry(
     opts.onCreate?.(agent, sessionId);
     return agent;
   };
-  const build = (sessionId: string): Agent => opts.createAgent?.(sessionId) ?? create(sessionId);
+  const build = (sessionId: string): Agent => {
+    const agent = opts.createAgent?.(sessionId) ?? create(sessionId);
+    const meta = agent.ctx.meta as Record<string, unknown> | undefined;
+    if (!meta) return agent;
+    for (const [key, value] of Object.entries(opts.newSessionMeta?.() ?? {})) {
+      if (meta[key] === undefined) meta[key] = value;
+    }
+    // The run refreshes this surface; until then it must already be this
+    // session's, not the leader's, or the context view prices the wrong tools.
+    if (typeof agent.tools?.listForProvider === 'function') {
+      agent.ctx.tools = providerToolsForVariant(agent.tools, meta['systemPromptVariant'], meta);
+    }
+    return agent;
+  };
 
   const peek = (sessionId: string | undefined): Agent | undefined => {
     if (!sessionId) return template;

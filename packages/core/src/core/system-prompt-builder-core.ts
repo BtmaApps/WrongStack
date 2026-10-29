@@ -307,8 +307,8 @@ export abstract class SystemPromptBuilderCore {
    *
    * Cached per variant rather than once for the builder: four conversations
    * share this instance and each picks its own identity, so a single memoised
-   * bundle handed whichever variant loaded first to all of them. At most four
-   * entries exist ('default' | 'lite' | 'pro' | 'scout').
+   * bundle handed whichever variant loaded first to all of them. At most five
+   * entries exist ('default' | 'lite' | 'pro' | 'scout' | 'quick').
    */
   protected async instructions(
     variant?: SystemInstructionVariant | undefined,

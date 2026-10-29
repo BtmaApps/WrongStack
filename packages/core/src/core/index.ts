@@ -4,6 +4,11 @@ export {
   SCOUT_DIRECT_TOOL_NAMES,
 } from '../registry/scout-tool-surface.js';
 export {
+  isToolReachable,
+  reachableTools,
+  reachesCatalog,
+} from '../registry/session-tool-reach.js';
+export {
   Agent,
   type RunResult,
   type UserInputPayload,

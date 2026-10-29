@@ -188,6 +188,28 @@ describe('required-skill state against the transcript', () => {
     ctx.messages = [{ role: 'system', content: '[prior_turns_digest: ...]' }];
     expect(pendingRequiredSkills(ctx)).toEqual(['bug-hunter']);
   });
+
+  it('recognizes a skill loaded through the tool_use gateway with a nested ~1 id', () => {
+    const gatewayCall: Message = {
+      role: 'assistant',
+      content: [
+        {
+          type: 'tool_use',
+          id: 'u1',
+          name: 'tool_use',
+          input: { tool: 'skill', input: { name: 'bug-hunter' } },
+        },
+      ],
+    };
+    const gatewayResult: Message = {
+      role: 'user',
+      content: [{ type: 'tool_result', tool_use_id: 'u1', content: 'body' }],
+    };
+    const ctx = { meta: {} as Record<string, unknown>, messages: [gatewayCall, gatewayResult] };
+    armRequiredSkills(ctx, '<!-- wrongstack:required-skills bug-hunter -->');
+    markRequiredSkillLoaded(ctx, 'bug-hunter', 'u1~1');
+    expect(pendingRequiredSkills(ctx)).toEqual([]);
+  });
 });
 
 describe('ToolExecutor — required-skill gate', () => {
@@ -248,5 +270,53 @@ describe('ToolExecutor — required-skill gate', () => {
     armRequiredSkills(ctx, MARKER);
     await exec.executeBatch([use('edit', 'e1')], ctx as never, 'sequential');
     expect(editSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('allows tool_use to invoke skill while required skills are pending, but blocks tool_use on mutating tools', async () => {
+    const edit = createMockTool({ name: 'edit', result: 'edited' });
+    edit.mutating = true;
+    const skill = createMockTool({ name: 'skill', result: 'body' });
+    skill.mutating = false;
+    const gateway = createMockTool({ name: 'tool_use', result: 'ok' });
+    gateway.mutating = true;
+    const tools: Tool[] = [edit, skill, gateway];
+    const byName = new Map(tools.map((tool) => [tool.name, tool]));
+    const exec = new ToolExecutor({ get: (n: string) => byName.get(n), list: () => tools }, {
+      permissionPolicy: {
+        evaluate: vi.fn().mockResolvedValue({ permission: 'auto', source: 'default' }),
+      },
+      secretScrubber: noopScrubber,
+    } as never);
+    const ctx = {
+      meta: {} as Record<string, unknown>,
+      session: { id: 'gate-session' },
+      signal: new AbortController().signal,
+      logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+    };
+    armRequiredSkills(ctx, '<!-- wrongstack:required-skills bug-hunter -->');
+
+    const batch = await exec.executeBatch(
+      [
+        {
+          type: 'tool_use',
+          id: 'g-edit',
+          name: 'tool_use',
+          input: { tool: 'edit', input: {} },
+        },
+        {
+          type: 'tool_use',
+          id: 'g-skill',
+          name: 'tool_use',
+          input: { tool: 'skill', input: { name: 'bug-hunter' } },
+        },
+      ],
+      ctx as never,
+      'sequential',
+    );
+    expect(batch.outputs[0]?.settlement).toBe('denied_by_policy');
+    expect(batch.outputs[1]?.settlement).not.toBe('denied_by_policy');
+    expect(
+      batch.outputs[1]?.result.type === 'tool_result' && batch.outputs[1]?.result.is_error,
+    ).toBe(false);
   });
 });

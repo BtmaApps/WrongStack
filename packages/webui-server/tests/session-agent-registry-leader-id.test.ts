@@ -33,7 +33,7 @@ vi.mock('@wrongstack/core/agent', () => {
       this.ctx = opts['context'];
     }
   }
-  return { Agent, Context };
+  return { Agent, Context, providerToolsForVariant: () => [] };
 });
 
 vi.mock('@wrongstack/core/infrastructure', () => ({

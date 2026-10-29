@@ -557,6 +557,7 @@ export async function createAgentServices(input: AgentServicesInput): Promise<Ag
     events,
     pipelines,
     config,
+    getConfig: input.getConfig,
     toolExecutor,
   });
   const getAgentForSession = (sessionId?: string): Agent => sessionAgents.get(sessionId);

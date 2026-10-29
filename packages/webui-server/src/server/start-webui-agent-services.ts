@@ -112,6 +112,7 @@ export async function createStandaloneAgentServices(
     tracer: otlpExport?.tracer,
     trustBoundary,
     config,
+    getConfig,
     wpaths,
     logger,
     projectRoot,

@@ -42,6 +42,25 @@ function fakeCtx(): Context {
 // ── /clear ───────────────────────────────────────────────────────────────────
 
 describe('buildClearCommand', () => {
+  it('keeps the conversation identity variant across /clear', async () => {
+    // A Quick pick came back as the full 114-tool tier surface after /clear:
+    // the meta wipe took the variant, which the CLI seeds only at boot.
+    const ctx = fakeCtx();
+    const meta = ctx.meta as Record<string, unknown>;
+    meta['systemPromptVariant'] = 'quick';
+    const state = ctx.state as unknown as Record<string, unknown>;
+    state['deleteMeta'] = vi.fn((key: string) => delete meta[key]);
+    state['setMeta'] = vi.fn((key: string, value: unknown) => {
+      meta[key] = value;
+    });
+    const cmd = buildClearCommand({
+      renderer: { write: vi.fn(), writeInfo: vi.fn(), clear: vi.fn() },
+    } as never);
+    await cmd.run('', ctx);
+    expect(meta['plan']).toBeUndefined();
+    expect(meta['systemPromptVariant']).toBe('quick');
+  });
+
   it('wipes context and session history, preserves memory, and calls onClear', async () => {
     const renderer = { write: vi.fn(), writeInfo: vi.fn(), clear: vi.fn() };
     const memoryStore = { clear: vi.fn().mockResolvedValue(undefined) };

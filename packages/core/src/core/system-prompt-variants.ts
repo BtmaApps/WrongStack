@@ -1,6 +1,6 @@
 /**
  * The shared catalogue of system-prompt identity variants - Lite / Standard /
- * Pro / Scout - plus the per-variant token estimate every surface shows before a user
+ * Pro / Scout / Quick - plus the per-variant token estimate every surface shows before a user
  * commits to one.
  *
  * This lives in core because three surfaces need the same answer: the CLI's
@@ -42,6 +42,11 @@ export const SYSTEM_PROMPT_VARIANT_OPTIONS: ReadonlyArray<{
     variant: 'scout',
     label: 'Scout',
     hint: 'general-purpose - few direct tools, discovers the rest on demand',
+  },
+  {
+    variant: 'quick',
+    label: 'Quick',
+    hint: 'minimal prompt - 10 basic tools, the rest found on demand',
   },
 ];
 

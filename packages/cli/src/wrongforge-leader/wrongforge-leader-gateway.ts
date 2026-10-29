@@ -14,6 +14,7 @@ import { randomBytes } from 'node:crypto';
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import type { Tool } from '@wrongstack/contracts/types';
+import { isToolReachable } from '@wrongstack/core/agent';
 import {
   compactToolDefinitionForWire,
   subjectForToolInput,
@@ -82,7 +83,12 @@ export async function startLeaderGateway(
   host: AcpLeaderHost,
   sessionId: string,
 ): Promise<LeaderGateway | undefined> {
-  const tools = (host.listTools?.() ?? []).filter((t) => !NOT_OFFERED.has(t.name));
+  // Offer what this session can call (session-tool-reach), not the registry.
+  // The executor enforces the same rule on every call.
+  const sessionCtx = host.context?.(sessionId);
+  const tools = (host.listTools?.() ?? []).filter(
+    (t) => !NOT_OFFERED.has(t.name) && (!sessionCtx || isToolReachable(sessionCtx, t.name)),
+  );
   if (tools.length === 0) return undefined;
   const byName = new Map(tools.map((t) => [t.name, t]));
   // Schemas on this listing reach Claude through WrongForge: serve the same

@@ -29,7 +29,8 @@ session) see [`docs/slash/`](slash/). For every `wstack <subcommand>` see also
 | `--system-pro` | Use `system-pro.md` instead of `system.md` for the baseline system prompt in this launch. Equivalent to `--system-prompt pro`. |
 | `--system-lite` | Use the compact `system-lite.md` baseline for this launch. Equivalent to `--system-prompt lite`. |
 | `--system-scout` | Use the general-purpose Scout identity (`system-scout.md`) for this launch: a small direct tool set (files, shell, web, todo, memory) with the rest of the catalog reached through `tool_search` / `tool_use`. Equivalent to `--system-prompt scout`. |
-| `--system-prompt default\|lite\|pro\|scout` | Select the baseline system prompt variant for this launch. `default` uses `system.md`; `lite` uses `system-lite.md`; `pro` uses `system-pro.md`; `scout` uses `system-scout.md` and the Scout tool surface, including profile/project instruction overrides. |
+| `--system-quick` | Use the minimal Quick identity (`system-quick.md`) for this launch: a very short understand-confirm-do prompt and at most 10 basic tools (read, write, edit, glob, grep, shell, fetch, clarify, nextsteps) plus `tool_search` / `tool_use`, so the rest of the catalog is reached on demand without its schemas entering the context. Equivalent to `--system-prompt quick`. |
+| `--system-prompt default\|lite\|pro\|scout\|quick` | Select the baseline system prompt variant for this launch. `default` uses `system.md`; `lite` uses `system-lite.md`; `pro` uses `system-pro.md`; `scout` uses `system-scout.md` and the Scout tool surface; `quick` uses `system-quick.md` and the Quick tool surface, including profile/project instruction overrides. |
 
 SimpleUI was retired and replaced by VibeUI; `wstack simpleui` / `--simpleui` now open VibeUI.
 `--full-auto` (formerly SimpleUI-only YOLO + autonomy for one run) is ignored;

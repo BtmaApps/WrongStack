@@ -42,11 +42,17 @@ export class DefaultSystemPromptBuilder
     this.latchTier(ctx.model);
     this._lastBuildTools = ctx.tools;
     this._lastCatalogTools = ctx.catalogTools ?? ctx.tools;
+    // Quick is the lean identity: no skill catalog, skill bodies or mode skill
+    // hints — they were most of its prompt, re-sent on every request, for a
+    // surface that loads skills only through `tool_search` / `tool_use`.
+    const lean = (ctx.systemVariant ?? this.opts.instructionPaths?.systemVariant) === 'quick';
     // Re-read skill entries on every build so newly created/edited skills
     // (which call SkillLoader.invalidateCache()) are picked up without a
     // process restart. The SkillLoader itself caches disk I/O, so this is
     // cheap — only string formatting, no filesystem reads for cached data.
-    if (this.opts.skillLoader) {
+    // The progressive manifest is itself the skill index; listing the skills
+    // again in the environment block sent every name twice (~3.9k tokens).
+    if (this.opts.skillLoader && !lean && this.opts.skillMode !== 'progressive') {
       try {
         const entries = await this.opts.skillLoader.listEntries();
         const manifests = new Map(
@@ -98,7 +104,7 @@ export class DefaultSystemPromptBuilder
     const layer2 = await this.buildToolUsage(ctx.tools, ctx, tplCtx);
     const layer3 = await this.buildEnvironment(ctx);
     const layer3WithDir = `${layer3}\n- Project root: ${ctx.projectRoot}`;
-    const layer4 = await this.buildMemoryAndSkills();
+    const layer4 = lean ? leanSkillPointer(ctx) : await this.buildMemoryAndSkills();
     const layer5 = await this.buildMode();
     // Plans anchor the HOST agent across turns. Subagents run one
     // narrow task and shouldn't carry the host's strategic context —
@@ -125,7 +131,10 @@ export class DefaultSystemPromptBuilder
     }
     // Root AGENTS.md / CLAUDE.md; subdirectory files arrive as deltas with
     // tool results instead (see project-instructions.ts).
-    const projectInstructions = await this.rootInstructions.load(ctx.projectRoot);
+    const projectInstructions =
+      this.opts.projectInstructions === false
+        ? ''
+        : await this.rootInstructions.load(ctx.projectRoot);
     if (projectInstructions) {
       session.push(tagBlock({ type: 'text', text: projectInstructions }, 'project-instructions'));
     }
@@ -151,7 +160,7 @@ export class DefaultSystemPromptBuilder
 
     // Suggested skills for the active mode — helps the model know which
     // domain instructions to prioritize when multiple skills are loaded.
-    if (this.opts.modeStore && this.opts.skillLoader) {
+    if (this.opts.modeStore && this.opts.skillLoader && !lean) {
       try {
         const activeMode = await this.opts.modeStore.getActiveMode();
         if (activeMode?.suggestedSkills && activeMode.suggestedSkills.length > 0) {
@@ -300,4 +309,16 @@ export class DefaultSystemPromptBuilder
 
     return { core, session, volatile };
   }
+}
+
+/**
+ * The one skills line a lean (Quick) prompt carries: where to find them, when
+ * its surface can. Empty when the catalog has no `skill` loader or the surface
+ * has no `tool_search` to reach it.
+ */
+function leanSkillPointer(ctx: BuildContext): string {
+  const catalog = ctx.catalogTools ?? ctx.tools;
+  if (!catalog.some((tool) => tool.name === 'skill')) return '';
+  if (!ctx.tools.some((tool) => tool.name === 'tool_search')) return '';
+  return 'Domain skills (documents, media, security, testing playbooks) are not listed here: when a task needs one, find it with `tool_search` and load it with the `skill` tool through `tool_use`.';
 }

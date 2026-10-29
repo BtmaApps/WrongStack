@@ -205,6 +205,9 @@
       "defaultProfileProvidersAreEmpty",
       "findLatestProviderBackup"
     ],
+    "packages/cli/src/boot/dispatch-singleshot.ts": [
+      "providerToolNames"
+    ],
     "packages/cli/src/boot/governance-trace-context.ts": [
       "MAX_GOVERNANCE_PLAN_BYTES"
     ],
@@ -224,7 +227,6 @@
       "isReusedContainerPid"
     ],
     "packages/cli/src/boot/system-prompt-menu.ts": [
-      "isSystemPromptPinned",
       "runSystemPromptMenu",
       "shouldSkipSystemPromptMenu",
       "SYSTEM_PROMPT_OPTIONS"
@@ -627,6 +629,9 @@
     "packages/core/src/quota/index.ts": [
       "reachedQuotaWindow",
       "resetProviderQuota"
+    ],
+    "packages/core/src/registry/scout-tool-surface.ts": [
+      "QUICK_BASIC_TOOL_NAMES"
     ],
     "packages/core/src/sandbox/types.ts": [
       "DEFAULT_SANDBOX_CONFIG"

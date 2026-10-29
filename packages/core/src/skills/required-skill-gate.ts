@@ -132,32 +132,69 @@ export function markRequiredSkillUnavailable(ctx: MetaHolder, name: string): voi
   writeState(ctx, { ...state, unavailable: [...state.unavailable, normalized] });
 }
 
-function loadedSkillName(block: ToolUseBlock): string | undefined {
-  const name = (block.input as { name?: unknown } | undefined)?.name;
-  return typeof name === 'string' ? name.trim().toLowerCase() : undefined;
+export function loadedSkillName(block: ToolUseBlock): string | undefined {
+  if (block.name === REQUIRED_SKILLS_LOADER_TOOL) {
+    const name = (block.input as { name?: unknown } | undefined)?.name;
+    return typeof name === 'string' ? name.trim().toLowerCase() : undefined;
+  }
+  if (block.name === 'tool_use') {
+    const outer = block.input as
+      | { tool?: unknown; input?: { name?: unknown } | undefined }
+      | undefined;
+    if (outer?.tool === REQUIRED_SKILLS_LOADER_TOOL) {
+      const name = outer.input?.name;
+      return typeof name === 'string' ? name.trim().toLowerCase() : undefined;
+    }
+  }
+  return undefined;
+}
+
+function matchesDeliveryId(blockId: string, toolUseId: string): boolean {
+  return blockId === toolUseId || toolUseId.startsWith(`${blockId}~`);
+}
+
+export function isElidedSkillCallInput(block: ToolUseBlock): boolean {
+  if (isElidedToolInput(block.input)) return true;
+  if (block.name === 'tool_use') {
+    const nestedInput = (block.input as { input?: unknown } | undefined)?.input;
+    if (
+      nestedInput &&
+      typeof nestedInput === 'object' &&
+      isElidedToolInput(nestedInput as Record<string, unknown>)
+    ) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /**
  * Whether the call that delivered a skill is still readable in the transcript:
- * its `skill` call is present with intact input, and its result is either
- * intact or not appended yet (the batch that made it is still running).
- * Without a recorded id — a resumed session — the latest call naming the skill
- * stands in for it.
+ * its `skill` call (direct or via `tool_use`) is present with intact input, and
+ * its result is either intact or not appended yet (the batch that made it is
+ * still running). Without a recorded id — a resumed session, or a governed
+ * bridge call with a synthetic id — the latest call naming the skill stands in
+ * for it.
  */
 function deliveryInContext(
   messages: readonly Message[],
   name: string,
   toolUseId: string | undefined,
 ): boolean {
-  let delivery: ToolUseBlock | undefined;
+  let byId: ToolUseBlock | undefined;
+  let byName: ToolUseBlock | undefined;
   for (const message of messages) {
     if (message.role !== 'assistant' || typeof message.content === 'string') continue;
     for (const block of message.content) {
-      if (block.type !== 'tool_use' || block.name !== REQUIRED_SKILLS_LOADER_TOOL) continue;
-      if (toolUseId ? block.id === toolUseId : loadedSkillName(block) === name) delivery = block;
+      if (block.type !== 'tool_use') continue;
+      const skillName = loadedSkillName(block);
+      if (!skillName) continue;
+      if (toolUseId && matchesDeliveryId(block.id, toolUseId)) byId = block;
+      if (skillName === name) byName = block;
     }
   }
-  if (!delivery || isElidedToolInput(delivery.input)) return false;
+  const delivery = byId ?? byName;
+  if (!delivery || isElidedSkillCallInput(delivery)) return false;
   for (const message of messages) {
     if (message.role !== 'user' || typeof message.content === 'string') continue;
     for (const block of message.content) {

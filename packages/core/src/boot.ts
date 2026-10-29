@@ -398,10 +398,15 @@ export function flagsToConfigPatch(flags: Record<string, string | boolean>): Par
     patch.features ??= {} as Config['features'];
     patch.features.tokenSavingMode = true;
   }
+  // `--no-tool-coach`: no [TOOL COACH] advice folded into this launch's turns.
+  if (flags['no-tool-coach'] === true) {
+    patch.features ??= {} as Config['features'];
+    patch.features.toolCoach = false;
+  }
   // `--system-<variant>` / `--system-prompt <variant>` pin the identity for this
   // launch only; `pro` wins when several variant flags are given.
   const promptVariant =
-    (['pro', 'lite', 'scout'] as const).find(
+    (['pro', 'lite', 'scout', 'quick'] as const).find(
       (variant) => isEnabledFlag(flags[`system-${variant}`]) || flags['system-prompt'] === variant,
     ) ?? (flags['system-prompt'] === 'default' ? 'default' : undefined);
   if (promptVariant) patch.systemPrompt = { variant: promptVariant };

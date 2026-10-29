@@ -28,6 +28,53 @@ function assistantUses(
 }
 
 describe('skill speed bump', () => {
+  it('never holds once this turn already changed files (a late recommendation)', () => {
+    // Seen live: six edits landed, then a probe that finished late held the
+    // seventh — stopping a half-applied change midway.
+    const ctx = holder('s1', [
+      { role: 'user', content: 'add the metric and its tests' },
+      assistantUses({ id: 'e1', name: 'edit' }),
+      {
+        role: 'user',
+        content: [{ type: 'tool_result', tool_use_id: 'e1', content: 'ok' }],
+      },
+    ]);
+    recommendSkills(ctx, 's1', [{ name: 'testing', reason: 'tests' }]);
+    ctx.messages.push(assistantUses({ id: 'e2', name: 'edit' }));
+    expect(skillSpeedBump(ctx, { id: 'e2', name: 'edit' })).toBeUndefined();
+    // Dropped, not declined: the leader never refused it.
+    expect(readSkillCompanionState(ctx)?.declined).toEqual([]);
+    expect(readSkillCompanionState(ctx)?.recommended).toEqual([]);
+    expect(isSkillRecommendable(ctx, 's1', 'testing')).toBe(true);
+  });
+
+  it('still holds the first change of a new turn, and after only a failed edit', () => {
+    const ctx = holder('s1', [
+      assistantUses({ id: 'old', name: 'edit' }),
+      {
+        role: 'user',
+        content: [{ type: 'tool_result', tool_use_id: 'old', content: 'ok' }],
+      },
+      { role: 'user', content: 'next request' },
+      assistantUses({ id: 'bad', name: 'edit' }),
+      {
+        role: 'user',
+        content: [{ type: 'tool_result', tool_use_id: 'bad', content: 'no match', is_error: true }],
+      },
+    ]);
+    recommendSkills(ctx, 's1', [{ name: 'testing', reason: 'tests' }]);
+    ctx.messages.push(assistantUses({ id: 'e1', name: 'edit' }));
+    expect(skillSpeedBump(ctx, { id: 'e1', name: 'edit' })).toContain('testing');
+  });
+
+  it('never holds a Quick conversation', () => {
+    const ctx = holder();
+    ctx.meta['systemPromptVariant'] = 'quick';
+    recommendSkills(ctx, 's1', [{ name: 'testing', reason: 'tests' }]);
+    ctx.messages.push(assistantUses({ id: 'e1', name: 'edit' }));
+    expect(skillSpeedBump(ctx, { id: 'e1', name: 'edit' })).toBeUndefined();
+  });
+
   it('holds the first file change once, then a deliberate retry passes and declines', () => {
     const ctx = holder();
     recommendSkills(ctx, 's1', [{ name: 'frontend-design', reason: 'UI work' }]);

@@ -5,6 +5,7 @@ import {
   createSessionAgentRegistry,
   createSessionTokenCounter,
   inheritedSessionMeta,
+  newSessionMetaFromConfig,
 } from './session-agent-registry.js';
 
 export function createSessionAgentManager({
@@ -21,6 +22,7 @@ export function createSessionAgentManager({
   events,
   pipelines,
   config,
+  getConfig,
   toolExecutor,
 }: {
   agent: import('@wrongstack/core/agent').Agent;
@@ -40,6 +42,8 @@ export function createSessionAgentManager({
   events: import('@wrongstack/contracts/kernel').EventBus;
   pipelines: import('@wrongstack/core/agent').AgentPipelines;
   config: import('@wrongstack/contracts/types').Config;
+  /** The live config; a new session starts on its identity variant. */
+  getConfig?: (() => import('@wrongstack/contracts/types').Config) | undefined;
   toolExecutor: import('@wrongstack/core/execution').ToolExecutor;
 }) {
   const sessionAgents = createSessionAgentRegistry({
@@ -47,6 +51,7 @@ export function createSessionAgentManager({
     maxAgents: MAX_CONCURRENT_SESSION_AGENTS,
     ...(input.isRunActive ? { isRunActive: input.isRunActive } : {}),
     ...(input.isDisplayed ? { isDisplayed: input.isDisplayed } : {}),
+    newSessionMeta: () => newSessionMetaFromConfig(getConfig?.() ?? config),
     createAgent: (sessionId) => {
       const sessionCtx: Context = new Context({
         projectRoot,

@@ -6,6 +6,7 @@ import { isToolUseBlock } from '@wrongstack/contracts/types/blocks';
 import { toWrongStackError } from '@wrongstack/contracts/types/errors';
 import type { Request, Response } from '@wrongstack/contracts/types/provider';
 import { effectiveInputTokens } from '@wrongstack/contracts/types/provider';
+import { reachableTools } from '../registry/session-tool-reach.js';
 import { armRequiredSkills } from '../skills/required-skill-gate.js';
 import { isRuntimeContextInput, recordUserIntentEvidence } from '../utils/context-evidence.js';
 import { contextHistoryVersion, requestHistoryVersion } from '../utils/context-history-version.js';
@@ -159,9 +160,10 @@ export function createAgentLoopHandler(
     const deliverMailboxBlock = (block: TextBlock) => addRequestScopedBlock(a.ctx, block);
 
     const loopDetector = new AgentLoopDetector(a);
-    const toolCoach = createToolCoach(
-      a.ctx.catalogTools.length > 0 ? a.ctx.catalogTools : a.ctx.tools,
-    );
+    // Advise over what this conversation can actually call (session-tool-reach);
+    // a Quick session was coached toward catalog tools it could not reach.
+    const coachTools = reachableTools(a.ctx);
+    const toolCoach = createToolCoach(coachTools);
     const toolCoachEnabled = () =>
       isToolCoachEnabled(
         a.ctx.meta,
@@ -177,7 +179,7 @@ export function createAgentLoopHandler(
             task: inputPayload.text,
             projectRoot: a.ctx.projectRoot,
             signal: controller.signal,
-            tools: a.ctx.catalogTools.length > 0 ? a.ctx.catalogTools : a.ctx.tools,
+            tools: coachTools,
             getTool: (name) => a.tools.get(name),
             autoAllowed: async (tool, input) =>
               (await a.permission.evaluate(tool, input, a.ctx)).permission === 'auto',

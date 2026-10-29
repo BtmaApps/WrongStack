@@ -69,6 +69,46 @@ export const SCOUT_DIRECT_TOOL_NAMES: ReadonlySet<string> = new Set([
   ...SCOUT_DELEGATION_TOOL_NAMES,
 ]);
 
+/**
+ * The Quick identity's basic tools (`systemPrompt.variant: 'quick'`): at most
+ * ten. A name with no registered tool is skipped, so a session that pins one
+ * shell sends nine.
+ */
+export const QUICK_BASIC_TOOL_NAMES: ReadonlySet<string> = new Set([
+  'read',
+  'write',
+  'edit',
+  'glob',
+  'grep',
+  'bash',
+  'pwsh',
+  'fetch',
+  'clarify',
+  // Present only when the host enabled the final-turn next-steps contract.
+  'nextsteps',
+]);
+
+/**
+ * Quick's direct surface: the basic tools plus the catalog gateway. Only the
+ * two gateway schemas enter the context; every other tool stays reachable on
+ * demand through `tool_search` / `tool_use` (see session-tool-reach).
+ */
+export const QUICK_DIRECT_TOOL_NAMES: ReadonlySet<string> = new Set([
+  ...QUICK_BASIC_TOOL_NAMES,
+  'tool_search',
+  'tool_use',
+]);
+
+/**
+ * When a Quick session runs a playbook with `<!-- wrongstack:required-skills -->`
+ * (e.g. `/bughunt`), expose `skill` directly so the model does not have to
+ * route mandatory skill loading through `tool_use`.
+ */
+const QUICK_REQUIRED_SKILLS_DIRECT_TOOL_NAMES: ReadonlySet<string> = new Set([
+  ...QUICK_DIRECT_TOOL_NAMES,
+  'skill',
+]);
+
 const SCOUT_DELEGATION_NAMES: ReadonlySet<string> = new Set(SCOUT_DELEGATION_TOOL_NAMES);
 const soloFallbacks = new WeakMap<Tool[], Tool[]>();
 
@@ -138,7 +178,8 @@ function withoutSpawnTools(tools: Tool[]): Tool[] {
 
 /**
  * The tools a conversation sends to the provider directly. Scout gets its
- * fixed small surface; every other variant keeps the registry's tier surface.
+ * fixed small surface, Quick its fixed basic set; every other variant keeps the
+ * registry's tier surface.
  *
  * Under a solo session policy the executor denies every spawn, so Scout's
  * delegation schemas are dropped rather than offered and refused: a listed
@@ -153,8 +194,19 @@ export function providerToolsForVariant(
   const tools =
     variant === 'scout'
       ? scoutTools(registry, generalSubagentsAllowed(meta), meta?.[SCOUT_LEARNED_TOOLS_META_KEY])
-      : registry.listForProvider();
+      : variant === 'quick'
+        ? registry.listWithin(
+            hasRequiredSkills(meta)
+              ? QUICK_REQUIRED_SKILLS_DIRECT_TOOL_NAMES
+              : QUICK_DIRECT_TOOL_NAMES,
+          )
+        : registry.listForProvider();
   return provider?.selectToolsForRequest?.(tools) ?? tools;
+}
+
+function hasRequiredSkills(meta: Readonly<Record<string, unknown>> | undefined): boolean {
+  const state = meta?.['requiredSkills'] as { required?: unknown } | undefined;
+  return Array.isArray(state?.required) && state.required.length > 0;
 }
 
 /**

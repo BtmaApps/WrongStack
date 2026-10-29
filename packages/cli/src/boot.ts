@@ -15,6 +15,7 @@ import { resolveAppendedSystemPrompt } from './boot/append-system-prompt.js';
 import { discoverAndMergeProviders } from './boot/auto-discover-providers.js';
 import { maybeRestoreDefaultProfileFromBackup } from './boot/config-backup-recovery.js';
 import { applyGoalTuiDefault } from './boot/goal-tui-default.js';
+import { applyHeadlessHarnessDefaults } from './boot/headless-harness-defaults.js';
 import { resolveLaunchMcpServers } from './boot/mcp-config-flag.js';
 import { activateRestrictedMode } from './boot/restricted-mode.js';
 import { announceSafeMode } from './boot/safe-mode.js';
@@ -121,6 +122,16 @@ export async function boot(argv: string[]): Promise<BootContext | number> {
     flags['resume'] = positional[1];
     positional.splice(0, 2);
   }
+
+  // Before bootConfig: the pinned variant lands in the config patch like a
+  // typed `--system-quick` would.
+  applyHeadlessHarnessDefaults({
+    flags,
+    positional,
+    isSubcommand: (name) => subcommands[name] !== undefined,
+    stdinIsTTY: isStdinTTY(),
+    stdoutIsTTY: process.stdout.isTTY === true,
+  });
 
   let bootResult;
   try {

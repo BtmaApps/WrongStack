@@ -192,3 +192,117 @@ describe('DefaultSystemPromptBuilder — eager body budget', () => {
     expect(prompt).toContain('`skill` tool');
   });
 });
+
+describe('DefaultSystemPromptBuilder — lean Quick profile', () => {
+  let tmp: string;
+  beforeEach(async () => {
+    tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'wstack-lean-'));
+  });
+  afterEach(async () => {
+    await fs.rm(tmp, { recursive: true, force: true });
+  });
+
+  const tool = (name: string) =>
+    ({
+      name,
+      description: name,
+      inputSchema: { type: 'object' },
+      permission: 'auto',
+      mutating: false,
+      execute: async () => '',
+    }) as never;
+
+  async function build(variant: 'quick' | 'default', surface: string[]): Promise<string> {
+    const b = new DefaultSystemPromptBuilder({
+      todayIso: '2026-07-01',
+      skillLoader: mkSkillLoader([
+        { name: 'docker-deploy', trigger: 'Deploy docker containers.', body: 'DOCKER RULES BODY' },
+      ]),
+      skillMode: 'progressive',
+    });
+    const blocks = await b.build({
+      cwd: tmp,
+      projectRoot: tmp,
+      tools: surface.map(tool),
+      catalogTools: [...surface, 'skill'].map(tool),
+      systemVariant: variant,
+    });
+    return blocks.map((bl) => bl.text).join('\n');
+  }
+
+  it('Quick carries no skill catalog, only a pointer to find skills on demand', async () => {
+    const quick = await build('quick', ['read', 'tool_search', 'tool_use']);
+    expect(quick).not.toContain('docker-deploy');
+    expect(quick).not.toContain('# Active Skills');
+    expect(quick).toContain('find it with `tool_search`');
+  });
+
+  it('Quick without tool_search gets no pointer it could not follow', async () => {
+    const quick = await build('quick', ['read']);
+    expect(quick).not.toContain('docker-deploy');
+    expect(quick).not.toContain('tool_search');
+  });
+
+  it('every other variant keeps the configured skill manifest', async () => {
+    const standard = await build('default', ['read', 'tool_search', 'tool_use']);
+    expect(standard).toContain('docker-deploy');
+  });
+});
+
+describe('DefaultSystemPromptBuilder — project AGENTS.md toggle', () => {
+  let tmp: string;
+  beforeEach(async () => {
+    tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'wstack-agents-'));
+    await fs.writeFile(path.join(tmp, 'AGENTS.md'), '# Rules\nPROJECT-RULE-MARKER\n');
+  });
+  afterEach(async () => {
+    await fs.rm(tmp, { recursive: true, force: true });
+  });
+
+  async function build(projectInstructions?: boolean): Promise<string> {
+    const b = new DefaultSystemPromptBuilder({
+      todayIso: '2026-07-01',
+      userInstructionsFile: false,
+      ...(projectInstructions === undefined ? {} : { projectInstructions }),
+    });
+    const blocks = await b.build({ cwd: tmp, projectRoot: tmp, tools: [] });
+    return blocks.map((bl) => bl.text).join('\n');
+  }
+
+  it('includes the root AGENTS.md by default', async () => {
+    expect(await build()).toContain('PROJECT-RULE-MARKER');
+  });
+
+  it('leaves it out when the toggle is off', async () => {
+    expect(await build(false)).not.toContain('PROJECT-RULE-MARKER');
+  });
+});
+
+describe('DefaultSystemPromptBuilder — progressive manifest size', () => {
+  let tmp: string;
+  beforeEach(async () => {
+    tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'wstack-manifest-'));
+  });
+  afterEach(async () => {
+    await fs.rm(tmp, { recursive: true, force: true });
+  });
+
+  it('bounds each row and lists every skill once, not again in the environment', async () => {
+    // 146 rows with full descriptions were ~14.6k tokens, plus the same names
+    // again under "Skills in scope" — more than the compact bodies it replaced.
+    const long = `Deploy docker containers ${'with careful rollout steps '.repeat(20)}END-OF-DESCRIPTION`;
+    const b = new DefaultSystemPromptBuilder({
+      todayIso: '2026-07-01',
+      skillLoader: mkSkillLoader([{ name: 'docker-deploy', trigger: long, body: 'BODY' }]),
+      skillMode: 'progressive',
+    });
+    const blocks = await b.build({ cwd: tmp, projectRoot: tmp, tools: [] });
+    const prompt = blocks.map((bl) => bl.text).join('\n');
+    const row = prompt.split('\n').find((line) => line.startsWith('| `docker-deploy`'));
+    expect(row).toBeDefined();
+    expect(row!.length).toBeLessThan(200);
+    expect(row).toContain('Deploy docker containers');
+    expect(prompt).not.toContain('END-OF-DESCRIPTION');
+    expect(prompt).not.toContain('Skills in scope for this session');
+  });
+});

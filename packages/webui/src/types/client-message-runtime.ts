@@ -195,7 +195,7 @@ export type ClientMessageRuntime =
   | { type: 'system_prompt.presets.get'; payload?: SessionScopedPayload }
   | {
       type: 'system_prompt.presets.create';
-      payload: { name: string; baseVariant: 'lite' | 'default' | 'pro' | 'scout' };
+      payload: { name: string; baseVariant: 'lite' | 'default' | 'pro' | 'scout' | 'quick' };
     }
   | {
       type: 'system_prompt.presets.save';
@@ -210,7 +210,7 @@ export type ClientMessageRuntime =
   | {
       type: 'system_prompt.presets.activate';
       payload: {
-        baseVariant: 'lite' | 'default' | 'pro' | 'scout';
+        baseVariant: 'lite' | 'default' | 'pro' | 'scout' | 'quick';
         id?: string;
         sessionId?: string;
         scope: 'profile' | 'project';

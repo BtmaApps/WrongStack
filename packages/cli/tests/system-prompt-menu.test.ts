@@ -348,9 +348,15 @@ describe('persistSystemPromptVariant', () => {
 
 describe('SYSTEM_PROMPT_OPTIONS', () => {
   it('covers exactly the selectable variants in menu order', () => {
-    expect(SYSTEM_PROMPT_VARIANTS).toEqual(['lite', 'default', 'pro', 'scout']);
+    expect(SYSTEM_PROMPT_VARIANTS).toEqual(['lite', 'default', 'pro', 'scout', 'quick']);
     expect(SYSTEM_PROMPT_OPTIONS.map((o) => o.variant)).toEqual(SYSTEM_PROMPT_VARIANTS);
-    expect(SYSTEM_PROMPT_OPTIONS.map((o) => o.label)).toEqual(['Lite', 'Standard', 'Pro', 'Scout']);
+    expect(SYSTEM_PROMPT_OPTIONS.map((o) => o.label)).toEqual([
+      'Lite',
+      'Standard',
+      'Pro',
+      'Scout',
+      'Quick',
+    ]);
   });
 });
 

@@ -41,7 +41,11 @@ export async function refreshAgentToolSurface(
     provider: provider.id,
     model,
     onlineAgents,
-    ...(variant === 'lite' || variant === 'pro' || variant === 'scout' || variant === 'default'
+    ...(variant === 'lite' ||
+    variant === 'pro' ||
+    variant === 'scout' ||
+    variant === 'quick' ||
+    variant === 'default'
       ? { systemVariant: variant }
       : {}),
     ...(typeof autonomy === 'string' ? { autonomy } : {}),

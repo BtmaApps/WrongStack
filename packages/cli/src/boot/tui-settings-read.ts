@@ -182,7 +182,8 @@ export function readTuiSettings(configStore: ConfigStore): Record<string, unknow
     systemPromptVariant:
       cfg.systemPrompt?.variant === 'lite' ||
       cfg.systemPrompt?.variant === 'pro' ||
-      cfg.systemPrompt?.variant === 'scout'
+      cfg.systemPrompt?.variant === 'scout' ||
+      cfg.systemPrompt?.variant === 'quick'
         ? cfg.systemPrompt.variant
         : cfg.systemPrompt?.variant === 'default'
           ? 'default'

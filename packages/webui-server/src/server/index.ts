@@ -483,6 +483,7 @@ export {
 export { type SddWizardDeps, SddWizardWebSocketHandler } from './sdd-wizard-ws-handler.js';
 export {
   createSessionAgentRegistry,
+  newSessionMetaFromConfig,
   type SessionAgentRegistry,
   type SessionAgentRegistryOptions,
 } from './session-agent-registry.js';

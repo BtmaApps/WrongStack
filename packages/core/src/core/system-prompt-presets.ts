@@ -32,6 +32,7 @@ const FILES: Record<SystemInstructionVariant, string> = {
   lite: 'system-lite.md',
   pro: 'system-pro.md',
   scout: 'system-scout.md',
+  quick: 'system-quick.md',
 };
 const PRESET_ID = /^[a-f0-9-]{36}$/;
 const MAX_TEXT = 200_000;

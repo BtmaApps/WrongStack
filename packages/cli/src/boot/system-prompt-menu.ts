@@ -2,7 +2,7 @@
  * Interactive system-prompt selection menu — Lite / Standard / Pro / Scout.
  *
  * Shown at startup when the user did not pin a variant via
- * `--system-lite`, `--system-pro`, `--system-scout`, or `--system-prompt <variant>`.
+ * `--system-lite`, `--system-pro`, `--system-scout`, `--system-quick`, or `--system-prompt <variant>`.
  * Each option displays the estimated token count of the identity block
  * that variant injects (resolved through the same bundled → global →
  * project instruction dirs the SystemPromptBuilder uses, so a project
@@ -68,6 +68,7 @@ export function isSystemPromptPinned(flags: Record<string, string | boolean>): b
     flagOn(flags['system-pro']) ||
     flagOn(flags['system-lite']) ||
     flagOn(flags['system-scout']) ||
+    flagOn(flags['system-quick']) ||
     typeof flags['system-prompt'] === 'string'
   );
 }

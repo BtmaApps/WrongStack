@@ -118,6 +118,7 @@
         "export { fenceIfUntrusted, isSkillHiddenFromPrompt } from './system-prompt-skill-bodies.js';",
         "export { formatModelRef, type ModelRef, normalizeModelRef, parseModelRef, } from './model-ref.js';",
         "export { isSealedAgent, SEALED_AGENT_META_KEY, sealedSubagentRefusal } from './sealed-agent.js';",
+        "export { isToolReachable, reachableTools, reachesCatalog, } from '../registry/session-tool-reach.js';",
         "export { keepsOwnContext } from './agent-owned-context.js';",
         "export { markUserInputObserver, userInputObserverCount } from '../hooks/user-input-observers.js';",
         "export { providerToolsForVariant, SCOUT_DIRECT_TOOL_NAMES, } from '../registry/scout-tool-surface.js';",
@@ -1075,7 +1076,7 @@
       "classification": "agent-domain contract",
       "intendedOwner": "Core",
       "sourceFiles": 80,
-      "sourceLines": 16924
+      "sourceLines": 16980
     },
     {
       "directory": "design",
@@ -1089,7 +1090,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime pilot candidate after R2/R3",
       "sourceFiles": 107,
-      "sourceLines": 26027
+      "sourceLines": 26061
     },
     {
       "directory": "extension",
@@ -1165,8 +1166,8 @@
       "directory": "registry",
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime composition",
-      "sourceFiles": 8,
-      "sourceLines": 1631
+      "sourceFiles": 9,
+      "sourceLines": 1741
     },
     {
       "directory": "replay",
@@ -1201,7 +1202,7 @@
       "classification": "product feature",
       "intendedOwner": "skills implementation package or Runtime",
       "sourceFiles": 27,
-      "sourceLines": 5546
+      "sourceLines": 5651
     },
     {
       "directory": "statusline",

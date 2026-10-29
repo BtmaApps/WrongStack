@@ -38,7 +38,7 @@ const ENHANCE_LANGUAGE_VALUES = new Set(['original', 'english']);
 const LOG_LEVEL_VALUES = new Set(['debug', 'info', 'warn', 'error']);
 const AUDIT_LEVEL_VALUES = new Set(['minimal', 'standard', 'full']);
 /** Identity-prompt variants offered by the system-prompt picker. */
-const SYSTEM_PROMPT_VARIANT_VALUES = new Set(['lite', 'default', 'pro', 'scout']);
+const SYSTEM_PROMPT_VARIANT_VALUES = new Set(['lite', 'default', 'pro', 'scout', 'quick']);
 
 const BOOLEAN_PREF_KEYS = new Set([
   'subagentsAllowed',
@@ -68,6 +68,8 @@ const BOOLEAN_PREF_KEYS = new Set([
   'hqEnabled',
   'hqRawContent',
   'fallbackAuto',
+  'includeGlobalAgents',
+  'includeProjectAgents',
   'favoriteModelsOnly',
   'breakerEnabled',
   'debugStream',

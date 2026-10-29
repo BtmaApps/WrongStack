@@ -4,9 +4,9 @@
   "rootImportFiles": 0,
   "bySpecifier": {
     "@wrongstack/core/agent": {
-      "files": 485,
+      "files": 487,
       "typeOnly": 367,
-      "runtimeOrMixed": 146
+      "runtimeOrMixed": 148
     },
     "@wrongstack/core/agent-catalog": {
       "files": 1,
@@ -14,9 +14,9 @@
       "runtimeOrMixed": 2
     },
     "@wrongstack/core/boot": {
-      "files": 3,
+      "files": 4,
       "typeOnly": 0,
-      "runtimeOrMixed": 3
+      "runtimeOrMixed": 4
     },
     "@wrongstack/core/brain": {
       "files": 22,
@@ -109,9 +109,9 @@
       "runtimeOrMixed": 58
     },
     "@wrongstack/core/registry": {
-      "files": 184,
+      "files": 185,
       "typeOnly": 76,
-      "runtimeOrMixed": 111
+      "runtimeOrMixed": 112
     },
     "@wrongstack/core/replay": {
       "files": 3,
@@ -383,8 +383,8 @@
     {
       "specifier": "@wrongstack/core/agent",
       "file": "packages/cli/src/boot/dispatch-singleshot.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/agent",
@@ -925,6 +925,12 @@
       "file": "packages/cli/src/wiring/slash-commands.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/cli/src/wrongforge-leader/wrongforge-leader-gateway.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/agent",
@@ -3112,6 +3118,12 @@
     },
     {
       "specifier": "@wrongstack/core/agent",
+      "file": "packages/webui-server/tests/session-agent-registry-variant-seed.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
       "file": "packages/webui-server/tests/session-context-ops-per-session.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -3155,6 +3167,12 @@
     {
       "specifier": "@wrongstack/core/boot",
       "file": "packages/cli/src/cli-main-boot.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/boot",
+      "file": "packages/cli/tests/headless-harness-defaults.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -6661,6 +6679,12 @@
       "file": "packages/webui-server/tests/saved-provider.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/registry",
+      "file": "packages/webui-server/tests/session-agent-registry-variant-seed.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/registry",

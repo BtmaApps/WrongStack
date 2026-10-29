@@ -100,7 +100,7 @@ export interface StatusBarRailBuildParams {
   /** Pre-built memory-context chips for the async rail. */
   memoryDetailChips: RailSpanEntry[];
   /** Active system-prompt variant (Lite / Standard / Pro) — identity chip. */
-  promptVariant?: 'lite' | 'default' | 'pro' | 'scout' | undefined;
+  promptVariant?: 'lite' | 'default' | 'pro' | 'scout' | 'quick' | undefined;
 }
 
 /**

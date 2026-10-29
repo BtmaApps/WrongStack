@@ -69,6 +69,10 @@ export const BOOLEAN_FLAGS = new Set([
   'require-token',
   'no-check',
   'no-models-refresh',
+  // Keeps the profile's own system prompt in a headless single-shot launch
+  // (boot/headless-harness-defaults.ts); `wstack bench run` reads it too.
+  'host-profile',
+  'no-tool-coach',
   // (removed: 'director' and 'no-director' — Director Mode is always on)
   'no-autonomy',
   'no-menu',
@@ -82,6 +86,7 @@ export const BOOLEAN_FLAGS = new Set([
   'system-lite',
   'system-pro',
   'system-scout',
+  'system-quick',
   'hq',
   'hq-allow-exec',
   'tunnel',
@@ -177,7 +182,12 @@ export function parseArgs(argv: string[]): ParsedArgs {
     if (a.startsWith('--')) {
       const eq = a.indexOf('=');
       if (eq !== -1) {
-        flags[a.slice(2, eq)] = a.slice(eq + 1);
+        const name = a.slice(2, eq);
+        const value = a.slice(eq + 1);
+        // Every switch is read as `=== true`: `--restricted=true` stored the
+        // string and started unrestricted, `sandbox --dry-run=true` ran for real.
+        const bool = BOOLEAN_FLAGS.has(name) ? value.trim().toLowerCase() : '';
+        flags[name] = bool === 'true' ? true : bool === 'false' ? false : value;
         continue;
       }
       const name = a.slice(2);

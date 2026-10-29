@@ -49,8 +49,8 @@ export type WSSystemMiscServerMessage =
       type: 'system_prompt.presets';
       payload: {
         presets?: WSSystemPromptPreset[];
-        active?: Partial<Record<'lite' | 'default' | 'pro' | 'scout', string>>;
-        projectActive?: Partial<Record<'lite' | 'default' | 'pro' | 'scout', string>>;
+        active?: Partial<Record<'lite' | 'default' | 'pro' | 'scout' | 'quick', string>>;
+        projectActive?: Partial<Record<'lite' | 'default' | 'pro' | 'scout' | 'quick', string>>;
         selectedId?: string;
         error?: string;
       };
@@ -359,7 +359,7 @@ export interface WSPromptsJournalPayload {
 
 /** One selectable identity-prompt size, with its upper-bound token estimate. */
 export interface WSSystemPromptVariantInfo {
-  variant: 'lite' | 'default' | 'pro' | 'scout';
+  variant: 'lite' | 'default' | 'pro' | 'scout' | 'quick';
   label: string;
   hint: string;
   tokens: number;
@@ -374,10 +374,10 @@ export interface WSSystemPromptVariantInfo {
  * deliberate "Standard" and decide whether to open the picker unprompted.
  */
 export interface WSSystemPromptInfo {
-  current: 'lite' | 'default' | 'pro' | 'scout';
+  current: 'lite' | 'default' | 'pro' | 'scout' | 'quick';
   chosen: boolean;
   /** Preselected for a new session in this folder (a non-project folder suggests Scout). */
-  suggested?: 'lite' | 'default' | 'pro' | 'scout' | undefined;
+  suggested?: 'lite' | 'default' | 'pro' | 'scout' | 'quick' | undefined;
   variants: WSSystemPromptVariantInfo[];
   error?: string | undefined;
 }
@@ -385,7 +385,7 @@ export interface WSSystemPromptInfo {
 export interface WSSystemPromptPreset {
   id: string;
   name: string;
-  baseVariant: 'lite' | 'default' | 'pro' | 'scout';
+  baseVariant: 'lite' | 'default' | 'pro' | 'scout' | 'quick';
   baseHash: string;
   baseText: string;
   currentBaseText: string;

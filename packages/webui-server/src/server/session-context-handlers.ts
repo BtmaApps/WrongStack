@@ -142,7 +142,9 @@ export function createSessionContextHandlers(
       }
       const breakdown = estimateContextBreakdown({
         systemPrompt: target.systemPrompt,
-        tools: ctx.listTools?.() ?? ctx.toolRegistry?.list() ?? [],
+        // The schemas this conversation actually sends (its identity's surface),
+        // not the whole registry: Scout and Quick send a fraction of it.
+        tools: target.tools ?? ctx.listTools?.() ?? ctx.toolRegistry?.list(),
         messages: target.messages,
       });
       sendTo(ws, {
@@ -252,10 +254,7 @@ export function createSessionContextHandlers(
         sendContextUnavailable(ws, msg, 'context.editor.open');
         return;
       }
-      const snapshot = buildContextEditorSnapshot(
-        target,
-        ctx.listTools?.() ?? ctx.toolRegistry?.list(),
-      );
+      const snapshot = buildContextEditorSnapshot(target, target.tools);
       sendTo(ws, {
         type: 'context.editor.snapshot',
         payload: {
@@ -265,7 +264,7 @@ export function createSessionContextHandlers(
             ? {
                 readonlyContent: {
                   systemPrompt: target.systemPrompt,
-                  tools: (ctx.listTools?.() ?? ctx.toolRegistry?.list() ?? target.tools ?? []).map(
+                  tools: (target.tools ?? ctx.listTools?.() ?? ctx.toolRegistry?.list() ?? []).map(
                     (tool) => ({
                       name: tool.name,
                       description: tool.description,
@@ -288,7 +287,7 @@ export function createSessionContextHandlers(
       }
       const validation = validateContextEditorProposal({
         ctx: target,
-        tools: ctx.listTools?.() ?? ctx.toolRegistry?.list(),
+        tools: target.tools ?? ctx.listTools?.() ?? ctx.toolRegistry?.list(),
         baseRevision: typeof payload['baseRevision'] === 'string' ? payload['baseRevision'] : '',
         messages: payload['messages'],
         removals: payload['removals'],
@@ -313,7 +312,7 @@ export function createSessionContextHandlers(
       }
       const applied = await applyContextEditorProposal({
         ctx: target,
-        tools: ctx.listTools?.() ?? ctx.toolRegistry?.list(),
+        tools: target.tools ?? ctx.listTools?.() ?? ctx.toolRegistry?.list(),
         baseRevision: typeof payload['baseRevision'] === 'string' ? payload['baseRevision'] : '',
         messages: payload['messages'],
         removals: payload['removals'],

@@ -374,7 +374,7 @@ export interface StatusBarProps {
    * line 1 (workspace & identity) so the session's prompt density is visible
    * at a glance. Sourced from `config.systemPrompt.variant`.
    */
-  promptVariant?: 'lite' | 'default' | 'pro' | 'scout' | undefined;
+  promptVariant?: 'lite' | 'default' | 'pro' | 'scout' | 'quick' | undefined;
   /**
    * Live debug-stream telemetry — pushed into the TUI reducer by the
    * throttled callback from stream-debug-state.ts. When non-null, renders

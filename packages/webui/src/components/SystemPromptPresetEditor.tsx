@@ -6,13 +6,14 @@ import { useActiveSessionId } from '@/stores/session-lanes';
 import type { WSSystemPromptPreset } from '@/types/server-message-system';
 import { Button } from './ui/button';
 
-type Variant = 'lite' | 'default' | 'pro' | 'scout';
+type Variant = 'lite' | 'default' | 'pro' | 'scout' | 'quick';
 
 const VARIANT_LABELS: Record<Variant, string> = {
   lite: 'Lite',
   default: 'Standard',
   pro: 'Pro',
   scout: 'Scout',
+  quick: 'Quick',
 };
 
 type Library = {

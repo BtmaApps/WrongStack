@@ -108,6 +108,21 @@ function bundledRoutingGuidance(
   ];
 }
 
+/**
+ * Longest "use when" a manifest row carries. The row is a routing hint; the
+ * full description arrives with the body when the `skill` tool loads it. Full
+ * descriptions made the manifest the most expensive skill mode — 146 rows at
+ * ~350 chars each was ~14.6k tokens on every request, twice the compact bodies.
+ */
+const MANIFEST_USE_WHEN_CHARS = 140;
+
+function boundUseWhen(text: string): string {
+  if (text.length <= MANIFEST_USE_WHEN_CHARS) return text;
+  const cut = text.lastIndexOf(' ', MANIFEST_USE_WHEN_CHARS - 1);
+  const end = cut > MANIFEST_USE_WHEN_CHARS / 2 ? cut : MANIFEST_USE_WHEN_CHARS - 1;
+  return `${text.slice(0, end)}…`;
+}
+
 export async function buildProgressiveSkillManifestText(
   loader: SkillLoader,
   availableToolNames: readonly string[] = [],
@@ -129,10 +144,11 @@ export async function buildProgressiveSkillManifestText(
       if (manifest && skillPromptExclusionReasons(manifest, availableToolNames).length > 0) {
         continue;
       }
-      const trigger = skillUseWhenText(manifest?.description, manifest?.trigger, e.trigger)
-        .replace(/\|/g, '\\|')
-        .replace(/\n+/g, ' ')
-        .trim();
+      const trigger = boundUseWhen(
+        skillUseWhenText(manifest?.description, manifest?.trigger, e.trigger)
+          .replace(/\n+/g, ' ')
+          .trim(),
+      ).replace(/\|/g, '\\|');
       lines.push(`| \`${e.name}\`${foreignProvenanceTag(e.source, e.originTool)} | ${trigger} |`);
     }
     return lines.join('\n');

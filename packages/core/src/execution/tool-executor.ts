@@ -16,6 +16,11 @@ import type { Context } from '../core/context.js';
 import { queueDirectoryInstructions } from '../core/project-instructions.js';
 import { spanSessionAttributes } from '../core/span-session.js';
 import {
+  CATALOG_GATEWAY_TOOL,
+  isToolReachable,
+  reachableTools,
+} from '../registry/session-tool-reach.js';
+import {
   hasCapability,
   hasDangerousCapabilityForSubagents,
   ToolCapabilities,
@@ -126,10 +131,18 @@ export class ToolExecutor extends ToolExecutorCore {
       ctx.catalogTools = this.registry.list();
       const tool = this.registry.get(use.name);
 
-      if (!tool) {
-        const result = unknownToolResult(use, () => this.registry.list().map((t) => t.name));
+      // Registered is not the same as offered: a conversation reaches only its
+      // own surface (see session-tool-reach). Both misses answer with the
+      // tools it CAN call, never the whole registry it would then try.
+      if (!tool || !isToolReachable(ctx, use.name)) {
+        const result = unknownToolResult(use, () => reachableTools(ctx).map((t) => t.name));
         budget = this.budgetForString(result.content, budget);
-        return { result, tool, durationMs: Date.now() - start, settlement: 'unknown_tool' };
+        return {
+          result,
+          tool: undefined,
+          durationMs: Date.now() - start,
+          settlement: 'unknown_tool',
+        };
       }
 
       if (!areSubagentsAllowed(ctx) && hasCapability(tool, ToolCapabilities.SUBAGENT_SPAWN)) {
@@ -147,8 +160,29 @@ export class ToolExecutor extends ToolExecutorCore {
       // (an ACP or WrongForge leader) runs the session: it loads skills with
       // its own tools, and its calls through the gateway never enter
       // ctx.messages, so the host could not see a load and would lock it out.
+      // When the call is `tool_use`, inspect the target tool (`input.tool`)
+      // rather than the outer gateway: calling `tool_use({ tool: "skill" })`
+      // or any read-only tool through the gateway must never be blocked by
+      // the skill gate.
+      const gatewayTargetName =
+        use.name === CATALOG_GATEWAY_TOOL &&
+        use.input &&
+        typeof use.input === 'object' &&
+        typeof (use.input as { tool?: unknown }).tool === 'string'
+          ? (use.input as { tool: string }).tool.trim()
+          : undefined;
+      const gatedTool =
+        use.name === CATALOG_GATEWAY_TOOL
+          ? gatewayTargetName
+            ? this.registry.get(gatewayTargetName)
+            : undefined
+          : tool;
+      const gatedInput =
+        use.name === CATALOG_GATEWAY_TOOL && use.input && typeof use.input === 'object'
+          ? ((use.input as { input?: unknown }).input ?? {})
+          : use.input;
       if (
-        tool.mutating &&
+        gatedTool?.mutating &&
         this.registry.get(REQUIRED_SKILLS_LOADER_TOOL) &&
         !keepsOwnContext(ctx.provider)
       ) {
@@ -162,8 +196,8 @@ export class ToolExecutor extends ToolExecutorCore {
         // a deliberate retry passes and drops it (see skill-speed-bump.ts).
         const bump = skillSpeedBump(ctx, {
           id: use.id,
-          name: use.name,
-          targets: describeWriteTargets(tool, use.input),
+          name: gatedTool.name,
+          targets: describeWriteTargets(gatedTool, gatedInput),
         });
         if (bump) {
           const result = deniedResult(use, bump);

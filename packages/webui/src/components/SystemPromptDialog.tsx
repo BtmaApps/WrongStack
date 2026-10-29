@@ -72,7 +72,7 @@ export function SystemPromptDialog() {
     if (presetDirty && !window.confirm(t('activity:systemPrompt.presets.discardChanges'))) return;
     const client = getWSClient(wsUrl);
     if (selected && selected !== current) {
-      client.setSystemPromptVariant(selected as 'lite' | 'default' | 'pro' | 'scout');
+      client.setSystemPromptVariant(selected as 'lite' | 'default' | 'pro' | 'scout' | 'quick');
     }
     if (pickerStartsSession) {
       client.newSession({ systemPromptVariant: selected ?? undefined });

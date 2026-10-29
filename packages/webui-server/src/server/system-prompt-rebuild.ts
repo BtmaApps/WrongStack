@@ -38,7 +38,7 @@ export interface SystemPromptRebuildDeps {
   modelCapabilities: ModelCapabilities;
   context: Context;
   toolRegistry: ToolRegistry;
-  getConfig: () => Pick<Config, 'provider' | 'model' | 'systemPrompt' | 'features'>;
+  getConfig: () => Pick<Config, 'provider' | 'model' | 'systemPrompt' | 'features' | 'skills'>;
   projectRoot: string;
   globalRoot: string;
   /**
@@ -68,7 +68,13 @@ function variantForContext(
   config: Pick<Config, 'systemPrompt'>,
 ): SystemInstructionVariant | undefined {
   const scoped = context.meta['systemPromptVariant'];
-  if (scoped === 'lite' || scoped === 'default' || scoped === 'pro' || scoped === 'scout') {
+  if (
+    scoped === 'lite' ||
+    scoped === 'default' ||
+    scoped === 'pro' ||
+    scoped === 'scout' ||
+    scoped === 'quick'
+  ) {
     return scoped;
   }
   return config.systemPrompt?.variant;
@@ -95,6 +101,8 @@ export async function rebuildSystemPrompt(
     memoryStore: deps.memoryStore,
     injectMemory: false,
     skillLoader: deps.skillLoader,
+    skillMode: config.skills?.mode,
+    skillEagerMaxChars: config.skills?.eagerMaxChars,
     modeStore: deps.modeStore,
     modeId,
     modePrompt,
@@ -116,16 +124,21 @@ export async function rebuildSystemPrompt(
       projectDir: paths.inProjectInstructions,
       systemVariant: variant,
     },
+    userInstructionsFile: config.systemPrompt?.includeGlobalAgents === false ? false : undefined,
+    projectInstructions: config.systemPrompt?.includeProjectAgents !== false,
   });
+  const tools = providerToolsForVariant(
+    deps.toolRegistry,
+    variant,
+    deps.context.meta,
+    deps.context.provider,
+  );
+  // The surface moves with the identity; the context view reads it from here.
+  deps.context.tools = tools;
   deps.context.systemPrompt = await builder.build({
     cwd: deps.projectRoot,
     projectRoot: deps.projectRoot,
-    tools: providerToolsForVariant(
-      deps.toolRegistry,
-      variant,
-      deps.context.meta,
-      deps.context.provider,
-    ),
+    tools,
     catalogTools: deps.toolRegistry.list(),
     provider: config.provider,
     model: config.model,

@@ -34,6 +34,8 @@ const mocks = vi.hoisted(() => {
     seedContextMeta: vi.fn(),
     setMeta: vi.fn(),
     systemPromptBuild: vi.fn(),
+    mcpRegistryOptions: [] as Record<string, unknown>[],
+    elicitViaUserInput: vi.fn(),
   };
 });
 
@@ -126,9 +128,13 @@ vi.mock('@wrongstack/core/utils', () => ({
   toErrorMessage: vi.fn((error) => (error instanceof Error ? error.message : String(error))),
 }));
 vi.mock('@wrongstack/mcp', () => ({
+  elicitViaUserInput: mocks.elicitViaUserInput,
   createVaultBackedMcpAuthorizationProviderFactory: vi.fn(() => vi.fn()),
   MCPAuthorizationManager: class MCPAuthorizationManagerMock {},
   MCPRegistry: class MCPRegistryMock {
+    constructor(options: Record<string, unknown>) {
+      mocks.mcpRegistryOptions.push(options);
+    }
     start = vi.fn();
   },
   MCPVaultTokenStore: class MCPVaultTokenStoreMock {},
@@ -172,6 +178,7 @@ import { createPreContextServices } from '../src/server/pre-context-services.js'
 describe('createPreContextServices', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.mcpRegistryOptions.length = 0;
     mocks.memoryStore.initialize.mockResolvedValue(undefined);
     mocks.buildProviderFactoriesFromRegistry.mockResolvedValue([{ id: 'provider-factory' }]);
     mocks.discoverAndMergeWebuiProviders.mockResolvedValue(undefined);
@@ -267,6 +274,18 @@ describe('createPreContextServices', () => {
     );
     expect(events.setLogger).toHaveBeenCalledWith(logger);
     expect(mocks.memoryStore.initialize).toHaveBeenCalledOnce();
+    const elicitation = mocks.mcpRegistryOptions[0]?.['elicitationHandler'];
+    expect(typeof elicitation).toBe('function');
+    const request = {
+      server: 'owned-server',
+      requester: { requestUserInput: vi.fn() },
+      signal: new AbortController().signal,
+    };
+    mocks.elicitViaUserInput.mockResolvedValueOnce({ action: 'decline' });
+    await expect((elicitation as (request: unknown) => Promise<unknown>)(request)).resolves.toEqual(
+      { action: 'decline' },
+    );
+    expect(mocks.elicitViaUserInput).toHaveBeenCalledWith(request);
     expect(mocks.registerCanonicalHostTools).not.toHaveBeenCalled();
     expect(mocks.configureExecPolicy).toHaveBeenCalledWith(config.tools.exec);
     expect(mocks.configureDangerBypass).toHaveBeenCalledWith(config.tools.exec.danger);

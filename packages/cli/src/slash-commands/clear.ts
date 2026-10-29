@@ -138,7 +138,13 @@ export function buildClearCommand(opts: SlashCommandContext): SlashCommand {
         ctx.lastRequestTokens = undefined;
         ctx.lastRealInputTokens = undefined;
         ctx.tokenCounter?.reset?.();
+        // The identity variant is the user's pick for this conversation, not
+        // session state: wiping it with the rest left the next session on the
+        // full tier tool surface and the boot identity (a Quick pick came back
+        // as 114 tools). The host seeds it only once, at boot.
+        const variant = ctx.meta['systemPromptVariant'];
         for (const key of Object.keys(ctx.meta)) ctx.state.deleteMeta(key);
+        if (variant !== undefined) ctx.state.setMeta('systemPromptVariant', variant);
 
         if (opts.paths && ctx.session?.id) {
           ctx.state.setMeta(
