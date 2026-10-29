@@ -3118,5 +3118,6 @@ Verification on the shared working snapshot:
   `conversation-operations.ts`), so the run reused the previous bundled engine `b9af8f76b4a5`
   (this change has no engine part).
 - Not covered: the two-window review natively (unit-level behaviour comes from the shared
-  `DurableFormDraft`), the environment editor (still window-only), a full application process
+  `DurableFormDraft`), unapplied environment dialog text (durable only after Apply moves it into
+  the job draft), a full application process
   restart, full release/coverage, hosted CI and installed-app replacement.
