@@ -126,4 +126,58 @@ describe('subscribeKanbanDaemonEvents', () => {
       payload: { success: true, data: { removed: true, boardId: 'board-2' } },
     });
   });
+
+  it('drops stale in-flight getBoard reads after board.deleted or subscriber disposal', async () => {
+    let resolveDeletedBoard!: (value: unknown) => void;
+    let resolveStoppedBoard!: (value: unknown) => void;
+    const deletedBoardRead = new Promise((r) => {
+      resolveDeletedBoard = r;
+    });
+    const stoppedBoardRead = new Promise((r) => {
+      resolveStoppedBoard = r;
+    });
+
+    listBoards
+      .mockResolvedValueOnce([
+        { id: 'board-deleted', updatedAt: '2026-07-29T00:00:00.000Z' },
+        { id: 'board-stopped', updatedAt: '2026-07-29T00:00:00.000Z' },
+      ])
+      .mockResolvedValueOnce([
+        { id: 'board-deleted', updatedAt: '2026-07-29T00:01:00.000Z' },
+        { id: 'board-stopped', updatedAt: '2026-07-29T00:01:00.000Z' },
+      ]);
+    getBoard.mockImplementation((boardId: string) =>
+      boardId === 'board-deleted' ? deletedBoardRead : stoppedBoardRead,
+    );
+
+    const broadcast = vi.fn();
+    const stop = subscribeKanbanDaemonEvents('C:\\project', broadcast);
+    await daemonOptions?.onConnected?.();
+
+    const reconcilePromise = Promise.resolve(daemonOptions?.onConnected?.());
+    await Promise.resolve();
+
+    await daemonHandler?.({ event: 'board.deleted', data: { boardId: 'board-deleted' } });
+    resolveDeletedBoard({
+      id: 'board-deleted',
+      title: 'Stale Deleted Board',
+      updatedAt: '2026-07-29T00:01:00.000Z',
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+
+    stop();
+    resolveStoppedBoard({
+      id: 'board-stopped',
+      title: 'Post-stop Board',
+      updatedAt: '2026-07-29T00:01:00.000Z',
+    });
+    await reconcilePromise;
+
+    expect(broadcast).toHaveBeenCalledTimes(1);
+    expect(broadcast).toHaveBeenCalledWith({
+      type: 'kanban.delete',
+      payload: { success: true, data: { removed: true, boardId: 'board-deleted' } },
+    });
+  });
 });

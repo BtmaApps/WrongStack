@@ -82,10 +82,10 @@ function coerceBoolean(v: unknown): boolean | undefined {
 }
 
 function coerceNumber(v: unknown): number | undefined {
-  if (typeof v === 'number' && !Number.isNaN(v)) return v;
+  if (typeof v === 'number' && Number.isFinite(v)) return v;
   if (typeof v === 'string' && v.trim() !== '') {
     const n = Number(v);
-    if (!Number.isNaN(n)) return n;
+    if (Number.isFinite(n)) return n;
   }
   return undefined;
 }

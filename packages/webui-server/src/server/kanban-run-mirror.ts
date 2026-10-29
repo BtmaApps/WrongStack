@@ -112,6 +112,7 @@ export function createKanbanRunMirror(deps: KanbanRunMirrorDeps): KanbanRunMirro
   // Projections currently running — awaited by `flush()`.
   const inFlight = new Set<Promise<void>>();
   const activeByKey = new Map<string, Promise<void>>();
+  let disposed = false;
 
   const mapKey = (engine: Engine, key: string) => `${engine}:${key}`;
 
@@ -119,9 +120,9 @@ export function createKanbanRunMirror(deps: KanbanRunMirrorDeps): KanbanRunMirro
   function fire(k: string): void {
     const fn = pending.get(k);
     pending.delete(k);
-    if (!fn) return;
+    if (!fn || disposed) return;
     const p = (activeByKey.get(k) ?? Promise.resolve())
-      .then(fn)
+      .then(() => (disposed ? undefined : fn()))
       .catch((err) => log(`[KanbanRunMirror] ${k}: ${errMsg(err)}`))
       .finally(() => {
         inFlight.delete(p);
@@ -133,6 +134,7 @@ export function createKanbanRunMirror(deps: KanbanRunMirrorDeps): KanbanRunMirro
 
   // Trailing debounce keyed by engine:key — latest projection wins.
   function schedule(engine: Engine, key: string, run: () => Promise<void>): void {
+    if (disposed) return;
     const k = mapKey(engine, key);
     pending.set(k, run);
     if (timers.has(k)) return;
@@ -250,10 +252,13 @@ export function createKanbanRunMirror(deps: KanbanRunMirrorDeps): KanbanRunMirro
   }
 
   async function publish(board: KanbanBoard | null): Promise<void> {
+    if (disposed) return;
+    const summaries = await listBoards(projectRoot);
+    if (disposed) return;
     if (board) {
       broadcast(kanbanBoardMessage(board));
     }
-    broadcast(kanbanListMessage(await listBoards(projectRoot)));
+    broadcast(kanbanListMessage(summaries));
   }
 
   // ── SDD ────────────────────────────────────────────────────────────────
@@ -262,6 +267,7 @@ export function createKanbanRunMirror(deps: KanbanRunMirrorDeps): KanbanRunMirro
   // A single-column / flat graph keeps one board (backward compatible).
   // All boards share `run:<runId>` so the UI groups them; control is run-level.
   async function projectSdd(runId: string, snapshot: SddBoardSnapshot): Promise<void> {
+    if (disposed) return;
     const k = mapKey('sdd', runId);
     const stamp = sddStamp(snapshot);
     if (stamps.get(k) === stamp) return;
@@ -272,6 +278,7 @@ export function createKanbanRunMirror(deps: KanbanRunMirrorDeps): KanbanRunMirro
     if (columns.length > 1) {
       const shortToTask = new Map(snapshot.tasks.map((t) => [t.shortId, t]));
       for (let i = 0; i < columns.length; i++) {
+        if (disposed) return;
         const col = columns[i];
         if (!col) continue;
         const phaseId = `wave-${i}`;
@@ -291,6 +298,7 @@ export function createKanbanRunMirror(deps: KanbanRunMirrorDeps): KanbanRunMirro
           `run:${runId}`,
           `phase:${phaseId}`,
         ]);
+        if (disposed) return;
         const slice: SddBoardSnapshot = {
           ...snapshot,
           title,
@@ -301,15 +309,16 @@ export function createKanbanRunMirror(deps: KanbanRunMirrorDeps): KanbanRunMirro
         };
         await projectSddSlice(boardId, runId, slice, tags);
       }
-      stamps.set(k, stamp);
+      if (!disposed) stamps.set(k, stamp);
       return;
     }
 
     // Flat / single-wave: one board for the whole run.
     const tags = ['sdd', `run:${runId}`, `graph:${snapshot.graphId}`];
     const boardId = await resolveBoardId('sdd', runId, runTitle, tags, [`run:${runId}`]);
+    if (disposed) return;
     await projectSddSlice(boardId, runId, snapshot, tags);
-    stamps.set(k, stamp);
+    if (!disposed) stamps.set(k, stamp);
   }
 
   /** Sync structure + live assignment + verification for one SDD board slice. */
@@ -319,8 +328,10 @@ export function createKanbanRunMirror(deps: KanbanRunMirrorDeps): KanbanRunMirro
     snapshot: SddBoardSnapshot,
     tags: string[],
   ): Promise<void> {
+    if (disposed) return;
     const graph = buildTaskGraphFromSddSnapshot(snapshot);
     const board = await syncGraph(boardId, graph, 'sdd', tags);
+    if (disposed) return;
 
     const live: Array<{ taskId: string; assignment: DesiredAssignment }> = [];
     for (const t of snapshot.tasks) {
@@ -328,6 +339,7 @@ export function createKanbanRunMirror(deps: KanbanRunMirrorDeps): KanbanRunMirro
       if (a) live.push({ taskId: t.id, assignment: a });
     }
     let final = await overlayAssignments(boardId, live, board);
+    if (disposed) return;
 
     // Verification flows into the mirrored board: translate the run engine's
     // completion-gate outcome into a minimal KanbanVerificationReport so the
@@ -336,12 +348,14 @@ export function createKanbanRunMirror(deps: KanbanRunMirrorDeps): KanbanRunMirro
     // touches task status (sync owns it). Kanban-local fields on mirrored
     // tasks are otherwise NEVER written by sync ticks.
     const withReports = final ?? (await getBoard(projectRoot, boardId));
+    if (disposed) return;
     if (withReports) {
       const byOrigin = new Map<string, KanbanTask>();
       for (const kt of withReports.tasks) {
         if (kt.origin?.taskId) byOrigin.set(kt.origin.taskId, kt);
       }
       for (const t of snapshot.tasks) {
+        if (disposed) return;
         if (!t.verificationState) continue;
         const kt = byOrigin.get(t.id);
         if (!kt) continue;
@@ -395,6 +409,7 @@ export function createKanbanRunMirror(deps: KanbanRunMirrorDeps): KanbanRunMirro
   // "<run> — <phase>" title. Control (pause/resume/stop, per-task retry/reassign)
   // is run-level, so it works identically from any phase board.
   async function projectGoal(graphId: string, state: GoalState): Promise<void> {
+    if (disposed) return;
     const k = mapKey('goal', graphId);
     const stamp = goalStamp(state);
     if (stamps.get(k) === stamp) return;
@@ -403,6 +418,7 @@ export function createKanbanRunMirror(deps: KanbanRunMirrorDeps): KanbanRunMirro
     const phases = state.phases ?? [];
 
     for (let i = 0; i < phases.length; i++) {
+      if (disposed) return;
       const phase = phases[i];
       if (!phase) continue;
       const phaseKey = `${graphId}:${phase.id}`;
@@ -418,8 +434,10 @@ export function createKanbanRunMirror(deps: KanbanRunMirrorDeps): KanbanRunMirro
         `graph:${graphId}`,
         `phase:${phase.id}`,
       ]);
+      if (disposed) return;
       const graph = buildTaskGraphFromGoalPhase(graphId, title, phase);
       const board = await syncGraph(boardId, graph, 'goal', tags, phase.id);
+      if (disposed) return;
 
       const live: Array<{ taskId: string; phaseId: string; assignment: DesiredAssignment }> = [];
       for (const t of phase.tasks ?? []) {
@@ -427,16 +445,17 @@ export function createKanbanRunMirror(deps: KanbanRunMirrorDeps): KanbanRunMirro
         if (a) live.push({ taskId: t.id, phaseId: phase.id, assignment: a });
       }
       const final = await overlayAssignments(boardId, live, board);
+      if (disposed) return;
       await publish(final);
     }
-    stamps.set(k, stamp);
+    if (!disposed) stamps.set(k, stamp);
   }
 
   // ── Wiring ───────────────────────────────────────────────────────────────
   let unsub: (() => void) | undefined;
   if (events) {
     const handler = (e: { runId: string; snapshot: SddBoardSnapshot }) => {
-      if (!e?.runId || !e.snapshot) return;
+      if (disposed || !e?.runId || !e.snapshot) return;
       schedule('sdd', e.runId, () => projectSdd(e.runId, e.snapshot));
     };
     unsub = events.on('sdd.board.snapshot', handler as (p: unknown) => void);
@@ -444,7 +463,7 @@ export function createKanbanRunMirror(deps: KanbanRunMirrorDeps): KanbanRunMirro
 
   return {
     onGoalState(graphId, state) {
-      if (!graphId) return;
+      if (disposed || !graphId) return;
       schedule('goal', graphId, () => projectGoal(graphId, state as GoalState));
     },
     bind(engine, key, boardId) {
@@ -455,6 +474,7 @@ export function createKanbanRunMirror(deps: KanbanRunMirrorDeps): KanbanRunMirro
     },
     flush,
     dispose() {
+      disposed = true;
       unsub?.();
       for (const t of timers.values()) clearTimeout(t);
       timers.clear();

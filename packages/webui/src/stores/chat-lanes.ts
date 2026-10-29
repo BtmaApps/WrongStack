@@ -240,10 +240,8 @@ export function chatLane(sessionId: string): ChatLaneActions {
       mutate(sid, (lane) => ({
         messages: lane.messages.map((m) => {
           if (m.id !== id) return m;
-          const prev = m.progressLines ?? [];
-          prev.push(...lines);
-          if (prev.length > 30) prev.splice(0, prev.length - 30);
-          return { ...m, progressLines: prev };
+          const next = [...(m.progressLines ?? []), ...lines].slice(-30);
+          return { ...m, progressLines: next };
         }),
       }));
     },
@@ -421,14 +419,17 @@ export function chatLane(sessionId: string): ChatLaneActions {
       mutate(sid, (lane) => {
         const idx = lane.queue.findIndex((q) => q.alreadyDispatched !== true);
         if (idx === -1) {
+          let hasDispatched = false;
           for (const q of lane.queue) {
-            if (q.alreadyDispatched === true && q.bubbleAdded !== true) toBubble(q);
+            if (q.alreadyDispatched === true) {
+              hasDispatched = true;
+              if (q.itemId !== undefined) cancelDispatchedGraceTimer(q.itemId);
+              if (q.bubbleAdded !== true) toBubble(q);
+            }
           }
-          if (leadingBubbles.length === 0) return;
+          if (!hasDispatched) return;
           return {
-            queue: lane.queue.filter(
-              (q) => !(q.alreadyDispatched === true && q.bubbleAdded !== true),
-            ),
+            queue: lane.queue.filter((q) => q.alreadyDispatched !== true),
           };
         }
         for (let i = 0; i < idx; i += 1) {

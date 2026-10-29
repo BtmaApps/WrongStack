@@ -1,7 +1,11 @@
 import type { Config, ProviderConfig } from '@wrongstack/contracts/types';
 import { watchProviderConfig } from '@wrongstack/core/storage';
 import { toErrorMessage } from '@wrongstack/core/utils';
-import { makeProviderFromConfig, unavailableProviderCredentials } from '@wrongstack/providers';
+import {
+  makeProviderFromConfig,
+  unavailableProviderCredentials,
+  withCatalogCapabilities,
+} from '@wrongstack/providers';
 import type { WebSocket } from 'ws';
 import { patchConfig } from './boot.js';
 import { fanOutProviderRebuild } from './provider-fanout.js';
@@ -126,9 +130,17 @@ export function setupWebuiCredentialWatcher(options: {
           factoryType === activeId ? state.getConfig().baseUrl : undefined,
           activeId,
         );
-        const newProv = deps.providerRegistry.has(factoryType)
+        const built = deps.providerRegistry.has(factoryType)
           ? deps.providerRegistry.create({ ...routedCfg, type: activeId } as never, factoryType)
           : makeProviderFromConfig(activeId, { ...routedCfg, type: factoryType });
+        // A rebuilt transport starts with family defaults. Retain the active
+        // model's explicit capabilities when credentials or custom definitions change.
+        const newProv = deps.modelsRegistry
+          ? await withCatalogCapabilities(deps.modelsRegistry, activeId, built, {
+              ...routedCfg,
+              model: deps.context.model,
+            })
+          : built;
         const previousProvider = deps.context.provider;
         deps.context.provider = newProv;
         // New credentials are a project fact — every open tab has to get them,

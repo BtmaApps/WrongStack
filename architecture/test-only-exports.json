@@ -1368,6 +1368,9 @@
     "packages/tui/src/browser-access-hint.ts": [
       "browserAccessHint"
     ],
+    "packages/tui/src/cell-selection.ts": [
+      "orderedRange"
+    ],
     "packages/tui/src/components/animation-style.ts": [
       "CYCLE_INTERVAL_SECONDS",
       "CYCLE_ORDER",

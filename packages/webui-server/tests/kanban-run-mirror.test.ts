@@ -157,4 +157,42 @@ describe('createKanbanRunMirror', () => {
     const mirror = createKanbanRunMirror(makeDeps());
     expect(() => mirror.onGoalState('g1', { title: 'Hello' })).not.toThrow();
   });
+
+  it('stops in-flight multi-phase projections and ignores new states after dispose()', async () => {
+    vi.useRealTimers();
+    const deps = makeDeps();
+    const mirror = createKanbanRunMirror(deps);
+    const { createBoard, syncBoardFromTaskGraph } = await import('@wrongstack/kanban');
+
+    let releasePhase1!: (value: any) => void;
+    const phase1Gate = new Promise((r) => {
+      releasePhase1 = r;
+    });
+    vi.mocked(syncBoardFromTaskGraph).mockImplementationOnce(() => phase1Gate as any);
+
+    mirror.onGoalState('g-dispose-race', {
+      title: 'Dispose Race',
+      phases: [
+        { id: 'p1', name: 'Phase 1', tasks: [] },
+        { id: 'p2', name: 'Phase 2', tasks: [] },
+      ],
+    });
+
+    const flushPromise = mirror.flush();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    mirror.dispose();
+    mirror.onGoalState('g-after-dispose', {
+      title: 'Ignored After Dispose',
+      phases: [{ id: 'p3', name: 'Phase 3', tasks: [] }],
+    });
+
+    releasePhase1({ board: { id: 'board-1', name: 'Phase 1', columns: [], tasks: [], tags: [] } });
+    await flushPromise;
+    await mirror.flush();
+
+    expect(vi.mocked(createBoard)).toHaveBeenCalledTimes(1);
+    expect(deps.broadcast).not.toHaveBeenCalled();
+  });
 });

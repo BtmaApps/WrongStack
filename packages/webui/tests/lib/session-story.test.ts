@@ -87,6 +87,33 @@ describe('session story projection', () => {
     expect(story.files).toEqual(['src/a.ts']);
     expect(story.events.find((event) => event.id === 'bad-end')?.path).toBeUndefined();
   });
+  it('pairs tool.started and tool.executed input paths when correlated via attributes.toolUseId (F788)', () => {
+    const story = buildSessionStory(
+      'tab-a',
+      [
+        record('start-tu', 'tool.started', {
+          attributes: {
+            toolUseId: 'tu-1',
+            toolName: 'read',
+            input: { path: 'D:/repo/src/via-tool-use-id.ts' },
+          },
+        }),
+        record('done-tu', 'tool.executed', {
+          outcome: 'success',
+          attributes: { toolUseId: 'tu-1', toolName: 'read' },
+        }),
+      ],
+      [],
+      [],
+      [],
+      'D:/repo',
+    );
+    expect(story.toolCalls).toBe(1);
+    expect(story.files).toEqual(['src/via-tool-use-id.ts']);
+    expect(story.events.find((event) => event.id === 'done-tu')?.path).toBe(
+      'D:/repo/src/via-tool-use-id.ts',
+    );
+  });
   it('counts unique recorded injected IDs and separates memory write events', () => {
     const story = buildSessionStory('tab-a', [
       record('injected', 'memory.injector_run', {

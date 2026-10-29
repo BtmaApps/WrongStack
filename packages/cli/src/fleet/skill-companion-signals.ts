@@ -181,7 +181,9 @@ export function workTerms(texts: readonly string[], files: readonly string[]): M
   for (const file of files) {
     for (const word of words(file.replace(/\\/g, '/'))) add(word);
     const ext = /\.([a-z0-9]+)$/i.exec(file)?.[1]?.toLowerCase();
-    for (const word of (ext && EXTENSION_TERMS[ext]) || []) add(word);
+    // Own keys only: `.constructor` would otherwise read Object() and throw.
+    for (const word of (ext && Object.hasOwn(EXTENSION_TERMS, ext) && EXTENSION_TERMS[ext]) || [])
+      add(word);
   }
   return terms;
 }

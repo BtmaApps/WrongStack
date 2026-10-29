@@ -127,7 +127,10 @@ export function buildSessionStory(
     const path =
       string((input as Record<string, unknown>).path) ??
       string((input as Record<string, unknown>).file_path);
-    const call = record.correlation.toolCallId ?? string(record.attributes?.id);
+    const call =
+      record.correlation.toolCallId ??
+      string(record.attributes?.toolUseId) ??
+      string(record.attributes?.id);
     if (path && call)
       inputPaths.set(
         `${record.scope.agentId ?? string(record.attributes?.subagentId) ?? 'session'}:${call}`,
@@ -177,7 +180,9 @@ export function buildSessionStory(
       record.resource?.path ??
       string(attributes.filePath) ??
       (record.outcome === 'success'
-        ? inputPaths.get(`${actorId}:${record.correlation.toolCallId ?? string(attributes.id)}`)
+        ? inputPaths.get(
+            `${actorId}:${record.correlation.toolCallId ?? string(attributes.toolUseId) ?? string(attributes.id)}`,
+          )
         : undefined);
     if (path) notePath(path);
     if (record.eventType === 'memory.injector_run' && Array.isArray(attributes.injected))

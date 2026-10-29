@@ -23,15 +23,28 @@ export function subscribeKanbanDaemonEvents(
 ): () => void {
   const store = getServerKanbanStore(projectRoot);
   const knownRevisions = new Map<string, string>();
+  const boardGenerations = new Map<string, number>();
   let connectionCount = 0;
+  let disposed = false;
+
+  const bumpGeneration = (boardId: string): number => {
+    const next = (boardGenerations.get(boardId) ?? 0) + 1;
+    boardGenerations.set(boardId, next);
+    return next;
+  };
 
   const broadcastDeleted = (boardId: string): void => {
+    if (disposed) return;
+    bumpGeneration(boardId);
     knownRevisions.delete(boardId);
     broadcastMessage(kanbanDeletedMessage(boardId));
   };
 
   const broadcastBoard = async (boardId: string): Promise<void> => {
+    if (disposed) return;
+    const generation = boardGenerations.get(boardId) ?? 0;
     const board = await store.getBoard(boardId);
+    if (disposed || (boardGenerations.get(boardId) ?? 0) !== generation) return;
     if (!board) {
       broadcastDeleted(boardId);
       return;
@@ -41,7 +54,9 @@ export function subscribeKanbanDaemonEvents(
   };
 
   const reconcileAfterConnect = async (): Promise<void> => {
+    if (disposed) return;
     const summaries = await store.listBoards();
+    if (disposed) return;
     connectionCount++;
     if (connectionCount === 1) {
       for (const summary of summaries) knownRevisions.set(summary.id, summary.updatedAt);
@@ -52,6 +67,7 @@ export function subscribeKanbanDaemonEvents(
       if (!present.has(boardId)) broadcastDeleted(boardId);
     }
     for (const summary of summaries) {
+      if (disposed) return;
       if (knownRevisions.get(summary.id) !== summary.updatedAt) {
         await broadcastBoard(summary.id);
       }
@@ -66,7 +82,7 @@ export function subscribeKanbanDaemonEvents(
   const COALESCE_MS = 300;
   const pendingBroadcasts = new Map<string, ReturnType<typeof setTimeout>>();
   const scheduleBroadcast = (boardId: string): void => {
-    if (pendingBroadcasts.has(boardId)) return;
+    if (disposed || pendingBroadcasts.has(boardId)) return;
     const timer = setTimeout(() => {
       pendingBroadcasts.delete(boardId);
       void broadcastBoard(boardId).catch(() => {
@@ -81,6 +97,7 @@ export function subscribeKanbanDaemonEvents(
   const unsubscribe = bridgeKanbanSupervisor(
     projectRoot,
     async (event) => {
+      if (disposed) return;
       // Only board-mutation event families carry a real board id in
       // `data.boardId`. The daemon ALSO emits `workflow.*` events whose
       // first data slot is a workflowId — probing that as a boardId made
@@ -113,6 +130,7 @@ export function subscribeKanbanDaemonEvents(
     },
   );
   return () => {
+    disposed = true;
     for (const timer of pendingBroadcasts.values()) clearTimeout(timer);
     pendingBroadcasts.clear();
     unsubscribe();

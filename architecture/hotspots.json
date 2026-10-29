@@ -62,6 +62,10 @@
       "lines": 903,
       "relativeImports": 2
     },
+    "packages/tui/src/reducers/panel-pickers.ts": {
+      "lines": 714,
+      "relativeImports": 5
+    },
     "packages/tui/src/reducers/settings-value-cycle.ts": {
       "lines": 703,
       "relativeImports": 6

@@ -34,6 +34,7 @@ import { writeClipboardText } from '@wrongstack/runtime/clipboard';
 import { render } from 'ink-testing-library';
 import { describe, expect, it, vi } from 'vitest';
 import { createAppKeyHandler } from '../src/app-key-handler.js';
+import { mountedTextRuns } from '../src/cell-selection.js';
 import {
   copyableTextForEntries,
   copyableTextForEntry,
@@ -891,5 +892,44 @@ describe('Regression: SGR decoder + endSelection round trip', () => {
     } finally {
       h.unmount();
     }
+  });
+
+  it('mountedTextRuns skips zero-width and disjoint overflow="hidden" clip regions without inverting orderedRange (F848)', () => {
+    const makeYoga = (left: number, top: number, width: number, height: number) => ({
+      getDisplay: () => 0,
+      getComputedLeft: () => left,
+      getComputedTop: () => top,
+      getComputedWidth: () => width,
+      getComputedHeight: () => height,
+      getComputedPadding: () => 0,
+    });
+    const root = {
+      nodeName: 'ink-root',
+      style: {},
+      yogaNode: makeYoga(0, 0, 20, 5),
+      childNodes: [
+        {
+          nodeName: 'ink-box',
+          style: { overflow: 'hidden' },
+          yogaNode: makeYoga(5, 0, 0, 1),
+          childNodes: [
+            {
+              nodeName: 'ink-text',
+              style: {},
+              yogaNode: makeYoga(-1, 0, 6, 1),
+              childNodes: [
+                {
+                  nodeName: '#text',
+                  nodeValue: 'SECRET',
+                  yogaNode: makeYoga(0, 0, 6, 1),
+                  childNodes: [],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    expect(mountedTextRuns(root as never)).toEqual([]);
   });
 });

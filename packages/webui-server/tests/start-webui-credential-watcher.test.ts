@@ -43,6 +43,73 @@ describe('setupWebuiCredentialWatcher', () => {
     expect(mocks.watchProviderConfig).not.toHaveBeenCalled();
   });
 
+  it('retains active-model vision and output limits when a custom model edit rebuilds credentials', async () => {
+    let notify: ((snapshot: Record<string, unknown>) => Promise<void>) | undefined;
+    mocks.watchProviderConfig.mockImplementation((_path, _vault, callback) => {
+      notify = callback;
+      return { close: vi.fn() };
+    });
+    const providers =
+      await vi.importActual<typeof import('@wrongstack/providers')>('@wrongstack/providers');
+    mocks.makeProviderFromConfig.mockImplementation(providers.makeProviderFromConfig);
+    const entry = {
+      type: 'openai-compatible',
+      family: 'openai-compatible',
+      baseUrl: 'http://127.0.0.1:12345/v1',
+      apiKey: 'test-local-key',
+      models: ['vision-model'],
+      customModels: {
+        'vision-model': { name: 'Vision', capabilities: { vision: true, maxOutput: 8192 } },
+      },
+    };
+    let config = { provider: 'local', model: 'vision-model', providers: { local: entry } };
+    const registry = {
+      refresh: vi.fn(async () => {}),
+      getProvider: vi.fn(async () => ({ id: 'local', family: 'openai-compatible', models: [] })),
+      getModel: vi.fn(async () => undefined),
+    };
+    const baseline = providers.makeProviderFromConfig('local', entry as never);
+    expect(baseline.capabilities.vision).toBe(false);
+    const context = {
+      model: 'vision-model',
+      provider: await providers.withCatalogCapabilities(registry as never, 'local', baseline, {
+        ...entry,
+        model: 'vision-model',
+      } as never),
+      meta: {},
+    };
+    vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    setupWebuiCredentialWatcher({
+      watchConfigPath: 'config.json',
+      vault: {} as never,
+      logger: { warn: vi.fn() } as never,
+      state: {
+        getConfig: () => config,
+        setConfig: (next: typeof config) => {
+          config = next;
+        },
+      } as never,
+      deps: {
+        context,
+        modelsRegistry: registry,
+        configStore: { replace: vi.fn() },
+        providerRegistry: { has: () => false },
+      } as never,
+      clients: new Map(),
+      loadConfig: async () =>
+        ({
+          ...config,
+          providers: { local: { ...entry, models: ['vision-model', 'refiner'] } },
+        }) as never,
+      updateAutoCompactionMaxContext: vi.fn(async () => {}),
+    });
+    expect(context.provider.capabilities.vision).toBe(true);
+    await notify?.({ providers: { local: entry } });
+    expect(context.model).toBe('vision-model');
+    expect(context.provider.capabilities.vision).toBe(true);
+    expect(context.provider.capabilities.maxOutput).toBe(8192);
+  });
+
   it('refreshes config, broadcasts changes, and reloads the active provider', async () => {
     let onSnapshot: ((snapshot: Record<string, any>) => Promise<void>) | undefined;
     const close = vi.fn();

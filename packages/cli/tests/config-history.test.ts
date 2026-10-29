@@ -144,6 +144,41 @@ describe('config-history', () => {
       expect(result.ok).toBe(false);
       expect(result.error).toContain('not found');
     });
+
+    it('omits deleted masked apiKeys entries instead of writing headless credential objects on restore (F820)', async () => {
+      const snapCfg = {
+        providers: {
+          openai: {
+            apiKeys: [
+              { label: 'primary', apiKey: 'sk-live-primary-1234' },
+              { label: 'revoked', apiKey: 'sk-live-revoked-5678' },
+            ],
+          },
+        },
+      };
+      const id = await appendHistory({}, snapCfg, 'Two keys', home);
+
+      const cfgDir = profileDir();
+      await fs.mkdir(cfgDir, { recursive: true });
+      const cfgPath = path.join(cfgDir, 'config.json');
+      await fs.writeFile(
+        cfgPath,
+        JSON.stringify({
+          providers: {
+            openai: {
+              apiKeys: [{ label: 'primary', apiKey: 'sk-live-primary-1234' }],
+            },
+          },
+        }),
+      );
+
+      const result = await restoreFromHistory(id, home);
+      expect(result.ok).toBe(true);
+      const parsed = JSON.parse(await fs.readFile(cfgPath, 'utf8'));
+      expect(parsed.providers.openai.apiKeys).toEqual([
+        { label: 'primary', apiKey: 'sk-live-primary-1234' },
+      ]);
+    });
   });
 
   // ───────────────────────────────────────────────────── restoreLast

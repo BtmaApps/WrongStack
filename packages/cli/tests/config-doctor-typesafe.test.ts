@@ -75,4 +75,27 @@ describe('diagnoseConfig — TypeSafe account', () => {
     expect(finding?.fix).toBeTruthy();
     expect((report.fixed['typesafe'] as Record<string, unknown>)['route']).toBeUndefined();
   });
+
+  it('rejects non-finite numeric values (Infinity, -Infinity, "Infinity", "1e400") in coerceNumber (F819)', () => {
+    const report = diagnoseConfig(
+      {
+        version: 1,
+        maxConcurrent: 'Infinity',
+        fallbackMaxLastResortCandidates: Number.POSITIVE_INFINITY,
+        autonomy: { autoProceedDelayMs: '-Infinity' },
+        fleet: { budget: { maxSpawns: '1e400' } },
+      },
+      [],
+      NO_ENV,
+    );
+    expect('maxConcurrent' in report.fixed).toBe(false);
+    expect('fallbackMaxLastResortCandidates' in report.fixed).toBe(false);
+    expect('autoProceedDelayMs' in (report.fixed['autonomy'] as Record<string, unknown>)).toBe(
+      false,
+    );
+    expect(
+      'maxSpawns' in
+        ((report.fixed['fleet'] as Record<string, Record<string, unknown>>)['budget'] ?? {}),
+    ).toBe(false);
+  });
 });

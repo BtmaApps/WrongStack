@@ -167,7 +167,9 @@ export function reviveSecrets(masked: unknown, current: unknown): unknown {
   if (masked === REDACTED) return current;
   if (Array.isArray(masked)) {
     const cur = Array.isArray(current) ? current : [];
-    return masked.map((item, i) => {
+    const out: unknown[] = [];
+    for (let i = 0; i < masked.length; i++) {
+      const item = masked[i];
       const record =
         item && typeof item === 'object' && !Array.isArray(item)
           ? (item as Record<string, unknown>)
@@ -187,8 +189,20 @@ export function reviveSecrets(masked: unknown, current: unknown): unknown {
               (candidate as Record<string, unknown>)[identityKey] === record?.[identityKey],
           )
         : cur[i];
-      return reviveSecrets(item, matched);
-    });
+      const revivedItem = reviveSecrets(item, matched);
+      if (revivedItem === undefined) continue;
+      if (
+        record?.['apiKey'] === REDACTED &&
+        revivedItem &&
+        typeof revivedItem === 'object' &&
+        !Array.isArray(revivedItem) &&
+        typeof (revivedItem as Record<string, unknown>)['apiKey'] !== 'string'
+      ) {
+        continue;
+      }
+      out.push(revivedItem);
+    }
+    return out;
   }
   if (typeof masked !== 'object' || masked === null) return masked;
 

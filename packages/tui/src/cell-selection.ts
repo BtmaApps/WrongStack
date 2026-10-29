@@ -85,6 +85,7 @@ export function mountedTextRuns(root: DOMElement): TextRun[] {
     clip: { x: number; y: number; right: number; bottom: number },
     isRoot = false,
   ): void {
+    if (clip.x >= clip.right || clip.y >= clip.bottom) return;
     const yoga = node.yogaNode;
     if (!yoga || yoga.getDisplay() === 1) return;
     const x = px + (isRoot ? 0 : yoga.getComputedLeft());

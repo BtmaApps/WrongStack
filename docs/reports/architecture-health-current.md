@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-29T01:05:05.605Z
+**Generated:** 2026-10-29T01:06:28.902Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,8 +9,8 @@
 |---|---:|
 | Workspace packages | 45 |
 | Production source files | 5393 |
-| Production source lines | 1194833 |
-| Test files | 4713 |
+| Production source lines | 1194971 |
+| Test files | 4714 |
 | Workspace dependency edges | 222 |
 | Relative module edges | 16210 |
 | Non-command slash imports | 0 |
@@ -65,7 +65,7 @@
 | @wrongstack/tui | 497 | 431 | @wrongstack/chronicle, @wrongstack/contracts, @wrongstack/coordination, @wrongstack/core, @wrongstack/goal, @wrongstack/hq, @wrongstack/kanban, @wrongstack/primitives, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/tools |
 | @wrongstack/vector-memory | 18 | 28 | @wrongstack/contracts, @wrongstack/core, @wrongstack/persistence, @wrongstack/sage |
 | @wrongstack/vibeui | 69 | 24 | @wrongstack/webui-protocol |
-| @wrongstack/webui | 770 | 507 | @wrongstack/contracts, @wrongstack/core, @wrongstack/goal, @wrongstack/kanban, @wrongstack/plugins, @wrongstack/providers, @wrongstack/tools, @wrongstack/webui-protocol |
+| @wrongstack/webui | 770 | 508 | @wrongstack/contracts, @wrongstack/core, @wrongstack/goal, @wrongstack/kanban, @wrongstack/plugins, @wrongstack/providers, @wrongstack/tools, @wrongstack/webui-protocol |
 | @wrongstack/webui-hq | 127 | 55 | @wrongstack/contracts, @wrongstack/coordination, @wrongstack/core, @wrongstack/hq, @wrongstack/tools, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/webui-protocol | 29 | 15 | @wrongstack/contracts, @wrongstack/core, @wrongstack/hq |
 | @wrongstack/webui-server | 318 | 341 | @wrongstack/agent-catalog, @wrongstack/builtin-plugins, @wrongstack/chronicle, @wrongstack/contracts, @wrongstack/coordination, @wrongstack/core, @wrongstack/goal, @wrongstack/hq, @wrongstack/kanban, @wrongstack/mcp, @wrongstack/primitives, @wrongstack/providers, @wrongstack/requirement-intake, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/techstack, @wrongstack/tools, @wrongstack/vector-memory, @wrongstack/webui-protocol, @wrongstack/worktree, @wrongstack/wrongtrace |
@@ -124,6 +124,7 @@ None.
 | 722 | `apps/desktop-v2/src/ProjectMailbox.tsx` |
 | 720 | `packages/webui/src/components/MemoryManager/useMemoryManagerState.ts` |
 | 715 | `packages/plugins/src/audit/index.ts` |
+| 714 | `packages/tui/src/reducers/panel-pickers.ts` |
 | 713 | `apps/desktop-v2/src/AutomationWorkspace.tsx` |
 | 712 | `packages/webui-server/src/server/pref-helpers.ts` |
 | 709 | `packages/vibeui/src/components/memory-browser.tsx` |
@@ -140,11 +141,10 @@ None.
 | 699 | `packages/core/src/core/agent-tools.ts` |
 | 699 | `packages/governance/src/runtime-compatibility.ts` |
 | 699 | `packages/plugins/src/dep-guard/index.ts` |
-| 699 | `packages/sage/src/types.ts` |
 
 ## Exports only tests reference
 
-- 969 runtime exports are referenced by tests and by no other production file.
+- 970 runtime exports are referenced by tests and by no other production file.
 - Green coverage on one of these proves the function works, not that anything calls it.
 - The set is frozen in `architecture/test-only-exports.json`; the check fires on additions.
 

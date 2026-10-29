@@ -201,4 +201,14 @@ describe('feedPaste', () => {
     expect(r2?.accum).toBe('[20 lines');
     expect(r2?.complete).toBeNull();
   });
+
+  it('preserves trailing incomplete escape prefixes across chunks for split begin markers and split ANSI SGR codes (F786)', () => {
+    const b1 = feedPaste(null, '\x1b[');
+    const b2 = feedPaste(b1?.accum ?? null, `200~hello${END}`);
+    expect(b2).toEqual({ accum: null, complete: 'hello' });
+
+    const a1 = feedPaste(null, `${BEGIN}hello\x1b[31`);
+    const a2 = feedPaste(a1?.accum ?? null, `mworld${END}`);
+    expect(a2).toEqual({ accum: null, complete: 'helloworld' });
+  });
 });

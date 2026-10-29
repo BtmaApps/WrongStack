@@ -61,6 +61,9 @@ const ANSI_RE = new RegExp(
  * is then stripped whole. A lone `\x1b` (Escape) or `[` is deliberately NOT
  * matched: those stay ordinary keys.
  */
+const TRAILING_INCOMPLETE_ANSI_RE =
+  /\x1b(?:\[[\x30-\x3f]*[\x20-\x2f]*|\][^\x07\x1b]*|[PX^][^\x1b]*)?$/;
+
 function isMarkerPrefix(input: string): boolean {
   if (input.length < 2) return false;
   const forms = [`\x1b${BEGIN}`, `\x1b${END}`, BEGIN, END];
@@ -137,7 +140,10 @@ export function feedPaste(accum: PasteAccumState, input: string): PasteFeedResul
     const last = endMatches[endMatches.length - 1];
     if (last && last.index !== undefined) working = working.slice(0, last.index);
   }
-  const stripped = working.replace(ANSI_RE, '');
+  const trailingEsc = !closed ? TRAILING_INCOMPLETE_ANSI_RE.exec(working) : null;
+  const stripped = trailingEsc
+    ? working.slice(0, trailingEsc.index).replace(ANSI_RE, '') + trailingEsc[0]
+    : working.replace(ANSI_RE, '');
   if (stripped.length > MAX_PASTE_CHARS) {
     return {
       accum: closed ? null : OVERFLOW_STATE,

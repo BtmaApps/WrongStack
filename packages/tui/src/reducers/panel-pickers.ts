@@ -415,13 +415,47 @@ export function reducePanelPickers(state: State, action: PanelPickerAction): Sta
         toolsPicker: { ...state.toolsPicker, open: false, busy: false, filter: undefined },
       };
     case 'toolsPickerMove': {
-      const count = state.toolsPicker.items.length;
+      const items = state.toolsPicker.items;
+      const count = items.length;
       if (count === 0) return state;
+      const q = state.toolsPicker.filter?.toLowerCase() ?? '';
+      if (q.length > 0) {
+        const matchingIndices: number[] = [];
+        for (let i = 0; i < count; i++) {
+          const it = items[i]!;
+          if (
+            it.name.toLowerCase().includes(q) ||
+            it.owner.toLowerCase().includes(q) ||
+            it.description.toLowerCase().includes(q)
+          ) {
+            matchingIndices.push(i);
+          }
+        }
+        if (matchingIndices.length === 0) return state;
+        const curPos = matchingIndices.indexOf(state.toolsPicker.selected);
+        const nextIdx =
+          curPos === -1
+            ? action.delta >= 0
+              ? matchingIndices[0]!
+              : matchingIndices[matchingIndices.length - 1]!
+            : matchingIndices[
+                (((curPos + action.delta) % matchingIndices.length) + matchingIndices.length) %
+                  matchingIndices.length
+              ]!;
+        return {
+          ...state,
+          toolsPicker: {
+            ...state.toolsPicker,
+            selected: nextIdx,
+            hint: undefined,
+          },
+        };
+      }
       return {
         ...state,
         toolsPicker: {
           ...state.toolsPicker,
-          selected: (state.toolsPicker.selected + action.delta + count) % count,
+          selected: (((state.toolsPicker.selected + action.delta) % count) + count) % count,
           hint: undefined,
         },
       };
@@ -444,8 +478,26 @@ export function reducePanelPickers(state: State, action: PanelPickerAction): Sta
       return { ...state, toolsPicker: { ...state.toolsPicker, busy: action.busy } };
     case 'toolsPickerHint':
       return { ...state, toolsPicker: { ...state.toolsPicker, hint: action.text } };
-    case 'toolsPickerFilter':
-      return { ...state, toolsPicker: { ...state.toolsPicker, filter: action.filter } };
+    case 'toolsPickerFilter': {
+      const q = action.filter?.toLowerCase() ?? '';
+      let nextSelected = state.toolsPicker.selected;
+      if (q.length > 0) {
+        const items = state.toolsPicker.items;
+        const matches = (it: (typeof items)[number]) =>
+          it.name.toLowerCase().includes(q) ||
+          it.owner.toLowerCase().includes(q) ||
+          it.description.toLowerCase().includes(q);
+        const currentItem = items[nextSelected];
+        if (!currentItem || !matches(currentItem)) {
+          const firstMatch = items.findIndex(matches);
+          if (firstMatch !== -1) nextSelected = firstMatch;
+        }
+      }
+      return {
+        ...state,
+        toolsPicker: { ...state.toolsPicker, filter: action.filter, selected: nextSelected },
+      };
+    }
     case 'brainOpen': {
       return {
         ...state,
@@ -559,20 +611,23 @@ export function reducePanelPickers(state: State, action: PanelPickerAction): Sta
       if (count === 0) return state;
       if (state.helpPanel.filter) {
         const q = state.helpPanel.filter.trim().toLowerCase();
-        const matches = state.helpPanel.entries.filter(
-          (e) =>
-            e.name.toLowerCase().includes(q) ||
-            e.description.toLowerCase().includes(q) ||
-            e.category.toLowerCase().includes(q) ||
-            (e.aliases ?? []).some((a) => a.toLowerCase().includes(q)),
-        ).length;
-        if (matches > 0) count = matches;
+        if (q) {
+          const matches = state.helpPanel.entries.filter(
+            (e) =>
+              e.name.toLowerCase().includes(q) ||
+              e.description.toLowerCase().includes(q) ||
+              e.category.toLowerCase().includes(q) ||
+              (e.aliases ?? []).some((a) => a.toLowerCase().includes(q)),
+          ).length;
+          if (matches === 0) return state;
+          count = matches;
+        }
       }
       return {
         ...state,
         helpPanel: {
           ...state.helpPanel,
-          selected: (state.helpPanel.selected + action.delta + count) % count,
+          selected: (((state.helpPanel.selected + action.delta) % count) + count) % count,
           hint: undefined,
           detailScroll: 0,
         },

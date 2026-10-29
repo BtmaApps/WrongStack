@@ -1191,4 +1191,24 @@ describe('F5 resilience — chat transcript persistence', () => {
     expect(useChatStore.getState().executions.has('tu_1')).toBe(true);
     expect(useChatStore.getState().executions.has('tu_2')).toBe(false);
   });
+
+  it('appendToolProgressLines creates a new array reference and dequeueDrainable cancels grace timers for alreadyDispatched items (F847)', () => {
+    const store = useChatStore.getState();
+    const msgId = store.addMessage(
+      makeMsg({ role: 'tool', content: 'running', toolUseId: 'tu_p' }),
+    );
+    store.appendToolProgressLines(msgId, ['step 1']);
+    const firstLines = useChatStore.getState().messages.find((m) => m.id === msgId)?.progressLines;
+    store.appendToolProgressLines(msgId, ['step 2']);
+    const secondLines = useChatStore.getState().messages.find((m) => m.id === msgId)?.progressLines;
+    expect(firstLines).not.toBe(secondLines);
+    expect(firstLines).toEqual(['step 1']);
+    expect(secondLines).toEqual(['step 1', 'step 2']);
+
+    store.enqueue('btw side question', 'btw', undefined, true);
+    expect(useChatStore.getState().queue).toHaveLength(1);
+    const popped = store.dequeueDrainable();
+    expect(popped).toBeNull();
+    expect(useChatStore.getState().queue).toHaveLength(0);
+  });
 });

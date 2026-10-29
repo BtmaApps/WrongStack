@@ -418,6 +418,33 @@ describe('toolsPicker reducer — items / busy / hint / filter', () => {
     expect(filtered.toolsPicker.selected).toBe(0); // selected unchanged
     expect(filtered.toolsPicker.open).toBe(true);
   });
+
+  it('toolsPickerMove steps across matching indices when filter is active and helpMove does not wrap on 0 matches (F849)', () => {
+    let s = openWith([item('alpha'), item('beta-1'), item('gamma'), item('beta-2')]);
+    s = reducer(
+      s as never,
+      { type: 'toolsPickerFilter', filter: 'beta' } as never,
+    ) as unknown as State;
+    expect(s.toolsPicker.selected).toBe(1);
+    s = reducer(s as never, { type: 'toolsPickerMove', delta: 1 } as never) as unknown as State;
+    expect(s.toolsPicker.selected).toBe(3);
+    s = reducer(s as never, { type: 'toolsPickerMove', delta: 1 } as never) as unknown as State;
+    expect(s.toolsPicker.selected).toBe(1);
+
+    let h = reducer(
+      initial() as never,
+      {
+        type: 'helpOpen',
+        entries: [
+          { name: '/help', description: 'Show help', category: 'general' },
+          { name: '/quit', description: 'Exit', category: 'general' },
+        ],
+      } as never,
+    ) as unknown as State;
+    h = reducer(h as never, { type: 'helpFilter', filter: 'zzzz' } as never) as unknown as State;
+    h = reducer(h as never, { type: 'helpMove', delta: -1 } as never) as unknown as State;
+    expect(h.helpPanel.selected).toBe(0);
+  });
 });
 
 // Helper to open a picker with items (used by multi-case tests)

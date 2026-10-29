@@ -153,9 +153,13 @@ export function runHuntSlashCommand(options: RunHuntSlashCommandOptions): boolea
 
   if (parsed.kind === 'stop') {
     const store = useBugHuntRunStore.getState();
-    const targetSessionId =
-      (options.sessionId && store.runs[options.sessionId] ? options.sessionId : undefined) ??
-      Object.keys(store.runs)[0];
+    // A caller with a session stops only its own hunt; falling back to the
+    // first run stopped another tab's hunt.
+    const targetSessionId = options.sessionId
+      ? store.runs[options.sessionId]
+        ? options.sessionId
+        : undefined
+      : Object.keys(store.runs)[0];
     const activeRun = targetSessionId ? store.runs[targetSessionId] : undefined;
     if (!targetSessionId || !activeRun) {
       options.addMessage({
