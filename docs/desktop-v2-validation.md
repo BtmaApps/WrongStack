@@ -2691,3 +2691,41 @@ Verification on the shared working snapshot:
   model-editor drafts. It does not guarantee the last unacknowledged keystroke survives termination,
   or certify power loss, long-running repeated crashes, actual concurrent multi-window UI stress,
   active profile switching, the full release/coverage matrix, hosted CI or installed-app replacement.
+## Profile-ownership verification and saved-draft administration (2026-10-29)
+
+- Verification of the committed profile-ownership increment (`a7827d8a8`, `4fcafaf8d`) on a clean
+  tree. Desktop suite before this increment: **373 tests / 80 files PASS**; typecheck **231 PASS**.
+  Full `packages/webui-server` run with `WRONGSTACK_VITEST_MAX_WORKERS=2` and no concurrent native UI
+  or build: **3337 tests / 341 files PASS** in 299 s, including
+  `project-history-search.test.ts`. No test, fixture, timeout or worker count was changed. The
+  earlier single timeout occurred during a concurrently loaded run; its cause is not further
+  diagnosed, and a later loaded run could still reproduce it.
+- Runtime metadata audit: `profileIdentity` is supplied by the standalone `startWebUI` host used by
+  the desktop engine. The CLI-embedded WebUI router does not supply it, so desktop model settings
+  fail closed there with reconnect guidance rather than inventing an identity.
+- New native `profile-draft.list` IPC (trusted shell allow-list) returns typed ownership summaries
+  of parked model-editor drafts: key, revision, timestamp, size, envelope support and text-typed
+  provider/profile/profile-name/model fields. Bodies are not returned. Cleared rows are omitted;
+  the listing is bounded at 200 rows with an explicit truncation flag.
+- Model catalog gains a **Saved drafts** dialog. Ownership is trusted only when the stored owner
+  hashes back to the row's own storage key. Drafts are grouped as connection removed, earlier
+  unassigned, another profile, unrecognized (missing/malformed/forged owner) and this profile.
+  Reachable drafts open their provider; the editor keeps managing them. Unreachable drafts can be
+  discarded with a confirmation, using the listed revision, so a draft rewritten after listing is
+  never erased. Provider configuration is never written. New saves also record the profile display
+  name beside the unchanged opaque owner ID.
+- Checks: desktop **377 tests / 81 files PASS**; typecheck **233 PASS**; focused Biome **8 files
+  PASS**; Rust fmt PASS; native Rust **21 tests PASS** (new listing test covers typed extraction,
+  mistyped envelopes, cleared-row omission, body exclusion and the 201-row truncation boundary).
+- Native acceptance on portable identity `2f5045c5270f-8d5e009090b5`, bundled engine/checksums
+  verified, all **exit 0 / PASS**: `--model-profiles` (now also seeds a removed-connection draft,
+  a second-profile draft and a forged-owner draft; verifies grouping, stale-listing discard refusal
+  preserving the newer peer draft, acknowledged discards and unchanged provider config), `--models`
+  and `--model-draft-restart` (four restarts, two cold host changes). This closes the previously
+  unrun `--models` and restart scopes against the profile-aware bundle.
+- Inspected `model-profiles/native-model-draft-administration.png`. Logs:
+  `.temp_files/desktop-v2-native/draft-admin-*.log` / `.err`, `s2-backend-full.log`,
+  `s2-desktop-test.log`.
+- Not covered: profile rename/move migration, future draft-format migration, existence checks for
+  other profiles, actual concurrent multi-window UI stress, full repository release/coverage,
+  hosted CI and installed-app replacement.

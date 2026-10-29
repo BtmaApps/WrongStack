@@ -335,6 +335,46 @@ impl Registry {
             }
         }
     }
+    /// Ownership summaries of every parked model-editor draft, across profiles and providers.
+    /// Payload bodies stay behind `profile-draft.get`; only typed text fields are extracted.
+    pub fn profile_form_drafts(&self) -> Result<Value> {
+        const LIMIT: usize = 200;
+        let text = |path: &str| {
+            format!("CASE WHEN json_type(payload,'{path}')='text' THEN json_extract(payload,'{path}') END")
+        };
+        let sql = format!(
+            "SELECT form_key,revision,updated_at,length(payload),json_type(payload,'$.version')='integer' AND json_extract(payload,'$.version')=1,{},{},{},{},{} FROM profile_form_drafts WHERE form_key LIKE 'model-editor:%' AND payload IS NOT NULL ORDER BY updated_at DESC,form_key LIMIT {}",
+            text("$.providerId"),
+            text("$.profileId"),
+            text("$.profileName"),
+            text("$.editor.originalId"),
+            text("$.editor.draft.id"),
+            LIMIT + 1
+        );
+        let mut query = self.db.prepare(&sql).map_err(err)?;
+        let rows = query
+            .query_map([], |row| {
+                Ok(json!({
+                    "formKey": row.get::<_, String>(0)?,
+                    "revision": row.get::<_, i64>(1)?,
+                    "updatedAt": row.get::<_, i64>(2)?,
+                    "bytes": row.get::<_, i64>(3)?,
+                    "supported": row.get::<_, Option<bool>>(4)?.unwrap_or(false),
+                    "providerId": row.get::<_, Option<String>>(5)?,
+                    "profileId": row.get::<_, Option<String>>(6)?,
+                    "profileName": row.get::<_, Option<String>>(7)?,
+                    "originalId": row.get::<_, Option<String>>(8)?,
+                    "modelId": row.get::<_, Option<String>>(9)?,
+                }))
+            })
+            .map_err(err)?;
+        let mut drafts = rows
+            .collect::<std::result::Result<Vec<_>, _>>()
+            .map_err(err)?;
+        let truncated = drafts.len() > LIMIT;
+        drafts.truncate(LIMIT);
+        Ok(json!({"drafts": drafts, "limit": LIMIT, "truncated": truncated}))
+    }
     pub fn file_drafts(&self, project_id: &str) -> Result<Value> {
         self.ensure_form_project(project_id, &format!("file-draft:{}", "0".repeat(64)))?;
         let mut query = self.db.prepare("SELECT form_key,json_extract(payload,'$.path'),revision,updated_at FROM project_form_drafts WHERE project_id=?1 AND form_key LIKE 'file-draft:%' AND payload IS NOT NULL ORDER BY updated_at DESC,form_key LIMIT 500").map_err(err)?;
@@ -710,6 +750,55 @@ mod tests {
         assert_eq!(reopened.profile_form_draft(&key).unwrap()["revision"], 3);
         assert!(reopened.profile_form_draft(&key).unwrap()["value"].is_null());
         drop(reopened);
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+    #[test]
+    fn profile_draft_listing_reports_typed_ownership_without_bodies() {
+        let dir = std::env::temp_dir().join(uuid::Uuid::new_v4().to_string());
+        let db = super::Registry::open(&dir).unwrap();
+        let key = |seed: &str| format!("model-editor:{}", seed.repeat(64));
+        let owned = serde_json::json!({"version":1,"providerId":"gone","profileId":"f".repeat(64),"profileName":"work","editor":{"originalId":"","draft":{"id":"custom-x","secret":"body"}}});
+        db.save_profile_form_draft(&key("a"), &owned, 0).unwrap();
+        let mistyped =
+            serde_json::json!({"version":"1","providerId":7,"editor":{"draft":{"id":["x"]}}});
+        db.save_profile_form_draft(&key("b"), &mistyped, 0).unwrap();
+        db.save_profile_form_draft(&key("c"), &owned, 0).unwrap();
+        db.save_profile_form_draft(&key("c"), &serde_json::Value::Null, 1)
+            .unwrap();
+        let listed = db.profile_form_drafts().unwrap();
+        let drafts = listed["drafts"].as_array().unwrap();
+        assert_eq!(drafts.len(), 2, "cleared drafts are not listed");
+        assert_eq!(listed["truncated"], false);
+        let first = drafts
+            .iter()
+            .find(|row| row["formKey"] == key("a"))
+            .unwrap();
+        assert_eq!(first["providerId"], "gone");
+        assert_eq!(first["profileName"], "work");
+        assert_eq!(first["modelId"], "custom-x");
+        assert_eq!(first["originalId"], "");
+        assert_eq!(first["supported"], true);
+        assert_eq!(first["revision"], 1);
+        assert!(!first.to_string().contains("body"));
+        let second = drafts
+            .iter()
+            .find(|row| row["formKey"] == key("b"))
+            .unwrap();
+        assert_eq!(second["supported"], false);
+        assert!(second["providerId"].is_null() && second["modelId"].is_null());
+        assert!(second["profileId"].is_null());
+        for index in 0..201 {
+            db.save_profile_form_draft(
+                &format!("model-editor:{index:064x}"),
+                &serde_json::json!({"version":1}),
+                0,
+            )
+            .unwrap();
+        }
+        let bounded = db.profile_form_drafts().unwrap();
+        assert_eq!(bounded["drafts"].as_array().unwrap().len(), 200);
+        assert_eq!(bounded["truncated"], true);
+        drop(db);
         std::fs::remove_dir_all(dir).unwrap();
     }
     use super::*;

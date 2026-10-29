@@ -106,6 +106,11 @@ export async function exerciseNativeModelProfiles({
   );
   const firstDraft = await draft(first.id);
   assert.equal(firstDraft.value.profileId, first.id);
+  assert.equal(
+    firstDraft.value.profileName,
+    'default',
+    'Display name is recorded beside ownership',
+  );
   const legacy = structuredClone(firstDraft.value);
   delete legacy.profileId;
   legacy.editor.draft.text.name = 'Earlier unassigned model';
@@ -208,6 +213,17 @@ export async function exerciseNativeModelProfiles({
   );
   assert.equal((await draft(first.id)).value, null);
   assert.equal((await draft(second.id)).value, null);
+  const administration = await exerciseDraftAdministration({
+    getPage,
+    catalog,
+    ipc,
+    waitFor,
+    artifactDir,
+    first,
+    second,
+    template: firstDraft.value,
+    config: () => config('default'),
+  });
   const after = await rpc('snapshot');
   assert.deepEqual(
     after.sessions.map((row) => row.id),
@@ -224,13 +240,126 @@ export async function exerciseNativeModelProfiles({
         profileFileIsolation: true,
         explicitLegacyCopy: true,
         staleLegacyDeleteRefused: true,
+        administration,
       },
       null,
       2,
     ),
   );
   console.log(
-    'PASS: actual bootstrap-selected profile isolation through cold restarts, same-provider native drafts, separate model config writes, explicit legacy copy and revision-protected legacy removal',
+    'PASS: actual bootstrap-selected profile isolation through cold restarts, same-provider native drafts, separate model config writes, explicit legacy copy, revision-protected legacy removal and saved-draft administration',
   );
   return { first, second };
+}
+
+/** Drafts the provider editor cannot reach: removed connections, other profiles, forged owners. */
+async function exerciseDraftAdministration({
+  getPage,
+  catalog,
+  ipc,
+  waitFor,
+  artifactDir,
+  first,
+  second,
+  template,
+  config,
+}) {
+  const keyFor = (profileId, provider) =>
+    'model-editor:' +
+    createHash('sha256')
+      .update(JSON.stringify(['model-editor', profileId, provider]))
+      .digest('hex');
+  const get = (formKey) => ipc('profile-draft.get', { formKey });
+  const seed = async (formKey, patch, label) => {
+    const value = structuredClone(template);
+    Object.assign(value, patch);
+    value.editor.draft.id = label;
+    await ipc('profile-draft.save', {
+      formKey,
+      value,
+      expectedRevision: (await get(formKey)).revision,
+    });
+    return formKey;
+  };
+  const orphan = await seed(
+    keyFor(first.id, 'removed-connection'),
+    { providerId: 'removed-connection', profileId: first.id, profileName: 'default' },
+    'orphaned-model',
+  );
+  const foreign = await seed(
+    keyFor(second.id, 'shared-profile-provider'),
+    { providerId: 'shared-profile-provider', profileId: second.id, profileName: 'second' },
+    'second-profile-model',
+  );
+  // Claims profile A but is stored under another owner's key: never trusted or loaded.
+  const forged = await seed(
+    keyFor(second.id, 'forged-connection'),
+    { providerId: 'forged-connection', profileId: first.id, profileName: 'default' },
+    'forged-model',
+  );
+  const configBefore = await config();
+  const listed = await ipc('profile-draft.list', {});
+  assert.equal(listed.truncated, false);
+  const summary = listed.drafts.find((row) => row.formKey === orphan);
+  assert.equal(summary.modelId, 'orphaned-model');
+  assert.ok(!JSON.stringify(listed).includes('Profile A pending model'), 'Listing omits bodies');
+  await catalog.getByRole('button', { name: 'Saved drafts', exact: true }).click();
+  const dialog = getPage().getByRole('dialog', { name: 'Saved model drafts' });
+  const group = (name) => dialog.getByRole('region', { name, exact: true });
+  await group('Connection removed').getByText('orphaned-model', { exact: true }).waitFor();
+  await group('Another profile').getByText('second-profile-model', { exact: true }).waitFor();
+  await group('Another profile')
+    .getByText(/second \(name when saved\)/)
+    .waitFor();
+  await group('Unrecognized draft').getByText('forged-model', { exact: true }).waitFor();
+  await group('Unrecognized draft').getByText(/Owner not verified/).waitFor();
+  assert.equal(
+    await group('This profile').count(),
+    0,
+    'A forged envelope is not presented as owned by this profile',
+  );
+  await getPage().screenshot({
+    path: join(artifactDir, 'native-model-draft-administration.png'),
+    fullPage: true,
+  });
+  // A peer window rewrites the orphan after it was listed; the old listing cannot erase it.
+  const listedOrphan = await get(orphan),
+    newer = structuredClone(listedOrphan.value);
+  newer.editor.draft.text.name = 'Newer orphan edit';
+  await ipc('profile-draft.save', {
+    formKey: orphan,
+    value: newer,
+    expectedRevision: listedOrphan.revision,
+  });
+  const discard = async (name) => {
+    const row = group(name).getByRole('listitem');
+    await row.getByRole('button', { name: 'Discard draft', exact: true }).click();
+    await row.getByRole('button', { name: 'Confirm discard', exact: true }).click();
+  };
+  await discard('Connection removed');
+  await dialog
+    .getByRole('alert')
+    .filter({ hasText: 'This draft changed after it was listed. Refresh and review it again.' })
+    .waitFor();
+  assert.deepEqual((await get(orphan)).value, newer, 'Stale discard kept the newer peer draft');
+  await discard('Connection removed');
+  await waitFor(async () => (await get(orphan)).value === null, 'Orphan discard acknowledged');
+  await discard('Another profile');
+  await waitFor(async () => (await get(foreign)).value === null, 'Foreign discard acknowledged');
+  await discard('Unrecognized draft');
+  await waitFor(async () => (await get(forged)).value === null, 'Forged discard acknowledged');
+  await dialog.getByText('No unfinished model drafts are saved.', { exact: true }).waitFor();
+  assert.deepEqual(
+    await config(),
+    configBefore,
+    'Draft administration never writes provider config',
+  );
+  await dialog.getByRole('button', { name: 'Close saved model drafts', exact: true }).click();
+  return {
+    orphanedDiscarded: true,
+    otherProfileDiscarded: true,
+    forgedOwnerUnverified: true,
+    staleListingDiscardRefused: true,
+    providerConfigUnchanged: true,
+  };
 }

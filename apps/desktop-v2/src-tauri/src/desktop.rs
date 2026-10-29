@@ -73,6 +73,7 @@ async fn host_request(
         "form-draft.save",
         "profile-draft.get",
         "profile-draft.save",
+        "profile-draft.list",
         "file-drafts.list",
     ]
     .contains(&method.as_str())
@@ -91,6 +92,9 @@ async fn host_request(
             let expected = params["expectedRevision"].as_i64().filter(|value| *value >= 0).ok_or("Missing profile draft revision")?;
             let value = params.get("value").ok_or("Missing profile draft value")?;
             return Ok(json!({"revision":registry.save_profile_form_draft(key, value, expected)?}));
+        }
+        if method == "profile-draft.list" {
+            return drafts.lock().map_err(err)?.profile_form_drafts();
         }
         if method == "file-drafts.list" {
             return drafts.lock().map_err(err)?.file_drafts(crate::sessions::field(&params, "projectId")?);

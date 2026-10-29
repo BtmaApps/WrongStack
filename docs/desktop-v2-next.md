@@ -1,6 +1,6 @@
 # Desktop v2: continuation and remaining delivery work
 
-Updated: 2026-10-29. This is the handoff for the next implementation agent.
+Updated: 2026-10-29 (second pass). This is the handoff for the next implementation agent.
 
 ## Start here
 
@@ -66,6 +66,12 @@ desktop work. Do not resume it as this task or absorb independent prompt changes
   them as part of desktop work. Inspect current status before edits and commits.
 - Handoff HEAD: `f348a7dd3`. It includes independent commits after the desktop checkpoint. Re-read
   `git log` because other agents may advance HEAD without changing this task.
+- Second pass (2026-10-29): the price-tier/draft/profile work is committed as `a7827d8a8` and
+  `4fcafaf8d`; HEAD was `5e87de43a` with a clean tree. The saved-draft administration increment
+  is uncommitted: `ModelDraftAdministration.tsx`, `model-draft-admin.ts`,
+  `tests/model-draft-admin.test.ts` (new) plus edits to `ModelCatalogSettings.tsx`,
+  `model-editor-draft.ts`, `useModelEditorDraft.ts`, `model-catalog.css`, `registry.rs`,
+  `desktop.rs`, `native-model-profiles.mjs` and the three desktop docs.
 - The index was empty when this handoff was prepared. No feature commit was created during the
   latest price-tier/profile-draft increments.
 - Existing desktop commits include:
@@ -193,7 +199,8 @@ Important source files:
 
 The standalone profile runtime is wired. Audit any other host adapter before relying on this
 metadata there. Do not fabricate a default profile identity when a host does not supply one.
-Orphaned assigned drafts, profile renames/moves and future draft-format migration still need work.
+Saved-draft administration for orphaned, other-profile and unverified drafts is implemented (see the
+2026-10-29 validation entry). Profile renames/moves and future draft-format migration still need work.
 
 ## Verification at handoff: exact boundaries
 
@@ -206,10 +213,10 @@ Orphaned assigned drafts, profile renames/moves and future draft-format migratio
 | Focused Biome checks for profile increment | **16 files PASS** |
 | Fresh engine build and Tauri release build | **PASS** |
 | Native `--model-profiles` | **PASS**, exit 0, `46264c02100d-34d54c7e64c5`, bundled engine and checksums verified |
-| Latest full backend package run | **NOT GREEN: 3336 passed, 1 failed / 341 files** |
+| Latest full backend package run | **3337 tests / 341 files PASS** (2 workers, serialized, 2026-10-29) |
 | Isolated rerun of the failing history file | **5 tests PASS**, 21 seconds, unchanged assertions/timeout |
-| General native `--models` against the newest bundle | **NOT RUN yet**; earlier bundle passed before profile scoping |
-| Exact `--model-draft-restart` scope against the newest bundle | **NOT RUN yet**; earlier bundle passed, new profile scope includes cold restarts |
+| General native `--models` against the newest bundle | **PASS** on `2f5045c5270f-8d5e009090b5` |
+| Exact `--model-draft-restart` scope against the newest bundle | **PASS** on `2f5045c5270f-8d5e009090b5` |
 | Native Rust suite | Earlier draft-storage increment: **20 tests PASS**; no new Rust change in the profile-identity increment |
 | Full repository release/coverage, hosted CI, installed app replacement | **NOT RUN for these increments** |
 
@@ -282,7 +289,7 @@ have real workflows; the work below closes their missing actions, durability and
 | Git/review: `GitHunkReview.tsx`, `MergeConflictReview.tsx`, `review-notes-store.ts` | Per-line staging, unsupported partial added/deleted/binary/mode changes, automatic rename grouping, larger/symlink/submodule conflicts, history topology, worktree management and threaded/resolved review discussions. | Real repository/index operations with stale-index refusal, binary/rename/mode cases and precise file-layer ownership. Worktree features must not cause this agent to create a workspace worktree against the user's instruction. |
 | Session history: `ProjectSessionHistory.tsx`, `ProjectHistorySearch.tsx`, `SessionTranscript.tsx` | Compressed and large retained histories, binary viewers, over-100-block message expansion, full structured tool inputs, atomic rename policy, older-host migration and richer story/navigation. File-store full scans remain explicitly budgeted at 10,000 records. | Real compressed/long journals, exact-ID navigation, full-catalog search consistency, stale revisions, bounded memory and cancellation. |
 | Session recovery: `SessionRecovery.tsx`, `session-recovery-model.ts` | Redo and richer recovery administration, edit/resend/retry, durable recovery-operation records and broader partial-error/restart handling. | Real files and journal state after each operation; active-run refusal, preserved conversation/drafts, stale-operation refusal and visible partial failures. |
-| Model/profile settings: `ModelCatalogSettings.tsx`, `ProviderOAuth.tsx`, `ProviderHealth.tsx` | Orphaned profile/provider draft administration, profile rename/move migration, future draft versions, atomic custom-model writes, live OAuth/account refresh, full vault lifecycle and broader external-provider quota/test cases. | Actual profile/account behavior where authorized, exact config/draft ownership, safe failed writes and restart coverage. Metadata-only OAuth fixture tests do not establish external authentication. |
+| Model/profile settings: `ModelCatalogSettings.tsx`, `ProviderOAuth.tsx`, `ProviderHealth.tsx` | Profile rename/move migration, future draft versions, atomic custom-model writes, live OAuth/account refresh, full vault lifecycle and broader external-provider quota/test cases. | Actual profile/account behavior where authorized, exact config/draft ownership, safe failed writes and restart coverage. Metadata-only OAuth fixture tests do not establish external authentication. |
 | Runtime policies: Brain/Fleet/Execution/Refinement/Review settings | Cross-runtime policy refresh, advanced fleet lifecycle/dispatch/probe policies, Brain decision inspection and actual council execution/quality, Shadow, advanced security-rule/display policy editing, and session-specific effective routing. | Actual worker/council decisions and effective settings in the owning runtime. Saving configured policy does not prove dispatch or model behavior. |
 | Durable secondary forms | Roster overrides/documents, skill authoring, mailbox compose, Design Studio edits, Project Kit parameters, automation secondary forms and requirement resource inputs still have incomplete restart durability. | Native ownership, bounded versioned envelopes, load/ack/error states, stale-window comparison, explicit discard and cleanup only after successful domain writes. Reuse the established patterns without putting project forms into profile/session storage. |
 
@@ -448,7 +455,7 @@ for acceptance. Building source does not replace an installed application.
 
 ```powershell
 # From repository root, using the current recorded profile-aware bundle
-$env:WRONGSTACK_DESKTOP_TEST_PORTABLE='D:\Codebox\PROJECTS\WrongStack\apps\desktop-v2\dist-native\46264c02100d-34d54c7e64c5'
+$env:WRONGSTACK_DESKTOP_TEST_PORTABLE='D:\Codebox\PROJECTS\WrongStack\apps\desktop-v2\dist-native\2f5045c5270f-8d5e009090b5'
 & C:/Users/ersin/.bun/bin/bun.exe apps/desktop-v2/tests/native-smoke.mjs --release --bundled --model-profiles
 & C:/Users/ersin/.bun/bin/bun.exe apps/desktop-v2/tests/native-smoke.mjs --release --bundled --models
 & C:/Users/ersin/.bun/bin/bun.exe apps/desktop-v2/tests/native-smoke.mjs --release --bundled --model-draft-restart

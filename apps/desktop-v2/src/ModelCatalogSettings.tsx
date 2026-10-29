@@ -1,5 +1,5 @@
 import { Check, Plus, RefreshCw, Search, X } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CatalogModelSearch } from './CatalogModelSearch';
 import type { EngineCommand } from './engine-operations';
 import { entries, record } from './engine-values';
@@ -11,6 +11,7 @@ import {
   useModelProfile,
   verifyModelProfile,
 } from './ModelCatalogProfile';
+import { ModelDraftAdministration } from './ModelDraftAdministration';
 import { ModelDraftNotice } from './ModelDraftNotice';
 import { ModelPriceTiers, SavedModelPriceTiers } from './ModelPriceTiers';
 import { modelAdvancedDraft } from './model-advanced-editor';
@@ -75,7 +76,7 @@ function ProfileModelCatalogSettings({
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [editor, setEditorValue] = useState<Editor | null>(null);
-  const modelDraft = useModelEditorDraft(providerId, profile.id);
+  const modelDraft = useModelEditorDraft(providerId, profile.id, profile.name);
   const setEditor = (value: Editor) => {
     modelDraft.controller.edit(value);
     setEditorValue(value);
@@ -137,6 +138,7 @@ function ProfileModelCatalogSettings({
       sequence.current++;
     };
   }, [load]);
+  const providerIds = useMemo(() => providers.map((item) => String(item['id'])), [providers]);
   const definitions = record(provider['customModels']);
   const rows: Array<Record<string, unknown> & { id: string; name: string }> = [
     ...new Set([...models.map((item) => String(item['id'])), ...Object.keys(definitions)]),
@@ -322,6 +324,15 @@ function ProfileModelCatalogSettings({
         >
           Find in model registry
         </button>
+        <ModelDraftAdministration
+          profile={profile}
+          savedProviders={providerIds}
+          disabled={busy || !!editor || remove}
+          onOpenProvider={(id) => {
+            setProviderId(id);
+            setQuery('');
+          }}
+        />
       </div>
       {providerId && !editor && (
         <ModelDraftNotice

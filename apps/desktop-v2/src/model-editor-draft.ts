@@ -17,6 +17,8 @@ export interface SavedModelEditor {
   version: 1;
   providerId: string;
   profileId?: string;
+  /** Display name when saved; ownership is `profileId` alone. */
+  profileName?: string;
   editor: ModelEditorState;
 }
 export interface ModelDraftSnapshot {
@@ -128,6 +130,7 @@ export class ModelEditorDraftStore {
     private storage: ModelDraftStorage,
     private providerId: string,
     private profileId?: string,
+    private profileName?: string,
   ) {}
   snapshot = () => this.state;
   subscribe = (listener: () => void) => {
@@ -195,6 +198,7 @@ export class ModelEditorDraftStore {
                   version: 1,
                   providerId: this.providerId,
                   ...(this.profileId ? { profileId: this.profileId } : {}),
+                  ...(this.profileId && this.profileName ? { profileName: this.profileName } : {}),
                   editor: value,
                 }
               : null,

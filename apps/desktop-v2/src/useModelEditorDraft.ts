@@ -4,7 +4,7 @@ import { type ModelDraftSnapshot, ModelEditorDraftStore } from './model-editor-d
 import { request } from './platform';
 
 const stores = new Map<string, ModelEditorDraftStore>();
-export function useModelEditorDraft(providerId: string, profileId: string) {
+export function useModelEditorDraft(providerId: string, profileId: string, profileName?: string) {
   const controller = useMemo(() => {
     const owner = JSON.stringify([profileId, providerId]);
     let store = stores.get(owner);
@@ -24,11 +24,12 @@ export function useModelEditorDraft(providerId: string, profileId: string) {
         },
         providerId,
         profileId,
+        profileName,
       );
       stores.set(owner, store);
     }
     return store;
-  }, [providerId, profileId]);
+  }, [providerId, profileId, profileName]);
   const state = useSyncExternalStore(controller.subscribe, controller.snapshot);
   useEffect(() => {
     if (providerId) void controller.load();
