@@ -1,6 +1,7 @@
 import { Layers } from 'lucide-react';
 import { useAppTranslation } from '@/i18n';
 import { useLocalPrefs } from '@/stores/local-prefs';
+import { CompanionAgentsSection } from './CompanionAgentsSection';
 import { PreferenceSlider } from './PreferenceControls';
 import { PreferenceToggle } from './PreferenceToggle';
 
@@ -74,6 +75,8 @@ export function FleetSection({ syncPref }: FleetSectionProps) {
           </div>
         </div>
       </div>
+
+      <CompanionAgentsSection syncPref={syncPref} />
     </div>
   );
 }

@@ -33,6 +33,7 @@ interface CliWebUIOptions {
         fallbackAuto?: boolean | undefined;
         modelMatrix?: Config['modelMatrix'] | undefined;
         modelTiers?: Config['modelTiers'] | undefined;
+        fleet?: Config['fleet'] | undefined;
         uiLocale?: string | undefined;
         /** WrongProxy / WrongTrace toggle. */
         wrongProxyEnabled?: boolean | undefined;
@@ -146,6 +147,42 @@ export function createPrefsSeeding(opts: CliWebUIOptions): PrefsSeeding {
       !Array.isArray(payload['modelTiers'])
     ) {
       patchLiveAppConfig({ modelTiers: payload['modelTiers'] as Config['modelTiers'] });
+    }
+    if (
+      typeof payload['memoryCompanionEnabled'] === 'boolean' ||
+      typeof payload['exploreCompanionEnabled'] === 'boolean' ||
+      typeof payload['skillCompanionEnabled'] === 'boolean'
+    ) {
+      const currentFleet = opts.appConfig?.fleet;
+      patchLiveAppConfig({
+        fleet: {
+          ...currentFleet,
+          ...(typeof payload['memoryCompanionEnabled'] === 'boolean'
+            ? {
+                memoryCompanion: {
+                  ...currentFleet?.memoryCompanion,
+                  enabled: payload['memoryCompanionEnabled'],
+                },
+              }
+            : {}),
+          ...(typeof payload['exploreCompanionEnabled'] === 'boolean'
+            ? {
+                exploreCompanion: {
+                  ...currentFleet?.exploreCompanion,
+                  enabled: payload['exploreCompanionEnabled'],
+                },
+              }
+            : {}),
+          ...(typeof payload['skillCompanionEnabled'] === 'boolean'
+            ? {
+                skillCompanion: {
+                  ...currentFleet?.skillCompanion,
+                  enabled: payload['skillCompanionEnabled'],
+                },
+              }
+            : {}),
+        },
+      });
     }
     if (!opts.profileConfigPath) return;
 

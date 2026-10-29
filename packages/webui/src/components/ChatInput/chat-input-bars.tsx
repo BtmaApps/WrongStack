@@ -10,6 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu.js';
+import { CompanionsButton } from './companions-button.js';
 import { type ImageAttachment, isPdfAttachment } from './image-attachments.js';
 import { SessionEffortSelect } from './session-effort-select.js';
 import { SubagentModelsButton } from './subagent-models-button.js';
@@ -263,6 +264,7 @@ export function ModelAndPromptBar({
       </button>
       <SessionEffortSelect />
       <SubagentModelsButton />
+      <CompanionsButton />
     </div>
   );
 }

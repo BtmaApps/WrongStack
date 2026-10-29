@@ -5,6 +5,7 @@ import { effortLabelKey, effortNotAdvertised, resolveEffortOptions } from '@/lib
 import { useLocalPrefs } from '@/stores/local-prefs';
 import { useSessionStore } from '@/stores/session-store';
 import { ModelSelectDialog } from '../ModelSelectDialog';
+import { CompanionAgentsSection } from './CompanionAgentsSection';
 import { PreferenceSelect, PreferenceSlider } from './PreferenceControls';
 import { PreferenceToggle } from './PreferenceToggle';
 import { StreamTimeoutsSection } from './StreamTimeoutsSection';
@@ -285,6 +286,9 @@ export function AgentSettingsTab({
         />
         <p className="text-xs text-muted-foreground mt-2">{t('settings:agent.capsHint')}</p>
       </div>
+
+      {/* Companion Agents */}
+      <CompanionAgentsSection syncPref={syncPref} />
 
       {/* Stream watchdogs (modelRuntime.streaming) */}
       <StreamTimeoutsSection syncPref={syncPref} />

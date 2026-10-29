@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-29T00:51:20.095Z",
+  "generatedAt": "2026-10-29T00:52:14.084Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 45,
-    "sourceFiles": 5390,
-    "testFiles": 4695,
-    "sourceLines": 1193669,
+    "sourceFiles": 5392,
+    "testFiles": 4696,
+    "sourceLines": 1193987,
     "workspaceEdges": 222,
-    "moduleEdges": 16197,
+    "moduleEdges": 16201,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -1031,8 +1031,8 @@
     {
       "name": "@wrongstack/webui",
       "dir": "packages/webui",
-      "sourceFiles": 768,
-      "testFiles": 506,
+      "sourceFiles": 770,
+      "testFiles": 507,
       "workspaceDependencies": [
         "@wrongstack/contracts",
         "@wrongstack/core",
@@ -1057,7 +1057,7 @@
         {
           "path": "packages/webui/tsconfig.test.json",
           "error": null,
-          "testFiles": 506
+          "testFiles": 507
         }
       ]
     },
@@ -26384,6 +26384,12 @@
       },
       {
         "file": "packages/webui/tests/components/ChatInput/code-detect.test.ts",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
+        "file": "packages/webui/tests/components/ChatInput/companions-button.test.tsx",
         "projects": [
           "webui-jsdom"
         ]

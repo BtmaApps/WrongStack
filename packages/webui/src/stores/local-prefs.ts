@@ -484,6 +484,9 @@ export const useLocalPrefs = create<LocalPrefs>()(
         if (typeof p.keyboardShortcuts !== 'boolean') {
           p.keyboardShortcuts = false;
         }
+        if (typeof p.memoryCompanionEnabled !== 'boolean') p.memoryCompanionEnabled = true;
+        if (typeof p.exploreCompanionEnabled !== 'boolean') p.exploreCompanionEnabled = true;
+        if (typeof p.skillCompanionEnabled !== 'boolean') p.skillCompanionEnabled = true;
         return p as never as LocalPrefs;
       },
       // `hqToken` is a bearer credential for the HQ control plane. The whole

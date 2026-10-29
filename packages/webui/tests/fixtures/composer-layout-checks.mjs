@@ -17,6 +17,34 @@ export async function checkComposerLayout(browser, base, output, errors) {
         await input.fill('Review the workspace layout and keyboard controls.');
         await expect(input).toBeFocused();
         await expect(page.getByTestId('send-submit')).toBeEnabled();
+        const companions = page.getByTestId('composer-companions-button');
+        assert(
+          (await companions.boundingBox()).height >= (width < 640 ? 36 : 32),
+          'Composer toolbar controls must retain their minimum height',
+        );
+        await companions.click();
+        const switches = page.getByTestId(/^composer-companion-switch-/);
+        await expect(switches).toHaveCount(3);
+        for (const toggle of await switches.all()) {
+          await expect(toggle).toBeVisible();
+          assert.equal(
+            await toggle.evaluate((el) => el.getBoundingClientRect().height),
+            20,
+            'Popover switches must keep their compact track height inside the composer toolbar',
+          );
+          const previous = await toggle.getAttribute('aria-checked');
+          await toggle.click();
+          await expect(toggle).toHaveAttribute('aria-checked', String(previous !== 'true'));
+          await toggle.click();
+          await expect(toggle).toHaveAttribute('aria-checked', previous);
+        }
+        await page.screenshot({
+          animations: 'disabled',
+          path: path.join(output, `composer-companions-${theme}-${width}.png`),
+        });
+        await page.keyboard.press('Escape');
+        await expect(switches).toHaveCount(0);
+        await input.focus();
         // Long user-configured model names must fit without a document scrollbar.
         await page.evaluate(() => {
           window.fixture.config.setState({

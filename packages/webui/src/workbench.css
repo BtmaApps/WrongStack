@@ -148,7 +148,9 @@
     border-color: hsl(var(--warning) / 0.55);
   }
 
-  .ws-composer-options :where(button, label) {
+  /* Size toolbar triggers without stretching controls inside their popovers. */
+  .ws-composer-options > :where(button, label),
+  .ws-composer-options > span > :where(button, label) {
     min-height: 32px;
   }
 
@@ -483,7 +485,8 @@
     .ws-chat-surface {
       border-radius: 0;
     }
-    .ws-composer-options :where(button, label) {
+    .ws-composer-options > :where(button, label),
+    .ws-composer-options > span > :where(button, label) {
       min-height: 36px;
     }
     .ws-composer-actions {
