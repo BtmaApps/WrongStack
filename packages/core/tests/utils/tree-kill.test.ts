@@ -22,10 +22,42 @@ function fakeKiller(): EventEmitter & { unref: () => void } {
 afterEach(() => {
   setPlatform(REAL_PLATFORM);
   spawnMock.mockReset();
+  vi.restoreAllMocks();
   vi.useRealTimers();
 });
 
 describe('treeKill', () => {
+  it('force-kills an explicitly owned POSIX group through the shared helper', () => {
+    setPlatform('linux');
+    const signal = vi.spyOn(process, 'kill').mockReturnValue(true);
+    const child = { pid: process.pid + process.ppid + 10_000, kill: vi.fn() };
+    treeKill(child, { force: true, processGroupLeader: true });
+    expect(signal).toHaveBeenCalledExactlyOnceWith(-child.pid, 'SIGKILL');
+    expect(child.kill).not.toHaveBeenCalled();
+  });
+
+  it.each([0, 1, -1, 1.5, process.pid, process.ppid])(
+    'never group-signals an unsafe PID (%s)',
+    (pid) => {
+      setPlatform('linux');
+      const signal = vi.spyOn(process, 'kill').mockReturnValue(true);
+      const child = { pid, kill: vi.fn() };
+      treeKill(child, { force: true, processGroupLeader: true });
+      expect(signal).not.toHaveBeenCalled();
+      expect(child.kill).toHaveBeenCalledExactlyOnceWith('SIGKILL');
+    },
+  );
+
+  it('uses the child handle when a dedicated POSIX group is already gone', () => {
+    setPlatform('linux');
+    vi.spyOn(process, 'kill').mockImplementation(() => {
+      throw new Error('ESRCH');
+    });
+    const child = { pid: process.pid + process.ppid + 10_000, kill: vi.fn() };
+    treeKill(child, { force: true, processGroupLeader: true });
+    expect(child.kill).toHaveBeenCalledExactlyOnceWith('SIGKILL');
+  });
+
   it('falls back to a graceful kill when pid is undefined', () => {
     const kill = vi.fn();
     treeKill({ pid: undefined, kill });

@@ -17,6 +17,11 @@ export interface KillableChild {
 
 export interface TreeKillOptions {
   /**
+   * With force=true on POSIX, kill the dedicated group led by this child.
+   * Opt in only for a child spawned with detached=true; never for an arbitrary PID.
+   */
+  processGroupLeader?: boolean | undefined;
+  /**
    * Skip the graceful SIGTERM and go straight to SIGKILL on POSIX. Windows
    * always uses `taskkill /T /F` regardless (there is no graceful signal for a
    * process tree there). Use this for a force-escalation step invoked after a
@@ -122,6 +127,21 @@ export function treeKill(child: KillableChild, opts: TreeKillOptions = {}): void
   }
 
   if (force) {
+    const pid = child.pid;
+    if (
+      opts.processGroupLeader === true &&
+      Number.isInteger(pid) &&
+      pid > 1 &&
+      pid !== process.pid &&
+      pid !== process.ppid
+    ) {
+      try {
+        process.kill(-pid, 'SIGKILL');
+        return;
+      } catch {
+        // The dedicated group is gone; the child handle remains safe to signal.
+      }
+    }
     directKill();
     return;
   }

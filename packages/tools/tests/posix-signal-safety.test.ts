@@ -8,6 +8,10 @@ const sourceRoots = ['packages', 'apps'].map((dir) => path.join(repoRoot, dir));
 const allowedNegativeKillTests = new Set<string>([]);
 const allowedNegativeKillSources = new Set([
   'packages/tools/src/process-registry.ts',
+  // Shared treeKill requires force + explicit detached-group ownership and
+  // rejects PID 0/1/self/parent before group signaling. Benchmark launchers
+  // delegate here rather than acquiring their own unrestricted signal site.
+  'packages/core/src/utils/tree-kill.ts',
   // Hook commands are spawned detached into their own process group on POSIX;
   // killProcessTree() signals -child.pid of a child this module itself spawned
   // (taskkill /T on win32), so the group kill cannot reach a foreign group.
@@ -19,6 +23,8 @@ const allowedNegativeKillSources = new Set([
   'packages/kanban/src/verification/verification-process.ts',
 ]);
 const allowedDirectSignalSources = new Set([
+  // Same guarded owned-child helper as above; unit tests pin unsafe PID refusal.
+  'packages/core/src/utils/tree-kill.ts',
   'packages/cli/src/slash-commands/session-live-status.ts',
   // Same reviewed call site as above: SIGKILL to its own detached hook child.
   'packages/core/src/hooks/shell-executor.ts',
@@ -79,7 +85,7 @@ describe('POSIX signal safety in tests', () => {
     expect(offenders).toEqual([]);
   });
 
-  it('keeps production negative-PID process.kill isolated to ProcessRegistry', () => {
+  it('keeps production negative-PID process.kill limited to reviewed owned-child helpers', () => {
     const offenders: string[] = [];
     for (const root of sourceRoots) {
       for (const file of walk(root, [], (name) => name.endsWith('.ts'))) {

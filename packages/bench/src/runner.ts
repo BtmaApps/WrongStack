@@ -1,7 +1,7 @@
 import { type ChildProcess, spawn } from 'node:child_process';
 import { performance } from 'node:perf_hooks';
 import { cliSpawnArgs } from '@wrongstack/core/utils';
-import { settleWin32Kill } from '@wrongstack/core/utils/tree-kill';
+import { treeKill as killChildTree, settleWin32Kill } from '@wrongstack/core/utils/tree-kill';
 import { inheritedEnv } from './child-env.js';
 import { type BenchProfile, LEAN_BENCH_TOOL_NAMES } from './isolation.js';
 import { BENCH_DAEMON_IDLE_ENV } from './sandbox-reaper.js';
@@ -298,20 +298,9 @@ export function treeKill(child: ChildProcess): void {
     });
     return;
   }
-  try {
-    // Benchmark children lead their own POSIX process group. Kill the group
-    // before the shell exits and reparents its descendants. Timeout/abort is
-    // terminal: immediate SIGKILL also prevents a TERM-ignoring grandchild
-    // from keeping pipes or CPU alive after the result has settled.
-    process.kill(-child.pid, 'SIGKILL');
-  } catch {
-    // A caller may supply a child without a dedicated group, or it exited.
-    try {
-      child.kill('SIGKILL');
-    } catch {
-      /* already gone */
-    }
-  }
+  // All benchmark launchers create dedicated POSIX groups. The shared helper
+  // checks PID safety before signaling the group and falls back to the handle.
+  killChildTree(child, { force: true, processGroupLeader: true });
 }
 
 /**
