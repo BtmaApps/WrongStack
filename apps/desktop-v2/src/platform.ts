@@ -45,6 +45,19 @@ export function projectFormDraftStorage(projectId: string, formKey: string): For
       }).then((result) => result.revision),
   };
 }
+/** Unsaved model plan of one desktop session, revision-checked like the composer draft. */
+export function sessionPlanDraftStorage(sessionId: string): FormDraftStorage {
+  return {
+    get: () => request<FormDraftSnapshot>('draft.plan', { id: sessionId }),
+    save: (value, expectedRevision) =>
+      request<{ revision: number }>('draft.save', {
+        id: sessionId,
+        part: 'plan',
+        text: value === null ? '' : JSON.stringify(value),
+        expectedRevision,
+      }).then((result) => result.revision),
+  };
+}
 export function requirementDraftStorage(projectId: string): RequirementDraftStorage {
   return {
     get: () =>

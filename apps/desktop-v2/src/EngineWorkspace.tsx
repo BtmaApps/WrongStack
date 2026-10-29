@@ -11,7 +11,7 @@ import {
   Square,
   Workflow,
 } from 'lucide-react';
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AttachmentPreview } from './ComposerAttachments';
 import { CopyButton } from './CopyButton';
 import type { ComposerAttachment } from './composer-attachments';
@@ -29,7 +29,7 @@ import type { InputDraft } from './input-form-model';
 import { MarkdownContent } from './MarkdownContent';
 import { markdownTarget } from './markdown-target';
 import { ProjectSessionTools } from './ProjectSessionTools';
-import { openExternal } from './platform';
+import { openExternal, sessionPlanDraftStorage } from './platform';
 import { SessionActivity } from './SessionActivity';
 import { SessionComposer } from './SessionComposer';
 import { SessionRecovery } from './SessionRecovery';
@@ -111,6 +111,7 @@ export function EngineWorkspace({
   const { state, send, command } = useEngine(id, onError);
   const [fileTarget, setFileTarget] = useState('');
   const [tab, setTab] = useState<EngineTab>('chat');
+  const planDraftStorage = useMemo(() => sessionPlanDraftStorage(id), [id]);
   useEffect(() => {
     if (tab !== 'files' && tab !== 'changes') setFileTarget('');
   }, [tab]);
@@ -427,6 +428,7 @@ export function EngineWorkspace({
               onReferencesChange={onReferencesChange}
               projectId={projectId}
               projectRoot={projectRoot}
+              planDraftStorage={planDraftStorage}
               onNavigate={(target) => {
                 if (target === 'files' || target === 'changes' || target === 'skills')
                   setTab(target);

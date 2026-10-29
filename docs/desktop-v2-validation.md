@@ -3145,3 +3145,30 @@ Verification on the shared working snapshot:
   errors, so the run reused bundled engine `b9af8f76b4a5` (this change has no engine part).
 - Not covered: the unsaved-text and into-itself refusals natively (UI logic only), a failing item
   in a native batch, stop mid-run, and search-mode selections across folders.
+
+## Restart-safe session model plan drafts (2026-10-29)
+
+- Unsaved edits in the session "Agent model plan" dialog are written to a new native session
+  draft part `plan` (`draftplan:<session>` settings row, revision-checked through the existing
+  `draft.save` compare-and-set; new trusted read `draft.plan`; object-only, 512 KiB limit; an
+  empty value removes it). The envelope keeps the plan together with the engine plan it was
+  edited from, and re-checks the plan with the same projection used for engine replies.
+- On open, a draft whose base still equals the engine plan is restored with a notice. A draft
+  edited from an older plan is not applied: the dialog shows the current plan and offers
+  "Use my older draft" or "Discard saved draft". Saving (verified readback), "Discard plan and
+  reload" and "Discard plan and close" remove the stored draft; another window's version stops
+  autosave until a choice is made. Draft storage starts only after the engine plan was read.
+- Checks: desktop **453 tests / 97 files PASS** (new `session-agent-plan-draft` envelope tests);
+  typecheck **260 PASS**; Biome PASS; Rust fmt PASS; native Rust **21 tests PASS** (the session
+  draft test now covers plan object-only refusal, CAS conflict, per-session isolation and
+  removal).
+- Native `--composer` on portable identity `3335d8e24b8f-b9af8f76b4a5`: **exit 0 / PASS** on the
+  first run. A lane label edit is read back from `draft.plan`, survives a renderer reload with
+  the restore notice, and after the engine plan changes the older draft is offered instead of
+  applied and is removed by "Discard saved draft"; all existing plan, composer and resource
+  scenarios still pass. The engine was **not rebuilt**: `build:engine` still fails on another
+  session's uncommitted `packages/webui-server/src/server/conversation-operations.ts`, so the
+  run reused bundled engine `b9af8f76b4a5` (this change has no engine part).
+- Not covered: "Use my older draft" and the two-window review natively, session deletion
+  cleanup of the stored part (like the other session draft parts, it is not removed), full
+  application restart, full release/coverage, hosted CI and installed-app replacement.

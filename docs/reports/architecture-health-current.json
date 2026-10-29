@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-29T11:06:09.254Z",
+  "generatedAt": "2026-10-29T11:23:17.945Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,15 +12,15 @@
   },
   "summary": {
     "packages": 45,
-    "sourceFiles": 5437,
-    "testFiles": 4737,
-    "sourceLines": 1199522,
+    "sourceFiles": 5439,
+    "testFiles": 4738,
+    "sourceLines": 1199731,
     "workspaceEdges": 222,
-    "moduleEdges": 16348,
+    "moduleEdges": 16357,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 3,
-    "testsWithoutTypecheck": 96,
+    "testsWithoutTypecheck": 97,
     "testsWithMultipleTypechecks": 0,
     "testOnlyExports": 973
   },
@@ -385,8 +385,8 @@
     {
       "name": "@wrongstack/desktop-v2",
       "dir": "apps/desktop-v2",
-      "sourceFiles": 251,
-      "testFiles": 96,
+      "sourceFiles": 253,
+      "testFiles": 97,
       "workspaceDependencies": [
         "@wrongstack/contracts",
         "@wrongstack/core",
@@ -1751,6 +1751,12 @@
       },
       {
         "file": "apps/desktop-v2/tests/session-activity.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "apps/desktop-v2/tests/session-agent-plan-draft.test.ts",
         "projects": [
           "root-node"
         ]
@@ -30263,6 +30269,13 @@
         "typecheckProjects": []
       },
       {
+        "file": "apps/desktop-v2/tests/session-agent-plan-draft.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
         "file": "apps/desktop-v2/tests/session-agent-plan.test.ts",
         "runtimeProjects": [
           "root-node"
@@ -31009,11 +31022,6 @@
       "relativeImports": 3
     },
     {
-      "file": "packages/webui-server/src/server/conversation-operations.ts",
-      "lines": 701,
-      "relativeImports": 8
-    },
-    {
       "file": "packages/webui-server/src/server/memory-handlers.ts",
       "lines": 777,
       "relativeImports": 5
@@ -31110,8 +31118,8 @@
     },
     {
       "file": "apps/desktop-v2/src/SessionComposer.tsx",
-      "lines": 987,
-      "relativeImports": 18
+      "lines": 996,
+      "relativeImports": 19
     },
     {
       "file": "apps/desktop-v2/src/SkillLibrary.tsx",
@@ -31147,8 +31155,8 @@
     },
     {
       "file": "apps/desktop-v2/src/SessionComposer.tsx",
-      "lines": 987,
-      "relativeImports": 18
+      "lines": 996,
+      "relativeImports": 19
     },
     {
       "file": "apps/desktop-v2/src/ModelCatalogSettings.tsx",
@@ -31361,14 +31369,14 @@
       "relativeImports": 4
     },
     {
-      "file": "packages/webui-server/src/server/conversation-operations.ts",
-      "lines": 701,
-      "relativeImports": 8
-    },
-    {
       "file": "apps/desktop-v2/src/useDesktop.ts",
       "lines": 700,
       "relativeImports": 9
+    },
+    {
+      "file": "packages/coordination/src/subagent-budget.ts",
+      "lines": 699,
+      "relativeImports": 2
     }
   ],
   "testOnlyExports": [

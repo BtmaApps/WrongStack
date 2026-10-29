@@ -228,6 +228,47 @@ export async function exerciseNativeSessionAgentPlan({
         .isChecked(),
       false,
     );
+    // Unsaved plan edits are kept in native session storage across a renderer reload.
+    const storedPlan = () =>
+      page.evaluate(
+        (id) =>
+          window.__TAURI_INTERNALS__.invoke('host_request', {
+            method: 'draft.plan',
+            params: { id },
+          }),
+        agent.id,
+      );
+    await dialog().getByLabel('Lane 1 label', { exact: true }).fill('Unsaved across reload');
+    await waitFor(
+      async () => (await storedPlan()).value?.plan?.slots?.[0]?.label === 'Unsaved across reload',
+      'Plan draft saved natively',
+    );
+    await page.reload();
+    await input().waitFor();
+    await open();
+    await dialog()
+      .getByText(/Restored your unsaved model plan draft/)
+      .waitFor();
+    assert.equal(
+      await dialog().getByLabel('Lane 1 label', { exact: true }).inputValue(),
+      'Unsaved across reload',
+    );
+    // A draft edited from an older plan is offered, never applied silently.
+    const changed = (await call('prefs.get', {}, ['prefs.updated'])).subagentModelPlan;
+    await call('prefs.update', { subagentModelPlan: { ...changed, lock: true } }, [
+      'key.operation_result',
+    ]);
+    await page.reload();
+    await input().waitFor();
+    await open();
+    await dialog().getByRole('alert').filter({ hasText: 'edited from an older version' }).waitFor();
+    assert.equal(
+      await dialog().getByLabel('Lane 1 label', { exact: true }).inputValue(),
+      'Build lane edited',
+      'The current plan is shown until the older draft is chosen',
+    );
+    await dialog().getByRole('button', { name: 'Discard saved draft', exact: true }).click();
+    await waitFor(async () => (await storedPlan()).value === null, 'Discarded plan draft cleared');
     await dialog().getByRole('button', { name: 'Close agent model plan', exact: true }).click();
     assert.equal(
       await readFile(configPath, 'utf8'),

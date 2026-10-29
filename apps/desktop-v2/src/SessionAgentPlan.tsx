@@ -1,6 +1,7 @@
 import { Check, LoaderCircle, Plus, RefreshCw, Save, Trash2, X } from 'lucide-react';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { effortNames } from './composer-model';
+import type { FormDraftStorage } from './durable-form-draft';
 import type { EngineCommand } from './engine-operations';
 import type { EngineState } from './engine-state';
 import { record } from './engine-values';
@@ -14,6 +15,7 @@ import {
   resizeAgentLanes,
 } from './session-agent-plan';
 import { sameSetting } from './settings-save-model';
+import { AgentPlanDraftStatus, useAgentPlanDraft } from './useAgentPlanDraft';
 import './session-agent-plan.css';
 
 type Route = Record<string, unknown>;
@@ -21,10 +23,13 @@ export function SessionAgentPlan({
   state,
   command,
   onClose,
+  draftStorage,
 }: {
   state: EngineState;
   command: EngineCommand;
   onClose: () => void;
+  /** Native storage for unsaved edits of this session's plan. */
+  draftStorage?: FormDraftStorage;
 }) {
   const [base, setBase] = useState<unknown>(undefined);
   const [plan, setPlan] = useState<AgentModelPlan | null>(null);
@@ -43,6 +48,18 @@ export function SessionAgentPlan({
   const original = useRef<AgentModelPlan | null>(null);
   const dirty = !!plan && !sameSetting(plan, original.current);
   const catalogId = useId();
+  const applyDraft = useCallback((next: AgentModelPlan, message: string) => {
+    setPlan(next);
+    setNotice(message);
+  }, []);
+  const saved = useAgentPlanDraft({
+    storage: draftStorage,
+    loaded,
+    base,
+    plan,
+    dirty,
+    apply: applyDraft,
+  });
   const load = useCallback(async () => {
     const version = ++readSequence.current;
     setBusy(true);
@@ -161,6 +178,7 @@ export function SessionAgentPlan({
               {error}
             </p>
           )}
+          <AgentPlanDraftStatus draft={saved} />
           {notice && (
             <p className="composer-notice" role="status">
               <Check size={14} />
@@ -387,7 +405,14 @@ export function SessionAgentPlan({
               <button type="button" className="button secondary" onClick={() => setDiscard(false)}>
                 Keep editing plan
               </button>
-              <button type="button" className="button secondary" onClick={onClose}>
+              <button
+                type="button"
+                className="button secondary"
+                onClick={() => {
+                  saved.forget();
+                  onClose();
+                }}
+              >
                 Discard plan and close
               </button>
               <button type="button" className="button secondary" onClick={() => void load()}>

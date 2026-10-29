@@ -31,6 +31,7 @@ import {
   referenceMessage,
   splitReferenceMessage,
 } from './composer-resources-model';
+import type { FormDraftStorage } from './durable-form-draft';
 import type { EngineCommand, EngineSend } from './engine-operations';
 import type { EngineState } from './engine-state';
 import { Modal } from './Modal';
@@ -66,6 +67,7 @@ export function SessionComposer({
   onAttachmentsChange,
   onReferencesChange,
   onNavigate,
+  planDraftStorage,
 }: {
   state: EngineState;
   send: EngineSend;
@@ -86,6 +88,8 @@ export function SessionComposer({
   onNavigate: (
     target: 'files' | 'changes' | 'skills' | 'memory' | 'kanban' | 'atlas' | 'mailbox' | 'history',
   ) => void;
+  /** Native storage for this session's unsaved model plan. */
+  planDraftStorage?: FormDraftStorage;
 }) {
   const [sending, setSending] = useState(false),
     [notice, setNotice] = useState(''),
@@ -442,7 +446,12 @@ export function SessionComposer({
   return (
     <div className="native-composer-stack">
       {agentPlan && (
-        <SessionAgentPlan state={state} command={command} onClose={() => setAgentPlan(false)} />
+        <SessionAgentPlan
+          state={state}
+          command={command}
+          onClose={() => setAgentPlan(false)}
+          {...(planDraftStorage ? { draftStorage: planDraftStorage } : {})}
+        />
       )}
       {topicBusy && !topic && (
         <p className="composer-notice" role="status">

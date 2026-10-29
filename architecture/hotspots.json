@@ -110,10 +110,6 @@
       "lines": 737,
       "relativeImports": 3
     },
-    "packages/webui-server/src/server/conversation-operations.ts": {
-      "lines": 701,
-      "relativeImports": 8
-    },
     "packages/webui-server/src/server/memory-handlers.ts": {
       "lines": 777,
       "relativeImports": 5
@@ -191,8 +187,8 @@
       "relativeImports": 8
     },
     "apps/desktop-v2/src/SessionComposer.tsx": {
-      "lines": 987,
-      "relativeImports": 18
+      "lines": 996,
+      "relativeImports": 19
     },
     "apps/desktop-v2/src/SkillLibrary.tsx": {
       "lines": 884,
