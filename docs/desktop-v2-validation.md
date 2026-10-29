@@ -3121,3 +3121,27 @@ Verification on the shared working snapshot:
   `DurableFormDraft`), unapplied environment dialog text (durable only after Apply moves it into
   the job draft), a full application process
   restart, full release/coverage, hosted CI and installed-app replacement.
+
+## Bulk move and delete in the Files folder listing (2026-10-29)
+
+- The folder listing gains "Select items" (rows become toggle buttons with `aria-pressed`) and
+  Ctrl/Cmd-click picking outside that mode. A toolbar shows the count with "Move selected…",
+  "Delete selected…" and "Clear selection". The dialog lists the items, drops those already
+  inside a selected folder, refuses items with unsaved editor text and moving a folder into
+  itself, keeps dot-folders in the destination (`.github`), and runs one existing engine
+  operation (`files.move` / `files.delete`) per item in order. Failures are recorded and the rest
+  still run; "Stop after current item" leaves the remainder unattempted; the notice states
+  exactly what moved or was deleted, failed or was not attempted. There is no multi-item
+  atomicity. Open documents, the active file and the current folder follow moved items; the
+  single rename/move/delete actions now share the same helpers.
+- Checks: desktop **451 tests / 96 files PASS** (new `file-bulk` tests: ancestor folding,
+  relocation, destination normalisation, failure recording, stop); typecheck **258 PASS**;
+  Biome PASS on the changed files.
+- Native `--files` on portable identity `f90534a62d27-b9af8f76b4a5`: **exit 0 / PASS** on the first
+  run. Two files picked in selection mode are moved into another folder and checked on disk; a
+  Ctrl-clicked file is deleted and checked on disk; the tree-scale and all existing file
+  scenarios still pass. The engine was **not rebuilt**: `build:engine` still fails on another
+  session's uncommitted `packages/webui-server/src/server/conversation-operations.ts` type
+  errors, so the run reused bundled engine `b9af8f76b4a5` (this change has no engine part).
+- Not covered: the unsaved-text and into-itself refusals natively (UI logic only), a failing item
+  in a native batch, stop mid-run, and search-mode selections across folders.

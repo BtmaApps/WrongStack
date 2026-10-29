@@ -3,6 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { access, readFile, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { exerciseNativeConflictVariants } from './native-conflict-variants.mjs';
+import { exerciseNativeFileBulk } from './native-file-bulk.mjs';
 import { exerciseVersionBoundSave } from './native-file-save.mjs';
 import { exerciseNativeFileTreeScale } from './native-file-tree-scale.mjs';
 export async function exerciseNativeFiles({ page, waitFor, artifactDir, project, rpc }) {
@@ -567,6 +568,7 @@ export async function exerciseNativeFiles({ page, waitFor, artifactDir, project,
   );
   await exerciseNativeConflictVariants({ page, project, artifactDir });
   await exerciseNativeFileTreeScale({ page, project, tool, waitFor, artifactDir });
+  await exerciseNativeFileBulk({ page, project, tool, waitFor });
   assert.equal(
     (await rpc('snapshot')).sessions.length,
     0,

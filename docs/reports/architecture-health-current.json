@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-29T10:54:05.674Z",
+  "generatedAt": "2026-10-29T11:06:09.254Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,15 +12,15 @@
   },
   "summary": {
     "packages": 45,
-    "sourceFiles": 5435,
-    "testFiles": 4736,
-    "sourceLines": 1199211,
+    "sourceFiles": 5437,
+    "testFiles": 4737,
+    "sourceLines": 1199522,
     "workspaceEdges": 222,
-    "moduleEdges": 16344,
+    "moduleEdges": 16348,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 3,
-    "testsWithoutTypecheck": 95,
+    "testsWithoutTypecheck": 96,
     "testsWithMultipleTypechecks": 0,
     "testOnlyExports": 973
   },
@@ -385,8 +385,8 @@
     {
       "name": "@wrongstack/desktop-v2",
       "dir": "apps/desktop-v2",
-      "sourceFiles": 249,
-      "testFiles": 95,
+      "sourceFiles": 251,
+      "testFiles": 96,
       "workspaceDependencies": [
         "@wrongstack/contracts",
         "@wrongstack/core",
@@ -1427,6 +1427,12 @@
       },
       {
         "file": "apps/desktop-v2/tests/feature-parity.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "apps/desktop-v2/tests/file-bulk.test.ts",
         "projects": [
           "root-node"
         ]
@@ -29879,6 +29885,13 @@
         "typecheckProjects": []
       },
       {
+        "file": "apps/desktop-v2/tests/file-bulk.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
         "file": "apps/desktop-v2/tests/file-draft.test.ts",
         "runtimeProjects": [
           "root-node"
@@ -31027,8 +31040,8 @@
     },
     {
       "file": "apps/desktop-v2/src/FileWorkspace.tsx",
-      "lines": 1688,
-      "relativeImports": 19
+      "lines": 1774,
+      "relativeImports": 21
     },
     {
       "file": "apps/desktop-v2/src/KanbanTaskInspector.tsx",
@@ -31109,8 +31122,8 @@
   "hotspots": [
     {
       "file": "apps/desktop-v2/src/FileWorkspace.tsx",
-      "lines": 1688,
-      "relativeImports": 19
+      "lines": 1774,
+      "relativeImports": 21
     },
     {
       "file": "apps/desktop-v2/src/ProjectAgentRoster.tsx",

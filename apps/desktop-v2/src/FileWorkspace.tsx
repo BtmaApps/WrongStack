@@ -30,9 +30,11 @@ import { DiffPreview } from './DiffPreview';
 import type { EngineCommand, EngineSend } from './engine-operations';
 import type { EngineState } from './engine-state';
 import { entries } from './engine-values';
+import { FileBulkDialog } from './FileBulkDialog';
 import { FileContentSearch } from './FileContentSearch';
 import { FileEvidenceDrawer } from './FileEvidenceDrawer';
 import { FileTreeView } from './FileTreeView';
+import { relocatedPath } from './file-bulk';
 import { type FileDraftSnapshot, FileDraftStore } from './file-draft';
 import {
   byteSize,
@@ -441,6 +443,42 @@ export function FileWorkspace({
     );
     setAction({ kind, path });
   };
+  /** Open documents, the active file and the folder follow an item to its new path. */
+  const relocate = (path: string, nextPath: string) => {
+    setDocuments((current) =>
+      Object.fromEntries(
+        Object.entries(current).map(([p, doc]) => [relocatedPath(p, path, nextPath) ?? p, doc]),
+      ),
+    );
+    setActive((current) => relocatedPath(current, path, nextPath) ?? current);
+    setFolder((current) => relocatedPath(current, path, nextPath) ?? current);
+  };
+  const hasUnsaved = (path: string) =>
+    Object.entries(docs.current).some(
+      ([p, d]) => relocatedPath(p, path, p) !== null && d.content !== d.saved,
+    );
+  const removePath = async (path: string) => {
+    await command(
+      'files.delete',
+      { filePath: path, recursive: all.find((n) => n.path === path)?.type === 'directory' },
+      ['files.deleted'],
+    );
+    setDocuments((current) =>
+      Object.fromEntries(
+        Object.entries(current).filter(([p]) => relocatedPath(p, path, p) === null),
+      ),
+    );
+    setActive((current) => (relocatedPath(current, path, '') === null ? current : ''));
+    setFolder((current) =>
+      relocatedPath(current, path, '') === null ? current : parentPath(path),
+    );
+  };
+  const movePath = async (path: string, destination: string) => {
+    const result = await command('files.move', { srcPath: path, destDir: destination }, [
+      'files.moved',
+    ]);
+    relocate(path, String(result['destPath'] ?? result['newPath'] ?? ''));
+  };
   const confirm = () =>
     run(async () => {
       if (!action) return;
@@ -456,11 +494,7 @@ export function FileWorkspace({
         }
       }
       if (action.kind === 'rename' || action.kind === 'move') {
-        if (
-          Object.entries(docs.current).some(
-            ([p, d]) => (p === path || p.startsWith(`${path}/`)) && d.content !== d.saved,
-          )
-        )
+        if (hasUnsaved(path))
           throw new Error('Save or close edited files before moving this item.');
         const result =
           action.kind === 'rename'
@@ -470,37 +504,10 @@ export function FileWorkspace({
             : await command('files.move', { srcPath: path, destDir: value.trim() || '.' }, [
                 'files.moved',
               ]);
-        const nextPath = String(result['newPath'] ?? result['destPath'] ?? value.trim());
-        setDocuments((current) =>
-          Object.fromEntries(
-            Object.entries(current).map(([p, doc]) => [
-              p === path
-                ? nextPath
-                : p.startsWith(`${path}/`)
-                  ? nextPath + p.slice(path.length)
-                  : p,
-              doc,
-            ]),
-          ),
-        );
-        if (active === path || active.startsWith(`${path}/`))
-          setActive(nextPath + active.slice(path.length));
-        if (folder === path || folder.startsWith(`${path}/`))
-          setFolder(nextPath + folder.slice(path.length));
+        relocate(path, String(result['newPath'] ?? result['destPath'] ?? value.trim()));
       }
       if (action.kind === 'delete') {
-        await command(
-          'files.delete',
-          { filePath: path, recursive: all.find((n) => n.path === path)?.type === 'directory' },
-          ['files.deleted'],
-        );
-        setDocuments((current) =>
-          Object.fromEntries(
-            Object.entries(current).filter(([p]) => p !== path && !p.startsWith(`${path}/`)),
-          ),
-        );
-        if (active === path || active.startsWith(`${path}/`)) setActive('');
-        if (folder === path || folder.startsWith(`${path}/`)) setFolder(parentPath(path));
+        await removePath(path);
       }
       if (action.kind === 'discard') {
         await command('git.discard', { paths: [asGitPath(path)] }, ['git.action_result']);
@@ -583,8 +590,18 @@ export function FileWorkspace({
   const [selected, setSelected] = useState('');
   // Large folders list a page at a time; the tree beside them is virtualized.
   const [folderLimit, setFolderLimit] = useState(FOLDER_PAGE);
+  // Items picked for a bulk move or delete in the folder listing.
+  const [picked, setPicked] = useState<string[]>([]);
+  const [selecting, setSelecting] = useState(false);
+  const [bulk, setBulk] = useState<'move' | 'delete' | null>(null);
   // A new folder, search or sort starts again at the first page.
   useEffect(() => setFolderLimit(FOLDER_PAGE), [folder, search, sort]);
+  // Leaving the folder or search drops a selection the listing no longer shows.
+  useEffect(() => setPicked([]), [folder, search]);
+  const togglePick = (path: string) =>
+    setPicked((current) =>
+      current.includes(path) ? current.filter((item) => item !== path) : [...current, path],
+    );
   const referenceSelection = (quote: boolean) => {
     const root = contentElement.current;
     if (!onReference || !document || !active || !root) return;
@@ -749,6 +766,24 @@ export function FileWorkspace({
             </button>
           ))}
         </details>
+      )}
+      {bulk && (
+        <FileBulkDialog
+          kind={bulk}
+          paths={picked}
+          initialTarget={folder}
+          isDirectory={(path) => all.find((node) => node.path === path)?.type === 'directory'}
+          hasUnsaved={hasUnsaved}
+          move={movePath}
+          remove={removePath}
+          onClose={() => setBulk(null)}
+          onFinished={(summary, changed) => {
+            setBulk(null);
+            setPicked((current) => current.filter((path) => !changed.includes(path)));
+            setNotice(summary);
+            void refresh();
+          }}
+        />
       )}
       {draftConflict && (
         <Modal
@@ -1253,6 +1288,17 @@ export function FileWorkspace({
                       </button>
                     </span>
                   ))}
+                <button
+                  type="button"
+                  className="button secondary small"
+                  aria-pressed={selecting}
+                  onClick={() => {
+                    setSelecting(!selecting);
+                    if (selecting) setPicked([]);
+                  }}
+                >
+                  {selecting ? 'Done selecting' : 'Select items'}
+                </button>
                 <select
                   aria-label="Sort files"
                   value={sort}
@@ -1263,6 +1309,34 @@ export function FileWorkspace({
                 </select>
               </div>
               <div className="file-folder-list">
+                {picked.length > 0 && (
+                  <div className="file-bulk-bar" role="toolbar" aria-label="Selected items">
+                    <span>{picked.length} selected</span>
+                    <button
+                      type="button"
+                      className="button secondary small"
+                      disabled={busy}
+                      onClick={() => setBulk('move')}
+                    >
+                      Move selected…
+                    </button>
+                    <button
+                      type="button"
+                      className="button secondary small danger"
+                      disabled={busy}
+                      onClick={() => setBulk('delete')}
+                    >
+                      Delete selected…
+                    </button>
+                    <button
+                      type="button"
+                      className="button secondary small"
+                      onClick={() => setPicked([])}
+                    >
+                      Clear selection
+                    </button>
+                  </div>
+                )}
                 <div className="file-folder-list-heading">
                   <span>Name</span>
                   <span>Type</span>
@@ -1281,10 +1355,16 @@ export function FileWorkspace({
                 {visible.slice(0, folderLimit).map((node) => (
                   <button
                     type="button"
-                    className="file-folder-row"
+                    className={`file-folder-row${picked.includes(node.path) ? ' picked' : ''}`}
                     key={node.path}
-                    aria-label={`Open ${node.path}`}
-                    onClick={() => {
+                    aria-label={`${selecting ? 'Select' : 'Open'} ${node.path}`}
+                    {...(selecting ? { 'aria-pressed': picked.includes(node.path) } : {})}
+                    onClick={(event) => {
+                      // Ctrl/Cmd-click picks items without entering selection mode.
+                      if (selecting || event.ctrlKey || event.metaKey) {
+                        togglePick(node.path);
+                        return;
+                      }
                       setSelected(node.path);
                       if (node.type === 'directory') {
                         setFolder(node.path);
@@ -1301,7 +1381,13 @@ export function FileWorkspace({
                     }}
                   >
                     <span>
-                      {node.type === 'directory' ? <Folder size={17} /> : <FileCode2 size={17} />}
+                      {picked.includes(node.path) ? (
+                        <Check size={17} aria-hidden="true" />
+                      ) : node.type === 'directory' ? (
+                        <Folder size={17} />
+                      ) : (
+                        <FileCode2 size={17} />
+                      )}
                       <span>
                         {node.name}
                         {search && <small>{parentPath(node.path)}</small>}
