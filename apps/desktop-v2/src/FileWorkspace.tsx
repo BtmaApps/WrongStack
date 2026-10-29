@@ -49,6 +49,7 @@ import { MergeConflictReview } from './MergeConflictReview';
 import { Modal } from './Modal';
 import { useReviewNotes } from './useReviewNotes';
 import './file-draft.css';
+import { saveFileVersion } from './file-save';
 import { fileDraftStorage, request } from './platform';
 
 interface Document {
@@ -90,6 +91,8 @@ type Action = {
     | 'comment';
   path: string;
   line?: number;
+  /** Disk version shown in a conflict review; overwrite replaces only this version. */
+  sha256?: string;
 };
 export function FileWorkspace({
   command,
@@ -359,7 +362,8 @@ export function FileWorkspace({
     if ('content' in patch || 'saved' in patch)
       void persistDocument(path, document).catch((error: unknown) => setError(String(error)));
   };
-  const save = async (path: string, overwrite = false) => {
+  /** `overwrite` is the hash of the disk version the user chose to replace. */
+  const save = async (path: string, overwrite?: string) => {
     const document = docs.current[path];
     if (!document) return;
     try {
@@ -369,17 +373,17 @@ export function FileWorkspace({
         setDraftConflict({ path, snapshot: await draftStore.inspect(path) });
       throw error;
     }
-    const latest = await command('files.read', { filePath: path }, ['files.read']);
-    if (latest['binary'] || latest['tooLarge'])
-      throw new Error('This file can no longer be saved as text. Your draft is still open.');
-    if (!overwrite && latest['content'] !== document.saved) {
-      setAction({ kind: 'conflict', path });
+    const outcome = await saveFileVersion(
+      command,
+      path,
+      document.content,
+      document.saved,
+      overwrite,
+    );
+    if (outcome.kind === 'conflict') {
+      setAction({ kind: 'conflict', path, ...(outcome.sha256 ? { sha256: outcome.sha256 } : {}) });
       return;
     }
-    await command('files.write', { filePath: path, content: document.content }, ['files.written']);
-    const result = await command('files.read', { filePath: path }, ['files.read']);
-    if (result['content'] !== document.content)
-      throw new Error('The saved file differs from your draft. Reload before continuing.');
     updateDocument(path, { saved: document.content });
     setNotice(`Saved ${fileName(path)}.`);
     await refresh();
@@ -1437,8 +1441,14 @@ export function FileWorkspace({
             if (action.kind === 'close') close(action.path, true);
             else if (action.kind === 'conflict')
               void run(async () => {
-                await save(action.path, true);
-                setAction(null);
+                if (!action.sha256)
+                  throw new Error(
+                    'The file was removed from disk. Copy your draft or reload before continuing.',
+                  );
+                const reviewed = action;
+                await save(action.path, action.sha256);
+                // A newer disk version replaces this review instead of closing it.
+                setAction((current) => (current === reviewed ? null : current));
               });
           }}
           onSave={() =>
@@ -1671,7 +1681,8 @@ function FileActionDialog({
         ) : action.kind === 'conflict' ? (
           <p>
             Another process changed this file since you opened it. Your draft is still available.
-            Reload the disk version or explicitly overwrite it.
+            Reload the disk version or explicitly overwrite it. Overwrite replaces only the version
+            on disk now; if it changes again, you will be asked again.
           </p>
         ) : (
           <label htmlFor="file-action-value">

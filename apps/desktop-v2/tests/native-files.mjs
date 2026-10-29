@@ -3,6 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { access, readFile, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { exerciseNativeConflictVariants } from './native-conflict-variants.mjs';
+import { exerciseVersionBoundSave } from './native-file-save.mjs';
 export async function exerciseNativeFiles({ page, waitFor, artifactDir, project, rpc }) {
   const tool = (name) =>
     page
@@ -254,6 +255,7 @@ export async function exerciseNativeFiles({ page, waitFor, artifactDir, project,
     async () => !(await page.getByRole('button', { name: 'Save', exact: true }).isEnabled()),
     'Resolved save acknowledgement',
   );
+  await exerciseVersionBoundSave({ page, editor, waitFor, project, rpc, artifactDir });
   await page.getByRole('button', { name: 'File actions', exact: true }).click();
   await page
     .locator('.file-context-menu')

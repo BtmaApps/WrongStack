@@ -2729,3 +2729,38 @@ Verification on the shared working snapshot:
 - Not covered: profile rename/move migration, future draft-format migration, existence checks for
   other profiles, actual concurrent multi-window UI stress, full repository release/coverage,
   hosted CI and installed-app replacement.
+## Version-bound file saves (2026-10-29)
+
+- Engine contract: `files.read` now reports `sha256` of the raw bytes read (byte-order marks and
+  CRLF included). `files.write` accepts optional `expectedSha256`; inside a per-resolved-path
+  in-process queue the engine re-hashes the current bytes immediately before its atomic temp+rename
+  and writes only on a match. A mismatch replies `success: false`, `conflict: true`,
+  `currentSha256` (null when the file was removed) and a `FILE_CONFLICT` error; nothing is written
+  or recreated. Unconditional writes keep working and are queued with conditional ones. Payload
+  types are now validated (`filePath`/`content` strings, lowercase 64-hex hash).
+- Boundary: this serializes and verifies every save that goes through the engine (all windows and
+  surfaces sharing it). It is not an OS lock; an external process writing in the instant between the
+  engine check and the rename can still be replaced. Agent write tools do not take this queue.
+- Desktop `saveFileVersion` binds a normal save to the disk version whose text equals the editor
+  baseline, and an explicit overwrite to the exact version shown in the conflict review. A newer
+  disk edit during review opens a fresh review instead of being replaced; a removed file cannot be
+  silently recreated from the review. Engines that do not report a hash fail closed with the draft
+  retained.
+- Checks: backend proof `tests/file-write-conditional.test.ts` (raw-byte hash with BOM/CRLF,
+  matched write, stale refusal without writing, removed-file conflict, three concurrent saves bound
+  to one version with exactly one winner, malformed payloads). Mutation check: removing the queue
+  turns the race case RED (3 winners); restored GREEN. Full `packages/webui-server` with 2 workers:
+  **3343 tests / 342 files PASS**; typecheck **318 PASS**. Desktop **382 tests / 82 files PASS**
+  (new `file-save.test.ts`: baseline save, pre-write conflict, check-to-write race, reviewed-version
+  overwrite, legacy engine refusal); typecheck **234 PASS**; focused Biome **7 files PASS**.
+- Native `--files` on portable identity `93623092f94f-f3cd0165f635`, bundled engine/checksums
+  verified: **exit 0 / PASS**, including the new scenario: a second external edit while the
+  conflict review is open is not overwritten and is reviewed again; the reviewed overwrite then
+  reaches disk; a direct engine write with a stale hash is refused with the current disk hash and
+  leaves the file intact; a matched engine write succeeds and the stale editor baseline is
+  reconciled through the conflict review. All existing file, hunk, merge and conflict-variant
+  scenarios passed. Inspected `files/native-file-version-conflict.png`. Logs:
+  `.temp_files/desktop-v2-native/file-save-*.log` / `.err`.
+- Not covered: OS-level exclusion against external writers, large-tree/large-file acceptance,
+  symlink-target saves beyond the existing containment tests, actual concurrent multi-window UI
+  stress, full repository release/coverage, hosted CI and installed-app replacement.

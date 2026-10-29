@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-29T01:56:56.842Z",
+  "generatedAt": "2026-10-29T02:13:36.378Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,15 +12,15 @@
   },
   "summary": {
     "packages": 45,
-    "sourceFiles": 5395,
-    "testFiles": 4718,
-    "sourceLines": 1195624,
+    "sourceFiles": 5396,
+    "testFiles": 4721,
+    "sourceLines": 1195664,
     "workspaceEdges": 222,
-    "moduleEdges": 16217,
+    "moduleEdges": 16219,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
-    "testsWithoutTypecheck": 81,
+    "testsWithoutTypecheck": 82,
     "testsWithMultipleTypechecks": 0,
     "testOnlyExports": 970
   },
@@ -211,7 +211,7 @@
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
       "sourceFiles": 676,
-      "testFiles": 674,
+      "testFiles": 675,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/agent-catalog",
@@ -262,7 +262,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 674
+          "testFiles": 675
         }
       ]
     },
@@ -387,8 +387,8 @@
     {
       "name": "@wrongstack/desktop-v2",
       "dir": "apps/desktop-v2",
-      "sourceFiles": 226,
-      "testFiles": 81,
+      "sourceFiles": 227,
+      "testFiles": 82,
       "workspaceDependencies": [
         "@wrongstack/contracts",
         "@wrongstack/core",
@@ -1115,7 +1115,7 @@
       "name": "@wrongstack/webui-server",
       "dir": "packages/webui-server",
       "sourceFiles": 318,
-      "testFiles": 341,
+      "testFiles": 342,
       "workspaceDependencies": [
         "@wrongstack/agent-catalog",
         "@wrongstack/builtin-plugins",
@@ -1149,7 +1149,7 @@
         {
           "path": "packages/webui-server/tsconfig.test.json",
           "error": null,
-          "testFiles": 341
+          "testFiles": 342
         }
       ]
     },
@@ -1484,6 +1484,12 @@
       },
       {
         "file": "apps/desktop-v2/tests/file-model.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "apps/desktop-v2/tests/file-save.test.ts",
         "projects": [
           "root-node"
         ]
@@ -5222,6 +5228,12 @@
       },
       {
         "file": "packages/cli/tests/project-manifest.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/project-picker-input-chunks.test.ts",
         "projects": [
           "root-node"
         ]
@@ -24943,6 +24955,12 @@
         ]
       },
       {
+        "file": "packages/webui-server/tests/file-write-conditional.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/webui-server/tests/fleet-control-endpoints.test.ts",
         "projects": [
           "root-node"
@@ -29827,6 +29845,13 @@
         "typecheckProjects": []
       },
       {
+        "file": "apps/desktop-v2/tests/file-save.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
         "file": "apps/desktop-v2/tests/fleet-policy-model.test.ts",
         "runtimeProjects": [
           "root-node"
@@ -30874,8 +30899,8 @@
     },
     {
       "file": "apps/desktop-v2/src/FileWorkspace.tsx",
-      "lines": 1743,
-      "relativeImports": 15
+      "lines": 1754,
+      "relativeImports": 16
     },
     {
       "file": "apps/desktop-v2/src/KanbanTaskInspector.tsx",
@@ -30951,8 +30976,8 @@
   "hotspots": [
     {
       "file": "apps/desktop-v2/src/FileWorkspace.tsx",
-      "lines": 1743,
-      "relativeImports": 15
+      "lines": 1754,
+      "relativeImports": 16
     },
     {
       "file": "apps/desktop-v2/src/ProjectAgentRoster.tsx",
