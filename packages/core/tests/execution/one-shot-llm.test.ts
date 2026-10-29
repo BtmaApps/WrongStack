@@ -1059,4 +1059,64 @@ describe('OneShotOrchestrator — provider errors from another bundle', () => {
     expect(result.fromFallback).toBe(false);
     expect(fallback.complete).not.toHaveBeenCalled();
   });
+
+  it('honors vendor-level modelAvailabilitySchedule blackout rules for second-account aliases and excludes disabled/blocked configuredPrimary in resolveCandidates (F815)', async () => {
+    const cfg = makeConfig({
+      provider: 'work-claude',
+      model: 'claude-sonnet-4-5',
+      disabledModels: ['work-claude/claude-sonnet-4-5'],
+      providers: {
+        'work-claude': {
+          type: 'anthropic',
+          apiKey: 'sk-work',
+          models: ['claude-sonnet-4-5'],
+        },
+        openai: {
+          type: 'openai',
+          apiKey: 'sk-oai',
+          models: ['gpt-5', 'gpt-5-mini'],
+        },
+      },
+      fallbackProfiles: {
+        default: ['work-claude/claude-sonnet-4-5', 'openai/gpt-5'],
+      },
+      modelAvailabilitySchedule: [
+        {
+          id: 'block-anthropic-vendor',
+          provider: 'anthropic',
+          start: '00:00',
+          end: '24:00',
+          enabled: true,
+        },
+      ],
+    });
+
+    const mgr = new FallbackProfileManager(cfg);
+    expect(mgr.resolve('default')).toEqual([
+      { providerId: 'openai', model: 'gpt-5', providerSwitched: true },
+    ]);
+
+    const drifted = mgr.resolveCandidates({ providerId: 'openai', model: 'gpt-5-mini' });
+    expect(drifted.some((e) => e.providerId === 'work-claude')).toBe(false);
+
+    const openaiProvider = fakeProvider('openai', { model: 'gpt-5' });
+    const orch = new OneShotOrchestrator({
+      buildProvider: async (pid) =>
+        pid === 'work-claude'
+          ? fakeProvider('work-claude', { model: 'claude-sonnet-4-5' })
+          : openaiProvider,
+      getConfig: () => cfg,
+      fallbackProfileManager: mgr,
+    });
+
+    const res = await orch.call({
+      system: 'test',
+      userPrompt: 'hello',
+      providerId: 'work-claude',
+      model: 'claude-sonnet-4-5',
+      fallbackModels: ['openai/gpt-5'],
+    });
+    expect(res.provider).toBe('openai');
+    expect(res.fromFallback).toBe(true);
+  });
 });

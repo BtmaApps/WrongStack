@@ -67,7 +67,8 @@ export interface InstructionBundlePaths {
   /**
    * Selects the markdown file used for the system identity layer.
    * Defaults to `system.md`; `lite` reads `system-lite.md`, `pro` reads
-   * `system-pro.md` and `scout` reads `system-scout.md` from the same
+   * `system-pro.md`, `scout` reads `system-scout.md` and `quick` reads
+   * `system-quick.md` from the same
    * bundled/global/project instruction directories.
    */
   systemVariant?: SystemInstructionVariant | undefined;
@@ -119,7 +120,13 @@ export async function loadInstructionBundle(
         });
       }
     }
-    const layer = await readInstructionDir(dir, { systemFile });
+    // The project layer ships with the repository: confine it to the project
+    // (`<project>/.wrongstack/instructions` → `<project>`) so a committed
+    // symlink cannot pull a file from elsewhere on the host into the prompt.
+    const layer = await readInstructionDir(dir, {
+      systemFile,
+      ...(layerNames[index] === 'project' ? { confineTo: path.resolve(dir, '..', '..') } : {}),
+    });
     const source = layerNames[index] ?? 'bundled';
     if (layer.system?.identity !== undefined) {
       layer.system = { ...layer.system, identitySource: source };
@@ -185,6 +192,7 @@ function resolveSystemInstructionFile(paths: InstructionBundlePaths | undefined)
   if (paths?.systemVariant === 'lite') return 'system-lite.md';
   if (paths?.systemVariant === 'pro') return 'system-pro.md';
   if (paths?.systemVariant === 'scout') return 'system-scout.md';
+  if (paths?.systemVariant === 'quick') return 'system-quick.md';
   return 'system.md';
 }
 
@@ -202,13 +210,13 @@ function sanitizeSystemInstructionFile(file: string): string {
 
 async function readInstructionDir(
   dir: string,
-  options: { systemFile: string },
+  options: { systemFile: string; confineTo?: string | undefined },
 ): Promise<InstructionBundle> {
   const [json, identity, leaderAfterTask, sections] = await Promise.all([
-    readInstructionJson(path.join(dir, 'instructions.json')),
-    readOptionalText(path.join(dir, options.systemFile)),
-    readOptionalText(path.join(dir, 'leader-after-task.md')),
-    readSections(path.join(dir, 'sections')),
+    readInstructionJson(path.join(dir, 'instructions.json'), options.confineTo),
+    readOptionalText(path.join(dir, options.systemFile), options.confineTo),
+    readOptionalText(path.join(dir, 'leader-after-task.md'), options.confineTo),
+    readSections(path.join(dir, 'sections'), options.confineTo),
   ]);
   const fromMarkdown: InstructionBundle = {
     system: {
@@ -220,8 +228,14 @@ async function readInstructionDir(
   return mergeInstructionBundle(json, fromMarkdown);
 }
 
-async function readSections(root: string): Promise<Record<string, string>> {
+async function readSections(
+  root: string,
+  confineTo?: string | undefined,
+): Promise<Record<string, string>> {
   const out: Record<string, string> = {};
+  // Entries below are skipped when they are links (Dirent), but `sections`
+  // itself is followed by readdir.
+  if ((await confinedPath(root, confineTo)) === undefined) return out;
   await readSectionsInto(root, root, out);
   return out;
 }
@@ -254,10 +268,15 @@ async function readSectionsInto(
   );
 }
 
-async function readInstructionJson(file: string): Promise<InstructionBundle> {
+async function readInstructionJson(
+  file: string,
+  confineTo?: string | undefined,
+): Promise<InstructionBundle> {
   let raw: string;
   try {
-    raw = await fs.readFile(file, 'utf8');
+    const real = await confinedPath(file, confineTo);
+    if (real === undefined) return {};
+    raw = await fs.readFile(real, 'utf8');
   } catch {
     return {};
   }
@@ -303,9 +322,35 @@ function normalizeInstructionBundle(value: unknown): InstructionBundle {
   };
 }
 
-async function readOptionalText(file: string): Promise<string | undefined> {
+/**
+ * `file` itself when nothing confines it; otherwise its real path when that
+ * resolves inside `confineTo`, else undefined (missing files too).
+ */
+async function confinedPath(
+  file: string,
+  confineTo: string | undefined,
+): Promise<string | undefined> {
+  if (confineTo === undefined) return file;
   try {
-    const text = await fs.readFile(file, 'utf8');
+    const [real, root] = await Promise.all([fs.realpath(file), fs.realpath(confineTo)]);
+    const rel = path.relative(root, real);
+    if (!rel || rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel)) {
+      return undefined;
+    }
+    return real;
+  } catch {
+    return undefined;
+  }
+}
+
+async function readOptionalText(
+  file: string,
+  confineTo?: string | undefined,
+): Promise<string | undefined> {
+  try {
+    const real = await confinedPath(file, confineTo);
+    if (real === undefined) return undefined;
+    const text = await fs.readFile(real, 'utf8');
     return text.trimEnd();
   } catch {
     return undefined;

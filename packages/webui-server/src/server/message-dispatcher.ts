@@ -534,6 +534,7 @@ export function createMessageDispatcher(
       },
     },
     memory: {
+      getProjectRoot: state.getProjectRoot,
       getMemoryStore: () => deps.memoryStore,
       getConfig: state.getConfig,
       send,

@@ -27,6 +27,7 @@ import type { Middleware } from '@wrongstack/contracts/kernel/pipeline';
 import type { AgentExtension } from '@wrongstack/contracts/types/extension-points';
 import type { ToolCallPipelinePayload } from '../core/agent-types.js';
 import type { Context } from '../core/context.js';
+import { describeWriteTargets } from '../security/permission-helpers.js';
 import { detectFrontendFile } from './design-detect.js';
 import { designProjectDir } from './design-project-store.js';
 
@@ -85,11 +86,15 @@ function makeDesignGateToolCallMiddleware(): Middleware<ToolCallPipelinePayload>
         if (!name || out.result?.is_error) return out;
         const input = (out.toolUse.input ?? {}) as Record<string, unknown>;
         if (WRITE_TOOLS.has(name)) {
-          const p = typeof input.path === 'string' ? input.path : '';
-          if (!p || !detectFrontendFile(p, out.ctx.projectRoot)) return out;
+          // `replace` writes `files` and `patch` names its files in the diff
+          // (Tool.writeTargets); reading only `path` missed both.
+          const ui = describeWriteTargets(out.tool, input).filter((p) =>
+            detectFrontendFile(p, out.ctx.projectRoot),
+          );
+          if (ui.length === 0) return out;
           const state = stateOf(out.ctx);
           state.lastWriteSeq = ++state.seq;
-          if (!state.writes.includes(p)) state.writes.push(p);
+          for (const p of ui) if (!state.writes.includes(p)) state.writes.push(p);
         } else if (name === DESIGN_INSPECT_TOOL && input.action === 'inspect') {
           const counts = parseInspectCounts(String(out.result?.content ?? ''));
           const url = typeof input.url === 'string' ? input.url : undefined;

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-29T00:53:00.345Z",
+  "generatedAt": "2026-10-29T00:53:54.132Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,10 +13,10 @@
   "summary": {
     "packages": 45,
     "sourceFiles": 5393,
-    "testFiles": 4697,
-    "sourceLines": 1194021,
+    "testFiles": 4701,
+    "sourceLines": 1194213,
     "workspaceEdges": 222,
-    "moduleEdges": 16202,
+    "moduleEdges": 16205,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -363,7 +363,7 @@
       "name": "@wrongstack/core",
       "dir": "packages/core",
       "sourceFiles": 635,
-      "testFiles": 682,
+      "testFiles": 686,
       "workspaceDependencies": [
         "@wrongstack/agent-catalog",
         "@wrongstack/contracts",
@@ -380,7 +380,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 682
+          "testFiles": 686
         }
       ]
     },
@@ -8893,6 +8893,12 @@
         ]
       },
       {
+        "file": "packages/core/tests/core/instruction-symlink-confinement.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/core/tests/core/instruction-template.test.ts",
         "projects": [
           "root-node"
@@ -9523,7 +9529,19 @@
         ]
       },
       {
+        "file": "packages/core/tests/execution/design-store-symlink-confinement.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/core/tests/execution/design-tune.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/execution/design-turn-gate-write-targets.test.ts",
         "projects": [
           "root-node"
         ]
@@ -11186,6 +11204,12 @@
       },
       {
         "file": "packages/core/tests/storage/memory-graph-backend.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/storage/memory-project-agents-symlink.test.ts",
         "projects": [
           "root-node"
         ]
@@ -30701,8 +30725,8 @@
     },
     {
       "file": "packages/webui-server/src/server/completion-handlers.ts",
-      "lines": 723,
-      "relativeImports": 1
+      "lines": 737,
+      "relativeImports": 3
     },
     {
       "file": "packages/webui-server/src/server/memory-handlers.ts",
@@ -30932,6 +30956,11 @@
       "relativeImports": 14
     },
     {
+      "file": "packages/webui-server/src/server/completion-handlers.ts",
+      "lines": 737,
+      "relativeImports": 3
+    },
+    {
       "file": "apps/desktop-v2/src/ProjectSessionHistory.tsx",
       "lines": 734,
       "relativeImports": 14
@@ -30949,11 +30978,6 @@
     {
       "file": "packages/coordination/src/agent-monitor.ts",
       "lines": 724,
-      "relativeImports": 1
-    },
-    {
-      "file": "packages/webui-server/src/server/completion-handlers.ts",
-      "lines": 723,
       "relativeImports": 1
     },
     {

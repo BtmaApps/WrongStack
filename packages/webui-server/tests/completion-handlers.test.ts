@@ -378,6 +378,80 @@ describe('completion WebSocket handler', { timeout: 30_000 }, () => {
     ]);
   });
 
+  it('rejects in-project symlinks pointing outside the project root and accepts case-variant Windows paths (F845)', async () => {
+    const { handleCompletionRequest } = await import('@wrongstack/webui-server');
+    const outsideDir = path.join(
+      process.env.TEMP || '/tmp',
+      `completion-outside-${randomBytes(4).toString('hex')}`,
+    );
+    fsSync.mkdirSync(outsideDir, { recursive: true });
+    try {
+      const secretFile = path.join(outsideDir, 'secret.ts');
+      fsSync.writeFileSync(secretFile, 'export const secret = 1;\n', 'utf8');
+      const symlinkPath = path.join(tempDir, 'escape-link.ts');
+      fsSync.symlinkSync(secretFile, symlinkPath, 'file');
+
+      const lspCompletion = vi.fn(async () => []);
+      const ws = createMockWs();
+      await handleCompletionRequest(
+        ws,
+        {
+          type: 'completion.request',
+          payload: {
+            requestId: 'r-symlink',
+            filePath: 'escape-link.ts',
+            language: 'typescript',
+            lineNumber: 1,
+            column: 1,
+            prefix: 'secret',
+          },
+        },
+        { projectRoot: tempDir, lspCompletion },
+      );
+
+      expect(lspCompletion).not.toHaveBeenCalled();
+      expect(ws.sent).toEqual([
+        {
+          type: 'completion.result',
+          payload: {
+            requestId: 'r-symlink',
+            filePath: 'escape-link.ts',
+            items: [],
+            error: 'Forbidden',
+          },
+        },
+      ]);
+
+      if (process.platform === 'win32') {
+        const insideFile = path.join(tempDir, 'inside.ts');
+        fsSync.writeFileSync(insideFile, 'const x = 1;\n', 'utf8');
+        const toggledRoot =
+          tempDir[0] === tempDir[0]!.toUpperCase()
+            ? tempDir[0]!.toLowerCase() + tempDir.slice(1)
+            : tempDir[0]!.toUpperCase() + tempDir.slice(1);
+        const wsWin = createMockWs();
+        await handleCompletionRequest(
+          wsWin,
+          {
+            type: 'completion.request',
+            payload: {
+              requestId: 'r-win-case',
+              filePath: path.join(toggledRoot, 'inside.ts'),
+              language: 'typescript',
+              lineNumber: 1,
+              column: 1,
+              prefix: 'const',
+            },
+          },
+          { projectRoot: tempDir, lspCompletion },
+        );
+        expect((wsWin.sent[0] as { payload: { error?: string } }).payload.error).toBeUndefined();
+      }
+    } finally {
+      fsSync.rmSync(outsideDir, { recursive: true, force: true });
+    }
+  });
+
   it('never splits a surrogate pair when the prefix/suffix cap cut lands inside one', async () => {
     const { handleCompletionRequest } = await import('@wrongstack/webui-server');
     const complete = vi.fn(async (_req: unknown) => ({

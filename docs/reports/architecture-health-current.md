@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-29T00:53:00.345Z
+**Generated:** 2026-10-29T00:53:54.132Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,10 +9,10 @@
 |---|---:|
 | Workspace packages | 45 |
 | Production source files | 5393 |
-| Production source lines | 1194021 |
-| Test files | 4697 |
+| Production source lines | 1194213 |
+| Test files | 4701 |
 | Workspace dependency edges | 222 |
-| Relative module edges | 16202 |
+| Relative module edges | 16205 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 5 |
@@ -37,7 +37,7 @@
 | @wrongstack/codebase-index-mcp | 6 | 6 | @wrongstack/contracts, @wrongstack/core, @wrongstack/mcp, @wrongstack/tools |
 | @wrongstack/contracts | 126 | 4 | @wrongstack/kanban, @wrongstack/primitives |
 | @wrongstack/coordination | 190 | 183 | @wrongstack/agent-catalog, @wrongstack/contracts, @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
-| @wrongstack/core | 635 | 682 | @wrongstack/agent-catalog, @wrongstack/contracts, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
+| @wrongstack/core | 635 | 686 | @wrongstack/agent-catalog, @wrongstack/contracts, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/desktop-v2 | 224 | 80 | @wrongstack/contracts, @wrongstack/core, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/goal | 22 | 22 | @wrongstack/contracts, @wrongstack/core, @wrongstack/worktree |
 | @wrongstack/governance | 45 | 37 | @wrongstack/persistence |
@@ -116,11 +116,11 @@ None.
 | 743 | `apps/desktop-v2/src/KanbanTaskInspector.tsx` |
 | 739 | `apps/desktop-v2/src/ProjectDesignStudio.tsx` |
 | 737 | `packages/coordination/src/sqlite-mailbox.ts` |
+| 737 | `packages/webui-server/src/server/completion-handlers.ts` |
 | 734 | `apps/desktop-v2/src/ProjectSessionHistory.tsx` |
 | 733 | `packages/vibeui/src/components/provider-manager.tsx` |
 | 725 | `packages/coordination/src/multi-agent-coordinator.ts` |
 | 724 | `packages/coordination/src/agent-monitor.ts` |
-| 723 | `packages/webui-server/src/server/completion-handlers.ts` |
 | 722 | `apps/desktop-v2/src/ProjectMailbox.tsx` |
 | 720 | `packages/webui/src/components/MemoryManager/useMemoryManagerState.ts` |
 | 715 | `packages/plugins/src/audit/index.ts` |

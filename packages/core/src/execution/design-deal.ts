@@ -188,7 +188,9 @@ export async function ensureDesignDeal(
     stack: opts?.stack,
     query: opts?.query,
   });
-  const deal: DesignDeal = { seed, kits: picked.map((e) => e.id), excluded };
+  const kits = picked.map((e) => e.id);
+  // A small catalogue falls back to the full pool; a kit dealt anyway was not left out.
+  const deal: DesignDeal = { seed, kits, excluded: excluded.filter((id) => !kits.includes(id)) };
   ctx.meta[DEAL_KEY] = deal;
   return { deal, entries: picked };
 }

@@ -287,6 +287,33 @@ export class FileMemoryBackend implements MemoryBackend {
     return filePath || this.files[scope];
   }
 
+  /**
+   * `project-agents` is `<project>/.wrongstack/AGENTS.md`: a repository path,
+   * so a committed symlink there can point anywhere. `fs.open(…, 'a+')` and
+   * `readFile` follow it — an approved `remember` appended to the link's
+   * target (a shell rc file, say) and its `- ` lines were read as memory. The
+   * file may be absent or a regular file; a link must resolve inside the
+   * project. Other scopes are WrongStack's own paths.
+   */
+  private async insideProject(scope: MemoryScope, file: string): Promise<boolean> {
+    if (scope !== 'project-agents') return true;
+    let link: boolean;
+    try {
+      link = (await fs.lstat(file)).isSymbolicLink();
+    } catch {
+      return true; // absent: created as a regular file
+    }
+    if (!link) return true;
+    try {
+      const root = path.dirname(path.dirname(file));
+      const [real, realRoot] = await Promise.all([fs.realpath(file), fs.realpath(root)]);
+      const rel = path.relative(realRoot, real);
+      return !(!rel || rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel));
+    } catch {
+      return false; // dangling link: opening it would create the target
+    }
+  }
+
   private async getMtime(file: string): Promise<number> {
     try {
       const stat = await fs.stat(file);
@@ -358,6 +385,9 @@ export class FileMemoryBackend implements MemoryBackend {
     // append only the new line; inspect one trailing byte solely to preserve a
     // valid line boundary for hand-edited files that lack a final newline.
     await withFileLock(file, async () => {
+      if (!(await this.insideProject(scope, file))) {
+        throw new Error(`memory: ${file} links outside the project; refusing to write to it`);
+      }
       // WS-035: memory notes are user content; create owner-only rather than
       // inheriting the umask default of 0644.
       const handle = await fs.open(file, 'a+', SECRET_FILE_MODE);
@@ -385,6 +415,7 @@ export class FileMemoryBackend implements MemoryBackend {
   async forget(scope: MemoryScope, query: string, filePath: string): Promise<number> {
     const file = this.resolveFile(filePath, scope);
     return withFileLock(file, async () => {
+      if (!(await this.insideProject(scope, file))) return 0;
       let existing: string;
       try {
         existing = await fs.readFile(file, 'utf8');
@@ -425,6 +456,7 @@ export class FileMemoryBackend implements MemoryBackend {
 
   async readAll(scope: MemoryScope, filePath: string): Promise<string> {
     const file = this.resolveFile(filePath, scope);
+    if (!(await this.insideProject(scope, file))) return '';
     try {
       return await fs.readFile(file, 'utf8');
     } catch {
@@ -457,6 +489,7 @@ export class FileMemoryBackend implements MemoryBackend {
 
   async consolidate(scope: MemoryScope, filePath: string): Promise<number> {
     const file = this.resolveFile(filePath, scope);
+    if (!(await this.insideProject(scope, file))) return 0;
     let existing: string;
     try {
       existing = await fs.readFile(file, 'utf8');

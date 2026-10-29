@@ -42,18 +42,44 @@ interface InstructionFile {
   mtimeMs: number;
 }
 
-async function readInstructionFile(dir: string): Promise<InstructionFile | undefined> {
+async function readInstructionFile(
+  dir: string,
+  projectRoot: string,
+): Promise<InstructionFile | undefined> {
   for (const name of INSTRUCTION_FILE_NAMES) {
     const file = path.join(dir, name);
     try {
       const stat = await fs.stat(file);
       if (!stat.isFile()) continue;
-      return { file, text: await fs.readFile(file, 'utf8'), mtimeMs: stat.mtimeMs };
+      const real = await realPathInsideProject(file, projectRoot);
+      if (!real) continue;
+      return { file, text: await fs.readFile(real, 'utf8'), mtimeMs: stat.mtimeMs };
     } catch {
       // absent here — try the next name
     }
   }
   return undefined;
+}
+
+/**
+ * The file's real path when it resolves inside the project, else undefined.
+ *
+ * `stat`/`readFile` follow symlinks, and a cloned repo can commit
+ * `AGENTS.md -> ~/.aws/credentials`: its target went into the system prompt
+ * (root) or the context (subdirectory) as "instructions" — read with no tool
+ * call, past the realpath containment every file tool applies. A link to a
+ * file inside the project (`CLAUDE.md -> AGENTS.md`) still works.
+ */
+async function realPathInsideProject(
+  file: string,
+  projectRoot: string,
+): Promise<string | undefined> {
+  const [real, realRoot] = await Promise.all([fs.realpath(file), fs.realpath(projectRoot)]);
+  const rel = path.relative(realRoot, real);
+  if (!rel || rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel)) {
+    return undefined;
+  }
+  return real;
 }
 
 /** Apply the user's `limits.projectInstructionsChars`, if any. */
@@ -98,7 +124,10 @@ export class RootInstructionsCache {
     for (const name of INSTRUCTION_FILE_NAMES) {
       const file = path.join(projectRoot, name);
       const stat = await fs.stat(file).catch(() => undefined);
-      if (stat?.isFile()) {
+      if (
+        stat?.isFile() &&
+        (await realPathInsideProject(file, projectRoot).catch(() => undefined))
+      ) {
         current = { file, mtimeMs: stat.mtimeMs };
         break;
       }
@@ -110,7 +139,7 @@ export class RootInstructionsCache {
     // The user's cap is part of the key so a settings change re-renders.
     const key = `${current.file}|${current.mtimeMs}|${activeLimits().projectInstructionsChars ?? ''}`;
     if (this.cached?.key === key) return this.cached.text;
-    const file = await readInstructionFile(projectRoot);
+    const file = await readInstructionFile(projectRoot, projectRoot);
     const text = file ? renderRoot(file, projectRoot) : '';
     this.cached = { key, text };
     return text;
@@ -247,7 +276,7 @@ async function collectDirectoryInstructions(
 
   const blocks: string[] = [];
   for (const dir of dirs.reverse()) {
-    const file = await readInstructionFile(dir);
+    const file = await readInstructionFile(dir, root);
     if (!file) continue;
     const hash = createHash('sha1').update(file.text).digest('hex');
     const previous = delivered.get(file.file);

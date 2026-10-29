@@ -40,6 +40,7 @@ import { ensureDesignDeal, renderDesignDeal } from './design-deal.js';
 import { getDesignKitLoader } from './design-kit-loader.js';
 import {
   applyTokenOverrides,
+  insideDesignProject,
   loadActiveKit,
   loadCapturedTokens,
   loadProjectDesignRules,
@@ -476,6 +477,8 @@ async function readExcerpt(
   try {
     const fs = await import('node:fs/promises');
     const path = await import('node:path');
+    // A committed symlink must not put a host file into the system prompt.
+    if (!(await insideDesignProject(projectRoot, path.join(projectRoot, rel)))) return '';
     const file = await fs.open(path.join(projectRoot, rel), 'r');
     try {
       // Bound both IO and prompt size; the full file remains available via read.

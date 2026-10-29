@@ -389,7 +389,10 @@ export async function resolveMaterializeTarget(
   const fs = await import('node:fs/promises');
   const path = await import('node:path');
 
-  const resolveReal = async (p: string): Promise<string> => {
+  const resolveReal = async (p: string, depth = 0): Promise<string> => {
+    if (depth > 16) {
+      throw new Error(`design: materialize path "${resultPath}" would escape the project root`);
+    }
     const resolved = path.resolve(p);
     let probe = resolved;
     const missing: string[] = [];
@@ -397,7 +400,17 @@ export async function resolveMaterializeTarget(
       try {
         return path.resolve(await fs.realpath(probe), ...missing);
       } catch (err) {
-        if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+        const code = (err as NodeJS.ErrnoException).code;
+        if (code === 'ELOOP') {
+          throw new Error(`design: materialize path "${resultPath}" would escape the project root`);
+        }
+        if (code === 'ENOENT') {
+          const stat = await fs.lstat(probe).catch(() => undefined);
+          if (stat?.isSymbolicLink()) {
+            const linkTarget = await fs.readlink(probe);
+            const nextTarget = path.resolve(path.dirname(probe), linkTarget, ...missing);
+            return resolveReal(nextTarget, depth + 1);
+          }
           const parent = path.dirname(probe);
           if (parent === probe) return resolved;
           missing.unshift(path.basename(probe));
@@ -413,8 +426,7 @@ export async function resolveMaterializeTarget(
   const absResolved = path.isAbsolute(resultPath)
     ? path.resolve(resultPath)
     : path.resolve(path.join(projectRoot, resultPath));
-  const absParent = await resolveReal(path.dirname(absResolved));
-  const abs = path.join(absParent, path.basename(absResolved));
+  const abs = await resolveReal(absResolved);
   const rel = path.relative(root, abs);
   // Canonical escape test: `..hidden` is a legal in-root first segment.
   if (rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel)) {

@@ -11,6 +11,8 @@ import type { Provider, Request, Tool } from '@wrongstack/contracts/types';
 import type { Context } from '@wrongstack/core/agent';
 import { type SearchResult, searchCodebaseIndex } from '@wrongstack/tools/codebase-index/index';
 import type { WebSocket } from 'ws';
+import { resolveFileInsideProject } from './file-handler-helpers.js';
+import { isPathInside } from './path-containment.js';
 import { errMessage, send } from './ws-utils.js';
 
 export type CompletionItemKind =
@@ -162,7 +164,7 @@ export async function handleCompletionRequest(
   const payload = parsed.payload;
   const projectRoot = path.resolve(opts.projectRoot);
   const resolved = path.resolve(projectRoot, payload.filePath);
-  if (!isInside(projectRoot, resolved)) {
+  if (!isPathInside(projectRoot, resolved)) {
     send(ws, {
       type: 'completion.result',
       payload: {
@@ -173,6 +175,22 @@ export async function handleCompletionRequest(
       },
     });
     return;
+  }
+  try {
+    await resolveFileInsideProject(projectRoot, payload.filePath);
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException)?.code !== 'ENOENT') {
+      send(ws, {
+        type: 'completion.result',
+        payload: {
+          requestId: payload.requestId,
+          filePath: payload.filePath,
+          items: [],
+          error: 'Forbidden',
+        },
+      });
+      return;
+    }
   }
 
   const prefix = tail(payload.prefix, MAX_PREFIX_CHARS);
@@ -715,8 +733,4 @@ function head(value: string, max: number): string {
     end -= 1;
   }
   return value.slice(0, end);
-}
-
-function isInside(root: string, target: string): boolean {
-  return target === root || target.startsWith(root + path.sep);
 }

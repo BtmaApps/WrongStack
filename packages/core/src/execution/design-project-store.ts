@@ -27,11 +27,50 @@ export function designProjectDir(projectRoot: string): string {
 
 const RULE_FILES = ['rules.md', 'RULES.md', 'design.md'];
 
+/**
+ * True when `file` (or, while it is absent, its directory) resolves inside the
+ * project. `.design/` is self-ignored only when WrongStack creates it: a cloned
+ * repo can commit it — and `PRODUCT.md` — as symlinks. Followed, a link put any
+ * host file into the system prompt (rules, brief) and a kit choice overwrote
+ * the target of `active.json`. A dangling link is refused: writing it would
+ * create its target.
+ */
+export async function insideDesignProject(projectRoot: string, file: string): Promise<boolean> {
+  const inside = (real: string, root: string): boolean => {
+    const rel = path.relative(root, real);
+    return !(rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel));
+  };
+  try {
+    const root = await fs.realpath(projectRoot);
+    try {
+      return inside(await fs.realpath(file), root);
+    } catch {
+      const isLink = await fs
+        .lstat(file)
+        .then((st) => st.isSymbolicLink())
+        .catch(() => false);
+      if (isLink) return false;
+      const dir = await fs.realpath(path.dirname(file)).catch(() => undefined);
+      return dir === undefined || inside(dir, root);
+    }
+  } catch {
+    return false;
+  }
+}
+
+async function assertInsideDesignProject(projectRoot: string, file: string): Promise<void> {
+  if (!(await insideDesignProject(projectRoot, file))) {
+    throw new Error(`design: ${file} links outside the project; not written`);
+  }
+}
+
 /** Read current rules, including files created or revised during this session. */
 export async function loadProjectDesignRules(projectRoot: string): Promise<string | undefined> {
   for (const name of RULE_FILES) {
     try {
-      const txt = await fs.readFile(path.join(designProjectDir(projectRoot), name), 'utf8');
+      const file = path.join(designProjectDir(projectRoot), name);
+      if (!(await insideDesignProject(projectRoot, file))) continue;
+      const txt = await fs.readFile(file, 'utf8');
       if (txt.trim()) {
         return txt.trim();
       }
@@ -68,7 +107,9 @@ function parseOverrides(value: unknown): DesignOverrides | undefined {
 /** Read the persisted active kit from `.design/active.json`, if any. */
 export async function loadActiveKit(projectRoot: string): Promise<PersistedActiveKit | undefined> {
   try {
-    const raw = await fs.readFile(path.join(designProjectDir(projectRoot), 'active.json'), 'utf8');
+    const file = path.join(designProjectDir(projectRoot), 'active.json');
+    if (!(await insideDesignProject(projectRoot, file))) return undefined;
+    const raw = await fs.readFile(file, 'utf8');
     const parsed = JSON.parse(raw) as { kit?: unknown; stack?: unknown; overrides?: unknown };
     if (parsed && typeof parsed.kit === 'string') {
       return {
@@ -123,7 +164,7 @@ export async function ensureDesignDir(projectRoot: string): Promise<string> {
   // any project, so design decisions never pollute the repo and we don't have
   // to edit the project's root .gitignore.
   const gi = path.join(dir, '.gitignore');
-  if (!existsSync(gi)) {
+  if (!existsSync(gi) && (await insideDesignProject(projectRoot, gi))) {
     try {
       await fs.writeFile(gi, '*\n');
     } catch {
@@ -150,7 +191,9 @@ export async function recordKitChoice(
     const dir = await ensureDesignDir(projectRoot);
     const record: Record<string, unknown> = { kit, stack: stack ?? null };
     if (overrides && Object.keys(overrides).length > 0) record.overrides = overrides;
+    await assertInsideDesignProject(projectRoot, path.join(dir, 'active.json'));
     await fs.writeFile(path.join(dir, 'active.json'), `${JSON.stringify(record, null, 2)}\n`);
+    await assertInsideDesignProject(projectRoot, path.join(dir, 'decisions.md'));
     const line = `- ${isoTime} · kit=${kit}${stack ? ` stack=${stack}` : ''} · via=${source}\n`;
     await fs.appendFile(path.join(dir, 'decisions.md'), line);
   } catch {
@@ -179,7 +222,9 @@ export async function recordOverrides(
     const dir = await ensureDesignDir(projectRoot);
     const record: Record<string, unknown> = { kit: active.kit, stack: active.stack ?? null };
     if (Object.keys(merged).length > 0) record.overrides = merged;
+    await assertInsideDesignProject(projectRoot, path.join(dir, 'active.json'));
     await fs.writeFile(path.join(dir, 'active.json'), `${JSON.stringify(record, null, 2)}\n`);
+    await assertInsideDesignProject(projectRoot, path.join(dir, 'decisions.md'));
     const keys = Object.keys(patch).join(',');
     await fs.appendFile(
       path.join(dir, 'decisions.md'),
@@ -245,6 +290,7 @@ export async function saveCapturedTokens(
     ...(captured.palettes ? { palettes: captured.palettes } : {}),
   };
   const rel = path.join(DESIGN_DIR, CAPTURED_FILE);
+  await assertInsideDesignProject(projectRoot, path.join(dir, CAPTURED_FILE));
   await fs.writeFile(path.join(dir, CAPTURED_FILE), `${JSON.stringify(record, null, 2)}\n`);
   return rel;
 }
@@ -252,7 +298,9 @@ export async function saveCapturedTokens(
 /** Read the persisted capture, if any (absent/malformed → undefined). */
 export async function loadCapturedTokens(projectRoot: string): Promise<CapturedTokens | undefined> {
   try {
-    const raw = await fs.readFile(path.join(designProjectDir(projectRoot), CAPTURED_FILE), 'utf8');
+    const file = path.join(designProjectDir(projectRoot), CAPTURED_FILE);
+    if (!(await insideDesignProject(projectRoot, file))) return undefined;
+    const raw = await fs.readFile(file, 'utf8');
     const parsed = JSON.parse(raw) as Partial<CapturedTokens>;
     if (parsed?.tokens && (parsed.tokens.light || parsed.tokens.dark)) {
       return {

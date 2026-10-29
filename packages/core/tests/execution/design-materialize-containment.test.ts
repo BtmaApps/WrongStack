@@ -81,4 +81,25 @@ describe('resolveMaterializeTarget', () => {
       await fs.rm(sibling, { recursive: true, force: true });
     }
   });
+
+  it('rejects an existing or dangling leaf symlink pointing outside the root', async () => {
+    const outsideDir = await fs.mkdtemp(path.join(os.tmpdir(), 'design-outside-dir-'));
+    try {
+      const outsideExisting = path.join(outsideDir, 'existing.css');
+      await fs.writeFile(outsideExisting, 'OUTSIDE', 'utf8');
+      const existingLink = path.join(root, 'src', 'link-existing.css');
+      const danglingLink = path.join(root, 'src', 'link-dangling.css');
+      await fs.symlink(outsideExisting, existingLink, 'file');
+      await fs.symlink(path.join(outsideDir, 'missing.css'), danglingLink, 'file');
+
+      await expect(resolveMaterializeTarget('src/link-existing.css', root)).rejects.toThrow(
+        /escape the project root/,
+      );
+      await expect(resolveMaterializeTarget('src/link-dangling.css', root)).rejects.toThrow(
+        /escape the project root/,
+      );
+    } finally {
+      await fs.rm(outsideDir, { recursive: true, force: true });
+    }
+  });
 });

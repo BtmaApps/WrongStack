@@ -95,8 +95,8 @@
       "relativeImports": 9
     },
     "packages/webui-server/src/server/completion-handlers.ts": {
-      "lines": 723,
-      "relativeImports": 1
+      "lines": 737,
+      "relativeImports": 3
     },
     "packages/webui-server/src/server/memory-handlers.ts": {
       "lines": 777,
