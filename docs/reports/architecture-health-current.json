@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-29T12:38:16.367Z",
+  "generatedAt": "2026-10-29T12:40:40.235Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -30653,71 +30653,6 @@
       "syntax": "import"
     },
     {
-      "from": "apps/desktop-v2/src/main.tsx",
-      "specifier": "./styles.css",
-      "syntax": "import"
-    },
-    {
-      "from": "apps/desktop-v2/src/main.tsx",
-      "specifier": "./chat.css",
-      "syntax": "import"
-    },
-    {
-      "from": "apps/desktop-v2/src/main.tsx",
-      "specifier": "./workspace.css",
-      "syntax": "import"
-    },
-    {
-      "from": "apps/desktop-v2/src/main.tsx",
-      "specifier": "./brand-tokens.css",
-      "syntax": "import"
-    },
-    {
-      "from": "apps/desktop-v2/src/main.tsx",
-      "specifier": "./appearance.css",
-      "syntax": "import"
-    },
-    {
-      "from": "apps/desktop-v2/src/main.tsx",
-      "specifier": "./workbench.css",
-      "syntax": "import"
-    },
-    {
-      "from": "apps/desktop-v2/src/main.tsx",
-      "specifier": "./project.css",
-      "syntax": "import"
-    },
-    {
-      "from": "apps/desktop-v2/src/main.tsx",
-      "specifier": "./files.css",
-      "syntax": "import"
-    },
-    {
-      "from": "apps/desktop-v2/src/main.tsx",
-      "specifier": "./knowledge.css",
-      "syntax": "import"
-    },
-    {
-      "from": "apps/desktop-v2/src/main.tsx",
-      "specifier": "./atlas.css",
-      "syntax": "import"
-    },
-    {
-      "from": "apps/desktop-v2/src/main.tsx",
-      "specifier": "./chronicle.css",
-      "syntax": "import"
-    },
-    {
-      "from": "apps/desktop-v2/src/main.tsx",
-      "specifier": "./git-history.css",
-      "syntax": "import"
-    },
-    {
-      "from": "apps/desktop-v2/src/main.tsx",
-      "specifier": "./skills.css",
-      "syntax": "import"
-    },
-    {
       "from": "apps/desktop-v2/src/McpConnectionEditor.tsx",
       "specifier": "./mcp-connection.css",
       "syntax": "import"
@@ -30926,6 +30861,71 @@
       "from": "apps/desktop-v2/src/WrongStackSettings.tsx",
       "specifier": "./review-policy.css",
       "syntax": "import"
+    },
+    {
+      "from": "apps/desktop-v2/src/main.tsx",
+      "specifier": "./styles.css",
+      "syntax": "import"
+    },
+    {
+      "from": "apps/desktop-v2/src/main.tsx",
+      "specifier": "./chat.css",
+      "syntax": "import"
+    },
+    {
+      "from": "apps/desktop-v2/src/main.tsx",
+      "specifier": "./workspace.css",
+      "syntax": "import"
+    },
+    {
+      "from": "apps/desktop-v2/src/main.tsx",
+      "specifier": "./brand-tokens.css",
+      "syntax": "import"
+    },
+    {
+      "from": "apps/desktop-v2/src/main.tsx",
+      "specifier": "./appearance.css",
+      "syntax": "import"
+    },
+    {
+      "from": "apps/desktop-v2/src/main.tsx",
+      "specifier": "./workbench.css",
+      "syntax": "import"
+    },
+    {
+      "from": "apps/desktop-v2/src/main.tsx",
+      "specifier": "./project.css",
+      "syntax": "import"
+    },
+    {
+      "from": "apps/desktop-v2/src/main.tsx",
+      "specifier": "./files.css",
+      "syntax": "import"
+    },
+    {
+      "from": "apps/desktop-v2/src/main.tsx",
+      "specifier": "./knowledge.css",
+      "syntax": "import"
+    },
+    {
+      "from": "apps/desktop-v2/src/main.tsx",
+      "specifier": "./atlas.css",
+      "syntax": "import"
+    },
+    {
+      "from": "apps/desktop-v2/src/main.tsx",
+      "specifier": "./chronicle.css",
+      "syntax": "import"
+    },
+    {
+      "from": "apps/desktop-v2/src/main.tsx",
+      "specifier": "./git-history.css",
+      "syntax": "import"
+    },
+    {
+      "from": "apps/desktop-v2/src/main.tsx",
+      "specifier": "./skills.css",
+      "syntax": "import"
     }
   ],
   "selfImports": [],
@@ -31052,14 +31052,14 @@
       "relativeImports": 8
     },
     {
-      "file": "packages/webui/src/components/codemap-model.ts",
-      "lines": 1098,
-      "relativeImports": 0
-    },
-    {
       "file": "packages/webui/src/components/MemoryManager/useMemoryManagerState.ts",
       "lines": 720,
       "relativeImports": 9
+    },
+    {
+      "file": "packages/webui/src/components/codemap-model.ts",
+      "lines": 1098,
+      "relativeImports": 0
     },
     {
       "file": "packages/webui-server/src/server/completion-handlers.ts",
