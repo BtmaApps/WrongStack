@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 /** Project-owned catalogs and session-owned context, exercised through the actual native UI. */
@@ -352,6 +353,55 @@ export async function exerciseNativeComposerResources({
   await dialog
     .getByRole('textbox', { name: 'Search prompt journal', exact: true })
     .fill('[native-composer-command]');
+  // The month filter narrows the engine read; another month shows nothing.
+  const monthInput = dialog.getByLabel('Journal month', { exact: true });
+  await monthInput.fill(new Date().toISOString().slice(0, 7));
+  await dialog.locator('.prompt-journal-list details').first().waitFor();
+  await monthInput.fill('2000-01');
+  await dialog.getByRole('heading', { name: 'No matching prompts yet.', exact: true }).waitFor();
+  await monthInput.fill('');
+  await dialog.locator('.prompt-journal-list details').first().waitFor();
+  // Visible entries export as real files: JSONL as returned, Markdown with fenced text.
+  const journalCdp = await page.context().newCDPSession(page);
+  try {
+    await journalCdp.send('Page.setDownloadBehavior', {
+      behavior: 'allow',
+      downloadPath: artifactDir,
+    });
+    const before = new Set(await readdir(artifactDir));
+    const exported = async (extension) =>
+      waitFor(
+        async () => {
+          const file = (await readdir(artifactDir)).find(
+            (name) =>
+              !before.has(name) &&
+              name.startsWith('wrongstack-prompt-journal-') &&
+              name.endsWith(extension),
+          );
+          return file ? readFile(join(artifactDir, file), 'utf8') : null;
+        },
+        `Prompt journal ${extension} download`,
+        15000,
+      );
+    await dialog.getByRole('button', { name: 'Export JSONL', exact: true }).click();
+    const lines = (await exported('.jsonl'))
+      .trimEnd()
+      .split('\n')
+      .map((line) => JSON.parse(line));
+    assert.ok(lines.length > 0);
+    assert.ok(
+      lines.every((row) => row.sessionId === identity.sessionId),
+      'The session-scoped export contains only this session',
+    );
+    assert.ok(lines.some((row) => row.content.includes('[native-composer-command]')));
+    await dialog.getByRole('button', { name: 'Export Markdown', exact: true }).click();
+    const markdown = await exported('.md');
+    assert.match(markdown, /^# WrongStack prompt journal/);
+    assert.match(markdown, /```text\n[^\n]*\[native-composer-command\]/);
+  } finally {
+    await journalCdp.send('Page.setDownloadBehavior', { behavior: 'default' });
+    await journalCdp.detach();
+  }
   const entry = dialog.locator('.prompt-journal-list details').first();
   await entry.locator('summary').click();
   await page.screenshot({ path: join(artifactDir, 'native-prompt-journal.png'), fullPage: true });

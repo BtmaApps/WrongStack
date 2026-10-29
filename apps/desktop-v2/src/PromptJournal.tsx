@@ -1,7 +1,8 @@
-import { ChevronDown, RefreshCw, Search } from 'lucide-react';
+import { ChevronDown, Download, RefreshCw, Search } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { EngineCommand } from './engine-operations';
 import { entries, record } from './engine-values';
+import { journalFileName, journalJsonl, journalMarkdown } from './journal-export';
 import { MarkdownContent } from './MarkdownContent';
 
 export function PromptJournal({
@@ -17,6 +18,9 @@ export function PromptJournal({
     [scope, setScope] = useState(sessionId ? 'session' : 'project'),
     [category, setCategory] = useState(''),
     [date, setDate] = useState(''),
+    [month, setMonth] = useState(''),
+    [truncated, setTruncated] = useState(false),
+    [notice, setNotice] = useState(''),
     [query, setQuery] = useState(''),
     [limit, setLimit] = useState(100),
     [loading, setLoading] = useState(true),
@@ -38,6 +42,7 @@ export function PromptJournal({
                 category: kind,
                 ...(scope === 'session' && sessionId ? { sessionId } : {}),
                 ...(date ? { date } : {}),
+                ...(month ? { month } : {}),
               },
             },
             ['prompts.journal'],
@@ -52,12 +57,15 @@ export function PromptJournal({
           .sort((a, b) => String(b['timestamp']).localeCompare(String(a['timestamp']))),
       );
       setEnabled(results.some((result) => result['enabled'] !== false));
+      // The engine returns the newest `limit` entries per category; a full window means
+      // older entries were left out.
+      setTruncated(results.some((result) => entries(result['entries']).length >= limit));
     } catch (e) {
       if (own === generation.current) setError(e instanceof Error ? e.message : String(e));
     } finally {
       if (own === generation.current) setLoading(false);
     }
-  }, [command, sessionId, scope, category, date, limit]);
+  }, [command, sessionId, scope, category, date, month, limit]);
   useEffect(() => {
     void load();
     return () => {
@@ -67,6 +75,40 @@ export function PromptJournal({
   const filtered = rows.filter((row) =>
     `${row['content']} ${row['rawContent'] ?? ''}`.toLowerCase().includes(query.toLowerCase()),
   );
+  const exportRows = (format: 'md' | 'jsonl') => {
+    const exportedAt = new Date().toISOString();
+    const filters = [
+      scope === 'session' ? 'this session' : 'all project sessions',
+      category === 'raw_user'
+        ? 'original input'
+        : category === 'refined_user'
+          ? 'refined prompts'
+          : 'original and refined',
+      month && `month ${month}`,
+      date && `date ${date}`,
+      query && `search “${query}”`,
+      truncated && `newest ${limit} per category only`,
+    ]
+      .filter(Boolean)
+      .join(' · ');
+    const content =
+      format === 'md'
+        ? journalMarkdown(filtered, { title: 'WrongStack prompt journal', filters, exportedAt })
+        : journalJsonl(filtered);
+    const url = URL.createObjectURL(
+      new Blob([content], {
+        type: format === 'md' ? 'text/markdown;charset=utf-8' : 'application/x-ndjson',
+      }),
+    );
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = journalFileName(scope, exportedAt, format);
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    setNotice(
+      `Export requested for the ${filtered.length} visible ${filtered.length === 1 ? 'entry' : 'entries'}.`,
+    );
+  };
   return (
     <>
       <p>
@@ -96,6 +138,12 @@ export function PromptJournal({
           <option value="raw_user">Original input</option>
           <option value="refined_user">Refined prompt</option>
         </select>
+        <input
+          type="month"
+          aria-label="Journal month"
+          value={month}
+          onChange={(e) => setMonth(e.target.value)}
+        />
         <input
           type="date"
           aria-label="Journal date"
@@ -190,8 +238,35 @@ export function PromptJournal({
           })}
         </section>
       )}
+      {notice && (
+        <p role="status" className="composer-notice">
+          {notice}
+        </p>
+      )}
       <footer className="journal-limit">
-        <small>{filtered.length} visible · searching within the loaded window</small>
+        <small>
+          {filtered.length} visible · searching within the loaded window
+          {truncated &&
+            ` · only the newest ${limit} per category are loaded; older entries exist — load more or narrow by month or date`}
+        </small>
+        <button
+          type="button"
+          className="button secondary"
+          disabled={loading || !filtered.length}
+          onClick={() => exportRows('md')}
+        >
+          <Download size={14} />
+          Export Markdown
+        </button>
+        <button
+          type="button"
+          className="button secondary"
+          disabled={loading || !filtered.length}
+          onClick={() => exportRows('jsonl')}
+        >
+          <Download size={14} />
+          Export JSONL
+        </button>
         <button
           type="button"
           className="button secondary"

@@ -3196,3 +3196,26 @@ Verification on the shared working snapshot:
   copy/paste scenario.
 - Not covered: paste replacing a selection natively, dismiss natively, very large pastes and
   non-Windows clipboards.
+
+## Prompt journal month filter, window notice and export (2026-10-29)
+
+- The prompt journal gains a month filter (the engine's existing `month` bound), so older history
+  is reached month by month and narrowed further by date. When an engine read returns a full
+  newest-N window for a category, the footer states that older entries exist and were not
+  loaded. "Export JSONL" downloads the visible entries exactly as the engine returned them;
+  "Export Markdown" writes a readable document whose prompt text is fenced with a fence longer
+  than any backtick run, and records the scope, filters, search and any window truncation.
+- Not implemented, by design: cursor paging past the newest window. `PromptJournalFilter` has no
+  `before` bound, and adding one is a Core change that the snapshot hook blocks while another
+  session's uncommitted `packages/core` work exists. Each engine read still scans the selected
+  month/day files.
+- Checks: desktop **462 tests / 99 files PASS** (new `journal-export` tests: JSONL round trip,
+  fencing, metadata line, file name); typecheck **263 PASS**; Biome PASS on the changed files.
+- Native `--composer` on portable identity `11c43f0c9ad3-5e3cca867eec`, bundled engine/checksums
+  verified (engine rebuilt from the shared tree, which may include other in-progress edits):
+  **exit 0 / PASS** on the first run. The current month shows the recorded prompt, `2000-01`
+  shows the empty state, clearing restores it; JSONL and Markdown downloads land on disk, the
+  JSONL lines are this session's engine records including the real recorded prompt, and the
+  Markdown starts with the title and fences that prompt.
+- Not covered: the truncation notice natively (needs more than 100 recorded prompts), very large
+  journals, and project-scope exports.
