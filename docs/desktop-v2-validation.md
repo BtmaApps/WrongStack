@@ -2987,3 +2987,23 @@ Verification on the shared working snapshot:
 - Not covered: snippet references, choosing a range from the file viewer, full application restart
   with a ranged reference, multi-window stress, full release/coverage, hosted CI and installed-app
   replacement.
+
+## File-viewer line references (2026-10-29)
+
+- The session's file viewer gains "Reference in conversation". It maps the current selection to an
+  inclusive line range (textarea offsets in edit mode via the new `selectionLineRange`, or the
+  `data-source-line` rows of the selection in read mode), attaches it to the owning conversation
+  (one reference per file; a new selection replaces that file's range) and returns to chat. With
+  no selection the whole file is referenced. A line range over unsaved editor text is refused,
+  because the conversation reads the file from disk. The button keeps the page selection on press.
+- Checks: desktop **431 tests / 91 files PASS** (new `selection-line-range.test.ts`: offsets to
+  lines, trailing-newline boundary, reversed and empty selections); typecheck **250 PASS**; Biome
+  PASS.
+- Native `--composer` on portable identity `939217fff5ca-344ee89c60b0`, bundled engine/checksums
+  verified: **exit 0 / PASS** on the first run. The resource scenario opens the session Files
+  view, selects README line 1 in the real viewer, references it, returns to chat with the draft
+  text intact and a `README.md:1` chip, then continues with the chip range editor (1-2) and the
+  provider-prompt assertion. All other composer scenarios still pass.
+- Not covered: snippet references, the edit-mode path and the unsaved-text refusal natively (unit
+  only for the offset mapping), full application restart, multi-window stress, full
+  release/coverage, hosted CI and installed-app replacement.

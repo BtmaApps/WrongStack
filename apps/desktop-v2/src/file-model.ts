@@ -205,3 +205,20 @@ export function lineDiff(before: string, after: string): DiffLine[] {
 export function reviewText(notes: { path: string; line: number; text: string }[]) {
   return notes.map((note) => `${note.path}:${note.line}\n${note.text}`).join('\n\n');
 }
+/**
+ * Inclusive 1-based lines covered by a text selection. A selection that ends at the very
+ * start of a line does not include that line; an empty selection yields null.
+ */
+export function selectionLineRange(
+  content: string,
+  start: number,
+  end: number,
+): [number, number] | null {
+  const from = Math.max(0, Math.min(start, end)),
+    to = Math.min(content.length, Math.max(start, end));
+  if (from === to) return null;
+  const lineAt = (offset: number) => content.slice(0, offset).split('\n').length;
+  const first = lineAt(from);
+  const last = content[to - 1] === '\n' ? lineAt(to - 1) : lineAt(to);
+  return [first, Math.max(first, last)];
+}

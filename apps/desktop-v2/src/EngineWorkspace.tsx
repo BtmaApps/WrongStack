@@ -515,6 +515,11 @@ export function EngineWorkspace({
             );
             setTab('chat');
           }}
+          onReference={(ref) => {
+            // One reference per file: a new selection replaces that file's earlier range.
+            void onReferencesChange([...references.filter((item) => item.path !== ref.path), ref]);
+            setTab('chat');
+          }}
         />
       ) : (
         <EngineDataView tab={tab} state={state} send={send} onError={onError} />

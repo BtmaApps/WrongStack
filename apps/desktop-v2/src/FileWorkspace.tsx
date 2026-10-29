@@ -25,6 +25,7 @@ import {
   X,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { ComposerFileReference } from './composer-resources-model';
 import { DiffPreview } from './DiffPreview';
 import type { EngineCommand, EngineSend } from './engine-operations';
 import type { EngineState } from './engine-state';
@@ -42,6 +43,7 @@ import {
   parentPath,
   projectRelativePath,
   reviewText,
+  selectionLineRange,
 } from './file-model';
 import { GitHistory } from './GitHistory';
 import { GitHunkReview } from './GitHunkReview';
@@ -101,6 +103,7 @@ export function FileWorkspace({
   mode = 'files',
   initialPath = '',
   onReview,
+  onReference,
   send,
   state,
 }: {
@@ -110,6 +113,8 @@ export function FileWorkspace({
   mode?: 'files' | 'changes';
   initialPath?: string;
   onReview?: (text: string) => void;
+  /** Attach the open file, or its selected lines, to the owning conversation. */
+  onReference?: (ref: ComposerFileReference) => void;
   send: EngineSend;
   state: EngineState;
 }) {
@@ -574,6 +579,38 @@ export function FileWorkspace({
   );
   const change = changes.find((file) => file['path'] === asGitPath(active));
   const [selected, setSelected] = useState('');
+  const referenceSelection = () => {
+    if (!onReference || !document || !active) return;
+    let lines: [number, number] | null = null;
+    const editor = contentElement.current?.querySelector<HTMLTextAreaElement>(
+      'textarea.file-code-editor',
+    );
+    if (document.editing && editor) {
+      lines = selectionLineRange(document.content, editor.selectionStart, editor.selectionEnd);
+      // The conversation reads the file on disk, so unsaved line numbers could point elsewhere.
+      if (lines && document.content !== document.saved) {
+        setError(
+          'Save this file before referencing selected lines; the conversation reads it from disk.',
+        );
+        return;
+      }
+    } else {
+      const selection = window.getSelection();
+      const lineOf = (node: Node | null | undefined) => {
+        const element = node instanceof Element ? node : node?.parentElement;
+        const row = element?.closest('[data-source-line]');
+        return row && contentElement.current?.contains(row)
+          ? Number(row.getAttribute('data-source-line'))
+          : null;
+      };
+      if (selection && !selection.isCollapsed) {
+        const from = lineOf(selection.anchorNode),
+          to = lineOf(selection.focusNode);
+        if (from && to) lines = [Math.min(from, to), Math.max(from, to)];
+      }
+    }
+    onReference(lines ? { path: active, lines } : { path: active });
+  };
   const review = () => {
     const text = reviewText(notes);
     if (onReview) onReview(text);
@@ -1053,6 +1090,19 @@ export function FileWorkspace({
                     onClick={() => void stage(active, Boolean(change['staged']))}
                   >
                     {change['staged'] ? 'Unstage' : 'Stage'}
+                  </button>
+                )}
+                {mode === 'files' && onReference && document && !document.binary && (
+                  <button
+                    type="button"
+                    className="button secondary small"
+                    title="Attach this file, or the selected lines, to the conversation"
+                    // Keep the current text selection while the button is pressed.
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={referenceSelection}
+                  >
+                    <FilePlus2 size={13} />
+                    Reference in conversation
                   </button>
                 )}
                 {mode === 'files' && (

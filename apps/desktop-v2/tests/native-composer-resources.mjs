@@ -204,8 +204,26 @@ export async function exerciseNativeComposerResources({
     .getByRole('button', { name: 'Remove file reference README.md', exact: true })
     .waitFor();
   assert.equal(await input().inputValue(), 'Inspect ');
-  // A line range narrows the reference, previews bounded real file lines and survives a tab switch.
   const chips = page.getByRole('region', { name: 'Attached project files', exact: true });
+  // Selected lines in the session's file viewer become a ranged reference for this conversation.
+  await page
+    .getByRole('navigation', { name: 'Agent workspace views' })
+    .getByRole('button', { name: 'Files', exact: true })
+    .click();
+  await page.getByRole('treeitem', { name: 'README.md', exact: true }).click();
+  await page.locator('.file-source-code [data-source-line="1"] code').waitFor();
+  await page.evaluate(() => {
+    const row = document.querySelector('.file-source-code [data-source-line="1"] code');
+    const range = document.createRange();
+    range.selectNodeContents(row);
+    const selection = getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+  });
+  await page.getByRole('button', { name: 'Reference in conversation', exact: true }).click();
+  await chips.getByText('README.md:1', { exact: true }).waitFor();
+  assert.equal(await input().inputValue(), 'Inspect ', 'Referencing lines keeps the draft text');
+  // A line range narrows the reference, previews bounded real file lines and survives a tab switch.
   await chips.getByRole('button', { name: 'Set line range for README.md', exact: true }).click();
   const range = page.getByRole('region', { name: 'Line range for README.md', exact: true });
   await range.getByLabel('First referenced line', { exact: true }).fill('1');

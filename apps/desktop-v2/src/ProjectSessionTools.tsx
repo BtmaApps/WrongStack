@@ -1,3 +1,4 @@
+import type { ComposerFileReference } from './composer-resources-model';
 import { FileWorkspace } from './FileWorkspace';
 import { RuntimeGate } from './RuntimeGate';
 import { SkillLibrary } from './SkillLibrary';
@@ -10,6 +11,7 @@ interface Props {
   initialPath: string;
   onOpenFile: (path: string) => void;
   onReview: (text: string) => void;
+  onReference?: (ref: ComposerFileReference) => void;
   onError: (error: unknown) => void;
 }
 /** Project tools retain their owner even when opened beside a conversation. */
@@ -27,6 +29,7 @@ function ProjectToolsContent({
   initialPath,
   onOpenFile,
   onReview,
+  onReference,
   onError,
 }: Props) {
   const { state, send, command } = useProjectEngine(projectId, onError);
@@ -43,6 +46,7 @@ function ProjectToolsContent({
       mode={view}
       initialPath={initialPath}
       onReview={onReview}
+      {...(onReference ? { onReference } : {})}
     />
   );
 }
