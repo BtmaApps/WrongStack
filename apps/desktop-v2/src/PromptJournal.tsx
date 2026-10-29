@@ -1,9 +1,12 @@
 import { ChevronDown, Download, RefreshCw, Search } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { EngineCommand } from './engine-operations';
-import { entries, record } from './engine-values';
+import { record } from './engine-values';
 import { journalFileName, journalJsonl, journalMarkdown } from './journal-export';
+import { type JournalCursors, mergeJournalPages } from './journal-paging';
 import { MarkdownContent } from './MarkdownContent';
+
+const PAGE = 100;
 
 export function PromptJournal({
   command,
@@ -19,53 +22,88 @@ export function PromptJournal({
     [category, setCategory] = useState(''),
     [date, setDate] = useState(''),
     [month, setMonth] = useState(''),
-    [truncated, setTruncated] = useState(false),
+    [cursors, setCursors] = useState<JournalCursors>({}),
     [notice, setNotice] = useState(''),
     [query, setQuery] = useState(''),
-    [limit, setLimit] = useState(100),
     [loading, setLoading] = useState(true),
     [enabled, setEnabled] = useState(true),
     [error, setError] = useState('');
   const generation = useRef(0);
+  const truncated = Object.keys(cursors).length > 0;
+  /** One page per category; `until` maps a category to its inclusive older bound. */
+  const read = useCallback(
+    (kinds: string[], until: JournalCursors = {}) =>
+      Promise.all(
+        kinds.map(async (kind) => ({
+          kind,
+          result: await command(
+            'prompts.journal',
+            {
+              filter: {
+                limit: PAGE,
+                category: kind,
+                ...(scope === 'session' && sessionId ? { sessionId } : {}),
+                ...(date ? { date } : {}),
+                ...(month ? { month } : {}),
+                ...(until[kind] ? { until: until[kind] } : {}),
+              },
+            },
+            ['prompts.journal'],
+          ),
+        })),
+      ),
+    [command, sessionId, scope, date, month],
+  );
   const load = useCallback(async () => {
     const own = ++generation.current;
     setLoading(true);
     setError('');
     try {
-      const results = await Promise.all(
-        (category ? [category] : ['raw_user', 'refined_user']).map((kind) =>
-          command(
-            'prompts.journal',
-            {
-              filter: {
-                limit,
-                category: kind,
-                ...(scope === 'session' && sessionId ? { sessionId } : {}),
-                ...(date ? { date } : {}),
-                ...(month ? { month } : {}),
-              },
-            },
-            ['prompts.journal'],
-          ),
-        ),
-      );
+      const pages = await read(category ? [category] : ['raw_user', 'refined_user']);
       if (own !== generation.current) return;
-      setRows(
-        results
-          .flatMap((result) => entries(result['entries']))
-          .filter((row) => row['category'] === 'raw_user' || row['category'] === 'refined_user')
-          .sort((a, b) => String(b['timestamp']).localeCompare(String(a['timestamp']))),
-      );
-      setEnabled(results.some((result) => result['enabled'] !== false));
-      // The engine returns the newest `limit` entries per category; a full window means
-      // older entries were left out.
-      setTruncated(results.some((result) => entries(result['entries']).length >= limit));
+      // The engine returns the newest PAGE entries per category; a full page leaves a cursor.
+      const merged = mergeJournalPages(pages, new Set(), PAGE);
+      setRows(merged.added);
+      setCursors(merged.cursors);
+      setEnabled(pages.some((page) => page.result['enabled'] !== false));
     } catch (e) {
       if (own === generation.current) setError(e instanceof Error ? e.message : String(e));
     } finally {
       if (own === generation.current) setLoading(false);
     }
-  }, [command, sessionId, scope, category, date, month, limit]);
+  }, [read, category]);
+  /** The next older page of every category that still has one. */
+  const loadOlder = async () => {
+    const own = generation.current;
+    const kinds = Object.keys(cursors);
+    if (!kinds.length) return;
+    setLoading(true);
+    setError('');
+    try {
+      const pages = await read(kinds, cursors);
+      if (own !== generation.current) return;
+      const { added, cursors: next } = mergeJournalPages(
+        pages,
+        new Set(rows.map((row) => String(row['id']))),
+        PAGE,
+      );
+      setRows((current) =>
+        [...current, ...added].sort((a, b) =>
+          String(b['timestamp']).localeCompare(String(a['timestamp'])),
+        ),
+      );
+      setCursors(next);
+      setNotice(
+        added.length
+          ? `Loaded ${added.length} older ${added.length === 1 ? 'entry' : 'entries'}.`
+          : 'No older entries were returned.',
+      );
+    } catch (e) {
+      if (own === generation.current) setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      if (own === generation.current) setLoading(false);
+    }
+  };
   useEffect(() => {
     void load();
     return () => {
@@ -87,7 +125,7 @@ export function PromptJournal({
       month && `month ${month}`,
       date && `date ${date}`,
       query && `search “${query}”`,
-      truncated && `newest ${limit} per category only`,
+      truncated && 'older entries not loaded',
     ]
       .filter(Boolean)
       .join(' · ');
@@ -246,9 +284,16 @@ export function PromptJournal({
       <footer className="journal-limit">
         <small>
           {filtered.length} visible · searching within the loaded window
-          {truncated &&
-            ` · only the newest ${limit} per category are loaded; older entries exist — load more or narrow by month or date`}
+          {truncated && ' · older entries exist beyond what is loaded'}
         </small>
+        <button
+          type="button"
+          className="button secondary"
+          disabled={loading || !truncated || !rows.length}
+          onClick={() => void loadOlder()}
+        >
+          Load older entries
+        </button>
         <button
           type="button"
           className="button secondary"
@@ -266,14 +311,6 @@ export function PromptJournal({
         >
           <Download size={14} />
           Export JSONL
-        </button>
-        <button
-          type="button"
-          className="button secondary"
-          disabled={loading || limit >= 1000}
-          onClick={() => setLimit((value) => Math.min(1000, value + 100))}
-        >
-          Load a larger window
         </button>
       </footer>
     </>

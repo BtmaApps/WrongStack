@@ -84,6 +84,8 @@ export interface PromptJournalFilter {
   date?: string | undefined; // YYYY-MM-DD
   month?: string | undefined; // YYYY-MM
   since?: string | undefined;
+  /** Inclusive upper ISO timestamp; pages older history together with `limit`. */
+  until?: string | undefined;
   limit?: number | undefined;
 }
 
@@ -440,6 +442,9 @@ export async function getPromptJournalEntries(
     for (const month of months) {
       if (!/^\d{4}-\d{2}$/.test(month)) continue;
       if (filter.month && filter.month !== month) continue;
+      // Directories are named from the entry's UTC timestamp, so prefixes bound them exactly.
+      if (filter.until && month > filter.until.slice(0, 7)) continue;
+      if (filter.since && month < filter.since.slice(0, 7)) continue;
 
       const monthDir = path.join(basePromptsDir, month);
       const days = await fs.readdir(monthDir);
@@ -447,6 +452,8 @@ export async function getPromptJournalEntries(
       for (const day of days) {
         if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) continue;
         if (filter.date && filter.date !== day) continue;
+        if (filter.until && day > filter.until.slice(0, 10)) continue;
+        if (filter.since && day < filter.since.slice(0, 10)) continue;
 
         const dayDir = path.join(monthDir, day);
         const files = await fs.readdir(dayDir);
@@ -476,6 +483,7 @@ export async function getPromptJournalEntries(
               }
               if (filter.category && entry.category !== filter.category) continue;
               if (filter.since && entry.timestamp < filter.since) continue;
+              if (filter.until && entry.timestamp > filter.until) continue;
               results.push(entry);
             } catch {
               // ignore malformed lines

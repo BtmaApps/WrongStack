@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { exerciseNativeJournalPaging } from './native-journal-paging.mjs';
 
 /** Project-owned catalogs and session-owned context, exercised through the actual native UI. */
 export async function exerciseNativeComposerResources({
@@ -402,6 +403,10 @@ export async function exerciseNativeComposerResources({
     await journalCdp.send('Page.setDownloadBehavior', { behavior: 'default' });
     await journalCdp.detach();
   }
+  await exerciseNativeJournalPaging({ dialog, project, identity, waitFor });
+  await dialog
+    .getByRole('textbox', { name: 'Search prompt journal', exact: true })
+    .fill('[native-composer-command]');
   const entry = dialog.locator('.prompt-journal-list details').first();
   await entry.locator('summary').click();
   await page.screenshot({ path: join(artifactDir, 'native-prompt-journal.png'), fullPage: true });

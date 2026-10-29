@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-29T12:14:30.262Z",
+  "generatedAt": "2026-10-29T12:31:27.913Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,15 +12,15 @@
   },
   "summary": {
     "packages": 45,
-    "sourceFiles": 5442,
-    "testFiles": 4740,
-    "sourceLines": 1200014,
+    "sourceFiles": 5443,
+    "testFiles": 4742,
+    "sourceLines": 1200096,
     "workspaceEdges": 222,
-    "moduleEdges": 16361,
+    "moduleEdges": 16363,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 3,
-    "testsWithoutTypecheck": 99,
+    "testsWithoutTypecheck": 100,
     "testsWithMultipleTypechecks": 0,
     "testOnlyExports": 973
   },
@@ -361,7 +361,7 @@
       "name": "@wrongstack/core",
       "dir": "packages/core",
       "sourceFiles": 635,
-      "testFiles": 687,
+      "testFiles": 688,
       "workspaceDependencies": [
         "@wrongstack/agent-catalog",
         "@wrongstack/contracts",
@@ -378,15 +378,15 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 687
+          "testFiles": 688
         }
       ]
     },
     {
       "name": "@wrongstack/desktop-v2",
       "dir": "apps/desktop-v2",
-      "sourceFiles": 256,
-      "testFiles": 99,
+      "sourceFiles": 257,
+      "testFiles": 100,
       "workspaceDependencies": [
         "@wrongstack/contracts",
         "@wrongstack/core",
@@ -1493,6 +1493,12 @@
       },
       {
         "file": "apps/desktop-v2/tests/journal-export.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "apps/desktop-v2/tests/journal-paging.test.ts",
         "projects": [
           "root-node"
         ]
@@ -10325,6 +10331,12 @@
       },
       {
         "file": "packages/core/tests/project-server-harness.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/prompt-journal-paging.test.ts",
         "projects": [
           "root-node"
         ]
@@ -29974,6 +29986,13 @@
       },
       {
         "file": "apps/desktop-v2/tests/journal-export.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
+        "file": "apps/desktop-v2/tests/journal-paging.test.ts",
         "runtimeProjects": [
           "root-node"
         ],

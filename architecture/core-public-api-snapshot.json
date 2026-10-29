@@ -1153,7 +1153,7 @@
       "classification": "product feature",
       "intendedOwner": "plugin/runtime implementation",
       "sourceFiles": 4,
-      "sourceLines": 667
+      "sourceLines": 675
     },
     {
       "directory": "quota",

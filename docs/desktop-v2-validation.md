@@ -3219,3 +3219,28 @@ Verification on the shared working snapshot:
   Markdown starts with the title and fences that prompt.
 - Not covered: the truncation notice natively (needs more than 100 recorded prompts), very large
   journals, and project-scope exports.
+
+## Prompt journal older-page loading (2026-10-29)
+
+- Core: `PromptJournalFilter` gains an inclusive `until` timestamp. `getPromptJournalEntries`
+  applies it per entry and, because the recorder names `<YYYY-MM>/<YYYY-MM-DD>` directories from
+  the entry's own UTC timestamp (the only writer), skips month/day directories outside both
+  `since` and `until` instead of reading them. The WebUI server passes the filter through
+  unchanged; the core public API snapshot is refreshed by the pre-commit hook.
+- Desktop: the journal reads 100 entries per category and keeps one cursor per category (its
+  oldest returned timestamp while its page was full). "Load older entries" requests the next page
+  of each category that has one, de-duplicates the inclusive bound by id, and stops a category
+  that returns nothing new, so a host that ignores `until` cannot loop. Per-category cursors stop
+  a sparse category from jumping a dense one past entries it has not returned. "Load a larger
+  window" is removed; it re-read the newest window and discarded loaded older pages.
+- Checks: new core `prompt-journal-paging` tests (paging across days and months with the
+  inclusive bound, `since`+`until` together) plus the existing journal and recovery tests:
+  **10 PASS**; desktop **465 tests / 100 files PASS** (new `journal-paging` tests); typecheck
+  **264 PASS**; Biome PASS on the changed files; engine build (including declaration emit) PASS.
+- Native `--composer` on portable identity `d88dbb062ed2-85f80316bf28`, bundled engine rebuilt
+  from the shared tree with this change: **exit 0 / PASS** on the first run. 150 prompts seeded
+  for this session in a January directory make the first page full; the footer reports older
+  entries, one "Load older entries" page reaches the oldest seeded prompt, and the notice
+  disappears once nothing older remains.
+- Not covered: journals spanning many thousands of files, project-scope paging natively, and the
+  older-host path (unit only).

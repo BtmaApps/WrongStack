@@ -307,7 +307,7 @@ Use the [chat action inventory](desktop-v2-chat-parity.md) for exact existing be
   Plan drafts are durable per session (2026-10-29); atomic same-plan writes still need a
   canonical contract.
 - Add richer skill/resource invocation (file, line-range and quoted-snippet references exist)
-  progress, reference-aware durable recall (code-paste hint/undo exists, 2026-10-29) and prompt journal cursor paging beyond the newest window (month filter and export exist; the engine needs a `before` bound).
+  progress, reference-aware durable recall (code-paste hint/undo exists, 2026-10-29) (prompt journal month filter, export and older-page loading exist, 2026-10-29).
 - Implement speech only with real platform support, permission and recording/transcript states;
   unsupported systems must not show a fake working microphone.
 - Add BTW delivery/read/processing receipt history, richer queue presentation and longer restart
