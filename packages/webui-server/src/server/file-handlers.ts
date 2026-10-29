@@ -9,6 +9,7 @@
  *   case 'files.tree': return handleFilesTree(ws, msg, projectRoot);
  */
 
+import { createHash } from 'node:crypto';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { atomicWrite } from '@wrongstack/core/utils';
@@ -43,6 +44,37 @@ interface FilesReadPayload {
 interface FilesWritePayload {
   filePath: string;
   content: string;
+  /** When set, the write happens only if the file's current bytes still hash to this value. */
+  expectedSha256?: string | undefined;
+}
+
+const sha256 = (bytes: Buffer | string) => createHash('sha256').update(bytes).digest('hex');
+/**
+ * One in-flight write per resolved path inside this process, so a verify-then-rename
+ * from one window cannot interleave with another window's save of the same file.
+ */
+const writeQueues = new Map<string, Promise<void>>();
+async function serializedWrite<T>(target: string, fn: () => Promise<T>): Promise<T> {
+  const key = process.platform === 'win32' ? target.toLowerCase() : target;
+  const run = (writeQueues.get(key) ?? Promise.resolve()).then(fn);
+  const tail = run.then(
+    () => undefined,
+    () => undefined,
+  );
+  writeQueues.set(key, tail);
+  try {
+    return await run;
+  } finally {
+    if (writeQueues.get(key) === tail) writeQueues.delete(key);
+  }
+}
+async function currentSha256(target: string): Promise<string | null> {
+  try {
+    return sha256(await fs.readFile(target));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null;
+    throw error;
+  }
 }
 
 interface FilesWriteOptions {
@@ -304,7 +336,9 @@ export async function handleFilesRead(
     }
     send(ws, {
       type: 'files.read',
-      payload: echo({ filePath, content: buf.toString('utf8') }),
+      // The hash covers the raw bytes, so a later conditional write compares exactly
+      // what is on disk rather than a decoded string.
+      payload: echo({ filePath, content: buf.toString('utf8'), sha256: sha256(buf) }),
     });
   } catch (err) {
     send(ws, {
@@ -383,6 +417,11 @@ export async function handleFilesSkeleton(
 /**
  * Write file content back to disk (atomic write via tmp + rename).
  *
+ * With `expectedSha256`, the current bytes are re-hashed immediately before the
+ * rename inside a per-path queue: saves through this engine never overwrite each
+ * other unseen. This is not an OS lock — another process writing in the instant
+ * between that check and the rename can still be replaced.
+ *
  * Guards against path traversal. Responds with
  * `{ type: 'files.written', payload: { filePath, success } }`.
  */
@@ -395,8 +434,19 @@ export async function handleFilesWrite(
   const sessionId = messageSessionId(msg as { payload?: unknown });
   let filePath: string;
   let content: string;
+  let expectedSha256: string | undefined;
   try {
-    ({ filePath, content } = validatedPayload<FilesWritePayload>(msg, 'files.write'));
+    ({ filePath, content, expectedSha256 } = validatedPayload<FilesWritePayload>(
+      msg,
+      'files.write',
+    ));
+    if (
+      typeof filePath !== 'string' ||
+      typeof content !== 'string' ||
+      (expectedSha256 !== undefined &&
+        (typeof expectedSha256 !== 'string' || !/^[a-f0-9]{64}$/.test(expectedSha256)))
+    )
+      throw new TypeError('Malformed files.write payload');
   } catch {
     send(ws, {
       type: 'files.written',
@@ -425,10 +475,39 @@ export async function handleFilesWrite(
   }
 
   try {
-    await atomicWrite(realResolved, content);
+    const conflict = await serializedWrite(realResolved, async () => {
+      if (expectedSha256 !== undefined) {
+        const current = await currentSha256(realResolved);
+        if (current !== expectedSha256) return { currentSha256: current };
+      }
+      await atomicWrite(realResolved, content);
+      return null;
+    });
+    if (conflict) {
+      send(ws, {
+        type: 'files.written',
+        payload: withSessionEcho(
+          {
+            filePath,
+            success: false,
+            conflict: true,
+            currentSha256: conflict.currentSha256,
+            error:
+              conflict.currentSha256 === null
+                ? 'FILE_CONFLICT: The file was removed after it was read. Nothing was written.'
+                : 'FILE_CONFLICT: The file changed on disk after it was read. Nothing was written.',
+          },
+          sessionId,
+        ),
+      });
+      return;
+    }
     send(ws, {
       type: 'files.written',
-      payload: withSessionEcho({ filePath, success: true }, sessionId),
+      payload: withSessionEcho(
+        { filePath, success: true, sha256: sha256(Buffer.from(content, 'utf8')) },
+        sessionId,
+      ),
     });
     if (opts.onWritten) {
       // The host's indexing hook owns the reindex: it honours `indexing.onEdit`
