@@ -1,0 +1,81 @@
+{
+  "suite": "polyglot",
+  "finishedAt": "2026-10-28T17:05:02.980Z",
+  "fingerprint": {
+    "cliVersion": "1.2.2",
+    "toolNames": [
+      "bash",
+      "clarify",
+      "codebase-ast-replace",
+      "codebase-context",
+      "codebase-diff-impact",
+      "codebase-impact-analysis",
+      "codebase-incoming-calls",
+      "codebase-index",
+      "codebase-invariant-check",
+      "codebase-outgoing-calls",
+      "codebase-read-symbol",
+      "codebase-repo-map",
+      "codebase-search",
+      "codebase-skeleton",
+      "codebase-stats",
+      "codebase-targeted-test",
+      "diff",
+      "edit",
+      "glob",
+      "grep",
+      "json",
+      "patch",
+      "present_artifact",
+      "project_kit",
+      "read",
+      "search",
+      "security-ast-scan",
+      "tool_search",
+      "tool_use",
+      "write"
+    ],
+    "maxIterations": 40,
+    "yolo": true,
+    "subsetId": "polyglot:e7baae2d1d51",
+    "toolManifestHash": "351b94e2398e",
+    "configHash": "6a85e5f65b2c",
+    "profile": "lean",
+    "hash": "39ba3372c6ed"
+  },
+  "cells": [
+    {
+      "cell": {
+        "label": "glm-5.3-flash",
+        "provider": "zai-coding-plan",
+        "model": "glm-5.3-flash"
+      },
+      "taskCount": 199,
+      "attemptCount": 597,
+      "repeats": 3,
+      "incompleteCount": 8,
+      "flakyTaskCount": 8,
+      "passAnyRate": 1,
+      "passAllRate": 0.9597989949748744,
+      "gradedCount": 597,
+      "passRate": 0.981574539363484,
+      "editApplyRate": 0.9945188794153471,
+      "avgCostUsd": 0,
+      "avgTokensIn": 28148.413735343383,
+      "avgTokensOut": 1633.9061976549415,
+      "avgTokensTotal": 118246.41038525963,
+      "avgSubagentTokens": 0,
+      "tokensPerSolve": 120466.0529010239,
+      "p50Iterations": 8,
+      "p50ElapsedMs": 60499.0987999998,
+      "timeoutRate": 0.01340033500837521,
+      "totalRateLimitRetries": 0,
+      "totalSubagentSpawns": 0
+    }
+  ],
+  "progress": {
+    "planned": 597,
+    "completed": 597,
+    "interrupted": false
+  }
+}

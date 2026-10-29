@@ -54,6 +54,15 @@ const CONTINUE_PHRASES: ReadonlySet<string> = new Set([
   'continue por favor',
 ]);
 
+/**
+ * Word cap for the cheap pre-match guard, derived from the phrase set so that
+ * no listed phrase (e.g. the five-word "bir tur daha at bakalim") can fall
+ * outside it. A fixed cap smaller than the longest phrase made it unreachable.
+ */
+const MAX_CONTINUE_WORDS = Math.max(
+  ...Array.from(CONTINUE_PHRASES, (phrase) => phrase.split(' ').length),
+);
+
 const POLITENESS_SUFFIXES: readonly string[] = [
   'please',
   'pls',
@@ -99,6 +108,6 @@ function normalizeContinueInput(raw: string): string {
 export function detectContinueIntent(raw: string): boolean {
   if (!raw || raw.length > 40) return false;
   const normalized = normalizeContinueInput(raw);
-  if (!normalized || normalized.split(' ').length > 4) return false;
+  if (!normalized || normalized.split(' ').length > MAX_CONTINUE_WORDS) return false;
   return CONTINUE_PHRASES.has(normalized);
 }

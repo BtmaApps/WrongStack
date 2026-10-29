@@ -50,6 +50,20 @@ describe('detectContinueIntent', () => {
     }
   });
 
+  it('matches the longest listed phrase (five words) despite the word-count guard', () => {
+    for (const s of [
+      'bir tur daha at bakalım',
+      'bir tur daha at bakalim',
+      'Bir tur daha at bakalım!',
+      'bir tur daha at bakalım lütfen',
+    ]) {
+      expect(detectContinueIntent(s), s).toBe(true);
+    }
+    // The guard still rejects longer, substantive messages.
+    expect(detectContinueIntent('bir tur daha at bakalım testlerle')).toBe(false);
+    expect(detectContinueIntent('keep going and then stop now')).toBe(false);
+  });
+
   it('strips a trailing politeness token', () => {
     expect(detectContinueIntent('continue please')).toBe(true);
     expect(detectContinueIntent('go on pls')).toBe(true);

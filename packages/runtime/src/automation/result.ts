@@ -53,8 +53,35 @@ export function buildAutomationResult(
   const files = new Set<string>();
   let oldLines = 0;
   let newLines = 0;
+  // A file section names its paths in `---`/`+++` headers only when it has a
+  // text hunk. Binary files (`GIT binary patch`), empty new files, pure
+  // renames/copies and mode-only changes carry none, so they fall back to the
+  // `rename from|to` / `copy to` lines and, failing that, to the `diff --git`
+  // header.
+  let sectionNamed = true;
+  let headerPath: string | undefined;
+  const add = (raw: string, prefixed: boolean): void => {
+    let decoded = decodeGitPath(raw);
+    if (prefixed) {
+      if (!decoded.startsWith('a/') && !decoded.startsWith('b/')) return;
+      decoded = decoded.slice(2);
+    }
+    if (decoded && decoded.length <= 4096 && !/[\x00-\x1f\x7f]/.test(decoded)) {
+      files.add(decoded);
+      sectionNamed = true;
+    }
+  };
+  const flushSection = (): void => {
+    if (!sectionNamed && headerPath !== undefined) add(headerPath, true);
+  };
   for (const line of (patch ?? '').split('\n')) {
-    if (line.startsWith('diff --git ')) oldLines = newLines = 0;
+    if (line.startsWith('diff --git ')) {
+      flushSection();
+      oldLines = newLines = 0;
+      sectionNamed = false;
+      headerPath = diffGitHeaderPath(line.slice('diff --git '.length));
+      continue;
+    }
     const hunk = /^@@ -\d+(?:,(\d+))? \+\d+(?:,(\d+))? @@/.exec(line);
     if (hunk) {
       oldLines = Number(hunk[1] ?? 1);
@@ -67,34 +94,19 @@ export function buildAutomationResult(
       if (line.startsWith('+') || line.startsWith(' ')) newLines--;
       continue;
     }
+    // A copy leaves its source untouched; a rename changes both paths.
+    const moved = /^(?:rename (?:from|to)|copy to) (.+)$/.exec(line);
+    if (moved) {
+      add(moved[1]!, false);
+      continue;
+    }
     if (!line.startsWith('+++ ') && !line.startsWith('--- ')) continue;
     // Git ends the header with a TAB when the name contains a space (GNU diff
-    // convention); left in place, the control-character filter below dropped
-    // every such file from changedFiles.
-    let raw = line.slice(4).replace(/\t$/, '');
-    if (raw.startsWith('"') && raw.endsWith('"')) {
-      const bytes: Buffer[] = [];
-      for (let i = 1; i < raw.length - 1; i++) {
-        if (raw[i] === '\\' && /[0-7]{3}/.test(raw.slice(i + 1, i + 4))) {
-          bytes.push(Buffer.from([Number.parseInt(raw.slice(i + 1, i + 4), 8)]));
-          i += 3;
-        } else if (raw[i] === '\\' && i + 1 < raw.length - 1) {
-          const escaped = raw[++i]!;
-          bytes.push(
-            Buffer.from(
-              ({ t: '\t', n: '\n', r: '\r', '\\': '\\', '"': '"' } as Record<string, string>)[
-                escaped
-              ] ?? escaped,
-            ),
-          );
-        } else bytes.push(Buffer.from(raw[i]!));
-      }
-      raw = Buffer.concat(bytes).toString('utf8');
-    }
-    if (!raw.startsWith('a/') && !raw.startsWith('b/')) continue;
-    const file = raw.slice(2);
-    if (file.length <= 4096 && !/[\x00-\x1f\x7f]/.test(file)) files.add(file);
+    // convention); left in place, the control-character filter dropped every
+    // such file from changedFiles.
+    add(line.slice(4).replace(/\t$/, ''), true);
   }
+  flushSection();
   const costSource = usage['costSource'] === 'catalog-estimate' ? 'catalog-estimate' : 'unknown';
   return {
     version: 1,
@@ -117,4 +129,62 @@ export function buildAutomationResult(
       evidence: patch === null ? ['output.log'] : ['output.log', 'changes.patch'],
     },
   };
+}
+
+/** Decode a Git C-quoted path (`"src/\303\247.ts"`); unquoted paths pass through. */
+function decodeGitPath(raw: string): string {
+  if (!(raw.length >= 2 && raw.startsWith('"') && raw.endsWith('"'))) return raw;
+  const bytes: Buffer[] = [];
+  for (let i = 1; i < raw.length - 1; i++) {
+    if (raw[i] === '\\' && /[0-7]{3}/.test(raw.slice(i + 1, i + 4))) {
+      bytes.push(Buffer.from([Number.parseInt(raw.slice(i + 1, i + 4), 8)]));
+      i += 3;
+    } else if (raw[i] === '\\' && i + 1 < raw.length - 1) {
+      const escaped = raw[++i]!;
+      bytes.push(
+        Buffer.from(
+          ({ t: '\t', n: '\n', r: '\r', '\\': '\\', '"': '"' } as Record<string, string>)[
+            escaped
+          ] ?? escaped,
+        ),
+      );
+    } else bytes.push(Buffer.from(raw[i]!));
+  }
+  return Buffer.concat(bytes).toString('utf8');
+}
+
+/** End index (exclusive) of the C-quoted token that starts at `start`. */
+function quotedTokenEnd(value: string, start: number): number {
+  for (let i = start + 1; i < value.length; i++) {
+    if (value[i] === '\\') i++;
+    else if (value[i] === '"') return i + 1;
+  }
+  return -1;
+}
+
+/**
+ * The `b/` side of a `diff --git a/<old> b/<new>` header, still in its
+ * (possibly quoted) wire form. Only used for sections without `---`/`+++`
+ * or rename lines, where both sides name the same file — which is what makes
+ * an unquoted name containing spaces splittable at its midpoint.
+ */
+function diffGitHeaderPath(header: string): string | undefined {
+  if (header.startsWith('"')) {
+    const end = quotedTokenEnd(header, 0);
+    return end > 0 && header[end] === ' ' ? header.slice(end + 1) : undefined;
+  }
+  if (header.endsWith('"')) {
+    const start = header.lastIndexOf(' "b/');
+    return start >= 0 ? header.slice(start + 1) : undefined;
+  }
+  if (header.length % 2 === 0) return undefined;
+  const mid = (header.length - 1) / 2;
+  const left = header.slice(0, mid);
+  const right = header.slice(mid + 1);
+  return header[mid] === ' ' &&
+    left.startsWith('a/') &&
+    right.startsWith('b/') &&
+    left.slice(2) === right.slice(2)
+    ? right
+    : undefined;
 }

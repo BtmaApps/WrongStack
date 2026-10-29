@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-29T01:06:28.902Z",
+  "generatedAt": "2026-10-29T01:13:26.763Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 45,
     "sourceFiles": 5393,
-    "testFiles": 4714,
-    "sourceLines": 1194971,
+    "testFiles": 4717,
+    "sourceLines": 1195078,
     "workspaceEdges": 222,
     "moduleEdges": 16210,
     "nonCommandSlashImports": 0,
@@ -744,7 +744,7 @@
       "name": "@wrongstack/runtime",
       "dir": "packages/runtime",
       "sourceFiles": 35,
-      "testFiles": 35,
+      "testFiles": 36,
       "workspaceDependencies": [
         "@wrongstack/builtin-plugins",
         "@wrongstack/chronicle",
@@ -769,7 +769,7 @@
         {
           "path": "packages/runtime/tsconfig.test.json",
           "error": null,
-          "testFiles": 35
+          "testFiles": 36
         }
       ]
     },
@@ -923,7 +923,7 @@
       "name": "@wrongstack/tools",
       "dir": "packages/tools",
       "sourceFiles": 374,
-      "testFiles": 372,
+      "testFiles": 373,
       "workspaceDependencies": [
         "@wrongstack/agent-catalog",
         "@wrongstack/contracts",
@@ -942,7 +942,7 @@
         {
           "path": "packages/tools/tsconfig.test.json",
           "error": null,
-          "testFiles": 372
+          "testFiles": 373
         }
       ]
     },
@@ -1179,7 +1179,7 @@
       "name": "@wrongstack/wrongtrace",
       "dir": "packages/wrongtrace",
       "sourceFiles": 11,
-      "testFiles": 9,
+      "testFiles": 10,
       "workspaceDependencies": [],
       "tsconfigs": [
         {
@@ -1190,7 +1190,7 @@
         {
           "path": "packages/wrongtrace/tsconfig.test.json",
           "error": null,
-          "testFiles": 9
+          "testFiles": 10
         }
       ]
     },
@@ -16567,6 +16567,12 @@
         ]
       },
       {
+        "file": "packages/runtime/tests/automation-result-headerless-sections.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/runtime/tests/automation-result-hunk-paths.test.ts",
         "projects": [
           "root-node"
@@ -20072,6 +20078,12 @@
       },
       {
         "file": "packages/tools/tests/json-schema-additional-items.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tools/tests/json-schema-multiple-of.test.ts",
         "projects": [
           "root-node"
         ]
@@ -29570,6 +29582,12 @@
       },
       {
         "file": "packages/wrongtrace/src/__tests__/client.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/wrongtrace/src/__tests__/hooks-comma-file-list.test.ts",
         "projects": [
           "root-node"
         ]

@@ -90,7 +90,11 @@ export function validateJsonSchema(
       const step = s['multipleOf'];
       if (typeof step === 'number' && step > 0) {
         const quotient = value / step;
-        if (Math.abs(quotient - Math.round(quotient)) > 1e-9) {
+        // Tolerate only floating-point rounding (0.3 / 0.1 = 2.9999999999999996),
+        // which is relative to the quotient's magnitude. A fixed absolute 1e-9
+        // accepted genuine remainders: 1e-10 passed as a multiple of 1.
+        const tolerance = Math.max(1, Math.abs(quotient)) * Number.EPSILON * 4;
+        if (Math.abs(quotient - Math.round(quotient)) > tolerance) {
           errors.push(`${path}: not a multiple of ${step}`);
         }
       }

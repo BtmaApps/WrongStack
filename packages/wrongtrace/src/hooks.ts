@@ -104,9 +104,16 @@ function targetPathOf(toolInput: unknown): string | undefined {
     const v = t[key];
     if (typeof v === 'string' && v.length > 0) return v;
   }
-  // `replace` accepts files: string | string[].
+  // `replace` accepts files: string | string[]. The string form is a
+  // comma-separated list (`"a.ts,b.ts"`); taken whole it named a file that
+  // does not exist, so a peer's lock on `a.ts` was never seen. Split it the
+  // way `replace` does — on commas outside `{…}`, so `*.{ts,md}` stays one
+  // entry — and resolve the first entry, exactly like the array form.
   const files = t['files'];
-  if (typeof files === 'string' && files.length > 0) return files;
+  if (typeof files === 'string') {
+    const first = firstFileListEntry(files);
+    if (first) return first;
+  }
   if (Array.isArray(files) && files.length > 0) {
     const first = files[0];
     if (typeof first === 'string' && first.length > 0) return first;
@@ -115,6 +122,23 @@ function targetPathOf(toolInput: unknown): string | undefined {
   const dir = t['directory'];
   if (typeof dir === 'string' && dir.length > 0) return dir;
   return undefined;
+}
+
+/** First non-empty entry of a comma-separated file list, ignoring commas inside `{…}`. */
+function firstFileListEntry(list: string): string | undefined {
+  let depth = 0;
+  let current = '';
+  for (const ch of list) {
+    if (ch === '{') depth++;
+    else if (ch === '}' && depth > 0) depth--;
+    if (ch === ',' && depth === 0) {
+      if (current.trim()) return current.trim();
+      current = '';
+      continue;
+    }
+    current += ch;
+  }
+  return current.trim() || undefined;
 }
 
 /** Emit a gate-decision event without ever letting a throw escape. */
