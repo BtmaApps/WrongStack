@@ -229,13 +229,18 @@ impl Registry {
         let review_form = form_key
             .strip_prefix("chimera-note:")
             .is_some_and(|id| id.len() == 64 && id.bytes().all(|value| value.is_ascii_hexdigit()));
-        let hashed_form = ["kit-parameters:", "skill-editor:", "roster-document:"]
-            .iter()
-            .any(|prefix| {
-                form_key.strip_prefix(prefix).is_some_and(|id| {
-                    id.len() == 64 && id.bytes().all(|value| value.is_ascii_hexdigit())
-                })
-            });
+        let hashed_form = [
+            "kit-parameters:",
+            "skill-editor:",
+            "roster-document:",
+            "roster-runtime:",
+        ]
+        .iter()
+        .any(|prefix| {
+            form_key.strip_prefix(prefix).is_some_and(|id| {
+                id.len() == 64 && id.bytes().all(|value| value.is_ascii_hexdigit())
+            })
+        });
         if form_key != "requirements-new"
             && form_key != "history-view"
             && form_key != "git-review-notes"
@@ -968,6 +973,8 @@ mod tests {
         let roster = format!("roster-document:{}", "9".repeat(64));
         assert_eq!(db.save_form_draft(&a.id, &roster, &design, 0).unwrap(), 1);
         assert!(peer.form_draft(&a.id, "roster-document:reviewer").is_err());
+        let runtime = format!("roster-runtime:{}", "8".repeat(64));
+        assert_eq!(db.save_form_draft(&a.id, &runtime, &design, 0).unwrap(), 1);
         for owner in ["new", "reqi_01ABC-def"] {
             let key = format!("requirement-resource-input:{owner}");
             assert_eq!(db.save_form_draft(&a.id, &key, &design, 0).unwrap(), 1);

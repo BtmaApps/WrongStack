@@ -4,7 +4,10 @@ import { join } from 'node:path';
 import { buildProviderSave } from '../src/provider-settings-model.ts';
 import { fixtureKey, fixtureModel } from './local-provider.mjs';
 import { revealProjectTools } from './native-project-navigation.mjs';
-import { exerciseNativeRosterDocumentDrafts } from './native-roster-document-drafts.mjs';
+import {
+  exerciseNativeRosterDocumentDrafts,
+  exerciseNativeRosterRuntimeDraft,
+} from './native-roster-document-drafts.mjs';
 
 function protocol({ rpc, waitFor }) {
   const offsets = new Map();
@@ -218,7 +221,7 @@ export async function exerciseNativeAgentRoster({
   await runtime().getByRole('button', { name: 'Keep draft and close', exact: true }).click();
   await openRuntime();
   await runtime()
-    .getByText('Your unsaved runtime draft from this window has been recovered.', { exact: true })
+    .getByText(/Your unsaved runtime draft has been recovered/)
     .waitFor();
   assert.equal(
     await runtime().getByLabel('Role Tool calls', { exact: true }).inputValue(),
@@ -268,6 +271,7 @@ export async function exerciseNativeAgentRoster({
     catalog,
     waitFor,
   });
+  await exerciseNativeRosterRuntimeDraft({ page, project, role, open, card, catalog, waitFor });
   await writeFile(configFile, '{invalid runtime');
   await catalog().getByRole('button', { name: 'Refresh roster', exact: true }).click();
   await catalog().getByRole('alert').filter({ hasText: 'invalid or unreadable' }).waitFor();

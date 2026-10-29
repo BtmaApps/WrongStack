@@ -1,10 +1,11 @@
 import { ArrowDown, ArrowUp, Plus, Save, Trash2, X } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import type { EngineCommand } from './engine-operations';
 import { emptyEngineState } from './engine-state';
 import { entries, record } from './engine-values';
 import { Modal } from './Modal';
 import { ProfileModelPicker } from './ProfileModelPicker';
+import { rosterRuntimeDraft } from './roster-document-store';
 import {
   mergeRosterConfig,
   type RosterRecord,
@@ -49,10 +50,58 @@ export function RosterRuntimeEditor({
   const [picker, setPicker] = useState<'model' | 'allowed' | null>(null),
     [pickerBusy, setPickerBusy] = useState(false);
   const saving = useRef(false);
+  const durable = useMemo(() => rosterRuntimeDraft(projectId, role), [projectId, role]);
+  const durableState = useSyncExternalStore(durable.subscribe, durable.snapshot);
+  const [recovered, setRecovered] = useState(false);
+  // Without an in-window draft the editor reads the store itself: the parent snapshot can
+  // still predate a save made a moment ago, and a stale base would turn into a false conflict.
+  const [fresh, setFresh] = useState(!!cached);
+  useEffect(() => {
+    if (cached) return;
+    let active = true;
+    void (async () => {
+      try {
+        await durable.load();
+        const parked = durable.snapshot().value;
+        if (!active) return;
+        if (parked) {
+          // The save merge still compares this baseline with the current store.
+          setBase(parked.base);
+          setDraft(parked.draft);
+          drafts.set(key, parked);
+          setRecovered(true);
+          return;
+        }
+        const current = await command(
+          'agent-roster.read-customization',
+          { role, includeDocuments: false },
+          ['agent-roster.read-customization'],
+        );
+        if (!active || current['configState'] === 'unreadable') return;
+        const config = record(current['config']);
+        setBase(config);
+        setDraft(structuredClone(config));
+      } catch (error) {
+        if (active) setError(error instanceof Error ? error.message : String(error));
+      } finally {
+        if (active) setFresh(true);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [cached, durable, key, command, role]);
+  // Drops the in-window copy and the device copy together.
+  const forget = () => {
+    drafts.delete(key);
+    if (durable.snapshot().ready && durable.snapshot().value) durable.edit(null);
+  };
   const dirty = !sameSetting(draft, base);
   const change = (next: RosterRecord) => {
     setDraft(next);
     drafts.set(key, { base, draft: next });
+    if (durable.snapshot().ready)
+      durable.edit(sameSetting(next, base) ? null : { base, draft: next });
     setError('');
   };
   const field = (name: string, value: unknown) => {
@@ -99,7 +148,7 @@ export function RosterRuntimeEditor({
       );
       if (actual['configState'] === 'unreadable' || !sameSetting(actual['config'], next))
         throw Error('The saved runtime did not match readback. Your local draft is kept.');
-      drafts.delete(key);
+      forget();
       setBase(next);
       setDraft(next);
       onSaved();
@@ -144,17 +193,50 @@ export function RosterRuntimeEditor({
               apply budget minima. The resolved overview shows the result.
             </p>
           )}
-          {cached && dirty && (
+          {(cached || recovered) && dirty && (
             <p role="status" className="roster-policy-note">
-              Your unsaved runtime draft from this window has been recovered.
+              Your unsaved runtime draft has been recovered. Saving merges it with the current
+              stored runtime.
             </p>
+          )}
+          {durableState.error && (
+            <p role="alert" className="session-error">
+              {durableState.error}
+            </p>
+          )}
+          {durableState.review && (
+            <div className="roster-confirm" role="alert">
+              <p>Another window saved a different unsaved runtime draft for this role.</p>
+              <button
+                type="button"
+                className="button secondary"
+                onClick={() => void durable.resolve('local')}
+              >
+                Keep this window’s draft
+              </button>
+              <button
+                type="button"
+                className="button secondary"
+                onClick={() => {
+                  const saved = durableState.review?.value;
+                  void durable.resolve('saved').then((ok) => {
+                    if (ok && saved) {
+                      setBase(saved.base);
+                      setDraft(saved.draft);
+                    }
+                  });
+                }}
+              >
+                Use saved draft
+              </button>
+            </div>
           )}
           {error && (
             <p role="alert" className="session-error">
               {error}
             </p>
           )}
-          <fieldset disabled={busy}>
+          <fieldset disabled={busy || !fresh}>
             <section>
               <h3>Model and checkout</h3>
               <div className="roster-form-grid">
@@ -494,7 +576,7 @@ export function RosterRuntimeEditor({
                 type="button"
                 className="button secondary"
                 onClick={() => {
-                  drafts.delete(key);
+                  forget();
                   onClose();
                 }}
               >
@@ -516,7 +598,7 @@ export function RosterRuntimeEditor({
                     const config = record(current['config']);
                     setBase(config);
                     setDraft(structuredClone(config));
-                    drafts.delete(key);
+                    forget();
                     setLeaving(false);
                     setError('');
                   } catch (error) {
@@ -531,7 +613,13 @@ export function RosterRuntimeEditor({
             </div>
           )}
           <footer>
-            <span>{dirty ? 'Unsaved project override' : 'Project runtime loaded'}</span>
+            <span role="status">
+              {!fresh
+                ? 'Reading stored runtime…'
+                : dirty
+                  ? 'Unsaved project override'
+                  : 'Project runtime loaded'}
+            </span>
             <button
               type="button"
               className="button secondary"
@@ -543,7 +631,7 @@ export function RosterRuntimeEditor({
             <button
               type="button"
               className="button primary"
-              disabled={!dirty || busy}
+              disabled={!dirty || busy || !fresh}
               onClick={() => {
                 try {
                   rosterConfig(draft);

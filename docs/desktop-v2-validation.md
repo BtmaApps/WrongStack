@@ -2904,3 +2904,31 @@ Verification on the shared working snapshot:
 - Not covered: runtime-override and role-input durability, full application restart for role
   documents, multi-window UI stress, full repository release/coverage, hosted CI and installed-app
   replacement.
+
+## Durable roster runtime overrides and a stale-snapshot fix (2026-10-29)
+
+- `RosterRuntimeEditor` stores its unsaved override and baseline through `DurableFormDraft` under
+  `roster-runtime:<sha256(['roster-runtime', role])>` (new Rust allow-list prefix; pure codec in
+  `roster-runtime-draft.ts`, controller in `roster-document-store.ts`). Restored drafts keep their
+  baseline; saving still goes through the existing three-way `mergeRosterConfig` against the
+  current store. Save success, "Discard runtime draft" and "Reload stored runtime" clear both the
+  in-window and native copies.
+- Found during native acceptance: opening the editor right after a save used the parent's roster
+  snapshot, which can still predate that save. The existing merge then correctly refused the
+  user's next edit as "changed elsewhere". This was a latent timing race; extra native IPC from
+  draft autosave made it reproducible. Without an in-window draft the editor now reads
+  `agent-roster.read-customization` itself on open and keeps its fields and save button disabled
+  ("Reading stored runtime…") until that read or the native restore completes.
+- Other native iterations: one failure came from the existing test expecting the old recovery
+  sentence (the copy now says saving merges with the current runtime); one came from the new test
+  expecting a number where the draft keeps form text (numbers are converted on save). A temporary
+  diagnostic that reports the stored native value on timeout was kept in the test.
+- Checks: desktop **425 tests / 89 files PASS** (shared tree includes unrelated concurrent work);
+  new `roster-runtime-draft.test.ts`. Typecheck **248 PASS**; Biome PASS; Rust fmt PASS; native
+  Rust **21 tests PASS**.
+- Native `--roster` on portable identity `45a1ed3344e1-344ee89c60b0`, bundled engine/checksums
+  verified: **exit 0 / PASS**, including the full existing runtime save/merge/conflict flow,
+  role-document drafts and the new runtime-draft reload restore plus explicit discard. The engine
+  was built from the shared tree with another agent's uncommitted core/cli edits.
+- Not covered: role-input durability, full application restart for runtime drafts, multi-window UI
+  stress, full repository release/coverage, hosted CI and installed-app replacement.

@@ -64,3 +64,49 @@ export async function exerciseNativeRosterDocumentDrafts({
     'PASS: native role document drafts: reload restore and immediate comparison with a changed store',
   );
 }
+
+/** An unsaved runtime override survives a renderer reload and is cleared by an explicit discard. */
+export async function exerciseNativeRosterRuntimeDraft({
+  page,
+  project,
+  role,
+  open,
+  card,
+  catalog,
+  waitFor,
+}) {
+  const formKey =
+    'roster-runtime:' +
+    createHash('sha256')
+      .update(JSON.stringify(['roster-runtime', role]))
+      .digest('hex');
+  const stored = () =>
+    page.evaluate(
+      (params) =>
+        window.__TAURI_INTERNALS__.invoke('host_request', { method: 'form-draft.get', params }),
+      { projectId: project.id, formKey },
+    );
+  const runtime = () =>
+    page.getByRole('dialog', { name: `Runtime policy for ${role}`, exact: true });
+  const tools = () => runtime().getByLabel('Role Tool calls', { exact: true });
+  await catalog().getByRole('button', { name: 'Edit runtime policy', exact: true }).click();
+  await tools().fill('55');
+  await waitFor(
+    async () => String((await stored()).value?.draft?.budget?.maxToolCalls) === '55',
+    'Runtime draft acknowledged',
+  ).catch(async (error) => {
+    throw Error(`${error.message}; stored: ${JSON.stringify(await stored()).slice(0, 600)}`);
+  });
+  await page.reload();
+  await open(project);
+  await card(role).click();
+  await catalog().getByRole('button', { name: 'Edit runtime policy', exact: true }).click();
+  await runtime()
+    .getByText(/unsaved runtime draft has been recovered/)
+    .waitFor();
+  assert.equal(await tools().inputValue(), '55');
+  await runtime().getByRole('button', { name: 'Close role runtime', exact: true }).click();
+  await runtime().getByRole('button', { name: 'Discard runtime draft', exact: true }).click();
+  await waitFor(async () => (await stored()).value === null, 'Discarded runtime draft cleared');
+  console.log('PASS: native roster runtime draft: reload restore and explicit discard');
+}
