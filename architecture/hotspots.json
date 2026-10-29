@@ -139,8 +139,8 @@
       "relativeImports": 16
     },
     "apps/desktop-v2/src/ProjectAgentRoster.tsx": {
-      "lines": 1478,
-      "relativeImports": 12
+      "lines": 1546,
+      "relativeImports": 14
     },
     "apps/desktop-v2/src/ProjectChimera.tsx": {
       "lines": 778,

@@ -2932,3 +2932,22 @@ Verification on the shared working snapshot:
   was built from the shared tree with another agent's uncommitted core/cli edits.
 - Not covered: role-input durability, full application restart for runtime drafts, multi-window UI
   stress, full repository release/coverage, hosted CI and installed-app replacement.
+
+## Durable roster role text inputs (2026-10-29)
+
+- Unsent per-role teach, improve, instruction and capture text in `ProjectAgentRoster` is kept
+  through `DurableFormDraft` under the project form key `roster-inputs` (new Rust allow-list
+  literal). Only roles with typed text are stored; capture results are not inputs. On open, saved
+  text fills roles that have no text in this window; persistence follows the input state, so the
+  existing clears after successful actions also clear the native copy. A peer-window write asks
+  for keep/use-saved.
+- Checks: desktop **427 tests / 90 files PASS** (shared tree includes unrelated concurrent work);
+  new `roster-input-draft.test.ts` (keep-only-typed rule, envelope refusal including prototype
+  keys and size). Typecheck **249 PASS**; Biome PASS; Rust fmt PASS; native Rust **21 tests PASS**.
+- Native `--roster` on portable identity `eb233c0c12d0-344ee89c60b0`, bundled engine/checksums
+  verified: **exit 0 / PASS** on the first run. The existing cross-project unsent-instruction case
+  now also confirms the acknowledged native copy, restores it after a real renderer reload and
+  verifies that clearing the field removes the native copy. The engine was built from the shared
+  tree with another agent's uncommitted core/cli edits.
+- Not covered: the role-creation dialog, full application restart, multi-window UI stress, full
+  repository release/coverage, hosted CI and installed-app replacement.

@@ -15,7 +15,16 @@ import {
   Users,
   X,
 } from 'lucide-react';
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import type { EngineCommand } from './engine-operations';
 import { entries, record } from './engine-values';
 import { MarkdownContent } from './MarkdownContent';
@@ -24,6 +33,8 @@ import { markdownTarget } from './markdown-target';
 import type { Session } from './model';
 import { openExternal } from './platform';
 import { RosterDocument, type RosterDocumentKind } from './RosterDocument';
+import { rosterInputDraft } from './roster-document-store';
+import { rosterInputsToKeep } from './roster-input-draft';
 import { type RosterRecord, rosterBudgetFields, rosterCatalog } from './roster-model';
 import './project-agent-roster.css';
 
@@ -136,6 +147,34 @@ export function ProjectAgentRoster({
   useEffect(() => {
     inputDrafts.set(projectId, inputs);
   }, [projectId, inputs]);
+  // Unsent role text is also kept on this device; typed text already in this window wins.
+  const inputStore = useMemo(() => rosterInputDraft(projectId), [projectId]);
+  const inputState = useSyncExternalStore(inputStore.subscribe, inputStore.snapshot);
+  const [inputsHydrated, setInputsHydrated] = useState(false);
+  useEffect(() => {
+    let active = true;
+    void inputStore.load().then(() => {
+      if (!active) return;
+      const saved = inputStore.snapshot().value;
+      if (saved)
+        setInputs((current) => {
+          const merged = { ...current };
+          for (const [role, value] of Object.entries(saved))
+            if (!rosterInputsToKeep({ [role]: current[role] ?? {} })) merged[role] = { ...value };
+          return merged;
+        });
+      setInputsHydrated(true);
+    });
+    return () => {
+      active = false;
+    };
+  }, [inputStore]);
+  useEffect(() => {
+    if (!inputsHydrated || !inputState.ready || inputState.review) return;
+    const next = rosterInputsToKeep(inputs);
+    if (JSON.stringify(next) === JSON.stringify(inputStore.snapshot().value)) return;
+    inputStore.edit(next);
+  }, [inputs, inputsHydrated, inputState.ready, inputState.review, inputStore]);
   useEffect(() => {
     mounted.current = true;
     return () => {
@@ -382,6 +421,35 @@ export function ProjectAgentRoster({
         <p role="alert" className="session-error">
           {error}
         </p>
+      )}
+      {inputState.error && (
+        <p role="alert" className="session-error">
+          {inputState.error}
+        </p>
+      )}
+      {inputState.review && (
+        <div className="roster-confirm" role="alert">
+          <p>Another window saved different unsent role notes for this project.</p>
+          <button
+            type="button"
+            className="button secondary"
+            onClick={() => void inputStore.resolve('local')}
+          >
+            Keep this window’s notes
+          </button>
+          <button
+            type="button"
+            className="button secondary"
+            onClick={() => {
+              const saved = inputState.review?.value ?? {};
+              void inputStore.resolve('saved').then((ok) => {
+                if (ok) setInputs(structuredClone(saved));
+              });
+            }}
+          >
+            Use saved notes
+          </button>
+        </div>
       )}
       {notice && (
         <p role="status" className="composer-notice">

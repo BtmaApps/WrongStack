@@ -385,7 +385,34 @@ export async function exerciseNativeAgentRoster({
     (await readFile(join(directory, 'learned.md'), 'utf8')).includes('Beta-only'),
     false,
   );
+  // Unsent role text also survives a renderer reload through native project storage.
+  const unsentInputs = () =>
+    page.evaluate(
+      (params) =>
+        window.__TAURI_INTERNALS__.invoke('host_request', { method: 'form-draft.get', params }),
+      { projectId: project.id, formKey: 'roster-inputs' },
+    );
+  await waitFor(
+    async () =>
+      (await unsentInputs()).value?.inputs?.[role]?.teach ===
+      'Keep this unsent Alpha role instruction.',
+    'Unsent role instruction acknowledged',
+  );
+  await page.reload();
+  await open(project);
+  await card(role).click();
+  await catalog().getByRole('button', { name: 'Learning & evidence', exact: true }).click();
+  await waitFor(
+    async () =>
+      (await catalog().getByLabel('Teach role instruction', { exact: true }).inputValue()) ===
+      'Keep this unsent Alpha role instruction.',
+    'Unsent role instruction restored after reload',
+  );
   await catalog().getByLabel('Teach role instruction', { exact: true }).fill('');
+  await waitFor(
+    async () => !(await unsentInputs()).value?.inputs?.[role]?.teach,
+    'Cleared role instruction leaves no unsent copy',
+  );
   await catalog().getByRole('button', { name: 'Skill layer', exact: true }).click();
   const skill = catalog()
     .locator('.roster-skill-layer article')

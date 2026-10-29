@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-29T08:42:36.826Z",
+  "generatedAt": "2026-10-29T08:52:47.139Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,15 +12,15 @@
   },
   "summary": {
     "packages": 45,
-    "sourceFiles": 5410,
-    "testFiles": 4729,
-    "sourceLines": 1197339,
+    "sourceFiles": 5411,
+    "testFiles": 4730,
+    "sourceLines": 1197528,
     "workspaceEdges": 222,
-    "moduleEdges": 16260,
+    "moduleEdges": 16265,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
-    "testsWithoutTypecheck": 89,
+    "testsWithoutTypecheck": 90,
     "testsWithMultipleTypechecks": 0,
     "testOnlyExports": 971
   },
@@ -387,8 +387,8 @@
     {
       "name": "@wrongstack/desktop-v2",
       "dir": "apps/desktop-v2",
-      "sourceFiles": 241,
-      "testFiles": 89,
+      "sourceFiles": 242,
+      "testFiles": 90,
       "workspaceDependencies": [
         "@wrongstack/contracts",
         "@wrongstack/core",
@@ -1742,6 +1742,12 @@
       },
       {
         "file": "apps/desktop-v2/tests/roster-document-draft.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "apps/desktop-v2/tests/roster-input-draft.test.ts",
         "projects": [
           "root-node"
         ]
@@ -30194,6 +30200,13 @@
         "typecheckProjects": []
       },
       {
+        "file": "apps/desktop-v2/tests/roster-input-draft.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
         "file": "apps/desktop-v2/tests/roster-model.test.ts",
         "runtimeProjects": [
           "root-node"
@@ -31011,8 +31024,8 @@
     },
     {
       "file": "apps/desktop-v2/src/ProjectAgentRoster.tsx",
-      "lines": 1478,
-      "relativeImports": 12
+      "lines": 1546,
+      "relativeImports": 14
     },
     {
       "file": "apps/desktop-v2/src/ProjectChimera.tsx",
@@ -31083,8 +31096,8 @@
     },
     {
       "file": "apps/desktop-v2/src/ProjectAgentRoster.tsx",
-      "lines": 1478,
-      "relativeImports": 12
+      "lines": 1546,
+      "relativeImports": 14
     },
     {
       "file": "packages/vibeui/src/components/workspace.tsx",

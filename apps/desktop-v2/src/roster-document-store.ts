@@ -6,6 +6,7 @@ import {
   rosterDocumentCodec,
   rosterDocumentDraftKey,
 } from './roster-document-draft';
+import { type RosterInputDraft, rosterInputCodec } from './roster-input-draft';
 import {
   type RosterRuntimeDraft,
   rosterRuntimeCodec,
@@ -48,6 +49,20 @@ export function rosterRuntimeDraft(projectId: string, role: string) {
       rosterRuntimeCodec(role),
     );
     runtimes.set(id, draft);
+  }
+  return draft;
+}
+
+const inputs = new Map<string, DurableFormDraft<RosterInputDraft>>();
+/** Unsent per-role roster text inputs for one project in this window. */
+export function rosterInputDraft(projectId: string) {
+  let draft = inputs.get(projectId);
+  if (!draft) {
+    draft = new DurableFormDraft(
+      projectFormDraftStorage(projectId, 'roster-inputs'),
+      rosterInputCodec,
+    );
+    inputs.set(projectId, draft);
   }
   return draft;
 }
