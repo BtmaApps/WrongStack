@@ -195,4 +195,17 @@ describe('findLockfileDrift', () => {
     expect(await hook?.(call)).toBeUndefined();
     expect(api.metrics.counter).toHaveBeenCalledTimes(1);
   });
+
+  it('flags a newly added workspace package.json with dependencies when the lockfile is untouched', async () => {
+    expect(dependencyChange('npm', '', pkg({ zod: '3' }))).toBe('+zod');
+    await write('packages/api/package.json', pkg({ zod: '3' }));
+    commit('add workspace package without lockfile');
+    expect((await findLockfileDrift(dir))?.findings).toEqual([
+      {
+        manifest: 'packages/api/package.json',
+        lockfile: 'pnpm-lock.yaml',
+        summary: '+zod',
+      },
+    ]);
+  });
 });

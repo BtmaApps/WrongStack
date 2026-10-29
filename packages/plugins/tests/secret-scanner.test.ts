@@ -189,7 +189,7 @@ describe('secret-scanner plugin', () => {
     secretScannerPlugin.setup(api as any);
     expect(api.registerHook).toHaveBeenCalledWith(
       'PreToolUse',
-      'bash|pwsh|exec|write|edit|replace|patch',
+      'bash|pwsh|exec|write|edit|replace|patch|codebase-ast-replace',
       expect.any(Function),
       {
         name: 'secret-scanner',
@@ -609,7 +609,7 @@ describe('secret_scanner_status tool', () => {
     };
     expect(result.ok).toBe(true);
     expect(result.mode).toBe('block');
-    expect(result.matcher).toBe('bash|pwsh|exec|write|edit|replace|patch');
+    expect(result.matcher).toBe('bash|pwsh|exec|write|edit|replace|patch|codebase-ast-replace');
     expect(result.patternCount).toBeGreaterThanOrEqual(15);
     expect(result.counters.block).toBe(1);
     expect(result.lastBlock).not.toBeNull();

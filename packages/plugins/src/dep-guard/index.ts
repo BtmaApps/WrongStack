@@ -56,6 +56,47 @@ import { parseInstallCommands } from './install-commands.js';
 import { registerLockfileSync } from './lockfile-sync.js';
 import { type Ecosystem, ecosystemOf, type RegistryFinding, registryVerdict } from './registry.js';
 
+/** Package manager whose registry a `language_package` language installs from. */
+const LANGUAGE_PACKAGE_MANAGER: Readonly<Record<string, string>> = {
+  typescript: 'npm',
+  javascript: 'npm',
+  python: 'pip',
+  rust: 'cargo add',
+};
+
+/**
+ * The installs a structured tool call performs, spelled as the command line
+ * the checks already understand. The `install` tool (`{ packages }`, the path
+ * its own description tells the model to prefer over bash) and
+ * `language_package` (`{ operation: 'add', names }`) carry no command line, so
+ * reading only shell input skipped every check on them.
+ */
+function structuredInstallLines(
+  toolName: string | undefined,
+  ti: Record<string, unknown>,
+): string[] {
+  const names = (value: unknown): string[] =>
+    (Array.isArray(value) ? value : typeof value === 'string' ? value.split(',') : [])
+      .filter((name): name is string => typeof name === 'string')
+      .map((name) => name.trim())
+      .filter(Boolean);
+  const tool = toolName?.toLowerCase();
+  if (tool === 'install') {
+    const pkgs = names(ti['packages']);
+    return pkgs.length > 0 ? [`npm install ${pkgs.join(' ')}`] : [];
+  }
+  if (tool === 'language_package') {
+    const operation = ti['operation'];
+    const manager = LANGUAGE_PACKAGE_MANAGER[String(ti['language'] ?? '').toLowerCase()];
+    const pkgs = names(ti['names']);
+    if ((operation !== 'add' && operation !== 'install') || !manager || pkgs.length === 0) {
+      return [];
+    }
+    return [`${manager.includes(' ') ? manager : `${manager} install`} ${pkgs.join(' ')}`];
+  }
+  return [];
+}
+
 export type { ParsedInstall } from './install-commands.js';
 export { isTreeInstallCommand, parseInstallCommands } from './install-commands.js';
 
@@ -388,6 +429,7 @@ const plugin: Plugin = {
         const legacy = ti[key];
         if (typeof legacy === 'string' && legacy) lines.push(legacy);
       }
+      lines.push(...structuredInstallLines(input.toolName, ti));
       const command = lines.join('\n');
       // A walk that hit its scan bounds may be hiding an install in the
       // unread region — the padding vector classifyShellSurfaceInput closes

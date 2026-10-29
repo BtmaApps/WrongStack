@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-29T00:56:02.179Z",
+  "generatedAt": "2026-10-29T00:57:45.144Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 45,
     "sourceFiles": 5393,
-    "testFiles": 4699,
-    "sourceLines": 1194234,
+    "testFiles": 4705,
+    "sourceLines": 1194481,
     "workspaceEdges": 222,
     "moduleEdges": 16208,
     "nonCommandSlashImports": 0,
@@ -633,7 +633,7 @@
       "name": "@wrongstack/plugins",
       "dir": "packages/plugins",
       "sourceFiles": 152,
-      "testFiles": 127,
+      "testFiles": 133,
       "workspaceDependencies": [
         "@wrongstack/contracts",
         "@wrongstack/coordination",
@@ -651,7 +651,7 @@
         {
           "path": "packages/plugins/tsconfig.test.json",
           "error": null,
-          "testFiles": 127
+          "testFiles": 133
         }
       ]
     },
@@ -14821,6 +14821,12 @@
         ]
       },
       {
+        "file": "packages/plugins/tests/branch-guard-shell-tools.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/plugins/tests/branch-guard.test.ts",
         "projects": [
           "root-node"
@@ -14923,7 +14929,19 @@
         ]
       },
       {
+        "file": "packages/plugins/tests/dep-guard-install-spellings.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/plugins/tests/dep-guard-lockfile-sync.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/plugins/tests/dep-guard-structured-install.test.ts",
         "projects": [
           "root-node"
         ]
@@ -15169,6 +15187,18 @@
         ]
       },
       {
+        "file": "packages/plugins/tests/path-guard-output-writers.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/plugins/tests/path-guard-pwsh-writers.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/plugins/tests/path-guard-redos.test.ts",
         "projects": [
           "root-node"
@@ -15338,6 +15368,12 @@
       },
       {
         "file": "packages/plugins/tests/schema-evolution-guard.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/plugins/tests/secret-scanner-ast-replace.test.ts",
         "projects": [
           "root-node"
         ]
@@ -31054,6 +31090,11 @@
       "relativeImports": 12
     },
     {
+      "file": "packages/plugins/src/dep-guard/index.ts",
+      "lines": 699,
+      "relativeImports": 5
+    },
+    {
       "file": "packages/sage/src/types.ts",
       "lines": 699,
       "relativeImports": 10
@@ -31062,11 +31103,6 @@
       "file": "packages/coordination/src/task-auctioneer.ts",
       "lines": 698,
       "relativeImports": 8
-    },
-    {
-      "file": "packages/core/src/core/agent-response.ts",
-      "lines": 697,
-      "relativeImports": 21
     }
   ],
   "testOnlyExports": [

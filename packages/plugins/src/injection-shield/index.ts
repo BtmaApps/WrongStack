@@ -154,7 +154,23 @@ const PATTERNS: InjectionPattern[] = [
  * the LTR/RTL directional marks and overrides. All of them can sit inside
  * a word without changing how a human — or a language model — reads it.
  */
-const INVISIBLE_CHARS = /[\u00AD\u200B-\u200F\u202A-\u202E\u2060-\u2064\uFEFF]/g;
+// Also the combining grapheme joiner, the Mongolian vowel separator and the
+// variation selectors: just as invisible, and they split a keyword the same way.
+const INVISIBLE_CHARS =
+  // biome-ignore lint/suspicious/noMisleadingCharacterClass: each code point is matched (and stripped) on its own — that is the point.
+  /[\u00AD\u034F\u180E\u200B-\u200F\u202A-\u202E\u2060-\u2064\uFE00-\uFE0F\uFEFF]/g;
+
+/**
+ * Unicode TAG characters (U+E0020 to U+E007E) mirror printable ASCII and render as
+ * nothing, so a whole instruction can be spelled in them ("ASCII smuggling")
+ * and still be read by a model. Decoded to ASCII for scanning only.
+ */
+const TAG_CHARS = /[\u{E0020}-\u{E007E}]/gu;
+
+function decodeTagChars(text: string): string {
+  TAG_CHARS.lastIndex = 0;
+  return text.replace(TAG_CHARS, (ch) => String.fromCharCode((ch.codePointAt(0) ?? 0) - 0xe0000));
+}
 
 /**
  * Strip invisible characters so a payload cannot hide between letters.
@@ -253,7 +269,7 @@ export function scanForInjection(text: string): string[] {
   // notice the invisible characters that stripping removes. NFKC first: it
   // maps compatibility letters — fullwidth `ｉｇｎｏｒｅ`, mathematical bold
   // `𝗶𝗴𝗻𝗼𝗿𝗲` — to ASCII, the same evasion the confusable fold undoes.
-  const cleaned = foldConfusables(stripInvisible(text.normalize('NFKC')));
+  const cleaned = foldConfusables(stripInvisible(decodeTagChars(text.normalize('NFKC'))));
   for (const p of PATTERNS) {
     // `p.re` carries no /g flag, so `test` is stateless and safe to reuse.
     if (p.re.test(text)) hits.add(p.name);

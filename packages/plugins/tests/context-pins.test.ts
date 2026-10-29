@@ -191,9 +191,52 @@ describe('context-pins plugin', () => {
     } finally {
       nodeFs_readFileSync_spy?.mockRestore();
     }
-    const result = await getTool(api, 'pin_add').execute({ text: 'new' });
+    // Still unreadable when the pin is added: nothing is written over it.
+    const busy = vi.spyOn(nodeFs, 'readFileSync').mockImplementation(((
+      p: unknown,
+      ...rest: unknown[]
+    ) => {
+      if (String(p) === filePath) {
+        throw Object.assign(new Error('EBUSY: resource busy or locked'), { code: 'EBUSY' });
+      }
+      return (realReadFileSync as (...a: unknown[]) => unknown)(p, ...rest);
+    }) as typeof nodeFs.readFileSync);
+    let result: Record<string, unknown>;
+    try {
+      result = await getTool(api, 'pin_add').execute({ text: 'new' });
+    } finally {
+      busy.mockRestore();
+    }
     expect(result['persisted']).toBe(false);
     expect(readFileSync(filePath, 'utf-8')).toBe(before);
+
+    // Readable again: the stored pins are re-read first, so the write keeps them.
+    const next = await getTool(api, 'pin_add').execute({ text: 'newer' });
+    expect(next['persisted']).toBe(true);
+    const texts = (
+      JSON.parse(readFileSync(filePath, 'utf-8')) as { pins: Array<{ text: string }> }
+    ).pins.map((p) => p.text);
+    expect(texts).toEqual(['stored', 'new', 'newer']);
+  });
+
+  it('keeps pins another session wrote after this one loaded', async () => {
+    const filePath = join(tmp, 'pins.json');
+    writeFileSync(filePath, JSON.stringify({ pins: [], nextId: 1 }));
+    const api = makeApi({ extensions: { 'context-pins': { filePath } } });
+    contextPinsPlugin.setup(api as never);
+    writeFileSync(
+      filePath,
+      JSON.stringify({
+        pins: [{ id: 'pin-1', label: null, text: 'other', createdAt: 'x' }],
+        nextId: 2,
+      }),
+    );
+    const added = await getTool(api, 'pin_add').execute({ text: 'mine' });
+    expect((added['pin'] as { id: string }).id).toBe('pin-2');
+    const texts = (
+      JSON.parse(readFileSync(filePath, 'utf-8')) as { pins: Array<{ text: string }> }
+    ).pins.map((p) => p.text);
+    expect(texts).toEqual(['other', 'mine']);
   });
 
   it('keeps stored pins past a lowered maxPins instead of deleting them on the next write', async () => {

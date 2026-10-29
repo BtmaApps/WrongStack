@@ -111,7 +111,7 @@ describe('branch-guard plugin', () => {
     expect(api.registerHook).toHaveBeenCalledTimes(1);
     const [event, matcher] = api.registerHook.mock.calls[0]!;
     expect(event).toBe('PreToolUse');
-    expect(matcher).toBe('bash|git|git_autocommit');
+    expect(matcher).toBe('bash|pwsh|exec|git|git_autocommit');
   });
 });
 

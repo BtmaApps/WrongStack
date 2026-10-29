@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-29T00:56:02.179Z
+**Generated:** 2026-10-29T00:57:45.144Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,8 +9,8 @@
 |---|---:|
 | Workspace packages | 45 |
 | Production source files | 5393 |
-| Production source lines | 1194234 |
-| Test files | 4699 |
+| Production source lines | 1194481 |
+| Test files | 4705 |
 | Workspace dependency edges | 222 |
 | Relative module edges | 16208 |
 | Non-command slash imports | 0 |
@@ -49,7 +49,7 @@
 | @wrongstack/persistence | 10 | 23 | — |
 | @wrongstack/plug-lsp | 52 | 57 | @wrongstack/contracts, @wrongstack/core, @wrongstack/tools |
 | @wrongstack/plugin-sdk | 12 | 10 | @wrongstack/contracts, @wrongstack/core, @wrongstack/tools |
-| @wrongstack/plugins | 152 | 127 | @wrongstack/contracts, @wrongstack/coordination, @wrongstack/core, @wrongstack/plugin-sdk, @wrongstack/primitives, @wrongstack/tools |
+| @wrongstack/plugins | 152 | 133 | @wrongstack/contracts, @wrongstack/coordination, @wrongstack/core, @wrongstack/plugin-sdk, @wrongstack/primitives, @wrongstack/tools |
 | @wrongstack/primitives | 25 | 19 | — |
 | @wrongstack/providers | 138 | 122 | @wrongstack/contracts, @wrongstack/core |
 | @wrongstack/requirement-intake | 18 | 20 | @wrongstack/core |
@@ -138,9 +138,9 @@ None.
 | 699 | `packages/coordination/src/subagent-budget.ts` |
 | 699 | `packages/core/src/core/agent-tools.ts` |
 | 699 | `packages/governance/src/runtime-compatibility.ts` |
+| 699 | `packages/plugins/src/dep-guard/index.ts` |
 | 699 | `packages/sage/src/types.ts` |
 | 698 | `packages/coordination/src/task-auctioneer.ts` |
-| 697 | `packages/core/src/core/agent-response.ts` |
 
 ## Exports only tests reference
 

@@ -111,6 +111,7 @@ const NPM_DEP_SECTIONS = ['dependencies', 'devDependencies', 'optionalDependenci
 
 /** `section:name` → spec, plus the resolution overrides as one entry each. Null when unparseable. */
 function npmDeps(text: string): Map<string, string> | null {
+  if (text === '') return new Map();
   let pkg: unknown;
   try {
     pkg = JSON.parse(text);

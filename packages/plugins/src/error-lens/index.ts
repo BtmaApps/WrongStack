@@ -4,7 +4,7 @@
  *
  * When a shell command fails, the model gets a wall of stderr: full
  * stack traces, npm noise, repeated frames. A `PostToolUse` hook on
- * `bash|exec` parses the failure and injects a short digest via
+ * `bash|pwsh|exec` parses the failure and injects a short digest via
  * `additionalContext`:
  *
  *  - the error type + message line (TypeError, ENOENT, AssertionError…)
@@ -382,7 +382,7 @@ const plugin: Plugin = {
       return { additionalContext: parts.join('\n') };
     };
 
-    state.hookUnregister = api.registerHook('PostToolUse', 'bash|exec', hook as never);
+    state.hookUnregister = api.registerHook('PostToolUse', 'bash|pwsh|exec', hook as never);
 
     // ── error_lens_history tool ───────────────────────────────────────
     api.tools.register({

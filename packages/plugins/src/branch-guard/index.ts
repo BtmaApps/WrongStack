@@ -6,8 +6,8 @@
  * - branch_guard_status : Show protected branches, mode, and counters.
  *
  * Hooks registered:
- * - PreToolUse with matcher `bash|git|git_autocommit`. Inspects the tool
- *   input for git commit / push / merge commands (bash), structured git
+ * - PreToolUse with matcher `bash|pwsh|exec|git|git_autocommit`. Inspects the
+ *   tool input for git commit / push / merge commands (shells, exec argv), structured git
  *   operations (git), or the tool call itself (git_autocommit). If the current
  *   branch is protected, the call is blocked with a clear reason.
  *
@@ -487,8 +487,15 @@ const plugin: Plugin = {
       } else {
         const rawCmd =
           inp['command'] ?? inp['CommandLine'] ?? inp['cmd'] ?? inp['script'] ?? inp['input'];
-        const command = typeof rawCmd === 'string' ? rawCmd : undefined;
-        if (typeof command !== 'string') return;
+        if (typeof rawCmd !== 'string') return;
+        // `exec` passes argv: `{ command: 'git', args: ['commit', …] }`.
+        const args = Array.isArray(inp['args'])
+          ? inp['args'].filter((arg): arg is string => typeof arg === 'string')
+          : [];
+        const command = [
+          rawCmd,
+          ...args.map((arg) => (/^[\w./:@%+=,-]+$/.test(arg) ? arg : JSON.stringify(arg))),
+        ].join(' ');
         gitOps = await detectGitOpsInCommand(
           command,
           (name) => isCheckoutBranch(name, cwd, runtime.signal),
@@ -578,13 +585,20 @@ const plugin: Plugin = {
       };
     };
 
-    state.hookUnregister = api.registerHook('PreToolUse', 'bash|git|git_autocommit', hook, {
-      name: 'branch-guard',
-      stage: 'validate',
-      timeoutMs: 7_000,
-      failurePolicy: 'closed',
-      policy: true,
-    });
+    // Tool names match exactly: without `pwsh` and `exec`, a commit or push on
+    // a protected branch from PowerShell or through exec's argv never ran here.
+    state.hookUnregister = api.registerHook(
+      'PreToolUse',
+      'bash|pwsh|exec|git|git_autocommit',
+      hook,
+      {
+        name: 'branch-guard',
+        stage: 'validate',
+        timeoutMs: 7_000,
+        failurePolicy: 'closed',
+        policy: true,
+      },
+    );
 
     // --- branch_guard_status tool ---
     api.tools.register({

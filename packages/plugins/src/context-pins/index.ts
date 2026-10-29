@@ -35,7 +35,7 @@
 import * as fs from 'node:fs';
 import { dirname, isAbsolute, relative, resolve } from 'node:path';
 import { type Plugin, ToolValidationError } from '@wrongstack/contracts/types';
-import { atomicWrite, ensureDir } from '@wrongstack/core/utils';
+import { atomicWrite, ensureDir, withFileLock } from '@wrongstack/core/utils';
 
 // ---------------------------------------------------------------------------
 // Module-scope state (H1 audit pattern)
@@ -220,10 +220,68 @@ function loadPins(filePath: string): { pins: Pin[]; nextId: number; unreadable?:
  */
 type PersistOutcome = 'file' | 'memory' | 'error';
 
+/**
+ * Re-read the stored pins before changing them. The file is per project, and
+ * another session on the same project may have written it since this one
+ * loaded at setup: rewriting from the setup-time snapshot deleted every pin
+ * that session added. A file that cannot be read now is treated like one that
+ * could not be read at setup: the change stays in memory and is not written
+ * over what could not be read.
+ */
+function reloadPins(filePath: string): void {
+  if (!filePath) return;
+  const loaded = loadPins(filePath);
+  if (loaded.unreadable !== undefined) {
+    state.loadError = loaded.unreadable;
+    return;
+  }
+  state.nextId = Math.max(state.nextId, loaded.nextId);
+  // A pin added while the file could not be written is not on disk: keep it,
+  // under an id the file does not already use.
+  const carried = state.pins.filter((pin) => unsavedPins.has(pin));
+  state.pins = loaded.pins;
+  for (const pin of carried) {
+    pin.id = `pin-${state.nextId++}`;
+    state.pins.push(pin);
+  }
+  state.loadError = undefined;
+}
+
+/** Pins this session added that no write has reached the file with yet. */
+const unsavedPins = new Set<Pin>();
+
+/** Set while a change runs without the file lock: it stays in memory, unwritten. */
+let lockUnavailable = false;
+
+/**
+ * Run a re-read + change + write under the file's cross-process lock (no file:
+ * no lock). When the lock cannot be taken the change still lands in memory,
+ * like any other unwritable store, but is never written unlocked.
+ */
+async function underPinsLock<T>(filePath: string, fn: () => Promise<T>): Promise<T> {
+  if (!filePath) return fn();
+  let ran = false;
+  try {
+    return await withFileLock(filePath, () => {
+      ran = true;
+      return fn();
+    });
+  } catch (err) {
+    if (ran) throw err;
+    lockUnavailable = true;
+    try {
+      return await fn();
+    } finally {
+      lockUnavailable = false;
+    }
+  }
+}
+
 async function persistPins(filePath: string): Promise<PersistOutcome> {
   if (!filePath) return 'memory';
-  if (state.loadError !== undefined) {
-    // The stored pins were never loaded: writing now would replace them.
+  if (state.loadError !== undefined || lockUnavailable) {
+    // The stored pins were never loaded (or could be changing under us
+    // without the lock): writing now would replace them.
     state.persistErrors += 1;
     return 'error';
   }
@@ -318,6 +376,7 @@ const plugin: Plugin = {
     // new pin, it does not delete. Slicing here dropped the pins past a lowered
     // cap, and the next add/remove rewrote the file without them.
     state.pins = loaded.pins;
+    unsavedPins.clear();
     state.nextId = loaded.nextId;
     state.loadError = loaded.unreadable;
     if (loaded.unreadable !== undefined) {
@@ -363,43 +422,49 @@ const plugin: Plugin = {
       mutating: true,
       async execute(input: { text: string; label?: string | undefined }) {
         if (!cfg.enabled) throw new Error('context-pins is disabled');
-        const raw = (input ?? {}) as Record<string, unknown>;
-        const rawText =
-          input.text ??
-          raw['pin'] ??
-          raw['content'] ??
-          raw['message'] ??
-          raw['note'] ??
-          raw['fact'] ??
-          raw['data'];
-        const text = String(rawText ?? '').trim();
-        if (!text) {
-          throw new ToolValidationError({ message: 'pin text must not be empty', field: 'text' });
-        }
-        if (state.pins.length >= cfg.maxPins) {
-          throw new Error(
-            `pin limit reached (${cfg.maxPins}). Remove a pin first with pin_remove.`,
-          );
-        }
-        const pin: Pin = {
-          id: `pin-${state.nextId++}`,
-          label: typeof input.label === 'string' && input.label.trim() ? input.label.trim() : null,
-          text: text.slice(0, cfg.maxPinChars),
-          createdAt: new Date().toISOString(),
-        };
-        state.pins.push(pin);
-        state.adds += 1;
-        api.metrics.counter('adds');
-        const storage = await persistPins(cfg.filePath);
-        // `persisted` now means "this pin is on disk" — nothing else. It used
-        // to be true for a store that was never written.
-        return {
-          ok: true,
-          pin,
-          persisted: storage === 'file',
-          storage,
-          totalPins: state.pins.length,
-        };
+        return underPinsLock(cfg.filePath, async () => {
+          reloadPins(cfg.filePath);
+          const raw = (input ?? {}) as Record<string, unknown>;
+          const rawText =
+            input.text ??
+            raw['pin'] ??
+            raw['content'] ??
+            raw['message'] ??
+            raw['note'] ??
+            raw['fact'] ??
+            raw['data'];
+          const text = String(rawText ?? '').trim();
+          if (!text) {
+            throw new ToolValidationError({ message: 'pin text must not be empty', field: 'text' });
+          }
+          if (state.pins.length >= cfg.maxPins) {
+            throw new Error(
+              `pin limit reached (${cfg.maxPins}). Remove a pin first with pin_remove.`,
+            );
+          }
+          const pin: Pin = {
+            id: `pin-${state.nextId++}`,
+            label:
+              typeof input.label === 'string' && input.label.trim() ? input.label.trim() : null,
+            text: text.slice(0, cfg.maxPinChars),
+            createdAt: new Date().toISOString(),
+          };
+          state.pins.push(pin);
+          state.adds += 1;
+          api.metrics.counter('adds');
+          const storage = await persistPins(cfg.filePath);
+          if (storage === 'file') unsavedPins.clear();
+          else if (storage === 'error') unsavedPins.add(pin);
+          // `persisted` now means "this pin is on disk" — nothing else. It used
+          // to be true for a store that was never written.
+          return {
+            ok: true,
+            pin,
+            persisted: storage === 'file',
+            storage,
+            totalPins: state.pins.length,
+          };
+        });
       },
     });
 
@@ -419,32 +484,37 @@ const plugin: Plugin = {
       mutating: true,
       async execute(input: { id?: string | undefined; label?: string | undefined }) {
         if (!cfg.enabled) throw new Error('context-pins is disabled');
-        const raw = (input ?? {}) as Record<string, unknown>;
-        const key = String(
-          input.id ??
-            input.label ??
-            raw['pinId'] ??
-            raw['pin_id'] ??
-            raw['name'] ??
-            raw['key'] ??
-            '',
-        ).trim();
-        if (!key)
-          throw new ToolValidationError({ message: 'id or label is required', field: 'id' });
-        const before = state.pins.length;
-        state.pins = state.pins.filter((p) => p.id !== key && p.label !== key);
-        const removed = before - state.pins.length;
-        if (removed === 0) throw new Error(`no pin matches "${key}"`);
-        state.removals += removed;
-        api.metrics.counter('removals', removed);
-        const storage = await persistPins(cfg.filePath);
-        return {
-          ok: true,
-          removed,
-          persisted: storage === 'file',
-          storage,
-          totalPins: state.pins.length,
-        };
+        return underPinsLock(cfg.filePath, async () => {
+          reloadPins(cfg.filePath);
+          const raw = (input ?? {}) as Record<string, unknown>;
+          const key = String(
+            input.id ??
+              input.label ??
+              raw['pinId'] ??
+              raw['pin_id'] ??
+              raw['name'] ??
+              raw['key'] ??
+              '',
+          ).trim();
+          if (!key)
+            throw new ToolValidationError({ message: 'id or label is required', field: 'id' });
+          const before = state.pins.length;
+          state.pins = state.pins.filter((p) => p.id !== key && p.label !== key);
+          const removed = before - state.pins.length;
+          if (removed === 0) throw new Error(`no pin matches "${key}"`);
+          state.removals += removed;
+          api.metrics.counter('removals', removed);
+          for (const pin of unsavedPins) if (!state.pins.includes(pin)) unsavedPins.delete(pin);
+          const storage = await persistPins(cfg.filePath);
+          if (storage === 'file') unsavedPins.clear();
+          return {
+            ok: true,
+            removed,
+            persisted: storage === 'file',
+            storage,
+            totalPins: state.pins.length,
+          };
+        });
       },
     });
 

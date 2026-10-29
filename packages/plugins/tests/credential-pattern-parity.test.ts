@@ -262,3 +262,21 @@ describe('aws-secret-key detection', () => {
     expect(found.map((d) => d.kind)).not.toContain('aws-secret-key');
   });
 });
+
+describe('Discord webhook URLs', () => {
+  // The credential is the last path segment, so no key name or query marks it.
+  const token = `Ab3_${'x9Y-'.repeat(15)}`;
+  const url = `https://discord.com/api/webhooks/1122334455/${token}`;
+
+  it('are caught by both plugin surfaces and the core scrubber', () => {
+    expect(detectSecrets(`notify ${url}`, []).map((d) => d.kind)).toContain('discord_webhook');
+    expect(CREDENTIAL_PATTERNS.some((p) => p.type === 'discord_webhook')).toBe(true);
+    expect(new DefaultSecretScrubber().scrub(url)).not.toContain(token);
+  });
+
+  it('leave token-less Discord links alone', () => {
+    expect(
+      detectSecrets('see https://discord.com/api/webhooks', []).map((d) => d.kind),
+    ).not.toContain('discord_webhook');
+  });
+});

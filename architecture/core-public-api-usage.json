@@ -59,9 +59,9 @@
       "runtimeOrMixed": 1
     },
     "@wrongstack/core/hooks": {
-      "files": 14,
+      "files": 17,
       "typeOnly": 3,
-      "runtimeOrMixed": 11
+      "runtimeOrMixed": 14
     },
     "@wrongstack/core/infrastructure": {
       "files": 65,
@@ -4228,7 +4228,25 @@
     },
     {
       "specifier": "@wrongstack/core/hooks",
+      "file": "packages/plugins/tests/branch-guard-shell-tools.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/hooks",
+      "file": "packages/plugins/tests/dep-guard-structured-install.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/hooks",
       "file": "packages/plugins/tests/path-guard.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/hooks",
+      "file": "packages/plugins/tests/secret-scanner-ast-replace.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

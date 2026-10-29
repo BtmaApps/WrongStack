@@ -42,7 +42,21 @@ const MANAGER_PREFIX = String.raw`(?:[^\s;&|(){}]+[\\/])?`;
  */
 const ARGS = String.raw`([^;&|\n\r)}]+)`;
 
-const START = `${CMD_BOUNDARY}${LAUNCHER_PREFIX}${MANAGER_PREFIX}`;
+/**
+ * Leading `NAME=value` assignments scope the environment to one command
+ * (`NODE_ENV=production npm i x`); like a launcher, they must not hide the
+ * manager from the boundary.
+ */
+const ENV_PREFIX = String.raw`(?:[A-Za-z_][A-Za-z0-9_]*=[^\s;&|(){}]*\s+){0,4}`;
+
+const START = `${CMD_BOUNDARY}${ENV_PREFIX}${LAUNCHER_PREFIX}${MANAGER_PREFIX}`;
+
+/**
+ * npm's install verb and the aliases npm itself accepts (`npm in`,
+ * `npm isntall` …): only `install|i|add` were known, so every alias installed
+ * unchecked.
+ */
+const JS_INSTALL_VERB = '(?:install|i|add|in|ins|inst|insta|instal|isnt|isnta|isntal|isntall)';
 
 /**
  * Global options between a JS package manager and its verb, each with an
@@ -53,7 +67,7 @@ const START = `${CMD_BOUNDARY}${LAUNCHER_PREFIX}${MANAGER_PREFIX}`;
  * backtracking fork).
  */
 const PM_WORD = String.raw`[^\s;&|(){}]`;
-const PM_OPTIONS = String.raw`(?:\s+-${PM_WORD}*(?:\s+(?!-)(?!(?:install|i|add|global|workspace)\b)${PM_WORD}+)?)*`;
+const PM_OPTIONS = String.raw`(?:\s+-${PM_WORD}*(?:\s+(?!-)(?!(?:${JS_INSTALL_VERB}|global|workspace)\b)${PM_WORD}+)?)*`;
 
 // `global` covers `yarn global add` / `npm install global`-style invocations,
 // which the previous pattern could not reach because it required the
@@ -61,10 +75,13 @@ const PM_OPTIONS = String.raw`(?:\s+-${PM_WORD}*(?:\s+(?!-)(?!(?:install|i|add|g
 // is yarn's per-package form (`yarn workspace app add x`).
 const INSTALL_RE = new RegExp(
   [
-    String.raw`${START}(npm|pnpm|yarn|bun)${PM_OPTIONS}\s+(?:global\s+|workspace\s+${PM_WORD}+\s+)?(?:install|i|add)\s+${ARGS}`,
-    String.raw`${START}(pip3?|uv)\s+(?:pip\s+)?install\s+${ARGS}`,
+    // `.cmd`/`.exe`/`.ps1`: the Windows shim names of the same managers.
+    String.raw`${START}(npm|pnpm|yarn|bun)(?:\.cmd|\.exe|\.ps1)?${PM_OPTIONS}\s+(?:global\s+|workspace\s+${PM_WORD}+\s+)?${JS_INSTALL_VERB}\s+${ARGS}`,
+    String.raw`${START}(pip3?|uv)(?:\.exe)?\s+(?:pip\s+)?install\s+${ARGS}`,
     String.raw`${START}(uv)\s+add\s+${ARGS}`,
     String.raw`${START}(cargo)\s+add\s+${ARGS}`,
+    // `python -m pip install` — pip's own recommended invocation.
+    String.raw`${START}(?:python[0-9.]*|py)(?:\.exe)?(?:\s+-(?!m\b)${PM_WORD}+)*\s+-m\s*(pip3?)\s+install\s+${ARGS}`,
   ].join('|'),
   'gi',
 );
@@ -195,8 +212,8 @@ export function parseInstallCommands(command: string): ParsedInstall[] {
   INSTALL_RE.lastIndex = 0;
   let m: RegExpExecArray | null = INSTALL_RE.exec(command);
   while (m !== null) {
-    const manager = (m[1] ?? m[3] ?? m[5] ?? m[7] ?? '').toLowerCase();
-    const argString = m[2] ?? m[4] ?? m[6] ?? m[8] ?? '';
+    const manager = (m[1] ?? m[3] ?? m[5] ?? m[7] ?? m[9] ?? '').toLowerCase();
+    const argString = m[2] ?? m[4] ?? m[6] ?? m[8] ?? m[10] ?? '';
     const packages: ParsedInstall['packages'] = [];
     const valueOptions = valueOptionsFor(manager);
     let skipValue = false;
@@ -212,7 +229,10 @@ export function parseInstallCommands(command: string): ParsedInstall[] {
       }
       // Skip local paths / URLs / archives.
       if (/^(\.|\/|file:|git\+|https?:)/i.test(token) || token.endsWith('.tgz')) continue;
-      const cleaned = token.replace(/^['"]|['"]$/g, '');
+      // An npm alias spec installs the package after `npm:` under another name
+      // (`npm:evil`, `local-name@npm:evil@1`); the alias hid it from every check.
+      const quoted = token.replace(/^['"]|['"]$/g, '');
+      const cleaned = /(?:^|@)npm:(.+)$/.exec(quoted)?.[1] ?? quoted;
       if (!cleaned) continue;
       // npm-style version suffix: name@ver (careful with @scope/name@ver);
       // pip-style: name==ver / name>=ver.

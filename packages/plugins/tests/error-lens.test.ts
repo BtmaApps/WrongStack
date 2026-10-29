@@ -108,13 +108,13 @@ describe('extractErrorLine / extractFrames', () => {
 });
 
 describe('error-lens plugin', () => {
-  it('registers error_lens_history and a PostToolUse bash|exec hook', () => {
+  it('registers error_lens_history and a PostToolUse bash|pwsh|exec hook', () => {
     const api = makeApi();
     errorLensPlugin.setup(api as never);
     expect(api.tools.register).toHaveBeenCalledTimes(1);
     const [event, matcher] = api.registerHook.mock.calls[0]!;
     expect(event).toBe('PostToolUse');
-    expect(matcher).toBe('bash|exec');
+    expect(matcher).toBe('bash|pwsh|exec');
   });
 
   it('injects a digest on a failing command', async () => {

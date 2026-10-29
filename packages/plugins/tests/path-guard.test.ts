@@ -2283,6 +2283,43 @@ describe('path-guard covers any tool that declares a write', () => {
     expect(result).toBeUndefined();
   });
 
+  it('blocks single-quoted patch headers and custom strip component levels', async () => {
+    const api = makeApi({
+      extensions: { 'path-guard': { protect: ['.env'], allow: ['safe/**'] } },
+    });
+    pathGuardPlugin.setup(api as never);
+    const hook = hookOf(api);
+
+    const singleQuoted = await hook({
+      toolName: 'patch',
+      toolInput: {
+        patch: "--- 'a/.env'\n+++ 'b/.env'\n@@ -1 +1 @@\n-old\n+new\n",
+      },
+      toolCapabilities: ['fs.write'],
+    });
+    expect(singleQuoted?.decision).toBe('block');
+
+    const stripTwo = await hook({
+      toolName: 'patch',
+      toolInput: {
+        strip: 2,
+        patch: '--- a/safe/.env\n+++ b/safe/.env\n@@ -1 +1 @@\n-old\n+new\n',
+      },
+      toolCapabilities: ['fs.write'],
+    });
+    expect(stripTwo?.decision).toBe('block');
+
+    const nonAbPrefix = await hook({
+      toolName: 'patch',
+      toolInput: {
+        strip: 1,
+        patch: '--- safe/.env\n+++ safe/.env\n@@ -1 +1 @@\n-old\n+new\n',
+      },
+      toolCapabilities: ['fs.write'],
+    });
+    expect(nonAbPrefix?.decision).toBe('block');
+  });
+
   it('blocks a dotted directory source for a directory-oriented move tool', async () => {
     const api = makeApi({
       extensions: { 'path-guard': { protect: ['cache.v1/.env'] } },

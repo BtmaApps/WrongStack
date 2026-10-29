@@ -66,17 +66,32 @@ export function isDirectoryDeleteToolName(toolName: string): boolean {
   return DIRECTORY_DELETE_TOOL_NAME.test(segmentedToolName(toolName));
 }
 
-export function cleanPatchPath(raw: string): string | null {
+function stripPatchComponents(p: string, strip: number): string {
+  const s = p.replace(/\\/g, '/');
+  let idx = 0;
+  for (let i = 0; i < strip; i++) {
+    while (idx < s.length && s[idx] !== '/') idx++;
+    let hadSlash = false;
+    while (idx < s.length && s[idx] === '/') {
+      idx++;
+      hadSlash = true;
+    }
+    if (!hadSlash) return s.replace(/^[ab]\//, '');
+  }
+  return s.slice(idx) || s.replace(/^[ab]\//, '');
+}
+
+export function cleanPatchPath(raw: string, strip = 1): string | null {
   const trimmed = raw.trim();
   if (!trimmed || trimmed === '/dev/null') return null;
-  const quoted = /^"([^"]+)"(?:\s|$)/.exec(trimmed)?.[1];
+  const quoted = /^"([^"]+)"(?:\s|$)/.exec(trimmed)?.[1] ?? /^'([^']+)'(?:\s|$)/.exec(trimmed)?.[1];
   const withoutTimestamp =
     quoted ?? trimmed.replace(/(?:\t|\s+)\d{4}-\d{2}-\d{2}(?:\s.*)?$/, '').trim();
   if (!withoutTimestamp || withoutTimestamp === '/dev/null') return null;
-  return withoutTimestamp.replace(/^[ab]\//, '');
+  return stripPatchComponents(withoutTimestamp, strip);
 }
 
-export function pathsFromPatch(patch: string): string[] {
+export function pathsFromPatch(patch: string, strip = 1): string[] {
   const paths: string[] = [];
   const lines = patch.split(/\r?\n/);
   for (let index = 0; index + 2 < lines.length; index += 1) {
@@ -85,8 +100,8 @@ export function pathsFromPatch(patch: string): string[] {
     const hunkHeader = lines[index + 2];
     if (!oldHeader?.startsWith('--- ') || !newHeader?.startsWith('+++ ')) continue;
     if (!hunkHeader?.startsWith('@@ ')) continue;
-    const oldPath = cleanPatchPath(oldHeader.slice(4));
-    const newPath = cleanPatchPath(newHeader.slice(4));
+    const oldPath = cleanPatchPath(oldHeader.slice(4), strip);
+    const newPath = cleanPatchPath(newHeader.slice(4), strip);
     if (oldPath) paths.push(oldPath);
     if (newPath) paths.push(newPath);
   }
@@ -307,7 +322,12 @@ export function pathsFromToolInput(
 
   const patch = toolInput['patch'];
   if (typeof patch === 'string') {
-    const patchTargets = pathsFromPatch(patch);
+    const rawStrip = toolInput['strip'];
+    const strip =
+      typeof rawStrip === 'number' && Number.isFinite(rawStrip) && rawStrip >= 0
+        ? Math.floor(rawStrip)
+        : 1;
+    const patchTargets = pathsFromPatch(patch, strip);
     const directory = toolInput['directory'];
     const baseValue =
       typeof directory === 'string' && directory.length > 0 ? directory : invocationCwd;

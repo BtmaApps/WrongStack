@@ -213,8 +213,31 @@ export function destructiveTargetsAtDepth(command: string, depth: number): strin
     m = destructive.exec(normalizedCommand);
   }
 
+  // PowerShell writers. Only Remove-Item/ri (above) and redirection were
+  // known, so Set-Content, Out-File, Copy-Item… — the way the pwsh tool writes
+  // a file — named no target and `.env` was writable through them. Every
+  // operand counts, as for `mv`: a `-Value` that happens to name a protected
+  // path only over-blocks. A colon-bound `-Path:.env` is read too; dropping
+  // every `-`-token hid it, from Remove-Item as well.
+  const pwshWriter = new RegExp(
+    String.raw`${COMMAND_BOUNDARY}${COMMAND_PATH_PREFIX}(Set-Content|Add-Content|ac|Clear-Content|clc|Out-File|Tee-Object|New-Item|ni|Copy-Item|cpi|copy|Move-Item|mi|move|Rename-Item|rni|ren|Remove-Item|ri)\s+((?:"[^"]*"|'[^']*'|\\.|\{[^}]*\}|\([^()]*\)|[^;&|\r\n}])+)`,
+    'gi',
+  );
+  let p: RegExpExecArray | null = pwshWriter.exec(normalizedCommand);
+  while (p !== null) {
+    if (!tokenIsQuoted(p, p[1] ?? '')) {
+      for (const token of shellOperandTokens(stripSubshellClosers(p[2] ?? ''))) {
+        const bound = /^-[A-Za-z]+:(.+)$/.exec(token);
+        if (bound?.[1]) targets.push(bound[1]);
+        else if (token.length > 0 && !token.startsWith('-')) targets.push(token);
+      }
+    }
+    p = pwshWriter.exec(normalizedCommand);
+  }
+
   const copy = new RegExp(
-    String.raw`${COMMAND_BOUNDARY}(?:sudo\s+)?${COMMAND_PATH_PREFIX}(cp|install)\s+([^;&|\r\n]+)`,
+    // rsync takes its destination last, like cp.
+    String.raw`${COMMAND_BOUNDARY}(?:sudo\s+)?${COMMAND_PATH_PREFIX}(cp|install|rsync)\s+([^;&|\r\n]+)`,
     'gi',
   );
   let c: RegExpExecArray | null = copy.exec(normalizedCommand);
@@ -275,7 +298,7 @@ export function destructiveTargetsAtDepth(command: string, depth: number): strin
   }
 
   const overwrite = new RegExp(
-    String.raw`${COMMAND_BOUNDARY}(?:sudo\s+)?${COMMAND_PATH_PREFIX}(sed|ln)\s+([^;&|\r\n]+)`,
+    String.raw`${COMMAND_BOUNDARY}(?:sudo\s+)?${COMMAND_PATH_PREFIX}(sed|perl|ln)\s+([^;&|\r\n]+)`,
     'gi',
   );
   let o: RegExpExecArray | null = overwrite.exec(normalizedCommand);
@@ -286,7 +309,12 @@ export function destructiveTargetsAtDepth(command: string, depth: number): strin
       o = overwrite.exec(normalizedCommand);
       continue;
     }
-    if (tool === 'sed' && /(?:^|\s)-i(?:[^\s]*)?(?:\s|$)/.test(rawArgs)) {
+    // `perl -pi`/`-i.bak` edits in place like `sed -i`: the first operand is
+    // the program (or the -e script), the rest are the files rewritten.
+    if (
+      (tool === 'sed' && /(?:^|\s)-i(?:[^\s]*)?(?:\s|$)/.test(rawArgs)) ||
+      (tool === 'perl' && /(?:^|\s)-[aclnpstuwTUWX]*i/.test(rawArgs))
+    ) {
       const args = shellArgs(rawArgs);
       targets.push(...args.slice(1));
     } else if (tool === 'ln' && /(?:^|\s)-[^\s]*f[^\s]*(?:\s|$)/.test(rawArgs)) {
@@ -294,6 +322,41 @@ export function destructiveTargetsAtDepth(command: string, depth: number): strin
       if (destination) targets.push(destination);
     }
     o = overwrite.exec(normalizedCommand);
+  }
+
+  // Writers that name their output with an option: `curl -o`, `wget -O`/`-o`
+  // (document / log), `sort -o`. Attached (`-o.env`, `--output=.env`) and
+  // clustered (`-sSo .env`) forms included.
+  const OUTPUT_OPTIONS: Record<string, { short: string; long: string[] }> = {
+    curl: { short: 'o', long: ['--output'] },
+    wget: { short: 'Oo', long: ['--output-document', '--output-file'] },
+    sort: { short: 'o', long: ['--output'] },
+  };
+  const outputWriter = new RegExp(
+    String.raw`${COMMAND_BOUNDARY}(?:sudo\s+)?${COMMAND_PATH_PREFIX}(curl|wget|sort)\s+([^;&|\r\n]+)`,
+    'gi',
+  );
+  let ow: RegExpExecArray | null = outputWriter.exec(normalizedCommand);
+  while (ow !== null) {
+    const spec = OUTPUT_OPTIONS[ow[1]?.toLowerCase() ?? ''];
+    if (spec && !tokenIsQuoted(ow, ow[1] ?? '')) {
+      const tokens = shellOperandTokens(stripSubshellClosers(ow[2] ?? ''));
+      for (let index = 0; index < tokens.length; index += 1) {
+        const token = tokens[index] ?? '';
+        const long = spec.long.find((name) => token === name || token.startsWith(`${name}=`));
+        if (long) {
+          const value = token === long ? tokens[index + 1] : token.slice(long.length + 1);
+          if (value) targets.push(value);
+          continue;
+        }
+        if (!/^-[^-]/.test(token)) continue;
+        const at = [...token.slice(1)].findIndex((flag) => spec.short.includes(flag));
+        if (at < 0) continue;
+        const value = token.slice(at + 2) || tokens[index + 1];
+        if (value) targets.push(value);
+      }
+    }
+    ow = outputWriter.exec(normalizedCommand);
   }
 
   const xargsPipeline = new RegExp(
