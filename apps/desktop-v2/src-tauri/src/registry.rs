@@ -226,6 +226,7 @@ impl Registry {
         if form_key != "requirements-new"
             && form_key != "history-view"
             && form_key != "git-review-notes"
+            && form_key != "design-edits"
             && !record_form
             && !file_form
             && !review_form
@@ -937,6 +938,19 @@ mod tests {
             1
         );
         assert!(peer.form_draft(&b.id, &skill_key).unwrap()["value"].is_null());
+        let design =
+            serde_json::json!({"version":1,"kit":"aurora","colors":{"light.accent":"#123456"}});
+        assert_eq!(
+            db.save_form_draft(&a.id, "design-edits", &design, 0)
+                .unwrap(),
+            1
+        );
+        assert_eq!(
+            peer.form_draft(&a.id, "design-edits").unwrap()["value"],
+            design
+        );
+        assert!(peer.form_draft(&b.id, "design-edits").unwrap()["value"].is_null());
+        assert!(peer.form_draft(&a.id, "design-edits-x").is_err());
         let review_key = "git-review-notes";
         let review = serde_json::json!({"version":1,"notes":[{"path":"src/main.rs","line":3,"text":"Check this boundary"}]});
         assert_eq!(

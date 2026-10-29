@@ -454,3 +454,9 @@
     grid-template-columns: 1fr;
   }
 }
+
+.design-draft-status {
+  margin: 8px 0;
+  color: var(--muted);
+  font-size: 12px;
+}

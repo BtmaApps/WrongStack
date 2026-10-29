@@ -1,5 +1,6 @@
 import { Check, FileCode2, Palette, RefreshCw, Search, ShieldCheck } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { DesignEditDraftNotice, useDesignEditDraft } from './DesignEditDraftNotice';
 import { DesignThemePreview } from './DesignThemePreview';
 import { materializeProjectTheme } from './design-studio-actions';
 import {
@@ -15,9 +16,11 @@ import { MarkdownContent } from './MarkdownContent';
 import './project-design-studio.css';
 
 export function ProjectDesignStudio({
+  projectId,
   command,
   onOpenFile,
 }: {
+  projectId: string;
   command: EngineCommand;
   onOpenFile: (path: string) => void;
 }) {
@@ -87,6 +90,15 @@ export function ProjectDesignStudio({
       setStack(String(kit['stacks'][0]));
   }, [kit, stack]);
   const activeId = typeof catalog['activeKit'] === 'string' ? catalog['activeKit'] : '';
+  const edits = useMemo(
+    () => ({ colors, baseline: colorBaseline, tune }),
+    [colors, colorBaseline, tune],
+  );
+  const editDraft = useDesignEditDraft(projectId, activeId, edits, (restored) => {
+    setColors(restored.colors);
+    setColorBaseline(restored.baseline);
+    setTune(restored.tune);
+  });
   const overrides = designTokens(catalog['overrides']);
   const isActive = selected === activeId;
   const dirty = Object.keys(colors).length > 0;
@@ -237,6 +249,7 @@ export function ProjectDesignStudio({
         </p>
       )}
       {notice && <p role="status">{notice}</p>}
+      <DesignEditDraftNotice draft={editDraft} />
       {dirty && (
         <div className="design-draft-notice">
           <span>Unsaved project color edits{!isActive ? ` for ${activeId}` : ''}.</span>

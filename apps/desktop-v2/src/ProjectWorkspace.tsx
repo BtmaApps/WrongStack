@@ -205,6 +205,7 @@ function ProjectContent({ project, vm }: { project: Project; vm: DesktopControll
         <Suspense fallback={<p role="status">Opening project Design Studio…</p>}>
           <ProjectDesignStudio
             key={project.id}
+            projectId={project.id}
             command={command}
             onOpenFile={(path) => {
               setFileTarget(path);

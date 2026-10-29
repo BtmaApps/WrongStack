@@ -2827,3 +2827,26 @@ Verification on the shared working snapshot:
 - Not covered: profile-skill draft native acceptance (unit and Rust only), full application
   restart, actual multi-window stress, a version-bound engine `skills.edit`, full repository
   release/coverage, hosted CI and installed-app replacement.
+
+## Durable Design Studio edits (2026-10-29)
+
+- Unsaved color overrides, their saved-override baseline and tuning fields autosave through
+  `DurableFormDraft` under the project form key `design-edits` (new Rust allow-list literal). The
+  envelope records the active kit; entries are bounded and prototype keys are refused.
+- Persistence follows the studio state itself, so a verified `design.set`/`design.tune` (which
+  empties the edits) or an explicit discard also clears the native draft. Edits for the active kit
+  restore after a reload with a visible status; edits recorded for a kit that is no longer active
+  are reported and can be discarded, never applied. A peer-window write stops this window for an
+  explicit keep/use-saved choice.
+- Checks: desktop **419 tests / 86 files PASS** (shared tree includes unrelated concurrent work);
+  new `design-edit-draft.test.ts` covers round trip, hostile/unsupported envelopes and blank-tuning
+  emptiness. Typecheck **244 PASS**; Biome PASS; Rust fmt PASS; native Rust **21 tests PASS** with
+  `design-edits` acceptance, project isolation and near-miss key refusal.
+- Native `--design` on portable identity `27e326bab38f-344ee89c60b0`, bundled engine/checksums
+  verified: **exit 0 / PASS**. `native-design-drafts.mjs` verified acknowledged storage, reload
+  restore of an edited color, discard clearing native storage, and a seeded other-kit draft being
+  reported without being applied, then discarded. Existing design scenarios still pass. The
+  bundled engine was built from the shared working tree, which contained another agent's
+  uncommitted `packages/core` and `packages/cli` edits; this run does not certify those.
+- Not covered: full application restart, actual multi-window stress, atomic engine-side override
+  writes, full repository release/coverage, hosted CI and installed-app replacement.

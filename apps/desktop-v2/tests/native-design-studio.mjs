@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { resolveSemanticTune } from '../../../packages/core/src/execution/design-tune.ts';
+import { exerciseNativeDesignDrafts } from './native-design-drafts.mjs';
 import { revealProjectTools } from './native-project-navigation.mjs';
 
 export async function exerciseNativeDesignStudio({
@@ -168,6 +169,7 @@ export async function exerciseNativeDesignStudio({
     css,
     'Resetting metadata does not rewrite the exported theme',
   );
+  await exerciseNativeDesignDrafts({ page, project, open, kitId: kit.id });
   assert.equal(
     (await rpc('snapshot')).sessions.length,
     count,

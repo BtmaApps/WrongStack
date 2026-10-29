@@ -147,8 +147,8 @@
       "relativeImports": 10
     },
     "apps/desktop-v2/src/ProjectDesignStudio.tsx": {
-      "lines": 739,
-      "relativeImports": 7
+      "lines": 752,
+      "relativeImports": 8
     },
     "apps/desktop-v2/src/ProjectGoals.tsx": {
       "lines": 856,
