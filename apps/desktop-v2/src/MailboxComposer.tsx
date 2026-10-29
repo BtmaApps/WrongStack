@@ -60,8 +60,8 @@ export function MailboxComposer({
         }}
       >
         <p>
-          Your draft is kept while navigating this running desktop. Closing this window does not
-          send it.
+          Your unsent message is saved for this project and restored after a restart. Closing this
+          window does not send it; it is removed after a confirmed send or a discard.
         </p>
         <p>
           Named recipients target an agent. This project workspace does not bind messages to a

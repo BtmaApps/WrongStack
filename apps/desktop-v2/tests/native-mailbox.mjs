@@ -168,13 +168,31 @@ export async function exerciseNativeMailbox({
       await page.getByRole('button', { name: 'Resume message draft', exact: true }).count(),
       0,
     );
+    // The unsent message is saved natively for this project and survives a renderer reload.
+    const storedDraft = () =>
+      page.evaluate(
+        (params) =>
+          window.__TAURI_INTERNALS__.invoke('host_request', { method: 'form-draft.get', params }),
+        { projectId: project.id, formKey: 'mailbox-compose' },
+      );
+    await waitFor(
+      async () => (await storedDraft()).value?.draft?.body === 'Keep this rejected draft.',
+      'Mailbox draft saved natively',
+    );
+    assert.equal((await storedDraft()).value.draft.subject, 'Refused ambiguous assignment');
+    await page.reload();
     await open(project);
     mailbox = page.getByRole('region', { name: 'Project mailbox' });
+    await mailbox.getByText(/Restored an unsent message saved/).waitFor();
     await mailbox.getByRole('button', { name: 'Resume message draft', exact: true }).click();
     composer = page.getByRole('dialog');
     assert.equal(
       await composer.getByLabel('Mailbox message body', { exact: true }).inputValue(),
       'Keep this rejected draft.',
+    );
+    assert.equal(
+      await composer.getByLabel('Mailbox message type', { exact: true }).inputValue(),
+      'assign',
     );
     await composer.getByLabel('Mailbox recipient', { exact: true }).fill(actor);
     await composer.getByLabel('Mailbox message type', { exact: true }).selectOption('note');
@@ -185,6 +203,10 @@ export async function exerciseNativeMailbox({
       (mail) => mail.subject === 'Native direct message',
     );
     assert.ok(sent);
+    await waitFor(
+      async () => (await storedDraft()).value === null,
+      'Confirmed send removes the saved mailbox draft',
+    );
     await mailbox.getByText(/Registered agents/).click();
     await mailbox
       .locator('.mailbox-agents')

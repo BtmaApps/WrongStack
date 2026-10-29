@@ -4,6 +4,7 @@ import type { EngineCommand } from './engine-operations';
 import type { EngineState } from './engine-state';
 import { entries, record } from './engine-values';
 import { MailboxComposer } from './MailboxComposer';
+import { MailboxDraftStatus } from './MailboxDraftStatus';
 import { MarkdownContent } from './MarkdownContent';
 import { mailboxDraftStore } from './mailbox-draft';
 import {
@@ -14,7 +15,7 @@ import {
   mailboxThreads,
   unreadMail,
 } from './mailbox-model';
-import { openExternal } from './platform';
+import { openExternal, projectFormDraftStorage } from './platform';
 import './project-mailbox.css';
 
 const text = (value: unknown) => (typeof value === 'string' ? value : '');
@@ -43,12 +44,23 @@ export function ProjectMailbox({
   const [localBusy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
-  const draftStore = useMemo(() => mailboxDraftStore(projectId), [projectId]);
+  const draftStore = useMemo(
+    () => mailboxDraftStore(projectId, projectFormDraftStorage(projectId, 'mailbox-compose')),
+    [projectId],
+  );
   const draftState = useSyncExternalStore(
     draftStore.subscribe,
     draftStore.snapshot,
     draftStore.snapshot,
   );
+  const durable = draftStore.durable;
+  const savedState = useSyncExternalStore(
+    durable?.subscribe ?? draftStore.subscribe,
+    durable?.snapshot ?? (() => null),
+  );
+  useEffect(() => {
+    void draftStore.hydrate();
+  }, [draftStore]);
   const draft = draftState.draft;
   const setDraft = draftStore.update;
   const busy = localBusy || draftState.pending;
@@ -264,6 +276,12 @@ export function ProjectMailbox({
           </button>
         </div>
       </header>
+      <MailboxDraftStatus
+        restoredAt={draftState.restoredAt}
+        saved={savedState}
+        onResolve={(choice) => void draftStore.resolve(choice)}
+        onRetry={() => void durable?.load()}
+      />
       {displayedError && !composing && (
         <p className="session-error" role="alert">
           {displayedError}

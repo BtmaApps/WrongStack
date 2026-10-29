@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-29T10:29:42.730Z",
+  "generatedAt": "2026-10-29T10:39:26.802Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,17 +12,17 @@
   },
   "summary": {
     "packages": 45,
-    "sourceFiles": 5432,
-    "testFiles": 4734,
-    "sourceLines": 1198298,
+    "sourceFiles": 5433,
+    "testFiles": 4735,
+    "sourceLines": 1198808,
     "workspaceEdges": 222,
-    "moduleEdges": 16332,
+    "moduleEdges": 16336,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 3,
-    "testsWithoutTypecheck": 93,
+    "testsWithoutTypecheck": 94,
     "testsWithMultipleTypechecks": 0,
-    "testOnlyExports": 971
+    "testOnlyExports": 972
   },
   "errors": [],
   "packageCycles": [],
@@ -385,8 +385,8 @@
     {
       "name": "@wrongstack/desktop-v2",
       "dir": "apps/desktop-v2",
-      "sourceFiles": 246,
-      "testFiles": 93,
+      "sourceFiles": 247,
+      "testFiles": 94,
       "workspaceDependencies": [
         "@wrongstack/contracts",
         "@wrongstack/core",
@@ -1499,6 +1499,12 @@
       },
       {
         "file": "apps/desktop-v2/tests/local-provider.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "apps/desktop-v2/tests/mailbox-draft-durable.test.ts",
         "projects": [
           "root-node"
         ]
@@ -29951,6 +29957,13 @@
         "typecheckProjects": []
       },
       {
+        "file": "apps/desktop-v2/tests/mailbox-draft-durable.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
         "file": "apps/desktop-v2/tests/mailbox-model.test.ts",
         "runtimeProjects": [
           "root-node"
@@ -30880,6 +30893,11 @@
       "relativeImports": 14
     },
     {
+      "file": "packages/core/src/core/agent-tools.ts",
+      "lines": 708,
+      "relativeImports": 11
+    },
+    {
       "file": "packages/core/src/execution/auto-compaction-middleware.ts",
       "lines": 703,
       "relativeImports": 18
@@ -30903,6 +30921,11 @@
       "file": "packages/tools/src/codebase-index/infra-parser.ts",
       "lines": 903,
       "relativeImports": 2
+    },
+    {
+      "file": "packages/tools/src/read.ts",
+      "lines": 720,
+      "relativeImports": 5
     },
     {
       "file": "packages/tui/src/reducers/panel-pickers.ts",
@@ -31026,8 +31049,8 @@
     },
     {
       "file": "apps/desktop-v2/src/ProjectMailbox.tsx",
-      "lines": 722,
-      "relativeImports": 9
+      "lines": 740,
+      "relativeImports": 10
     },
     {
       "file": "apps/desktop-v2/src/ProjectMemory.tsx",
@@ -31192,6 +31215,11 @@
       "relativeImports": 6
     },
     {
+      "file": "apps/desktop-v2/src/ProjectMailbox.tsx",
+      "lines": 740,
+      "relativeImports": 10
+    },
+    {
       "file": "packages/coordination/src/sqlite-mailbox.ts",
       "lines": 737,
       "relativeImports": 14
@@ -31222,9 +31250,9 @@
       "relativeImports": 1
     },
     {
-      "file": "apps/desktop-v2/src/ProjectMailbox.tsx",
-      "lines": 722,
-      "relativeImports": 9
+      "file": "packages/tools/src/read.ts",
+      "lines": 720,
+      "relativeImports": 5
     },
     {
       "file": "packages/webui/src/components/MemoryManager/useMemoryManagerState.ts",
@@ -31255,6 +31283,11 @@
       "file": "packages/vibeui/src/components/memory-browser.tsx",
       "lines": 709,
       "relativeImports": 12
+    },
+    {
+      "file": "packages/core/src/core/agent-tools.ts",
+      "lines": 708,
+      "relativeImports": 11
     },
     {
       "file": "packages/acp/src/client/acp-session.ts",
@@ -31305,16 +31338,6 @@
       "file": "packages/coordination/src/subagent-budget.ts",
       "lines": 699,
       "relativeImports": 2
-    },
-    {
-      "file": "packages/core/src/core/agent-tools.ts",
-      "lines": 699,
-      "relativeImports": 11
-    },
-    {
-      "file": "packages/governance/src/runtime-compatibility.ts",
-      "lines": 699,
-      "relativeImports": 12
     }
   ],
   "testOnlyExports": [
@@ -31377,6 +31400,10 @@
     {
       "file": "apps/desktop-v2/src/mailbox-draft.ts",
       "name": "MailboxDraftStore"
+    },
+    {
+      "file": "apps/desktop-v2/src/mailbox-draft.ts",
+      "name": "mailDraftCodec"
     },
     {
       "file": "apps/desktop-v2/src/ModelCatalogProfile.tsx",

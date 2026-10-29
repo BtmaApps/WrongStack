@@ -38,7 +38,8 @@
       "answerFor"
     ],
     "apps/desktop-v2/src/mailbox-draft.ts": [
-      "MailboxDraftStore"
+      "MailboxDraftStore",
+      "mailDraftCodec"
     ],
     "apps/desktop-v2/src/ModelCatalogProfile.tsx": [
       "readModelProfile"

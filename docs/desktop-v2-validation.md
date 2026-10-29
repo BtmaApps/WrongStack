@@ -3071,3 +3071,25 @@ Verification on the shared working snapshot:
 - Not covered: native quoting from the editor and from unsaved text (unit only), multi-line DOM
   selections in the viewer, full application restart, full release/coverage, hosted CI and
   installed-app replacement.
+
+## Restart-safe mailbox compose drafts (2026-10-29)
+
+- The project mailbox draft store now writes the unsent message to the native project form
+  `mailbox-compose` (new Rust allow-list literal) through `DurableFormDraft` with a versioned,
+  bounded envelope (`version: 1`, the seven draft fields only; body up to 200,000 characters,
+  other fields up to 2,000; foreign shapes are refused). An empty window adopts the saved draft
+  and says so; a window that already holds typed text keeps it. The saved copy is removed only
+  after the engine confirms the send (newer edits are kept) or when the draft is discarded; a
+  failed send keeps both. A version saved by another window stops autosave until the user keeps
+  this window's message or uses the saved one. Load and save failures are shown with a retry.
+- Checks: desktop **445 tests / 94 files PASS** (new `mailbox-draft-durable` tests: restart
+  restore, failed then confirmed send, edits during a pending send, typed-before-load, both
+  review choices including edits typed during review, envelope refusal); typecheck **254 PASS**;
+  Biome PASS; Rust fmt PASS; native Rust **21 tests PASS** (allow-list and project isolation).
+- Native on portable identity `83bf57d21b2c-b9af8f76b4a5`, bundled engine/checksums verified:
+  `--mailbox` **exit 0 / PASS**: the refused broadcast draft is read back from native storage,
+  restored after a renderer reload with its type and body, and the stored copy is gone after the
+  confirmed send. `--roster` **exit 0 / PASS** (shared allow-list change). Both on the first run.
+  The engine bundle was built from the shared tree and may include other in-progress edits.
+- Not covered: the two-window review natively (unit only), a full application process restart
+  for this form, full release/coverage, hosted CI and installed-app replacement.

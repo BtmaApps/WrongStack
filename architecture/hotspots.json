@@ -38,6 +38,10 @@
       "lines": 737,
       "relativeImports": 14
     },
+    "packages/core/src/core/agent-tools.ts": {
+      "lines": 708,
+      "relativeImports": 11
+    },
     "packages/core/src/execution/auto-compaction-middleware.ts": {
       "lines": 703,
       "relativeImports": 18
@@ -57,6 +61,10 @@
     "packages/tools/src/codebase-index/infra-parser.ts": {
       "lines": 903,
       "relativeImports": 2
+    },
+    "packages/tools/src/read.ts": {
+      "lines": 720,
+      "relativeImports": 5
     },
     "packages/tui/src/reducers/panel-pickers.ts": {
       "lines": 714,
@@ -155,8 +163,8 @@
       "relativeImports": 8
     },
     "apps/desktop-v2/src/ProjectMailbox.tsx": {
-      "lines": 722,
-      "relativeImports": 9
+      "lines": 740,
+      "relativeImports": 10
     },
     "apps/desktop-v2/src/ProjectMemory.tsx": {
       "lines": 826,
