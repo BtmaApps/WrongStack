@@ -28,6 +28,21 @@ export interface ManagedOpsContext {
   emit: (event: Parameters<EventBus['emit']>[0], payload: Parameters<EventBus['emit']>[1]) => void;
 }
 
+/**
+ * Comparison key for a checkout path. Windows paths compare case-insensitively:
+ * git prints the drive letter upper-case whatever case the caller passed.
+ */
+export function managedPathKey(p: string): string {
+  const abs = resolve(p);
+  return process.platform === 'win32' ? abs.toLowerCase() : abs;
+}
+
+function isUnderRoot(dir: string, root: string): boolean {
+  const d = managedPathKey(dir);
+  const r = managedPathKey(root);
+  return d !== r && d.startsWith(r + sep);
+}
+
 export async function cleanupAllManaged(ctx: ManagedOpsContext): Promise<{ removed: number }> {
   const root = resolve(ctx.worktreesRoot);
   let removed = 0;
@@ -43,7 +58,7 @@ export async function cleanupAllManaged(ctx: ManagedOpsContext): Promise<{ remov
     const flush = (): void => {
       if (curDir) {
         const dir = resolve(curDir);
-        if (dir !== root && (dir === root || dir.startsWith(root + sep))) {
+        if (isUnderRoot(dir, root)) {
           records.push({ dir, branch: curBranch });
         }
       }
@@ -71,7 +86,7 @@ export async function cleanupAllManaged(ctx: ManagedOpsContext): Promise<{ remov
       // another process) is not a leftover: keep it and its branch, exactly
       // like a checkout whose removal failed.
       if (await isManagedWorktreeHeld(root, rec.dir)) {
-        failedDirs.add(rec.dir);
+        failedDirs.add(managedPathKey(rec.dir));
         if (rec.branch) survivingBranches.add(rec.branch);
         continue;
       }
@@ -80,11 +95,11 @@ export async function cleanupAllManaged(ctx: ManagedOpsContext): Promise<{ remov
         if (rm.code === 0) {
           removed++;
         } else {
-          failedDirs.add(rec.dir);
+          failedDirs.add(managedPathKey(rec.dir));
           if (rec.branch) survivingBranches.add(rec.branch);
         }
       } catch {
-        failedDirs.add(rec.dir);
+        failedDirs.add(managedPathKey(rec.dir));
         if (rec.branch) survivingBranches.add(rec.branch);
       }
     }
@@ -92,7 +107,7 @@ export async function cleanupAllManaged(ctx: ManagedOpsContext): Promise<{ remov
     // best-effort
   }
   for (const h of ctx.handles.values()) {
-    if (failedDirs.has(resolve(h.dir))) {
+    if (failedDirs.has(managedPathKey(h.dir))) {
       survivingBranches.add(h.branch);
     }
   }
@@ -123,7 +138,7 @@ export async function cleanupAllManaged(ctx: ManagedOpsContext): Promise<{ remov
   } else {
     ctx.usedSlugs.clear();
     for (const [ownerId, h] of [...ctx.handles]) {
-      if (failedDirs.has(resolve(h.dir))) {
+      if (failedDirs.has(managedPathKey(h.dir))) {
         ctx.usedSlugs.add(h.slug);
       } else {
         ctx.handles.delete(ownerId);
@@ -160,8 +175,7 @@ export async function listManaged(ctx: ManagedOpsContext): Promise<{
     let curBranch: string | undefined;
     const flush = (): void => {
       if (curDir) {
-        const d = resolve(curDir);
-        if (d !== root && d.startsWith(root + sep)) {
+        if (isUnderRoot(curDir, root)) {
           worktrees.push({ dir: curDir, branch: curBranch });
         }
       }
@@ -215,7 +229,7 @@ export async function removeOne(
   const root = resolve(ctx.worktreesRoot);
   const abs = resolve(dir);
   // Refuse anything outside the managed worktrees root (never the main checkout).
-  if (abs === root || !abs.startsWith(root + sep)) {
+  if (!isUnderRoot(abs, root)) {
     return { removed: false };
   }
   if (await isManagedWorktreeHeld(root, abs)) return { removed: false };
@@ -233,7 +247,9 @@ export async function removeOne(
   if (!removed) {
     return { removed };
   }
-  const matchingHandles = [...ctx.handles.entries()].filter(([, h]) => resolve(h.dir) === abs);
+  const matchingHandles = [...ctx.handles.entries()].filter(
+    ([, h]) => managedPathKey(h.dir) === managedPathKey(abs),
+  );
   const targetBranch = branch ?? matchingHandles[0]?.[1].branch;
   // Defense-in-depth: only delete managed `wstack/ap/*` branches (matching
   // `removeBranch`), never arbitrary user branches or flags.
@@ -243,7 +259,9 @@ export async function removeOne(
   await ctx.runGit(['worktree', 'prune'], ctx.projectRoot).catch(() => undefined);
   // Drop any in-memory handle pointing at this dir and free its slug.
   for (const [ownerId, h] of matchingHandles) {
-    ctx.handles.delete(ownerId);
+    if (ctx.handles.get(ownerId) === h) {
+      ctx.handles.delete(ownerId);
+    }
     ctx.usedSlugs.delete(h.slug);
   }
   return { removed };
@@ -279,7 +297,7 @@ export async function cleanupStale(
     const flush = (): void => {
       if (curDir) {
         const dir = resolve(curDir);
-        if (dir !== root && (dir === root || dir.startsWith(root + sep))) {
+        if (isUnderRoot(dir, root)) {
           records.push({ dir, branch: curBranch });
         }
       }

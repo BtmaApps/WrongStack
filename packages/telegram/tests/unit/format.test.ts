@@ -114,6 +114,22 @@ describe('formatDelegateCompleted', () => {
     expect(msg).not.toContain(CANARY_B);
     expect(msg).toContain('[REDACTED]');
   });
+
+  it('redacts secrets in task before slicing at 159 chars and redacts target and status (F785)', () => {
+    const prefix = `${'a'.repeat(134)}--token=`;
+    const msg = formatDelegateCompleted({
+      ...base,
+      ok: false,
+      summary: '',
+      task: `${prefix}${CANARY_A}`,
+      target: `worker --secret=${CANARY_B}`,
+      status: `failed --password=${CANARY_A}`,
+    });
+    expect(msg).not.toContain(CANARY_A);
+    expect(msg).not.toContain(CANARY_B);
+    expect(msg).not.toContain('CANARY_SENTINEL');
+    expect(msg).toContain('--token=[REDACTED]');
+  });
 });
 
 describe('fmtTokens', () => {

@@ -78,6 +78,7 @@ export async function holdManagedWorktree(
     }
     inProcessHolds.delete(key);
     const current = await readMarker(file);
+    if ((inProcessHolds.get(key) ?? 0) > 0) return;
     if (current?.pid === process.pid) await fsp.unlink(file).catch(() => undefined);
   };
 }

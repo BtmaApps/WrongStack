@@ -118,8 +118,10 @@ export function fmtToolOutput(raw: string | undefined): string {
  */
 export function formatDelegateCompleted(e: DelegateCompletedLike): string {
   const icon = e.ok ? '✅' : '❌';
-  const status = e.status ?? (e.ok ? 'success' : 'failed');
-  const task = e.task.length > 160 ? `${sliceUtf16Safe(e.task, 159)}…` : e.task;
+  const status = redactSecrets(e.status ?? (e.ok ? 'success' : 'failed'));
+  const target = redactSecrets(e.target);
+  const redactedTask = redactSecrets(e.task);
+  const task = redactedTask.length > 160 ? `${sliceUtf16Safe(redactedTask, 159)}…` : redactedTask;
 
   // Prefer the host's one-line summary; fall back to echoing the task when a
   // failure produced no summary. Both go through `redactSecrets` — a
@@ -132,7 +134,7 @@ export function formatDelegateCompleted(e: DelegateCompletedLike): string {
     stats.push(`💲${e.costUsd.toFixed(4)}`);
   }
 
-  return [`${icon} Delegate → ${e.target} · ${status}`, body, stats.join(' · ')].join('\n');
+  return [`${icon} Delegate → ${target} · ${status}`, body, stats.join(' · ')].join('\n');
 }
 
 /**

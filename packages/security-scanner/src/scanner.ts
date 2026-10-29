@@ -146,7 +146,7 @@ export class SecurityScanner {
 
     const extensions = new Set<string>();
     for (const pattern of skill.patterns) {
-      for (const ext of pattern.fileExtensions) {
+      for (const ext of pattern.fileExtensions ?? []) {
         if (!ext || typeof ext !== 'string') continue;
         const lower = ext.toLowerCase().trim();
         if (lower) {

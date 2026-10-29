@@ -1712,4 +1712,41 @@ describe('F23 regressions — cleanupAllManaged survival, conflict resolution st
       { root: path.resolve(linkedWt), branch: 'feat-linked', current: true },
     ]);
   });
+
+  it('release(oldHandle) after re-allocating for same ownerId retains active handle and frees slug, and adopt() replaces merged handle (F756)', async () => {
+    const adoptedDir = path.join(PROJ, '.wrongstack', 'worktrees', 'adopted-phase');
+    const wm = new WorktreeManager({
+      projectRoot: PROJ,
+      run: async (args) => {
+        if (args[0] === 'rev-parse') return { code: 0, stdout: 'main\n', stderr: '' };
+        if (args[0] === 'worktree' && args[1] === 'list') {
+          return {
+            code: 0,
+            stdout: `worktree ${adoptedDir}\nbranch refs/heads/wstack/ap/adopted-phase\n\n`,
+            stderr: '',
+          };
+        }
+        return { code: 0, stdout: '', stderr: '' };
+      },
+    });
+    const usedSlugs = (wm as unknown as { usedSlugs: Set<string> }).usedSlugs;
+    const h1 = await wm.allocate('worker-1');
+    expect((await wm.merge(h1)).ok).toBe(true);
+    const h2 = await wm.allocate('worker-1');
+    await wm.release(h1);
+    expect(wm.get('worker-1')).toBe(h2);
+    expect(usedSlugs.has(h1.slug)).toBe(false);
+    expect(usedSlugs.has(h2.slug)).toBe(true);
+
+    const p1 = await wm.allocate('phase-owner');
+    expect((await wm.merge(p1)).ok).toBe(true);
+    const adopted = await wm.adopt('phase-owner', {
+      dir: adoptedDir,
+      branch: 'wstack/ap/adopted-phase',
+      baseBranch: 'main',
+    });
+    expect(adopted.status).toBe('active');
+    expect(adopted.slug).toBe('adopted-phase');
+    expect(wm.get('phase-owner')).toBe(adopted);
+  });
 });

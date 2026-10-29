@@ -261,6 +261,23 @@ describe('destroySddProject — kanban cleanup', () => {
     expect(kanban.removeBoard).toHaveBeenCalledWith(tmp, 'b2');
   });
 
+  it('deletes every state past the first listing page, and stops on a delete that does not stick', async () => {
+    const ids = new Set(Array.from({ length: 150 }, (_, i) => `sdd:run-${i}`));
+    kanban.listStates.mockImplementation(async (_root, _prefix, limit?: number) =>
+      [...ids].slice(0, limit ?? 100).map((workflowId) => ({ workflowId, revision: 1, value: {} })),
+    );
+    kanban.deleteState.mockImplementation(
+      async (_root, id: string) => id === 'sdd:run-0' || ids.delete(id),
+    );
+    const res = await destroySddProject({
+      projectRoot: tmp,
+      paths: destroyPaths(),
+      stateTransport: 'kanban',
+    });
+    expect([...ids]).toEqual(['sdd:run-0']);
+    expect(res.deleted).toContain('workflow-states(150)');
+  });
+
   it('omits the workflow-states label when every delete fails', async () => {
     kanban.listStates.mockResolvedValue([
       { workflowId: 'sdd:run-1', revision: 1, value: snapshot() },

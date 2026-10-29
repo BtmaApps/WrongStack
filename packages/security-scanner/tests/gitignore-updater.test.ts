@@ -119,4 +119,74 @@ describe('GitignoreUpdater', () => {
     expect(second.added).toEqual([]);
     expect(await u.isEntryIgnored('  security-reports/  ')).toBe(true);
   });
+
+  it('deduplicates options.entries on existing .gitignore and tolerates omitted pattern.fileExtensions in SecurityScanner (F774)', async () => {
+    await fs.writeFile(gitignorePath, 'node_modules/\n', 'utf8');
+    const u = new GitignoreUpdater({
+      gitignorePath,
+      entries: [
+        'security-reports/',
+        ' security-reports/ ',
+        'security-reports/*',
+        'security-reports/',
+      ],
+    });
+    const result = await u.update();
+    expect(result.added).toEqual(['security-reports/', 'security-reports/*']);
+    expect(result.existing).toEqual([]);
+    const content = await fs.readFile(gitignorePath, 'utf8');
+    expect(content.split(/\r?\n/).filter((l) => l.trim() === 'security-reports/')).toHaveLength(1);
+
+    const { SecurityScanner } = await import('../src/scanner.js');
+    const sampleFile = path.join(tmp, 'sample.ts');
+    await fs.writeFile(sampleFile, 'const secret = "CUSTOM_TOKEN_123456";\n', 'utf8');
+    const scanner = new SecurityScanner();
+    const scanResult = await scanner.scan(
+      tmp,
+      {
+        name: 'custom-skill',
+        description: 'test skill',
+        patterns: [
+          {
+            id: 'custom-no-ext',
+            name: 'Custom Token Without Extensions',
+            category: 'api-key',
+            patterns: [/CUSTOM_TOKEN_[0-9]{6}/g],
+            severity: 'high',
+            confidence: 'high',
+            description: 'Custom token pattern with omitted fileExtensions',
+            remediation: 'Rotate token',
+          },
+          {
+            id: 'custom-ts-ext',
+            name: 'Custom Token With TS Extension',
+            category: 'api-key',
+            patterns: [/CUSTOM_TOKEN_[0-9]{6}/g],
+            fileExtensions: ['.ts'],
+            severity: 'high',
+            confidence: 'high',
+            description: 'Custom token pattern with .ts fileExtensions',
+            remediation: 'Rotate token',
+          },
+        ],
+        excludePatterns: [],
+        severityThresholds: { blockOn: 'critical', warnOn: 'high' },
+        metadata: {
+          generatedAt: '2026-08-01T00:00:00.000Z',
+          techStackHash: 'hash',
+          confidence: 1,
+        },
+      },
+      {
+        languages: ['typescript'],
+        frameworks: [],
+        packageManagers: ['npm'],
+        configFiles: [],
+        hasEnvFiles: false,
+        hasDocker: false,
+        hasCI: false,
+      },
+    );
+    expect(scanResult.findings.some((f) => f.patternId === 'custom-no-ext')).toBe(true);
+  });
 });

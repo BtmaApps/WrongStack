@@ -8,6 +8,7 @@ import {
   cleanupAllManaged,
   cleanupStale,
   listManaged,
+  managedPathKey,
   removeBranch,
   removeOne,
 } from './worktree-managed-ops.js';
@@ -107,9 +108,11 @@ export class WorktreeManager extends WorktreeManagerCore implements WorktreeMana
           this.projectRoot,
         );
         if (res.code !== 0) {
+          this.usedSlugs.delete(slug);
           return this.fail(handle, res.stderr || 'git worktree add failed', 'allocate');
         }
       } catch (err) {
+        this.usedSlugs.delete(slug);
         return this.fail(handle, toErrorMessage(err), 'allocate');
       }
 
@@ -142,7 +145,14 @@ export class WorktreeManager extends WorktreeManagerCore implements WorktreeMana
     saved: { dir: string; branch: string; baseBranch: string; ownerLabel?: string | undefined },
   ): Promise<WorktreeHandle> {
     const existing = this.handles.get(ownerId);
-    if (existing) return existing;
+    if (
+      existing &&
+      (existing.status === 'allocating' ||
+        existing.status === 'active' ||
+        existing.status === 'committing')
+    ) {
+      return existing;
+    }
     const root = resolve(this.worktreesRoot());
     const dir = resolve(saved.dir);
     const slug = basename(dir);
@@ -158,7 +168,8 @@ export class WorktreeManager extends WorktreeManagerCore implements WorktreeMana
     const managed = await this.listManaged();
     if (
       !managed.worktrees.some(
-        (entry) => resolve(entry.dir) === dir && entry.branch === saved.branch,
+        (entry) =>
+          managedPathKey(entry.dir) === managedPathKey(dir) && entry.branch === saved.branch,
       )
     ) {
       throw new Error(`Goal phase worktree is no longer available: ${dir}`);
@@ -441,7 +452,10 @@ export class WorktreeManager extends WorktreeManagerCore implements WorktreeMana
       if (removed) {
         await this.runGit(['branch', '-D', handle.branch], this.projectRoot);
         await this.runGit(['worktree', 'prune'], this.projectRoot);
-        this.handles.delete(handle.ownerId);
+        if (this.handles.get(handle.ownerId) === handle) {
+          this.handles.delete(handle.ownerId);
+        }
+        this.usedSlugs.delete(handle.slug);
       }
     }
     this.emit('worktree.released', {

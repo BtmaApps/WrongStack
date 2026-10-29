@@ -187,6 +187,16 @@ export function createToolVisionAdapters(
           const result = await currentTool.execute(built.payload, input.ctx, {
             signal: input.signal,
           });
+          if (
+            result &&
+            typeof result === 'object' &&
+            !Array.isArray(result) &&
+            ((result as { isError?: unknown }).isError === true ||
+              (result as { is_error?: unknown }).is_error === true)
+          ) {
+            const detail = stringifyToolResult(result).trim();
+            throw new Error(detail || `Tool "${currentTool.name}" returned an error result`);
+          }
           return stringifyToolResult(result);
         } finally {
           await built.cleanup?.();

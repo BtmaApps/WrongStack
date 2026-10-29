@@ -347,11 +347,22 @@ export async function destroySddProject(
   await rmDir(opts.paths.projectSddBoards, 'boards');
 
   if (opts.stateTransport === 'kanban') {
-    const states = await listKanbanWorkflowStates(opts.projectRoot, 'sdd:').catch(() => []);
+    // The listing is one page (the server defaults to 100): a project with
+    // more runs kept every state past it. Page until no unseen state is left;
+    // each id is tried once, so a delete that does not stick cannot spin.
     let removedStates = 0;
-    for (const state of states) {
-      if (await deleteKanbanWorkflowState(opts.projectRoot, state.workflowId).catch(() => false)) {
-        removedStates++;
+    const attempted = new Set<string>();
+    for (;;) {
+      const states = await listKanbanWorkflowStates(opts.projectRoot, 'sdd:', 1000).catch(() => []);
+      const fresh = states.filter((state) => !attempted.has(state.workflowId));
+      if (fresh.length === 0) break;
+      for (const state of fresh) {
+        attempted.add(state.workflowId);
+        if (
+          await deleteKanbanWorkflowState(opts.projectRoot, state.workflowId).catch(() => false)
+        ) {
+          removedStates++;
+        }
       }
     }
     if (removedStates > 0) deleted.push(`workflow-states(${removedStates})`);

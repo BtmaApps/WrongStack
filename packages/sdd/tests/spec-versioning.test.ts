@@ -458,4 +458,52 @@ describe('SpecVersioning', () => {
     await flow.execute({ executeTask: async () => 'done' });
     expect(tracker.getNode(manual.id)?.status).toBe('completed');
   });
+
+  it('reconciles depends_on edges and rootNodes when modified requirements change blockedBy dependencies', () => {
+    const oldSpec = makeSpec({
+      requirements: [
+        {
+          id: 'REQ-1',
+          type: 'functional',
+          priority: 'high',
+          description: 'Setup DB',
+          acceptanceCriteria: ['DB ready'],
+        },
+        {
+          id: 'REQ-2',
+          type: 'functional',
+          priority: 'high',
+          description: 'Build API',
+          acceptanceCriteria: ['API ready'],
+          blockedBy: ['REQ-1'],
+        },
+        {
+          id: 'REQ-3',
+          type: 'functional',
+          priority: 'medium',
+          description: 'Setup Auth',
+          acceptanceCriteria: ['Auth ready'],
+        },
+      ],
+    });
+    const nextSpec = makeSpec({
+      version: '1.1.0',
+      requirements: [
+        oldSpec.requirements[0]!,
+        { ...oldSpec.requirements[1]!, blockedBy: ['REQ-3'] },
+        oldSpec.requirements[2]!,
+      ],
+    });
+    const graph = makeGraph([
+      makeNode('task-1', 'REQ-1'),
+      makeNode('task-2', 'REQ-2'),
+      makeNode('task-3', 'REQ-3'),
+    ]);
+    graph.edges = [{ id: 'edge-1-2', from: 'task-1', to: 'task-2', type: 'depends_on' }];
+    graph.rootNodes = ['task-1', 'task-3'];
+
+    const result = versioning.updateTaskGraph(graph, oldSpec, nextSpec);
+    expect(result.graph.edges.map((e) => `${e.from}->${e.to}`)).toEqual(['task-3->task-2']);
+    expect(result.graph.rootNodes.sort()).toEqual(['task-1', 'task-3']);
+  });
 });

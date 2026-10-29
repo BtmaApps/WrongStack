@@ -27,9 +27,8 @@ export class GitignoreUpdater {
       const content = await readFile(this.options.gitignorePath, 'utf-8');
       const lines = new Set(content.split(/\r?\n/).map((l) => l.trim()));
 
-      for (const rawEntry of this.options.entries) {
-        const entry = rawEntry.trim();
-        if (!entry) continue;
+      const uniqueEntries = [...new Set(this.options.entries.map((e) => e.trim()).filter(Boolean))];
+      for (const entry of uniqueEntries) {
         if (lines.has(entry)) {
           existing.push(entry);
         } else {

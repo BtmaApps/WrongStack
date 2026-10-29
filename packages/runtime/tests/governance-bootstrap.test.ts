@@ -496,4 +496,60 @@ describe('runtime governance bootstrap adapter', () => {
       message: 'connect exploded with [credential]',
     });
   });
+
+  it('closes the connected governance IPC client after reading daemon status or when request throws (F773)', async () => {
+    const closeOk = vi.fn(async () => {});
+    const closeThrow = vi.fn(async () => {});
+    const readBroker = vi.fn(async () => ({
+      kind: 'valid' as const,
+      broker: {
+        projectId: 'project-1',
+        credential: {
+          token: 'wsg_broker.secret-material-that-must-not-leak',
+          projectId: 'project-1',
+          clientId: 'broker-client',
+        },
+      },
+    }));
+
+    const okResult = await readGovernanceDaemonOperatorStatusWithDependencies('D:/project', {
+      readBroker: readBroker as never,
+      connectClient: vi.fn(async () => ({
+        connected: true as const,
+        metadata: { projectId: 'project-1' },
+        client: {
+          request: vi.fn(async () => ({
+            ok: true as const,
+            requestId: 'operator-status',
+            result: {
+              type: 'daemon_status' as const,
+              projectId: 'project-1',
+              pid: 42,
+              instanceId: 'instance-1',
+              startedAt: '2026-08-02T12:00:00.000Z',
+            },
+          })),
+          close: closeOk,
+        },
+      })) as never,
+    });
+    expect(okResult.available).toBe(true);
+    expect(closeOk).toHaveBeenCalledTimes(1);
+
+    const errResult = await readGovernanceDaemonOperatorStatusWithDependencies('D:/project', {
+      readBroker: readBroker as never,
+      connectClient: vi.fn(async () => ({
+        connected: true as const,
+        metadata: { projectId: 'project-1' },
+        client: {
+          request: vi.fn(async () => {
+            throw new Error('socket closed mid-request');
+          }),
+          close: closeThrow,
+        },
+      })) as never,
+    });
+    expect(errResult.available).toBe(false);
+    expect(closeThrow).toHaveBeenCalledTimes(1);
+  });
 });

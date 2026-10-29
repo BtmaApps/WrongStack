@@ -206,7 +206,13 @@ export class JsonlFindingStore implements FindingStore {
         } else {
           // New finding — append the record and a created event.
           const record: FindingRecord = { __finding: 1, data: finding };
-          const createdEvent = this._makeEvent(finding.id, 'created', null, 'active', context);
+          const createdEvent = this._makeEvent(
+            finding.id,
+            'created',
+            null,
+            finding.status ?? 'active',
+            context,
+          );
           const lines =
             JSON.stringify(record) +
             LINE_SEPARATOR +
@@ -388,9 +394,10 @@ export class JsonlFindingStore implements FindingStore {
       let eventsFolded = 0;
 
       for (const entry of all) {
-        const age = now - new Date(entry.finding.createdAt).getTime();
-        const isResolved = entry.finding.status === 'resolved';
-        const isIgnored = entry.finding.status === 'ignored';
+        const materialized = this._materialize(entry);
+        const age = now - new Date(materialized.createdAt).getTime();
+        const isResolved = materialized.status === 'resolved';
+        const isIgnored = materialized.status === 'ignored';
         const isTerminal = isResolved || isIgnored;
         const maxAge = isResolved ? resolvedMaxAge : isIgnored ? ignoredMaxAge : Infinity;
 
@@ -416,14 +423,19 @@ export class JsonlFindingStore implements FindingStore {
         );
         if (oldEvents.length > 1) {
           eventsFolded += oldEvents.length - 1;
-          // Keep only the newest event before maxAge (fold the rest).
-          const newestOld = oldEvents.sort((a, b) => b.timestamp.localeCompare(a.timestamp))[0]!;
+          // Keep only the newest event before maxAge (fold the rest), breaking
+          // same-millisecond timestamp ties by reverse append index.
+          const newestOld = oldEvents
+            .map((ev, index) => ({ ev, index }))
+            .sort(
+              (a, b) => b.ev.timestamp.localeCompare(a.ev.timestamp) || b.index - a.index,
+            )[0]!.ev;
           entry.events = [
             newestOld,
             ...entry.events.filter((ev) => now - new Date(ev.timestamp).getTime() <= maxAge),
           ];
         }
-        kept.push({ record: { __finding: 1, data: entry.finding }, events: entry.events });
+        kept.push({ record: { __finding: 1, data: materialized }, events: entry.events });
       }
 
       // Rewrite the file.

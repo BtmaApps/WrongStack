@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-29T01:03:25.239Z",
+  "generatedAt": "2026-10-29T01:05:05.605Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 45,
     "sourceFiles": 5393,
-    "testFiles": 4710,
-    "sourceLines": 1194672,
+    "testFiles": 4713,
+    "sourceLines": 1194833,
     "workspaceEdges": 222,
     "moduleEdges": 16210,
     "nonCommandSlashImports": 0,
@@ -163,7 +163,7 @@
       "name": "@wrongstack/builtin-plugins",
       "dir": "packages/builtin-plugins",
       "sourceFiles": 33,
-      "testFiles": 27,
+      "testFiles": 28,
       "workspaceDependencies": [
         "@wrongstack/contracts",
         "@wrongstack/core",
@@ -179,7 +179,7 @@
         {
           "path": "packages/builtin-plugins/tsconfig.test.json",
           "error": null,
-          "testFiles": 27
+          "testFiles": 28
         }
       ]
     },
@@ -744,7 +744,7 @@
       "name": "@wrongstack/runtime",
       "dir": "packages/runtime",
       "sourceFiles": 35,
-      "testFiles": 34,
+      "testFiles": 35,
       "workspaceDependencies": [
         "@wrongstack/builtin-plugins",
         "@wrongstack/chronicle",
@@ -769,7 +769,7 @@
         {
           "path": "packages/runtime/tsconfig.test.json",
           "error": null,
-          "testFiles": 34
+          "testFiles": 35
         }
       ]
     },
@@ -1157,7 +1157,7 @@
       "name": "@wrongstack/worktree",
       "dir": "packages/worktree",
       "sourceFiles": 10,
-      "testFiles": 3,
+      "testFiles": 4,
       "workspaceDependencies": [
         "@wrongstack/contracts",
         "@wrongstack/core"
@@ -1171,7 +1171,7 @@
         {
           "path": "packages/worktree/tsconfig.test.json",
           "error": null,
-          "testFiles": 3
+          "testFiles": 4
         }
       ]
     },
@@ -2666,6 +2666,12 @@
       },
       {
         "file": "packages/builtin-plugins/tests/perf-command.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/builtin-plugins/tests/prompts-command-slug.test.ts",
         "projects": [
           "root-node"
         ]
@@ -16597,6 +16603,12 @@
         ]
       },
       {
+        "file": "packages/runtime/tests/clipboard-exit-before-stdout.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/runtime/tests/clipboard-timeout.test.ts",
         "projects": [
           "root-node"
@@ -29512,6 +29524,12 @@
         "file": "packages/webui/tests/types/sage-type-contract.test.ts",
         "projects": [
           "webui-jsdom"
+        ]
+      },
+      {
+        "file": "packages/worktree/tests/windows-drive-case.test.ts",
+        "projects": [
+          "root-node"
         ]
       },
       {

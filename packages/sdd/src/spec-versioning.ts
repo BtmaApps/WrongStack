@@ -226,6 +226,54 @@ export class SpecVersioning {
       }
     }
 
+    for (const mod of specDiff.modified) {
+      if (!mod.changes.includes('dependencies')) continue;
+      const modTasks = reqToTasks.get(mod.requirement.id) ?? [];
+      if (modTasks.length === 0) continue;
+      const modTaskIds = new Set(modTasks.map((t) => t.id));
+      const prevBlockerTaskIds = new Set<string>();
+      for (const blockerReqId of mod.previousVersion.blockedBy ?? []) {
+        for (const blockerTask of reqToTasks.get(blockerReqId) ?? []) {
+          prevBlockerTaskIds.add(blockerTask.id);
+        }
+      }
+      const nextBlockerTasks: TaskNode[] = [];
+      const nextBlockerTaskIds = new Set<string>();
+      for (const blockerReqId of mod.requirement.blockedBy ?? []) {
+        for (const blockerTask of reqToTasks.get(blockerReqId) ?? []) {
+          if (!nextBlockerTaskIds.has(blockerTask.id)) {
+            nextBlockerTaskIds.add(blockerTask.id);
+            nextBlockerTasks.push(blockerTask);
+          }
+        }
+      }
+      graph.edges = graph.edges.filter(
+        (edge) =>
+          !(
+            edge.type === 'depends_on' &&
+            modTaskIds.has(edge.to) &&
+            prevBlockerTaskIds.has(edge.from) &&
+            !nextBlockerTaskIds.has(edge.from)
+          ),
+      );
+      for (const modTask of modTasks) {
+        for (const blockerTask of nextBlockerTasks) {
+          const exists = graph.edges.some(
+            (edge) =>
+              edge.type === 'depends_on' && edge.from === blockerTask.id && edge.to === modTask.id,
+          );
+          if (!exists) {
+            graph.edges.push({
+              id: crypto.randomUUID(),
+              from: blockerTask.id,
+              to: modTask.id,
+              type: 'depends_on',
+            });
+          }
+        }
+      }
+    }
+
     const blockedTaskIds = new Set<string>();
     for (const edge of graph.edges) {
       if (edge.type === 'depends_on' && graph.nodes.has(edge.from) && graph.nodes.has(edge.to)) {

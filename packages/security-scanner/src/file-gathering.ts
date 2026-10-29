@@ -166,7 +166,9 @@ export function shouldExcludeFile(
   excludePatterns: string[] = DEFAULT_EXCLUDE_PATTERNS,
   excludeHidden = false,
 ): boolean {
-  if (excludeHidden && name.startsWith('.') && !name.startsWith('.env')) return true;
+  if (excludeHidden && name.startsWith('.') && !name.startsWith('.env') && name !== '.npmrc') {
+    return true;
+  }
 
   const normalizedPath = relativePath.includes('\\')
     ? relativePath.replace(/\\/g, '/')

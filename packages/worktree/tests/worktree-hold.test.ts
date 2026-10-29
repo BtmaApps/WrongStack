@@ -99,4 +99,49 @@ describe('managed worktree holds', () => {
     ).toBe('');
     expect(manager.get('goal:unheld')).toBeUndefined();
   });
+
+  it('rejects leading-dash or blank Git ref/SHA arguments in revertBaseTo, revertCommits, and mergeBranch (F817)', async () => {
+    const calls: string[][] = [];
+    const manager = new WorktreeManager({
+      projectRoot: root,
+      run: async (args) => {
+        calls.push(args);
+        return { code: 0, stdout: '', stderr: '' };
+      },
+    });
+    const handle = {
+      id: 'wt-1',
+      ownerId: 'owner-1',
+      ownerLabel: 'Owner 1',
+      slug: 'wt-1',
+      branch: 'wstack/ap/wt-1',
+      baseBranch: 'main',
+      dir: path.join(root, '.wstack', 'wt-1'),
+      status: 'active' as const,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      insertions: 0,
+      deletions: 0,
+      files: 0,
+    };
+
+    expect(await manager.revertBaseTo(handle, '-q')).toBe(false);
+    expect(await manager.revertBaseTo(handle, '   ')).toBe(false);
+    expect(await manager.revertBaseTo({ ...handle, baseBranch: '-f' }, 'abc1234')).toBe(false);
+    expect(await manager.revertCommits('main', ['--no-commit'])).toEqual({
+      ok: false,
+      reverted: 0,
+      reason: 'invalid ref',
+    });
+    expect(await manager.revertCommits('-f', ['abc1234'])).toEqual({
+      ok: false,
+      reverted: 0,
+      reason: 'invalid ref',
+    });
+    expect(await manager.mergeBranch(' -f', 'main')).toEqual({
+      ok: false,
+      reason: 'invalid ref',
+    });
+    expect(calls).toEqual([]);
+  });
 });

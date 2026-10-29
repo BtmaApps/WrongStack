@@ -19,6 +19,7 @@ export function getTargetFilesForStack(techStack: Pick<TechStackInfo, 'stack'>):
       '**/*.cjs',
       '**/*.json',
       '**/.env*',
+      '**/.npmrc',
       '**/package.json',
       '**/tsconfig.json',
     ],

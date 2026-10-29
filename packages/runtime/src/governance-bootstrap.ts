@@ -154,6 +154,9 @@ export async function readGovernanceDaemonOperatorStatusWithDependencies(
       code: 'connection_failed',
       message: sanitizeGovernanceMessage(error instanceof Error ? error.message : String(error)),
     });
+  } finally {
+    const closable = connection.client as { close?: () => Promise<void> | void };
+    await Promise.resolve(closable.close?.()).catch(() => {});
   }
   if (!response.ok) {
     return Object.freeze({

@@ -197,6 +197,16 @@ async function readPngFile(p: string): Promise<ClipboardImage | null> {
  */
 const CLIPBOARD_CMD_TIMEOUT_MS = 5_000;
 
+/**
+ * Run `then` once `stdout` has delivered everything. A child's 'exit' can come
+ * before its last stdout chunk; reading the result at 'exit' cut the paste
+ * short. The kill cap still bounds a stream that never ends.
+ */
+function afterStdoutEnds(stdout: NodeJS.ReadableStream, then: () => void): void {
+  if ((stdout as { readableEnded?: boolean }).readableEnded === false) stdout.once('end', then);
+  else then();
+}
+
 function runCmd(cmd: string, args: string[]): Promise<string | null> {
   return new Promise((resolve) => {
     const child = spawn(cmd, args, {
@@ -246,9 +256,11 @@ function runCmd(cmd: string, args: string[]): Promise<string | null> {
     child.on('error', () => finish(null));
     child.on('exit', (code) => {
       if (killedByTimeout) return finish(null);
-      // Flush any trailing partial sequence the child never completed.
-      out += decoder.end();
-      finish(code === 0 ? out : null);
+      afterStdoutEnds(child.stdout, () => {
+        // Flush any trailing partial sequence the child never completed.
+        out += decoder.end();
+        finish(code === 0 ? out : null);
+      });
     });
   });
 }
@@ -336,15 +348,17 @@ function runCmdToFile(cmd: string, args: string[], outPath: string): Promise<boo
     };
     child.stdout.on('data', onStdoutData);
     child.on('error', () => finish(false));
-    child.on('exit', async (code) => {
+    child.on('exit', (code) => {
       if (killedByTimeout) return finish(false);
-      if (code !== 0 || chunks.length === 0) return finish(false);
-      try {
-        await fs.writeFile(outPath, Buffer.concat(chunks));
-        finish(true);
-      } catch {
-        finish(false);
-      }
+      afterStdoutEnds(child.stdout, async () => {
+        if (code !== 0 || chunks.length === 0) return finish(false);
+        try {
+          await fs.writeFile(outPath, Buffer.concat(chunks));
+          finish(true);
+        } catch {
+          finish(false);
+        }
+      });
     });
   });
 }

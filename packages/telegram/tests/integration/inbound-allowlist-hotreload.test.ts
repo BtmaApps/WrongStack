@@ -284,4 +284,27 @@ describe('inbound allowlist hot-reload', () => {
     expect(bot.getMessages({ chatId: 999 }).some((m) => m.messageId === 901)).toBe(true);
     expect(bot.getMessages({ chatId: 888 }).some((m) => m.messageId === 902)).toBe(false);
   });
+
+  it('fails closed to DENY_ALL_INBOUND when hot-reloading to paired mode while runtimeCfg.notifyChatId is undefined (F841)', async () => {
+    const initial = {
+      ...BASE_TELEGRAM,
+      notifyChatId: undefined,
+      inboundMode: 'allowlist',
+      allowedUsers: ['111'],
+    };
+    const { bot, reload } = await setupBot(initial);
+
+    bot.inbox.processMessage(msg(555, 111, 910, 'before paired reload'));
+    expect(bot.bufferCount).toBe(1);
+
+    reload({
+      ...BASE_TELEGRAM,
+      notifyChatId: '999',
+      inboundMode: 'paired',
+      allowedUsers: ['111'],
+    });
+
+    bot.inbox.processMessage(msg(555, 111, 911, 'must be denied until restart'));
+    expect(bot.getMessages({ chatId: 555 }).some((m) => m.messageId === 911)).toBe(false);
+  });
 });

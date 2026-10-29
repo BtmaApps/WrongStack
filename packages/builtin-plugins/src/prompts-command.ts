@@ -62,11 +62,18 @@ export function buildPromptsCommand(
           if (!parsed.title) return { message: 'Usage: /prompts add "title" "prompt content"' };
           const category = flags['category'] ?? flags['cat'];
           const variables = parseVarFlags(flags['var']);
-          const entry = store.createNew(parsed.title, parsed.content, parseTags(flags['tags']), {
+          const created = store.createNew(parsed.title, parsed.content, parseTags(flags['tags']), {
             description: flags['description'] ?? flags['desc'] ?? '',
             ...(category ? { category } : {}),
             ...(variables ? { variables } : {}),
           });
+          // The loader shows one prompt per slug, and the slug is the title in
+          // ASCII: "要約" and "翻訳" are both `prompt`, so the second one saved
+          // vanished from /prompt and the WebUI picker. Unique within this layer.
+          const taken = new Set((await store.list()).map((e) => e.slug));
+          let slug = created.slug;
+          for (let n = 2; taken.has(slug); n++) slug = `${created.slug}-${n}`;
+          const entry = { ...created, slug };
           await store.save(entry);
           getLoader()?.invalidateCache();
           return { message: `Added prompt "${entry.title}" (${entry.slug}).` };

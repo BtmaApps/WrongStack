@@ -1,5 +1,4 @@
 import type { Config } from '@wrongstack/contracts/types';
-import { expectDefined } from '@wrongstack/core/utils';
 import {
   DEFAULT_CONFIG,
   readTelegramConfigFromConfig,
@@ -49,7 +48,7 @@ export function inboundAllowlist(cfg: {
     const pairedUsers = new Set(
       (cfg.allowedUsers ?? []).map((id) => String(id).trim()).filter(Boolean),
     );
-    const notifyChat = String(expectDefined(cfg.notifyChatId)).trim();
+    const notifyChat = cfg.notifyChatId !== undefined ? String(cfg.notifyChatId).trim() : '';
     if (!notifyChat) {
       return {
         allowedUsers: new Set([DENY_ALL_INBOUND]),

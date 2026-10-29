@@ -69,6 +69,14 @@ export abstract class WorktreeManagerCore {
    * Safe because SDD merges are serialized — no other commit lands in between.
    */
   async revertBaseTo(handle: WorktreeHandle, sha: string): Promise<boolean> {
+    if (
+      !sha.trim() ||
+      sha.trim().startsWith('-') ||
+      !handle.baseBranch.trim() ||
+      handle.baseBranch.trim().startsWith('-')
+    ) {
+      return false;
+    }
     // Never hard-reset tracked/index dirt: `checkout baseBranch` no-ops when
     // already on base (succeeding even with uncommitted changes), and the
     // reset would silently destroy tracked working-tree/index edits. Same
@@ -118,7 +126,12 @@ export abstract class WorktreeManagerCore {
     // Defense-in-depth: a ref that begins with `-` could be parsed as a git
     // flag (argv smuggling). The WebUI boundary already restricts to managed
     // branches; this guards every other caller too.
-    if (branch.startsWith('-') || base.startsWith('-')) {
+    if (
+      !branch.trim() ||
+      branch.trim().startsWith('-') ||
+      !base.trim() ||
+      base.trim().startsWith('-')
+    ) {
       return { ok: false, reason: 'invalid ref' };
     }
 
@@ -191,6 +204,13 @@ export abstract class WorktreeManagerCore {
     shas: string[],
   ): Promise<{ ok: boolean; reverted: number; reason?: string }> {
     if (shas.length === 0) return { ok: true, reverted: 0, reason: 'nothing to revert' };
+    if (
+      !baseBranch.trim() ||
+      baseBranch.trim().startsWith('-') ||
+      shas.some((sha) => !sha.trim() || sha.trim().startsWith('-'))
+    ) {
+      return { ok: false, reverted: 0, reason: 'invalid ref' };
+    }
 
     const status = await this.runGit(['status', '--porcelain'], this.projectRoot);
     // F2026101030: match revertBaseTo(). A non-zero status is not a clean tree.

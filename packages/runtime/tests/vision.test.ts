@@ -990,5 +990,55 @@ describe('vision routing', () => {
         ),
       ).rejects.toThrow(/only http\(s\) image URLs are allowed/);
     });
+
+    it('rejects MCP/tool error envelopes (isError/is_error) in createToolVisionAdapters and falls back to healthy adapters (F818)', async () => {
+      const registry = new ToolRegistry();
+      registry.register({
+        name: 'mcp_vision_primary',
+        description: 'Analyze image screenshot primary',
+        permission: 'auto',
+        mutating: false,
+        inputSchema: {
+          type: 'object',
+          properties: { image: { type: 'object' } },
+        },
+        async execute() {
+          return {
+            isError: true,
+            content: [{ type: 'text', text: 'MCP Vision Backend 503 Unavailable' }],
+          };
+        },
+      });
+      registry.register({
+        name: 'mcp_vision_fallback',
+        description: 'Analyze image screenshot fallback',
+        permission: 'auto',
+        mutating: false,
+        inputSchema: {
+          type: 'object',
+          properties: { image: { type: 'object' } },
+        },
+        async execute() {
+          return {
+            isError: false,
+            content: [{ type: 'text', text: 'Dashboard CPU at 42%' }],
+          };
+        },
+      });
+
+      const res = await routeImagesForModel([image], {
+        supportsVision: false,
+        ctx,
+        signal: new AbortController().signal,
+        adapters: createToolVisionAdapters(registry),
+      });
+      expect(res.adapterName).toBe('mcp_vision_fallback');
+      expect(res.blocks).toEqual([
+        {
+          type: 'text',
+          text: '[Image 1 analyzed via mcp_vision_fallback]\nDashboard CPU at 42%',
+        },
+      ]);
+    });
   });
 });

@@ -208,7 +208,7 @@ export async function generateSkillLLM(
         version: '1.0.0',
         techStack: techStack.stack,
         content: { type: 'skill', content },
-        patterns: skillData.patterns || [],
+        patterns: Array.isArray(skillData.patterns) ? skillData.patterns : [],
         metadata: {
           generatedAt: new Date().toISOString(),
           confidence: 0.85,

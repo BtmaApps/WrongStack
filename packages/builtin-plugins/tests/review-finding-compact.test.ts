@@ -287,4 +287,31 @@ describe('FS-P0.GATE — Compaction', () => {
       .find((o) => o['__findingCompact'] === 1);
     expect(marker).toMatchObject({ removedFindings: 0, removedNonTerminalFindings: 1 });
   });
+
+  it('materializes finding status from events before compacting and preserves status on upsert (F842)', async () => {
+    await store.upsert([finding('resolved-init', 'resolved', aged(20))], ctx);
+    expect((await store.get('resolved-init'))?.status).toBe('resolved');
+
+    await store.upsert([finding('event-resolved', 'active', aged(40))], ctx);
+    await fs.appendFile(
+      store.storePath,
+      `${JSON.stringify({
+        __findingEvent: 1,
+        data: {
+          id: 'ev-res',
+          findingId: 'event-resolved',
+          eventType: 'resolved',
+          fromStatus: 'active',
+          toStatus: 'resolved',
+          actorId: 'op',
+          actorKind: 'operator',
+          timestamp: new Date().toISOString(),
+        },
+      })}\n`,
+      'utf8',
+    );
+    const result = await store.compact({ resolvedMaxAgeMs: 30 * DAY });
+    expect(result.removed).toBe(1);
+    expect(await store.get('event-resolved')).toBeNull();
+  });
 });

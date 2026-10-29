@@ -19,6 +19,8 @@ vi.mock('@wrongstack/core/skills', async (importOriginal) => {
   };
 });
 
+import { shouldExcludeFile } from '../src/file-gathering.js';
+import { getTargetFilesForStack } from '../src/scan-targets.js';
 import { defaultSkillGenerator } from '../src/skill-generator.js';
 import type { TechStackInfo } from '../src/types.js';
 
@@ -75,5 +77,12 @@ describe('model-written skill fallbacks', () => {
     const skill = await generate('{"name":"go-scan","patterns":[]}');
     expect(skill.name).toBe('security-scanner-go');
     expect(skill.metadata.confidence).not.toBe(0.85); // not the model-written path
+  });
+
+  it('preserves .npmrc in shouldExcludeFile and nodejs target files, and normalizes non-array LLM patterns to [] (F854)', async () => {
+    expect(shouldExcludeFile('.npmrc', '.npmrc', [], true)).toBe(false);
+    expect(getTargetFilesForStack({ stack: 'nodejs' })).toContain('**/.npmrc');
+    const skill = await generate('{"name":"go-scan","description":"ok","patterns":"invalid"}');
+    expect(skill.patterns).toEqual([]);
   });
 });

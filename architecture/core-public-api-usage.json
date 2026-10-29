@@ -44,9 +44,9 @@
       "runtimeOrMixed": 16
     },
     "@wrongstack/core/execution": {
-      "files": 105,
+      "files": 106,
       "typeOnly": 25,
-      "runtimeOrMixed": 96
+      "runtimeOrMixed": 97
     },
     "@wrongstack/core/execution/refine-decisions": {
       "files": 2,
@@ -154,9 +154,9 @@
       "runtimeOrMixed": 30
     },
     "@wrongstack/core/storage": {
-      "files": 187,
+      "files": 188,
       "typeOnly": 54,
-      "runtimeOrMixed": 165
+      "runtimeOrMixed": 166
     },
     "@wrongstack/core/tasking": {
       "files": 45,
@@ -169,9 +169,9 @@
       "runtimeOrMixed": 23
     },
     "@wrongstack/core/utils": {
-      "files": 933,
+      "files": 932,
       "typeOnly": 69,
-      "runtimeOrMixed": 899
+      "runtimeOrMixed": 898
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -3491,6 +3491,12 @@
     {
       "specifier": "@wrongstack/core/execution",
       "file": "packages/builtin-plugins/src/prompts-plugin.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/execution",
+      "file": "packages/builtin-plugins/tests/prompts-command-slug.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -8974,6 +8980,12 @@
     },
     {
       "specifier": "@wrongstack/core/storage",
+      "file": "packages/builtin-plugins/tests/prompts-command-slug.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/storage",
       "file": "packages/builtin-plugins/tests/prompts-plugin.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -14393,12 +14405,6 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/telegram/src/slash-commands/index.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/utils",
-      "file": "packages/telegram/src/telegram-config.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
