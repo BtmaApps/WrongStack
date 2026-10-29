@@ -1,8 +1,9 @@
 import { Box, FileCode2, RefreshCw, Search, ShieldCheck } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CopyButton } from './CopyButton';
 import type { EngineHttp } from './engine-http';
 import { entries, record } from './engine-values';
+import { KitParameterDraftNotice, useKitParameterBinding } from './KitParameterDraftNotice';
 import { KitParameterForm, KitSchemaDetails, KitValue } from './KitParameterForm';
 import { MarkdownContent } from './MarkdownContent';
 import type { Session } from './model';
@@ -10,12 +11,14 @@ import { type KitSchema, kitInitialValue, kitInputErrors, kitRequest } from './p
 import './project-kit.css';
 
 export function ProjectKit({
+  projectId,
   http,
   sessions,
   onPrepare,
   onNewSession,
   onOpenFile,
 }: {
+  projectId: string;
   http: EngineHttp;
   sessions: Session[];
   onPrepare: (id: string, text: string) => Promise<boolean>;
@@ -35,6 +38,8 @@ export function ProjectKit({
   const [session, setSession] = useState('');
   const [busy, setBusy] = useState(false);
   const sequence = useRef(0);
+  const schema = useMemo(() => (kit ? (record(kit['inputSchema']) as KitSchema) : null), [kit]);
+  const parameters = useKitParameterBinding(projectId, kit ? selected : '', schema, setInput);
   const load = useCallback(async () => {
     const own = ++sequence.current;
     setLoading(true);
@@ -245,12 +250,18 @@ export function ProjectKit({
                   Verification also executes kit code and follows the agent’s normal permission
                   flow.
                 </p>
+                <KitParameterDraftNotice
+                  binding={parameters}
+                  initial={kitInitialValue(record(kit['inputSchema']) as KitSchema)}
+                  onUseSaved={setInput}
+                />
                 <KitParameterForm
                   schema={record(kit['inputSchema']) as KitSchema}
                   value={input}
                   onChange={(next) => {
                     setInput(next);
                     setRequest('');
+                    parameters.edit(next);
                   }}
                 />
                 {errors.length > 0 && (
@@ -315,8 +326,11 @@ export function ProjectKit({
                         disabled={busy || !agents.some((item) => item.id === session)}
                         onClick={() => {
                           setBusy(true);
+                          const submitted = parameters.draft.controller.snapshot().value;
                           void onPrepare(session, request)
-                            .then((ok) => {
+                            .then(async (ok) => {
+                              // Parked parameters are removed only after the request is in the conversation draft.
+                              if (ok) await parameters.settle(submitted);
                               if (!ok)
                                 setError(
                                   'The request was kept in the conversation draft. Resolve its save conflict before sending.',

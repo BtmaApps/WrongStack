@@ -218,12 +218,16 @@ impl Registry {
         let review_form = form_key
             .strip_prefix("chimera-note:")
             .is_some_and(|id| id.len() == 64 && id.bytes().all(|value| value.is_ascii_hexdigit()));
+        let kit_form = form_key
+            .strip_prefix("kit-parameters:")
+            .is_some_and(|id| id.len() == 64 && id.bytes().all(|value| value.is_ascii_hexdigit()));
         if form_key != "requirements-new"
             && form_key != "history-view"
             && form_key != "git-review-notes"
             && !record_form
             && !file_form
             && !review_form
+            && !kit_form
         {
             return Err("Unknown project form".into());
         }
@@ -901,6 +905,24 @@ mod tests {
             .save_form_draft(&a.id, &note_key, &Value::Null, 0)
             .is_err());
         assert!(peer.form_draft(&a.id, "chimera-note:../invalid").is_err());
+        let kit_key = format!("kit-parameters:{}", "c".repeat(64));
+        let kit_value =
+            serde_json::json!({"version":1,"kit":"release.notes","input":{"count":null}});
+        assert_eq!(
+            db.save_form_draft(&a.id, &kit_key, &kit_value, 0).unwrap(),
+            1
+        );
+        assert_eq!(
+            peer.form_draft(&a.id, &kit_key).unwrap()["value"],
+            kit_value
+        );
+        assert!(peer.form_draft(&b.id, &kit_key).unwrap()["value"].is_null());
+        assert!(peer
+            .save_form_draft(&a.id, &kit_key, &Value::Null, 0)
+            .is_err());
+        assert!(peer
+            .form_draft(&a.id, "kit-parameters:release.notes")
+            .is_err());
         let review_key = "git-review-notes";
         let review = serde_json::json!({"version":1,"notes":[{"path":"src/main.rs","line":3,"text":"Check this boundary"}]});
         assert_eq!(

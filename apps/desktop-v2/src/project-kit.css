@@ -233,3 +233,36 @@ dl.kit-values {
     padding: 16px;
   }
 }
+.kit-draft-notice {
+  display: grid;
+  gap: 10px;
+  margin-block: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--raised);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.kit-draft-notice p {
+  margin: 0;
+}
+.kit-draft-compare {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+  gap: 10px;
+}
+.kit-draft-compare > div {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.kit-draft-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}

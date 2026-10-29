@@ -119,8 +119,8 @@
       "relativeImports": 3
     },
     "apps/desktop-v2/src/AutomationWorkspace.tsx": {
-      "lines": 713,
-      "relativeImports": 9
+      "lines": 718,
+      "relativeImports": 10
     },
     "apps/desktop-v2/src/CodeAtlas.tsx": {
       "lines": 916,

@@ -2764,3 +2764,35 @@ Verification on the shared working snapshot:
 - Not covered: OS-level exclusion against external writers, large-tree/large-file acceptance,
   symlink-target saves beyond the existing containment tests, actual concurrent multi-window UI
   stress, full repository release/coverage, hosted CI and installed-app replacement.
+## Durable Project Kit parameter drafts (2026-10-29)
+
+- New generic `DurableFormDraft<T>` (`src/durable-form-draft.ts`): autosave through native
+  revision-checked project form storage, stop-and-review on `DRAFT_CONFLICT`, explicit
+  keep-local/use-saved resolution with changed-again refusal, and cleanup that only removes the
+  exact submitted value and refuses to erase a newer peer draft.
+- Project Kit parameters use it under native key `kit-parameters:<sha256(kit name)>` (new Rust
+  allow-list entry, project-scoped). The envelope records the kit name and a canonical SHA-256 of
+  the input schema; NaN/Infinity positions travel beside the JSON value so an unfinished number
+  restores as unfinished rather than `null`. Prototype-path steps are refused.
+- Same-contract drafts restore automatically with a visible "Restored unsent parameters" status
+  and a reset; drafts typed against an older contract are shown but not applied until the person
+  uses or discards them. The draft is cleared only after the request reaches the conversation
+  draft. `KitValue` now shows non-finite numbers as "Not entered".
+- Checks: desktop **403 tests / 83 files PASS** (the shared tree also holds unrelated concurrent
+  mailbox work); new `kit-parameter-draft.test.ts` covers special-number round trip, foreign
+  kit/format/prototype refusal, key-order-independent fingerprint, peer review, submitted-only
+  cleanup and stale-cleanup refusal. Typecheck **239 PASS**; Biome on changed files PASS (one
+  pre-existing CSS specificity warning); Rust fmt PASS; native Rust **21 tests PASS** (form-draft
+  test extended with the kit key and malformed-key refusal).
+- Native `--kit` on portable identity `991bea41d8fd-f3cd0165f635`, bundled engine/checksums
+  verified: **exit 0 / PASS**. New `native-kit-parameters.mjs` verifies cleanup after the existing
+  conversation handoff, restore after a real renderer reload including an empty number field, a
+  peer write through native IPC stopping this window's autosave for review without overwriting it,
+  adopting the saved values, and a changed `kit.json` contract showing saved values without
+  applying them, then discarding them. Existing kit scenarios still pass. Inspected
+  `kit/native-kit-parameter-conflict.png` from the first run (before the "Not entered" label fix;
+  the final run asserts the label). A formatter-only change to `KitParameterForm.tsx` followed
+  the final native run. Logs: `.temp_files/desktop-v2-native/kit-draft-*.log` / `.err`.
+- Not covered: full application-process restart for kit drafts (renderer reload plus native
+  storage only), actual concurrent multi-window UI stress, the remaining secondary forms, full
+  repository release/coverage, hosted CI and installed-app replacement.

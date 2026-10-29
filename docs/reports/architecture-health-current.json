@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-29T02:13:36.378Z",
+  "generatedAt": "2026-10-29T02:29:02.558Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,15 +12,15 @@
   },
   "summary": {
     "packages": 45,
-    "sourceFiles": 5396,
-    "testFiles": 4721,
-    "sourceLines": 1195664,
+    "sourceFiles": 5401,
+    "testFiles": 4723,
+    "sourceLines": 1196244,
     "workspaceEdges": 222,
-    "moduleEdges": 16219,
+    "moduleEdges": 16230,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
-    "testsWithoutTypecheck": 82,
+    "testsWithoutTypecheck": 84,
     "testsWithMultipleTypechecks": 0,
     "testOnlyExports": 970
   },
@@ -387,8 +387,8 @@
     {
       "name": "@wrongstack/desktop-v2",
       "dir": "apps/desktop-v2",
-      "sourceFiles": 227,
-      "testFiles": 82,
+      "sourceFiles": 232,
+      "testFiles": 84,
       "workspaceDependencies": [
         "@wrongstack/contracts",
         "@wrongstack/core",
@@ -1363,6 +1363,12 @@
         ]
       },
       {
+        "file": "apps/desktop-v2/tests/automation-units.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "apps/desktop-v2/tests/availability-model.test.ts",
         "projects": [
           "root-node"
@@ -1520,6 +1526,12 @@
       },
       {
         "file": "apps/desktop-v2/tests/input-form-model.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "apps/desktop-v2/tests/kit-parameter-draft.test.ts",
         "projects": [
           "root-node"
         ]
@@ -29698,6 +29710,13 @@
         "typecheckProjects": []
       },
       {
+        "file": "apps/desktop-v2/tests/automation-units.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
         "file": "apps/desktop-v2/tests/availability-model.test.ts",
         "runtimeProjects": [
           "root-node"
@@ -29881,6 +29900,13 @@
       },
       {
         "file": "apps/desktop-v2/tests/input-form-model.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
+        "file": "apps/desktop-v2/tests/kit-parameter-draft.test.ts",
         "runtimeProjects": [
           "root-node"
         ],
@@ -30889,8 +30915,8 @@
     },
     {
       "file": "apps/desktop-v2/src/AutomationWorkspace.tsx",
-      "lines": 713,
-      "relativeImports": 9
+      "lines": 718,
+      "relativeImports": 10
     },
     {
       "file": "apps/desktop-v2/src/CodeAtlas.tsx",
@@ -31135,6 +31161,11 @@
       "relativeImports": 9
     },
     {
+      "file": "apps/desktop-v2/src/AutomationWorkspace.tsx",
+      "lines": 718,
+      "relativeImports": 10
+    },
+    {
       "file": "packages/plugins/src/audit/index.ts",
       "lines": 715,
       "relativeImports": 0
@@ -31143,11 +31174,6 @@
       "file": "packages/tui/src/reducers/panel-pickers.ts",
       "lines": 714,
       "relativeImports": 5
-    },
-    {
-      "file": "apps/desktop-v2/src/AutomationWorkspace.tsx",
-      "lines": 713,
-      "relativeImports": 9
     },
     {
       "file": "packages/webui-server/src/server/pref-helpers.ts",

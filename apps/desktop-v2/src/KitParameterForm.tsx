@@ -190,11 +190,13 @@ export function KitValue({ value }: { value: unknown }) {
     <span className="kit-value">
       {value === null
         ? 'Empty value'
-        : value === true
-          ? 'Yes'
-          : value === false
-            ? 'No'
-            : String(value ?? 'Not supplied')}
+        : typeof value === 'number' && !Number.isFinite(value)
+          ? 'Not entered'
+          : value === true
+            ? 'Yes'
+            : value === false
+              ? 'No'
+              : String(value ?? 'Not supplied')}
     </span>
   );
 }

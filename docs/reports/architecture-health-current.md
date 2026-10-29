@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-29T02:13:36.378Z
+**Generated:** 2026-10-29T02:29:02.558Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -8,15 +8,15 @@
 | Measure | Value |
 |---|---:|
 | Workspace packages | 45 |
-| Production source files | 5396 |
-| Production source lines | 1195664 |
-| Test files | 4721 |
+| Production source files | 5401 |
+| Production source lines | 1196244 |
+| Test files | 4723 |
 | Workspace dependency edges | 222 |
-| Relative module edges | 16219 |
+| Relative module edges | 16230 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 5 |
-| Tests without TypeScript test-project coverage | 82 |
+| Tests without TypeScript test-project coverage | 84 |
 | Tests in multiple TypeScript projects | 0 |
 
 ## Verification result
@@ -38,7 +38,7 @@
 | @wrongstack/contracts | 126 | 4 | @wrongstack/kanban, @wrongstack/primitives |
 | @wrongstack/coordination | 190 | 183 | @wrongstack/agent-catalog, @wrongstack/contracts, @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/core | 635 | 686 | @wrongstack/agent-catalog, @wrongstack/contracts, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
-| @wrongstack/desktop-v2 | 227 | 82 | @wrongstack/contracts, @wrongstack/core, @wrongstack/webui-protocol, @wrongstack/webui-server |
+| @wrongstack/desktop-v2 | 232 | 84 | @wrongstack/contracts, @wrongstack/core, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/goal | 22 | 22 | @wrongstack/contracts, @wrongstack/core, @wrongstack/worktree |
 | @wrongstack/governance | 45 | 37 | @wrongstack/persistence |
 | @wrongstack/hq | 62 | 42 | @wrongstack/contracts, @wrongstack/core, @wrongstack/persistence, @wrongstack/primitives |
@@ -123,9 +123,9 @@ None.
 | 724 | `packages/coordination/src/agent-monitor.ts` |
 | 722 | `apps/desktop-v2/src/ProjectMailbox.tsx` |
 | 720 | `packages/webui/src/components/MemoryManager/useMemoryManagerState.ts` |
+| 718 | `apps/desktop-v2/src/AutomationWorkspace.tsx` |
 | 715 | `packages/plugins/src/audit/index.ts` |
 | 714 | `packages/tui/src/reducers/panel-pickers.ts` |
-| 713 | `apps/desktop-v2/src/AutomationWorkspace.tsx` |
 | 712 | `packages/webui-server/src/server/pref-helpers.ts` |
 | 709 | `packages/vibeui/src/components/memory-browser.tsx` |
 | 707 | `packages/acp/src/client/acp-session.ts` |
@@ -150,7 +150,7 @@ None.
 
 ## TypeScript test coverage debt
 
-- 82 test files are not included in a package TypeScript test project.
+- 84 test files are not included in a package TypeScript test project.
 - 0 test files are included in more than one package TypeScript project.
 
 > This report is generated. Change architecture registry inputs or source code, then regenerate it; do not hand-edit measurements.

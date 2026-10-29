@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { exerciseNativeKitParameters } from './native-kit-parameters.mjs';
 import { revealProjectTools } from './native-project-navigation.mjs';
 
 export async function exerciseNativeProjectKit({
@@ -212,6 +213,7 @@ export async function exerciseNativeProjectKit({
       'Draft handoff does not run kit code',
     );
     assert.equal(await readFile(join(directory, 'main.mjs'), 'utf8'), source);
+    await exerciseNativeKitParameters({ page, project, open, directory, artifactDir });
     console.log(
       'PASS: native project kits read without module import/session, typed/nested parameters, contracts/tests/history/source list, recorded verification gating, revision drift refusal, project isolation, safe unopened conversation draft handoff',
     );

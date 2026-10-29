@@ -249,6 +249,7 @@ function ProjectContent({ project, vm }: { project: Project; vm: DesktopControll
         <Suspense fallback={<p role="status">Opening project kits…</p>}>
           <ProjectKit
             key={project.id}
+            projectId={project.id}
             http={http}
             sessions={vm.snapshot.sessions.filter((item) => item.projectId === project.id)}
             onPrepare={(id, text) => vm.prepareProjectRequest(project.id, id, text)}
