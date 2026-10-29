@@ -305,7 +305,7 @@ Use the [chat action inventory](desktop-v2-chat-parity.md) for exact existing be
   and leader overrides/resets. Do not manufacture support when the provider reports unknown.
 - Finish active worker assignment/topology and actual execution of session-owned model plans.
   Make plan drafts durable; atomic same-plan writes still need a canonical contract.
-- Add snippet file references (line-range chips, previews and file-viewer range picking exist), richer skill/resource invocation
+- Add richer skill/resource invocation (file, line-range and quoted-snippet references exist)
   progress, code-paste hints/undo, reference-aware durable recall and prompt journal export/paging.
 - Implement speech only with real platform support, permission and recording/transcript states;
   unsupported systems must not show a fake working microphone.

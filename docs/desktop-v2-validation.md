@@ -3044,3 +3044,30 @@ Verification on the shared working snapshot:
 - Not covered: very deep (not wide) trees, trees whose engine listing itself is truncated,
   screen-reader announcement checks, full application restart, full release/coverage, hosted CI
   and installed-app replacement.
+
+## Quoted snippet references (2026-10-29)
+
+- The session file viewer gains "Quote selection": the selected text itself (editor or read-only
+  viewer, mapped from the rendered lines back to file offsets) is attached as a reference with a
+  `snippet`, bounded to 8,000 characters (larger selections are refused with a message, never
+  truncated). Line numbers are kept only while the text matches the disk; unsaved editor text can
+  be quoted without them. The wire line is `- "path" lines A-B snippet "<JSON string>"` plus a
+  note that the file on disk may differ; parsing refuses blank or oversized quotes, and saved
+  composer drafts validate the field. Chips show a short summary and a quote view with
+  "Reference whole file instead". One reference per file still applies.
+- The changes landed inside the concurrent release commit `5d3381d1f` (made by another session
+  while this increment was uncommitted); the history was left as is.
+- Checks: desktop **440 tests / 93 files PASS** (new `snippet-references` tests: round trip with
+  quotes, newlines and reference syntax inside the snippet, refusal of blank/oversized quotes,
+  labels, offset mapping, editor quoting with and without unsaved text); typecheck **253 PASS**;
+  Biome PASS on the changed files (one pre-existing `aria-label` warning on the range preview).
+- Native on portable identity `db684e710b9b-a8c846e0049d`, bundled engine/checksums verified:
+  `--composer` **exit 0 / PASS** on the first run: line 1 is selected in the real read-only viewer,
+  quoted, shown in the quote view, and the provider prompt carries
+  `- "README.md" lines 1-1 snippet "<line 1>"` with the snippet note; the human bubble shows the
+  quote label. `--files` failed once at the existing git-hunk step ("Hunks refresh after staging
+  timed out", unrelated code path) and passed on an unchanged rerun with the same bundle; the
+  timeout is undiagnosed.
+- Not covered: native quoting from the editor and from unsaved text (unit only), multi-line DOM
+  selections in the viewer, full application restart, full release/coverage, hosted CI and
+  installed-app replacement.
