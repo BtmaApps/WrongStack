@@ -240,8 +240,10 @@ async function globFiles(
       // ...and its own .gitignore pruning yields to a `--glob` that matches a
       // directory (`**/*` matches `gen`), so ignored files came back too. The
       // walker's matcher decides for both paths.
-      const isGitIgnored = await loadGitignoreMatcher(base);
-      const files = (await promise).filter(
+      // Attach the rg rejection handler before waiting for unrelated I/O.
+      // A missing/broken rg can fail while .gitignore is still being read.
+      const [listedFiles, isGitIgnored] = await Promise.all([promise, loadGitignoreMatcher(base)]);
+      const files = listedFiles.filter(
         (f) => !hasIgnoredSegment(f, base) && !gitIgnoredLikeWalker(isGitIgnored, f, base),
       );
       // The extra `glob` filter was previously dropped on this path — only the

@@ -25,7 +25,7 @@ function deferred<T>() {
   return { promise, resolve };
 }
 
-function harness() {
+function harness(onCrash?: (server: InstanceType<typeof LSPServer>) => void) {
   const child = Object.assign(new EventEmitter(), {
     stdin: new PassThrough(),
     stdout: new PassThrough(),
@@ -73,6 +73,7 @@ function harness() {
       rootPath: process.cwd(),
       log: log as never,
       events,
+      ...(onCrash ? { onCrash } : {}),
     },
   );
   return {
@@ -93,6 +94,25 @@ afterEach(() => {
 });
 
 describe('LSP startup retains only its own lifecycle', () => {
+  it('requests reconnect after a ready child exits normally without losing exit code zero', async () => {
+    const onCrash = vi.fn();
+    const value = harness(onCrash);
+    const crashed = vi.fn();
+    value.events.on('lsp.server.crashed', crashed);
+    const started = value.server.start();
+    await value.initializing;
+    value.release();
+    await started;
+    value.child.emit('exit', 0, null);
+    expect(value.server.state).toBe('failed');
+    expect(onCrash).toHaveBeenCalledExactlyOnceWith(value.server);
+    expect(crashed).toHaveBeenCalledExactlyOnceWith({
+      name: 'startup',
+      error: 'process exited code=0 signal=null',
+    });
+    await value.server.shutdown();
+  });
+
   it.each([
     [null, 'SIGTERM', 'code=null signal=SIGTERM'],
     [7, null, 'code=7 signal=null'],

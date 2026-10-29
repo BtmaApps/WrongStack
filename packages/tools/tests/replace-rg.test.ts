@@ -5,6 +5,21 @@ import * as path from 'node:path';
 import type { Context } from '@wrongstack/core/agent';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+const readGate = vi.hoisted(() => ({
+  path: '',
+  beforeRead: undefined as (() => Promise<void>) | undefined,
+}));
+vi.mock('node:fs/promises', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:fs/promises')>();
+  return {
+    ...actual,
+    readFile: async (...args: Parameters<typeof actual.readFile>) => {
+      if (String(args[0]) === readGate.path) await readGate.beforeRead?.();
+      return actual.readFile(...args);
+    },
+  };
+});
+
 // Control ripgrep availability + output so the rg glob path runs deterministically.
 const cfg: {
   versionThrows: boolean;
@@ -75,6 +90,54 @@ const ctx = () => ({ cwd: dir, projectRoot: dir, tools: [] }) as never as Contex
 const opts = () => ({ signal: new AbortController().signal });
 
 describe('replaceTool ripgrep glob path (faked rg)', () => {
+  it.each(['spawn-error', 'exit-error'] as const)(
+    'handles an early rg %s while gitignore I/O is still pending',
+    async (failure) => {
+      const file = path.join(dir, 'early.ts');
+      const ignoreFile = path.join(dir, '.gitignore');
+      await fs.writeFile(file, 'OLD');
+      await fs.writeFile(ignoreFile, '');
+      cfg.findErrors = failure === 'spawn-error';
+      cfg.findCode = failure === 'exit-error' ? 2 : 0;
+      let entered!: () => void;
+      let release!: () => void;
+      const reading = new Promise<void>((resolve) => {
+        entered = resolve;
+      });
+      const pendingRead = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      readGate.path = ignoreFile;
+      readGate.beforeRead = async () => {
+        entered();
+        await pendingRead;
+      };
+      const unhandled: unknown[] = [];
+      const onUnhandled = (reason: unknown) => {
+        unhandled.push(reason);
+      };
+      process.on('unhandledRejection', onUnhandled);
+      try {
+        const result = replaceTool.execute(
+          { pattern: 'OLD', replacement: 'NEW', files: '**/*.ts', dry_run: false },
+          ctx(),
+          opts(),
+        );
+        await reading;
+        // Let the mocked OS error arrive before the unrelated file read finishes.
+        await new Promise<void>((resolve) => setImmediate(resolve));
+        release();
+        expect((await result).total_replacements).toBe(1);
+        expect(await fs.readFile(file, 'utf8')).toBe('NEW');
+        expect(unhandled).toEqual([]);
+      } finally {
+        release();
+        readGate.beforeRead = undefined;
+        process.off('unhandledRejection', onUnhandled);
+      }
+    },
+  );
+
   it('uses rg --files output to drive the replacement when rg is available', async () => {
     const file = path.join(dir, 'a.ts');
     await fs.writeFile(file, 'const OLD = 1;');
