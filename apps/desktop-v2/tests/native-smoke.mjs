@@ -69,6 +69,7 @@ const modelDraftRestartOnly = process.argv.includes('--model-draft-restart');
 const modelProfilesOnly = process.argv.includes('--model-profiles');
 const mailboxOnly = process.argv.includes('--mailbox');
 const kitOnly = process.argv.includes('--kit');
+const skillsOnly = process.argv.includes('--skills');
 const techstackOnly = process.argv.includes('--techstack');
 const deadCodeOnly = process.argv.includes('--deadcode');
 const designOnly = process.argv.includes('--design');
@@ -93,73 +94,75 @@ const usageOnly = process.argv.includes('--usage');
 const artifactDir = resolve(
   root,
   '.temp_files/desktop-v2-native',
-  modelProfilesOnly
-    ? 'model-profiles'
-    : modelDraftRestartOnly
-      ? 'model-draft-restart'
-      : usageOnly
-        ? 'session-usage'
-        : sageOnly
-          ? 'sage-validity'
-          : refinementPolicyOnly
-            ? 'refinement-policy'
-            : executionPolicyOnly
-              ? 'execution-policy'
-              : brainPolicyOnly
-                ? 'brain-policy'
-                : fleetPolicyOnly
-                  ? 'fleet-policy'
-                  : atlasOnly
-                    ? 'atlas-boundaries'
-                    : fleetOnly
-                      ? 'fleet'
-                      : processesOnly
-                        ? 'processes'
-                        : mcpTasksOnly
-                          ? 'mcp-tasks'
-                          : mcpOnly
-                            ? 'mcp'
-                            : automationOnly
-                              ? 'automation'
-                              : rosterOnly
-                                ? 'roster'
-                                : filesOnly
-                                  ? 'files'
-                                  : settingsOnly
-                                    ? 'settings'
-                                    : historyOnly
-                                      ? companion
-                                        ? 'history-companion'
-                                        : 'history'
-                                      : recoveryOnly
-                                        ? 'recovery'
-                                        : chimeraOnly
-                                          ? 'chimera'
-                                          : designOnly
-                                            ? 'design'
-                                            : deadCodeOnly
-                                              ? 'deadcode'
-                                              : techstackOnly
-                                                ? 'techstack'
-                                                : kitOnly
-                                                  ? 'kit'
-                                                  : mailboxOnly
-                                                    ? 'mailbox'
-                                                    : modelsOnly
-                                                      ? 'models'
-                                                      : sddOnly
-                                                        ? 'sdd'
-                                                        : goalsOnly
-                                                          ? 'goals'
-                                                          : chronicleOnly
-                                                            ? 'chronicle'
-                                                            : composerOnly
-                                                              ? companion
-                                                                ? 'composer-companion'
-                                                                : 'composer'
-                                                              : companion
-                                                                ? 'companion'
-                                                                : '.',
+  skillsOnly
+    ? 'skills'
+    : modelProfilesOnly
+      ? 'model-profiles'
+      : modelDraftRestartOnly
+        ? 'model-draft-restart'
+        : usageOnly
+          ? 'session-usage'
+          : sageOnly
+            ? 'sage-validity'
+            : refinementPolicyOnly
+              ? 'refinement-policy'
+              : executionPolicyOnly
+                ? 'execution-policy'
+                : brainPolicyOnly
+                  ? 'brain-policy'
+                  : fleetPolicyOnly
+                    ? 'fleet-policy'
+                    : atlasOnly
+                      ? 'atlas-boundaries'
+                      : fleetOnly
+                        ? 'fleet'
+                        : processesOnly
+                          ? 'processes'
+                          : mcpTasksOnly
+                            ? 'mcp-tasks'
+                            : mcpOnly
+                              ? 'mcp'
+                              : automationOnly
+                                ? 'automation'
+                                : rosterOnly
+                                  ? 'roster'
+                                  : filesOnly
+                                    ? 'files'
+                                    : settingsOnly
+                                      ? 'settings'
+                                      : historyOnly
+                                        ? companion
+                                          ? 'history-companion'
+                                          : 'history'
+                                        : recoveryOnly
+                                          ? 'recovery'
+                                          : chimeraOnly
+                                            ? 'chimera'
+                                            : designOnly
+                                              ? 'design'
+                                              : deadCodeOnly
+                                                ? 'deadcode'
+                                                : techstackOnly
+                                                  ? 'techstack'
+                                                  : kitOnly
+                                                    ? 'kit'
+                                                    : mailboxOnly
+                                                      ? 'mailbox'
+                                                      : modelsOnly
+                                                        ? 'models'
+                                                        : sddOnly
+                                                          ? 'sdd'
+                                                          : goalsOnly
+                                                            ? 'goals'
+                                                            : chronicleOnly
+                                                              ? 'chronicle'
+                                                              : composerOnly
+                                                                ? companion
+                                                                  ? 'composer-companion'
+                                                                  : 'composer'
+                                                                : companion
+                                                                  ? 'companion'
+                                                                  : '.',
 );
 await mkdir(artifactDir, { recursive: true });
 if (modelDraftRestartOnly || modelProfilesOnly)
@@ -1071,6 +1074,18 @@ try {
     result = {
       result: 'PASS',
       scope: 'techstack',
+      portableIdentity,
+      bundledEngine: bundled,
+      portableChecksumsVerified: bundled,
+      artifacts: artifactDir,
+    };
+  } else if (skillsOnly) {
+    await page.locator('.project-item').filter({ hasText: a.name }).click();
+    await exerciseNativeSkills({ page, waitFor, artifactDir, project: a, rpc: workspaceRpc });
+    assert.deepEqual(errors, []);
+    result = {
+      result: 'PASS',
+      scope: 'skills',
       portableIdentity,
       bundledEngine: bundled,
       portableChecksumsVerified: bundled,

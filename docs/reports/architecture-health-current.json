@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-29T02:29:02.558Z",
+  "generatedAt": "2026-10-29T02:39:50.282Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,15 +12,15 @@
   },
   "summary": {
     "packages": 45,
-    "sourceFiles": 5401,
-    "testFiles": 4723,
-    "sourceLines": 1196244,
+    "sourceFiles": 5404,
+    "testFiles": 4724,
+    "sourceLines": 1196629,
     "workspaceEdges": 222,
-    "moduleEdges": 16230,
+    "moduleEdges": 16240,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
-    "testsWithoutTypecheck": 84,
+    "testsWithoutTypecheck": 85,
     "testsWithMultipleTypechecks": 0,
     "testOnlyExports": 970
   },
@@ -387,8 +387,8 @@
     {
       "name": "@wrongstack/desktop-v2",
       "dir": "apps/desktop-v2",
-      "sourceFiles": 232,
-      "testFiles": 84,
+      "sourceFiles": 235,
+      "testFiles": 85,
       "workspaceDependencies": [
         "@wrongstack/contracts",
         "@wrongstack/core",
@@ -1802,6 +1802,12 @@
       },
       {
         "file": "apps/desktop-v2/tests/side-effects-model.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "apps/desktop-v2/tests/skill-editor-draft.test.ts",
         "projects": [
           "root-node"
         ]
@@ -30228,6 +30234,13 @@
         "typecheckProjects": []
       },
       {
+        "file": "apps/desktop-v2/tests/skill-editor-draft.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
         "file": "apps/desktop-v2/tests/skill-model.test.ts",
         "runtimeProjects": [
           "root-node"
@@ -30995,8 +31008,8 @@
     },
     {
       "file": "apps/desktop-v2/src/SkillLibrary.tsx",
-      "lines": 848,
-      "relativeImports": 6
+      "lines": 884,
+      "relativeImports": 7
     }
   ],
   "hotspots": [
@@ -31051,14 +31064,14 @@
       "relativeImports": 2
     },
     {
+      "file": "apps/desktop-v2/src/SkillLibrary.tsx",
+      "lines": 884,
+      "relativeImports": 7
+    },
+    {
       "file": "apps/desktop-v2/src/ProjectGoals.tsx",
       "lines": 856,
       "relativeImports": 5
-    },
-    {
-      "file": "apps/desktop-v2/src/SkillLibrary.tsx",
-      "lines": 848,
-      "relativeImports": 6
     },
     {
       "file": "apps/desktop-v2/src/ProjectMemory.tsx",

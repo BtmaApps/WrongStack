@@ -448,3 +448,45 @@
     font-size: 10px;
   }
 }
+.skill-draft-notice {
+  display: grid;
+  gap: 10px;
+  margin-block: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--raised);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.skill-draft-notice p {
+  margin: 0;
+}
+.skill-draft-notice footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.skill-draft-compare {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+  gap: 10px;
+}
+.skill-draft-compare > div {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.skill-draft-compare pre {
+  max-height: 220px;
+  margin: 6px 0 0;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 11px;
+}
+.skill-draft-status {
+  color: var(--muted);
+  font-size: 12px;
+}

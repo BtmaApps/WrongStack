@@ -25,6 +25,7 @@ import { entries, record } from './engine-values';
 import { MarkdownContent } from './MarkdownContent';
 import { markdownTarget } from './markdown-target';
 import { openExternal } from './platform';
+import { SkillDraftNotice, useSkillDraftBinding } from './SkillDraftNotice';
 import {
   downloadSkillFile,
   skillInstructions,
@@ -37,10 +38,13 @@ import {
 export function SkillLibrary({
   command,
   scope,
+  projectId,
   onOpenFile,
 }: {
   command: EngineCommand;
   scope: 'project' | 'profile';
+  /** Owner of durable edit drafts for project skills. */
+  projectId?: string;
   onOpenFile?: (path: string) => void;
 }) {
   const [skills, setSkills] = useState<Record<string, unknown>[]>([]),
@@ -60,6 +64,25 @@ export function SkillLibrary({
     [name, setName] = useState(''),
     [description, setDescription] = useState(''),
     [ref, setRef] = useState('');
+  const draftSkill = useMemo(
+    () =>
+      selected &&
+      content &&
+      skillWritable(selected['source'], scope) &&
+      (scope === 'profile' || projectId)
+        ? { name: String(selected['name']), source: String(selected['source']) }
+        : null,
+    [selected, content, scope, projectId],
+  );
+  const drafts = useSkillDraftBinding({
+    command,
+    scope: scope === 'project' && projectId ? { kind: 'project', projectId } : { kind: 'profile' },
+    skill: draftSkill,
+    body: content ? String(content['body'] ?? '') : null,
+    loaded: content,
+    setDraft,
+    setEditing,
+  });
   const next = useRef<Record<string, unknown> | null>(null),
     generation = useRef(0);
   const load = useCallback(async () => {
@@ -160,6 +183,8 @@ export function SkillLibrary({
       );
       if (result['body'] !== draft)
         throw new Error('The saved skill differs from your draft. Reopen it before continuing.');
+      // Clear parked edits before the new disk text arrives, so they are not offered as stale.
+      await drafts.settle();
       setContent(result);
       setEditing(false);
       await load();
@@ -481,6 +506,13 @@ export function SkillLibrary({
                       <p>{String(selected['trigger'])}</p>
                     </div>
                   )}
+                  <SkillDraftNotice
+                    binding={drafts}
+                    onUseSaved={(text) => {
+                      setDraft(text);
+                      setEditing(true);
+                    }}
+                  />
                   {reading ? (
                     <div className="skill-empty">
                       <LoaderCircle className="spin" size={25} />
@@ -512,7 +544,10 @@ export function SkillLibrary({
                                 spellCheck={false}
                                 value={draft}
                                 disabled={busy}
-                                onChange={(e) => setDraft(e.target.value)}
+                                onChange={(e) => {
+                                  setDraft(e.target.value);
+                                  drafts.edit(e.target.value);
+                                }}
                                 onKeyDown={(e) => {
                                   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
                                     e.preventDefault();
@@ -739,6 +774,7 @@ export function SkillLibrary({
                     className="button primary"
                     onClick={() => {
                       const target = next.current;
+                      drafts.discard();
                       setDialog(null);
                       if (target) void read(target);
                       else {

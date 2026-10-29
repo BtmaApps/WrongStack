@@ -32,7 +32,7 @@ function ProjectToolsContent({
   const { state, send, command } = useProjectEngine(projectId, onError);
   if (!state.connected) return <div className="runtime-state">Opening project tools…</div>;
   return view === 'skills' ? (
-    <SkillLibrary command={command} scope="project" onOpenFile={onOpenFile} />
+    <SkillLibrary command={command} scope="project" projectId={projectId} onOpenFile={onOpenFile} />
   ) : (
     <FileWorkspace
       command={command}

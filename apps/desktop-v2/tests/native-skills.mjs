@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { exerciseNativeSkillDrafts } from './native-skill-drafts.mjs';
 
 export async function exerciseNativeSkills({ page, rpc, project, waitFor, artifactDir }) {
   const openLibrary = async () => {
@@ -92,6 +93,8 @@ export async function exerciseNativeSkills({ page, rpc, project, waitFor, artifa
     'true',
     'Absolute skill links select the canonical relative file',
   );
+  await openLibrary();
+  await exerciseNativeSkillDrafts({ page, project, openLibrary, skillRoot, artifactDir });
   await openLibrary();
   await page.getByLabel('Search skills').fill('native-desktop-skill');
   await page.getByRole('button', { name: 'Open skill native-desktop-skill', exact: true }).click();

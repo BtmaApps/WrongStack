@@ -2796,3 +2796,34 @@ Verification on the shared working snapshot:
 - Not covered: full application-process restart for kit drafts (renderer reload plus native
   storage only), actual concurrent multi-window UI stress, the remaining secondary forms, full
   repository release/coverage, hosted CI and installed-app replacement.
+
+## Durable skill edit drafts (2026-10-29)
+
+- SKILL.md edits now autosave through `DurableFormDraft`. Project skills use native project form
+  storage under `skill-editor:<sha256(['skill-editor', null, source, name])>`; profile skills use
+  native profile draft storage keyed with the verified runtime profile ID. When the profile engine
+  reports no identity, editing still works but the screen states that edits are not kept. Both Rust
+  key allow-lists accept only the hashed `skill-editor:` form.
+- The envelope records skill name, source, profile owner, the disk text the edits started from
+  (`base`) and the edited body (512 KiB bounds). Edits matching the current disk text restore into
+  the editor after a reload with a visible status; edits made against an older disk text are shown
+  beside the current file and are applied only through "Continue with my edits" (which rebases
+  them onto the reviewed file) or removed through "Discard my edits". Reverting to the disk text
+  clears the draft. Parked edits are cleared after a verified save, before the new disk text is
+  shown, and on explicit discard from the leave guard.
+- Checks: desktop **416 tests / 85 files PASS** (shared tree includes unrelated concurrent work);
+  new `skill-editor-draft.test.ts` covers profile/source/name key separation, foreign-owner and
+  oversize refusal and a native-slot round trip. Typecheck **242 PASS**; Biome on changed files
+  PASS; Rust fmt PASS (after a formatter-only test-line change); native Rust **21 tests PASS** with
+  project and profile `skill-editor:` acceptance and malformed-key refusal.
+- New native `--skills` scope runs the existing skill scenarios plus `native-skill-drafts.mjs` on
+  portable identity `c445308cf0bc-f3cd0165f635`, bundled engine/checksums verified: **exit 0 /
+  PASS**. Verified acknowledged native storage of edits, restore after a real renderer reload, an
+  external SKILL.md change showing the earlier edits for review without loading them into the
+  editor, explicit continue rebasing the stored base, a verified save writing the reviewed text
+  and draft cleanup. Existing create/edit/invalid-document/leave-guard/profile-creation scenarios
+  still pass. Inspected `skills/native-skill-draft-review.png`; both texts start at the top, so a
+  late difference needs scrolling.
+- Not covered: profile-skill draft native acceptance (unit and Rust only), full application
+  restart, actual multi-window stress, a version-bound engine `skills.edit`, full repository
+  release/coverage, hosted CI and installed-app replacement.

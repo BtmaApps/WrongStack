@@ -264,6 +264,7 @@ function ProjectContent({ project, vm }: { project: Project; vm: DesktopControll
         <SkillLibrary
           command={command}
           scope="project"
+          projectId={project.id}
           onOpenFile={(path) => {
             setFileTarget(path);
             vm.setProjectPage('files');

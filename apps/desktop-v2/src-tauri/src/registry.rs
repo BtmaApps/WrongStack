@@ -218,16 +218,18 @@ impl Registry {
         let review_form = form_key
             .strip_prefix("chimera-note:")
             .is_some_and(|id| id.len() == 64 && id.bytes().all(|value| value.is_ascii_hexdigit()));
-        let kit_form = form_key
-            .strip_prefix("kit-parameters:")
-            .is_some_and(|id| id.len() == 64 && id.bytes().all(|value| value.is_ascii_hexdigit()));
+        let hashed_form = ["kit-parameters:", "skill-editor:"].iter().any(|prefix| {
+            form_key.strip_prefix(prefix).is_some_and(|id| {
+                id.len() == 64 && id.bytes().all(|value| value.is_ascii_hexdigit())
+            })
+        });
         if form_key != "requirements-new"
             && form_key != "history-view"
             && form_key != "git-review-notes"
             && !record_form
             && !file_form
             && !review_form
-            && !kit_form
+            && !hashed_form
         {
             return Err("Unknown project form".into());
         }
@@ -257,10 +259,12 @@ impl Registry {
         Ok(serde_json::json!({"revision":revision,"value":value,"updatedAt":updated_at}))
     }
     fn ensure_profile_form(form_key: &str) -> Result<()> {
-        if !form_key
-            .strip_prefix("model-editor:")
-            .is_some_and(|id| id.len() == 64 && id.bytes().all(|value| value.is_ascii_hexdigit()))
-        {
+        let hashed = |prefix: &str| {
+            form_key.strip_prefix(prefix).is_some_and(|id| {
+                id.len() == 64 && id.bytes().all(|value| value.is_ascii_hexdigit())
+            })
+        };
+        if !hashed("model-editor:") && !hashed("skill-editor:") {
             return Err("Unknown profile form".into());
         }
         Ok(())
@@ -735,6 +739,9 @@ mod tests {
             .is_err());
         assert!(db.profile_form_draft("model-editor:../bad").is_err());
         assert!(db.profile_form_draft("requirements-new").is_err());
+        let skill = format!("skill-editor:{}", "e".repeat(64));
+        assert_eq!(db.save_profile_form_draft(&skill, &value, 0).unwrap(), 1);
+        assert!(db.profile_form_draft("skill-editor:short").is_err());
         assert!(db.save_profile_form_draft(&key, &value, -1).is_err());
         assert!(db
             .save_profile_form_draft(
@@ -923,6 +930,13 @@ mod tests {
         assert!(peer
             .form_draft(&a.id, "kit-parameters:release.notes")
             .is_err());
+        let skill_key = format!("skill-editor:{}", "d".repeat(64));
+        assert_eq!(
+            db.save_form_draft(&a.id, &skill_key, &kit_value, 0)
+                .unwrap(),
+            1
+        );
+        assert!(peer.form_draft(&b.id, &skill_key).unwrap()["value"].is_null());
         let review_key = "git-review-notes";
         let review = serde_json::json!({"version":1,"notes":[{"path":"src/main.rs","line":3,"text":"Check this boundary"}]});
         assert_eq!(
