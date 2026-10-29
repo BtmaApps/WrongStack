@@ -99,7 +99,8 @@ export async function syncSageEntries(
             existing.summary === expectedSummary &&
             jsonValuesEqual(existing.tags, expectedTags) &&
             jsonValuesEqual(existing.metadata, expectedMetadata);
-          if (sameState && existing.vector !== undefined) return false;
+          const hasVector = existing !== undefined && existing.vector !== undefined;
+          if (sameState && hasVector) return false;
           if (existing && !sameState) {
             host.forgetUnlocked(existing.id);
           }

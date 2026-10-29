@@ -113,6 +113,7 @@ export async function recoverSqliteSage(
       ...fresh,
       revision: fresh.revision + 1,
       status: 'active',
+      staleReason: undefined,
       updatedAt: now,
     };
     ctx.upsertMemory(restored);

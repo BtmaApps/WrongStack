@@ -1,7 +1,7 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { compareHqSageRecords, type HqSageRecord, isHqSageRecord } from '@wrongstack/hq';
 import { sqliteRowToMemory } from './sqlite-store-codec.js';
-import { memoryNodeId } from './sqlite-store-graph-helpers.js';
+import { cleanReferencingMemoriesBatch, memoryNodeId } from './sqlite-store-graph-helpers.js';
 import type { Sage } from './types.js';
 
 const SHARED = "('project', 'file', 'symbol')";
@@ -123,6 +123,7 @@ export function applySageHqSync(
   if (!Array.isArray(records) || records.length > 100 || !records.every(isHqSageRecord))
     throw new Error('Invalid SAGE sync records');
   const changed: string[] = [];
+  const deletedIds: string[] = [];
   for (const r of records) {
     const prior = host.db.prepare('SELECT * FROM hq_memory_sync WHERE id = ?').get(r.id) as
       | Row
@@ -136,17 +137,38 @@ export function applySageHqSync(
     if (r.memory === null) {
       host.db.prepare('DELETE FROM memories WHERE id = ?').run(r.id);
       host.deleteEdges(memoryNodeId(r.id));
+      deletedIds.push(r.id);
     } else {
       const memory = sqliteRowToMemory({ data: JSON.stringify(r.memory) });
-      host.upsert(memory);
-      if (memory.status === 'deleted') host.deleteEdges(memoryNodeId(r.id));
-      else host.anchors(memory);
+      if (memory.status === 'deleted') {
+        host.upsert({
+          ...memory,
+          supersedes: undefined,
+          contradicts: undefined,
+          supersededBy: undefined,
+        });
+        host.deleteEdges(memoryNodeId(r.id));
+        deletedIds.push(r.id);
+      } else {
+        host.upsert(memory);
+        host.anchors(memory);
+      }
     }
     host.db
       .prepare(`INSERT INTO hq_memory_sync VALUES (?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET revision=excluded.revision, change_id=excluded.change_id, data=excluded.data`)
       .run(r.id, r.revision, r.changeId, r.memory === null ? null : JSON.stringify(r.memory));
     changed.push(r.id);
+  }
+  if (deletedIds.length > 0) {
+    cleanReferencingMemoriesBatch(
+      {
+        stmt: (sql) => host.db.prepare(sql),
+        nowIso: () => new Date().toISOString(),
+        upsertMemory: (memory) => host.upsert(memory),
+      },
+      deletedIds,
+    );
   }
   return changed;
 }

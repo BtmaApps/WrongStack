@@ -202,7 +202,11 @@ export function createSageTurnMiddleware(opts: SageTurnMiddlewareOptions): Middl
           const kept =
             dropped && dropped.size > 0 ? eligible.filter((m) => !dropped.has(m.id)) : eligible;
           const validityReviews = await checkInjectionValidity(kept, opts.projectRoot);
-          const rendered = formatMemoryHintsDetailed(kept, {
+          const applicable = kept.filter(
+            (m) =>
+              !validityReviews.get(m.id)?.checks.some((check) => check.status === 'not_satisfied'),
+          );
+          const rendered = formatMemoryHintsDetailed(applicable, {
             validityReviews,
             maxChars: opts.maxChars ?? positiveLimit(activeLimits().memoryInjectChars) ?? 2_400,
           });
@@ -214,7 +218,7 @@ export function createSageTurnMiddleware(opts: SageTurnMiddlewareOptions): Middl
             if (entered.length > 0) {
               await opts.memory.recordInjection?.(entered, 'turn_context', sessionId);
             }
-            const injected = kept
+            const injected = applicable
               .filter((m) => renderedIds.has(m.id))
               .map((m) => ({
                 id: m.id,

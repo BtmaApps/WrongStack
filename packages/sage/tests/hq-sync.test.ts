@@ -162,4 +162,29 @@ describe('project SAGE replication through durable HQ state', () => {
     await expect(b.applyHqSync([record!, bad])).rejects.toThrow('Invalid');
     expect(await b.listHqSync()).toEqual([]);
   });
+
+  it('cleans referencing memories supersedes and contradicts when applyHqSync deletes or tombstones a memory', async () => {
+    const target = await b.rememberSage({
+      text: 'Shared rule to be deleted remotely',
+      kind: 'fact',
+    });
+    const holder = await b.rememberSage({
+      text: 'Local memory superseding and contradicting target',
+      kind: 'fact',
+      supersedes: [target.id],
+      contradicts: [target.id],
+    });
+    const syncRow = (await b.listHqSync()).find((r) => r.id === target.id)!;
+    await b.applyHqSync([
+      {
+        id: target.id,
+        revision: syncRow.revision + 5,
+        changeId: 'f'.repeat(32),
+        memory: null,
+      },
+    ]);
+    const holderAfter = await b.getSage(holder.id);
+    expect(holderAfter?.supersedes ?? []).toEqual([]);
+    expect(holderAfter?.contradicts ?? []).toEqual([]);
+  });
 });

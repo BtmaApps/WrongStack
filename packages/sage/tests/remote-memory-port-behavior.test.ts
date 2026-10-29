@@ -95,6 +95,15 @@ describe('ProjectSageMemoryPort', () => {
     });
   });
 
+  it('gives the boot ping room for a cold daemon building its database', async () => {
+    // A fresh daemon answered its first ping in 5286 ms on a loaded machine;
+    // the old 5 s budget killed the CLI before its first model request.
+    const port = new ProjectSageMemoryPort({ projectRoot: 'D:/repo', clientId: 'boot' });
+    await port.initialize();
+    const timeoutMs = mocks.call.mock.calls.find(([op]) => op === 'ping')?.[2]?.timeoutMs;
+    expect(timeoutMs).toBeGreaterThanOrEqual(30_000);
+  });
+
   it('exposes service capabilities, health details, and deterministic disposal', async () => {
     const port = new ProjectSageMemoryPort({ projectRoot: 'D:/repo', clientId: 'client-2' });
     const service = port.getCapability({ id: 'wrongstack.memory.sage-service.v1' } as never) as {

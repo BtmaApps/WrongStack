@@ -64,6 +64,25 @@ it('checks current sources before turn injection, emits the reviewed revision, a
     );
     expect((await checkInjectionValidity([memory])).get('m')?.checks[0]?.status).toBe('unknown');
     expect(memory.revision).toBe(2);
+
+    const { refreshMemoryEvidence } = await import('../src/middleware/evidence-refresh.js');
+    const staleTurnResult = await middleware.handler(
+      {
+        model: 'test',
+        messages: [{ role: 'user', content: 'Change lifecycle tests retry quota' }],
+        system: [],
+      } as never,
+      async (next) => next,
+    );
+    expect(staleTurnResult.system).toEqual([]);
+
+    const refreshed = await refreshMemoryEvidence(
+      '- [fact:project id=m rev=2] Lifecycle tests use retry quota three.',
+      async (id) => (id === 'm' ? memory : null),
+      'leader',
+      root,
+    );
+    expect(refreshed).toBe('');
   } finally {
     await rm(root, { recursive: true, force: true });
   }

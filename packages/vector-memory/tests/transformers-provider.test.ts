@@ -115,4 +115,28 @@ describe('TransformersEmbeddingProvider', () => {
     const provider = new TransformersEmbeddingProvider();
     expect(provider.isInstalled()).toBe(await provider.isAvailable());
   });
+
+  it('rejects non-divisible or empty flat Float32Array batch outputs with vector-count mismatch (F836)', async () => {
+    const provider = new TransformersEmbeddingProvider({ batchSize: 2, dimensions: 2 });
+    Object.defineProperty(provider, 'getExtractor', {
+      configurable: true,
+      value: async () => async () => ({
+        data: new Float32Array([1, 2, 3]),
+      }),
+    });
+    await expect(provider.embed(['one', 'two'])).rejects.toThrow(
+      'returned 1 vectors for a batch of 2',
+    );
+
+    const emptyProvider = new TransformersEmbeddingProvider({ batchSize: 2, dimensions: 1 });
+    Object.defineProperty(emptyProvider, 'getExtractor', {
+      configurable: true,
+      value: async () => async () => ({
+        data: new Float32Array(0),
+      }),
+    });
+    await expect(emptyProvider.embed(['one', 'two'])).rejects.toThrow(
+      'returned 1 vectors for a batch of 2',
+    );
+  });
 });

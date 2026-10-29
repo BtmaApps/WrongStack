@@ -211,7 +211,7 @@ export class TransformersEmbeddingProvider implements EmbeddingProvider {
     }
     const flat = out.data;
     if (flat instanceof Float32Array) {
-      if (batchSize === 1) return [flat];
+      if (batchSize === 1 || flat.length === 0 || flat.length % batchSize !== 0) return [flat];
       const dim = flat.length / batchSize;
       const vectors: Float32Array[] = [];
       for (let i = 0; i < batchSize; i++) {
@@ -224,7 +224,7 @@ export class TransformersEmbeddingProvider implements EmbeddingProvider {
     }
     if (Array.isArray(flat)) {
       if (batchSize === 1) return [Float32Array.from(flat as unknown as number[])];
-      if (flat.length % batchSize === 0) {
+      if (flat.length > 0 && flat.length % batchSize === 0) {
         const dimensions = flat.length / batchSize;
         return Array.from({ length: batchSize }, (_, index) =>
           Float32Array.from(

@@ -39,13 +39,17 @@ export async function refreshMemoryEvidence(
       : [];
   });
   const validityReviews = await checkInjectionValidity(memories, projectRoot);
+  const applicable = memories.filter(
+    (memory) =>
+      !validityReviews.get(memory.id)?.checks.some((check) => check.status === 'not_satisfied'),
+  );
   const heading = /^--- (.+) ---$/.exec(text.split('\n')[0] ?? '')?.[1];
-  const rendered = formatMemoryHintsDetailed(memories, {
+  const rendered = formatMemoryHintsDetailed(applicable, {
     heading,
     maxChars: TOOL_MEMORY_EVIDENCE_WINDOW_CHARS,
     validityReviews,
   });
-  for (const memory of memories) {
+  for (const memory of applicable) {
     if (rendered.memoryIds.includes(memory.id))
       tracker?.refresh(memory.id, memory.text, sessionId, rendered.text);
   }

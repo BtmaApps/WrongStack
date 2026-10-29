@@ -146,6 +146,7 @@ export {
   type SystemOneRecallFilter,
   type SystemOneRecallFilterOptions,
 } from './retrieval/system-one-recall.js';
+export { checkInjectionValidity, type ValidityReview } from './retrieval/validity-checks.js';
 export {
   augmentLexicalWithVectorRecall,
   type VectorAugmentHit,
@@ -174,6 +175,7 @@ export {
   fileTriageProposals,
   type ProposalFileResult,
 } from './shared/file-proposals.js';
+export { normalizeValidity } from './shared/memory-validity.js';
 export {
   memoryNeedsPathRemap,
   memoryNeedsSymbolRemap,

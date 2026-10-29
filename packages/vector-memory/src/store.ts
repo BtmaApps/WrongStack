@@ -426,7 +426,10 @@ export class VectorMemoryStore {
         return existing;
       }
       const recoveredVector = await this.embedWithCache(input.text);
-      if (!recoveredVector) return existing;
+      if (!recoveredVector) {
+        const { vector: _staleVector, ...withoutVector } = existing;
+        return { ...withoutVector, providerId: '', dimensions: 0 };
+      }
       const recoveredAt = new Date().toISOString();
       this.db
         .prepare(

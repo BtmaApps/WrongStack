@@ -537,4 +537,42 @@ describe('first-boot sage sync', () => {
       reason: 'reconciliation-due',
     });
   });
+
+  it('does not leak a foreign provider vector on remember() failure or write a sweep marker when SAGE surface is absent (F776)', async () => {
+    await store.remember({ text: 'shared architectural note', scope: 'project' });
+    store.close();
+
+    const failingProvider: EmbeddingProvider = {
+      id: 'failing-8d-next',
+      dimensions: 8,
+      async isAvailable() {
+        return true;
+      },
+      async embed() {
+        throw new Error('provider offline');
+      },
+    };
+    const nextStore = new VectorMemoryStore({ provider: failingProvider, projectRoot });
+    try {
+      const remembered = await nextStore.remember({
+        text: 'shared architectural note',
+        scope: 'project',
+      });
+      expect(remembered.vector).toBeUndefined();
+      expect(remembered.providerId).toBe('');
+      expect(remembered.dimensions).toBe(0);
+
+      const { SAGE_SWEEP_MARKER_FILENAME, sweepStaleSageMirrors } = await import(
+        '../src/sage-event-mirror.js'
+      );
+      const sweepRes = await sweepStaleSageMirrors({
+        store: nextStore,
+        memoryStore: { getCapability: () => undefined } as unknown as MemoryPort,
+      });
+      expect(sweepRes).toEqual({ swept: false, reason: 'no-sage-surface' });
+      expect(fs.existsSync(path.join(nextStore.directory, SAGE_SWEEP_MARKER_FILENAME))).toBe(false);
+    } finally {
+      nextStore.close();
+    }
+  });
 });

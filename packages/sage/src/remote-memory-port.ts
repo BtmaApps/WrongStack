@@ -32,6 +32,14 @@ import type {
 /** Rows per `listSagePage` frame when `listSage` is paged over IPC. */
 const LIST_SAGE_PAGE_SIZE = 250;
 
+/**
+ * Budget for the boot ping. A freshly spawned daemon builds its database on
+ * that first op: on a loaded machine (a bench at concurrency, 2026-10-28) it
+ * took 5286 ms with nothing queued, and the old 5 s budget killed the CLI
+ * before its first model request. `health()` keeps its short probe.
+ */
+const INITIAL_PING_TIMEOUT_MS = 30_000;
+
 const SAGE_SERVICE_CAPABILITY_ID = 'wrongstack.memory.sage-service.v1';
 const SAGE_RETRIEVAL_CAPABILITY_ID = 'wrongstack.memory.retrieval.v1';
 const SAGE_SURFACE_CAPABILITY_ID = 'wrongstack.memory.surface.v1';
@@ -261,7 +269,7 @@ export class ProjectSageMemoryPort implements MemoryPort {
 
   async initialize(): Promise<void> {
     await this.connection.connect();
-    await this.call('ping', {}, { timeoutMs: 5_000 });
+    await this.call('ping', {}, { timeoutMs: INITIAL_PING_TIMEOUT_MS });
   }
 
   readAll(): Promise<string> {

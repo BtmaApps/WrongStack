@@ -88,4 +88,37 @@ describe('reindex ownership after close', () => {
       }
     },
   );
+
+  it('evictCache rechecks liveness after acquiring a queued lock (F835)', async () => {
+    const held = Promise.withResolvers<void>();
+    const release = Promise.withResolvers<void>();
+    const store = new VectorMemoryStore({
+      provider: {
+        id: 'queued-evict',
+        dimensions: 2,
+        embed: async () => [new Float32Array([1, 0])],
+      },
+      projectRoot: mkdtempSync(join(tmpdir(), 'wrongstack-queued-evict-lifecycle-')),
+    });
+    let blocker: Promise<unknown> | undefined;
+    let pending: Promise<unknown> | undefined;
+    try {
+      await store.remember({ text: 'queued entry' });
+      blocker = withFileLock(store.lockPath, async () => {
+        held.resolve();
+        await release.promise;
+      });
+      await held.promise;
+      const evict = store.evictCache(0);
+      pending = evict.catch(() => {});
+      store.close();
+      release.resolve();
+      await blocker;
+      await expect(evict).rejects.toThrow('VectorMemoryStore is closed');
+    } finally {
+      release.resolve();
+      await Promise.all([blocker, pending]);
+      store.close();
+    }
+  });
 });

@@ -364,6 +364,9 @@ export interface SweepStaleSageMirrorsResult {
 export async function sweepStaleSageMirrors(
   opts: SweepStaleSageMirrorsOptions,
 ): Promise<SweepStaleSageMirrorsResult> {
+  if (!getSageSurface(opts.memoryStore)) {
+    return { swept: false, reason: 'no-sage-surface' };
+  }
   const markerPath = path.join(opts.store.directory, SAGE_SWEEP_MARKER_FILENAME);
   const configuredInterval = opts.minIntervalMs ?? DEFAULT_SWEEP_INTERVAL_MS;
   const interval =

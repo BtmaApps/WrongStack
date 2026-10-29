@@ -124,6 +124,21 @@ describe('SQLite recovery and file memory operations', () => {
     expect(events.map((e) => e.memoryId)).toContain(successorId);
   });
 
+  it('recoverSage clears a carried staleReason when restoring a deleted memory in place', async () => {
+    const store = await createStore();
+    const created = await store.rememberSage({
+      text: 'Stale then deleted in-place recovery contract',
+      sources: [{ type: 'test' }],
+    });
+    await store.updateSage(created.id, { status: 'stale' });
+    await store.deleteSage(created.id, 'test deletion', { force: true });
+
+    const recovered = await store.recoverSage(created.id, 'test recovery');
+    expect(recovered.status).toBe('active');
+    expect(recovered.staleReason).toBeUndefined();
+    expect((await store.getSage(created.id))?.staleReason).toBeUndefined();
+  });
+
   it('supersededBy records the chain head so recovery can resolve it', async () => {
     const store = await createStore();
     const loser = await store.rememberSage({

@@ -158,6 +158,7 @@ export async function evictVectorCache(
   return withFileLock(
     host.lockPath,
     async () => {
+      host.assertOpen();
       const total = (
         host.db.prepare('SELECT COUNT(*) AS n FROM embedding_cache').get() as { n: number }
       ).n;
