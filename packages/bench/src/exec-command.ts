@@ -72,6 +72,7 @@ export function execCommand(opts: {
           cwd: opts.cwd,
           env: { ...inheritedEnv(), ...opts.env },
           windowsHide: true,
+          detached: process.platform !== 'win32',
           shell: true,
         });
       } else {
@@ -81,6 +82,7 @@ export function execCommand(opts: {
           cwd: opts.cwd,
           env: { ...inheritedEnv(), ...opts.env },
           windowsHide: true,
+          detached: process.platform !== 'win32',
         });
       }
     } catch (err) {
@@ -117,7 +119,7 @@ export function execCommand(opts: {
       // treeKill only — a direct child.kill() first killed the cmd.exe wrapper
       // on Windows, and `taskkill /T` cannot walk the tree from a dead root, so
       // npm → jest survived the timeout. treeKill keeps its own direct-kill
-      // fallback (taskkill /T on Windows, SIGTERM→SIGKILL on POSIX).
+      // fallback (taskkill /T on Windows, process-group SIGKILL on POSIX).
       treeKill(child);
       killBackstop ??= setTimeout(() => {
         child.stdout?.destroy();

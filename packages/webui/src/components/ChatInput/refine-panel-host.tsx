@@ -3,9 +3,11 @@ import type React from 'react';
 import { useAppTranslation } from '@/i18n';
 import { useUIStore } from '@/stores';
 import type { QueuedItem, QueueMode } from '@/stores/chat-store';
+import type { WSUserMessageImage } from '@/types';
 import { ModelPickDialog } from '../ModelPickDialog.js';
 import type { RefineDecision } from '../RefinePanel.js';
 import { RefinePanel } from '../RefinePanel.js';
+import { toWireImages } from './image-attachments.js';
 
 const REFINE_RETRY_FEEDBACK =
   'Make another pass that is sharper and more self-contained. Use the provided project memory, current session context, and recent conversation only to resolve references and preserve project vocabulary; keep the original scope unchanged.';
@@ -28,9 +30,13 @@ interface ChatInputRefinePanelHostProps {
       ) => void)
     | undefined;
   clientConnected: boolean;
-  addUserMessage: (content: string) => void;
+  addUserMessage: (content: string, images?: QueuedItem['images']) => void;
   setLoading: (loading: boolean) => void;
-  sendMessage: (text: string, images?: undefined, freshContext?: boolean) => void;
+  sendMessage: (
+    text: string,
+    images?: WSUserMessageImage[] | undefined,
+    freshContext?: boolean,
+  ) => void;
   /** True while a run is in flight. Used to tell the mid-run (pre-queue)
    *  refinement path — which carries a preserved submit mode — apart from the
    *  idle path that sends directly. */
@@ -118,10 +124,12 @@ export function ChatInputRefinePanelHost({
     }
 
     if (clientConnected) {
-      addUserMessage(text);
+      const wireImages =
+        preservedImages && preservedImages.length > 0 ? toWireImages(preservedImages) : undefined;
+      addUserMessage(text, preservedImages);
       setLoading(true);
-      if (refinePanel.freshContext === true) sendMessage(text, undefined, true);
-      else sendMessage(text);
+      if (refinePanel.freshContext === true) sendMessage(text, wireImages, true);
+      else sendMessage(text, wireImages);
     } else {
       setInput(text);
       notConnectedDraftKept();

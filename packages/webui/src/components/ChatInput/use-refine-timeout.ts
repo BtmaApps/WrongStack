@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useChatStore, useUIStore } from '@/stores';
 import type { WSUserMessageImage } from '@/types';
 import { toast } from '../Toaster.js';
+import { toMessageAttachments, toWireImages } from './image-attachments.js';
 
 interface UseRefineTimeoutOptions {
   clientConnected?: boolean | undefined;
@@ -42,10 +43,16 @@ export function useRefineTimeout({
         return;
       }
       if (clientConnected) {
-        addMessage({ role: 'user', content: current.original });
+        const panelImages = current.images ?? [];
+        const wireImages = panelImages.length > 0 ? toWireImages(panelImages) : undefined;
+        addMessage({
+          role: 'user',
+          content: current.original,
+          ...(panelImages.length > 0 ? { attachments: toMessageAttachments(panelImages) } : {}),
+        });
         setLoading(true);
-        if (current.freshContext === true) sendMessage(current.original, undefined, true);
-        else sendMessage(current.original);
+        if (current.freshContext === true) sendMessage(current.original, wireImages, true);
+        else sendMessage(current.original, wireImages);
       } else {
         setInput(current.original);
         toast.error(t('chat:input.notConnectedDraftKept'));

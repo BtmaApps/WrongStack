@@ -23,7 +23,7 @@ import {
 import { ComposerButtonBar } from './ChatInput/composer-button-bar.js';
 import { DraftTokenCounter } from './ChatInput/draft-token-counter.js';
 import { FileMentionPicker, type FileMentionState } from './ChatInput/file-mention-picker.js';
-import { MAX_ATTACHED_IMAGES } from './ChatInput/image-attachments.js';
+import { MAX_ATTACHED_IMAGES, toMessageAttachments } from './ChatInput/image-attachments.js';
 import { handleNextList, handleNextSelect } from './ChatInput/next-steps-helpers.js';
 import { QueuedMessages } from './ChatInput/queued-messages.js';
 import { ChatInputRefinePanelHost } from './ChatInput/refine-panel-host.js';
@@ -361,7 +361,13 @@ export function ChatInput({
         setRefinePickOpen={setRefinePickOpen}
         refineModel={refineModel}
         clientConnected={client?.isConnected === true}
-        addUserMessage={(content) => addMessage({ role: 'user', content })}
+        addUserMessage={(content, images) =>
+          addMessage({
+            role: 'user',
+            content,
+            ...(images && images.length > 0 ? { attachments: toMessageAttachments(images) } : {}),
+          })
+        }
         setLoading={setLoading}
         sendMessage={sendMessage}
         isLoading={isLoading}

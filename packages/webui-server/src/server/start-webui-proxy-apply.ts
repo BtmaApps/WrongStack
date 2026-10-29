@@ -79,7 +79,7 @@ export function setupWebuiProxyInstantApply(options: WebuiProxyApplyOptions): ()
         const newProv = deps.modelsRegistry
           ? await withCatalogCapabilities(deps.modelsRegistry, providerId, built, {
               ...routedCfg,
-              type: providerId,
+              type: routedCfg.type ?? providerId,
               model,
             })
           : built;

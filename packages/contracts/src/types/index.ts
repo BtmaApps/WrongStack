@@ -22,13 +22,17 @@ export type {
   ToolUseBlock,
 } from './blocks.js';
 export {
+  attachToolImages,
+  consumeStagedToolCallImages,
   documentAsText,
+  getToolImages,
   isImageBlock,
   isTextBlock,
   isToolResultBlock,
   isToolUseBlock,
   isVolatileSystemBlock,
   markVolatileSystemBlock,
+  stageToolCallImages,
   VOLATILE_SYSTEM_BLOCKS,
 } from './blocks.js';
 // ── chronicle-metrics (4 symbols) ──

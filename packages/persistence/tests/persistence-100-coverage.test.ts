@@ -600,7 +600,7 @@ describe('persistence 100% coverage suite', () => {
 
         const idx = mainGitDir.search(/[a-zA-Z]/);
         const flippedCommonDir =
-          idx === -1
+          process.platform !== 'win32' || idx === -1
             ? mainGitDir
             : mainGitDir.slice(0, idx) +
               (mainGitDir[idx] === mainGitDir[idx]!.toLowerCase()

@@ -1,7 +1,8 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import type { Browser } from '@playwright/test';
-import { ulid } from '@wrongstack/core/utils';
+import { attachToolImages } from '@wrongstack/contracts/types';
+import { MAX_INCOMING_IMAGE_BYTES, ulid } from '@wrongstack/core/utils';
 import type { BrowserElementSelection } from '@wrongstack/primitives';
 import { BrowserArtifactStore } from './artifacts.js';
 import type { LiveSession } from './manager-support.js';
@@ -262,7 +263,26 @@ export class BrowserSessionManager {
         : session.page.screenshot({ type: 'png', fullPage: input.fullPage ?? false }),
     );
     signal.throwIfAborted();
-    return this.artifacts.write(session.id, 'screenshot', 'png', 'image/png', bytes);
+    const artifact = await this.artifacts.write(
+      session.id,
+      'screenshot',
+      'png',
+      'image/png',
+      bytes,
+    );
+    if (bytes.byteLength > 0 && bytes.byteLength <= MAX_INCOMING_IMAGE_BYTES) {
+      attachToolImages(artifact, [
+        {
+          type: 'image',
+          source: {
+            type: 'base64',
+            media_type: 'image/png',
+            data: Buffer.from(bytes).toString('base64'),
+          },
+        },
+      ]);
+    }
+    return artifact;
   }
 
   async click(id: string, ownerId: string, selector: string, signal: AbortSignal): Promise<void> {

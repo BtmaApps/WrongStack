@@ -112,14 +112,18 @@ describe('verifyGoalProject', () => {
 
   // Through the win32 cmd.exe shim a missing toolchain never raised ENOENT: it
   // exited 1 "is not recognized" and the Goal counted a failed verification.
-  it('reports a missing toolchain as skipped without spawning it', async () => {
+  it('reports a missing toolchain as skipped, preflighting the Windows shell shim', async () => {
     await stubToolchains();
+    execFile.mockImplementation((_command, _args, _options, callback) => {
+      callback(Object.assign(new Error('missing toolchain'), { code: 'ENOENT' }), '', '');
+    });
     await fs.writeFile(path.join(dir, 'pubspec.yaml'), 'name: demo');
     await expect(verifyGoalProject({ cwd: dir })).resolves.toMatchObject({
       ok: true,
       skipped: true,
     });
     if (process.platform === 'win32') expect(execFile).not.toHaveBeenCalled();
+    else expect(execFile).toHaveBeenCalledOnce();
   });
 
   it('verifies Rust (Cargo.toml) and Go (go.mod) projects when package.json is absent', async () => {

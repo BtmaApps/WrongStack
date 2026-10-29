@@ -51,6 +51,8 @@ it('reviews real index stages and resolves only the reviewed text conflict with 
   try {
     git('init', '-b', 'main');
     git('config', 'core.autocrlf', 'false');
+    git('config', 'user.name', 'Test');
+    git('config', 'user.email', 'test@example.invalid');
     await writeFile(join(root, 'conflict.txt'), 'base\n');
     git('add', '.');
     commit();
@@ -61,6 +63,7 @@ it('reviews real index stages and resolves only the reviewed text conflict with 
     await writeFile(join(root, 'conflict.txt'), 'ours\n');
     commit();
     expect(() => git('merge', '--no-edit', 'other')).toThrow();
+    expect(git('ls-files', '--unmerged').trim().split('\n')).toHaveLength(3);
     const view = await invoke('git.conflict', { path: 'conflict.txt' });
     expect(view).toMatchObject({ base: 'base\n', ours: 'ours\n', theirs: 'theirs\n' });
     expect(view.working).toContain('<<<<<<<');

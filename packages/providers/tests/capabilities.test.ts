@@ -236,6 +236,59 @@ describe('capabilitiesFor', () => {
     expect((await capabilitiesFor(r, 'openrouter', 'silent-model')).vision).toBe(false);
   });
 
+  it('github-copilot retains vision capability via the openai sibling catalog when an overlay omits modalities', async () => {
+    const registry = new DefaultModelsRegistry({
+      cacheFile: path.join(os.tmpdir(), `wstack-cap-copilot-${Date.now()}.json`),
+      seed: {
+        'github-copilot': {
+          id: 'github-copilot',
+          name: 'GitHub Copilot',
+          npm: '@ai-sdk/openai-compatible',
+          models: {
+            'gpt-4o': {
+              id: 'gpt-4o',
+              name: 'GPT-4o (Copilot overlay without modalities)',
+              tool_call: true,
+              limit: { context: 128_000 },
+            },
+          },
+        },
+        openai: {
+          id: 'openai',
+          name: 'OpenAI',
+          npm: '@ai-sdk/openai',
+          models: {
+            'gpt-4o': {
+              id: 'gpt-4o',
+              name: 'GPT-4o',
+              tool_call: true,
+              modalities: { input: ['text', 'image'], output: ['text'] },
+              limit: { context: 128_000, output: 16_384 },
+            },
+          },
+        },
+      },
+    });
+
+    const c = await capabilitiesFor(registry, 'github-copilot', 'gpt-4o');
+    expect(c.vision).toBe(true);
+    expect(c.maxOutput).toBe(16_384);
+  });
+
+  it('gateway provider/model slugs inherit vision modalities from the upstream provider catalog', async () => {
+    const c = await capabilitiesFor(reg(), 'openrouter', 'anthropic/anthropic-test-model');
+    expect(c.vision).toBe(true);
+    expect(c.maxOutput).toBe(64_000);
+  });
+
+  it('infers vision for well-known multimodal model families on metadata-less local/compatible providers', async () => {
+    const r = reg();
+    expect((await capabilitiesFor(r, 'ollama', 'qwen2.5-vl:7b')).vision).toBe(true);
+    expect((await capabilitiesFor(r, 'openai-compatible', 'llava:13b')).vision).toBe(true);
+    expect((await capabilitiesFor(r, 'openai-compatible', 'pixtral-12b-2409')).vision).toBe(true);
+    expect((await capabilitiesFor(r, 'ollama', 'qwen2.5-coder:7b')).vision).toBe(false);
+  });
+
   // ---- custom model overrides ----
 
   it('custom model overrides maxContext on known model', async () => {

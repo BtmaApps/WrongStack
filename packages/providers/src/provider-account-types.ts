@@ -18,4 +18,5 @@ export interface ProviderLiveModel {
   name: string;
   description?: string | undefined;
   maxContext?: number | undefined;
+  vision?: boolean | undefined;
 }

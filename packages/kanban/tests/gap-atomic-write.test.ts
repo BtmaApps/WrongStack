@@ -6,10 +6,12 @@
  *   - waitForLockRelease watcher callback (lines 185-190)
  *   - renameWithRetry transient-error retry (lines 223-237)
  */
+
+import { type FSWatcher, watch } from 'node:fs';
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { atomicWrite, withFileLock } from '../src/utils/atomic-write.js';
 
 function errWithCode(code: string, message = 'fake error'): NodeJS.ErrnoException {
@@ -17,6 +19,11 @@ function errWithCode(code: string, message = 'fake error'): NodeJS.ErrnoExceptio
   err.code = code;
   return err;
 }
+
+vi.mock('node:fs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:fs')>();
+  return { ...actual, watch: vi.fn(actual.watch) };
+});
 
 // Mock node:fs/promises
 vi.mock('node:fs/promises', async (importOriginal) => {
@@ -39,6 +46,10 @@ let tmpDir: string;
 
 beforeEach(async () => {
   tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'gap-atomic-'));
+});
+
+afterEach(async () => {
+  await fs.rm(tmpDir, { recursive: true, force: true });
 });
 
 // ── EPERM recovery ──────────────────────────────────────────────
@@ -65,7 +76,7 @@ describe('withFileLock - EPERM recovery', () => {
 // ── waitForLockRelease: watcher creation failure ────────────────
 describe('withFileLock - lock release watcher fallback', () => {
   it('falls back to setTimeout when fs.watch cannot be created', async () => {
-    // Acquire lock manually, then make it stale so we hit waitForLockRelease
+    // Keep a fresh lock so acquisition must wait for its actual release.
     const target = path.join(tmpDir, 'watch-fail', 'target.json');
     const lockDir = path.join(tmpDir, 'watch-fail');
     const lockPath = path.join(lockDir, '.target.json.lock');
@@ -73,37 +84,45 @@ describe('withFileLock - lock release watcher fallback', () => {
     await fs.mkdir(lockDir, { recursive: true });
     await fs.writeFile(lockPath, '99999:0', { flag: 'wx' });
 
-    // with staleMs=0 and a small timeout, waitForLockRelease will be called
-    // but we can't easily make fs.watch throw without mocking it globally
-    // Instead, test the happy path: the watcher sees the lock removed
+    vi.mocked(watch).mockImplementationOnce(() => {
+      // Release after watcher setup fails; the polling fallback must retry.
+      setTimeout(() => void fs.unlink(lockPath), 10);
+      throw errWithCode('ENOSPC');
+    });
     const result = await withFileLock(target, async () => 'watcher-fallback', {
       timeoutMs: 5000,
-      staleMs: 0,
+      staleMs: 60_000,
     });
     expect(result).toBe('watcher-fallback');
+    expect(watch).toHaveBeenCalled();
   });
 });
 
 // ── waitForLockRelease: access check early-resolve ──────────────
 describe('withFileLock - access check path', () => {
   it('resolves via access check when lock is already released', async () => {
-    // This tests the fs.access(lockPath).then(() => {}, () => { resolve(); }) path
-    // We create a lock, start withFileLock, and delete the lock in the background
+    // Release between stat and the access probe, with a silent watcher.
     const target = path.join(tmpDir, 'access-resolve', 'target.json');
     const lockDir = path.join(tmpDir, 'access-resolve');
     const lockPath = path.join(lockDir, '.target.json.lock');
 
     await fs.mkdir(lockDir, { recursive: true });
 
-    // Create a stale lock (very old timestamp)
     await fs.writeFile(lockPath, '1:0', { flag: 'wx' });
 
-    // Use staleMs=0 so it's treated as stale immediately
+    const close = vi.fn();
+    const watcher = { close, on: vi.fn() };
+    vi.mocked(watch).mockReturnValueOnce(watcher as unknown as FSWatcher);
+    vi.mocked(fs.access).mockImplementationOnce(async () => {
+      await fs.unlink(lockPath);
+      throw errWithCode('ENOENT');
+    });
     const result = await withFileLock(target, async () => 'access-resolved', {
       timeoutMs: 5000,
-      staleMs: 0,
+      staleMs: 60_000,
     });
     expect(result).toBe('access-resolved');
+    expect(close).toHaveBeenCalledOnce();
   });
 });
 

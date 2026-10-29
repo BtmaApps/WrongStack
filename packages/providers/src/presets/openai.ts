@@ -80,7 +80,10 @@ export const openaiWireFormat = defineWireFormat<OpenAIStreamState>({
     const maxOutput = resolveMaxOutputTokens(req, ctx);
     const body: Record<string, unknown> = {
       model: req.model,
-      messages: messagesToOpenAI(stripCacheControl(req.system), req.messages),
+      messages: messagesToOpenAI(stripCacheControl(req.system), req.messages, {
+        allowImages: ctx?.capabilities?.vision !== false,
+        allowDocuments: ctx?.capabilities?.pdf !== false,
+      }),
       stream: true,
       stream_options: { include_usage: true },
     };

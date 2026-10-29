@@ -1,7 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import type { ToolResultBlock, ToolUseBlock } from '@wrongstack/contracts/types/blocks';
+import {
+  attachToolImages,
+  getToolImages,
+  stageToolCallImages,
+  type ToolResultBlock,
+  type ToolUseBlock,
+} from '@wrongstack/contracts/types/blocks';
 import { isWrongStackError } from '@wrongstack/contracts/types/errors';
 import type { Tool } from '@wrongstack/contracts/types/tool';
 import {
@@ -275,6 +281,7 @@ export class ToolExecutor extends ToolExecutorCore {
             : produced.fingerprint,
         );
         if (produced.data) rememberProgrammaticOutput(result, produced.data.value);
+        if (produced.images?.length) attachToolImages(result, produced.images);
         budget -= bytes;
         const enforceCap: BudgetCap = (text, room) => this.serializer.enforceCap(text, room);
         await queueDirectoryInstructions(tool, use.input, ctx);
@@ -475,6 +482,10 @@ export class ToolExecutor extends ToolExecutorCore {
       if (output.result.is_error) {
         return { success: false, error: String(output.result.content) };
       }
+      const nestedImages = getToolImages(output.result);
+      if (nestedImages.length > 0) {
+        stageToolCallImages(ctx, undefined, nestedImages);
+      }
       return { success: true, result: output.result.content };
     };
 
@@ -536,6 +547,7 @@ export class ToolExecutor extends ToolExecutorCore {
           : produced.fingerprint,
       );
       if (produced.data) rememberProgrammaticOutput(settled.block, produced.data.value);
+      if (produced.images?.length) attachToolImages(settled.block, produced.images);
       let room = budget - settled.bytes;
       const enforceCap: BudgetCap = (value, remaining) =>
         this.serializer.enforceCap(value, remaining);

@@ -114,7 +114,10 @@ describe('bench experiment CLI contracts', () => {
         { category: 'repair', recommended: expect.objectContaining({ model: 'cheap' }) },
       ],
     });
-    expect(await fs.readdir(path.join(root, 'run'))).toEqual(['results.jsonl', 'summary.json']);
+    expect((await fs.readdir(path.join(root, 'run'))).sort()).toEqual([
+      'results.jsonl',
+      'summary.json',
+    ]);
   });
   it.each(['behavior', 'compaction'])(
     'compares paired run directories for %s',

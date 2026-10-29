@@ -180,7 +180,7 @@ export function setupProviderRuntime(deps: ProviderRuntimeDeps): ProviderRuntime
       modelsRegistry,
       providerId,
       provider,
-      { ...resolvedCfg, type: providerId, model: modelId },
+      { ...resolvedCfg, type: resolvedCfg.type ?? providerId, model: modelId },
       logger,
     );
   };

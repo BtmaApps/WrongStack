@@ -69,11 +69,15 @@ export class CatalogRoutedProvider implements Provider {
   }
 
   stream(req: Request, opts: { signal: AbortSignal }): AsyncIterable<StreamEvent> {
-    return this.delegate(req.model).stream(req, opts);
+    const delegate = this.delegate(req.model);
+    this.syncCapabilities(delegate, req.model);
+    return delegate.stream(req, opts);
   }
 
   complete(req: Request, opts: { signal: AbortSignal }): Promise<Response> {
-    return this.delegate(req.model).complete(req, opts);
+    const delegate = this.delegate(req.model);
+    this.syncCapabilities(delegate, req.model);
+    return delegate.complete(req, opts);
   }
 
   async warm(model: string): Promise<void> {
@@ -142,6 +146,25 @@ export class CatalogRoutedProvider implements Provider {
               });
     this.delegates.set(cacheKey, delegate);
     return delegate;
+  }
+
+  private syncCapabilities(delegate: Provider, modelId: string): void {
+    const modelInput = this.models.get(modelId)?.modalities?.input;
+    const next: Capabilities = {
+      ...this.capabilities,
+      ...(modelInput !== undefined
+        ? {
+            vision: modelInput.includes('image'),
+            pdf: modelInput.includes('pdf'),
+          }
+        : {}),
+    };
+    Object.defineProperty(delegate, 'capabilities', {
+      value: next,
+      writable: true,
+      configurable: true,
+      enumerable: true,
+    });
   }
 }
 

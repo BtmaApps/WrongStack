@@ -207,7 +207,7 @@ export function resolveDiscoveryTargets(config: Config): DiscoveryTarget[] {
         modelsUrl,
         headers,
       };
-      if (codex || strategy === 'chatgpt-api') {
+      if (copilot || codex || strategy === 'chatgpt-api') {
         target.inheritWireFamily = true;
         target.metadataCatalogId = CHATGPT_ACCOUNT_METADATA_CATALOG;
       }
@@ -333,7 +333,7 @@ export async function discoverOpenAICompatibleModels(
     return {
       id: providerId,
       name: opts.providerName ?? providerId,
-      npm: '@ai-sdk/openai-compatible',
+      ...(opts.inheritWireFamily ? {} : { npm: '@ai-sdk/openai-compatible' }),
       api: base,
       env: [],
       models: Object.fromEntries(
@@ -344,6 +344,14 @@ export async function discoverOpenAICompatibleModels(
             name: model.name,
             tool_call: true,
             ...(model.maxContext ? { limit: { context: model.maxContext } } : {}),
+            ...(model.vision !== undefined
+              ? {
+                  modalities: {
+                    input: model.vision ? ['text', 'image'] : ['text'],
+                    output: ['text'],
+                  },
+                }
+              : {}),
           },
         ]),
       ),

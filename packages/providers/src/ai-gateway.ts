@@ -1,6 +1,7 @@
 import {
   type Capabilities,
   ConfigError,
+  type ModelsDevModel,
   type Provider,
   type ProviderConfig,
   type Request,
@@ -83,6 +84,7 @@ export interface AiGatewayProviderOptions {
   baseUrl?: string | undefined;
   headers?: Record<string, string> | undefined;
   capabilities?: Capabilities | undefined;
+  models?: readonly ModelsDevModel[] | undefined;
   /** Test seam and an escape hatch for callers that already own an AI SDK model. */
   resolveModel?: ((modelId: string) => LanguageModel) | undefined;
   /** Test seam; production callers should use AI SDK's streamText implementation. */
@@ -106,6 +108,9 @@ type AiSdkStreamText = (input: AiSdkStreamTextInput) => AiSdkStreamResult;
 export class AiGatewayProvider implements Provider {
   readonly id: string;
   readonly capabilities: Capabilities;
+  /** True when constructed for Vercel AI Gateway rather than a native-catalog bridge. */
+  readonly isVercelGateway: boolean;
+  private readonly models?: ReadonlyMap<string, ModelsDevModel> | undefined;
   private readonly resolveModel: (modelId: string) => LanguageModel;
   private readonly streamTextImpl: AiSdkStreamText;
   /** Endpoint `warm()` opens; unknown when the host supplies its own model resolver. */
@@ -113,6 +118,10 @@ export class AiGatewayProvider implements Provider {
 
   constructor(options: AiGatewayProviderOptions) {
     this.id = options.id ?? DEFAULT_GATEWAY_ID;
+    this.isVercelGateway = !options.resolveModel;
+    this.models = options.models
+      ? new Map(options.models.map((model) => [model.id, model]))
+      : undefined;
     this.capabilities =
       options.capabilities ??
       capabilitiesForFamily('openai-compatible', {
@@ -170,11 +179,20 @@ export class AiGatewayProvider implements Provider {
         capabilities: this.capabilities,
         providerId: this.id,
       });
+      const modelInputModalities = this.models?.get(req.model)?.modalities?.input;
+      const allowImages =
+        modelInputModalities !== undefined
+          ? modelInputModalities.includes('image')
+          : this.capabilities.vision !== false;
+      const allowDocuments =
+        modelInputModalities !== undefined
+          ? modelInputModalities.includes('pdf')
+          : this.capabilities.pdf !== false;
       const result = this.streamTextImpl({
         model: this.resolveModel(req.model),
         messages: convertMessages(req.messages, {
-          allowImages: this.capabilities.vision !== false,
-          allowDocuments: this.capabilities.pdf !== false,
+          allowImages,
+          allowDocuments,
         }),
         ...(convertSystem(req) ? { system: convertSystem(req) } : {}),
         ...(req.tools?.length ? { tools: convertTools(req.tools) } : {}),

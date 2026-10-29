@@ -421,7 +421,8 @@ export function projectSessionTimeline(input: ProjectSessionTimelineInput): Sess
       }
     }
 
-    const images = message.role === 'user' ? imagesOf(blocks) : undefined;
+    const images =
+      message.role === 'user' ? imagesOf(blocks.filter((b) => authored.has(b))) : undefined;
     const final = !blocks.some((block) => block.type === 'tool_use');
     const textParts: string[] = [];
     // A text run becomes its own entry wherever a tool interrupts it, so prose

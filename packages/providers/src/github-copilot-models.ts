@@ -13,7 +13,7 @@ export interface CopilotModelEntry {
   capabilities?:
     | {
         type?: unknown;
-        supports?: { tool_calls?: unknown } | undefined;
+        supports?: { tool_calls?: unknown; vision?: unknown } | undefined;
         limits?: { max_context_window_tokens?: unknown; max_prompt_tokens?: unknown } | undefined;
       }
     | undefined;
@@ -77,6 +77,7 @@ export async function fetchCopilotModels(
         const context =
           item.capabilities?.limits?.max_context_window_tokens ??
           item.capabilities?.limits?.max_prompt_tokens;
+        const vision = item.capabilities?.supports?.vision;
         return [
           {
             id,
@@ -84,6 +85,7 @@ export async function fetchCopilotModels(
             ...(typeof context === 'number' && Number.isFinite(context) && context > 0
               ? { maxContext: context }
               : {}),
+            ...(typeof vision === 'boolean' ? { vision } : {}),
           },
         ];
       });

@@ -110,7 +110,13 @@ describe('execCommand', () => {
     // and the grader hung the bench run. Same shape: shell → node → busy loop.
     const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'exec-orphan-'));
     const marker = `busy-${process.pid}-${Date.now()}.cjs`;
-    await fs.writeFile(path.join(dir, marker), 'for (;;) {}\n', 'utf8');
+    await fs.writeFile(
+      path.join(dir, marker),
+      `if (process.argv.includes('--child')) { for (;;) {} }
+else { require('node:child_process').spawn(process.execPath, [__filename, '--child'], { stdio: 'inherit' }); }
+`,
+      'utf8',
+    );
     const started = Date.now();
     const res = await execCommand({
       command: 'node',

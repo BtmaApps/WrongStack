@@ -57,14 +57,13 @@ export function formatCodebaseLspResults(output: CodebaseLspSearchOutput, cwd: s
     }
   }
 
-  const top = results[0];
-  if (top) {
-    const file = JSON.stringify(displayPath(top.file, cwd).replace(/\\/g, '/'));
-    lines.push(
-      `Next: codebase-read-symbol({ file: ${file}, symbol: ${JSON.stringify(top.name)} }) reads its code; ` +
-        `lsp_references({ path: ${file}, line: ${top.line}, character }) lists live usages.`,
-    );
-  }
+  // Empty results returned above, so a first result always exists here.
+  const top = results[0]!;
+  const file = JSON.stringify(displayPath(top.file, cwd).replace(/\\/g, '/'));
+  lines.push(
+    `Next: codebase-read-symbol({ file: ${file}, symbol: ${JSON.stringify(top.name)} }) reads its code; ` +
+      `lsp_references({ path: ${file}, line: ${top.line}, character }) lists live usages.`,
+  );
 
   return lines.join('\n');
 }

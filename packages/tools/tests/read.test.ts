@@ -1,7 +1,7 @@
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { isFsError, isToolValidationError } from '@wrongstack/contracts/types';
+import { getToolImages, isFsError, isToolValidationError } from '@wrongstack/contracts/types';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readTool } from '../src/read.js';
 import { mkSandbox, newSignal, type Sandbox } from './fixtures.js';
@@ -214,6 +214,29 @@ describe('read tool', () => {
     await expect(
       readTool.execute({ path: 'bin.bin' }, sb.ctx, { signal: newSignal() }),
     ).rejects.toThrow(/binary/);
+  });
+
+  it('reads image files and attaches ImageBlock for multimodal tool delivery', async () => {
+    const file = path.join(sb.dir, 'shot.png');
+    // Minimal 1x1 PNG header + bytes
+    const pngBytes = Buffer.from([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44,
+      0x52,
+    ]);
+    await fs.writeFile(file, pngBytes);
+    const out = await readTool.execute({ path: 'shot.png' }, sb.ctx, { signal: newSignal() });
+    expect(out.encoding).toBe('image/png');
+    expect(out.text).toContain('[image: "shot.png" (image/png, 16 bytes)]');
+    const attached = getToolImages(out);
+    expect(attached).toHaveLength(1);
+    expect(attached[0]).toEqual({
+      type: 'image',
+      source: {
+        type: 'base64',
+        media_type: 'image/png',
+        data: pngBytes.toString('base64'),
+      },
+    });
   });
 
   it('records read in context', async () => {

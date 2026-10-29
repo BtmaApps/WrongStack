@@ -15,7 +15,7 @@ import type {
 import type { Agent, Context } from '@wrongstack/core/agent';
 import { DefaultSessionStore } from '@wrongstack/core/storage';
 import { resolveWstackPaths, toErrorMessage, wstackGlobalRoot } from '@wrongstack/core/utils';
-import { makeProviderFromConfig } from '@wrongstack/providers';
+import { makeProviderFromConfig, withCatalogCapabilities } from '@wrongstack/providers';
 import type { WebSocket } from 'ws';
 import {
   type ConversationOperations,
@@ -105,7 +105,7 @@ export async function applyEmbeddedModelSwitch(
       ctx.getConfig?.()?.baseUrl,
       providerId,
     );
-    const nextProvider =
+    const builtProvider =
       ctx.buildProvider?.(providerId, routedConfig) ??
       makeProviderFromConfig(providerId, routedConfig);
     await ctx.modelsRegistry?.refresh().catch((error) => {
@@ -120,6 +120,13 @@ export async function applyEmbeddedModelSwitch(
         }),
       );
     });
+    const nextProvider = ctx.modelsRegistry
+      ? await withCatalogCapabilities(ctx.modelsRegistry, providerId, builtProvider, {
+          ...routedConfig,
+          type: routedConfig.type ?? providerId,
+          model: modelId,
+        })
+      : builtProvider;
     const catalogId =
       providerConfig.type && providerConfig.type !== providerId ? providerConfig.type : providerId;
     const resolved = await ctx.modelsRegistry?.getModel(catalogId, modelId).catch(() => undefined);

@@ -1,3 +1,4 @@
+import { TOKENS } from '@wrongstack/contracts/kernel';
 import type { ContentBlock, UserInputResponse } from '@wrongstack/contracts/types';
 import type { Agent } from '@wrongstack/core/agent';
 import { startFreshTopicContext, TopicShiftAdvisor } from '@wrongstack/core/execution';
@@ -7,8 +8,11 @@ import {
   buildUserContentBlocks,
   IncomingImageError,
   type IncomingImagePayload,
+  mergeCustomModelDefs,
   parseIncomingAttachments,
+  providerIdentities,
 } from '@wrongstack/core/utils';
+import { capabilitiesFor, catalogProviderIdFor } from '@wrongstack/providers';
 import {
   createToolVisionAdapters,
   ImageInputUnsupportedError,
@@ -307,8 +311,42 @@ export function createConversationOperations(
         ];
         if (attached.pdfs.length > 0 || payload.blocks) input = blocks;
         if (blocks.some((block) => block.type === 'image')) {
+          let supportsVision = Boolean(agent.ctx.provider.capabilities.vision);
+          if (!supportsVision && agent.container?.has(TOKENS.ModelsRegistry)) {
+            try {
+              const registry = agent.container.resolve(TOKENS.ModelsRegistry);
+              const cfg = agent.container.has(TOKENS.ConfigStore)
+                ? agent.container.resolve(TOKENS.ConfigStore).get()
+                : undefined;
+              const providerCfg = cfg?.providers?.[agent.ctx.provider.id];
+              const boundCatalogId = providerIdentities(agent.ctx.provider)[1];
+              const caps = await capabilitiesFor(
+                registry,
+                agent.ctx.provider.id,
+                agent.ctx.model,
+                mergeCustomModelDefs(providerCfg?.customModels, cfg?.models),
+                {
+                  catalogProviderId: catalogProviderIdFor(
+                    agent.ctx.provider.id,
+                    boundCatalogId ?? providerCfg?.type,
+                  ),
+                },
+              );
+              supportsVision = Boolean(caps.vision);
+              if (supportsVision) {
+                Object.defineProperty(agent.ctx.provider, 'capabilities', {
+                  value: { ...agent.ctx.provider.capabilities, vision: true, pdf: caps.pdf },
+                  writable: true,
+                  configurable: true,
+                  enumerable: true,
+                });
+              }
+            } catch {
+              /* keep provider baseline on lookup failure */
+            }
+          }
           const routed = await routeImagesForModel(blocks, {
-            supportsVision: agent.ctx.provider.capabilities.vision,
+            supportsVision,
             adapters: () => createToolVisionAdapters(agent.tools),
             ctx: agent.ctx,
             signal: claimed.signal,

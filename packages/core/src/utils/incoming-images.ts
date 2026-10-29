@@ -72,6 +72,23 @@ export class IncomingImageError extends Error {
 const BASE64_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
 
 /**
+ * Detect the allowed raster image media type from a buffer or byte array's
+ * magic header bytes (`image/png`, `image/jpeg`, `image/webp`, `image/gif`),
+ * or `undefined` when the leading bytes do not match any of them.
+ */
+export function detectImageMediaType(
+  bytes: ArrayLike<number>,
+): 'image/png' | 'image/jpeg' | 'image/webp' | 'image/gif' | undefined {
+  const ascii = (start: number, text: string) =>
+    [...text].every((ch, i) => bytes[start + i] === ch.charCodeAt(0));
+  if (bytes[0] === 0x89 && ascii(1, 'PNG')) return 'image/png';
+  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return 'image/jpeg';
+  if (ascii(0, 'GIF8')) return 'image/gif';
+  if (ascii(0, 'RIFF') && ascii(8, 'WEBP')) return 'image/webp';
+  return undefined;
+}
+
+/**
  * The allowed image type the payload's leading bytes actually are, or
  * `undefined` when they match none of them.
  *
@@ -97,13 +114,7 @@ function sniffAllowedImageMediaType(base64: string): string | undefined {
       bytes.push((acc >> bits) & 0xff);
     }
   }
-  const ascii = (start: number, text: string) =>
-    [...text].every((ch, i) => bytes[start + i] === ch.charCodeAt(0));
-  if (bytes[0] === 0x89 && ascii(1, 'PNG')) return 'image/png';
-  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return 'image/jpeg';
-  if (ascii(0, 'GIF8')) return 'image/gif';
-  if (ascii(0, 'RIFF') && ascii(8, 'WEBP')) return 'image/webp';
-  return undefined;
+  return detectImageMediaType(bytes);
 }
 
 const DATA_URL_RE = /^data:([a-z0-9.+-]+\/[a-z0-9.+-]+)?(?:;[a-z0-9-]+=[^;,]*)*(;base64)?,/i;

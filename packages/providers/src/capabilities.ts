@@ -29,6 +29,11 @@ export const FAMILY_BY_PROVIDER_ID: Partial<Record<string, WireFamily>> = {
   'google-antigravity': 'google-antigravity',
   'openai-codex': 'openai-codex',
   'openai-chatgpt': 'openai',
+  'openai-compatible': 'openai-compatible',
+  ollama: 'openai-compatible',
+  lmstudio: 'openai-compatible',
+  vllm: 'openai-compatible',
+  llamacpp: 'openai-compatible',
 };
 
 /**
@@ -165,9 +170,14 @@ function gate(fact: boolean | undefined, baseline: boolean): boolean {
  * DeepInfra, … as text-only, and images were refused or detoured through a
  * vision MCP. Only the `unsupported` family has no transport to carry one.
  */
-function gateVision(fact: boolean | undefined, baseline: boolean, family: WireFamily): boolean {
+function gateVision(
+  fact: boolean | undefined,
+  baseline: boolean,
+  family: WireFamily,
+  hasBaseCapabilities = false,
+): boolean {
   if (fact === undefined) return baseline;
-  return fact && (baseline || family !== 'unsupported');
+  return fact && (baseline || family !== 'unsupported' || hasBaseCapabilities);
 }
 
 /**
@@ -257,21 +267,37 @@ export async function capabilitiesFor(
   const knownFamily =
     modelFamily !== 'unsupported'
       ? modelFamily
-      : provider?.family !== 'unsupported'
-        ? provider?.family
-        : undefined;
-  const family = knownFamily ?? FAMILY_BY_PROVIDER_ID[providerId] ?? 'unsupported';
+      : (FAMILY_BY_PROVIDER_ID[catalogProviderId] ??
+        FAMILY_BY_PROVIDER_ID[providerId] ??
+        (provider?.family !== 'unsupported' ? provider?.family : undefined));
+  const family = knownFamily ?? 'unsupported';
   const siblingProviderId =
     SIBLING_CATALOG_BY_FAMILY[family] ??
     SIBLING_CATALOG_BY_PROVIDER_TYPE[catalogProviderId] ??
     SIBLING_CATALOG_BY_PROVIDER_TYPE[providerId];
+  const needsSiblingLookup =
+    Boolean(siblingProviderId) &&
+    (!provider ||
+      provider.family === 'unsupported' ||
+      !catalogModel ||
+      catalogModel.modalities?.input === undefined ||
+      catalogModel.limit?.output === undefined);
   const siblingProvider =
-    siblingProviderId && (!provider || provider.family === 'unsupported')
+    siblingProviderId && needsSiblingLookup
       ? await registry.getProvider(siblingProviderId)
+      : undefined;
+  const gatewaySplit =
+    !catalogModel?.modalities?.input && !siblingProvider ? splitGatewayModelId(modelId) : undefined;
+  const upstreamProvider =
+    gatewaySplit && gatewaySplit.providerId !== catalogProviderId
+      ? await registry.getProvider(gatewaySplit.providerId)
       : undefined;
   const model =
     (await registry.getModel(catalogProviderId, modelId)) ??
-    (siblingProviderId ? await registry.getModel(siblingProviderId, modelId) : undefined);
+    (siblingProviderId ? await registry.getModel(siblingProviderId, modelId) : undefined) ??
+    (gatewaySplit
+      ? await registry.getModel(gatewaySplit.providerId, gatewaySplit.modelId)
+      : undefined);
   const base = options?.baseCapabilities ?? capabilitiesForFamily(family);
 
   // User-defined custom model overrides take top priority when present.
@@ -284,9 +310,16 @@ export async function capabilitiesFor(
   // flag ever set.
   const customMaxOutput = customDef?.maxOutput ?? customCaps?.maxOutput;
 
-  // Without any model info at all, return base (possibly with custom overrides).
+  // Without any model info at all, return base (possibly with custom overrides
+  // or known vision model heuristic for metadata-less discovered models).
   if (!model && !customCaps && customMaxOutput === undefined) {
-    const value = { ...base };
+    const inferredVision = inferKnownVisionModelId(modelId);
+    const value = {
+      ...base,
+      ...(inferredVision
+        ? { vision: gateVision(true, base.vision, family, Boolean(options?.baseCapabilities)) }
+        : {}),
+    };
     registryCache.set(key, value);
     return value;
   }
@@ -309,11 +342,25 @@ export async function capabilitiesFor(
   // correct source for the per-response output ceiling and drives subagent
   // `Request.maxTokens` (Chimera etc.).
   const rawProvider = bestRawProvider(provider, siblingProvider);
-  const rawModel = rawProvider?.models.find((m) => m.id === modelId);
+  const primaryRawModel = rawProvider?.models.find((m) => m.id === modelId);
+  const fallbackRawModel =
+    siblingProvider?.models.find((m) => m.id === modelId) ??
+    (gatewaySplit
+      ? upstreamProvider?.models.find((m) => m.id === gatewaySplit.modelId)
+      : undefined);
+  const rawModel = primaryRawModel ?? fallbackRawModel;
+  const rawInputModalities =
+    primaryRawModel?.modalities?.input ?? fallbackRawModel?.modalities?.input;
   const catalogMaxContext =
-    model?.capabilities.maxContext || rawModel?.limit?.context || base.maxContext;
+    model?.capabilities.maxContext ||
+    primaryRawModel?.limit?.context ||
+    fallbackRawModel?.limit?.context ||
+    base.maxContext;
   const catalogMaxOutput =
-    model?.capabilities.maxOutput || rawModel?.limit?.output || base.maxOutput;
+    model?.capabilities.maxOutput ||
+    primaryRawModel?.limit?.output ||
+    fallbackRawModel?.limit?.output ||
+    base.maxOutput;
 
   // Per-field priority: customCaps (if set) → model facts AND-ed with base → base.
   // AND-ing with base is conservative: a model can't have a capability the
@@ -326,19 +373,24 @@ export async function capabilitiesFor(
   // models: a gateway that lists a model without metadata is saying "I don't
   // know", and treating that as "no tools" makes the model unusable as an agent
   // model. Only an EXPLICIT false restricts; silence inherits the baseline.
-  const modelTools = rawModel ? rawModel.tool_call : model?.capabilities.tools;
+  const modelTools = rawModel
+    ? (primaryRawModel?.tool_call ?? fallbackRawModel?.tool_call)
+    : model?.capabilities.tools;
   const modelVision = rawModel
-    ? rawModel.modalities?.input
-      ? rawModel.modalities.input.includes('image')
-      : undefined
-    : model?.capabilities.vision;
+    ? rawInputModalities
+      ? rawInputModalities.includes('image')
+      : inferKnownVisionModelId(modelId)
+    : (model?.capabilities.vision ?? inferKnownVisionModelId(modelId));
   const modelReasoning = rawModel
-    ? (rawModel.reasoning ?? (rawModel.reasoningConfig !== undefined ? true : undefined))
+    ? (primaryRawModel?.reasoning ??
+      (primaryRawModel?.reasoningConfig !== undefined ? true : undefined) ??
+      fallbackRawModel?.reasoning ??
+      (fallbackRawModel?.reasoningConfig !== undefined ? true : undefined))
     : model?.capabilities.reasoning;
   // PDF input only when the catalog says so: there is no family default, and
   // a model without it gets a document's extracted text instead.
   const modelPdf = rawModel
-    ? rawModel.modalities?.input?.includes('pdf') === true
+    ? rawInputModalities?.includes('pdf') === true
     : model?.capabilities.pdf === true;
 
   const value = {
@@ -346,7 +398,9 @@ export async function capabilitiesFor(
     // Capability booleans: AND model facts with base unless custom overrides
     tools: customCaps?.tools ?? gate(modelTools, base.tools),
     parallelTools: customCaps?.parallelTools ?? gate(modelTools, base.parallelTools),
-    vision: customCaps?.vision ?? gateVision(modelVision, base.vision, family),
+    vision:
+      customCaps?.vision ??
+      gateVision(modelVision, base.vision, family, Boolean(options?.baseCapabilities)),
     pdf: modelPdf,
     reasoning: customCaps?.reasoning ?? modelReasoning ?? base.reasoning,
     // Scalar fields: custom override wins, then catalog, then base
@@ -377,4 +431,12 @@ function bestRawProvider(
 ): ResolvedProvider | undefined {
   if (provider && provider.family !== 'unsupported') return provider;
   return siblingProvider ?? provider;
+}
+
+const KNOWN_VISION_MODEL_RE =
+  /(?:^|[/:_-])(?:llava|bakllava|moondream|pixtral|minicpm-v|internvl|molmo|paligemma|idefics|fuyu|cogvlm|qwen[0-9.]*-vl|deepseek-vl|yi-vl|kimi-vl|kimi-k2\.5|glm-4(?:\.\d+)?v|gemma-?3(?:-[0-9]+b|-it|:)|gpt-4o|gpt-4\.1|gpt-4-turbo|gpt-5|claude-3|claude-(?:sonnet|opus|haiku)-4|gemini-(?:1\.5|2|3)|grok-(?:2-vision|4))(?:$|[/:._-])|(?:^|[/:_-])(?:vl|vision)(?:$|[/:._-])/i;
+
+function inferKnownVisionModelId(modelId: string): true | undefined {
+  if (!modelId) return undefined;
+  return KNOWN_VISION_MODEL_RE.test(modelId) ? true : undefined;
 }

@@ -150,7 +150,10 @@ export function createLocalLlmPreset(opts: LocalLlmPresetOptions) {
       const maxOutput = resolveMaxOutputTokens(req, ctx);
       const body: Record<string, unknown> = {
         model: req.model,
-        messages: messagesToOpenAI(req.system, req.messages),
+        messages: messagesToOpenAI(req.system, req.messages, {
+          allowImages: ctx?.capabilities?.vision !== false,
+          allowDocuments: ctx?.capabilities?.pdf !== false,
+        }),
         stream: true,
       };
       // Optional field — omit rather than guess. Local runtimes size the

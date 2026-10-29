@@ -8,7 +8,14 @@ vi.mock('ws/native', async (importOriginal) => {
 
 vi.mock('@wrongstack/providers', async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
-  makeProviderFromConfig: vi.fn(() => ({ id: 'openai', capabilities: { maxContext: 128000 } })),
+  makeProviderFromConfig: vi.fn(() => ({
+    id: 'openai',
+    capabilities: { maxContext: 128000, vision: false },
+  })),
+  withCatalogCapabilities: vi.fn(async (_reg: unknown, _id: string, provider: any) => {
+    provider.capabilities = { ...provider.capabilities, vision: true };
+    return provider;
+  }),
 }));
 
 import {
@@ -57,6 +64,7 @@ describe('embedded-host-adapters', () => {
       await applyEmbeddedModelSwitch(ctx, 'openai', 'gpt-4o-mini');
       expect(agent.ctx.model).toBe('gpt-4o-mini');
       expect(agent.ctx.provider).toBeDefined();
+      expect(agent.ctx.provider.capabilities.vision).toBe(true);
       expect(ctx.broadcast).toHaveBeenCalled();
     });
 

@@ -1,4 +1,9 @@
-import type { Permission, Tool } from '@wrongstack/contracts/types';
+import {
+  type ImageBlock,
+  type Permission,
+  stageToolCallImages,
+  type Tool,
+} from '@wrongstack/contracts/types';
 import { createSandboxMcpGate } from '@wrongstack/core/sandbox';
 import { ToolCapabilities } from '@wrongstack/core/security';
 import { mcpQualifiedToolName } from '@wrongstack/core/utils';
@@ -111,6 +116,10 @@ export function wrapMCPTool(
           throw new Error(errText || `MCP tool "${qualifiedName}" failed`);
         }
         ok = true;
+        const images = extractMcpToolImages(res.content);
+        if (images.length > 0) {
+          stageToolCallImages(ctx, opts?.toolUseId, images);
+        }
         return renderMcpToolResult(mcpTool, res);
       } finally {
         observer?.onFinish({ durationMs: Date.now() - startedAt, ok }, ctx);
@@ -127,6 +136,50 @@ export function renderMcpToolResult(tool: MCPTool, result: ToolCallResult): stri
     result.structuredContent,
     tool.outputSchema,
   );
+}
+
+export function extractMcpToolImages(content: unknown): ImageBlock[] {
+  const items = Array.isArray(content)
+    ? content
+    : content && typeof content === 'object'
+      ? [content]
+      : [];
+  const images: ImageBlock[] = [];
+  for (const raw of items) {
+    if (!raw || typeof raw !== 'object') continue;
+    const item = raw as Record<string, unknown>;
+    if (item['type'] === 'image' && typeof item['data'] === 'string' && item['data'].length > 0) {
+      const mediaType =
+        typeof item['mimeType'] === 'string' && item['mimeType'].trim().length > 0
+          ? item['mimeType'].trim()
+          : 'image/png';
+      images.push({
+        type: 'image',
+        source: {
+          type: 'base64',
+          media_type: mediaType,
+          data: item['data'].trim(),
+        },
+      });
+      continue;
+    }
+    if (item['type'] === 'resource' && item['resource'] && typeof item['resource'] === 'object') {
+      const resource = item['resource'] as Record<string, unknown>;
+      const mimeType = typeof resource['mimeType'] === 'string' ? resource['mimeType'].trim() : '';
+      const blob = typeof resource['blob'] === 'string' ? resource['blob'].trim() : '';
+      if (blob.length > 0 && mimeType.toLowerCase().startsWith('image/')) {
+        images.push({
+          type: 'image',
+          source: {
+            type: 'base64',
+            media_type: mimeType,
+            data: blob,
+          },
+        });
+      }
+    }
+  }
+  return images;
 }
 
 /** What the model is told after a `-32042`: which pages, what the user chose, whether to retry. */

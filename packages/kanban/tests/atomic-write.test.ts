@@ -2,7 +2,7 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { FsError, atomicWrite, ensureDir, withFileLock } from '../src/utils/atomic-write.js';
+import { atomicWrite, ensureDir, FsError, withFileLock } from '../src/utils/atomic-write.js';
 
 // Helper to create an error with a specific code
 function errWithCode(code: string, message = 'fake error'): NodeJS.ErrnoException {
@@ -319,10 +319,12 @@ describe('withFileLock unexpected error', () => {
     // Create a lock file so fs.open throws EEXIST
     await fs.writeFile(lockPath, '0:0', { flag: 'wx' });
 
-    // with staleMs = 0, the existing lock should be considered expired immediately
+    // Staleness follows the file mtime, with a positive staleMs threshold.
+    const old = new Date(Date.now() - 60_000);
+    await fs.utimes(lockPath, old, old);
     const result = await withFileLock(target, async () => 'eexist-recovered', {
       timeoutMs: 5000,
-      staleMs: 0,
+      staleMs: 1_000,
     });
     expect(result).toBe('eexist-recovered');
   });
@@ -343,10 +345,12 @@ describe('withFileLock EPERM handling', () => {
 
     const openMock = vi.mocked(fs.open);
     openMock.mockRejectedValueOnce(errWithCode('EPERM'));
+    const old = new Date(Date.now() - 60_000);
+    await fs.utimes(lockPath, old, old);
 
     const result = await withFileLock(target, async () => 'eperm-recovered', {
       timeoutMs: 5000,
-      staleMs: 0, // existing lock is immediately stale
+      staleMs: 1_000,
     });
     expect(result).toBe('eperm-recovered');
   });

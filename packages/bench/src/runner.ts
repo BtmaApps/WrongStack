@@ -82,8 +82,9 @@ export async function runWstack(opts: RunWstackOptions): Promise<RawRun> {
           ...opts.env,
           WRONGSTACK_HOME: opts.homeDir,
         },
-        // windowsHide + no detached: per the repo spawn convention, detached on
-        // win32 voids CREATE_NO_WINDOW and pops visible consoles for grandchildren.
+        // POSIX needs a dedicated process group so timeout/abort reaches descendants.
+        // Windows must stay attached so CREATE_NO_WINDOW hides grandchildren.
+        detached: process.platform !== 'win32',
         windowsHide: true,
         // Closed stdin: single-shot mode reads piped stdin as prompt context,
         // and an open-but-silent pipe would cost every run the first-byte wait.
@@ -298,19 +299,19 @@ export function treeKill(child: ChildProcess): void {
     return;
   }
   try {
-    child.kill('SIGTERM');
+    // Benchmark children lead their own POSIX process group. Kill the group
+    // before the shell exits and reparents its descendants. Timeout/abort is
+    // terminal: immediate SIGKILL also prevents a TERM-ignoring grandchild
+    // from keeping pipes or CPU alive after the result has settled.
+    process.kill(-child.pid, 'SIGKILL');
   } catch {
-    /* already gone */
-  }
-  /* v8 ignore start -- 2s SIGKILL backstop fires only if SIGTERM didn't end the process; not exercised in fast unit tests. */
-  setTimeout(() => {
+    // A caller may supply a child without a dedicated group, or it exited.
     try {
       child.kill('SIGKILL');
     } catch {
       /* already gone */
     }
-  }, 2000).unref();
-  /* v8 ignore stop */
+  }
 }
 
 /**

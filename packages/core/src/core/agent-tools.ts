@@ -5,10 +5,12 @@
  */
 
 import { TOKENS } from '@wrongstack/contracts/kernel/tokens';
-import type {
-  ContentBlock,
-  ToolResultBlock,
-  ToolUseBlock,
+import {
+  type ContentBlock,
+  getToolImages,
+  stageToolCallImages,
+  type ToolResultBlock,
+  type ToolUseBlock,
 } from '@wrongstack/contracts/types/blocks';
 import type { NestedToolCaller } from '@wrongstack/contracts/types/context';
 import type { SessionEvent } from '@wrongstack/contracts/types/session';
@@ -626,9 +628,12 @@ export function createAgentToolHandler(a: AgentInternals): AgentToolHandler {
     // and they rejected every call in the turn as unanswered (400).
     const pendingContext = a.ctx.pendingPostToolContext;
     a.ctx.pendingPostToolContext = undefined;
-    const contentBlocks: ContentBlock[] = pendingContext
-      ? [...resultsForMessage, { type: 'text', text: pendingContext }]
-      : resultsForMessage;
+    const toolImages = resultsForMessage.flatMap((r) => getToolImages(r));
+    const contentBlocks: ContentBlock[] = [
+      ...resultsForMessage,
+      ...toolImages,
+      ...(pendingContext ? [{ type: 'text' as const, text: pendingContext }] : []),
+    ];
     a.ctx.state.appendMessage({ role: 'user', content: contentBlocks });
     // Tool results were added — mark adjacency as potentially needing repair
     // before the next provider request.
@@ -681,6 +686,10 @@ export function createAgentToolHandler(a: AgentInternals): AgentToolHandler {
     await a.extensions.runAfterToolExecution(a.ctx, outputs);
     const result = resultsForMessage[0];
     if (!result) return { content: `Tool "${call.name}" was not run.`, isError: true };
+    const nestedImages = getToolImages(result);
+    if (nestedImages.length > 0) {
+      stageToolCallImages(a.ctx, call.parentToolUseId, nestedImages);
+    }
     if (call.resultFormat === 'data' && !result.is_error) {
       const data = programmaticOutput(result);
       if (!data)

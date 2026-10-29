@@ -1,4 +1,10 @@
-import type { ToolResultBlock, ToolUseBlock } from '@wrongstack/contracts/types/blocks';
+import {
+  consumeStagedToolCallImages,
+  getToolImages,
+  type ImageBlock,
+  type ToolResultBlock,
+  type ToolUseBlock,
+} from '@wrongstack/contracts/types/blocks';
 import type { HookInput } from '@wrongstack/contracts/types/hooks';
 import type { Tool } from '@wrongstack/contracts/types/tool';
 import { type Context, resolveEventSessionId } from '../core/context.js';
@@ -40,6 +46,7 @@ export async function produceToolOutput(
   text: string;
   fingerprint: string;
   data?: { value: unknown };
+  images?: ImageBlock[];
   writePaths: Pick<NonNullable<HookInput['toolResult']>, 'modifiedPaths' | 'modifiedPathsOmitted'>;
 }> {
   if (use._resultFormat === 'data' && !tool.outputSchema) {
@@ -64,6 +71,7 @@ export async function produceToolOutput(
   });
   host.opts.renderer?.writeToolCall(tool.name, use.input);
   const output = await host.runWithTimeout(tool, use.input, ctx.signal, ctx, use.id);
+  const images = [...getToolImages(output), ...consumeStagedToolCallImages(ctx, use.id)];
   const data = toolProgrammaticOutput(tool, use, output, host.opts.secretScrubber);
   const text = host.serializer.serialize(output, { toolName: tool.name, input: use.input, tool });
   const scrubbed = host.opts.secretScrubber.scrub(text);
@@ -78,6 +86,7 @@ export async function produceToolOutput(
     fingerprint: fingerprintText(scrubbed),
     writePaths,
     ...(data ? { data } : {}),
+    ...(images.length > 0 ? { images } : {}),
   };
 }
 

@@ -1,5 +1,9 @@
 import { createHash } from 'node:crypto';
-import type { ToolResultBlock } from '@wrongstack/contracts/types/blocks';
+import {
+  attachToolImages,
+  getToolImages,
+  type ToolResultBlock,
+} from '@wrongstack/contracts/types/blocks';
 
 // Keep the full, scrubbed output's digest off provider blocks and journals.
 // A random spool path is not new evidence. Content-changing policies invalidate
@@ -21,6 +25,8 @@ export function toolResultFingerprint(block: ToolResultBlock): string {
 
 export function appendToolResultContext(block: ToolResultBlock, context: string): ToolResultBlock {
   const next = { ...block, content: `${block.content}${context}` };
+  const images = getToolImages(block);
+  if (images.length > 0) attachToolImages(next, images);
   rememberToolResultFingerprint(
     next,
     fingerprintText(JSON.stringify([toolResultFingerprint(block), context])),

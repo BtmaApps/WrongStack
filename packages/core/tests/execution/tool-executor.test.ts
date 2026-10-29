@@ -1,5 +1,10 @@
 import { EventBus } from '@wrongstack/contracts/kernel/events';
-import type { ToolUseBlock } from '@wrongstack/contracts/types/blocks';
+import {
+  attachToolImages,
+  getToolImages,
+  stageToolCallImages,
+  type ToolUseBlock,
+} from '@wrongstack/contracts/types/blocks';
 import { ToolValidationError } from '@wrongstack/contracts/types/errors';
 import type { Tool } from '@wrongstack/contracts/types/tool';
 import { describe, expect, it, vi } from 'vitest';
@@ -335,4 +340,36 @@ describe('ToolExecutor scoped inline approval', () => {
         });
     },
   );
+
+  it('propagates attached and staged tool images onto ToolResultBlock', async () => {
+    const img1 = {
+      type: 'image' as const,
+      source: { type: 'base64' as const, media_type: 'image/png' as const, data: 'AAAA' },
+    };
+    const img2 = {
+      type: 'image' as const,
+      source: { type: 'base64' as const, media_type: 'image/jpeg' as const, data: 'BBBB' },
+    };
+    const objTool = createMockTool({ name: 'read_img' });
+    objTool.execute = async () => attachToolImages({ text: 'read image' }, [img1]) as never;
+    const strTool = createMockTool({ name: 'mcp_shot' });
+    strTool.execute = async (_in, ctx, opts) => {
+      stageToolCallImages(ctx, opts.toolUseId, [img2]);
+      return 'screenshot taken';
+    };
+    const executor = new ToolExecutor(makeRegistry([objTool, strTool]), {
+      events: new EventBus(),
+      secretScrubber: noopScrubber,
+      permissionPolicy: {
+        evaluate: vi.fn().mockResolvedValue({ permission: 'auto', source: 'default' }),
+      },
+    } as any);
+    const batch = await executor.executeBatch(
+      [makeToolUse('read_img', 'call_1'), makeToolUse('mcp_shot', 'call_2')],
+      makeCtx(),
+      'parallel',
+    );
+    expect(getToolImages(batch.outputs[0]?.result)).toEqual([img1]);
+    expect(getToolImages(batch.outputs[1]?.result)).toEqual([img2]);
+  });
 });

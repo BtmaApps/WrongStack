@@ -16,7 +16,7 @@ import { refsToMarkdown } from '@/stores/file-reference-store.js';
 import { useLocalPrefs } from '@/stores/local-prefs';
 import { confirmModalChoice } from '../ConfirmModal.js';
 import { toast } from '../Toaster';
-import { type ImageAttachment, toWireImages } from './image-attachments.js';
+import { type ImageAttachment, toMessageAttachments, toWireImages } from './image-attachments.js';
 
 export interface UseChatSubmitOptions {
   input: string;
@@ -90,10 +90,16 @@ export function useChatSubmit({
     const panel = refinePanel;
     setRefinePanel(null);
     if (client?.isConnected) {
-      addMessage({ role: 'user', content: panel.original });
+      const panelImages = panel.images ?? [];
+      const wireImages = panelImages.length > 0 ? toWireImages(panelImages) : undefined;
+      addMessage({
+        role: 'user',
+        content: panel.original,
+        ...(panelImages.length > 0 ? { attachments: toMessageAttachments(panelImages) } : {}),
+      });
       setLoading(true);
-      if (panel.freshContext === true) sendMessage(panel.original, undefined, true);
-      else sendMessage(panel.original);
+      if (panel.freshContext === true) sendMessage(panel.original, wireImages, true);
+      else sendMessage(panel.original, wireImages);
     } else {
       setInput(panel.original);
       toast.error(t('chat:input.notConnectedDraftKept'));
@@ -142,16 +148,27 @@ export function useChatSubmit({
           useChatStore.getState().setPendingRefinement(null);
           useChatStore.getState().setRefining(false);
           enqueue(content, effectiveMode, images.length > 0 ? images : undefined);
+          if (images.length > 0) clearPendingImages();
         }
         return;
       }
-      addMessage({ role: 'user', content });
-      const id = sendMessage(content);
-      if (id) setLoading(true);
+      const images = pendingImagesRef.current;
+      const wireImages = images.length > 0 ? toWireImages(images) : undefined;
+      addMessage({
+        role: 'user',
+        content,
+        ...(images.length > 0 ? { attachments: toMessageAttachments(images) } : {}),
+      });
+      const id = sendMessage(content, wireImages);
+      if (id) {
+        setLoading(true);
+        if (images.length > 0) clearPendingImages();
+      }
     },
     [
       isLoading,
       pendingImagesRef,
+      clearPendingImages,
       refineModel,
       enqueue,
       addMessage,

@@ -47,6 +47,35 @@ function registry(onAvailabilityChange?: (available: boolean) => void) {
 }
 
 describe('registry completion coverage', () => {
+  it('reopens documents only for eager servers that actually become ready', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'plug-lsp-eager-'));
+    directories.push(root);
+    await fs.writeFile(path.join(root, 'source.ts'), 'export const answer = 42;');
+    const { value, tracker } = registry();
+    const ready = {
+      name: 'ready',
+      state: 'stopped',
+      config: { languages: ['typescript'] },
+      start: vi.fn(async () => {
+        ready.state = 'ready';
+      }),
+    };
+    const failed = {
+      name: 'failed',
+      state: 'failed',
+      config: { languages: ['typescript'] },
+      start: vi.fn(async () => {
+        throw new Error('start failed');
+      }),
+    };
+    vi.spyOn(value, 'list').mockReturnValue([ready, failed] as never);
+    await value.bind(root, 'eager');
+    expect(ready.start).toHaveBeenCalledOnce();
+    expect(failed.start).toHaveBeenCalledOnce();
+    expect(tracker.reopenForServer).toHaveBeenCalledExactlyOnceWith(ready);
+    expect(log.warn).toHaveBeenCalledWith('LSP failed failed to start', expect.any(Error));
+  });
+
   it('shuts down mounted servers before rebinding the registry', async () => {
     const { value } = registry();
     const shutdown = vi.fn(async () => undefined);

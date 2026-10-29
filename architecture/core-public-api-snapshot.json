@@ -236,7 +236,7 @@
         "export * from './tool-subject.js';",
         "export * from './wstack-paths.js';",
         "export type { HttpDispatcher, HttpsAgentAsDispatcher } from './dispatcher-types.js';",
-        "export { ALLOWED_IMAGE_MEDIA_TYPES, base64DecodedBytes, buildUserContentBlocks, IncomingImageError, type IncomingImagePayload, type IncomingPdf, isAllowedImageMediaType, isValidImageBase64, MAX_INCOMING_DOCUMENT_BYTES, MAX_INCOMING_DOCUMENTS, MAX_INCOMING_IMAGE_BYTES, MAX_INCOMING_IMAGES, PDF_MEDIA_TYPE, parseIncomingAttachments, parseIncomingImages, } from './incoming-images.js';",
+        "export { ALLOWED_IMAGE_MEDIA_TYPES, base64DecodedBytes, buildUserContentBlocks, detectImageMediaType, IncomingImageError, type IncomingImagePayload, type IncomingPdf, isAllowedImageMediaType, isValidImageBase64, MAX_INCOMING_DOCUMENT_BYTES, MAX_INCOMING_DOCUMENTS, MAX_INCOMING_IMAGE_BYTES, MAX_INCOMING_IMAGES, PDF_MEDIA_TYPE, parseIncomingAttachments, parseIncomingImages, } from './incoming-images.js';",
         "export { DEFAULT_WALK_IGNORE_DIRS, DEFAULT_WALK_IGNORE_SET } from './walk-ignore.js';",
         "export { activateProjectStateGuard, type ProjectStateGuard, type ProjectStateGuardOptions, startProjectStateGuard, } from './project-state-guard.js';",
         "export { adaptDocumentsForModel, documentBlocksAsText } from './document-blocks.js';",
@@ -1076,7 +1076,7 @@
       "classification": "agent-domain contract",
       "intendedOwner": "Core",
       "sourceFiles": 80,
-      "sourceLines": 17074
+      "sourceLines": 17083
     },
     {
       "directory": "design",
@@ -1090,7 +1090,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime pilot candidate after R2/R3",
       "sourceFiles": 107,
-      "sourceLines": 26161
+      "sourceLines": 26183
     },
     {
       "directory": "extension",
@@ -1237,7 +1237,7 @@
       "classification": "kernel primitive",
       "intendedOwner": "split dependency-free primitives from concrete helpers",
       "sourceFiles": 94,
-      "sourceLines": 14600
+      "sourceLines": 14618
     },
     {
       "directory": "vcs",

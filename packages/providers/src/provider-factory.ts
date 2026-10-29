@@ -8,10 +8,14 @@ import type {
 import { ConfigError } from '@wrongstack/contracts/types';
 import { isKeylessLocalProvider } from '@wrongstack/core/models';
 import type { ProviderFactory } from '@wrongstack/core/registry';
-import { bindProviderCatalogId } from '@wrongstack/core/utils';
+import { bindProviderCatalogId, providerIdentities } from '@wrongstack/core/utils';
 import { attachAccountQuotaReporting } from './account-quota.js';
 import { AiGatewayProvider, createAiGatewayProviderFactory } from './ai-gateway.js';
-import { CATALOG_ALIAS_BY_PROVIDER_TYPE, capabilitiesFor } from './capabilities.js';
+import {
+  CATALOG_ALIAS_BY_PROVIDER_TYPE,
+  capabilitiesFor,
+  catalogProviderIdFor,
+} from './capabilities.js';
 import { OpenAICompatibleProvider } from './openai-compatible.js';
 import { buildProvider, readFromEnv, resolveActiveKey, validateQuirks } from './provider-build.js';
 import { SubscriptionOAuthProvider } from './subscription-oauth.js';
@@ -80,19 +84,23 @@ export async function withCatalogCapabilities(
     // per-model facts live under the upstream provider named in the model id.
     // Detect from the instance, not from config, so user-chosen aliases
     // ("gateway-work") resolve the same way as the canonical id.
-    const isGateway = provider instanceof AiGatewayProvider;
+    const isGateway = provider instanceof AiGatewayProvider && provider.isVercelGateway;
+    const boundCatalogId = providerIdentities(provider)[1];
+    const catalogProviderId = isGateway
+      ? CATALOG_ALIAS_BY_PROVIDER_TYPE['ai-gateway']
+      : catalogProviderIdFor(providerId, boundCatalogId ?? cfg.type);
     const resolved = await capabilitiesFor(
       registry,
       providerId,
       cfg.model ?? '',
       cfg.customModels,
       {
+        catalogProviderId,
         // No wire family describes a gateway, so read its facts from the
         // catalog id that does publish them and overlay onto what the transport
         // declared about itself rather than a family default.
         ...(isGateway
           ? {
-              catalogProviderId: CATALOG_ALIAS_BY_PROVIDER_TYPE['ai-gateway'],
               baseCapabilities: provider.capabilities,
             }
           : {}),

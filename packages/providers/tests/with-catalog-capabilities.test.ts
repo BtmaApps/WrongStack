@@ -8,7 +8,9 @@ import type {
 } from '@wrongstack/contracts/types';
 import { DefaultModelsRegistry } from '@wrongstack/core/models';
 import { describe, expect, it, vi } from 'vitest';
+import { capabilitiesForFamily } from '../src/family-capabilities.js';
 import { withCatalogCapabilities } from '../src/index.js';
+import { createNativeCatalogProvider } from '../src/native-catalog.js';
 
 const SAMPLE: ModelsDevPayload = {
   anthropic: {
@@ -191,5 +193,23 @@ describe('withCatalogCapabilities', () => {
     });
 
     expect(out.capabilities.maxOutput).toBe(32_000);
+  });
+
+  it('does not alias native catalog AiGatewayProvider instances to the vercel catalog', async () => {
+    const nativeAnthropic = createNativeCatalogProvider({
+      id: 'anthropic',
+      npm: 'ai-gateway-provider',
+      capabilities: capabilitiesForFamily('anthropic'),
+      models: [SAMPLE.anthropic!.models['anthropic-test-model']!],
+    });
+
+    const out = await withCatalogCapabilities(reg(), 'my-anthropic-alias', nativeAnthropic, {
+      type: 'anthropic',
+      model: 'anthropic-test-model',
+    });
+
+    expect(out.capabilities.vision).toBe(true);
+    expect(out.capabilities.maxOutput).toBe(64_000);
+    expect(out.capabilities.cacheControl).toBe('native');
   });
 });

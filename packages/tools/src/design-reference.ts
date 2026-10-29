@@ -1,7 +1,7 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import type { Tool } from '@wrongstack/contracts/types';
-import { ToolValidationError } from '@wrongstack/contracts/types';
+import type { ImageBlock, Tool } from '@wrongstack/contracts/types';
+import { attachToolImages, getToolImages, ToolValidationError } from '@wrongstack/contracts/types';
 import type { Context } from '@wrongstack/core/agent';
 import {
   compareDesignDna,
@@ -136,6 +136,7 @@ interface Measured<T> {
   raws: T[];
   runtime: InspectRuntimeEvidence[];
   screenshots: Array<{ width: number; file: string }>;
+  images: ImageBlock[];
 }
 
 /**
@@ -153,7 +154,7 @@ async function measure<T extends { v: 1 }>(
 ): Promise<Measured<T>> {
   const manager = managerFor(ctx);
   const ownerId = owner(ctx);
-  const out: Measured<T> = { raws: [], runtime: [], screenshots: [] };
+  const out: Measured<T> = { raws: [], runtime: [], screenshots: [], images: [] };
   // Screenshots of someone else's site must never become tracked repo files.
   await ensureDesignDir(ctx.projectRoot);
   await fs.mkdir(outDir, { recursive: true });
@@ -185,6 +186,7 @@ async function measure<T extends { v: 1 }>(
       const file = path.join(outDir, `${width}.png`);
       await fs.copyFile(shot.path, file);
       out.screenshots.push({ width, file });
+      out.images.push(...getToolImages(shot));
     } finally {
       await manager.close(session.id, ownerId).catch(() => undefined);
     }
@@ -205,14 +207,20 @@ async function extractReference(
   input: { url?: string | undefined; name?: string | undefined; viewports?: unknown },
   signal: AbortSignal,
   page?: PageLabel,
-): Promise<{ slug: string; dna: DesignDna; output: string; path: string }> {
+): Promise<{ slug: string; dna: DesignDna; output: string; path: string; images: ImageBlock[] }> {
   const url = assertHttpUrl(input.url);
   const viewports = normalizeViewports(input.viewports);
   const slug = input.name
     ? assertSlug(input.name.trim(), 'name')
     : (page?.slug ?? referenceSlug(url));
   const dir = path.join(referencesDir(ctx.projectRoot), slug);
-  const { raws, screenshots } = await measure<DesignDnaRaw>(ctx, url, viewports, dir, signal);
+  const { raws, screenshots, images } = await measure<DesignDnaRaw>(
+    ctx,
+    url,
+    viewports,
+    dir,
+    signal,
+  );
   const dna = summarizeDesignDna(raws);
   await writeJson(path.join(dir, 'raw.json'), raws);
   await writeJson(path.join(dir, 'dna.json'), dna);
@@ -250,7 +258,7 @@ async function extractReference(
     `design {action:"set", set:${JSON.stringify(overrides)}}`,
     'Learn the decisions, not the brand: do not copy logos, product imagery, copy or a licensed font you do not hold.',
   ].join('\n');
-  return { slug, dna, output, path: rel(ctx.projectRoot, path.join(dir, 'dna.md')) };
+  return { slug, dna, output, path: rel(ctx.projectRoot, path.join(dir, 'dna.md')), images };
 }
 
 async function loadDna(projectRoot: string, slug: string, field: string): Promise<DesignDna> {
@@ -278,7 +286,7 @@ async function compareReference(
   },
   signal: AbortSignal,
   page?: PageLabel,
-): Promise<{ output: string; overall: number; path: string }> {
+): Promise<{ output: string; overall: number; path: string; images: ImageBlock[] }> {
   const refSlug = input.reference?.trim();
   if (!refSlug) {
     throw new ToolValidationError({
@@ -290,6 +298,7 @@ async function compareReference(
   const ref = await loadDna(ctx.projectRoot, refSlug, 'reference');
   let impl: DesignDna;
   let implLabel: string;
+  let images: ImageBlock[] = [];
   if (input.against) {
     impl = await loadDna(ctx.projectRoot, input.against.trim(), 'against');
     implLabel = input.against.trim();
@@ -299,8 +308,9 @@ async function compareReference(
     const viewports =
       input.viewports === undefined ? ref.source.viewports : normalizeViewports(input.viewports);
     const dir = path.join(referencesDir(ctx.projectRoot), refSlug, 'implementation');
-    const { raws } = await measure<DesignDnaRaw>(ctx, url, viewports, dir, signal);
-    impl = summarizeDesignDna(raws);
+    const measured = await measure<DesignDnaRaw>(ctx, url, viewports, dir, signal);
+    images = measured.images;
+    impl = summarizeDesignDna(measured.raws);
     await writeJson(path.join(dir, 'dna.json'), impl);
     implLabel = page?.name ?? url;
   }
@@ -308,7 +318,7 @@ async function compareReference(
   const markdown = renderDnaComparisonMarkdown(cmp, refSlug, implLabel);
   const file = path.join(referencesDir(ctx.projectRoot), refSlug, 'fidelity.md');
   await atomicWrite(file, `${markdown}\n`);
-  return { output: markdown, overall: cmp.overall, path: rel(ctx.projectRoot, file) };
+  return { output: markdown, overall: cmp.overall, path: rel(ctx.projectRoot, file), images };
 }
 
 /**
@@ -321,7 +331,7 @@ async function inspectPage(
   input: { url?: string | undefined; viewports?: unknown; surface?: string | undefined },
   signal: AbortSignal,
   page?: PageLabel,
-): Promise<{ output: string; fails: number; warns: number; path: string }> {
+): Promise<{ output: string; fails: number; warns: number; path: string; images: ImageBlock[] }> {
   const url = assertHttpUrl(input.url);
   const viewports = normalizeViewports(input.viewports);
   if (input.surface !== undefined && input.surface !== 'page' && input.surface !== 'app') {
@@ -337,7 +347,7 @@ async function inspectPage(
     'inspect',
     page?.slug ?? referenceSlug(url),
   );
-  const { raws, runtime, screenshots } = await measure<DesignInspectRaw>(
+  const { raws, runtime, screenshots, images } = await measure<DesignInspectRaw>(
     ctx,
     url,
     viewports,
@@ -364,6 +374,7 @@ async function inspectPage(
     fails: report.fails,
     warns: report.warns,
     path: rel(ctx.projectRoot, path.join(dir, 'inspect.md')),
+    images,
   };
 }
 
@@ -495,31 +506,40 @@ async function runAction(
 ): Promise<DesignReferenceOutput> {
   if (input.action === 'extract') {
     const result = await extractReference(ctx, input, signal, page);
-    return {
-      action: input.action,
-      path: result.path,
-      reference: result.slug,
-      output: result.output,
-    };
+    return attachToolImages(
+      {
+        action: input.action,
+        path: result.path,
+        reference: result.slug,
+        output: result.output,
+      },
+      result.images,
+    );
   }
   if (input.action === 'compare') {
     const result = await compareReference(ctx, input, signal, page);
-    return {
-      action: input.action,
-      path: result.path,
-      score: result.overall,
-      output: result.output,
-    };
+    return attachToolImages(
+      {
+        action: input.action,
+        path: result.path,
+        score: result.overall,
+        output: result.output,
+      },
+      result.images,
+    );
   }
   if (input.action === 'inspect') {
     const result = await inspectPage(ctx, input, signal, page);
-    return {
-      action: input.action,
-      path: result.path,
-      fails: result.fails,
-      warns: result.warns,
-      output: result.output,
-    };
+    return attachToolImages(
+      {
+        action: input.action,
+        path: result.path,
+        fails: result.fails,
+        warns: result.warns,
+        output: result.output,
+      },
+      result.images,
+    );
   }
   throw new ToolValidationError({
     message: `design_reference: unknown action "${String(input.action)}". Allowed actions: extract, compare, inspect.`,

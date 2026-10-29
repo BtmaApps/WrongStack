@@ -83,7 +83,7 @@ export function createApplyModelSwitch(
       const newProv = deps.modelsRegistry
         ? await withCatalogCapabilities(deps.modelsRegistry, newProvider, built, {
             ...routedCfg,
-            type: newProvider,
+            type: routedCfg.type ?? newProvider,
             model: newModel,
           })
         : built;

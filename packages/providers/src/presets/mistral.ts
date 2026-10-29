@@ -66,7 +66,7 @@ export const mistralWireFormat = defineWireFormat<MistralStreamState>({
     const maxOutput = resolveMaxOutputTokens(req, ctx);
     const body: Record<string, unknown> = {
       model: req.model,
-      messages: messagesToMistral(req),
+      messages: messagesToMistral(req, ctx),
       stream: true,
     };
     // Optional field — omit rather than guess; see model-output-limits.ts.
@@ -269,8 +269,11 @@ export function mistralToolCallId(id: string): string {
   return createHash('sha256').update(id).digest('hex').slice(0, 9);
 }
 
-function messagesToMistral(req: Request): unknown[] {
-  return messagesToOpenAI(stripCacheControl(req.system), req.messages).map((raw) => {
+function messagesToMistral(req: Request, ctx?: BuildBodyContext): unknown[] {
+  return messagesToOpenAI(stripCacheControl(req.system), req.messages, {
+    allowImages: ctx?.capabilities?.vision !== false,
+    allowDocuments: ctx?.capabilities?.pdf !== false,
+  }).map((raw) => {
     const message = {
       ...raw,
       ...(raw.tool_call_id !== undefined

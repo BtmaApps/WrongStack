@@ -1,6 +1,15 @@
 import * as fs from 'node:fs/promises';
-import { FsError, type Tool, ToolValidationError } from '@wrongstack/contracts/types';
-import { toErrorMessage } from '@wrongstack/core/utils';
+import {
+  attachToolImages,
+  FsError,
+  type Tool,
+  ToolValidationError,
+} from '@wrongstack/contracts/types';
+import {
+  detectImageMediaType,
+  MAX_INCOMING_IMAGE_BYTES,
+  toErrorMessage,
+} from '@wrongstack/core/utils';
 import { isBinaryBuffer, safeResolveReal, sha256hex } from './_util.js';
 import { getIndexState, searchCodebaseIndex } from './codebase-index/background-indexer.js';
 import type { SymbolKind } from './codebase-index/schema.js';
@@ -125,6 +134,35 @@ async function readPdf(
     truncated: last < totalPages,
     note: notes.join(' '),
   };
+}
+
+function readImage(
+  input: ReadInput,
+  absPath: string,
+  buf: Buffer,
+  mediaType: string,
+  mtimeMs: number,
+  ctx: import('@wrongstack/core/agent').Context,
+): ReadOutput {
+  const base64 = buf.toString('base64');
+  ctx.recordRead?.(absPath, mtimeMs, 'user', sha256hex(base64));
+  const out: ReadOutput = {
+    text: `[image: "${input.path}" (${mediaType}, ${buf.byteLength} bytes)]`,
+    total_lines: 1,
+    encoding: mediaType,
+    truncated: false,
+    note: 'Image attached for visual inspection.',
+  };
+  return attachToolImages(out, [
+    {
+      type: 'image',
+      source: {
+        type: 'base64',
+        media_type: mediaType,
+        data: base64,
+      },
+    },
+  ]);
 }
 
 export const readTool: Tool<ReadInput, ReadOutput> = {
@@ -291,6 +329,23 @@ export const readTool: Tool<ReadInput, ReadOutput> = {
       signal?.throwIfAborted();
       return readPdf(input, absPath, await fs.readFile(absPath), stat.mtimeMs, ctx);
     }
+    let preloadedImageBuf: Buffer | undefined;
+    if (/\.(?:png|jpe?g|webp|gif)$/i.test(absPath)) {
+      if (stat.size > MAX_INCOMING_IMAGE_BYTES) {
+        throw new FsError({
+          message: `read: image too large (${stat.size} bytes, limit ${MAX_INCOMING_IMAGE_BYTES})`,
+          code: 'FS_READ_FAILED',
+          path: absPath,
+          context: { size: stat.size, limit: MAX_INCOMING_IMAGE_BYTES, reason: 'too-large' },
+        });
+      }
+      signal?.throwIfAborted();
+      preloadedImageBuf = await fs.readFile(absPath);
+      const mediaType = detectImageMediaType(preloadedImageBuf);
+      if (mediaType) {
+        return readImage(input, absPath, preloadedImageBuf, mediaType, stat.mtimeMs, ctx);
+      }
+    }
     if (stat.size > MAX_BYTES) {
       throw new FsError({
         message: `read: file too large (${stat.size} bytes, limit ${MAX_BYTES})`,
@@ -348,9 +403,11 @@ export const readTool: Tool<ReadInput, ReadOutput> = {
     }
 
     signal?.throwIfAborted();
-    const buf = earlyBuf ?? (await fs.readFile(absPath));
+    const buf = earlyBuf ?? preloadedImageBuf ?? (await fs.readFile(absPath));
     // A PDF saved without its extension is found by its `%PDF-` header.
     if (isPdf(absPath, buf)) return readPdf(input, absPath, buf, stat.mtimeMs, ctx);
+    const imageMediaType = detectImageMediaType(buf);
+    if (imageMediaType) return readImage(input, absPath, buf, imageMediaType, stat.mtimeMs, ctx);
     if (isBinaryBuffer(buf)) {
       throw new FsError({
         message: `read: "${input.path}" appears to be binary`,

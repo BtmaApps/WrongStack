@@ -271,3 +271,14 @@ export function toWireImages(attachments: readonly ImageAttachment[]): WireImage
     };
   });
 }
+
+export function toMessageAttachments(attachments: readonly ImageAttachment[]) {
+  return attachments.map((img) => ({
+    id: img.id,
+    kind: 'image' as const,
+    dataUrl: img.dataUrl,
+    mediaType: img.mediaType,
+    bytes: img.bytes,
+    ...(img.name ? { name: img.name } : {}),
+  }));
+}

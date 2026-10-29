@@ -1,8 +1,9 @@
+import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import type { Tool } from '@wrongstack/contracts/types';
+import { getToolImages, stageToolCallImages, type Tool } from '@wrongstack/contracts/types';
 import type { Context } from '@wrongstack/core/agent';
 import { ToolCapabilities } from '@wrongstack/core/security';
-import { resolveWstackPaths } from '@wrongstack/core/utils';
+import { MAX_INCOMING_IMAGE_BYTES, resolveWstackPaths } from '@wrongstack/core/utils';
 import { createLiveBrowserAccess } from './live-access.js';
 import { BrowserSessionManager, browserInstallationDiagnostics } from './manager.js';
 import { browserPrivateOrigins } from './policy.js';
@@ -277,14 +278,36 @@ export const browserScreenshotTool: Tool<BrowserScreenshotInput> = {
     required: ['sessionId'],
   },
   async execute(input, ctx, opts) {
-    return json(
-      await managerFor(ctx).screenshot(
-        input.sessionId,
-        owner(ctx),
-        { fullPage: input.fullPage, selector: input.selector },
-        signalFor(ctx, opts),
-      ),
+    const artifact = await managerFor(ctx).screenshot(
+      input.sessionId,
+      owner(ctx),
+      { fullPage: input.fullPage, selector: input.selector },
+      signalFor(ctx, opts),
     );
+    let images = getToolImages(artifact);
+    if (images.length === 0 && artifact.path) {
+      try {
+        const bytes = await fs.readFile(artifact.path);
+        if (bytes.byteLength > 0 && bytes.byteLength <= MAX_INCOMING_IMAGE_BYTES) {
+          images = [
+            {
+              type: 'image',
+              source: {
+                type: 'base64',
+                media_type: artifact.mimeType || 'image/png',
+                data: bytes.toString('base64'),
+              },
+            },
+          ];
+        }
+      } catch {
+        /* ignore if artifact path is not readable on disk */
+      }
+    }
+    if (images.length > 0) {
+      stageToolCallImages(ctx, opts?.toolUseId, images);
+    }
+    return json(artifact);
   },
 };
 

@@ -95,6 +95,7 @@ export function createNativeCatalogProvider(opts: NativeCatalogProviderOptions):
     // The generic bridge does not use this value when resolveModel is supplied.
     apiKey: opts.apiKey ?? 'native-credential-chain',
     capabilities: opts.capabilities,
+    models: opts.models,
     resolveModel,
   });
 }

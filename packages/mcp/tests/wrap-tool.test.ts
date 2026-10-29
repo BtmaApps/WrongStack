@@ -1,3 +1,4 @@
+import { consumeStagedToolCallImages } from '@wrongstack/contracts/types';
 import { ToolCapabilities } from '@wrongstack/core/security';
 import { describe, expect, it, vi } from 'vitest';
 import type { MCPClient, MCPTool } from '../src/client.js';
@@ -87,6 +88,40 @@ describe('wrapMCPTool', () => {
     const ctx = {} as Parameters<typeof wrapped.execute>[1];
     const out = await wrapped.execute({}, ctx, { signal: new AbortController().signal });
     expect(out).toBe('line1\nline2');
+  });
+
+  it('extracts MCP image content blocks into staged tool call images without dumping raw base64 into text', async () => {
+    const pngBase64 = Buffer.from([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d,
+    ]).toString('base64');
+    const wrapped = wrapMCPTool(
+      'playwright',
+      { name: 'browser_take_screenshot', inputSchema: { type: 'object' } },
+      mkClient(async () => [
+        { type: 'text', text: 'Took screenshot of viewport' },
+        { type: 'image', data: pngBase64, mimeType: 'image/png' },
+      ]),
+    );
+    const ctx = {} as Parameters<typeof wrapped.execute>[1];
+    const out = await wrapped.execute({}, ctx, {
+      signal: new AbortController().signal,
+      toolUseId: 'call_pw_1',
+    });
+    expect(out).toBe(
+      'Took screenshot of viewport\n[image content: image/png, ~1 KB — binary payload not inlined]',
+    );
+    expect(out).not.toContain(pngBase64);
+    const staged = consumeStagedToolCallImages(ctx, 'call_pw_1');
+    expect(staged).toEqual([
+      {
+        type: 'image',
+        source: {
+          type: 'base64',
+          media_type: 'image/png',
+          data: pngBase64,
+        },
+      },
+    ]);
   });
 
   it('stringifies non-text object content as JSON', async () => {

@@ -77,6 +77,7 @@ export {
   ALLOWED_IMAGE_MEDIA_TYPES,
   base64DecodedBytes,
   buildUserContentBlocks,
+  detectImageMediaType,
   IncomingImageError,
   type IncomingImagePayload,
   type IncomingPdf,

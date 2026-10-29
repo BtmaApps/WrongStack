@@ -164,21 +164,26 @@ describe('runtime helper contracts', () => {
     expect(resolveNodeBin('sdk-bin-fixture', 'fixture', root)).toBeNull();
   });
 
-  it('probeRunner allows the probe flag even when runtime.allowedFlags omits it or is null (F855)', async () => {
-    const runtime: LanguageRuntime = {
-      id: 'javascript',
-      packageManager: 'none',
-      executable: 'node',
-      subcommands: [],
-      allowedFlags: new Set(['--check']),
-      defaultCommand: 'node --check',
-    };
-    const ok = await probeRunner(runtime, '--version', {
-      cwd: process.cwd(),
-      projectRoot: process.cwd(),
-      timeoutMs: 5_000,
-    });
-    expect(ok).toBe(true);
-    expect(runtime.allowedFlags?.has('--version')).toBe(false);
-  });
+  it.each([new Set(['--check']), null])(
+    'probeRunner allows the probe flag without mutating allowedFlags (%s) (F855)',
+    async (allowedFlags) => {
+      const runtime: LanguageRuntime = {
+        id: 'javascript',
+        packageManager: 'none',
+        // Bun's --bun test runner shadows `node` with its compatibility shim,
+        // which rejects a standalone --version. Probe the pinned runtime itself.
+        executable: 'bun',
+        subcommands: [],
+        allowedFlags,
+        defaultCommand: 'bun --version',
+      };
+      const ok = await probeRunner(runtime, '--version', {
+        cwd: process.cwd(),
+        projectRoot: process.cwd(),
+        timeoutMs: 5_000,
+      });
+      expect(ok).toBe(true);
+      expect(runtime.allowedFlags?.has('--version') ?? false).toBe(false);
+    },
+  );
 });

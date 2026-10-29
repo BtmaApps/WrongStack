@@ -182,3 +182,68 @@ export function isToolResultBlock(b: ContentBlock): b is ToolResultBlock {
 export function isImageBlock(b: ContentBlock): b is ImageBlock {
   return b.type === 'image';
 }
+
+const TOOL_IMAGES_SYMBOL = Symbol.for('wrongstack.tool.images');
+const STAGED_TOOL_IMAGES = new WeakMap<object, Map<string, ImageBlock[]>>();
+
+/**
+ * Attach tool-produced {@link ImageBlock}s to a structured tool output or
+ * {@link ToolResultBlock} as a non-enumerable symbol property so JSON
+ * serialization, schema validation (`additionalProperties: false`), and
+ * deep-equality checks on the output object remain unaffected.
+ */
+export function attachToolImages<T extends object>(target: T, images: readonly ImageBlock[]): T {
+  if (images.length === 0) return target;
+  const existing = getToolImages(target);
+  Object.defineProperty(target, TOOL_IMAGES_SYMBOL, {
+    value: existing.length > 0 ? [...existing, ...images] : [...images],
+    enumerable: false,
+    configurable: true,
+    writable: true,
+  });
+  return target;
+}
+
+export function getToolImages(target: unknown): ImageBlock[] {
+  if (!target || typeof target !== 'object') return [];
+  const raw = (target as Record<symbol, unknown>)[TOOL_IMAGES_SYMBOL];
+  return Array.isArray(raw) ? (raw.filter(isImageBlock) as ImageBlock[]) : [];
+}
+
+/**
+ * Stage tool-produced {@link ImageBlock}s for a tool call whose `execute()`
+ * returns a primitive string (e.g. `browser_screenshot` or `wrapMCPTool`).
+ */
+export function stageToolCallImages(
+  ctx: object | undefined,
+  toolUseId: string | undefined,
+  images: readonly ImageBlock[],
+): void {
+  if (!ctx || typeof ctx !== 'object' || images.length === 0) return;
+  let byCall = STAGED_TOOL_IMAGES.get(ctx);
+  if (!byCall) {
+    byCall = new Map<string, ImageBlock[]>();
+    STAGED_TOOL_IMAGES.set(ctx, byCall);
+  }
+  const key = toolUseId ?? '';
+  const prev = byCall.get(key);
+  byCall.set(key, prev ? [...prev, ...images] : [...images]);
+}
+
+export function consumeStagedToolCallImages(
+  ctx: object | undefined,
+  toolUseId: string | undefined,
+): ImageBlock[] {
+  if (!ctx || typeof ctx !== 'object') return [];
+  const byCall = STAGED_TOOL_IMAGES.get(ctx);
+  if (!byCall) return [];
+  const key = toolUseId ?? '';
+  const specific = byCall.get(key) ?? [];
+  byCall.delete(key);
+  if (key !== '') {
+    const fallback = byCall.get('') ?? [];
+    byCall.delete('');
+    if (fallback.length > 0) return [...specific, ...fallback];
+  }
+  return specific;
+}

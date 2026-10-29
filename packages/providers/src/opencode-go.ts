@@ -171,13 +171,13 @@ export class OpenCodeGoProvider implements Provider {
 
   stream(req: Request, opts: { signal: AbortSignal }): AsyncIterable<StreamEvent> {
     const delegate = this.delegate(req.model);
-    this.syncCapabilities(delegate);
+    this.syncCapabilities(delegate, req.model);
     return delegate.stream(req, opts);
   }
 
   complete(req: Request, opts: { signal: AbortSignal }): Promise<Response> {
     const delegate = this.delegate(req.model);
-    this.syncCapabilities(delegate);
+    this.syncCapabilities(delegate, req.model);
     return delegate.complete(req, opts);
   }
 
@@ -193,9 +193,19 @@ export class OpenCodeGoProvider implements Provider {
     return this.chat;
   }
 
-  private syncCapabilities(delegate: Provider): void {
+  private syncCapabilities(delegate: Provider, model: string): void {
+    const modelInput = this.models.get(model)?.modalities?.input;
+    const next: Capabilities = {
+      ...this.capabilities,
+      ...(modelInput !== undefined
+        ? {
+            vision: modelInput.includes('image'),
+            pdf: modelInput.includes('pdf'),
+          }
+        : {}),
+    };
     Object.defineProperty(delegate, 'capabilities', {
-      value: this.capabilities,
+      value: next,
       writable: true,
       configurable: true,
       enumerable: true,

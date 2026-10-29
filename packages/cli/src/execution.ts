@@ -111,6 +111,14 @@ export async function execute(deps: ExecuteDeps): Promise<number> {
           mergedModels,
           { catalogProviderId: catalogProviderIdFor(context.provider.id, providerConfig?.type) },
         );
+        if (caps.vision && !context.provider.capabilities.vision) {
+          Object.defineProperty(context.provider, 'capabilities', {
+            value: { ...context.provider.capabilities, vision: true, pdf: caps.pdf },
+            writable: true,
+            configurable: true,
+            enumerable: true,
+          });
+        }
         return caps.vision;
       } catch {
         return context.provider.capabilities.vision;

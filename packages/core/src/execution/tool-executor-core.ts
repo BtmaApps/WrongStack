@@ -3,7 +3,7 @@
  * {@link ToolExecutor} (tool-executor.ts), which runs batches through them.
  */
 
-import type { ToolResultBlock, ToolUseBlock } from '@wrongstack/contracts/types/blocks';
+import type { ImageBlock, ToolResultBlock, ToolUseBlock } from '@wrongstack/contracts/types/blocks';
 import type {
   ToolResultRenderMode,
   ToolResultRenderModeConfig,
@@ -361,6 +361,7 @@ export abstract class ToolExecutorCore {
     text: string;
     fingerprint: string;
     data?: { value: unknown };
+    images?: ImageBlock[];
     writePaths: Pick<
       NonNullable<HookInput['toolResult']>,
       'modifiedPaths' | 'modifiedPathsOmitted'

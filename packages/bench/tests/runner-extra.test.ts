@@ -176,7 +176,7 @@ describe('mapWithConcurrency edge cases', () => {
 });
 
 describe('treeKill (POSIX branch)', () => {
-  it('SIGTERM-kills a hung process when platform is posix', async () => {
+  it('kills a hung process when platform is posix', async () => {
     Object.defineProperty(process, 'platform', { value: 'linux', configurable: true });
     const entry = await fakeEntry('setTimeout(() => {}, 30000);');
     const res = await run(entry, { timeoutMs: 200 });
