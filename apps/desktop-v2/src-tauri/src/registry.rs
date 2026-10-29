@@ -212,6 +212,17 @@ impl Registry {
                         value.is_ascii_alphanumeric() || value == b'_' || value == b'-'
                     })
             });
+        // Typed-but-not-yet-added resource inputs for the new form or one recorded intake.
+        let resource_input = form_key
+            .strip_prefix("requirement-resource-input:")
+            .is_some_and(|owner| {
+                owner == "new"
+                    || (owner.starts_with("reqi_")
+                        && owner.len() <= 100
+                        && owner.bytes().all(|value| {
+                            value.is_ascii_alphanumeric() || value == b'_' || value == b'-'
+                        }))
+            });
         let file_form = form_key
             .strip_prefix("file-draft:")
             .is_some_and(|id| id.len() == 64 && id.bytes().all(|value| value.is_ascii_hexdigit()));
@@ -228,6 +239,7 @@ impl Registry {
             && form_key != "git-review-notes"
             && form_key != "design-edits"
             && !record_form
+            && !resource_input
             && !file_form
             && !review_form
             && !hashed_form
@@ -951,6 +963,17 @@ mod tests {
         );
         assert!(peer.form_draft(&b.id, "design-edits").unwrap()["value"].is_null());
         assert!(peer.form_draft(&a.id, "design-edits-x").is_err());
+        for owner in ["new", "reqi_01ABC-def"] {
+            let key = format!("requirement-resource-input:{owner}");
+            assert_eq!(db.save_form_draft(&a.id, &key, &design, 0).unwrap(), 1);
+            assert!(peer.form_draft(&b.id, &key).unwrap()["value"].is_null());
+        }
+        for bad in [
+            "requirement-resource-input:",
+            "requirement-resource-input:reqi_../x",
+        ] {
+            assert!(peer.form_draft(&a.id, bad).is_err());
+        }
         let review_key = "git-review-notes";
         let review = serde_json::json!({"version":1,"notes":[{"path":"src/main.rs","line":3,"text":"Check this boundary"}]});
         assert_eq!(

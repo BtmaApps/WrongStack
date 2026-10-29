@@ -1,5 +1,24 @@
 import { useState } from 'react';
+import type { FormDraftStorage } from './durable-form-draft';
 import { entries, record } from './engine-state';
+import { usePersistedFields } from './usePersistedFields';
+
+const editorDefaults = {
+  name: '',
+  kind: 'file',
+  location: '',
+  locationType: 'path',
+  resourceTitle: '',
+  resourceKind: 'doc',
+  reference: '',
+};
+const appendDefaults = {
+  category: 'attachment',
+  kind: 'file',
+  name: '',
+  reference: '',
+  isUrl: 'false',
+};
 
 export interface RequirementAttachment {
   name: string;
@@ -27,25 +46,37 @@ export function RequirementResourceEditor({
   onAttachments,
   onResources,
   disabled,
+  storage,
 }: {
   attachments: RequirementAttachment[];
   resources: RequirementResource[];
   onAttachments: (items: RequirementAttachment[]) => void;
   onResources: (items: RequirementResource[]) => void;
   disabled: boolean;
+  /** Keeps typed-but-not-added inputs across reloads. */
+  storage?: FormDraftStorage;
 }) {
-  const [name, setName] = useState('');
-  const [kind, setKind] = useState('file');
-  const [location, setLocation] = useState('');
-  const [locationType, setLocationType] = useState<'path' | 'url'>('path');
-  const [resourceTitle, setResourceTitle] = useState('');
-  const [resourceKind, setResourceKind] = useState('doc');
-  const [reference, setReference] = useState('');
+  const input = usePersistedFields(storage, 'requirement-resource-input:new', editorDefaults);
+  const { name, kind, location, resourceTitle, resourceKind, reference } = input.fields;
+  const locationType = input.fields.locationType === 'url' ? 'url' : 'path';
+  const setName = (value: string) => input.set({ name: value });
+  const setKind = (value: string) => input.set({ kind: value });
+  const setLocation = (value: string) => input.set({ location: value });
+  const setLocationType = (value: 'path' | 'url') => input.set({ locationType: value });
+  const setResourceTitle = (value: string) => input.set({ resourceTitle: value });
+  const setResourceKind = (value: string) => input.set({ resourceKind: value });
+  const setReference = (value: string) => input.set({ reference: value });
   const [error, setError] = useState('');
   return (
     <section className="requirement-resource-editor" aria-label="Requirement supporting resources">
       <h4>Supporting resources</h4>
       <p>Record file paths and links with the request so reviewers can find its evidence.</p>
+      {input.notice}
+      {input.restored && (name || location || reference || resourceTitle) && (
+        <p className="field-help" role="status">
+          Restored resource input you had not added yet.
+        </p>
+      )}
       {error && (
         <p className="session-error" role="alert">
           {error}
@@ -399,22 +430,37 @@ export function RequirementEvidence({
 export function RequirementResourceAppend({
   disabled,
   onSave,
+  owner,
+  storage,
 }: {
   disabled: boolean;
+  /** Intake id that owns these typed-but-not-saved inputs. */
+  owner: string;
+  storage?: FormDraftStorage;
   onSave: (input: {
     attachment?: RequirementAttachment;
     relatedResource?: RequirementResource;
   }) => Promise<boolean>;
 }) {
-  const [category, setCategory] = useState<'attachment' | 'relatedResource'>('attachment');
-  const [kind, setKind] = useState('file');
-  const [name, setName] = useState('');
-  const [reference, setReference] = useState('');
-  const [isUrl, setIsUrl] = useState(false);
+  const input = usePersistedFields(storage, `requirement-resource-input:${owner}`, appendDefaults);
+  const { kind, name, reference } = input.fields;
+  const category = input.fields.category === 'relatedResource' ? 'relatedResource' : 'attachment';
+  const isUrl = input.fields.isUrl === 'true';
+  const setCategory = (value: 'attachment' | 'relatedResource') => input.set({ category: value });
+  const setKind = (value: string) => input.set({ kind: value });
+  const setName = (value: string) => input.set({ name: value });
+  const setReference = (value: string) => input.set({ reference: value });
+  const setIsUrl = (value: boolean) => input.set({ isUrl: String(value) });
   const [error, setError] = useState('');
   return (
     <details className="requirement-append">
       <summary>Add supporting resource</summary>
+      {input.notice}
+      {input.restored && (name || reference) && (
+        <p className="field-help" role="status">
+          Restored resource input you had not saved yet.
+        </p>
+      )}
       <form
         onSubmit={async (event) => {
           event.preventDefault();

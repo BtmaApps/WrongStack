@@ -1,5 +1,6 @@
 import { ArrowLeft, ClipboardList, Plus, RefreshCw } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { FormDraftStorage } from './durable-form-draft';
 import type { EngineHttp } from './engine-http';
 import { entries, record } from './engine-state';
 import {
@@ -81,13 +82,19 @@ export function ProjectRequirements({
   onStartSdd,
   draftStorage,
   recordDraftStorage,
+  resourceInputStorage,
 }: {
   http: EngineHttp;
   onStartSdd: (goal: string) => void;
   draftStorage?: RequirementDraftStorage;
   recordDraftStorage?: RequirementRecordDraftStorageFactory;
+  resourceInputStorage?: (formKey: string) => FormDraftStorage;
 }) {
   const draft = useRequirementDraft(draftStorage);
+  const newResourceStorage = useMemo(
+    () => resourceInputStorage?.('requirement-resource-input:new'),
+    [resourceInputStorage],
+  );
   const [items, setItems] = useState<Record<string, unknown>[]>([]);
   const [projectId, setProjectId] = useState('');
   const [loaded, setLoaded] = useState(false);
@@ -95,6 +102,10 @@ export function ProjectRequirements({
   const [status, setStatus] = useState('all');
   const [selected, setSelected] = useState('');
   const recordDraft = useRequirementRecordDraft(selected, recordDraftStorage);
+  const appendResourceStorage = useMemo(
+    () => (selected ? resourceInputStorage?.(`requirement-resource-input:${selected}`) : undefined),
+    [resourceInputStorage, selected],
+  );
   const [detail, setDetail] = useState<Record<string, unknown> | null>(null);
   const [creating, setCreating] = useState(false);
   const editing = !creating && recordDraft.ready && recordDraft.value.fields !== null;
@@ -588,6 +599,7 @@ export function ProjectRequirements({
                   onAttachments={setNewAttachments}
                   onResources={setNewResources}
                   disabled={busy || !draft.ready || draft.resolving}
+                  {...(newResourceStorage ? { storage: newResourceStorage } : {})}
                 />
               )}
               <div className="sdd-actions">
@@ -701,7 +713,15 @@ export function ProjectRequirements({
                 busy={busy}
                 {...(mutable ? { onDecision: decideSuggestion } : {})}
               />
-              {mutable && <RequirementResourceAppend disabled={busy} onSave={appendResource} />}
+              {mutable && (
+                <RequirementResourceAppend
+                  key={selected}
+                  disabled={busy}
+                  onSave={appendResource}
+                  owner={selected}
+                  {...(appendResourceStorage ? { storage: appendResourceStorage } : {})}
+                />
+              )}
               {questions.length > 0 && (
                 <section className="requirement-questions">
                   <h4>Information to collect</h4>

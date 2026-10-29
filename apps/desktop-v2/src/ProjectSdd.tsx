@@ -8,6 +8,7 @@ import {
   Workflow,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import type { FormDraftStorage } from './durable-form-draft';
 import type { EngineHttp } from './engine-http';
 import type { EngineSend } from './engine-operations';
 import { type EngineState, entries, record } from './engine-state';
@@ -32,12 +33,14 @@ export function ProjectSdd({
   http,
   draftStorage,
   recordDraftStorage,
+  resourceInputStorage,
 }: {
   state: EngineState;
   send: EngineSend;
   http: EngineHttp;
   draftStorage?: RequirementDraftStorage;
   recordDraftStorage?: RequirementRecordDraftStorageFactory;
+  resourceInputStorage?: (formKey: string) => FormDraftStorage;
 }) {
   const [view, setView] = useState<'requirements' | 'interview' | 'specs' | 'runs'>('interview');
   const [transfer, setTransfer] = useState<string | null>(null);
@@ -224,6 +227,7 @@ export function ProjectSdd({
           http={http}
           {...(draftStorage ? { draftStorage } : {})}
           {...(recordDraftStorage ? { recordDraftStorage } : {})}
+          {...(resourceInputStorage ? { resourceInputStorage } : {})}
           onStartSdd={(value) => {
             if (started) {
               setError(

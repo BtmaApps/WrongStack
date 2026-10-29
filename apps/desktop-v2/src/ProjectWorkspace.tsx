@@ -27,7 +27,11 @@ import { ProjectKnowledge } from './ProjectKnowledge';
 import { ProjectMailbox } from './ProjectMailbox';
 import { ProjectSdd } from './ProjectSdd';
 import { PromptWorkspace } from './PromptWorkspace';
-import { requirementDraftStorage, requirementRecordDraftStorage } from './platform';
+import {
+  projectFormDraftStorage,
+  requirementDraftStorage,
+  requirementRecordDraftStorage,
+} from './platform';
 import { RuntimeGate } from './RuntimeGate';
 import { SkillLibrary } from './SkillLibrary';
 import type { DesktopController } from './useDesktop';
@@ -106,6 +110,10 @@ function ProjectContent({ project, vm }: { project: Project; vm: DesktopControll
   const { state, send, command } = useProjectEngine(project.id, vm.reportError);
   const http = useMemo(() => projectHttp(project.id), [project.id]);
   const requirementDrafts = useMemo(() => requirementDraftStorage(project.id), [project.id]);
+  const resourceInputStorage = useCallback(
+    (formKey: string) => projectFormDraftStorage(project.id, formKey),
+    [project.id],
+  );
   const recordDraftStorage = useCallback(
     (id: string) => requirementRecordDraftStorage(project.id, id),
     [project.id],
@@ -284,6 +292,7 @@ function ProjectContent({ project, vm }: { project: Project; vm: DesktopControll
           http={http}
           draftStorage={requirementDrafts}
           recordDraftStorage={recordDraftStorage}
+          resourceInputStorage={resourceInputStorage}
         />
       ) : vm.projectPage === 'atlas' ? (
         <CodeAtlas

@@ -66,6 +66,9 @@
     "apps/desktop-v2/src/SddDependencyGraph.tsx": [
       "sddGraphElements"
     ],
+    "apps/desktop-v2/src/usePersistedFields.tsx": [
+      "fieldsCodec"
+    ],
     "packages/acp/src/agent/server-agent-turn.ts": [
       "disposeACPServerAgentTurn",
       "serverAgentTurnCoverage"

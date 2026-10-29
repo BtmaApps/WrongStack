@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-29T08:01:09.995Z
+**Generated:** 2026-10-29T08:12:04.023Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -8,15 +8,15 @@
 | Measure | Value |
 |---|---:|
 | Workspace packages | 45 |
-| Production source files | 5406 |
-| Production source lines | 1196837 |
-| Test files | 4726 |
+| Production source files | 5407 |
+| Production source lines | 1197056 |
+| Test files | 4727 |
 | Workspace dependency edges | 222 |
-| Relative module edges | 16245 |
+| Relative module edges | 16251 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 5 |
-| Tests without TypeScript test-project coverage | 86 |
+| Tests without TypeScript test-project coverage | 87 |
 | Tests in multiple TypeScript projects | 0 |
 
 ## Verification result
@@ -38,7 +38,7 @@
 | @wrongstack/contracts | 126 | 4 | @wrongstack/kanban, @wrongstack/primitives |
 | @wrongstack/coordination | 190 | 183 | @wrongstack/agent-catalog, @wrongstack/contracts, @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/core | 635 | 687 | @wrongstack/agent-catalog, @wrongstack/contracts, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
-| @wrongstack/desktop-v2 | 237 | 86 | @wrongstack/contracts, @wrongstack/core, @wrongstack/webui-protocol, @wrongstack/webui-server |
+| @wrongstack/desktop-v2 | 238 | 87 | @wrongstack/contracts, @wrongstack/core, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/goal | 22 | 22 | @wrongstack/contracts, @wrongstack/core, @wrongstack/worktree |
 | @wrongstack/governance | 45 | 37 | @wrongstack/persistence |
 | @wrongstack/hq | 62 | 42 | @wrongstack/contracts, @wrongstack/core, @wrongstack/persistence, @wrongstack/primitives |
@@ -96,7 +96,7 @@ None.
 | 1206 | `packages/vibeui/src/components/workspace.tsx` |
 | 1098 | `packages/webui/src/components/codemap-model.ts` |
 | 999 | `apps/desktop-v2/src/SessionComposer.tsx` |
-| 977 | `apps/desktop-v2/src/ProjectRequirements.tsx` |
+| 997 | `apps/desktop-v2/src/ProjectRequirements.tsx` |
 | 917 | `apps/desktop-v2/src/ModelCatalogSettings.tsx` |
 | 916 | `apps/desktop-v2/src/CodeAtlas.tsx` |
 | 913 | `apps/desktop-v2/src/ProjectKnowledge.tsx` |
@@ -108,8 +108,8 @@ None.
 | 800 | `packages/vibeui/src/components/resource-hub.tsx` |
 | 778 | `apps/desktop-v2/src/ProjectChimera.tsx` |
 | 777 | `packages/webui-server/src/server/memory-handlers.ts` |
+| 766 | `apps/desktop-v2/src/ProjectSdd.tsx` |
 | 766 | `packages/webui-server/src/server/provider-routes.ts` |
-| 762 | `apps/desktop-v2/src/ProjectSdd.tsx` |
 | 756 | `packages/cli/src/fleet/host-skill-companion.ts` |
 | 754 | `packages/client/src/client.ts` |
 | 752 | `apps/desktop-v2/src/ProjectDesignStudio.tsx` |
@@ -144,13 +144,13 @@ None.
 
 ## Exports only tests reference
 
-- 970 runtime exports are referenced by tests and by no other production file.
+- 971 runtime exports are referenced by tests and by no other production file.
 - Green coverage on one of these proves the function works, not that anything calls it.
 - The set is frozen in `architecture/test-only-exports.json`; the check fires on additions.
 
 ## TypeScript test coverage debt
 
-- 86 test files are not included in a package TypeScript test project.
+- 87 test files are not included in a package TypeScript test project.
 - 0 test files are included in more than one package TypeScript project.
 
 > This report is generated. Change architecture registry inputs or source code, then regenerate it; do not hand-edit measurements.

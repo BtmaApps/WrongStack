@@ -2850,3 +2850,28 @@ Verification on the shared working snapshot:
   uncommitted `packages/core` and `packages/cli` edits; this run does not certify those.
 - Not covered: full application restart, actual multi-window stress, atomic engine-side override
   writes, full repository release/coverage, hosted CI and installed-app replacement.
+
+## Durable requirement resource inputs (2026-10-29)
+
+- New `usePersistedFields` keeps small typed-but-not-submitted inputs in native project storage
+  through `DurableFormDraft`. Values equal to the defaults store nothing, so a successful add/save
+  that resets the inputs also clears the native copy. The codec accepts only the listed fields of
+  one owner as bounded strings; a peer-window write requires an explicit keep/use-saved choice.
+- Both requirement resource forms use it: the new-request editor under
+  `requirement-resource-input:new` and the per-record append form under
+  `requirement-resource-input:<reqi_ id>` (new Rust allow-list, same id validation as record
+  drafts). `projectFormDraftStorage` was added to `platform.ts` and threaded through `ProjectSdd`.
+- Checks: desktop **421 tests / 87 files PASS** (shared tree includes unrelated concurrent work);
+  new `persisted-fields.test.ts` covers owner/field/size refusal. Typecheck **245 PASS**; Biome
+  PASS; Rust fmt PASS; native Rust **21 tests PASS** with `new`/`reqi_` acceptance, project
+  isolation and malformed-owner refusal.
+- Native `--sdd` on portable identity `d59e54ae4177-344ee89c60b0`, bundled engine/checksums
+  verified: **exit 0 / PASS**. `native-requirement-resource-input.mjs` typed a resource name and
+  reference on a recorded intake, confirmed the acknowledged native copy, performed an actual UI
+  process restart, found both values restored with a visible status, then the existing flow saved
+  the resource and the native copy was cleared. All other requirement/SDD scenarios still pass.
+  After that run the conflict group was changed from a `div role="group"` to a `fieldset` (Biome
+  accessibility warning); this markup is not exercised natively. The bundled engine was built from
+  the shared working tree with another agent's uncommitted core/cli edits.
+- Not covered: native proof of the new-request resource inputs (unit/Rust only), multi-window UI
+  stress, full repository release/coverage, hosted CI and installed-app replacement.

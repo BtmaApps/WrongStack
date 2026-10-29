@@ -1,4 +1,5 @@
 import { Channel, invoke, isTauri } from '@tauri-apps/api/core';
+import type { FormDraftSnapshot, FormDraftStorage } from './durable-form-draft';
 import type { FileDraftSnapshot, FileDraftStorage } from './file-draft';
 import type { Snapshot } from './model';
 import type {
@@ -23,6 +24,19 @@ export function fileDraftStorage(projectId: string): FileDraftStorage {
   return {
     get: (formKey) => request<FileDraftSnapshot>('form-draft.get', { projectId, formKey }),
     save: (formKey, value, expectedRevision) =>
+      request<{ revision: number }>('form-draft.save', {
+        projectId,
+        formKey,
+        value,
+        expectedRevision,
+      }).then((result) => result.revision),
+  };
+}
+/** Revision-checked storage for one native project form. */
+export function projectFormDraftStorage(projectId: string, formKey: string): FormDraftStorage {
+  return {
+    get: () => request<FormDraftSnapshot>('form-draft.get', { projectId, formKey }),
+    save: (value, expectedRevision) =>
       request<{ revision: number }>('form-draft.save', {
         projectId,
         formKey,

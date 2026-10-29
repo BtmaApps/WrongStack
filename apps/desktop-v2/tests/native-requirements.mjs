@@ -7,6 +7,7 @@ import {
 } from '../../../packages/requirement-intake/dist/index.js';
 import { exerciseNativeRequirementDrafts } from './native-requirement-drafts.mjs';
 import { exerciseNativeRequirementRecordDrafts } from './native-requirement-record-drafts.mjs';
+import { exerciseNativeResourceInput } from './native-requirement-resource-input.mjs';
 
 export async function exerciseNativeRequirements({
   page,
@@ -94,12 +95,25 @@ export async function exerciseNativeRequirements({
   assert.equal(stored.relatedResources[0].reference, '#42');
   await requirements.getByText('Design brief', { exact: true }).waitFor();
   await requirements.getByText('Tracked issue', { exact: true }).waitFor();
-  await requirements.getByText('Add supporting resource', { exact: true }).click();
+  const pending = await exerciseNativeResourceInput({
+    page,
+    project,
+    intakeId: row.id,
+    waitFor,
+    restartUi,
+  });
+  page = pending.page;
+  sdd = page.getByRole('region', { name: 'Project SDD' });
+  requirements = sdd.getByRole('region', { name: 'Project requirements' });
   const append = requirements.locator('.requirement-append');
   await append.getByLabel('Resource name', { exact: true }).fill('Follow-up note');
   await append.getByLabel('Resource reference', { exact: true }).fill('docs/followup.md');
   await append.getByRole('button', { name: 'Save resource', exact: true }).click();
   await requirements.getByText('Supporting resource saved.', { exact: true }).waitFor();
+  await waitFor(
+    async () => (await pending.stored()).value === null,
+    'Saved resource clears its unsent input',
+  );
   stored = await get(`/api/requirement-intakes/${row.id}`);
   assert.equal(stored.attachments.length, 2);
   assert.equal(stored.attachments[1].path, 'docs/followup.md');
