@@ -224,8 +224,11 @@ export const patchTool: Tool<PatchInput, PatchOutput> = {
       // — and told the model `applied: 0`, i.e. nothing happened.
       const touched: string[] = [];
       if (!dryRun) {
+        const seenAbs = new Set<string>();
         for (const target of resolvedTargets) {
           const abs = target.abs!;
+          if (seenAbs.has(abs)) continue;
+          seenAbs.add(abs);
           const before = beforeContents.get(abs) ?? null;
           const stat = await fs.stat(abs).catch(() => null);
           if (!stat?.isFile()) {
@@ -478,6 +481,9 @@ function extractDiffTargets(patch: string): DiffTarget[] {
     if (!newMatch) continue;
     const newTarget = clean(newMatch[1]);
     if (newTarget && newTarget !== '/dev/null') {
+      if (lastOld && lastOld !== '/dev/null' && lastOld !== newTarget) {
+        out.push({ raw: lastOld, deleted: false });
+      }
       out.push({ raw: newTarget, deleted: false });
     } else if (lastOld && lastOld !== '/dev/null') {
       out.push({ raw: lastOld, deleted: true });

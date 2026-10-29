@@ -42,6 +42,10 @@ function prune(dir: string, keep: ReadonlySet<string>): void {
   const now = Date.now();
   entries.forEach(({ file, mtime }, index) => {
     if (keep.has(file)) return;
+    // `keep` covers only this process. Every session of the project shares the
+    // directory, so a quiet log of another live process fell out of the newest
+    // KEEP_LOGS and was unlinked while its job still wrote to it.
+    if (ownedByOtherLiveProcess(file)) return;
     if (index < KEEP_LOGS && now - mtime < MAX_AGE_MS) return;
     try {
       fs.unlinkSync(file);
@@ -57,6 +61,18 @@ function prune(dir: string, keep: ReadonlySet<string>): void {
  * when the directory cannot be written; the caller then discards the output
  * as before.
  */
+/** The creating pid is the file name's last segment (see openBackgroundLog). */
+function ownedByOtherLiveProcess(file: string): boolean {
+  const pid = Number(/-(\d+)\.log$/.exec(path.basename(file))?.[1]);
+  if (!Number.isSafeInteger(pid) || pid <= 0 || pid === process.pid) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (err) {
+    return (err as NodeJS.ErrnoException).code === 'EPERM';
+  }
+}
+
 export function openBackgroundLog(
   projectRoot: string,
   toolName: string,

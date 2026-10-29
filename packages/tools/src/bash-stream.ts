@@ -249,6 +249,15 @@ export async function* executeBashStream(
       throw new Error('bash: failed to launch background process: invalid PID');
     }
     child.unref(); // unref() so the event loop can exit while this background process runs.
+    // The executor closes the iterator at the final event; record before yielding it.
+    ctx.recordSideEffect?.({
+      toolUseId: `bash-bg-${Date.now()}`,
+      toolName: 'bash',
+      ts: new Date().toISOString(),
+      input: { command: redactCommand(input.command), background: true },
+      outcome: `launched (pid ${pid ?? 'unknown'})`,
+      risk: 'shell',
+    });
     yield {
       type: 'final',
       output: {
@@ -261,15 +270,6 @@ export async function* executeBashStream(
         ...(bgLog ? { log_file: bgLog.path } : {}),
       },
     };
-    // P2 #5: record the background launch as a structured side effect.
-    ctx.recordSideEffect?.({
-      toolUseId: `bash-bg-${Date.now()}`,
-      toolName: 'bash',
-      ts: new Date().toISOString(),
-      input: { command: redactCommand(input.command), background: true },
-      outcome: `launched (pid ${pid ?? 'unknown'})`,
-      risk: 'shell',
-    });
     return;
   }
 

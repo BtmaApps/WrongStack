@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-29T00:57:45.144Z
+**Generated:** 2026-10-29T01:01:25.465Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,8 +9,8 @@
 |---|---:|
 | Workspace packages | 45 |
 | Production source files | 5393 |
-| Production source lines | 1194481 |
-| Test files | 4705 |
+| Production source lines | 1194623 |
+| Test files | 4710 |
 | Workspace dependency edges | 222 |
 | Relative module edges | 16208 |
 | Non-command slash imports | 0 |
@@ -61,7 +61,7 @@
 | @wrongstack/security-scanner | 21 | 34 | @wrongstack/contracts, @wrongstack/core |
 | @wrongstack/techstack | 55 | 65 | @wrongstack/contracts, @wrongstack/core, @wrongstack/persistence, @wrongstack/tools |
 | @wrongstack/telegram | 28 | 43 | @wrongstack/contracts, @wrongstack/core, @wrongstack/primitives |
-| @wrongstack/tools | 374 | 367 | @wrongstack/agent-catalog, @wrongstack/contracts, @wrongstack/coordination, @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
+| @wrongstack/tools | 374 | 372 | @wrongstack/agent-catalog, @wrongstack/contracts, @wrongstack/coordination, @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/tui | 497 | 431 | @wrongstack/chronicle, @wrongstack/contracts, @wrongstack/coordination, @wrongstack/core, @wrongstack/goal, @wrongstack/hq, @wrongstack/kanban, @wrongstack/primitives, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/tools |
 | @wrongstack/vector-memory | 18 | 28 | @wrongstack/contracts, @wrongstack/core, @wrongstack/persistence, @wrongstack/sage |
 | @wrongstack/vibeui | 69 | 24 | @wrongstack/webui-protocol |
@@ -100,7 +100,7 @@ None.
 | 916 | `apps/desktop-v2/src/CodeAtlas.tsx` |
 | 913 | `apps/desktop-v2/src/ProjectKnowledge.tsx` |
 | 906 | `apps/desktop-v2/src/ModelCatalogSettings.tsx` |
-| 889 | `packages/tools/src/codebase-index/infra-parser.ts` |
+| 903 | `packages/tools/src/codebase-index/infra-parser.ts` |
 | 856 | `apps/desktop-v2/src/ProjectGoals.tsx` |
 | 848 | `apps/desktop-v2/src/SkillLibrary.tsx` |
 | 826 | `apps/desktop-v2/src/ProjectMemory.tsx` |
@@ -131,6 +131,7 @@ None.
 | 707 | `packages/mailbox-mcp/src/adapter.ts` |
 | 706 | `packages/chronicle/src/project-server.ts` |
 | 705 | `packages/chronicle/src/project-server-client.ts` |
+| 704 | `packages/tools/src/codebase-index/codebase-diff-impact-tool.ts` |
 | 703 | `packages/core/src/execution/auto-compaction-middleware.ts` |
 | 703 | `packages/tools/src/codebase-index/ast-symbol-mutator.ts` |
 | 703 | `packages/tui/src/reducers/settings-value-cycle.ts` |
@@ -140,7 +141,6 @@ None.
 | 699 | `packages/governance/src/runtime-compatibility.ts` |
 | 699 | `packages/plugins/src/dep-guard/index.ts` |
 | 699 | `packages/sage/src/types.ts` |
-| 698 | `packages/coordination/src/task-auctioneer.ts` |
 
 ## Exports only tests reference
 

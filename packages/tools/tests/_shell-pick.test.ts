@@ -303,6 +303,15 @@ describe('diagnoseBashism', () => {
     expect(diagnoseBashism('which node', 'cmd')).toContain('where');
   });
 
+  it('flags head/tail/grep/sed at a command position, not inside arguments', () => {
+    expect(diagnoseBashism('npx jest 2>&1 | tail -15', 'pwsh')).toContain('-Last N');
+    expect(diagnoseBashism('head -n 5 a.txt', 'powershell')).toContain('-First N');
+    expect(diagnoseBashism('npm test | grep FAIL', 'pwsh')).toContain('Select-String');
+    expect(diagnoseBashism('git log | tail -3', 'cmd')).toContain('more');
+    expect(diagnoseBashism('git log --tail-file x', 'pwsh')).toBeUndefined();
+    expect(diagnoseBashism('node grep.js', 'pwsh')).toBeUndefined();
+  });
+
   it('names the shell and is advisory (asks to rewrite, does not block)', () => {
     const hint = diagnoseBashism('foo 2>/dev/null', 'pwsh');
     expect(hint).toContain('PowerShell 7');

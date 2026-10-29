@@ -9,9 +9,10 @@
  * })
  */
 
+import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { type Tool, ToolValidationError } from '@wrongstack/contracts/types';
-import { safeResolveProjectPath } from '../_util.js';
+import { safeResolveProjectPath, sha256hex } from '../_util.js';
 import { type MutateSymbolOptions, replaceSymbolInFile } from './ast-symbol-mutator.js';
 import { astReplaceNote, withNextStepNote } from './next-step-notes.js';
 
@@ -118,6 +119,15 @@ const codebaseAstReplaceToolBase: Tool<CodebaseAstReplaceInput, CodebaseAstRepla
     // absolute path.
     const file = await safeResolveProjectPath(input.file, ctx);
     const result = await replaceSymbolInFile({ ...input, file }, projectRoot);
+
+    const written = await fs.stat(result.file);
+    ctx.recordRead?.(result.file, written.mtimeMs, 'write', sha256hex(result.updatedContent));
+    ctx.session?.recordFileChange?.({
+      path: result.file,
+      action: 'modified',
+      before: result.previousContent ?? null,
+      after: result.updatedContent,
+    });
 
     return {
       status: 'ok',

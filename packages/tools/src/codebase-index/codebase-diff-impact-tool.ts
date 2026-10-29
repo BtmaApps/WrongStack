@@ -326,12 +326,28 @@ function isSafeRevisionRange(baseRef: string): boolean {
   );
 }
 
-function extractBaseCommitRef(baseRef: string): string {
-  const tripleIdx = baseRef.indexOf('...');
-  if (tripleIdx > 0) return baseRef.slice(0, tripleIdx);
-  const doubleIdx = baseRef.indexOf('..');
-  if (doubleIdx > 0) return baseRef.slice(0, doubleIdx);
-  return baseRef;
+/**
+ * The two sides `git diff` compared, as `git show` prefixes: `<rev>:` for a
+ * revision, `:` for the index, `undefined` for the working tree. The invariant
+ * check used to read the left ref against the working tree whatever the mode,
+ * so a staged diff, `a..b`, and `a...b` (whose left side is the merge base)
+ * reported exports that the analyzed diff never touched. Null when the merge
+ * base cannot be resolved.
+ */
+async function diffSides(
+  projectRoot: string,
+  baseRef: string,
+  staged: boolean,
+): Promise<{ old: string; new: string | undefined } | null> {
+  const range = /^(.*?)(\.{2,3})(.*)$/.exec(baseRef);
+  if (range) {
+    const left = range[1] || 'HEAD';
+    const right = range[3] || 'HEAD';
+    if (range[2] === '..') return { old: `${left}:`, new: `${right}:` };
+    const base = await runGit(projectRoot, ['merge-base', '--end-of-options', left, right]);
+    return base?.trim() ? { old: `${base.trim()}:`, new: `${right}:` } : null;
+  }
+  return { old: `${baseRef}:`, new: staged ? ':' : undefined };
 }
 
 const MAX_ANALYZED_SYMBOLS = 25;
@@ -446,7 +462,7 @@ const codebaseDiffImpactToolBase: Tool<CodebaseDiffImpactInput, CodebaseDiffImpa
     const allViolations: Array<InvariantViolation & { file: string }> = [];
     const candidateSymbols: Array<{ name: string; kind: string; file: string; line: number }> = [];
     const seenSymbolKeys = new Set<string>();
-    const baseCommit = extractBaseCommitRef(baseRef);
+    const sides = await diffSides(projectRoot, baseRef, staged);
 
     const prodFilesSet = new Set<string>();
     const testFilesSet = new Set<string>();
@@ -472,15 +488,19 @@ const codebaseDiffImpactToolBase: Tool<CodebaseDiffImpactInput, CodebaseDiffImpa
         // Evaluate polyglot AST contract invariants when the file was modified
         const fileViolations: InvariantViolation[] = [];
         let changeKind: StructuralChangeKind = 'STRUCTURAL';
-        if (diffFile.status === 'modified') {
-          const [oldSource, newSource] = await Promise.all([
+        if (diffFile.status === 'modified' && sides) {
+          const show = (side: string) =>
             runGit(projectRoot, [
               'show',
               '--no-textconv',
               '--end-of-options',
-              `${baseCommit}:${diffFile.file}`,
-            ]),
-            fs.readFile(absPath, 'utf8').catch(() => null),
+              `${side}${diffFile.file}`,
+            ]);
+          const [oldSource, newSource] = await Promise.all([
+            show(sides.old),
+            sides.new === undefined
+              ? fs.readFile(absPath, 'utf8').catch(() => null)
+              : show(sides.new),
           ]);
           if (oldSource !== null && newSource !== null) {
             const evalResult = await polyglotInvariantEngine.evaluate({

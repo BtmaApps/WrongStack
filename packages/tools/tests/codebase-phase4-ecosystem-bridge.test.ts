@@ -486,4 +486,27 @@ describe('Phase 4.1: Cross-System Ecosystem Bridge (SAGE + Codebase Index)', () 
       indexStorePool.evict(tmpDir, indexDir);
     }
   });
+
+  it('does not take an unrelated namesake in another file for a move (F905)', () => {
+    const removed = {
+      file: 'src/ast/parse.ts',
+      name: 'parse',
+      kind: 'function',
+      line: 1,
+      signature: 'export function parse(input: string): Ast',
+    };
+    const unrelated = {
+      file: 'src/cli/parse.ts',
+      name: 'parse',
+      kind: 'function',
+      line: 3,
+      signature: 'export function parse(argv: string[]): CliOptions',
+    };
+    expect(detectMovedOrRenamedSymbols([removed], [unrelated] as never)).toEqual([]);
+    // Without signatures only a one-to-one pairing is trusted.
+    const doc = (file: string) => ({ file, name: 'Intro', kind: 'heading', line: 1 });
+    expect(detectMovedOrRenamedSymbols([doc('a.md')], [doc('b.md'), doc('c.md')] as never)).toEqual(
+      [],
+    );
+  });
 });

@@ -413,6 +413,22 @@ export function diagnoseBashism(command: string, shell: BashShell): string | und
       isCmd ? 'use `where <cmd>` instead of `which`' : 'use `Get-Command <cmd>` instead of `which`',
     );
   }
+  // Text filters at a command position, mostly the tail of a pipe: a bench run
+  // (2026-10-28) failed 286 `… | tail -15` calls in PowerShell with no hint.
+  if (/(^|[;&|]\s*)(head|tail)\b/.test(command)) {
+    add(
+      isCmd
+        ? 'cmd has no `head`/`tail` — use `more` or drop the filter'
+        : 'use `Select-Object -First N` / `-Last N` instead of `head`/`tail`',
+    );
+  }
+  if (/(^|[;&|]\s*)(grep|sed)\b/.test(command)) {
+    add(
+      isCmd
+        ? 'cmd has no `grep`/`sed` — use `findstr`, or the grep tool'
+        : 'use `Select-String` (or the grep tool) instead of `grep`; `sed` has no builtin — use `-replace`',
+    );
+  }
 
   if (hints.length === 0) return undefined;
   const label = isCmd ? 'cmd.exe' : shell === 'pwsh' ? 'PowerShell 7' : 'Windows PowerShell';

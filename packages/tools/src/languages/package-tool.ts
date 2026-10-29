@@ -91,8 +91,10 @@ export const languagePackageTool: Tool<LanguagePackageInput, LanguagePackageTool
   // The package operation performed — install/remove are not interchangeable.
   subjectKey: 'operation',
   // Running lifecycle scripts executes package code: an "always allow
-  // install" granted for the scripts-off default must not cover it.
-  subjectFields: ['allowScripts'],
+  // install" granted for the scripts-off default must not cover it. The
+  // packages and their ecosystem are part of the subject too, as for
+  // `install`: approving `add zod` "always" covered adding any package.
+  subjectFields: ['language', 'names', 'allowScripts'],
   mutating: true,
   riskTier: 'destructive',
   capabilities: ['shell.restricted', 'fs.write', 'net.outbound', 'package.install'],

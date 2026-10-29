@@ -7,7 +7,7 @@ import type { Context } from '@wrongstack/core/agent';
 import { buildChildEnv, compilePathGlob } from '@wrongstack/core/utils';
 import { mapWithConcurrency } from './_concurrency.js';
 import { safeResolveReal } from './_util.js';
-import { loadGitignoreMatcher } from './codebase-index/gitignore.js';
+import { type IgnoreMatcher, loadGitignoreMatcher } from './codebase-index/gitignore.js';
 
 const DEFAULT_IGNORE = new Set(['node_modules', '.git', 'dist', 'build', '.next', 'coverage']);
 
@@ -44,6 +44,21 @@ function hasIgnoredSegment(absPath: string, base: string): boolean {
   const rel = path.relative(base, absPath);
   if (!rel || rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel)) return false;
   return rel.split(path.sep).some((segment) => DEFAULT_IGNORE.has(segment));
+}
+
+/**
+ * The native walker's .gitignore decision for one path under `base`: an
+ * ignored ancestor directory prunes it (the walk never enters it), otherwise
+ * the file's own rule applies.
+ */
+function gitIgnoredLikeWalker(isGitIgnored: IgnoreMatcher, absPath: string, base: string): boolean {
+  const rel = path.relative(base, absPath);
+  if (!rel || rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel)) return false;
+  const segments = rel.split(path.sep);
+  for (let i = 1; i < segments.length; i++) {
+    if (isGitIgnored(segments.slice(0, i).join('/'), true)) return true;
+  }
+  return isGitIgnored(segments.join('/'), false);
 }
 
 /**
@@ -222,7 +237,13 @@ async function globFiles(
       // back from here and was rewritten, while the fallback walker skips it —
       // the same call touching different files depending on the environment,
       // in the destructive direction. Same segment rule as `globNative`.
-      const files = (await promise).filter((f) => !hasIgnoredSegment(f, base));
+      // ...and its own .gitignore pruning yields to a `--glob` that matches a
+      // directory (`**/*` matches `gen`), so ignored files came back too. The
+      // walker's matcher decides for both paths.
+      const isGitIgnored = await loadGitignoreMatcher(base);
+      const files = (await promise).filter(
+        (f) => !hasIgnoredSegment(f, base) && !gitIgnoredLikeWalker(isGitIgnored, f, base),
+      );
       // The extra `glob` filter was previously dropped on this path — only the
       // native fallback walker honored it. Apply it here as an intersection
       // (rg's own multi-`--glob` semantics are a union, so the narrowing must
@@ -290,7 +311,12 @@ function spawnRgFind(pattern: string, base: string): { promise: Promise<string[]
   // `--glob` here — rg treats multiple include globs as a union (match ANY),
   // which would broaden the set. The intersection happens in `globFiles` on
   // the enumerated list instead.
-  const args = ['--files', '--glob', pattern, base];
+  // `--hidden`: without it rg never descends into a dot-directory, so
+  // `.github/workflows/*.yml` enumerated nothing and its exit 1 was taken as
+  // "no files" — files_modified: 0 where the native walker (which has no
+  // hidden rule) finds them. `.gitignore` still applies, and `.git` is dropped
+  // by hasIgnoredSegment like every DEFAULT_IGNORE segment.
+  const args = ['--files', '--hidden', '--glob', pattern, base];
   // 30-second safety net to prevent zombie rg processes. Unlike the main
   // grep tool, glob file enumeration is fast and should never need more time.
   const child = spawn('rg', args, {

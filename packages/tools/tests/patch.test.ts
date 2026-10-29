@@ -469,5 +469,19 @@ describe('patchTool — VULN-001 containment (git extended headers, fail-closed)
     expect(wt({ patch: '--- a/p/q.txt\n+++ b/p/q.txt\n', strip: 2 })).toContain('q.txt');
     expect(wt({ patch: '' })).toEqual([]);
     expect(wt({ patch: 'not a diff at all\n' })).toEqual([]);
+
+    // Plain unified diff without `diff --git` where `---` and `+++` differ:
+    // both sides must be extracted so escaping `---` targets are caught.
+    const unifiedMismatch = '--- a/../../outside.txt\n+++ b/inside.txt\n@@ -1 +1 @@\n-old\n+new\n';
+    expect(wt({ patch: unifiedMismatch })).toContain('../../outside.txt');
+    expect(wt({ patch: unifiedMismatch })).toContain('inside.txt');
+  });
+
+  it('refuses a plain unified diff whose --- header escapes the project root', async () => {
+    const ctx = makeCtx();
+    const evilUnified = '--- a/../../outside.txt\n+++ b/inside.txt\n@@ -1 +1 @@\n-old\n+new\n';
+    await expect(
+      patchTool.execute({ patch: evilUnified, dry_run: true }, ctx, makeOpts()),
+    ).rejects.toThrow('patch refused');
   });
 });

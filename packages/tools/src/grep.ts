@@ -253,7 +253,10 @@ async function* runRgStream(
     return;
   }
 
-  const args: string[] = ['--no-heading', '--with-filename'];
+  // `--hidden`: rg skips dotfiles and dot-directories by default, the native
+  // walker does not — `.github/`, `.env.example` were "no matches" only with rg.
+  // `.git` and the other DEFAULT_IGNORE dirs stay excluded by the globs below.
+  const args: string[] = ['--no-heading', '--with-filename', '--hidden'];
   if (input.case_insensitive) args.push('-i');
   if (mode === 'files_with_matches') args.push('-l');
   if (mode === 'count') args.push('-c');

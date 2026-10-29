@@ -91,12 +91,14 @@ export function detectFileCommunities(
   const minCommunitySize = options.minCommunitySize ?? 2;
   const nodeRanks = options.nodeRanks;
 
-  const uniqueNodes = [...new Set(nodes)].sort(compareText);
+  // A Set, not `includes()` per endpoint: that was O(edges × files) and most
+  // of the pass on a large index.
+  const nodeSet = new Set(nodes);
   for (const edge of edges) {
-    if (!uniqueNodes.includes(edge.from)) uniqueNodes.push(edge.from);
-    if (!uniqueNodes.includes(edge.to)) uniqueNodes.push(edge.to);
+    nodeSet.add(edge.from);
+    nodeSet.add(edge.to);
   }
-  uniqueNodes.sort(compareText);
+  const uniqueNodes = [...nodeSet].sort(compareText);
 
   const n = uniqueNodes.length;
   if (n === 0) return [];

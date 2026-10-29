@@ -1,5 +1,6 @@
 import { EventEmitter } from 'node:events';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { executeStreamedTool } from '../../core/src/execution/tool-executor-stream.js';
 import { wrapPowerShellScript } from '../src/_shell-pick.js';
 
 // Drive bash's spawn-dependent branches deterministically (background detach,
@@ -213,6 +214,30 @@ describe('bashTool foreground (faked shell)', () => {
 });
 
 describe('bashTool background (faked shell)', () => {
+  it('records the launch before the production executor closes the final stream', async () => {
+    const recordSideEffect = vi.fn();
+    const output = await executeStreamedTool({
+      tool: bashTool,
+      input: { command: 'server', background: true },
+      ctx: { ...ctx(), recordSideEffect },
+      signal: new AbortController().signal,
+      toolUseId: undefined,
+      events: undefined,
+      progressEmitIntervalMs: 100,
+      progressTailChars: 1000,
+      progressHeadChars: 1000,
+    });
+    expect(output).toMatchObject({ pid: 7777, exit_code: null });
+    expect(recordSideEffect).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        toolName: 'bash',
+        input: { command: 'server', background: true },
+        outcome: 'launched (pid 7777)',
+        risk: 'shell',
+      }),
+    );
+  });
+
   it('returns the pid and a null exit code immediately', async () => {
     cfg.stdout = 'started';
     const out = await runFinal({ command: 'server', background: true });

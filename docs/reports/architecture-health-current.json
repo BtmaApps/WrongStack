@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-29T00:57:45.144Z",
+  "generatedAt": "2026-10-29T01:01:25.465Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 45,
     "sourceFiles": 5393,
-    "testFiles": 4705,
-    "sourceLines": 1194481,
+    "testFiles": 4710,
+    "sourceLines": 1194623,
     "workspaceEdges": 222,
     "moduleEdges": 16208,
     "nonCommandSlashImports": 0,
@@ -923,7 +923,7 @@
       "name": "@wrongstack/tools",
       "dir": "packages/tools",
       "sourceFiles": 374,
-      "testFiles": 367,
+      "testFiles": 372,
       "workspaceDependencies": [
         "@wrongstack/agent-catalog",
         "@wrongstack/contracts",
@@ -942,7 +942,7 @@
         {
           "path": "packages/tools/tsconfig.test.json",
           "error": null,
-          "testFiles": 367
+          "testFiles": 372
         }
       ]
     },
@@ -19321,6 +19321,12 @@
         ]
       },
       {
+        "file": "packages/tools/tests/codebase-diff-impact-sides.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/tools/tests/codebase-embedding-pass-edges.test.ts",
         "projects": [
           "root-node"
@@ -19999,6 +20005,12 @@
         ]
       },
       {
+        "file": "packages/tools/tests/grep-rg-hidden-parity.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/tools/tests/grep-rg-stream-decoding.test.ts",
         "projects": [
           "root-node"
@@ -20012,6 +20024,12 @@
       },
       {
         "file": "packages/tools/tests/index-service-piggyback.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tools/tests/infra-parser-yaml-indent.test.ts",
         "projects": [
           "root-node"
         ]
@@ -20216,6 +20234,12 @@
       },
       {
         "file": "packages/tools/tests/language-package-execute.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tools/tests/language-package-permission-subject.test.ts",
         "projects": [
           "root-node"
         ]
@@ -20720,6 +20744,12 @@
       },
       {
         "file": "packages/tools/tests/replace-cancellation.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tools/tests/replace-rg-enumeration.test.ts",
         "projects": [
           "root-node"
         ]
@@ -30698,8 +30728,13 @@
       "relativeImports": 6
     },
     {
+      "file": "packages/tools/src/codebase-index/codebase-diff-impact-tool.ts",
+      "lines": 704,
+      "relativeImports": 8
+    },
+    {
       "file": "packages/tools/src/codebase-index/infra-parser.ts",
-      "lines": 889,
+      "lines": 903,
       "relativeImports": 2
     },
     {
@@ -30901,7 +30936,7 @@
     },
     {
       "file": "packages/tools/src/codebase-index/infra-parser.ts",
-      "lines": 889,
+      "lines": 903,
       "relativeImports": 2
     },
     {
@@ -31055,6 +31090,11 @@
       "relativeImports": 5
     },
     {
+      "file": "packages/tools/src/codebase-index/codebase-diff-impact-tool.ts",
+      "lines": 704,
+      "relativeImports": 8
+    },
+    {
       "file": "packages/core/src/execution/auto-compaction-middleware.ts",
       "lines": 703,
       "relativeImports": 18
@@ -31098,11 +31138,6 @@
       "file": "packages/sage/src/types.ts",
       "lines": 699,
       "relativeImports": 10
-    },
-    {
-      "file": "packages/coordination/src/task-auctioneer.ts",
-      "lines": 698,
-      "relativeImports": 8
     }
   ],
   "testOnlyExports": [

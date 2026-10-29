@@ -122,6 +122,59 @@ def helper():
     }
   });
 
+  it('updates ctx.recordRead and ctx.session.recordFileChange on mutation', async () => {
+    const tempDir = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), 'ast-mut-track-')));
+    const filePath = path.join(tempDir, 'app.ts');
+    const initial = 'export function greet(): string {\n  return "old";\n}\n';
+    await fs.writeFile(filePath, initial, 'utf8');
+
+    try {
+      const reads: Array<{ path: string; mtimeMs: number; source: string; hash?: string }> = [];
+      const changes: Array<{
+        path: string;
+        action: string;
+        before: string | null;
+        after: string | null;
+      }> = [];
+
+      await codebaseAstReplaceTool.execute(
+        {
+          file: 'app.ts',
+          symbol: 'greet',
+          newBody: 'return "new";',
+        },
+        {
+          cwd: tempDir,
+          projectRoot: tempDir,
+          recordRead: (p: string, mtimeMs: number, source = 'read', hash?: string) => {
+            reads.push({ path: p, mtimeMs, source, hash });
+          },
+          session: {
+            recordFileChange: (c: {
+              path: string;
+              action: string;
+              before: string | null;
+              after: string | null;
+            }) => {
+              changes.push(c);
+            },
+          },
+        } as never,
+        { signal: new AbortController().signal },
+      );
+
+      expect(reads).toHaveLength(1);
+      expect(reads[0]?.source).toBe('write');
+      expect(reads[0]?.hash).toMatch(/^[0-9a-f]{64}$/);
+      expect(changes).toHaveLength(1);
+      expect(changes[0]?.action).toBe('modified');
+      expect(changes[0]?.before).toBe(initial);
+      expect(changes[0]?.after).toContain('return "new";');
+    } finally {
+      await fs.rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
   it('rejects breaking changes with target=full unless allowBreakingChanges is set', async () => {
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ast-mut-inv-'));
     const filePath = path.join(tempDir, 'payment.ts');

@@ -131,3 +131,27 @@ describe('openBackgroundLog pruning', () => {
     }
   });
 });
+
+describe('background log pruning', () => {
+  it('never prunes a log another live process still owns', async () => {
+    const sb = await mkSandbox();
+    const { spawn } = await import('node:child_process');
+    const owner = spawn(process.execPath, ['-e', 'setTimeout(() => {}, 60000)'], {
+      stdio: 'ignore',
+    });
+    try {
+      const dir = path.join(resolveWstackPaths({ projectRoot: sb.dir }).projectDir, 'bg-logs');
+      fs.mkdirSync(dir, { recursive: true });
+      const aged = (Date.now() - 4 * 24 * 60 * 60 * 1000) / 1000;
+      const foreign = path.join(dir, `old-bash-${owner.pid}.log`);
+      fs.writeFileSync(foreign, 'dev server\n');
+      fs.utimesSync(foreign, aged, aged);
+      const log = openBackgroundLog(sb.dir, 'bash');
+      if (log) fs.closeSync(log.fd);
+      expect(fs.existsSync(foreign)).toBe(true);
+    } finally {
+      owner.kill();
+      await sb.cleanup().catch(() => undefined);
+    }
+  });
+});

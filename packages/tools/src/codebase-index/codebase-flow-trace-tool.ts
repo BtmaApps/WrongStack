@@ -177,7 +177,11 @@ export function discoverEntryPoints(
   options: { fileFilter?: string | undefined; limit?: number | undefined } = {},
 ): DiscoveredEntryPoint[] {
   const limit = options.limit ?? 10;
-  const fileFilter = options.fileFilter ? posixIndexPath(options.fileFilter.trim()) : undefined;
+  // Case-insensitive, like the onboarding tour's `focus` that is passed here
+  // already lower-cased: `Billing` must still find `src/Billing/…`.
+  const fileFilter = options.fileFilter
+    ? posixIndexPath(options.fileFilter.trim()).toLowerCase()
+    : undefined;
   const packages = store.getFilePackages();
   const fileRanks = store.getFileRankMap();
 
@@ -202,7 +206,7 @@ export function discoverEntryPoints(
     if (sym.name === MODULE_OWNER_NAME && declaringFiles.has(sym.file)) continue;
     const relFile = posixIndexPath(path.relative(projectRoot, sym.file));
     if (relFile.startsWith('..')) continue;
-    if (fileFilter && !relFile.includes(fileFilter)) continue;
+    if (fileFilter && !relFile.toLowerCase().includes(fileFilter)) continue;
     if (isTestFilePath(relFile)) continue;
 
     const out = outDeg.get(sym.id) ?? 0;
@@ -293,7 +297,13 @@ export function sliceExecutionFlow(
     const current = queue.shift()!;
     if (current.depth >= maxDepth) continue;
 
-    const outgoing = store.findOutgoingCallsByName(current.symbol, current.file, 30);
+    // Absolute: a relative path is suffix-matched by the store, so a root
+    // `index.ts` would also resolve every nested `*/index.ts` namesake.
+    const outgoing = store.findOutgoingCallsByName(
+      current.symbol,
+      path.resolve(projectRoot, current.file),
+      30,
+    );
     // Execution flows trace runtime call edges across executable symbols
     const orderedCalls = outgoing.calls
       .filter(

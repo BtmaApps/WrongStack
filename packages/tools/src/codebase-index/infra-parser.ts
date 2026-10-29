@@ -233,6 +233,9 @@ export function parseInfraArtifact(opts: {
     let inServices = false;
     let currentService = '';
     let inDependsOn = false;
+    // Indent units come from the file: 2 and 4 spaces are both common.
+    let serviceIndent = -1;
+    let propIndent = -1;
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i] ?? '';
       const trimmed = line.trim();
@@ -244,15 +247,20 @@ export function parseInfraArtifact(opts: {
         inServices = /^services\s*:/.test(trimmed);
         currentService = '';
         inDependsOn = false;
+        serviceIndent = -1;
+        propIndent = -1;
         continue;
       }
       if (!inServices) continue;
+      if (serviceIndent < 0) serviceIndent = indent;
+      if (currentService && indent > serviceIndent && propIndent < 0) propIndent = indent;
 
-      if (indent === 2) {
+      if (indent === serviceIndent) {
         const svcMatch = /^([A-Za-z0-9_.-]+)\s*:/.exec(trimmed);
         if (svcMatch?.[1]) {
           currentService = svcMatch[1];
           inDependsOn = false;
+          propIndent = -1;
           symbols.push(
             makeSym({
               file: opts.file,
@@ -268,7 +276,7 @@ export function parseInfraArtifact(opts: {
         continue;
       }
 
-      if (currentService && indent === 4) {
+      if (currentService && indent === propIndent) {
         inDependsOn = /^depends_on\s*:/.test(trimmed);
         const imageMatch = /^image\s*:\s*['"]?([^\s'"]+)/.exec(trimmed);
         if (imageMatch?.[1]) {
@@ -284,7 +292,7 @@ export function parseInfraArtifact(opts: {
         continue;
       }
 
-      if (currentService && inDependsOn && indent >= 4) {
+      if (currentService && inDependsOn && indent >= propIndent) {
         const listDep = /^-\s*([A-Za-z0-9_.-]+)/.exec(trimmed);
         const mapDep = /^([A-Za-z0-9_.-]+)\s*:/.exec(trimmed);
         const target = listDep?.[1] ?? mapDep?.[1];
@@ -302,6 +310,7 @@ export function parseInfraArtifact(opts: {
   } else if (kind === 'github-workflow') {
     let inJobs = false;
     let currentJob = '';
+    let jobIndent = -1;
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i] ?? '';
       const trimmed = line.trim();
@@ -312,11 +321,13 @@ export function parseInfraArtifact(opts: {
       if (indent === 0) {
         inJobs = /^jobs\s*:/.test(trimmed);
         currentJob = '';
+        jobIndent = -1;
         continue;
       }
       if (!inJobs) continue;
+      if (jobIndent < 0) jobIndent = indent;
 
-      if (indent === 2) {
+      if (indent === jobIndent) {
         const jobMatch = /^([A-Za-z0-9_.-]+)\s*:/.exec(trimmed);
         if (jobMatch?.[1]) {
           currentJob = jobMatch[1];
@@ -335,7 +346,7 @@ export function parseInfraArtifact(opts: {
         continue;
       }
 
-      if (currentJob && indent >= 4) {
+      if (currentJob && indent > jobIndent) {
         const needsInline = /^needs\s*:\s*\[([^\]]+)\]/.exec(trimmed);
         if (needsInline?.[1]) {
           for (const rawNeed of needsInline[1].split(',')) {
@@ -752,6 +763,7 @@ export function parseInfraArtifact(opts: {
     let currentKind = '';
     let inMetadata = false;
     let metadataLine = 1;
+    let metadataIndent = -1;
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i] ?? '';
       const trimmed = line.trim();
@@ -773,10 +785,12 @@ export function parseInfraArtifact(opts: {
         }
         inMetadata = /^metadata\s*:/.test(trimmed);
         if (inMetadata) metadataLine = lineNo;
+        metadataIndent = -1;
         continue;
       }
+      if (inMetadata && metadataIndent < 0) metadataIndent = indent;
 
-      if (inMetadata && indent === 2 && currentKind) {
+      if (inMetadata && indent === metadataIndent && currentKind) {
         const nameMatch = /^name\s*:\s*['"]?([A-Za-z0-9_.-]+)['"]?/.exec(trimmed);
         if (nameMatch?.[1]) {
           symbols.push(

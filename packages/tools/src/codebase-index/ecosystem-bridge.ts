@@ -278,6 +278,17 @@ export function detectMovedOrRenamedSymbols(
 
   const candidates: SymbolMoveCandidate[] = [];
   const usedAdded = new Set<number>();
+  // A name alone does not prove a move: a deleted file's `parse` and an
+  // unrelated new file's `parse` share it. Differing signatures are not a
+  // move, and without signatures only a one-to-one pairing is trusted.
+  const nameKindCount = (list: readonly SymbolSnapshotItem[]) => {
+    const counts = new Map<string, number>();
+    for (const s of list)
+      counts.set(`${s.kind}::${s.name}`, (counts.get(`${s.kind}::${s.name}`) ?? 0) + 1);
+    return counts;
+  };
+  const removedCounts = nameKindCount(removed);
+  const addedCounts = nameKindCount(added);
 
   // Pass 1: Cross-file moves (same symbol name + kind moved from oldFile to newFile)
   for (const rem of removed) {
@@ -293,6 +304,12 @@ export function detectMovedOrRenamedSymbols(
 
       const oldSig = normalizeAnonSignature(rem.name, rem.signature);
       const newSig = normalizeAnonSignature(add.name, add.signature);
+      if (oldSig !== '' && newSig !== '' && oldSig !== newSig) continue;
+      const key = `${rem.kind}::${rem.name}`;
+      const unique = removedCounts.get(key) === 1 && addedCounts.get(key) === 1;
+      if (oldSig === '' || newSig === '') {
+        if (!unique) continue;
+      }
       const confidence = oldSig !== '' && oldSig === newSig ? 0.98 : 0.85;
       if (confidence > bestConfidence) {
         bestConfidence = confidence;

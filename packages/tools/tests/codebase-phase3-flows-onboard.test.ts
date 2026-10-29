@@ -320,6 +320,70 @@ export function handleLoginRequest(email: string): string {
     expect(flow.steps.map((s) => s.depth)).toEqual([0, 1, 2]);
   });
 
+  it('does not merge a nested namesake of a root-level entry into its flow (F906)', async () => {
+    await write(
+      'index.ts',
+      `import { rootHelper } from './root-helper';
+export function main() {
+  return rootHelper();
+}
+`,
+    );
+    await write('root-helper.ts', 'export function rootHelper() {\n  return 1;\n}\n');
+    await write(
+      'tools/demo/index.ts',
+      `import { demoOnly } from './demo-only';
+export function main() {
+  return demoOnly();
+}
+`,
+    );
+    await write('tools/demo/demo-only.ts', 'export function demoOnly() {\n  return 2;\n}\n');
+    await runIndexer(undefined as never, { projectRoot: tmpDir, indexDir });
+
+    const result = await codebaseFlowTraceTool.execute(
+      { symbol: 'main', file: 'index.ts', maxDepth: 4 },
+      { cwd: tmpDir, projectRoot: tmpDir, meta: { codebaseIndexDir: indexDir } } as never,
+      { signal: new AbortController().signal },
+    );
+    const flow = result.flows.find((f) => f.entryFile === 'index.ts');
+    expect(flow?.steps.map((s) => `${s.file}::${s.symbol}`)).toEqual([
+      'index.ts::main',
+      'root-helper.ts::rootHelper',
+    ]);
+  });
+
+  it('keeps entry flows when the tour focus names a mixed-case directory (F907)', async () => {
+    await write(
+      'src/Billing/repository.ts',
+      'export function findInvoice(id: string) {\n  return { id };\n}\n',
+    );
+    await write(
+      'src/Billing/service.ts',
+      `import { findInvoice } from './repository';
+export function settleInvoice(id: string) {
+  return findInvoice(id);
+}
+`,
+    );
+    await write(
+      'src/Billing/routes.ts',
+      `import { settleInvoice } from './service';
+export function handleSettleRequest(id: string) {
+  return settleInvoice(id);
+}
+`,
+    );
+    await runIndexer(undefined as never, { projectRoot: tmpDir, indexDir });
+    const result = await codebaseOnboardTool.execute(
+      { focus: 'Billing' },
+      { cwd: tmpDir, projectRoot: tmpDir, meta: { codebaseIndexDir: indexDir } } as never,
+      { signal: new AbortController().signal },
+    );
+    expect(result.stats.entryPoints).toBe(1);
+    expect(result.flows).toHaveLength(1);
+  });
+
   it('builds a dependency-ordered onboarding tour with crux line spans and markdown output', async () => {
     await seedLayeredApp();
     store = new IndexStore(tmpDir, { indexDir });
