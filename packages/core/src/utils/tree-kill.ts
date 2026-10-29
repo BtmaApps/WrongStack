@@ -130,6 +130,8 @@ export function treeKill(child: KillableChild, opts: TreeKillOptions = {}): void
     const pid = child.pid;
     if (
       opts.processGroupLeader === true &&
+      child.exitCode == null &&
+      child.signalCode == null &&
       Number.isInteger(pid) &&
       pid > 1 &&
       pid !== process.pid &&

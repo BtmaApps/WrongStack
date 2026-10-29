@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-29T11:55:08.903Z",
+  "generatedAt": "2026-10-29T12:08:05.710Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,15 +12,15 @@
   },
   "summary": {
     "packages": 45,
-    "sourceFiles": 5441,
-    "testFiles": 4739,
-    "sourceLines": 1199884,
+    "sourceFiles": 5442,
+    "testFiles": 4740,
+    "sourceLines": 1200014,
     "workspaceEdges": 222,
-    "moduleEdges": 16359,
+    "moduleEdges": 16361,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 3,
-    "testsWithoutTypecheck": 98,
+    "testsWithoutTypecheck": 99,
     "testsWithMultipleTypechecks": 0,
     "testOnlyExports": 973
   },
@@ -385,8 +385,8 @@
     {
       "name": "@wrongstack/desktop-v2",
       "dir": "apps/desktop-v2",
-      "sourceFiles": 255,
-      "testFiles": 98,
+      "sourceFiles": 256,
+      "testFiles": 99,
       "workspaceDependencies": [
         "@wrongstack/contracts",
         "@wrongstack/core",
@@ -1487,6 +1487,12 @@
       },
       {
         "file": "apps/desktop-v2/tests/input-form-model.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "apps/desktop-v2/tests/journal-export.test.ts",
         "projects": [
           "root-node"
         ]
@@ -29961,6 +29967,13 @@
       },
       {
         "file": "apps/desktop-v2/tests/input-form-model.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
+        "file": "apps/desktop-v2/tests/journal-export.test.ts",
         "runtimeProjects": [
           "root-node"
         ],

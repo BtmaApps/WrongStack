@@ -58,6 +58,18 @@ describe('treeKill', () => {
     expect(child.kill).toHaveBeenCalledExactlyOnceWith('SIGKILL');
   });
 
+  it.each([
+    { exitCode: 0, signalCode: null },
+    { exitCode: null, signalCode: 'SIGTERM' as const },
+  ])('never group-signals a child whose exit has been observed (%j)', (state) => {
+    setPlatform('linux');
+    const signal = vi.spyOn(process, 'kill').mockReturnValue(true);
+    const child = { pid: process.pid + process.ppid + 10_000, ...state, kill: vi.fn() };
+    treeKill(child, { force: true, processGroupLeader: true });
+    expect(signal).not.toHaveBeenCalled();
+    expect(child.kill).toHaveBeenCalledExactlyOnceWith('SIGKILL');
+  });
+
   it('falls back to a graceful kill when pid is undefined', () => {
     const kill = vi.fn();
     treeKill({ pid: undefined, kill });
