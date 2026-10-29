@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { buildProviderSave } from '../src/provider-settings-model.ts';
 import { fixtureKey, fixtureModel } from './local-provider.mjs';
 import { revealProjectTools } from './native-project-navigation.mjs';
+import { exerciseNativeRosterDocumentDrafts } from './native-roster-document-drafts.mjs';
 
 function protocol({ rpc, waitFor }) {
   const offsets = new Map();
@@ -257,6 +258,16 @@ export async function exerciseNativeAgentRoster({
   );
   await document.getByRole('button', { name: 'Use stored text', exact: true }).click();
   await document.getByRole('button', { name: 'Close role document', exact: true }).click();
+  await exerciseNativeRosterDocumentDrafts({
+    page,
+    project,
+    role,
+    directory,
+    open,
+    card,
+    catalog,
+    waitFor,
+  });
   await writeFile(configFile, '{invalid runtime');
   await catalog().getByRole('button', { name: 'Refresh roster', exact: true }).click();
   await catalog().getByRole('alert').filter({ hasText: 'invalid or unreadable' }).waitFor();

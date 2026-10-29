@@ -1,8 +1,9 @@
 import { Copy, Pencil, Save, X } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import type { EngineCommand } from './engine-operations';
 import { MarkdownContent } from './MarkdownContent';
 import { Modal } from './Modal';
+import { rosterDocumentDraft } from './roster-document-store';
 import { rosterDocumentKey } from './roster-model';
 
 export type RosterDocumentKind = 'identity' | 'learned' | 'consolidated' | 'skill';
@@ -44,6 +45,17 @@ export function RosterDocument({
     [notice, setNotice] = useState('');
   const [leaving, setLeaving] = useState(false),
     [conflict, setConflict] = useState<string | null>(null);
+  const durable = useMemo(
+    () => rosterDocumentDraft(projectId, { role, kind, skill }),
+    [projectId, role, kind, skill],
+  );
+  const durableState = useSyncExternalStore(durable.subscribe, durable.snapshot);
+  const [recovered, setRecovered] = useState(false);
+  // Drops the in-window copy and the device copy together.
+  const forget = () => {
+    localDrafts.delete(key);
+    if (durable.snapshot().ready && durable.snapshot().value) durable.edit(null);
+  };
   const live = useRef(true),
     sequence = useRef(0),
     saving = useRef(false);
@@ -73,11 +85,24 @@ export function RosterDocument({
     const version = ++sequence.current;
     setError('');
     void read()
-      .then((stored) => {
+      .then(async (stored) => {
         if (!live.current || version !== sequence.current) return;
         if (!cached) {
-          setBase(stored);
-          setText(stored);
+          await durable.load();
+          if (!live.current || version !== sequence.current) return;
+          const parked = durable.snapshot().value;
+          if (parked) {
+            // Recovered edits keep their original baseline; a changed store opens the comparison.
+            setBase(parked.base);
+            setText(parked.text);
+            setEditing(true);
+            setRecovered(true);
+            localDrafts.set(key, parked);
+            if (stored !== parked.base) setConflict(stored);
+          } else {
+            setBase(stored);
+            setText(stored);
+          }
         }
         setLoaded(true);
       })
@@ -92,13 +117,14 @@ export function RosterDocument({
   const change = (value: string) => {
     setText(value);
     localDrafts.set(key, { base, text: value });
+    if (durable.snapshot().ready) durable.edit(value === base ? null : { base, text: value });
     setNotice('');
   };
   const close = () => {
     if (busy) return;
     if (dirty) setLeaving(true);
     else {
-      localDrafts.delete(key);
+      forget();
       onClose();
     }
   };
@@ -139,7 +165,7 @@ export function RosterDocument({
       if (!live.current) return;
       setBase(actual);
       setText(actual);
-      localDrafts.delete(key);
+      forget();
       setEditing(false);
       setConflict(null);
       setNotice('Project document saved and read back.');
@@ -174,7 +200,7 @@ export function RosterDocument({
         </header>
         <p>
           Read the engine-resolved document. Saving creates or updates this project's role file.
-          Unsaved drafts are retained in this window.
+          Unsaved drafts are kept on this device until you save or discard them.
         </p>
         {error && (
           <p className="session-error" role="alert">
@@ -186,7 +212,39 @@ export function RosterDocument({
             {notice}
           </p>
         )}
-        {cached && dirty && (
+        {durableState.error && (
+          <p className="session-error" role="alert">
+            {durableState.error}
+          </p>
+        )}
+        {durableState.review && (
+          <div className="roster-confirm" role="alert">
+            <p>Another window saved different unsaved text for this document.</p>
+            <button
+              type="button"
+              className="button secondary"
+              onClick={() => void durable.resolve('local')}
+            >
+              Keep this window’s text
+            </button>
+            <button
+              type="button"
+              className="button secondary"
+              onClick={() => {
+                const saved = durableState.review?.value;
+                void durable.resolve('saved').then((ok) => {
+                  if (ok && saved) {
+                    setBase(saved.base);
+                    setText(saved.text);
+                  }
+                });
+              }}
+            >
+              Use saved text
+            </button>
+          </div>
+        )}
+        {(cached || recovered) && dirty && (
           <p className="roster-policy-note">
             Recovered local draft. Saving checks the original stored-text baseline.
           </p>
@@ -266,7 +324,7 @@ export function RosterDocument({
                       setConflict(null);
                       setEditing(false);
                       setError('');
-                      localDrafts.delete(key);
+                      forget();
                     }}
                   >
                     Use stored text
@@ -297,7 +355,7 @@ export function RosterDocument({
               type="button"
               className="button secondary"
               onClick={() => {
-                localDrafts.delete(key);
+                forget();
                 onClose();
               }}
             >

@@ -2875,3 +2875,32 @@ Verification on the shared working snapshot:
   the shared working tree with another agent's uncommitted core/cli edits.
 - Not covered: native proof of the new-request resource inputs (unit/Rust only), multi-window UI
   stress, full repository release/coverage, hosted CI and installed-app replacement.
+
+## Durable roster role documents (2026-10-29)
+
+- `RosterDocument` keeps its in-window cache and now also stores unsaved text through
+  `DurableFormDraft` under `roster-document:<sha256(['roster-document', role, kind, skill])>` in
+  native project storage (new Rust allow-list prefix). The envelope records role, kind, skill, the
+  stored text the edit started from and the edited text (1 MiB bounds). Codec/key logic lives in
+  `roster-document-draft.ts`; the platform-bound controller lives in `roster-document-store.ts` so
+  the codec stays unit-testable.
+- On open without an in-window copy, parked text is restored with its original baseline; if the
+  stored document differs from that baseline, the existing stored-text comparison opens
+  immediately. Save success, "Use stored text" and "Discard document draft" clear both copies;
+  "Keep draft and close" keeps them. A peer-window write requires keep/use-saved review.
+- First native attempt failed on a test expectation only: role loaders trim document boundaries,
+  so the stored text shown lacks the trailing newline written to disk. The product behavior
+  (restore and immediate comparison) had already passed; the assertion now compares trimmed text,
+  consistent with the component's documented trim contract. The first unit run also failed to load
+  because the codec module imported the platform layer; it was split as above.
+- Checks: desktop **423 tests / 88 files PASS** (shared tree includes unrelated concurrent work);
+  new `roster-document-draft.test.ts` covers key separation, owner refusal and size bound.
+  Typecheck **247 PASS**; Biome PASS; Rust fmt PASS; native Rust **21 tests PASS**.
+- Native `--roster` on portable identity `4700df703def-344ee89c60b0`, bundled engine/checksums
+  verified: **exit 0 / PASS**, including reload restore of an identity draft and the immediate
+  comparison after an external `identity.md` change, then reviewed cleanup. All existing roster
+  scenarios still pass. The engine was built from the shared tree with another agent's uncommitted
+  core/cli edits.
+- Not covered: runtime-override and role-input durability, full application restart for role
+  documents, multi-window UI stress, full repository release/coverage, hosted CI and installed-app
+  replacement.
