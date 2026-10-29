@@ -660,7 +660,20 @@
     "nextPredictionLabel": "Prédiction des prochaines étapes",
     "nextPredictionHint": "Après un tour, prédire les prochaines étapes probables.",
     "nextStepsToolLabel": "Outil nextsteps",
-    "nextStepsToolHint": "Permet à l'agent d'enregistrer ses suggestions via un appel d'outil au lieu d'écrire le bloc à la main. Effectif à la prochaine session."
+    "nextStepsToolHint": "Permet à l'agent d'enregistrer ses suggestions via un appel d'outil au lieu d'écrire le bloc à la main. Effectif à la prochaine session.",
+    "companionsHeading": "Agents Compagnons (Companion Agents)",
+    "companionsHint": "Compagnons résidents en arrière-plan qui assistent l'agent principal pendant les sessions. Activez ou désactivez chaque compagnon individuellement ; les modifications prennent effet immédiatement.",
+    "memoryCompanionLabel": "Memory Companion",
+    "memoryCompanionHint": "Agent résident memory-companion qui rappelle les souvenirs pertinents et organise les apprentissages en arrière-plan.",
+    "exploreCompanionLabel": "Explore Companion",
+    "exploreCompanionHint": "Agent résident explore-companion qui exécute des sondes d'exploration de code en lecture seule derrière le leader.",
+    "skillCompanionLabel": "Skill Companion",
+    "skillCompanionHint": "Agent résident skill-companion qui évalue votre tâche et recommande des compétences pertinentes non chargées.",
+    "companionsButtonPrefix": "Companions:",
+    "companionsSummaryAll": "actif (3/3)",
+    "companionsSummaryOff": "inactif",
+    "companionsToggleAllOn": "Tout activer",
+    "companionsToggleAllOff": "Tout désactiver"
   },
   "integrations": {
     "hqHeading": "Client HQ",
@@ -814,7 +827,11 @@
       "reload": "Recharger",
       "saved": "Enregistré.",
       "discard": "Abandonner les modifications non enregistrées ?"
-    }
+    },
+    "includeGlobalAgentsLabel": "Inclure le AGENTS.md global",
+    "includeGlobalAgentsHint": "Charger ~/.wrongstack/AGENTS.md dans le prompt système. Désactivé : exclu de tous les projets ; le fichier est conservé.",
+    "includeProjectAgentsLabel": "Inclure l'AGENTS.md du projet",
+    "includeProjectAgentsHint": "Charge l'AGENTS.md à la racine du projet dans le prompt système. Désactivé, il n'est inclus dans aucune session ; le fichier est conservé."
   },
   "logs": {
     "logLevelLabel": "Niveau de log",

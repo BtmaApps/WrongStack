@@ -138,7 +138,9 @@ export type AppActionSettings =
       nextStepsTool: boolean;
       nextStepsRequired: boolean;
       rememberStartupChoices: boolean;
-      nextSystemPromptVariant: 'lite' | 'default' | 'pro' | 'scout';
+      nextSystemPromptVariant: 'lite' | 'default' | 'pro' | 'scout' | 'quick';
+      includeGlobalAgents: boolean;
+      includeProjectAgents: boolean;
       /**
        * WrongProxy / WrongTrace: master switch + configurable URL
        * (default http://localhost:3444). Mirrors `Settings.wrongProxy*`

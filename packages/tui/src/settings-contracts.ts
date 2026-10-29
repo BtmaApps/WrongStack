@@ -118,7 +118,11 @@ export type SettingsPickerPatch = Partial<{
   /** Launch with the last model, system prompt and mode/YOLO/autonomy instead of asking (`launch.rememberStartupChoices`). Default: true. */
   rememberStartupChoices: boolean;
   /** System prompt the NEXT session starts with (`systemPrompt.variant` in the profile config); the running session keeps its own. */
-  nextSystemPromptVariant: 'lite' | 'default' | 'pro' | 'scout';
+  nextSystemPromptVariant: 'lite' | 'default' | 'pro' | 'scout' | 'quick';
+  /** Include the user-scope `~/.wrongstack/AGENTS.md` in the system prompt (`systemPrompt.includeGlobalAgents`). Default true; applies from the next prompt build. */
+  includeGlobalAgents: boolean;
+  /** Include the project's root `AGENTS.md` in the system prompt (`systemPrompt.includeProjectAgents`). Default true; applies from the next prompt build. */
+  includeProjectAgents: boolean;
   /**
    * WrongProxy / WrongTrace: master switch. When true AND the daemon at
    * `wrongProxyUrl` is reachable, every provider's base URL is rewritten

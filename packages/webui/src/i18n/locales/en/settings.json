@@ -714,7 +714,20 @@
     "nextPredictionLabel": "Next-step prediction",
     "nextPredictionHint": "After a turn completes, predict likely next steps.",
     "nextStepsToolLabel": "Nextsteps tool",
-    "nextStepsToolHint": "Let the agent record its follow-up suggestions with a tool call instead of writing the block by hand. Applies to the next session."
+    "nextStepsToolHint": "Let the agent record its follow-up suggestions with a tool call instead of writing the block by hand. Applies to the next session.",
+    "companionsHeading": "Companion Agents",
+    "companionsHint": "Resident background companions that assist the leader agent during sessions. Toggle each companion individually; changes take effect immediately.",
+    "memoryCompanionLabel": "Memory Companion",
+    "memoryCompanionHint": "Resident memory-companion agent that recalls relevant memories and curates learnings in the background.",
+    "exploreCompanionLabel": "Explore Companion",
+    "exploreCompanionHint": "Resident explore-companion agent that runs read-only codebase exploration probes behind the leader.",
+    "skillCompanionLabel": "Skill Companion",
+    "skillCompanionHint": "Resident skill-companion agent that evaluates your task and recommends relevant unloaded skills.",
+    "companionsButtonPrefix": "Companions:",
+    "companionsSummaryAll": "on (3/3)",
+    "companionsSummaryOff": "off",
+    "companionsToggleAllOn": "Turn all on",
+    "companionsToggleAllOff": "Turn all off"
   },
   "integrations": {
     "heading": "Integrations",
@@ -814,7 +827,11 @@
       "reload": "Reload",
       "saved": "Saved.",
       "discard": "Discard unsaved changes?"
-    }
+    },
+    "includeGlobalAgentsLabel": "Include global AGENTS.md",
+    "includeGlobalAgentsHint": "Load ~/.wrongstack/AGENTS.md into the system prompt. Off leaves it out of every project; the file itself is kept.",
+    "includeProjectAgentsLabel": "Include project AGENTS.md",
+    "includeProjectAgentsHint": "Load this project's root AGENTS.md into the system prompt. Off leaves it out of every session; the file itself is kept."
   },
   "logs": {
     "heading": "Logs & Debug",

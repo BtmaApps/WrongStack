@@ -120,11 +120,23 @@ export interface LiveSettingsInput {
   /** Persisted as `launch.rememberStartupChoices`. Read at boot, so it applies next launch. */
   rememberStartupChoices?: boolean | undefined;
   /**
+   * Include the user-scope `~/.wrongstack/AGENTS.md` in the system prompt.
+   * Persisted as `systemPrompt.includeGlobalAgents`; read at boot (and at
+   * project switch / prompt rebuild), so it applies from the next build.
+   */
+  includeGlobalAgents?: boolean | undefined;
+  /**
+   * Include the project's root `AGENTS.md` in the system prompt. Persisted as
+   * `systemPrompt.includeProjectAgents` (profile config only — the in-project
+   * config may not set `systemPrompt`); applies from the next prompt build.
+   */
+  includeProjectAgents?: boolean | undefined;
+  /**
    * System prompt for the NEXT session. Written to the profile config's
    * `systemPrompt.variant` only; the running session keeps the prompt and
    * tool surface it was built with.
    */
-  nextSystemPromptVariant?: 'lite' | 'default' | 'pro' | 'scout' | undefined;
+  nextSystemPromptVariant?: 'lite' | 'default' | 'pro' | 'scout' | 'quick' | undefined;
   /** Minimum relation strength for SAGE memory injection. Default: 0.85. */
   sageMemoryInjectThreshold?: number | undefined;
   /**

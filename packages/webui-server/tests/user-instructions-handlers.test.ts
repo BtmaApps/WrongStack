@@ -58,6 +58,42 @@ describe('handleUserInstructions', () => {
     await expect(fs.stat(path.join(home, 'AGENTS.md'))).rejects.toThrow();
   });
 
+  it('mirrors the includeGlobalAgents toggle into the config store the reader uses', async () => {
+    // The prefs hook writes the RUNTIME config object; `readInclude()` reads
+    // the ConfigStore. If the toggle is not mirrored into the store, the save
+    // reply and every later read report the pre-toggle value.
+    const send = vi.fn();
+    let storeState: Record<string, unknown> = {};
+    const store = {
+      get: () => storeState,
+      update: (patch: Record<string, unknown>) => {
+        storeState = { ...storeState, ...patch };
+      },
+    };
+    let runtimeConfig: Record<string, unknown> = {};
+    const applyPrefs = vi.fn((payload: Record<string, unknown>) => {
+      // Stands in for `applyConfigPrefs` → `state.setConfig`: a different
+      // holder than the store.
+      runtimeConfig = { systemPrompt: { includeGlobalAgents: payload['includeGlobalAgents'] } };
+    });
+
+    await handleUserInstructions(
+      ws,
+      'save',
+      { text: 'Rule: ONE.', baseMtimeMs: null, includeGlobalAgents: false },
+      send,
+      store,
+      applyPrefs,
+    );
+    expect(applyPrefs).toHaveBeenCalledWith({ includeGlobalAgents: false });
+    expect(runtimeConfig['systemPrompt']).toMatchObject({ includeGlobalAgents: false });
+    expect(storeState['systemPrompt']).toMatchObject({ includeGlobalAgents: false });
+    expect(lastPayload(send)['includeGlobalAgents']).toBe(false);
+
+    await handleUserInstructions(ws, 'get', {}, send, store, applyPrefs);
+    expect(lastPayload(send)['includeGlobalAgents']).toBe(false);
+  });
+
   it('echoes requestId on both success and error replies for panel request correlation', async () => {
     const send = vi.fn();
     await handleUserInstructions(ws, 'get', { requestId: 'req-get-1' }, send);

@@ -90,6 +90,8 @@ export function useSettingsAutoSave(
       nextStepsRequired: sp.nextStepsRequired,
       rememberStartupChoices: sp.rememberStartupChoices,
       nextSystemPromptVariant: sp.nextSystemPromptVariant,
+      includeGlobalAgents: sp.includeGlobalAgents,
+      includeProjectAgents: sp.includeProjectAgents,
       readSymbols: sp.readSymbols,
       // WrongProxy / WrongTrace: persist the picker-state values to
       // the same Config keys the adapter exposes (see LiveSettingsInput
@@ -163,6 +165,8 @@ export function useSettingsAutoSave(
     state.settingsPicker.nextStepsRequired,
     state.settingsPicker.rememberStartupChoices,
     state.settingsPicker.nextSystemPromptVariant,
+    state.settingsPicker.includeGlobalAgents,
+    state.settingsPicker.includeProjectAgents,
     state.settingsPicker.readSymbols,
     state.settingsPicker.wrongProxyEnabled,
     state.settingsPicker.wrongProxyUrl,

@@ -177,6 +177,8 @@ export function createTestState(
       nextStepsRequired: true,
       rememberStartupChoices: true,
       nextSystemPromptVariant: 'pro',
+      includeGlobalAgents: true,
+      includeProjectAgents: true,
       // WrongProxy / WrongTrace: match app-initial-state defaults (switch
       // off, daemon default URL, no edit in progress).
       wrongProxyEnabled: false,

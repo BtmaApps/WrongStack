@@ -123,6 +123,22 @@ describe('WebUI preference persistence helpers', () => {
     expect(config.modelRuntime).toEqual({ reasoning: { mode: 'on', preserve: true } });
   });
 
+  it('persists both AGENTS.md include toggles under systemPrompt', async () => {
+    // The standalone host only moved its in-memory config, so the choice was
+    // gone on the next boot.
+    await fs.writeFile(configPath, JSON.stringify({ systemPrompt: { variant: 'quick' } }), 'utf8');
+    await persistPrefsToConfig(deps, holder, {
+      includeGlobalAgents: false,
+      includeProjectAgents: false,
+    });
+    const config = await readConfig();
+    expect(config.systemPrompt).toEqual({
+      variant: 'quick',
+      includeGlobalAgents: false,
+      includeProjectAgents: false,
+    });
+  });
+
   it('logs mutation/write failures without poisoning later writes', async () => {
     await fs.writeFile(configPath, '{}', 'utf8');
 

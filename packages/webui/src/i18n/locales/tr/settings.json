@@ -660,7 +660,20 @@
     "nextPredictionLabel": "Sonraki adım tahmini",
     "nextPredictionHint": "Bir tur tamamlandıktan sonra olası sonraki adımları tahmin et.",
     "nextStepsToolLabel": "Nextsteps aracı",
-    "nextStepsToolHint": "Ajan, öneri bloğunu elle yazmak yerine bir araç çağrısıyla kaydedebilsin. Sonraki oturumda geçerli olur."
+    "nextStepsToolHint": "Ajan, öneri bloğunu elle yazmak yerine bir araç çağrısıyla kaydedebilsin. Sonraki oturumda geçerli olur.",
+    "companionsHeading": "Yardımcı Ajanlar (Companion Agents)",
+    "companionsHint": "Oturum sırasında ana ajana arka planda eşlik eden yerleşik yardımcı ajanlar. İstediğiniz yardımcı ajanı tek tek açıp kapatabilirsiniz; değişiklikler anında geçerli olur.",
+    "memoryCompanionLabel": "Memory Companion (Bellek Yardımcı Ajanı)",
+    "memoryCompanionHint": "İlgili anıları hatırlayan ve öğrenilenleri arka planda derleyen yerleşik memory-companion ajanı.",
+    "exploreCompanionLabel": "Explore Companion (Keşif Yardımcı Ajanı)",
+    "exploreCompanionHint": "Ana ajanın arkasında salt okunur kod tabanı keşif probları çalıştıran yerleşik explore-companion ajanı.",
+    "skillCompanionLabel": "Skill Companion (Yetenek Yardımcı Ajanı)",
+    "skillCompanionHint": "Görevinizi değerlendirip henüz yüklenmemiş uygun skill'leri öneren yerleşik skill-companion ajanı.",
+    "companionsButtonPrefix": "Companions:",
+    "companionsSummaryAll": "açık (3/3)",
+    "companionsSummaryOff": "kapalı",
+    "companionsToggleAllOn": "Tümünü aç",
+    "companionsToggleAllOff": "Tümünü kapat"
   },
   "integrations": {
     "hqHeading": "HQ İstemcisi",
@@ -814,7 +827,11 @@
       "reload": "Yeniden yükle",
       "saved": "Kaydedildi.",
       "discard": "Kaydedilmemiş değişiklikler atılsın mı?"
-    }
+    },
+    "includeGlobalAgentsLabel": "Global AGENTS.md dahil et",
+    "includeGlobalAgentsHint": "~/.wrongstack/AGENTS.md dosyasını sistem istemine yükle. Kapalıyken hiçbir projeye eklenmez; dosya korunur.",
+    "includeProjectAgentsLabel": "Proje AGENTS.md dahil et",
+    "includeProjectAgentsHint": "Projenin kök AGENTS.md dosyasını sistem istemine yükle. Kapalıyken hiçbir oturuma eklenmez; dosya korunur."
   },
   "logs": {
     "logLevelLabel": "Günlük seviyesi",

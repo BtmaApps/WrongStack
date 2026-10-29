@@ -102,6 +102,8 @@ export async function setupCliPromptAndTools(params: {
     skillEagerMaxChars: config.skills?.eagerMaxChars,
     tokenSavingMode: tier,
     systemPromptVariant: config.systemPrompt?.variant,
+    includeGlobalAgents: config.systemPrompt?.includeGlobalAgents,
+    includeProjectAgents: config.systemPrompt?.includeProjectAgents,
     appendedInstructions,
     paths: {
       projectGoal: wpaths.projectGoal,

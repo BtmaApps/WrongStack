@@ -332,6 +332,8 @@ export function createInitialState(options: CreateInitialStateOptions): State {
       nextStepsRequired: true,
       rememberStartupChoices: true,
       nextSystemPromptVariant: 'pro',
+      includeGlobalAgents: true,
+      includeProjectAgents: true,
       readSymbols: false,
       // WrongProxy / WrongTrace. Defaults match the WebUI LocalPrefs
       // (master switch off; URL 'http://localhost:3444'). The runtime

@@ -648,6 +648,19 @@ export function cycleSettingsValue(inputs: {
           settingsPicker: { ...sp, nextSystemPromptVariant: next, hint: bootHint },
         };
       }
+      // Field 68: include the user-scope AGENTS.md in the system prompt
+      // (`systemPrompt.includeGlobalAgents`) — applies from the next build.
+      if (f === 68)
+        return {
+          ...state,
+          settingsPicker: { ...sp, includeGlobalAgents: !sp.includeGlobalAgents, hint: bootHint },
+        };
+      // Field 69: the project's root AGENTS.md (`systemPrompt.includeProjectAgents`).
+      if (f === 69)
+        return {
+          ...state,
+          settingsPicker: { ...sp, includeProjectAgents: !sp.includeProjectAgents, hint: bootHint },
+        };
       if (f >= PANEL_POSITION_FIELD_START && f - PANEL_POSITION_FIELD_START < PANEL_IDS.length) {
         const PANEL_POSITION_CYCLE = ['bottom', 'sidebar'] as const;
         const panelId = PANEL_IDS[f - PANEL_POSITION_FIELD_START]!;

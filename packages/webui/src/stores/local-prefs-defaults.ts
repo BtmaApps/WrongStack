@@ -162,6 +162,16 @@ export interface LocalPrefs {
   };
   /** Auto-derive a fallback chain from keyed providers when the list is empty. */
   fallbackAuto: boolean;
+  /**
+   * Include the user-scope `~/.wrongstack/AGENTS.md` in the system prompt
+   * (`systemPrompt.includeGlobalAgents` in the persisted Config). Default true.
+   */
+  includeGlobalAgents: boolean;
+  /**
+   * Include the project's root `AGENTS.md` in the system prompt
+   * (`systemPrompt.includeProjectAgents` in the persisted Config). Default true.
+   */
+  includeProjectAgents: boolean;
   /** Recurring provider/model blackout windows for autonomous routing. */
   modelAvailabilitySchedule: import('@wrongstack/core/models').ModelBlackoutRule[];
 
@@ -173,6 +183,11 @@ export interface LocalPrefs {
   featureModelsRegistry: boolean;
   featureToolCoach: boolean;
   indexOnStart: boolean;
+
+  // --- Companion agents (fleet.*Companion.enabled) ---
+  memoryCompanionEnabled: boolean;
+  exploreCompanionEnabled: boolean;
+  skillCompanionEnabled: boolean;
 
   /** Per-plugin enabled/disabled state. Keys are plugin names (e.g. "wstack-chimera"). */
   pluginsEnabled: Record<string, boolean>;
@@ -444,6 +459,8 @@ export const DEFAULTS: LocalPrefsData = {
   limits: {},
   streamTimeouts: {},
   fallbackAuto: true,
+  includeGlobalAgents: true,
+  includeProjectAgents: true,
   modelAvailabilitySchedule: [],
   featureMcp: true,
   featurePlugins: true,
@@ -452,6 +469,9 @@ export const DEFAULTS: LocalPrefsData = {
   featureModelsRegistry: true,
   featureToolCoach: true,
   indexOnStart: true,
+  memoryCompanionEnabled: true,
+  exploreCompanionEnabled: true,
+  skillCompanionEnabled: true,
   contextAutoCompact: true,
   contextStrategy: 'hybrid',
   contextMode: 'balanced',

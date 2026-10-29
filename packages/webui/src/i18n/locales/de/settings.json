@@ -660,7 +660,20 @@
     "nextPredictionLabel": "Next-Step-Vorhersage",
     "nextPredictionHint": "Nach Abschluss eines Zugs wahrscheinliche nächste Schritte vorhersagen.",
     "nextStepsToolLabel": "Nextsteps-Tool",
-    "nextStepsToolHint": "Der Agent kann seine Folgevorschläge per Tool-Aufruf hinterlegen, statt den Block selbst zu schreiben. Gilt ab der nächsten Sitzung."
+    "nextStepsToolHint": "Der Agent kann seine Folgevorschläge per Tool-Aufruf hinterlegen, statt den Block selbst zu schreiben. Gilt ab der nächsten Sitzung.",
+    "companionsHeading": "Begleit-Agenten (Companion Agents)",
+    "companionsHint": "Hintergrund-Begleiter, die den Hauptagenten während der Sitzung unterstützen. Jeder Begleiter kann einzeln ein- oder ausgeschaltet werden; Änderungen wirken sofort.",
+    "memoryCompanionLabel": "Memory Companion",
+    "memoryCompanionHint": "Residenter memory-companion-Agent, der relevante Erinnerungen abruft und Erkenntnisse im Hintergrund kuratiert.",
+    "exploreCompanionLabel": "Explore Companion",
+    "exploreCompanionHint": "Residenter explore-companion-Agent, der schreibgeschützte Codebase-Erkundungssonden im Hintergrund ausführt.",
+    "skillCompanionLabel": "Skill Companion",
+    "skillCompanionHint": "Residenter skill-companion-Agent, der die Aufgabe bewertet und passende noch nicht geladene Skills empfiehlt.",
+    "companionsButtonPrefix": "Companions:",
+    "companionsSummaryAll": "an (3/3)",
+    "companionsSummaryOff": "aus",
+    "companionsToggleAllOn": "Alle einschalten",
+    "companionsToggleAllOff": "Alle ausschalten"
   },
   "integrations": {
     "hqHeading": "HQ-Client",
@@ -814,7 +827,11 @@
       "reload": "Neu laden",
       "saved": "Gespeichert.",
       "discard": "Ungespeicherte Änderungen verwerfen?"
-    }
+    },
+    "includeGlobalAgentsLabel": "Globale AGENTS.md einbeziehen",
+    "includeGlobalAgentsHint": "~/.wrongstack/AGENTS.md in den Systemprompt laden. Aus: in keinem Projekt enthalten; die Datei bleibt erhalten.",
+    "includeProjectAgentsLabel": "Projekt-AGENTS.md einbeziehen",
+    "includeProjectAgentsHint": "Die AGENTS.md im Projektstamm in den System-Prompt laden. Aus: wird in keiner Sitzung geladen; die Datei bleibt erhalten."
   },
   "logs": {
     "logLevelLabel": "Log-Level",

@@ -214,6 +214,8 @@ export async function switchProjectInPlace(
       // Single injection channel: SAGE turn middleware, not a static section.
       injectMemory: false,
       skillLoader,
+      skillMode: config.skills?.mode,
+      skillEagerMaxChars: config.skills?.eagerMaxChars,
       modeStore,
       modeId: modeId ?? 'default',
       modePrompt: switchMode?.prompt ?? '',
@@ -229,6 +231,8 @@ export async function switchProjectInPlace(
         projectDir: nextWpaths.inProjectInstructions,
         systemVariant: config.systemPrompt?.variant,
       },
+      userInstructionsFile: config.systemPrompt?.includeGlobalAgents === false ? false : undefined,
+      projectInstructions: config.systemPrompt?.includeProjectAgents !== false,
     });
     context.systemPrompt = await switchBuilder.build({
       cwd: resolved,

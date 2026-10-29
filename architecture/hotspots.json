@@ -58,6 +58,10 @@
       "lines": 889,
       "relativeImports": 2
     },
+    "packages/tui/src/reducers/settings-value-cycle.ts": {
+      "lines": 703,
+      "relativeImports": 6
+    },
     "packages/vibeui/src/components/memory-browser.tsx": {
       "lines": 709,
       "relativeImports": 12
@@ -97,6 +101,10 @@
     "packages/webui-server/src/server/memory-handlers.ts": {
       "lines": 777,
       "relativeImports": 5
+    },
+    "packages/webui-server/src/server/pref-helpers.ts": {
+      "lines": 712,
+      "relativeImports": 3
     },
     "packages/webui-server/src/server/provider-routes.ts": {
       "lines": 766,

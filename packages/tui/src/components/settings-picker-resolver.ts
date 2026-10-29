@@ -92,6 +92,12 @@ export function resolveSettingsFieldValue(
     [65, 'rememberStartupChoices'],
     [59, 'wrongProxyEnabled'],
     [61, 'showSidebar'],
+    // Global AGENTS.md include toggle (field 68). Without this entry the
+    // row resolves to field 68 through SETTINGS_FIELD_LABELS but the
+    // boolean parser never matches it, so `/settings global-agents.md off`
+    // fails with "Unknown settings field 68.".
+    [68, 'includeGlobalAgents'],
+    [69, 'includeProjectAgents'],
   ]);
   const boolKey = BOOL_FIELDS.get(field);
   if (boolKey) {

@@ -317,6 +317,8 @@ describe('getSettingsFieldValue', () => {
     nextStepsRequired: true,
     rememberStartupChoices: true,
     nextSystemPromptVariant: 'pro',
+    includeGlobalAgents: true,
+    includeProjectAgents: true,
     // WrongProxy / WrongTrace (fields 59/60).
     wrongProxyEnabled: false,
     wrongProxyUrl: 'http://localhost:3444',
@@ -489,6 +491,8 @@ describe('formatAllSettingsSummary', () => {
     nextStepsRequired: true,
     rememberStartupChoices: true,
     nextSystemPromptVariant: 'pro',
+    includeGlobalAgents: true,
+    includeProjectAgents: true,
     // WrongProxy / WrongTrace (fields 59/60).
     wrongProxyEnabled: false,
     wrongProxyUrl: 'http://localhost:3444',
@@ -603,7 +607,7 @@ describe('resetSettingsFieldValue', () => {
   });
 
   it('SETTINGS_DEFAULTS includes selection mode alongside the existing settings', () => {
-    expect(Object.keys(SETTINGS_DEFAULTS)).toHaveLength(56);
+    expect(Object.keys(SETTINGS_DEFAULTS)).toHaveLength(58);
     expect(SETTINGS_DEFAULTS.selectionMode).toBe('block');
     expect(SETTINGS_DEFAULTS.featureToolCoach).toBe(true);
     expect(SETTINGS_DEFAULTS.nextStepsRequired).toBe(true);
@@ -637,6 +641,70 @@ describe('resetSettingsFieldValue', () => {
       patch: { rememberStartupChoices: true },
       label: 'Reuse startup choices',
       displayValue: 'on',
+    });
+  });
+
+  // Regression: the "Global AGENTS.md" row is the LAST non-section row, so
+  // it takes the last field index (68) — "Chat selection" keeps 67. The
+  // row must resolve as a boolean through every field→key table, otherwise
+  // `/settings global-agents.md off` fails with "Unknown settings field 68."
+  // while the picker itself shows the row fine.
+  it('field 68 is the "Global AGENTS.md" toggle and resolves as a boolean', () => {
+    expect(SETTINGS_FIELD_LABELS[67]).toBe('Chat selection');
+    expect(SETTINGS_FIELD_LABELS[68]).toBe('Global AGENTS.md');
+    // Field 69 (Project AGENTS.md) follows it as the last field — the
+    // picker's row count and the field index space must stay in lock-step.
+    expect(TOTAL_SETTINGS_FIELD_COUNT).toBe(70);
+
+    expect(resolveSettingsFieldValue(68, 'off')).toMatchObject({
+      ok: true,
+      patch: { includeGlobalAgents: false },
+      label: 'Global AGENTS.md',
+      displayValue: 'off',
+    });
+    expect(resolveSettingsFieldValue(68, 'on')).toMatchObject({
+      ok: true,
+      patch: { includeGlobalAgents: true },
+      displayValue: 'on',
+    });
+    expect(resolveSettingsFieldValue(68, 'maybe').ok).toBe(false);
+
+    // Display and reset must agree with the resolver on the same index.
+    expect(getSettingsFieldValue(SETTINGS_DEFAULTS, 68)).toMatchObject({
+      ok: true,
+      label: 'Global AGENTS.md',
+      displayValue: 'on',
+    });
+    expect(resetSettingsFieldValue(68)).toMatchObject({
+      ok: true,
+      patch: { includeGlobalAgents: true },
+      label: 'Global AGENTS.md',
+    });
+
+    // The neighbouring enum row must be unaffected by the boolean row.
+    expect(resolveSettingsFieldValue(67, 'text')).toMatchObject({
+      ok: true,
+      patch: { selectionMode: 'text' },
+      label: 'Chat selection',
+    });
+  });
+
+  it('field 69 is the "Project AGENTS.md" toggle and resolves as a boolean', () => {
+    expect(SETTINGS_FIELD_LABELS[69]).toBe('Project AGENTS.md');
+    expect(resolveSettingsFieldValue(69, 'off')).toMatchObject({
+      ok: true,
+      patch: { includeProjectAgents: false },
+      label: 'Project AGENTS.md',
+      displayValue: 'off',
+    });
+    expect(getSettingsFieldValue(SETTINGS_DEFAULTS, 69)).toMatchObject({
+      ok: true,
+      label: 'Project AGENTS.md',
+      displayValue: 'on',
+    });
+    expect(resetSettingsFieldValue(69)).toMatchObject({
+      ok: true,
+      patch: { includeProjectAgents: true },
     });
   });
 

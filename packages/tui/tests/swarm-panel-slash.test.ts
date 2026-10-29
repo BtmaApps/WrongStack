@@ -58,6 +58,8 @@ const baseValues: SettingsPickerValues = {
   nextStepsRequired: true,
   rememberStartupChoices: true,
   nextSystemPromptVariant: 'pro',
+  includeGlobalAgents: true,
+  includeProjectAgents: true,
   // WrongProxy / WrongTrace (fields 59/60).
   wrongProxyEnabled: false,
   wrongProxyUrl: 'http://localhost:3444',

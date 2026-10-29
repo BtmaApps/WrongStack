@@ -111,9 +111,10 @@ export type PanelId = (typeof PANEL_IDS)[number];
 
 /** Total field count = legacy 46 + per-panel positions + WrongProxy switch/URL,
  *  showSidebar, the global tool-result view mode, Tool Coach, the
- *  required-next-steps switch, the reuse-startup-choices switch, and the
- *  next-session system prompt. */
-export const TOTAL_SETTINGS_FIELD_COUNT = PANEL_POSITION_FIELD_START + PANEL_IDS.length + 9;
+ *  required-next-steps switch, the reuse-startup-choices switch, the
+ *  next-session system prompt, and the global and project AGENTS.md include
+ *  toggles. */
+export const TOTAL_SETTINGS_FIELD_COUNT = PANEL_POSITION_FIELD_START + PANEL_IDS.length + 11;
 
 /** Map of every tracked panel → its current placement. */
 export type PanelPositionMap = Readonly<Record<PanelId, PanelPosition>>;

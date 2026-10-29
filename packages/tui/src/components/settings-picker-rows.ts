@@ -83,6 +83,8 @@ export function buildSettingsPickerRows({
   nextStepsRequired,
   rememberStartupChoices,
   nextSystemPromptVariant,
+  includeGlobalAgents,
+  includeProjectAgents,
   readSymbols,
   panelPositions,
   // WrongProxy / WrongTrace: pick these from the same slice as
@@ -432,13 +434,25 @@ export function buildSettingsPickerRows({
       label: 'System prompt',
       value: SYSTEM_PROMPT_CHOICE_LABELS[nextSystemPromptVariant] ?? nextSystemPromptVariant,
       detail:
-        'Lite / Standard / Pro / Scout — applies from the next session; this session keeps its current prompt',
+        'Lite / Standard / Pro / Scout / Quick — applies from the next session; this session keeps its current prompt',
     },
     { section: 'Selection' },
     {
       label: 'Chat selection',
       value: selectionMode === 'text' ? 'Text' : 'Block',
       detail: 'Drag and release to copy whole blocks or only the selected text',
+    },
+    {
+      label: 'Global AGENTS.md',
+      value: includeGlobalAgents ? 'on' : 'off',
+      detail:
+        'Include ~/.wrongstack/AGENTS.md in the system prompt — applies from the next prompt build; the file itself is kept',
+    },
+    {
+      label: 'Project AGENTS.md',
+      value: includeProjectAgents ? 'on' : 'off',
+      detail:
+        "Include the project's root AGENTS.md in the system prompt — applies from the next prompt build; the file itself is kept",
     },
   ];
 }

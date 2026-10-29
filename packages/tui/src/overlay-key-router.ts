@@ -400,6 +400,8 @@ export function routeSettingsOverlayKey(
     nextStepsRequired: config.nextStepsRequired ?? true,
     rememberStartupChoices: config.rememberStartupChoices ?? true,
     nextSystemPromptVariant: config.nextSystemPromptVariant ?? config.systemPromptVariant ?? 'pro',
+    includeGlobalAgents: config.includeGlobalAgents ?? true,
+    includeProjectAgents: config.includeProjectAgents ?? true,
     readSymbols: config.readSymbols ?? false,
     // WrongProxy / WrongTrace: hydrate from the persisted Config (CLI
     // adapter owns the read/write — see LiveSettingsInput + the

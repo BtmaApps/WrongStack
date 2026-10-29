@@ -46,6 +46,8 @@ export function getSettingsFieldValue(
   // Boolean fields — display as "on"/"off".
   const BOOL_KEYS: ReadonlyArray<readonly [number, keyof SettingsPickerPatch]> = [
     [2, 'titleAnimation'],
+    [68, 'includeGlobalAgents'],
+    [69, 'includeProjectAgents'],
     [3, 'yolo'],
     [5, 'chime'],
     [6, 'confirmExit'],
@@ -246,7 +248,7 @@ const SETTINGS_SECTIONS: ReadonlyArray<{ name: string; fields: readonly number[]
     name: 'Startup',
     fields: [65, 66],
   },
-  { name: 'Selection', fields: [67] },
+  { name: 'Selection', fields: [67, 68, 69] },
 ];
 
 /**
@@ -367,6 +369,8 @@ export const SETTINGS_DEFAULTS: Readonly<SettingsPickerValues> = Object.freeze({
   rememberStartupChoices: true,
   // Core default `systemPrompt.variant`.
   nextSystemPromptVariant: 'pro',
+  includeGlobalAgents: true,
+  includeProjectAgents: true,
   // WrongProxy / WrongTrace. Defaults mirror the WebUI `LocalPrefs`
   // DEFAULTS in `packages/webui/src/stores/local-prefs.ts` (master
   // switch off, URL 'http://localhost:3444'). Required keys here
@@ -454,6 +458,8 @@ function buildResetPatch(field: number): SettingsPickerPatch | null {
     [64, 'nextStepsRequired'],
     [65, 'rememberStartupChoices'],
     [66, 'nextSystemPromptVariant'],
+    [68, 'includeGlobalAgents'],
+    [69, 'includeProjectAgents'],
     // WrongProxy / WrongTrace: appended at the end so the existing
     // 46+13 = 59 entries are not shifted (the picker caps + scrolls;
     // field 59 is boolean, 60 is text). See `Settings.wrongProxy*`

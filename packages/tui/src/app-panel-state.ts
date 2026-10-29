@@ -312,7 +312,11 @@ export type PanelState = {
     /** Launch with the last model, system prompt and mode/YOLO/autonomy instead of asking (`launch.rememberStartupChoices`). Default: true. */
     rememberStartupChoices: boolean;
     /** System prompt the NEXT session starts with (`systemPrompt.variant` in the profile config); the running session keeps its own. */
-    nextSystemPromptVariant: 'lite' | 'default' | 'pro' | 'scout';
+    nextSystemPromptVariant: 'lite' | 'default' | 'pro' | 'scout' | 'quick';
+    /** Include the user-scope `~/.wrongstack/AGENTS.md` in the system prompt. */
+    includeGlobalAgents: boolean;
+    /** Include the project's root `AGENTS.md` in the system prompt. */
+    includeProjectAgents: boolean;
     /** When true, read tool includes codebase-index symbols alongside file content. */
     readSymbols: boolean;
     /** Prompt cache TTL. */

@@ -122,7 +122,11 @@ export type Settings = {
   /** Launch with the last model, system prompt and mode/YOLO/autonomy instead of asking (`launch.rememberStartupChoices`). Default: true. */
   rememberStartupChoices: boolean;
   /** System prompt the NEXT session starts with (`systemPrompt.variant` in the profile config); the running session keeps its own. */
-  nextSystemPromptVariant: 'lite' | 'default' | 'pro' | 'scout';
+  nextSystemPromptVariant: 'lite' | 'default' | 'pro' | 'scout' | 'quick';
+  /** Include the user-scope `~/.wrongstack/AGENTS.md` in the system prompt (`systemPrompt.includeGlobalAgents`). Default true. */
+  includeGlobalAgents: boolean;
+  /** Include the project's root `AGENTS.md` in the system prompt (`systemPrompt.includeProjectAgents`). Default true. */
+  includeProjectAgents: boolean;
   /** Prompt cache TTL. */
   cacheTtl: CacheTtl;
   /** Where to persist settings: 'global' or 'project'. */
@@ -133,7 +137,7 @@ export type Settings = {
    * the CLI boot menu (persistSystemPromptVariant), not the TUI picker, so
    * there is no saveSettings counterpart.
    */
-  systemPromptVariant?: 'lite' | 'default' | 'pro' | 'scout' | undefined;
+  systemPromptVariant?: 'lite' | 'default' | 'pro' | 'scout' | 'quick' | undefined;
   animationStyle: 'rainbow' | 'wave' | 'pulse' | 'dots' | 'breathe' | 'static' | 'cycle';
   /** When true, read tool includes codebase-index symbols alongside file content. */
   readSymbols: boolean;

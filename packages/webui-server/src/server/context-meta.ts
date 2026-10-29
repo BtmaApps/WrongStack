@@ -90,6 +90,8 @@ export function seedContextMeta(config: Config, context: { meta: Record<string, 
   meta['maxIterations'] = config.tools?.maxIterations ?? 0;
   meta['contextMode'] = config.context?.mode ?? 'balanced';
   meta['systemPromptVariant'] = config.systemPrompt?.variant ?? 'pro';
+  meta['includeGlobalAgents'] = config.systemPrompt?.includeGlobalAgents !== false;
+  meta['includeProjectAgents'] = config.systemPrompt?.includeProjectAgents !== false;
   {
     const tsm = config.features?.tokenSavingMode;
     meta['tokenSavingTier'] = typeof tsm === 'string' ? tsm : tsm ? 'medium' : 'off';

@@ -3,17 +3,24 @@ import { useEffect, useState } from 'react';
 import { useAppTranslation } from '@/i18n';
 import { getWSClient } from '@/lib/ws-client';
 import { useConfigStore } from '@/stores/config-store';
+import { useLocalPrefs } from '@/stores/local-prefs';
 import type { WSUserInstructions } from '@/types/server-message-system';
 import { Button } from '../ui/button';
+import { PreferenceToggle } from './PreferenceToggle';
 
 /**
  * Editor for `~/.wrongstack/AGENTS.md`: the user's own rules, put into the
  * system prompt of every project ahead of the project's AGENTS.md. The prompt
  * builder re-reads the file on change, so a save applies from the next turn.
  */
-export function UserInstructionsSection(): React.ReactElement {
+export function UserInstructionsSection({
+  syncPref,
+}: {
+  syncPref?: ((key: string, value: unknown) => void) | undefined;
+}) {
   const { t } = useAppTranslation();
   const wsUrl = useConfigStore((state) => state.wsUrl);
+  const localPrefs = useLocalPrefs();
   const client = getWSClient(wsUrl);
   const [doc, setDoc] = useState<WSUserInstructions | null>(null);
   const [draft, setDraft] = useState('');
@@ -83,6 +90,22 @@ export function UserInstructionsSection(): React.ReactElement {
         <p role="alert" className="mb-2 text-sm text-destructive">
           {error}
         </p>
+      )}
+      {syncPref && (
+        <div className="mb-3">
+          <PreferenceToggle
+            label={t('settings:context.includeGlobalAgentsLabel')}
+            hint={t('settings:context.includeGlobalAgentsHint')}
+            value={localPrefs.includeGlobalAgents}
+            onChange={() => syncPref('includeGlobalAgents', !localPrefs.includeGlobalAgents)}
+          />
+          <PreferenceToggle
+            label={t('settings:context.includeProjectAgentsLabel')}
+            hint={t('settings:context.includeProjectAgentsHint')}
+            value={localPrefs.includeProjectAgents}
+            onChange={() => syncPref('includeProjectAgents', !localPrefs.includeProjectAgents)}
+          />
+        </div>
       )}
       <textarea
         aria-label={t('settings:context.userInstructions.heading')}

@@ -17,6 +17,7 @@ export function InstructionsEditor({
   const { request, busy, error } = usePanelRequests(controller);
   const [document, setDocument] = useState<Record<string, unknown> | null>(null);
   const [draft, setDraftState] = useState('');
+  const [includeGlobalAgents, setIncludeGlobalAgents] = useState(true);
   // Latest editor text, readable after an await (the closure's `draft` is stale).
   const latestDraft = useRef('');
   const setDraft = (value: string) => {
@@ -29,6 +30,7 @@ export function InstructionsEditor({
     if (p && !p.error) {
       setDocument(p);
       setDraft(text(p.text));
+      if (typeof p.includeGlobalAgents === 'boolean') setIncludeGlobalAgents(p.includeGlobalAgents);
       setSaved(false);
     }
   };
@@ -38,6 +40,8 @@ export function InstructionsEditor({
       if (live && p && !p.error) {
         setDocument(p);
         setDraft(text(p.text));
+        if (typeof p.includeGlobalAgents === 'boolean')
+          setIncludeGlobalAgents(p.includeGlobalAgents);
       }
     });
     return () => {
@@ -77,7 +81,11 @@ export function InstructionsEditor({
           const submitted = draft;
           const p = await request(
             'user_instructions.save',
-            { text: submitted, baseMtimeMs: document?.mtimeMs ?? null },
+            {
+              text: submitted,
+              baseMtimeMs: document?.mtimeMs ?? null,
+              includeGlobalAgents,
+            },
             'user_instructions',
           );
           if (p?.saved === true && !p.error) {
@@ -91,6 +99,15 @@ export function InstructionsEditor({
           }
         }}
       >
+        <label className="toggle-row" htmlFor="include-global-agents">
+          <input
+            id="include-global-agents"
+            type="checkbox"
+            checked={includeGlobalAgents}
+            onChange={(e) => setIncludeGlobalAgents(e.target.checked)}
+          />
+          <span>Include global instructions in the system prompt</span>
+        </label>
         <label htmlFor="personal-instructions">Global instructions</label>
         <textarea
           id="personal-instructions"

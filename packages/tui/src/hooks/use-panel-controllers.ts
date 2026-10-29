@@ -241,6 +241,8 @@ export function usePanelControllers({
       nextStepsRequired: s.nextStepsRequired ?? true,
       rememberStartupChoices: s.rememberStartupChoices ?? true,
       nextSystemPromptVariant: s.nextSystemPromptVariant ?? s.systemPromptVariant ?? 'pro',
+      includeGlobalAgents: s.includeGlobalAgents ?? true,
+      includeProjectAgents: s.includeProjectAgents ?? true,
       readSymbols: s.readSymbols ?? false,
       // WrongProxy / WrongTrace: hydrate from the picker state slice.
       // Same defaults as the WebUI LocalPrefs and the CLI adapter's

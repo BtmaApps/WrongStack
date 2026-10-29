@@ -101,6 +101,25 @@ export function computeConfigPrefUpdates(
   }
   if (typeof payload['fallbackAuto'] === 'boolean') updates.fallbackAuto = payload['fallbackAuto'];
 
+  // Include user-scope `~/.wrongstack/AGENTS.md` in the system prompt
+  // (`systemPrompt.includeGlobalAgents`). Default true; only an explicit
+  // boolean toggles it.
+  if (typeof payload['includeGlobalAgents'] === 'boolean') {
+    updates.systemPrompt = {
+      ...config.systemPrompt,
+      includeGlobalAgents: payload['includeGlobalAgents'],
+    };
+  }
+  // Same for the project's root AGENTS.md (`systemPrompt.includeProjectAgents`).
+  // Reads `updates.systemPrompt` first so a payload carrying both keeps both.
+  if (typeof payload['includeProjectAgents'] === 'boolean') {
+    updates.systemPrompt = {
+      ...config.systemPrompt,
+      ...updates.systemPrompt,
+      includeProjectAgents: payload['includeProjectAgents'],
+    };
+  }
+
   if (
     typeof payload['memoryCompanionEnabled'] === 'boolean' ||
     typeof payload['exploreCompanionEnabled'] === 'boolean' ||

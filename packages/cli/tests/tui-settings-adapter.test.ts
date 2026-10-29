@@ -144,6 +144,37 @@ describe('TUI settings adapter', () => {
     expect(project.autonomy?.nextSteps).toBeUndefined();
   });
 
+  it('keeps includeGlobalAgents in the profile under project scope', async () => {
+    // `systemPrompt` is denied for in-project configs (the 'lite' variant can
+    // drop the tool-output trust boundary), so filterSafeForProject strips the
+    // whole section from a project-scoped write. The toggle is user-owned and
+    // must therefore ride the profile-only route, or it silently reverts on
+    // the next launch while the picker keeps showing the new value.
+    const { adapter, globalConfig, inProjectConfig } = makeAdapter(
+      baseConfig({ configScope: 'project' } as never),
+    );
+    expect(await adapter.saveSettings({ includeGlobalAgents: false })).toBeNull();
+    expect(JSON.parse(readFileSync(globalConfig, 'utf8')).systemPrompt.includeGlobalAgents).toBe(
+      false,
+    );
+    const project = existsSync(inProjectConfig)
+      ? JSON.parse(readFileSync(inProjectConfig, 'utf8'))
+      : {};
+    expect(project.systemPrompt).toBeUndefined();
+    // The picker still shows the new value for this session.
+    expect(adapter.getSettings().includeGlobalAgents).toBe(false);
+  });
+
+  it('persists includeGlobalAgents to the profile under global scope', async () => {
+    const { adapter, globalConfig } = makeAdapter();
+    expect(adapter.getSettings().includeGlobalAgents).toBe(true);
+    expect(await adapter.saveSettings({ includeGlobalAgents: false })).toBeNull();
+    expect(JSON.parse(readFileSync(globalConfig, 'utf8')).systemPrompt.includeGlobalAgents).toBe(
+      false,
+    );
+    expect(adapter.getSettings().includeGlobalAgents).toBe(false);
+  });
+
   it('returns the runtime default maxConcurrent when config has no setting', () => {
     const initial = baseConfig({ maxConcurrent: undefined as never });
     const { adapter } = makeAdapter(initial);

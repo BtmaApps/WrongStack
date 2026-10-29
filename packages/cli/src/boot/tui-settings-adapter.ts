@@ -79,6 +79,12 @@ export function createSettingsAdapter(ctx: SettingsAdapterContext): SettingsAdap
     return {
       ...settings,
       nextSystemPromptVariant: nextSystemPromptVariant ?? settings.systemPromptVariant,
+      includeGlobalAgents:
+        (configStore.get().systemPrompt as { includeGlobalAgents?: boolean } | undefined)
+          ?.includeGlobalAgents ?? true,
+      includeProjectAgents:
+        (configStore.get().systemPrompt as { includeProjectAgents?: boolean } | undefined)
+          ?.includeProjectAgents ?? true,
     };
   }
 
@@ -129,6 +135,8 @@ export function createSettingsAdapter(ctx: SettingsAdapterContext): SettingsAdap
         s.nextStepsTool !== undefined ||
         s.nextStepsRequired !== undefined ||
         s.rememberStartupChoices !== undefined ||
+        s.includeGlobalAgents !== undefined ||
+        s.includeProjectAgents !== undefined ||
         s.restrictFsToRoot !== undefined ||
         s.nextPrediction !== undefined ||
         s.debugStream !== undefined ||
@@ -293,6 +301,21 @@ export function createSettingsAdapter(ctx: SettingsAdapterContext): SettingsAdap
             launch.rememberStartupChoices = s.rememberStartupChoices;
             decrypted.launch = launch;
           }
+          // Global scope: land on disk with the rest of the persisted patch
+          // (project scope is handled by the policy-filtered write plus the
+          // forceGlobal profile-only branch below).
+          if (s.includeGlobalAgents !== undefined) {
+            decrypted.systemPrompt = {
+              ...((decrypted.systemPrompt as Record<string, unknown> | undefined) ?? {}),
+              includeGlobalAgents: s.includeGlobalAgents,
+            };
+          }
+          if (s.includeProjectAgents !== undefined) {
+            decrypted.systemPrompt = {
+              ...((decrypted.systemPrompt as Record<string, unknown> | undefined) ?? {}),
+              includeProjectAgents: s.includeProjectAgents,
+            };
+          }
           if (
             s.maxIterations !== undefined ||
             s.nextStepsTool !== undefined ||
@@ -385,6 +408,13 @@ export function createSettingsAdapter(ctx: SettingsAdapterContext): SettingsAdap
           s.mode !== undefined ||
           s.yolo !== undefined ||
           s.nextStepsRequired !== undefined ||
+          // `systemPrompt` is policy-denied for in-project configs (the lite
+          // variant drops the tool-output trust boundary). The toggle shares
+          // the section, so it rides the profile-only escape hatch too — a
+          // project-scope write would be silently stripped by
+          // filterSafeForProject while the in-memory store kept showing it.
+          s.includeGlobalAgents !== undefined ||
+          s.includeProjectAgents !== undefined ||
           fsAccess !== undefined ||
           s.maxIterations !== undefined ||
           s.wrongProxyEnabled !== undefined ||
@@ -407,6 +437,18 @@ export function createSettingsAdapter(ctx: SettingsAdapterContext): SettingsAdap
                 profileConfig.autonomy = autonomy;
               }
               if (s.yolo !== undefined) profileConfig.yolo = s.yolo;
+              if (s.includeGlobalAgents !== undefined) {
+                profileConfig.systemPrompt = {
+                  ...((profileConfig.systemPrompt as Record<string, unknown> | undefined) ?? {}),
+                  includeGlobalAgents: s.includeGlobalAgents,
+                };
+              }
+              if (s.includeProjectAgents !== undefined) {
+                profileConfig.systemPrompt = {
+                  ...((profileConfig.systemPrompt as Record<string, unknown> | undefined) ?? {}),
+                  includeProjectAgents: s.includeProjectAgents,
+                };
+              }
               if (fsAccess !== undefined) {
                 const features = (profileConfig.features as Record<string, unknown>) ?? {};
                 features.allowOutsideProjectRoot = fsAccess.allowOutsideProjectRoot;
@@ -506,6 +548,19 @@ export function createSettingsAdapter(ctx: SettingsAdapterContext): SettingsAdap
                 launch: {
                   ...currentConfig.launch,
                   rememberStartupChoices: s.rememberStartupChoices,
+                },
+              }
+            : {}),
+          ...(s.includeGlobalAgents !== undefined || s.includeProjectAgents !== undefined
+            ? {
+                systemPrompt: {
+                  ...currentConfig.systemPrompt,
+                  ...(s.includeGlobalAgents !== undefined
+                    ? { includeGlobalAgents: s.includeGlobalAgents }
+                    : {}),
+                  ...(s.includeProjectAgents !== undefined
+                    ? { includeProjectAgents: s.includeProjectAgents }
+                    : {}),
                 },
               }
             : {}),

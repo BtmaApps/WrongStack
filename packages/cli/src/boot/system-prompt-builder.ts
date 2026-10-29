@@ -151,8 +151,12 @@ interface BindSystemPromptBuilderDeps {
   skillEagerMaxChars?: number | undefined;
   /** `config.features.tokenSavingMode` — forwarded so prompt guidance matches tool tiering. */
   tokenSavingMode?: TokenSavingTier | boolean | undefined;
-  /** `config.systemPrompt.variant` — selects system.md, system-lite.md, system-pro.md, or system-scout.md. */
+  /** `config.systemPrompt.variant` — selects system.md, system-lite.md, system-pro.md, system-scout.md, or system-quick.md. */
   systemPromptVariant?: SystemInstructionVariant | undefined;
+  /** `config.systemPrompt.includeGlobalAgents` — when false, `~/.wrongstack/AGENTS.md` is left out of the prompt. */
+  includeGlobalAgents?: boolean | undefined;
+  /** `config.systemPrompt.includeProjectAgents` — when false, the project's root `AGENTS.md` is left out. */
+  includeProjectAgents?: boolean | undefined;
   /** `--append-system-prompt[-file]` text; appended to the host prompt only. */
   appendedInstructions?: string | undefined;
   paths: SystemPromptBuilderPaths;
@@ -222,6 +226,10 @@ export function bindSystemPromptBuilder(deps: BindSystemPromptBuilderDeps): void
         modelCapabilities: deps.modelCapabilities,
         tokenSavingMode: deps.tokenSavingMode,
         appendedInstructions: deps.appendedInstructions,
+        // Toggle off = leave the user-scope AGENTS.md out entirely; the
+        // builder treats `false` as "no file", `undefined` keeps the default.
+        userInstructionsFile: deps.includeGlobalAgents === false ? false : undefined,
+        projectInstructions: deps.includeProjectAgents !== false,
         instructionPaths: {
           globalDir: deps.paths.globalInstructions,
           projectDir: deps.paths.inProjectInstructions,

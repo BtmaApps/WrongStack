@@ -79,6 +79,10 @@ export const PREF_KEYS = [
   // User-chosen limits (Config.limits), sent whole.
   'limits',
   'fallbackAuto',
+  // Global AGENTS.md include toggle (`systemPrompt.includeGlobalAgents`).
+  'includeGlobalAgents',
+  // Project root AGENTS.md include toggle (`systemPrompt.includeProjectAgents`).
+  'includeProjectAgents',
   // Refiner + TUI visual prefs (parity with the CLI's embedded server —
   // these were browser-editable there but rejected as unknown keys here).
   'refinerProvider',
@@ -371,6 +375,14 @@ export async function persistPrefsToConfig(
       if (typeof payload['systemPromptVariant'] === 'string') {
         const promptCfg = (decrypted.systemPrompt as Record<string, unknown>) ?? {};
         promptCfg.variant = payload['systemPromptVariant'];
+        decrypted.systemPrompt = promptCfg;
+      }
+      // The AGENTS.md include toggles. Without these the standalone host only
+      // moved the in-memory config, and the choice was gone on the next boot.
+      for (const key of ['includeGlobalAgents', 'includeProjectAgents'] as const) {
+        if (typeof payload[key] !== 'boolean') continue;
+        const promptCfg = (decrypted.systemPrompt as Record<string, unknown>) ?? {};
+        promptCfg[key] = payload[key];
         decrypted.systemPrompt = promptCfg;
       }
       if (typeof payload['maxConcurrent'] === 'number') {

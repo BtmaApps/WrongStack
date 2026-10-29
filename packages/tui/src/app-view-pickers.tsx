@@ -228,6 +228,8 @@ export function AppViewPickers({
             nextStepsRequired={state.settingsPicker.nextStepsRequired}
             rememberStartupChoices={state.settingsPicker.rememberStartupChoices}
             nextSystemPromptVariant={state.settingsPicker.nextSystemPromptVariant}
+            includeGlobalAgents={state.settingsPicker.includeGlobalAgents}
+            includeProjectAgents={state.settingsPicker.includeProjectAgents}
             readSymbols={state.settingsPicker.readSymbols}
             panelPositions={state.settingsPicker.panelPositions}
             // WrongProxy / WrongTrace (fields 59–60): the runtime probe

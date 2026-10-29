@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-29T00:50:09.441Z
+**Generated:** 2026-10-29T00:51:20.095Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,10 +9,10 @@
 |---|---:|
 | Workspace packages | 45 |
 | Production source files | 5390 |
-| Production source lines | 1193365 |
+| Production source lines | 1193669 |
 | Test files | 4695 |
 | Workspace dependency edges | 222 |
-| Relative module edges | 16196 |
+| Relative module edges | 16197 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 5 |
@@ -125,6 +125,7 @@ None.
 | 720 | `packages/webui/src/components/MemoryManager/useMemoryManagerState.ts` |
 | 715 | `packages/plugins/src/audit/index.ts` |
 | 713 | `apps/desktop-v2/src/AutomationWorkspace.tsx` |
+| 712 | `packages/webui-server/src/server/pref-helpers.ts` |
 | 709 | `packages/vibeui/src/components/memory-browser.tsx` |
 | 707 | `packages/acp/src/client/acp-session.ts` |
 | 707 | `packages/mailbox-mcp/src/adapter.ts` |
@@ -132,15 +133,14 @@ None.
 | 705 | `packages/chronicle/src/project-server-client.ts` |
 | 703 | `packages/core/src/execution/auto-compaction-middleware.ts` |
 | 703 | `packages/tools/src/codebase-index/ast-symbol-mutator.ts` |
+| 703 | `packages/tui/src/reducers/settings-value-cycle.ts` |
 | 701 | `packages/coordination/src/provider-status-tracker.ts` |
-| 700 | `packages/webui-server/src/server/pref-helpers.ts` |
 | 699 | `packages/coordination/src/subagent-budget.ts` |
 | 699 | `packages/governance/src/runtime-compatibility.ts` |
 | 699 | `packages/sage/src/types.ts` |
 | 698 | `packages/coordination/src/task-auctioneer.ts` |
 | 697 | `packages/core/src/core/agent-response.ts` |
 | 697 | `packages/tools/src/codebase-index/writer-graph-reader.ts` |
-| 697 | `packages/webui/src/components/KanbanView.tsx` |
 
 ## Exports only tests reference
 

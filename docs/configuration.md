@@ -128,7 +128,7 @@ boundary while preserving encrypted credential material.
 | `favoriteModels` | `string[]` | `[]` | User-curated model refs prioritized by pickers and smart fallback derivation. |
 | `favoriteModelsOnly` | `boolean` | `false` | Restrict the **auto-derived** smart-default fallback chain to `favoriteModels`. **Explicit** settings are always honored as written — this includes `fallbackModels`, `fallbackProfiles`, and matrix model-only entries (`agent_model_assign` with `model=...`, no `profile=...`). The smart-default chain is at most as strict as the matrix model-only mode: the matrix already requires favorites whenever `favoriteModels` is non-empty (via `isFavoriteRef`), regardless of this toggle. The toggle only narrows the auto-derivation path, and only when `favoriteModels` is non-empty — an empty `favoriteModels` list means the smart default falls back to including every usable provider/model pair. Toggle with `/fallback fav only on\|off`. |
 | `modelRuntime` | `object` | — | Runtime request controls for the leader/default request path: reasoning, prompt-cache TTL, and gated generation parameters. |
-| `systemPrompt` | `object` | `{ "variant": "default" }` | Baseline system prompt selection. `variant: "default"` loads `system.md`; `variant: "lite"` loads the compact `system-lite.md`; `variant: "pro"` loads `system-pro.md`; `variant: "scout"` loads the general-purpose `system-scout.md` with a small direct tool surface. Overridden for one launch by `--system-pro`, `--system-lite`, `--system-scout`, or `--system-prompt default\|lite\|pro\|scout`. |
+| `systemPrompt` | `object` | `{ "variant": "default" }` | Baseline system prompt selection. `variant: "default"` loads `system.md`; `variant: "lite"` loads the compact `system-lite.md`; `variant: "pro"` loads `system-pro.md`; `variant: "scout"` loads the general-purpose `system-scout.md` with a small direct tool surface; `variant: "quick"` loads the minimal `system-quick.md` with at most 10 basic tools plus `tool_search` / `tool_use` for the rest of the catalog. Overridden for one launch by `--system-pro`, `--system-lite`, `--system-scout`, `--system-quick`, or `--system-prompt default\|lite\|pro\|scout\|quick`. |
 | `modelMatrix` | `Record<string, ModelMatrixEntry>` | — | Per-role/phase/`*` subagent routing matrix. Entries can override provider/model/fallback profile and role-specific runtime controls. |
 | `fleet` | `FleetConfig` | — | Fleet budgets, supervision, worktrees, peer awareness, and subagent lifecycle. User config only; stripped from in-project config. |
 | `brain` | `BrainConfig` | — | Decision layer: autonomy ceiling, deterministic rules, heuristics, LLM quality gate + circuit breaker, council, decision cache, replay trace, ledger, monitor. See [`brain`](#brain--decision-layer-autonomy-rules-council-trace). User config only; stripped from in-project config. |
@@ -309,7 +309,9 @@ The host system prompt normally loads the baseline identity/instructions from
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `variant` | `"default" \| "lite" \| "pro" \| "scout"` | `"default"` | `default` loads `system.md`; `lite` loads the compact `system-lite.md`; `pro` loads `system-pro.md`; `scout` loads `system-scout.md`. |
+| `variant` | `"default" \| "lite" \| "pro" \| "scout" \| "quick"` | `"default"` | `default` loads `system.md`; `lite` loads the compact `system-lite.md`; `pro` loads `system-pro.md`; `scout` loads `system-scout.md`; `quick` loads `system-quick.md`. |
+| `includeGlobalAgents` | `boolean` | `true` | Include `~/.wrongstack/AGENTS.md` in the system prompt. Applies from the next prompt build; the file itself is kept. |
+| `includeProjectAgents` | `boolean` | `true` | Include the project's root `AGENTS.md` (falling back to `CLAUDE.md`) in the system prompt. Subdirectory instruction files, delivered with tool results, are unaffected. Profile config only: the in-project config may not set `systemPrompt`. |
 
 Lite, Standard and Pro select the amount of coding guidance; they expose the
 same tools for a given `features.tokenSavingMode`. Scout additionally selects
@@ -386,6 +388,7 @@ CLI flags override this setting for one launch:
 wstack --system-pro
 wstack --system-lite
 wstack --system-scout
+wstack --system-quick
 wstack --system-prompt pro
 wstack --system-prompt lite
 wstack --system-prompt default

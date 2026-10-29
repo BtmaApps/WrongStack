@@ -55,13 +55,14 @@ export type CacheTtl = (typeof CACHE_TTLS)[number];
  * System-prompt variants in startup-menu order. Mirrors core
  * `SYSTEM_PROMPT_VARIANT_OPTIONS` (`default` is shown as "Standard").
  */
-export const SYSTEM_PROMPT_CHOICES = ['lite', 'default', 'pro', 'scout'] as const;
+export const SYSTEM_PROMPT_CHOICES = ['lite', 'default', 'pro', 'scout', 'quick'] as const;
 export type SystemPromptChoice = (typeof SYSTEM_PROMPT_CHOICES)[number];
 export const SYSTEM_PROMPT_CHOICE_LABELS: Record<SystemPromptChoice, string> = {
   lite: 'Lite',
   default: 'Standard',
   pro: 'Pro',
   scout: 'Scout',
+  quick: 'Quick',
 };
 
 export const STATUSLINE_MODE_DESCS: Record<StatuslineMode, string> = {
@@ -277,4 +278,6 @@ export const SETTINGS_FIELD_LABELS: readonly string[] = [
   'Reuse startup choices', // 65
   'System prompt', // 66
   'Chat selection', // 67
+  'Global AGENTS.md', // 68
+  'Project AGENTS.md', // 69
 ];

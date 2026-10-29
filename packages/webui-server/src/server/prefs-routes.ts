@@ -54,6 +54,14 @@ export interface PrefsRouteHandlers {
   ) => Promise<void>;
   /** Preview/apply canonical defaults in the active profile config. */
   doctorConfig?: ((ws: WebSocket, apply: boolean) => Promise<void>) | undefined;
+  /**
+   * Config store backing the user-scope AGENTS.md editor's include toggle
+   * (`systemPrompt.includeGlobalAgents`). Optional: hosts without one serve
+   * the default (include = true) and ignore toggle writes.
+   */
+  userInstructionsConfigStore?: PrefsHandlerContext['configStore'];
+  /** Canonical durable prefs path for the same toggle (Chimera finding 1). */
+  userInstructionsApplyPrefs?: PrefsHandlerContext['applyConfigPrefs'];
 }
 
 export function createPrefsRouteHandlers(
@@ -62,6 +70,8 @@ export function createPrefsRouteHandlers(
 ): PrefsRouteHandlers {
   return {
     getPrefs: async (ws, sessionId) => handlePrefsGet(ctx, ws, sessionId),
+    userInstructionsConfigStore: ctx.configStore,
+    userInstructionsApplyPrefs: ctx.applyConfigPrefs,
     updatePrefs: async (ws, payload) => {
       // `sessionId` is routing context, not a preference — pull it out before
       // validation (which rejects unknown keys) and hand it to the handler so
@@ -163,6 +173,8 @@ export async function handlePrefsRoute(
         msg.type === 'user_instructions.get' ? 'get' : 'save',
         (msg.payload ?? {}) as Record<string, unknown>,
         send,
+        handlers.userInstructionsConfigStore,
+        handlers.userInstructionsApplyPrefs,
       );
       return true;
     }

@@ -17,7 +17,7 @@ export function ContextSettingsTab({
 
   return (
     <div className="space-y-6">
-      <UserInstructionsSection />
+      <UserInstructionsSection syncPref={syncPref} />
 
       {/* Feature Flags */}
       <div className="rounded-xl border border-border/70 bg-card/80 p-5 shadow-sm">

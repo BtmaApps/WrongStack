@@ -103,6 +103,8 @@ export function reduceSettingsPanel(state: State, action: SettingsPanelAction): 
           nextStepsRequired: action.nextStepsRequired,
           rememberStartupChoices: action.rememberStartupChoices,
           nextSystemPromptVariant: action.nextSystemPromptVariant,
+          includeGlobalAgents: action.includeGlobalAgents ?? true,
+          includeProjectAgents: action.includeProjectAgents ?? true,
           readSymbols: action.readSymbols,
           // WrongProxy / WrongTrace: hydrate from the persisted boot-time
           // values pushed into the action by the TUI settings adapter.
