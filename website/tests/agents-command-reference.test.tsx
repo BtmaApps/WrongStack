@@ -81,10 +81,15 @@ function topLevelCaseLabels(source: string, switchHeader: string): string[] {
 }
 
 /** The verbs the CLI accepts for a nested switch, taken from its own usage string. */
-function acceptedVerbs(source: string, switchHeader: string, command: string): Set<string> {
+function acceptedVerbs(source: string, command: string): Set<string> {
   const usage = new RegExp(`Usage: \`/agents ${command} ([^\`]+)\``).exec(source);
   if (!usage) return new Set();
-  return new Set(usage[1].split('|').map((verb) => verb.trim()).filter(Boolean));
+  return new Set(
+    usage[1]
+      .split('|')
+      .map((verb) => verb.trim())
+      .filter(Boolean),
+  );
 }
 
 /** Verbs the TUI wrapper answers itself, before delegating to the CLI command. */
@@ -99,8 +104,8 @@ function tuiOwnedForms(source: string): Set<string> {
 const cliActions = new Set(topLevelCaseLabels(CLI_SOURCE, 'switch (cmd) {'));
 const tuiForms = tuiOwnedForms(TUI_SOURCE);
 const acceptedActions = new Set([...cliActions, ...tuiForms]);
-const chatVerbs = acceptedVerbs(CLI_SOURCE, 'switch (cmd) {', 'chat');
-const streamVerbs = acceptedVerbs(CLI_SOURCE, 'switch (cmd) {', 'stream');
+const chatVerbs = acceptedVerbs(CLI_SOURCE, 'chat');
+const streamVerbs = acceptedVerbs(CLI_SOURCE, 'stream');
 
 /** Every `/agents <action>` the website states, across the catalog and the detail page. */
 function advertisedActions(): string[] {
@@ -142,7 +147,12 @@ function advertisedVerbs(command: string): string[] {
 
   const verbs: string[] = [];
   for (const match of text.matchAll(new RegExp(`/agents\\s+${command}\\s+([^\\s\`]+)`, 'g'))) {
-    verbs.push(...match[1].split('|').map((verb) => verb.trim()).filter(Boolean));
+    verbs.push(
+      ...match[1]
+        .split('|')
+        .map((verb) => verb.trim())
+        .filter(Boolean),
+    );
   }
   return verbs;
 }
@@ -152,14 +162,7 @@ describe('website /agents reference', () => {
     // Non-vacuity: if the derivation broke, every assertion below would pass
     // for the wrong reason.
     expect(cliActions.size).toBeGreaterThan(0);
-    expect([...cliActions].sort()).toEqual([
-      'chat',
-      'help',
-      'list',
-      'show',
-      'status',
-      'stream',
-    ]);
+    expect([...cliActions].sort()).toEqual(['chat', 'help', 'list', 'show', 'status', 'stream']);
     // The nested `stream` switch must not leak its verbs into the top level.
     expect(cliActions.has('on')).toBe(false);
     expect(cliActions.has('off')).toBe(false);

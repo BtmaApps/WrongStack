@@ -48,6 +48,9 @@
 .kit-detail p {
   line-height: 1.6;
 }
+.kit-draft-notice p {
+  margin: 0;
+}
 .kit-catalog small,
 .kit-detail small,
 .kit-run-form > p,
@@ -243,9 +246,6 @@ dl.kit-values {
   background: var(--raised);
   font-size: 12px;
   line-height: 1.6;
-}
-.kit-draft-notice p {
-  margin: 0;
 }
 .kit-draft-compare {
   display: grid;

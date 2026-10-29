@@ -221,8 +221,8 @@ function ReferenceRangeEditor({
         </p>
       )}
       {preview && (
-        <figure className="composer-reference-preview">
-          <pre role="region" aria-label="Referenced lines preview">
+        <figure className="composer-reference-preview" aria-label="Referenced lines preview">
+          <pre>
             {preview.lines.map((text, index) => (
               <span key={first + index}>
                 <i>{first + index}</i>

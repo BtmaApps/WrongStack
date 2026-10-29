@@ -13,10 +13,22 @@ import type { ChangelogEntry } from './changelog-types';
 
 export const changelog1x: ChangelogEntry[] = [
   {
+    version: '1.3.0',
+    date: '2026-10-29',
+    tagline: 'Durable desktop workspaces and focused agent benchmarks',
+    latest: true,
+    highlights: [
+      'Desktop v2 adds durable project, roster, model and skill drafts, a virtualized file tree, and file or line-range references in chat',
+      'File saves check the reviewed disk version, while Git review supports individual hunks and conflict resolution with stale-content checks',
+      'Benchmarks support model and prompt comparisons, Polyglot subsets, resume and rerun; the lean profile pins read, edit, write, bash, grep and glob without lazy schema expansion',
+      'Quick system prompts, explicit AGENTS.md inclusion switches and Companion controls keep runtime behavior visible across interfaces',
+      'Canonical project identities, terminal input handling, decimal duration conversion and shared child-process helpers close cross-platform reliability gaps',
+    ],
+  },
+  {
     version: '1.2.1',
     date: '2026-10-25',
     tagline: 'SimpleUI retired and replaced by VibeUI',
-    latest: true,
     highlights: [
       'SimpleUI is retired: the @wrongstack/simpleui package is gone and VibeUI (wstack vibeui / --vibeui, default port 3476) is the focused browser surface; the retired wstack simpleui command and --simpleui flag still parse, but open VibeUI and print a notice',
       'The interactive launch menu is now TUI / REPL, WebUI, VibeUI, HQ and Desktop, with VibeUI as option 3',
