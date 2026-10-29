@@ -4,6 +4,7 @@ import { access, readFile, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { exerciseNativeConflictVariants } from './native-conflict-variants.mjs';
 import { exerciseVersionBoundSave } from './native-file-save.mjs';
+import { exerciseNativeFileTreeScale } from './native-file-tree-scale.mjs';
 export async function exerciseNativeFiles({ page, waitFor, artifactDir, project, rpc }) {
   const tool = (name) =>
     page
@@ -565,6 +566,7 @@ export async function exerciseNativeFiles({ page, waitFor, artifactDir, project,
     'PASS: native three-way conflict review, markers/close guard, stale disk refusal with retained draft, reload and explicit real-file/index resolution without committing',
   );
   await exerciseNativeConflictVariants({ page, project, artifactDir });
+  await exerciseNativeFileTreeScale({ page, project, tool, waitFor, artifactDir });
   assert.equal(
     (await rpc('snapshot')).sessions.length,
     0,

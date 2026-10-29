@@ -3024,3 +3024,23 @@ Verification on the shared working snapshot:
   change). Both on the first run. The two-project collision itself has no native case.
 - Not covered: full application restart, multi-window stress, full release/coverage, hosted CI and
   installed-app replacement.
+
+## Virtualized file tree and paged folder listing (2026-10-29)
+
+- The Files directory tree is now `FileTreeView`: it flattens the expanded tree (or the search
+  matches with their ancestors) in one pass and mounts only the rows in view plus overscan.
+  Rows announce `aria-setsize`/`aria-posinset`; arrows, Home and End move by row position across
+  the whole tree, scrolling the target into the window before focusing it.
+- The folder listing beside the tree renders 200 entries at a time with a "Show N more · M not
+  shown" control; a new folder, search or sort starts again at the first page.
+- Checks: desktop **435 tests / 92 files PASS** (new `file-tree-rows` unit tests, including a
+  20,000-entry single-pass case); typecheck **252 PASS**; Biome PASS on the changed files.
+- Native `--files` on portable identity `38767aa2f284-344ee89c60b0`, bundled engine/checksums
+  verified: **exit 0 / PASS** on the first run. The new scale scenario creates 3,000 files in one
+  folder: 35 tree rows mounted, folder listing 200 then 400 rows after paging, End reaches the
+  last row of the whole tree, Home returns, and search for the deepest file keeps only matches.
+  The engine bundle was built from the shared tree and may include other in-progress core/cli
+  edits.
+- Not covered: very deep (not wide) trees, trees whose engine listing itself is truncated,
+  screen-reader announcement checks, full application restart, full release/coverage, hosted CI
+  and installed-app replacement.

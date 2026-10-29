@@ -1,7 +1,6 @@
 import {
   ArrowLeft,
   Check,
-  ChevronDown,
   ChevronRight,
   Copy,
   Eye,
@@ -32,6 +31,7 @@ import type { EngineState } from './engine-state';
 import { entries } from './engine-values';
 import { FileContentSearch } from './FileContentSearch';
 import { FileEvidenceDrawer } from './FileEvidenceDrawer';
+import { FileTreeView } from './FileTreeView';
 import { type FileDraftSnapshot, FileDraftStore } from './file-draft';
 import {
   byteSize,
@@ -79,6 +79,7 @@ const chrome = new Map<string, Chrome>();
 // A window retains the same draft revisions when its project tools remount.
 // Other native windows have independent stores and must still pass the SQLite revision check.
 const fileDraftStores = new Map<string, FileDraftStore>();
+const FOLDER_PAGE = 200;
 type Action = {
   kind:
     | 'file'
@@ -579,6 +580,10 @@ export function FileWorkspace({
   );
   const change = changes.find((file) => file['path'] === asGitPath(active));
   const [selected, setSelected] = useState('');
+  // Large folders list a page at a time; the tree beside them is virtualized.
+  const [folderLimit, setFolderLimit] = useState(FOLDER_PAGE);
+  // A new folder, search or sort starts again at the first page.
+  useEffect(() => setFolderLimit(FOLDER_PAGE), [folder, search, sort]);
   const referenceSelection = () => {
     if (!onReference || !document || !active) return;
     let lines: [number, number] | null = null;
@@ -894,60 +899,36 @@ export function FileWorkspace({
               Reading project…
             </div>
           ) : mode === 'files' ? (
-            <div
-              role="tree"
-              aria-label="Project directory tree"
-              className="file-directory-tree"
-              onKeyDown={(event) => {
-                const nodes = [
-                  ...event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="treeitem"]'),
-                ];
-                const index = nodes.indexOf(event.target as HTMLButtonElement);
-                let next = index;
-                if (event.key === 'ArrowDown') next = Math.min(nodes.length - 1, index + 1);
-                else if (event.key === 'ArrowUp') next = Math.max(0, index - 1);
-                else if (event.key === 'Home') next = 0;
-                else if (event.key === 'End') next = nodes.length - 1;
-                else return;
-                event.preventDefault();
-                nodes[next]?.focus();
+            <FileTreeView
+              tree={tree}
+              expanded={expanded}
+              active={active}
+              selected={selected}
+              query={search}
+              changes={changes}
+              prefix={prefix}
+              onSelect={(node) => {
+                setSelected(node.path);
+                if (node.type === 'file') void openFile(node.path);
+                else {
+                  setFolder(node.path);
+                  setActive('');
+                  setExpanded((paths) =>
+                    paths.includes(node.path)
+                      ? paths.filter((p) => p !== node.path)
+                      : [...paths, node.path],
+                  );
+                }
               }}
-            >
-              {tree.map((node) => (
-                <DirectoryRow
-                  key={node.path}
-                  node={node}
-                  expanded={expanded}
-                  active={active}
-                  selected={selected}
-                  query={search}
-                  depth={0}
-                  changes={changes}
-                  prefix={prefix}
-                  onSelect={(node) => {
-                    setSelected(node.path);
-                    if (node.type === 'file') void openFile(node.path);
-                    else {
-                      setFolder(node.path);
-                      setActive('');
-                      setExpanded((paths) =>
-                        paths.includes(node.path)
-                          ? paths.filter((p) => p !== node.path)
-                          : [...paths, node.path],
-                      );
-                    }
-                  }}
-                  onContext={(event, path) => {
-                    event.preventDefault();
-                    setMenu({
-                      path,
-                      x: Math.min(event.clientX, innerWidth - 210),
-                      y: Math.min(event.clientY, innerHeight - 220),
-                    });
-                  }}
-                />
-              ))}
-            </div>
+              onContext={(event, path) => {
+                event.preventDefault();
+                setMenu({
+                  path,
+                  x: Math.min(event.clientX, innerWidth - 210),
+                  y: Math.min(event.clientY, innerHeight - 220),
+                });
+              }}
+            />
           ) : (
             <div className="file-change-list">
               {typeof git['error'] === 'string' ? (
@@ -1309,7 +1290,7 @@ export function FileWorkspace({
                     Parent folder
                   </button>
                 )}
-                {visible.map((node) => (
+                {visible.slice(0, folderLimit).map((node) => (
                   <button
                     type="button"
                     className="file-folder-row"
@@ -1342,6 +1323,16 @@ export function FileWorkspace({
                     <span>{node.size === undefined ? '—' : byteSize(node.size)}</span>
                   </button>
                 ))}
+                {visible.length > folderLimit && (
+                  <button
+                    type="button"
+                    className="file-parent-row"
+                    onClick={() => setFolderLimit((limit) => limit + FOLDER_PAGE)}
+                  >
+                    Show {Math.min(FOLDER_PAGE, visible.length - folderLimit)} more ·{' '}
+                    {visible.length - folderLimit} not shown
+                  </button>
+                )}
                 {!visible.length && (
                   <div className="file-quiet-state">
                     <FolderOpen size={30} />
@@ -1522,101 +1513,6 @@ export function FileWorkspace({
   );
 }
 
-function DirectoryRow({
-  node,
-  depth,
-  expanded,
-  active,
-  selected,
-  query,
-  changes,
-  prefix,
-  onSelect,
-  onContext,
-}: {
-  node: FileNode;
-  depth: number;
-  expanded: string[];
-  active: string;
-  selected: string;
-  query: string;
-  changes: Record<string, unknown>[];
-  prefix: string;
-  onSelect: (node: FileNode) => void;
-  onContext: (event: React.MouseEvent, path: string) => void;
-}) {
-  const matches = (item: FileNode): boolean =>
-    item.path.toLowerCase().includes(query.toLowerCase()) || item.children.some(matches);
-  if (query && !matches(node)) return null;
-  const open = Boolean(query) || expanded.includes(node.path),
-    directory = node.type === 'directory';
-  const status = changes.find((file) => file['path'] === prefix + node.path)?.['status'];
-  return (
-    <>
-      <button
-        type="button"
-        role="treeitem"
-        aria-label={node.path}
-        aria-level={depth + 1}
-        aria-selected={active === node.path || selected === node.path}
-        {...(directory ? { 'aria-expanded': open } : {})}
-        className={`file-tree-row ${active === node.path ? 'selected' : ''}`}
-        style={{ paddingLeft: 12 + depth * 15 }}
-        onClick={() => onSelect(node)}
-        onContextMenu={(event) => onContext(event, node.path)}
-        onKeyDown={(event) => {
-          if (
-            directory &&
-            ((event.key === 'ArrowRight' && !open) || (event.key === 'ArrowLeft' && open))
-          ) {
-            event.preventDefault();
-            onSelect(node);
-          }
-        }}
-      >
-        {directory ? (
-          open ? (
-            <ChevronDown size={12} />
-          ) : (
-            <ChevronRight size={12} />
-          )
-        ) : (
-          <span className="file-tree-indent" />
-        )}
-        {directory ? (
-          open ? (
-            <FolderOpen size={15} />
-          ) : (
-            <Folder size={15} />
-          )
-        ) : (
-          <FileCode2 size={14} />
-        )}
-        <span>{node.name}</span>
-        {Boolean(status) && <b className="file-git-status">{String(status)}</b>}
-      </button>
-      {directory && open && (
-        <div>
-          {node.children.map((child) => (
-            <DirectoryRow
-              key={child.path}
-              node={child}
-              depth={depth + 1}
-              expanded={expanded}
-              active={active}
-              selected={selected}
-              query={query}
-              changes={changes}
-              prefix={prefix}
-              onSelect={onSelect}
-              onContext={onContext}
-            />
-          ))}
-        </div>
-      )}
-    </>
-  );
-}
 function HighlightLine({ text }: { text: string }) {
   return (
     <>
