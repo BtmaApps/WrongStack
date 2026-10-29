@@ -3172,3 +3172,27 @@ Verification on the shared working snapshot:
 - Not covered: "Use my older draft" and the two-window review natively, session deletion
   cleanup of the stored part (like the other session draft parts, it is not removed), full
   application restart, full release/coverage, hosted CI and installed-app replacement.
+
+## Code paste hint with wrap and undo (2026-10-29)
+
+- Pasting multi-line text into the composer that is mostly code-shaped (at least two non-empty
+  lines, 60% code-like, no fence of its own, caret not inside an open fence) shows a hint. The
+  paste happens normally; nothing changes until "Wrap in code block" is chosen. The fence is
+  longer than any backtick run in the text, placed on its own lines, and names a language only for
+  unambiguous JSON, Python, Rust, Go or shell. "Undo wrap" restores the exact previous draft while
+  the draft still equals the wrapped result; editing the pasted text or dismissing removes the
+  hint.
+- Defect found by the native run: Windows clipboards supply CRLF while the textarea stores LF, so
+  the "pasted text is still in place" check never matched and no hint appeared. Clipboard text
+  is now normalised like the textarea before comparison (unit-tested).
+- Checks: desktop **459 tests / 98 files PASS** (new `paste-code` tests: detection, language,
+  prose/single-line/fenced refusal, fence state, CRLF normalisation, wrap range, fence length);
+  typecheck **262 PASS**; Biome PASS on the changed files.
+- Native `--composer` on portable identity `4cec30a177b8-29621d686286`, bundled engine/checksums
+  verified (engine rebuilt from the shared tree): the first run **failed** on the CRLF defect
+  above; after the fix **exit 0 / PASS**. A real system-clipboard paste of Python shows the
+  hint, leaves the paste unchanged, wraps it as a `python` fence, undoes back to the exact paste,
+  and a prose paste shows no hint. The test writes the system clipboard, like the existing
+  copy/paste scenario.
+- Not covered: paste replacing a selection natively, dismiss natively, very large pastes and
+  non-Windows clipboards.

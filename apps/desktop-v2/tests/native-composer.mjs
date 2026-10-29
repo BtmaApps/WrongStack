@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
 import { fixtureModel } from './local-provider.mjs';
+import { exerciseNativePasteHint } from './native-paste-hint.mjs';
 import { exerciseNativeProfileModelPolicy } from './native-profile-model-policy.mjs';
 import { exerciseNativeSessionAgentPlan } from './native-session-agent-plan.mjs';
 import { exerciseNativeTopicBoundary } from './native-topic-boundary.mjs';
@@ -61,6 +62,7 @@ export async function exerciseNativeComposer({
     artifactDir,
     configPath,
   });
+  await exerciseNativePasteHint({ page });
   const idle = () =>
     waitFor(
       async () => !(await page.getByRole('button', { name: 'Stop run', exact: true }).count()),

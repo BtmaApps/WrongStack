@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-29T11:43:26.802Z",
+  "generatedAt": "2026-10-29T11:55:08.903Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,15 +12,15 @@
   },
   "summary": {
     "packages": 45,
-    "sourceFiles": 5439,
-    "testFiles": 4738,
-    "sourceLines": 1199740,
+    "sourceFiles": 5441,
+    "testFiles": 4739,
+    "sourceLines": 1199884,
     "workspaceEdges": 222,
-    "moduleEdges": 16357,
+    "moduleEdges": 16359,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 3,
-    "testsWithoutTypecheck": 97,
+    "testsWithoutTypecheck": 98,
     "testsWithMultipleTypechecks": 0,
     "testOnlyExports": 973
   },
@@ -385,8 +385,8 @@
     {
       "name": "@wrongstack/desktop-v2",
       "dir": "apps/desktop-v2",
-      "sourceFiles": 253,
-      "testFiles": 97,
+      "sourceFiles": 255,
+      "testFiles": 98,
       "workspaceDependencies": [
         "@wrongstack/contracts",
         "@wrongstack/core",
@@ -1601,6 +1601,12 @@
       },
       {
         "file": "apps/desktop-v2/tests/oauth-model.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "apps/desktop-v2/tests/paste-code.test.ts",
         "projects": [
           "root-node"
         ]
@@ -30094,6 +30100,13 @@
         "typecheckProjects": []
       },
       {
+        "file": "apps/desktop-v2/tests/paste-code.test.ts",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": []
+      },
+      {
         "file": "apps/desktop-v2/tests/persisted-fields.test.ts",
         "runtimeProjects": [
           "root-node"
@@ -31118,8 +31131,8 @@
     },
     {
       "file": "apps/desktop-v2/src/SessionComposer.tsx",
-      "lines": 996,
-      "relativeImports": 19
+      "lines": 1003,
+      "relativeImports": 20
     },
     {
       "file": "apps/desktop-v2/src/SkillLibrary.tsx",
@@ -31149,14 +31162,14 @@
       "relativeImports": 0
     },
     {
+      "file": "apps/desktop-v2/src/SessionComposer.tsx",
+      "lines": 1003,
+      "relativeImports": 20
+    },
+    {
       "file": "apps/desktop-v2/src/ProjectRequirements.tsx",
       "lines": 997,
       "relativeImports": 10
-    },
-    {
-      "file": "apps/desktop-v2/src/SessionComposer.tsx",
-      "lines": 996,
-      "relativeImports": 19
     },
     {
       "file": "apps/desktop-v2/src/ModelCatalogSettings.tsx",

@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { ComposerAttachments, useComposerAttachments } from './ComposerAttachments';
+import { usePasteHint } from './ComposerPasteHint';
 import { ComposerReferenceChips } from './ComposerReferenceChips';
 import { type ComposerAttachment, wireAttachments } from './composer-attachments';
 import { dispatchComposer, type SubmitMode, supportsQueue } from './composer-model';
@@ -145,6 +146,7 @@ export function SessionComposer({
     projectId,
     textarea,
   });
+  const pasteHint = usePasteHint(draft, input.replace);
   const queueSupported = supportsQueue(state);
   const enhanceEnabled =
     enhanceDraft ?? state.results['prefs.updated']?.['enhanceEnabled'] === true;
@@ -645,6 +647,7 @@ export function SessionComposer({
           command={command}
           onChange={onReferencesChange}
         />
+        {pasteHint.element}
         <textarea
           ref={textarea}
           aria-label="Message WrongStack"
@@ -656,7 +659,11 @@ export function SessionComposer({
           value={draft}
           readOnly={sending}
           onPaste={(event) => {
-            if (!event.clipboardData.files.length || sending) return;
+            if (sending) return;
+            if (!event.clipboardData.files.length) {
+              pasteHint.onPaste(event);
+              return;
+            }
             event.preventDefault();
             void media.add(Array.from(event.clipboardData.files));
             const text = event.clipboardData.getData('text/plain');

@@ -443,3 +443,12 @@
   margin-top: 4px;
   color: var(--muted);
 }
+
+.composer-paste-hint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  font-size: 12px;
+}
