@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-10-29T00:52:14.084Z
+**Generated:** 2026-10-29T00:53:00.345Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -8,11 +8,11 @@
 | Measure | Value |
 |---|---:|
 | Workspace packages | 45 |
-| Production source files | 5392 |
-| Production source lines | 1193987 |
-| Test files | 4696 |
+| Production source files | 5393 |
+| Production source lines | 1194021 |
+| Test files | 4697 |
 | Workspace dependency edges | 222 |
-| Relative module edges | 16201 |
+| Relative module edges | 16202 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 5 |
@@ -68,7 +68,7 @@
 | @wrongstack/webui | 770 | 507 | @wrongstack/contracts, @wrongstack/core, @wrongstack/goal, @wrongstack/kanban, @wrongstack/plugins, @wrongstack/providers, @wrongstack/tools, @wrongstack/webui-protocol |
 | @wrongstack/webui-hq | 127 | 55 | @wrongstack/contracts, @wrongstack/coordination, @wrongstack/core, @wrongstack/hq, @wrongstack/tools, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/webui-protocol | 29 | 15 | @wrongstack/contracts, @wrongstack/core, @wrongstack/hq |
-| @wrongstack/webui-server | 317 | 340 | @wrongstack/agent-catalog, @wrongstack/builtin-plugins, @wrongstack/chronicle, @wrongstack/contracts, @wrongstack/coordination, @wrongstack/core, @wrongstack/goal, @wrongstack/hq, @wrongstack/kanban, @wrongstack/mcp, @wrongstack/primitives, @wrongstack/providers, @wrongstack/requirement-intake, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/techstack, @wrongstack/tools, @wrongstack/vector-memory, @wrongstack/webui-protocol, @wrongstack/worktree, @wrongstack/wrongtrace |
+| @wrongstack/webui-server | 318 | 341 | @wrongstack/agent-catalog, @wrongstack/builtin-plugins, @wrongstack/chronicle, @wrongstack/contracts, @wrongstack/coordination, @wrongstack/core, @wrongstack/goal, @wrongstack/hq, @wrongstack/kanban, @wrongstack/mcp, @wrongstack/primitives, @wrongstack/providers, @wrongstack/requirement-intake, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/techstack, @wrongstack/tools, @wrongstack/vector-memory, @wrongstack/webui-protocol, @wrongstack/worktree, @wrongstack/wrongtrace |
 | @wrongstack/worktree | 10 | 3 | @wrongstack/contracts, @wrongstack/core |
 | @wrongstack/wrongtrace | 11 | 10 | — |
 | wrongstack | 1 | 1 | @wrongstack/cli |

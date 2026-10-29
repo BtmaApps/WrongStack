@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-29T00:52:14.084Z",
+  "generatedAt": "2026-10-29T00:53:00.345Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 45,
-    "sourceFiles": 5392,
-    "testFiles": 4696,
-    "sourceLines": 1193987,
+    "sourceFiles": 5393,
+    "testFiles": 4697,
+    "sourceLines": 1194021,
     "workspaceEdges": 222,
-    "moduleEdges": 16201,
+    "moduleEdges": 16202,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 5,
@@ -1114,8 +1114,8 @@
     {
       "name": "@wrongstack/webui-server",
       "dir": "packages/webui-server",
-      "sourceFiles": 317,
-      "testFiles": 340,
+      "sourceFiles": 318,
+      "testFiles": 341,
       "workspaceDependencies": [
         "@wrongstack/agent-catalog",
         "@wrongstack/builtin-plugins",
@@ -1149,7 +1149,7 @@
         {
           "path": "packages/webui-server/tsconfig.test.json",
           "error": null,
-          "testFiles": 340
+          "testFiles": 341
         }
       ]
     },
@@ -25430,6 +25430,12 @@
       },
       {
         "file": "packages/webui-server/tests/process-request-correlation.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/webui-server/tests/profile-identity.test.ts",
         "projects": [
           "root-node"
         ]

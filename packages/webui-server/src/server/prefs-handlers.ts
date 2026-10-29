@@ -31,6 +31,8 @@ import { validatePrefsUpdatePayload } from './ws-payload-validation.js';
 export { SESSION_SCOPED_PREF_KEYS } from './session-scoped-prefs.js';
 
 export interface PrefsHandlerContext {
+  /** Immutable identity of the profile actually opened by this runtime. */
+  profileIdentity?: { id: string; name: string } | undefined;
   meta: Record<string, unknown>;
   /**
    * Meta bag of a specific session, for the session-scoped keys above.
@@ -168,7 +170,11 @@ export function handlePrefsGet(ctx: PrefsHandlerContext, ws: WebSocket, sessionI
   // instead of over whatever it is currently showing.
   ctx.send(ws, {
     type: 'prefs.updated',
-    payload: { ...composedPrefsSnapshot(ctx, sessionId), ...(sessionId ? { sessionId } : {}) },
+    payload: {
+      ...composedPrefsSnapshot(ctx, sessionId),
+      ...(ctx.profileIdentity ? { profileIdentity: ctx.profileIdentity } : {}),
+      ...(sessionId ? { sessionId } : {}),
+    },
   });
 }
 
@@ -235,7 +241,11 @@ export async function handleSystemPromptPresets(
   try {
     const variant = payload['baseVariant'];
     const validVariant =
-      variant === 'lite' || variant === 'default' || variant === 'pro' || variant === 'scout';
+      variant === 'lite' ||
+      variant === 'default' ||
+      variant === 'pro' ||
+      variant === 'scout' ||
+      variant === 'quick';
     let selectedId: string | undefined;
     if (action === 'create') {
       if (!validVariant || typeof payload['name'] !== 'string')

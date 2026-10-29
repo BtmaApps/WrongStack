@@ -15,6 +15,7 @@ import { computeConfigPrefUpdates } from './config-pref-updates.js';
 import { prefSnapshot as prefSnapshotImpl } from './pref-helpers.js';
 import type { PrefsHandlerContext } from './prefs-handlers.js';
 import { createPrefsRouteHandlers } from './prefs-routes.js';
+import { profileIdentity } from './profile-identity.js';
 import { applyWrongProxyPrefs as applyWrongProxyPrefsRuntime } from './proxy-runtime.js';
 import type { WebuiCallbacks, WebuiDeps, WebuiMutableState } from './route-contracts.js';
 import type { createSystemPromptRouteAdapter } from './system-prompt-route-adapter.js';
@@ -33,6 +34,9 @@ export function createPrefsAndAutonomyRoutes(
   systemPromptAdapter: ReturnType<typeof createSystemPromptRouteAdapter>,
 ) {
   const prefsContext: PrefsHandlerContext = {
+    ...(typeof deps.profileConfigPath === 'string' && deps.profileConfigPath.trim()
+      ? { profileIdentity: profileIdentity(deps.profileConfigPath) }
+      : {}),
     meta: deps.context.meta,
     // Session-scoped prefs (autonomy, yolo, context strategy, prompt variant,
     // reasoning) land on the calling tab's own context meta.
