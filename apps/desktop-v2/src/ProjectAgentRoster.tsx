@@ -31,11 +31,12 @@ import { MarkdownContent } from './MarkdownContent';
 import { Modal } from './Modal';
 import { markdownTarget } from './markdown-target';
 import type { Session } from './model';
-import { openExternal } from './platform';
+import { openExternal, projectFormDraftStorage } from './platform';
 import { RosterDocument, type RosterDocumentKind } from './RosterDocument';
 import { rosterInputDraft } from './roster-document-store';
 import { rosterInputsToKeep } from './roster-input-draft';
 import { type RosterRecord, rosterBudgetFields, rosterCatalog } from './roster-model';
+import { usePersistedFields } from './usePersistedFields';
 import './project-agent-roster.css';
 
 const RosterRuntimeEditor = lazy(() =>
@@ -64,6 +65,7 @@ type RoleInputs = {
   captureResult?: RosterRecord;
 };
 const inputDrafts = new Map<string, Record<string, RoleInputs>>();
+const createDefaults = { name: '', role: '', purpose: '', taskTypes: '', baseRole: 'generic' };
 export function ProjectAgentRoster({
   command,
   projectId,
@@ -99,14 +101,15 @@ export function ProjectAgentRoster({
     [notice, setNotice] = useState(''),
     [busy, setBusy] = useState(false),
     [revision, setRevision] = useState(0);
-  const [create, setCreate] = useState(false),
-    [createDraft, setCreateDraft] = useState({
-      name: '',
-      role: '',
-      purpose: '',
-      taskTypes: '',
-      baseRole: 'generic',
-    });
+  const [create, setCreate] = useState(false);
+  // The unsent role-creation form is kept per project until a role is created or cleared.
+  const createStorage = useMemo(
+    () => projectFormDraftStorage(projectId, 'roster-create'),
+    [projectId],
+  );
+  const createInput = usePersistedFields(createStorage, 'roster-create', createDefaults);
+  const createDraft = createInput.fields;
+  const setCreateDraft = (value: typeof createDefaults) => createInput.set(value);
   const [runtime, setRuntime] = useState(false),
     [document, setDocument] = useState<{ kind: RosterDocumentKind; skill?: string } | null>(null);
   const [confirmation, setConfirmation] = useState<{
@@ -1298,6 +1301,12 @@ export function ProjectAgentRoster({
                 <X size={18} />
               </button>
             </header>
+            {createInput.notice}
+            {createInput.restored && (createDraft.name || createDraft.purpose) && (
+              <p className="roster-policy-note" role="status">
+                Restored the role you had not created yet.
+              </p>
+            )}
             <p>
               The role inherits its base definition and stores its identity under this project's
               .wrongstack/agents directory.

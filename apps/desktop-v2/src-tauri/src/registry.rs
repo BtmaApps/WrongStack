@@ -246,6 +246,7 @@ impl Registry {
             && form_key != "git-review-notes"
             && form_key != "design-edits"
             && form_key != "roster-inputs"
+            && form_key != "roster-create"
             && !record_form
             && !resource_input
             && !file_form
@@ -977,6 +978,11 @@ mod tests {
             1
         );
         assert!(peer.form_draft(&b.id, "roster-inputs").unwrap()["value"].is_null());
+        assert_eq!(
+            db.save_form_draft(&a.id, "roster-create", &design, 0)
+                .unwrap(),
+            1
+        );
         let roster = format!("roster-document:{}", "9".repeat(64));
         assert_eq!(db.save_form_draft(&a.id, &roster, &design, 0).unwrap(), 1);
         assert!(peer.form_draft(&a.id, "roster-document:reviewer").is_err());

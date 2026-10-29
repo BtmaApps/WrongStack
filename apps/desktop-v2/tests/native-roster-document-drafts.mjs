@@ -110,3 +110,30 @@ export async function exerciseNativeRosterRuntimeDraft({
   await waitFor(async () => (await stored()).value === null, 'Discarded runtime draft cleared');
   console.log('PASS: native roster runtime draft: reload restore and explicit discard');
 }
+
+/** The unsent role-creation form survives a renderer reload and clears when emptied. */
+export async function exerciseNativeRosterCreateDraft({ page, project, open, catalog, waitFor }) {
+  const stored = () =>
+    page.evaluate(
+      (params) =>
+        window.__TAURI_INTERNALS__.invoke('host_request', { method: 'form-draft.get', params }),
+      { projectId: project.id, formKey: 'roster-create' },
+    );
+  const dialog = page.getByRole('dialog', { name: 'Create project roster role', exact: true });
+  const name = dialog.getByLabel('New role name', { exact: true });
+  await catalog().getByRole('button', { name: 'Create project role', exact: true }).click();
+  await name.fill('Parked role name');
+  await waitFor(
+    async () => (await stored()).value?.fields?.name === 'Parked role name',
+    'Role creation draft acknowledged',
+  );
+  await page.reload();
+  await open(project);
+  await catalog().getByRole('button', { name: 'Create project role', exact: true }).click();
+  await dialog.getByRole('status').filter({ hasText: 'Restored the role' }).waitFor();
+  assert.equal(await name.inputValue(), 'Parked role name');
+  await name.fill('');
+  await waitFor(async () => (await stored()).value === null, 'Emptied role form clears its copy');
+  await dialog.getByRole('button', { name: 'Close role creation', exact: true }).click();
+  console.log('PASS: native roster role-creation draft: reload restore and clear when emptied');
+}

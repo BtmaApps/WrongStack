@@ -29,7 +29,8 @@ export function fieldsCodec(owner: string, names: readonly string[]): FormDraftC
   };
 }
 
-const drafts = new Map<string, DurableFormDraft<Fields>>();
+// Controllers belong to their storage (one per project), then to the form key inside it.
+const drafts = new WeakMap<FormDraftStorage, Map<string, DurableFormDraft<Fields>>>();
 /**
  * Small form inputs that should survive a reload before they are submitted. A
  * value equal to the defaults stores nothing, so a successful submit that resets
@@ -48,10 +49,15 @@ export function usePersistedFields<T extends Fields>(
   const names = useMemo(() => Object.keys(defaults), [defaults]);
   const controller = useMemo(() => {
     if (!storage) return null;
-    let draft = drafts.get(key);
+    let owned = drafts.get(storage);
+    if (!owned) {
+      owned = new Map();
+      drafts.set(storage, owned);
+    }
+    let draft = owned.get(key);
     if (!draft) {
       draft = new DurableFormDraft(storage, fieldsCodec(key, names));
-      drafts.set(key, draft);
+      owned.set(key, draft);
     }
     return draft;
   }, [storage, key, names]);

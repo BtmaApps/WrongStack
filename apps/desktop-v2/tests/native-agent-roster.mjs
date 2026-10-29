@@ -5,6 +5,7 @@ import { buildProviderSave } from '../src/provider-settings-model.ts';
 import { fixtureKey, fixtureModel } from './local-provider.mjs';
 import { revealProjectTools } from './native-project-navigation.mjs';
 import {
+  exerciseNativeRosterCreateDraft,
   exerciseNativeRosterDocumentDrafts,
   exerciseNativeRosterRuntimeDraft,
 } from './native-roster-document-drafts.mjs';
@@ -272,6 +273,8 @@ export async function exerciseNativeAgentRoster({
     waitFor,
   });
   await exerciseNativeRosterRuntimeDraft({ page, project, role, open, card, catalog, waitFor });
+  await exerciseNativeRosterCreateDraft({ page, project, open, catalog, waitFor });
+  await card(role).click();
   await writeFile(configFile, '{invalid runtime');
   await catalog().getByRole('button', { name: 'Refresh roster', exact: true }).click();
   await catalog().getByRole('alert').filter({ hasText: 'invalid or unreadable' }).waitFor();

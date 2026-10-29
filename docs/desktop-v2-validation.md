@@ -3007,3 +3007,20 @@ Verification on the shared working snapshot:
 - Not covered: snippet references, the edit-mode path and the unsaved-text refusal natively (unit
   only for the offset mapping), full application restart, multi-window stress, full
   release/coverage, hosted CI and installed-app replacement.
+
+## Durable roster role creation and per-project field controllers (2026-10-29)
+
+- The roster role-creation form now uses `usePersistedFields` under the project form key
+  `roster-create` (new Rust allow-list literal): it restores after a reload with a visible status,
+  and creating a role (which resets the form) or emptying it clears the native copy.
+- Fix found while wiring it: `usePersistedFields` cached controllers by form key alone, so a fixed
+  key such as `requirement-resource-input:new` opened in two projects in one window would reuse
+  the first project's storage. Controllers are now cached per storage object, then per key.
+- Checks: desktop **431 tests / 91 files PASS**; typecheck **250 PASS**; Biome PASS; Rust fmt PASS;
+  native Rust **21 tests PASS**.
+- Native on portable identity `98cccb64fbb7-344ee89c60b0`, bundled engine/checksums verified:
+  `--roster` **exit 0 / PASS** (new create-draft reload restore and clear, plus all roster
+  scenarios) and `--sdd` **exit 0 / PASS** (requirement resource inputs after the controller-cache
+  change). Both on the first run. The two-project collision itself has no native case.
+- Not covered: full application restart, multi-window stress, full release/coverage, hosted CI and
+  installed-app replacement.
